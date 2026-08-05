@@ -18,7 +18,7 @@
 use glam::{Mat4, Quat, Vec3};
 use wgpu::util::DeviceExt as _;
 
-use crate::camera::{CameraUniform, LightingEntry, VANILLA_DEFAULT_GLINT_SPEED};
+use crate::camera::{CameraUniform, LightingEntry};
 use crate::frame_buffers::FrameDataBuffer;
 use crate::gpu::create_depth_target;
 use crate::hud::HudEntityPreview;
@@ -426,6 +426,8 @@ fn hud_entity_preview_camera_uniform(
     width: f32,
     height: f32,
     glint_elapsed_millis: f64,
+    glint_speed: f64,
+    glint_alpha: f32,
 ) -> CameraUniform {
     let camera = if preview.lighting == GuiItemLightingEntry::EntityInUi {
         CameraUniform::hud_entity_preview_pip(
@@ -445,7 +447,7 @@ fn hud_entity_preview_camera_uniform(
             hud_preview_lighting_entry(preview.lighting),
         )
     };
-    camera.with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+    camera.with_glint_texture_time(glint_elapsed_millis, glint_speed, glint_alpha)
 }
 
 /// Persistent GPU state for one GUI entity preview slot: the vanilla-private color + depth
@@ -617,6 +619,8 @@ impl Renderer {
             target.width as f32,
             target.height as f32,
             glint_elapsed_millis,
+            self.glint_speed,
+            self.glint_alpha,
         );
         self.queue
             .write_buffer(&target.camera_buffer, 0, bytemuck::bytes_of(&camera));
@@ -1572,11 +1576,23 @@ mod tests {
     #[test]
     fn preview_camera_uniform_uses_the_frame_glint_clock() {
         let preview = entity_preview_for(armor_stand_preview_instance(), None);
-        let camera = hud_entity_preview_camera_uniform(&preview, 40.0, 60.0, 1_000.0);
+        let camera = hud_entity_preview_camera_uniform(
+            &preview,
+            40.0,
+            60.0,
+            1_000.0,
+            crate::camera::VANILLA_DEFAULT_GLINT_SPEED,
+            crate::camera::VANILLA_DEFAULT_GLINT_STRENGTH,
+        );
 
         assert_eq!(
             camera.glint_offsets(),
-            [-4000.0 / 110_000.0, 4000.0 / 30_000.0, 0.0, 0.0]
+            [
+                -4000.0 / 110_000.0,
+                4000.0 / 30_000.0,
+                crate::camera::VANILLA_DEFAULT_GLINT_STRENGTH,
+                0.0
+            ]
         );
     }
 

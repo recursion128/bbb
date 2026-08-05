@@ -972,6 +972,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         ),
     )?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
+    renderer.set_glint_settings(args.client_glint_speed, args.client_glint_strength as f32);
     renderer.set_menu_background_blurriness(args.menu_background_blurriness);
     renderer.set_hud_text_background_options(
         args.text_background_opacity,
@@ -1118,6 +1119,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut platform_exit_requested = false;
     let mut render_effect_consumer = RenderEffectConsumer::default();
     let mut hud_render_runtime = HudRenderRuntime::default();
+    hud_render_runtime.set_panorama_scroll_speed(args.panorama_scroll_speed);
     if let Some(roots) = pack_roots.as_ref() {
         match roots
             .load_periodic_notification_catalog()

@@ -414,6 +414,11 @@ pub struct Renderer {
     pub(super) last_frame_profile: RendererFrameProfile,
     pub(super) last_frame_started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
+    /// Vanilla `optionsRenderState.glintSpeed` (`Options.glintSpeed`).
+    pub(super) glint_speed: f64,
+    /// Vanilla `optionsRenderState.glintStrength` (`Options.glintStrength`),
+    /// the `GlobalSettingsUniform` glint alpha.
+    pub(super) glint_alpha: f32,
     pub(super) current_post_effect_id: Option<String>,
     pub(super) camera_post_effect_active: bool,
     pub(super) camera_post_effect: CameraPostEffectGpu,
@@ -2197,6 +2202,8 @@ impl Renderer {
             last_frame_profile: RendererFrameProfile::default(),
             last_frame_started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
+            glint_speed: VANILLA_DEFAULT_GLINT_SPEED,
+            glint_alpha: crate::camera::VANILLA_DEFAULT_GLINT_STRENGTH,
             current_post_effect_id: None,
             camera_post_effect_active: false,
             camera_post_effect,
@@ -4259,7 +4266,7 @@ impl Renderer {
         }
         .with_lightmap_environment(self.lightmap_environment)
         .with_fog_environment(self.fog_environment)
-        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+        .with_glint_texture_time(glint_elapsed_millis, self.glint_speed, self.glint_alpha)
         .with_shader_game_time_ticks(self.shader_game_time_ticks)
         .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.update_sky_model_view_dynamics(uniform.sky_model_view_transform());
@@ -4280,7 +4287,7 @@ impl Renderer {
         }
         .with_lightmap_environment(self.lightmap_environment)
         .with_fog_environment(self.fog_environment)
-        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+        .with_glint_texture_time(glint_elapsed_millis, self.glint_speed, self.glint_alpha)
         .with_shader_game_time_ticks(self.shader_game_time_ticks)
         .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.queue
@@ -4294,7 +4301,7 @@ impl Renderer {
             self.gui_surface_size.width as f32,
             self.gui_surface_size.height as f32,
         )
-        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+        .with_glint_texture_time(glint_elapsed_millis, self.glint_speed, self.glint_alpha)
         .with_shader_game_time_ticks(self.shader_game_time_ticks)
         .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.queue
@@ -4322,6 +4329,20 @@ impl Renderer {
         let mut environment = self.lightmap_environment;
         environment.brightness_factor = sanitize_lightmap_brightness_factor(factor);
         self.set_lightmap_environment(environment);
+    }
+
+    /// Vanilla `GameRenderer.extractRenderState` samples `Options.glintSpeed`
+    /// into the glint texture transform and `Options.glintStrength` into the
+    /// `GlobalSettingsUniform` glint alpha every frame; the startup-loaded
+    /// option values arrive here once. Non-finite or negative inputs keep the
+    /// vanilla defaults.
+    pub fn set_glint_settings(&mut self, speed: f64, strength: f32) {
+        if speed.is_finite() && speed >= 0.0 {
+            self.glint_speed = speed;
+        }
+        if strength.is_finite() && strength >= 0.0 {
+            self.glint_alpha = strength;
+        }
     }
 
     pub fn set_lightmap_block_factor(&mut self, factor: f32) {

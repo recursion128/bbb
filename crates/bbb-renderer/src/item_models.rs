@@ -1543,7 +1543,6 @@ struct VertexOut {
 };
 
 const GLINT_UV_SCALE: f32 = 8.0;
-const GLINT_ALPHA: f32 = 0.75;
 const GLINT_ANGLE: f32 = 0.1745329252;
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -1591,7 +1590,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if color.a < 0.1 {
         discard;
     }
-    let fade = (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance)) * GLINT_ALPHA;
+    let fade = (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance)) * camera.glint_offsets.z;
     return vec4<f32>(color.rgb * fade, color.a);
 }
 "#;
@@ -2068,7 +2067,7 @@ mod tests {
     #[test]
     fn item_model_glint_shader_uses_vanilla_glint_texturing_shape() {
         assert!(ITEM_MODEL_GLINT_SHADER.contains("const GLINT_UV_SCALE: f32 = 8.0"));
-        assert!(ITEM_MODEL_GLINT_SHADER.contains("const GLINT_ALPHA: f32 = 0.75"));
+        assert!(ITEM_MODEL_GLINT_SHADER.contains("* camera.glint_offsets.z"));
         assert!(ITEM_MODEL_GLINT_SHADER.contains("const GLINT_ANGLE: f32 = 0.1745329252"));
         assert!(ITEM_MODEL_GLINT_SHADER.contains("glint_offsets: vec4<f32>"));
         assert!(ITEM_MODEL_GLINT_SHADER.contains("rotated + camera.glint_offsets.xy"));

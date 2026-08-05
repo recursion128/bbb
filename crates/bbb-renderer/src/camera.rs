@@ -24,6 +24,8 @@ pub const VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR: [f32; 3] =
     [153.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0];
 /// Vanilla `Options.glintSpeed` default.
 pub(crate) const VANILLA_DEFAULT_GLINT_SPEED: f64 = 0.5;
+/// Vanilla `Options.glintStrength` default.
+pub(crate) const VANILLA_DEFAULT_GLINT_STRENGTH: f32 = 0.75;
 /// Vanilla `ProjectionType.PERSPECTIVE.applyLayeringTransform(..., 1.0F)`.
 pub(crate) const VANILLA_VIEW_OFFSET_Z_PERSPECTIVE_SCALE: f32 = 1.0 - 1.0 / 4096.0;
 /// Vanilla `ProjectionType.ORTHOGRAPHIC.applyLayeringTransform(..., 1.0F)`.
@@ -776,9 +778,17 @@ impl CameraUniform {
         self
     }
 
-    pub(crate) fn with_glint_texture_time(mut self, elapsed_millis: f64, glint_speed: f64) -> Self {
+    /// Vanilla samples `optionsRenderState.glintSpeed` into the glint texture
+    /// transform and `glintStrength` into the `GlobalSettingsUniform` glint
+    /// alpha; both ride the spare `glint_offsets` uniform lanes here.
+    pub(crate) fn with_glint_texture_time(
+        mut self,
+        elapsed_millis: f64,
+        glint_speed: f64,
+        glint_alpha: f32,
+    ) -> Self {
         let offsets = vanilla_glint_texture_offsets(elapsed_millis, glint_speed);
-        self.glint_offsets = [offsets[0], offsets[1], 0.0, 0.0];
+        self.glint_offsets = [offsets[0], offsets[1], glint_alpha, 0.0];
         self
     }
 
@@ -1662,9 +1672,18 @@ mod tests {
         assert_eq!(CameraUniform::identity().glint_offsets(), [0.0; 4]);
         assert_eq!(
             CameraUniform::identity()
-                .with_glint_texture_time(1000.0, VANILLA_DEFAULT_GLINT_SPEED)
+                .with_glint_texture_time(
+                    1000.0,
+                    VANILLA_DEFAULT_GLINT_SPEED,
+                    VANILLA_DEFAULT_GLINT_STRENGTH
+                )
                 .glint_offsets(),
-            [-4000.0 / 110_000.0, 4000.0 / 30_000.0, 0.0, 0.0]
+            [
+                -4000.0 / 110_000.0,
+                4000.0 / 30_000.0,
+                VANILLA_DEFAULT_GLINT_STRENGTH,
+                0.0
+            ]
         );
     }
 

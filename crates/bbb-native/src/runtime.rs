@@ -697,6 +697,7 @@ pub(crate) struct HudRenderRuntime {
     win_screen_lines: Arc<[HudWinScreenLine]>,
     last_ui_frame_at: Option<Instant>,
     panorama_spin_degrees: f32,
+    panorama_scroll_speed: PanoramaScrollSpeed,
     chat_cache_key: Option<HudChatCacheKey>,
     hotbar_block_item_models_cache_key: Option<HudHotbarBlockItemModelsCacheKey>,
     scoreboard_sidebar_cache_key: Option<HudScoreboardSidebarCacheKey>,
@@ -912,11 +913,22 @@ impl HudRenderRuntime {
         }
     }
 
+    /// Vanilla `Options.panoramaSpeed` (`panoramaScrollSpeed`); non-finite or
+    /// negative startup values keep the vanilla default.
+    pub(crate) fn set_panorama_scroll_speed(&mut self, speed: f64) {
+        if speed.is_finite() && speed >= 0.0 {
+            self.panorama_scroll_speed = PanoramaScrollSpeed(speed);
+        }
+    }
+
     fn panorama_rotation_degrees(&mut self, visible: bool, frame_delta: HudFrameDeltaTicks) -> f32 {
         if visible {
-            self.panorama_spin_degrees = panorama_wrap_degrees(
-                self.panorama_spin_degrees + frame_delta.realtime.max(0.0) * 0.1,
-            );
+            // Vanilla `Panorama.extractRenderState`: `spin = wrapDegrees(spin
+            // + (float)(realtimeDelta * panoramaSpeed) * 0.1F)`.
+            let delta =
+                (f64::from(frame_delta.realtime.max(0.0)) * self.panorama_scroll_speed.0) as f32;
+            self.panorama_spin_degrees =
+                panorama_wrap_degrees(self.panorama_spin_degrees + delta * 0.1);
         }
         -self.panorama_spin_degrees
     }
@@ -11131,6 +11143,16 @@ fn hud_debug_facing(y_rot: f32) -> (&'static str, &'static str) {
         ("east", "Towards positive X")
     } else {
         ("north", "Towards negative Z")
+    }
+}
+
+/// Vanilla `Options.panoramaSpeed` default (`OptionInstance.UnitDouble`, 1.0).
+#[derive(Debug)]
+struct PanoramaScrollSpeed(f64);
+
+impl Default for PanoramaScrollSpeed {
+    fn default() -> Self {
+        Self(1.0)
     }
 }
 

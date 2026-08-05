@@ -96,7 +96,6 @@ struct VertexOut {
 };
 
 const GLINT_UV_SCALE: f32 = 8.0;
-const GLINT_ALPHA: f32 = 0.75;
 const GLINT_ANGLE: f32 = 0.1745329252;
 
 fn glint_uv(local_uv: vec2<f32>) -> vec2<f32> {
@@ -130,7 +129,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if color.a < 0.1 {
         discard;
     }
-    return vec4<f32>(color.rgb * GLINT_ALPHA, color.a);
+    return vec4<f32>(color.rgb * camera.glint_offsets.z, color.a);
 }
 "#;
 
@@ -538,7 +537,7 @@ mod tests {
     #[test]
     fn hud_item_glint_shader_uses_alpha_mask_and_vanilla_glint_texturing() {
         assert!(HUD_ITEM_GLINT_SHADER.contains("const GLINT_UV_SCALE: f32 = 8.0"));
-        assert!(HUD_ITEM_GLINT_SHADER.contains("const GLINT_ALPHA: f32 = 0.75"));
+        assert!(HUD_ITEM_GLINT_SHADER.contains("* camera.glint_offsets.z"));
         assert!(HUD_ITEM_GLINT_SHADER.contains("const GLINT_ANGLE: f32 = 0.1745329252"));
         assert!(HUD_ITEM_GLINT_SHADER.contains("glint_offsets: vec4<f32>"));
         assert!(HUD_ITEM_GLINT_SHADER.contains("rotated + camera.glint_offsets.xy"));

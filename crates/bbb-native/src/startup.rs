@@ -340,6 +340,24 @@ pub(crate) struct Args {
     )]
     pub(crate) client_fov_effect_scale: f32,
     #[arg(
+        long = "client-glint-speed",
+        default_value_t = 0.5,
+        value_parser = parse_client_unit_double
+    )]
+    pub(crate) client_glint_speed: f64,
+    #[arg(
+        long = "client-glint-strength",
+        default_value_t = 0.75,
+        value_parser = parse_client_unit_double
+    )]
+    pub(crate) client_glint_strength: f64,
+    #[arg(
+        long = "panorama-scroll-speed",
+        default_value_t = 1.0,
+        value_parser = parse_client_unit_double
+    )]
+    pub(crate) panorama_scroll_speed: f64,
+    #[arg(
         long = "client-view-bobbing",
         default_value_t = true,
         action = ArgAction::Set
@@ -859,6 +877,27 @@ fn bind_stored_client_options(
         Double,
         client_fov_effect_scale,
         parse_client_fov_effect_scale
+    );
+    parsed!(
+        "client_glint_speed",
+        "glintSpeed",
+        Double,
+        client_glint_speed,
+        parse_client_unit_double
+    );
+    parsed!(
+        "client_glint_strength",
+        "glintStrength",
+        Double,
+        client_glint_strength,
+        parse_client_unit_double
+    );
+    parsed!(
+        "panorama_scroll_speed",
+        "panoramaScrollSpeed",
+        Double,
+        panorama_scroll_speed,
+        parse_client_unit_double
     );
     parsed!(
         "damage_tilt_strength",

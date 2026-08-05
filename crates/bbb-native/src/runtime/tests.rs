@@ -99,6 +99,30 @@ fn bare_event_channel_close_cannot_synthesize_remote_disconnect_screen() {
 }
 
 #[test]
+fn panorama_rotation_scales_with_the_scroll_speed_option() {
+    // Vanilla `Panorama.extractRenderState`: `spin += (float)(realtimeDelta *
+    // optionsRenderState.panoramaSpeed) * 0.1F`; `panoramaScrollSpeed` 0
+    // freezes the pan entirely.
+    let delta = HudFrameDeltaTicks {
+        game_time: 1.0,
+        realtime: 5.0,
+    };
+    let mut hud = HudRenderRuntime::default();
+    assert_eq!(hud.panorama_rotation_degrees(true, delta), -0.5);
+
+    let mut half = HudRenderRuntime::default();
+    half.set_panorama_scroll_speed(0.5);
+    assert_eq!(half.panorama_rotation_degrees(true, delta), -0.25);
+
+    let mut frozen = HudRenderRuntime::default();
+    frozen.set_panorama_scroll_speed(0.0);
+    assert_eq!(frozen.panorama_rotation_degrees(true, delta), 0.0);
+    // A non-finite input keeps the previously configured speed.
+    frozen.set_panorama_scroll_speed(f64::NAN);
+    assert_eq!(frozen.panorama_rotation_degrees(true, delta), 0.0);
+}
+
+#[test]
 fn disconnected_screen_projection_preserves_style_focus_and_narration() {
     let mut input = ClientInputState::default();
     let reason = bbb_net::DisconnectReason::from_styled(vec![bbb_protocol::StyledTextRun {
