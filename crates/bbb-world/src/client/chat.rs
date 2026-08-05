@@ -542,9 +542,12 @@ impl WorldStore {
             return false;
         };
         let name = &content[open + 1..open + 1 + close_offset];
-        self.player_info.entries.iter().any(|(uuid, entry)| {
-            entry.profile.name == name && self.social_should_hide_message_from(*uuid)
-        })
+        // Vanilla `ChatListener.guessChatUUID` resolves the mention through
+        // `PlayerSocialManager.getDiscoveredUUID`, which keeps every name ever
+        // seen in a player-info add — so a hidden player stays matched after
+        // leaving the server, unlike a live tab-list scan.
+        self.social_discovered_uuid(name)
+            .is_some_and(|uuid| self.social_should_hide_message_from(uuid))
     }
 
     fn push_system_chat_message_state(
@@ -1928,8 +1931,8 @@ mod tests {
     use bbb_protocol::packets::{
         ChatTypeBound, ChatTypeDecorationSummary, ChatTypeHolder, CommonPlayerSpawnInfo,
         FilterMask, FilterMaskKind, GameProfile, GameType, MessageSignature,
-        PackedMessageSignature, PlayLogin, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
-        RegistryData, RegistryDataEntry, SignedMessageBody,
+        PackedMessageSignature, PlayLogin, PlayerInfoAction, PlayerInfoEntry, PlayerInfoRemove,
+        PlayerInfoUpdate, RegistryData, RegistryDataEntry, SignedMessageBody,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey, RsaPublicKey};
@@ -3117,6 +3120,20 @@ mod tests {
             1,
         );
         assert!(store.client_chat().messages.is_empty());
+
+        // Vanilla resolves the mention through the discovered-names map, so a
+        // hidden player keeps matching after leaving the server.
+        store.apply_player_info_remove(PlayerInfoRemove {
+            profile_ids: vec![sender],
+        });
+        store.push_rich_server_system_chat_message(
+            "<Alice> still hidden".to_string(),
+            plain_chat_styled_content("<Alice> still hidden"),
+            None,
+            2,
+        );
+        assert!(store.client_chat().messages.is_empty());
+
         store.push_rich_server_system_chat_message(
             "server notice".to_string(),
             plain_chat_styled_content("server notice"),
