@@ -284,6 +284,17 @@ pub enum WorldLevelLoadPhase {
     ClientLoaded,
 }
 
+/// Vanilla `LevelLoadingScreen.Reason`, chosen by
+/// `ClientPacketListener.determineLevelLoadingReason`
+/// (ClientPacketListener.java:1341-1353).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorldLevelLoadReason {
+    #[default]
+    Other,
+    NetherPortal,
+    EndPortal,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldLevelLoadState {
     pub phase: WorldLevelLoadPhase,
@@ -293,6 +304,20 @@ pub struct WorldLevelLoadState {
     pub loads_completed: usize,
     #[serde(default)]
     pub timeouts: usize,
+    #[serde(default)]
+    pub reason: WorldLevelLoadReason,
+}
+
+impl WorldLevelLoadState {
+    /// Vanilla shows `LevelLoadingScreen` for the whole
+    /// `startWaitingForNewLevel` window and closes it once
+    /// `LevelLoadTracker.isLevelReady()` holds.
+    pub fn screen_is_up(self) -> bool {
+        matches!(
+            self.phase,
+            WorldLevelLoadPhase::WaitingForServer | WorldLevelLoadPhase::WaitingForPlayerChunk
+        )
+    }
 }
 
 impl Default for WorldWeatherState {
@@ -378,13 +403,18 @@ impl WorldStore {
         self.gameplay.reduced_debug_info = login.reduced_debug_info;
         self.gameplay.hardcore = login.hardcore;
         self.apply_spawn_info(&login.common_spawn_info);
-        self.start_client_level_load();
+        self.start_client_level_load(WorldLevelLoadReason::Other);
     }
 
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> RespawnApplyResult {
         self.counters.respawns_received += 1;
         self.clear_death_screen();
         self.close_game_rules_screen();
+        let level_load_reason = level_loading_reason(
+            self.local_player_is_dead(),
+            &respawn.common_spawn_info.dimension,
+            self.level.as_ref().map(|level| level.dimension.as_str()),
+        );
         let dimension_changed = self
             .level
             .as_ref()
@@ -412,7 +442,7 @@ impl WorldStore {
             self.clear_debug_subscriber_values();
         }
         self.apply_spawn_info(&respawn.common_spawn_info);
-        self.start_client_level_load();
+        self.start_client_level_load(level_load_reason);
         RespawnApplyResult {
             closed_server_container_id,
             dimension_changed,
@@ -729,10 +759,11 @@ impl WorldStore {
         self.insecure_chat_warning_count
     }
 
-    fn start_client_level_load(&mut self) {
+    fn start_client_level_load(&mut self, reason: WorldLevelLoadReason) {
         self.level_load.phase = WorldLevelLoadPhase::WaitingForServer;
         self.level_load.starts = self.level_load.starts.saturating_add(1);
         self.level_load.loading_packets_received = 0;
+        self.level_load.reason = reason;
     }
 
     fn advance_client_level_generation(&mut self) {
@@ -1145,6 +1176,28 @@ impl WorldStore {
 struct DimensionProfile {
     dimension: WorldDimension,
     name: Option<&'static str>,
+}
+
+/// Vanilla `ClientPacketListener.determineLevelLoadingReason`
+/// (ClientPacketListener.java:1341-1353): a death respawn always stays
+/// `OTHER`, otherwise either side of the dimension change picks the portal
+/// background.
+fn level_loading_reason(
+    player_died: bool,
+    dimension: &str,
+    previous_dimension: Option<&str>,
+) -> WorldLevelLoadReason {
+    if player_died {
+        return WorldLevelLoadReason::Other;
+    }
+    let touches = |name: &str| dimension == name || previous_dimension == Some(name);
+    if touches("minecraft:the_nether") {
+        WorldLevelLoadReason::NetherPortal
+    } else if touches("minecraft:the_end") {
+        WorldLevelLoadReason::EndPortal
+    } else {
+        WorldLevelLoadReason::Other
+    }
 }
 
 fn dimension_profile(dimension_type_id: i32, dimension: &str) -> DimensionProfile {
@@ -2716,6 +2769,79 @@ mod tests {
         assert!(store.complete_client_level_load(true));
         assert_eq!(store.level_load().loads_completed, 2);
         assert_eq!(store.level_load().timeouts, 1);
+    }
+
+    #[test]
+    fn the_level_loading_screen_window_and_reason_follow_the_dimension_change() {
+        let mut store = WorldStore::new();
+        assert!(!store.level_load().screen_is_up());
+
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(store.level_load().screen_is_up());
+        assert_eq!(store.level_load().reason, WorldLevelLoadReason::Other);
+
+        let event = ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID,
+            param: 0.0,
+        };
+        store.apply_game_event(event);
+        assert!(store.level_load().screen_is_up());
+        assert!(store.complete_client_level_load(false));
+        assert!(!store.level_load().screen_is_up());
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension: "minecraft:the_nether".to_string(),
+                dimension_type_id: 1,
+                ..respawn_packet(0).common_spawn_info
+            },
+            data_to_keep: 0,
+        });
+        assert!(store.level_load().screen_is_up());
+        assert_eq!(
+            store.level_load().reason,
+            WorldLevelLoadReason::NetherPortal
+        );
+
+        store.apply_game_event(event);
+        assert!(store.complete_client_level_load(false));
+        store.apply_respawn(&respawn_packet(0));
+        assert_eq!(
+            store.level_load().reason,
+            WorldLevelLoadReason::NetherPortal
+        );
+
+        store.apply_game_event(event);
+        assert!(store.complete_client_level_load(false));
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension: "minecraft:the_end".to_string(),
+                dimension_type_id: 2,
+                ..respawn_packet(0).common_spawn_info
+            },
+            data_to_keep: 0,
+        });
+        assert_eq!(store.level_load().reason, WorldLevelLoadReason::EndPortal);
+    }
+
+    #[test]
+    fn a_death_respawn_keeps_the_other_level_loading_reason() {
+        assert_eq!(
+            level_loading_reason(true, "minecraft:the_nether", Some("minecraft:overworld")),
+            WorldLevelLoadReason::Other
+        );
+        assert_eq!(
+            level_loading_reason(false, "minecraft:overworld", Some("minecraft:the_nether")),
+            WorldLevelLoadReason::NetherPortal
+        );
+        assert_eq!(
+            level_loading_reason(false, "minecraft:overworld", Some("minecraft:the_end")),
+            WorldLevelLoadReason::EndPortal
+        );
+        assert_eq!(
+            level_loading_reason(false, "minecraft:overworld", None),
+            WorldLevelLoadReason::Other
+        );
     }
 
     fn respawn_state_with_local_player_data() -> WorldStore {

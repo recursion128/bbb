@@ -28,6 +28,7 @@ mod game_event;
 mod game_rules;
 mod gpu;
 mod layout;
+mod level_loading_screen;
 mod player_list;
 mod reporting;
 mod scoreboard;
@@ -106,6 +107,7 @@ use self::layout::{
     HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
     HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
+pub use self::level_loading_screen::{HudLevelLoadingBackground, HudLevelLoadingScreen};
 pub use self::player_list::{
     HudPlayerList, HudPlayerListEntry, HudPlayerListPingSprite, HudPlayerListScore,
 };
@@ -6300,6 +6302,11 @@ impl Renderer {
             screen.and_then(disconnected_screen::sanitize_hud_disconnected_screen);
     }
 
+    pub fn set_hud_level_loading_screen(&mut self, screen: Option<HudLevelLoadingScreen>) {
+        self.hud_level_loading_screen =
+            screen.and_then(level_loading_screen::sanitize_hud_level_loading_screen);
+    }
+
     pub fn hud_disconnected_screen_hit_target_at(
         &self,
         position: (f64, f64),
@@ -7007,6 +7014,9 @@ impl Renderer {
     }
 
     fn hud_sound_subtitle_placement(&self) -> Option<HudSoundSubtitlePlacement> {
+        if self.hud_level_loading_screen.is_some() {
+            return None;
+        }
         if self.hide_gui && !self.hud_has_ingame_ui_screen() {
             return None;
         }
@@ -7023,6 +7033,50 @@ impl Renderer {
         let mut post_gui_item_commands = Vec::new();
         let surface_size = self.surface_size();
         let sound_subtitle_placement = self.hud_sound_subtitle_placement();
+        // Vanilla `Gui.extractRenderState` (Gui.java:200-222) extracts nothing
+        // at all while `minecraft.screen` is a `LevelLoadingScreen`, so the
+        // sleep overlay and subtitles stay hidden with the rest of the HUD.
+        if let Some(screen) = &self.hud_level_loading_screen {
+            if let (Some(panorama), HudLevelLoadingBackground::Panorama { .. }) =
+                (&self.hud_panorama, screen.background)
+            {
+                disconnected_screen::push_panorama_overlay(
+                    &mut vertices,
+                    &mut commands,
+                    panorama.overlay(),
+                    surface_size,
+                );
+            }
+            let screen_blur = (matches!(
+                screen.background,
+                HudLevelLoadingBackground::Panorama { .. }
+            ) && self.hud_screen_blur
+                && self.menu_background_blurriness >= 1.0)
+                .then_some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: 0,
+                });
+            level_loading_screen::push_hud_level_loading_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+            let post_gui_item_start = commands.len();
+            return HudDraws {
+                vertices,
+                commands,
+                post_gui_item_start,
+                screen_blur,
+            };
+        }
         if let Some(screen) = &self.hud_disconnected_screen {
             if let Some(panorama) = &self.hud_panorama {
                 disconnected_screen::push_panorama_overlay(
@@ -22713,6 +22767,41 @@ mod tests {
                 "alternate HUD item resolver returned: {removed_path}"
             );
         }
+    }
+
+    #[test]
+    fn the_level_loading_screen_replaces_every_hud_draw_and_centers_the_status_line() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_hud_sleep_overlay(Some(HudSleepOverlay { alpha: 255 }));
+        renderer.set_hud_hotbar_mode(HudHotbarMode::Ordinary);
+        let ordinary = renderer.collect_hud_draws();
+        assert!(ordinary
+            .commands
+            .iter()
+            .any(|command| matches!(command, HudDrawCommand::Sprite { .. })));
+        assert_eq!(
+            renderer.hud_sound_subtitle_placement(),
+            Some(HudSoundSubtitlePlacement::Deferred)
+        );
+
+        renderer.set_hud_level_loading_screen(Some(HudLevelLoadingScreen {
+            background: HudLevelLoadingBackground::NetherPortal {
+                sprite_uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+            downloading_terrain: "Loading terrain...".to_string(),
+        }));
+        assert_eq!(renderer.hud_sound_subtitle_placement(), None);
+        let loading = renderer.collect_hud_draws();
+        assert_eq!(loading.post_gui_item_start, loading.commands.len());
+        assert!(matches!(
+            loading.commands.as_slice(),
+            [HudDrawCommand::TerrainAtlas { .. }]
+        ));
     }
 
     #[test]

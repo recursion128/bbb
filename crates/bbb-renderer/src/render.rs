@@ -3344,10 +3344,17 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        if !matches!(
+        let win_screen = matches!(
             self.hud_game_event_screen.as_ref(),
             Some(crate::hud::HudGameEventScreen::Win(_))
-        ) {
+        );
+        let end_portal_level_load = self
+            .hud_level_loading_screen
+            .as_ref()
+            .is_some_and(|screen| {
+                screen.background == crate::hud::HudLevelLoadingBackground::EndPortal
+            });
+        if !win_screen && !end_portal_level_load {
             return;
         }
         let (Some(mesh), Some(atlas)) = (
@@ -3381,16 +3388,28 @@ impl Renderer {
     }
 
     fn panorama_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
-        let (Some(panorama), Some(screen)) = (&self.hud_panorama, &self.hud_disconnected_screen)
-        else {
+        let Some(panorama) = &self.hud_panorama else {
             return;
+        };
+        let rotation_degrees = match (
+            self.hud_level_loading_screen.as_ref(),
+            self.hud_disconnected_screen.as_ref(),
+        ) {
+            (Some(loading), _) => match loading.background {
+                crate::hud::HudLevelLoadingBackground::Panorama { rotation_degrees } => {
+                    rotation_degrees
+                }
+                _ => return,
+            },
+            (None, Some(screen)) => screen.panorama_rotation_degrees,
+            (None, None) => return,
         };
         panorama.draw(
             &self.queue,
             encoder,
             self.presentation_color_view(),
             self.surface_size(),
-            screen.panorama_rotation_degrees,
+            rotation_degrees,
         );
         stats.panorama_draw_calls += 1;
         stats.pipeline_switches += 1;

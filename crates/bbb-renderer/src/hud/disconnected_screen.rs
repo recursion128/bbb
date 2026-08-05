@@ -350,7 +350,7 @@ fn sanitize_component_runs(runs: &mut Vec<HudComponentTextRun>) {
     runs.retain(|run| !run.visual.text.is_empty());
 }
 
-fn push_menu_background<'a>(
+pub(super) fn push_menu_background<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,

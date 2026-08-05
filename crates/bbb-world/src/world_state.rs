@@ -10,7 +10,8 @@ pub use crate::error::{Result, WorldDecodeError};
 pub use crate::level::{
     ClockUpdateState, RespawnApplyResult, WorldCardinalLighting, WorldDimension,
     WorldDimensionTypeProperties, WorldGameplayState, WorldLevelInfo, WorldLevelLoadPhase,
-    WorldLevelLoadState, WorldSkybox, WorldTickingState, WorldTimeState, WorldWeatherState,
+    WorldLevelLoadReason, WorldLevelLoadState, WorldSkybox, WorldTickingState, WorldTimeState,
+    WorldWeatherState,
 };
 pub use crate::registries::{
     AmbientLoopSoundState, ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle,

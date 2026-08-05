@@ -2555,6 +2555,75 @@ fn a_remote_camera_player_keeps_the_hotbar_frame_but_projects_no_local_inventory
 }
 
 #[test]
+fn the_level_loading_screen_projects_for_the_whole_wait_and_picks_the_portal_background() {
+    let mut world = WorldStore::new();
+    let terrain_textures = TerrainTextureState::default();
+    assert!(hud_level_loading_screen(&world, &terrain_textures, None, 0.0).is_none());
+
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    let screen = hud_level_loading_screen(&world, &terrain_textures, None, 12.5)
+        .expect("the login wait shows the level loading screen");
+    assert_eq!(
+        screen.background,
+        HudLevelLoadingBackground::Panorama {
+            rotation_degrees: 12.5
+        }
+    );
+    assert_eq!(screen.downloading_terrain, "Loading terrain...");
+
+    world.apply_game_event(bbb_protocol::packets::GameEvent {
+        event_id:
+            bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID,
+        param: 0.0,
+    });
+    assert!(hud_level_loading_screen(&world, &terrain_textures, None, 0.0).is_some());
+    assert!(world.complete_client_level_load(false));
+    assert!(hud_level_loading_screen(&world, &terrain_textures, None, 0.0).is_none());
+
+    world.apply_respawn(&bbb_protocol::packets::Respawn {
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 2,
+            dimension: "minecraft:the_end".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: 0,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        data_to_keep: 0,
+    });
+    let screen = hud_level_loading_screen(&world, &terrain_textures, None, 0.0)
+        .expect("the dimension change shows the level loading screen");
+    assert_eq!(screen.background, HudLevelLoadingBackground::EndPortal);
+}
+
+#[test]
 fn hud_scoreboard_projection_localizes_rich_team_and_score_runs() {
     use bbb_protocol::packets::{
         ChatFormatting, NumberFormatSummary, ObjectiveRenderType, PlayerTeamMethod,

@@ -85,16 +85,13 @@ Matrix routes: `hud-frame-extract-order`, `hud-player-vitals`, `hud-hotbar-selec
   reachable evidence cell for every GUI owner — now split into the five `hud-*` routes — and every game-renderer owner.
   Split only by semantic owner and preserve the single frame-extract/submission
   path.
-- **`LevelLoadingScreen` and the `Gui.extractRenderState` gate it drives are
-  `active`.** `ClientPacketListener.startWaitingForNewLevel` shows the screen
-  for the whole `WaitingForServer`/`WaitingForPlayerChunk` window, and
-  `Gui.extractRenderState` suppresses the entire in-game HUD — sleep overlay and
-  subtitles included — while it is up. BBB tracks that window in
-  `WorldLevelLoadState` but draws neither the screen nor the gate. Externally
-  `LevelLoadTracker.hasProgress()`/`statusView()` stay integrated-server-only, so
-  the reachable surface is the centered `multiplayer.downloadingTerrain` line
-  plus the suppression; land both in one slice so the gate never ships without
-  the screen.
+- **Toasts and the F3 overlay above a full-screen screen are `deferred`.**
+  `GameRenderer.render` extracts `ToastManager` and `Gui.extractDebugOverlay`
+  after the screen, so vanilla draws both over `LevelLoadingScreen`, the win
+  screen and `DisconnectedScreen`. BBB's HUD collection returns early for all
+  three, so they hide both. Reopen when a screen in that set has to show a toast
+  or the debug overlay (any of them, not just the loading screen), and fix all
+  three through the same collection path rather than per screen.
 
 ## Native input, accessibility and window lifecycle closure
 

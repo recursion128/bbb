@@ -2878,6 +2878,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_game_rules_screen: Option<HudGameRulesScreen>,
     pub(crate) hud_disconnected_screen: Option<HudDisconnectedScreen>,
+    pub(crate) hud_level_loading_screen: Option<HudLevelLoadingScreen>,
     pub(crate) hud_death_screen: Option<HudDeathScreen>,
     pub(crate) hud_game_event_screen: Option<HudGameEventScreen>,
     pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>,
@@ -3374,6 +3375,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_game_rules_screen(frame.hud_game_rules_screen);
     renderer.set_hud_disconnected_screen(frame.hud_disconnected_screen);
+    renderer.set_hud_level_loading_screen(frame.hud_level_loading_screen);
     renderer.set_hud_death_screen(frame.hud_death_screen);
     renderer.set_hud_game_event_screen(frame.hud_game_event_screen);
     renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);

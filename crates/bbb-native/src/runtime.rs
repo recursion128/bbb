@@ -59,12 +59,12 @@ use bbb_renderer::{
     HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
     HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField,
-    HudJumpBar, HudMobEffect, HudOffhandSlot, HudPauseScreen, HudPauseScreenTooltip,
-    HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus, HudPortalOverlay,
-    HudResidentItemLayer, HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit,
-    HudSignEditorScreen, HudSocialInteractionsFocus, HudSocialInteractionsPage,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpyglassScope,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudJumpBar, HudLevelLoadingBackground, HudLevelLoadingScreen, HudMobEffect, HudOffhandSlot,
+    HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus,
+    HudPortalOverlay, HudResidentItemLayer, HudScoreboardSidebar, HudSignEditorKind,
+    HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
+    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
     HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
     HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
@@ -92,7 +92,7 @@ use bbb_world::{
     MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
     RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
     TerrainFluidState, TerrainLight, TerrainMaterialClass, VanillaEnchantmentIdentity,
-    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    WorldLevelInfo, WorldLevelLoadReason, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
@@ -3372,8 +3372,11 @@ pub(crate) fn update_renderer_from_publication(
     let entity_partial_tick = publication.partial_tick_at(render_started_at);
     let hud_frame_delta =
         hud_render_runtime.frame_delta_ticks(render_started_at, publication.tick_interval);
+    // Vanilla `Screen.panoramaShouldSpin` defaults to true, so both the
+    // disconnected screen and `LevelLoadingScreen` keep the cubemap spinning.
+    let level_loading_screen_is_up = world.level_load().screen_is_up();
     let panorama_rotation_degrees = hud_render_runtime.panorama_rotation_degrees(
-        input.disconnected_screen_runtime().is_some(),
+        input.disconnected_screen_runtime().is_some() || level_loading_screen_is_up,
         hud_frame_delta,
     );
     let win_generation = match input.game_event_screen_runtime() {
@@ -3435,29 +3438,30 @@ pub(crate) fn update_renderer_from_publication(
         GameType::Survival | GameType::Adventure
     );
     let camera_player = world.hud_camera_player_vitals();
-    let hud_player_health = (!input.hide_gui() && game_mode_can_hurt_player)
-        .then_some(camera_player)
-        .flatten()
-        .filter(|player| player.health.is_finite())
-        .map(|player| {
-            let presentation = hud_render_runtime.player_health_frame(
-                render_started_at,
-                publication.client_tick_index,
-                player.health.ceil() as i32,
-                player.invulnerable_time,
-            );
-            HudPlayerHealth {
-                health: player.health,
-                display_health: presentation.display_health,
-                blinking: presentation.blinking,
-                max_health: player.max_health,
-                absorption: player.absorption,
-                heart_type: camera_player_heart_type(player),
-                hardcore: world.is_hardcore(),
-                regen: player.regenerating,
-                tick_count: publication.client_tick_index,
-            }
-        });
+    let hud_player_health =
+        (!input.hide_gui() && game_mode_can_hurt_player && !level_loading_screen_is_up)
+            .then_some(camera_player)
+            .flatten()
+            .filter(|player| player.health.is_finite())
+            .map(|player| {
+                let presentation = hud_render_runtime.player_health_frame(
+                    render_started_at,
+                    publication.client_tick_index,
+                    player.health.ceil() as i32,
+                    player.invulnerable_time,
+                );
+                HudPlayerHealth {
+                    health: player.health,
+                    display_health: presentation.display_health,
+                    blinking: presentation.blinking,
+                    max_health: player.max_health,
+                    absorption: player.absorption,
+                    heart_type: camera_player_heart_type(player),
+                    hardcore: world.is_hardcore(),
+                    regen: player.regenerating,
+                    tick_count: publication.client_tick_index,
+                }
+            });
     // Unlike ordinary HUD content, Vanilla extracts the sleep overlay outside
     // the `Options.hideGui` branch and does not partial-tick interpolate it.
     let hud_sleep_overlay = hud_sleep_overlay_from_world(world);
@@ -3497,9 +3501,10 @@ pub(crate) fn update_renderer_from_publication(
                 })
         };
         if let Some(position) = position {
-            if let Some(sound) = hud_render_runtime
-                .air_bubble_pop_sound(air, !input.hide_gui() && game_mode_can_hurt_player)
-            {
+            if let Some(sound) = hud_render_runtime.air_bubble_pop_sound(
+                air,
+                !input.hide_gui() && game_mode_can_hurt_player && !level_loading_screen_is_up,
+            ) {
                 mailbox.enqueue_or_report(
                     crate::simulation::commands::SimulationCommand::HudAirBubblePopSound {
                         level_generation: world.client_level_generation(),
@@ -3737,6 +3742,15 @@ pub(crate) fn update_renderer_from_publication(
     let advancement_hover_fade = input.advancement_hover_fade();
     let hud_disconnected_screen =
         hud_disconnected_screen(input, item_runtime, panorama_rotation_degrees);
+    let hud_level_loading_screen = hud_disconnected_screen.is_none().then(|| {
+        hud_level_loading_screen(
+            world,
+            terrain_textures,
+            item_runtime,
+            panorama_rotation_degrees,
+        )
+    });
+    let hud_level_loading_screen = hud_level_loading_screen.flatten();
     let hud_death_screen = hud_disconnected_screen
         .is_none()
         .then(|| hud_death_screen(input, world, item_runtime))
@@ -4931,6 +4945,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_pause_screen,
             hud_game_rules_screen,
             hud_disconnected_screen,
+            hud_level_loading_screen,
             hud_death_screen,
             hud_game_event_screen,
             hud_social_interactions_screen,
@@ -5862,6 +5877,60 @@ fn hud_confusion_overlay(
 /// follows the partial-tick interpolation of `Player.portalEffectIntensity`
 /// and blits the nether-portal block's own particle sprite, so it keeps
 /// animating with the rest of the blocks atlas.
+/// Vanilla `LevelLoadingScreen` (shown for the whole
+/// `ClientPacketListener.startWaitingForNewLevel` window): the reason picks the
+/// background and the centered `multiplayer.downloadingTerrain` line is the
+/// only status text an external client can reach, because
+/// `LevelLoadTracker.hasProgress()`/`statusView()` stay integrated-server-only.
+fn hud_level_loading_screen(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    item_runtime: Option<&NativeItemRuntime>,
+    panorama_rotation_degrees: f32,
+) -> Option<HudLevelLoadingScreen> {
+    if !world.level_load().screen_is_up() {
+        return None;
+    }
+    let background = match world.level_load().reason {
+        WorldLevelLoadReason::NetherPortal => nether_portal_sprite_uv(terrain_textures)
+            .map(|sprite_uv| HudLevelLoadingBackground::NetherPortal { sprite_uv })
+            .unwrap_or(HudLevelLoadingBackground::Panorama {
+                rotation_degrees: panorama_rotation_degrees,
+            }),
+        WorldLevelLoadReason::EndPortal => HudLevelLoadingBackground::EndPortal,
+        WorldLevelLoadReason::Other => HudLevelLoadingBackground::Panorama {
+            rotation_degrees: panorama_rotation_degrees,
+        },
+    };
+    Some(HudLevelLoadingScreen {
+        background,
+        downloading_terrain: localized_gui_text(
+            item_runtime,
+            "multiplayer.downloadingTerrain",
+            "Loading terrain...",
+        ),
+    })
+}
+
+fn nether_portal_sprite_uv(terrain_textures: &TerrainTextureState) -> Option<HudUvRect> {
+    let block_state_id = bbb_world::vanilla_block_state_id(
+        VANILLA_NETHER_PORTAL_BLOCK,
+        &std::collections::BTreeMap::new(),
+    )
+    .or_else(|| {
+        bbb_world::BlockStateRegistry::vanilla_26_1()
+            .iter()
+            .find(|state| state.name == VANILLA_NETHER_PORTAL_BLOCK)
+            .map(|state| state.id)
+    })?;
+    let sprite_id = terrain_textures.particle_sprite_id_for_block_state(block_state_id)?;
+    let uv = terrain_textures.sprite_uv_rect(&sprite_id);
+    Some(HudUvRect {
+        min: uv.min,
+        max: uv.max,
+    })
+}
+
 fn hud_portal_overlay(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
@@ -5875,23 +5944,8 @@ fn hud_portal_overlay(
     if !(intensity > 0.0) {
         return None;
     }
-    let block_state_id = bbb_world::vanilla_block_state_id(
-        VANILLA_NETHER_PORTAL_BLOCK,
-        &std::collections::BTreeMap::new(),
-    )
-    .or_else(|| {
-        bbb_world::BlockStateRegistry::vanilla_26_1()
-            .iter()
-            .find(|state| state.name == VANILLA_NETHER_PORTAL_BLOCK)
-            .map(|state| state.id)
-    })?;
-    let sprite_id = terrain_textures.particle_sprite_id_for_block_state(block_state_id)?;
-    let uv = terrain_textures.sprite_uv_rect(&sprite_id);
     Some(HudPortalOverlay {
-        sprite_uv: HudUvRect {
-            min: uv.min,
-            max: uv.max,
-        },
+        sprite_uv: nether_portal_sprite_uv(terrain_textures)?,
         intensity,
     })
 }
