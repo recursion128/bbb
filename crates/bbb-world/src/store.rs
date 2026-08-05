@@ -198,6 +198,13 @@ pub struct WorldStore {
     pub(crate) enchanting_table_books: Vec<crate::EnchantingTableBookState>,
     #[serde(default)]
     pub(crate) enchanting_book_random: crate::EnchantingBookRandom,
+    /// Vanilla `ScreenEffectRenderer` item-activation animation. Cleared by
+    /// `GameRenderer.resetData` on clearLevel/disconnect only; a dimension
+    /// respawn (`Minecraft.setLevel`) keeps it running.
+    #[serde(default)]
+    pub(crate) item_activation: Option<crate::ItemActivationState>,
+    #[serde(default)]
+    pub(crate) item_activation_random: crate::ItemActivationRandomState,
     #[serde(default)]
     pub(crate) level_events: Vec<LevelEventRecord>,
     #[serde(default)]

@@ -688,6 +688,10 @@ impl WorldStore {
         // only the dimension-change respawn path carries maps over via
         // getAllMapData→addMapData, which never reaches this reset.
         self.maps.clear();
+        // Vanilla clearLevel/disconnect run `GameRenderer.resetData`, which
+        // clears the ScreenEffectRenderer item activation; the dimension
+        // respawn path (`Minecraft.setLevel`) never reaches it.
+        self.item_activation = None;
         self.last_map_color_patch = None;
         self.counters.maps_tracked = 0;
         self.counters.map_decorations_tracked = 0;

@@ -8,6 +8,10 @@ pub use crate::client::audio::{
     LocalSoundEventState, SoundEntityEventState, SoundEventState, SoundHolderState,
     SoundSeedRandomState, StopSoundEventState, TickableEntitySoundState, WorldBlockSoundProfile,
 };
+pub use crate::client::screen_effects::{
+    ItemActivationRandomState, ItemActivationState, VANILLA_ITEM_ACTIVATION_ANIMATION_LENGTH_TICKS,
+};
+
 pub use crate::client::book::{
     BookEditScreenState, BookEditSubmission, BookScreenState, BookSignScreenState,
     BookViewPageState, BookViewScreenState, LecternBookViewState, OpenBookState,

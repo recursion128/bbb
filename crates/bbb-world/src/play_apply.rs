@@ -701,6 +701,11 @@ impl WorldStore {
                     if let Some(state) = self.totem_use_sound_for_entity(update.entity_id) {
                         effects.positioned_sound(&state);
                     }
+                    // Vanilla case 35 also starts the item-activation
+                    // animation when the event entity is the local player.
+                    if self.local_player_id() == Some(update.entity_id) {
+                        self.display_local_player_item_activation();
+                    }
                 }
                 if applied {
                     let state = match event_kind {

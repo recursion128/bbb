@@ -236,7 +236,7 @@ pub struct SoundSeedRandomState {
 }
 
 impl SoundSeedRandomState {
-    fn with_seed(seed: i64) -> Self {
+    pub(crate) fn with_seed(seed: i64) -> Self {
         Self {
             seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
         }
@@ -247,6 +247,11 @@ impl SoundSeedRandomState {
         let high = (self.next_bits(32) as i32 as i64) << 32;
         let low = self.next_bits(32) as i32 as i64;
         high.wrapping_add(low)
+    }
+
+    /// Next `RandomSource.nextFloat()` draw on the same LCG stream.
+    pub(crate) fn next_float(&mut self) -> f32 {
+        (self.next_bits(24) as f32) * RANDOM_FLOAT_MULTIPLIER
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
