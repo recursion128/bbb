@@ -2403,6 +2403,17 @@ def collect_chat_restriction(args: argparse.Namespace) -> None:
     host, raw_port = args.control.rsplit(":", 1)
     address = (host, int(raw_port))
     deadline = time.monotonic() + args.timeout
+    # Same seat stand-in as collect_live: grant focus as soon as bbb-control
+    # answers, before the client reaches Play, or `Minecraft.pauseIfInactive`
+    # opens the pause screen 500ms into the unfocused Play session and the
+    # chat key lands on the pause menu instead.
+    _await_value(
+        deadline,
+        "restricted client control endpoint",
+        lambda: _control_request(address, "app.status"),
+        lambda value: isinstance(value, dict),
+    )
+    _control_request(address, "input.focus", {"focused": True})
     _await_value(
         deadline,
         "restricted client Play session",
@@ -2411,7 +2422,6 @@ def collect_chat_restriction(args: argparse.Namespace) -> None:
         and value.get("connected") is True
         and value.get("state") == "Play",
     )
-    _control_request(address, "input.focus", {"focused": True})
     _tap_key(address, "chat")
     initial = _await_value(
         deadline,
@@ -3869,9 +3879,20 @@ def collect_live(args: argparse.Namespace) -> None:
     last_snapshot: dict[str, Any] | None = None
     last_error: str | None = None
     scenarios: dict[str, Any] = {name: None for name in LIVE_SCENARIO_SECTIONS}
+    focus_granted = False
 
     while time.monotonic() < deadline:
         try:
+            if not focus_granted:
+                # The headless weston seat never delivers keyboard focus, so a
+                # vanilla-faithful client pauses itself half a second after
+                # entering Play (`Minecraft.pauseIfInactive` with the default
+                # `pauseOnLostFocus`), and regaining focus does not close an
+                # already-open pause screen.  The driver stands in for the
+                # compositor seat: grant focus as soon as bbb-control answers,
+                # before the pause timer can fire.
+                _control_request(address, "input.focus", {"focused": True})
+                focus_granted = True
             last_snapshot = _capture_control_snapshot(address)
             world = _object(last_snapshot.get("world"), "world_snapshot.world")
             net = _object(last_snapshot.get("net"), "world_snapshot.net")
