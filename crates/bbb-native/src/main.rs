@@ -2794,6 +2794,34 @@ mod tests {
     }
 
     #[test]
+    fn redraw_arm_orders_update_render_and_framerate_resample_like_render_frame() {
+        // Vanilla `Minecraft.renderFrame`: update render state, render, then
+        // the frame limiter samples `FramerateLimitTracker.getFramerateLimit`
+        // — so the per-frame cap resample must follow the render call inside
+        // the RedrawRequested arm.
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let arm = production
+            .split_once("WindowEvent::RedrawRequested =>")
+            .expect("redraw arm")
+            .1;
+        let update = arm
+            .find("update_renderer_from_publication(")
+            .expect("render state update");
+        let render = arm.find("renderer.render(").expect("frame render");
+        let resample = arm
+            .find("frame_interval = client_framerate_limit_interval(effective_framerate_limit(")
+            .expect("per-frame framerate resample");
+        assert!(
+            update < render && render < resample,
+            "redraw arm must update, render, then resample the framerate cap"
+        );
+    }
+
+    #[test]
     fn resize_arm_publishes_logical_gui_size_before_queuing_surface_resized() {
         let source = include_str!("main.rs");
         let production = source

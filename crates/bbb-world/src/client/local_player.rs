@@ -2002,6 +2002,20 @@ mod tests {
     }
 
     #[test]
+    fn clear_client_level_resets_the_camera_to_the_local_player() {
+        // Vanilla `GameRenderer.resetData` runs `mainCamera.reset()` on
+        // clearLevel, so a SetCamera retarget never survives the teardown.
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(9);
+        store.apply_add_entity(protocol_add_entity(123));
+        assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 123 }));
+        assert!(!store.local_player().camera.follows_player);
+
+        store.clear_client_level();
+        assert_eq!(store.local_player().camera, CameraState::default());
+    }
+
+    #[test]
     fn the_hud_camera_player_only_resolves_for_the_local_player_or_a_player_entity() {
         let mut store = WorldStore::new();
         store.local_player_id = Some(9);
