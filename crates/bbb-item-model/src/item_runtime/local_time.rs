@@ -22,11 +22,8 @@
 //!   generic zone names (`vvvv` of a no-DST zone -> `中国标准时间`).
 //!
 //! `goldens_26_1.tsv` pins the surface against outputs of the exact icu4j
-//! 77.1 jar (`scripts/local-time-icu4j/`). Known residual gaps, mirrored in
-//! the goldens test allowlist: ICU4J's flexible day periods (`B`) have no
-//! ICU4X data, Hijri and cyclic calendars are not formattable by
-//! `icu_datetime`, and the zone-less `time_zone` omission keeps using the
-//! local clock without zone names.
+//! 77.1 jar (`scripts/local-time-icu4j/`). One residual gap remains, tracked
+//! in the ledger: ICU4J's flexible day periods (`B`) have no ICU4X data.
 
 mod tables_26_1;
 
@@ -514,6 +511,33 @@ fn dispatch_calendar(
         AnyCalendarKind::Persian => {
             format_in_calendar(cal::Persian, locale, zone, pattern, iso_extended)
         }
+        AnyCalendarKind::HijriUmmAlQura => format_in_calendar(
+            cal::Hijri::new_umm_al_qura(),
+            locale,
+            zone,
+            pattern,
+            iso_extended,
+        ),
+        AnyCalendarKind::HijriTabularTypeIIFriday => format_in_calendar(
+            cal::Hijri::new_tabular(
+                cal::hijri::TabularAlgorithmLeapYears::TypeII,
+                cal::hijri::TabularAlgorithmEpoch::Friday,
+            ),
+            locale,
+            zone,
+            pattern,
+            iso_extended,
+        ),
+        AnyCalendarKind::HijriTabularTypeIIThursday => format_in_calendar(
+            cal::Hijri::new_tabular(
+                cal::hijri::TabularAlgorithmLeapYears::TypeII,
+                cal::hijri::TabularAlgorithmEpoch::Thursday,
+            ),
+            locale,
+            zone,
+            pattern,
+            iso_extended,
+        ),
         AnyCalendarKind::Roc => format_in_calendar(cal::Roc, locale, zone, pattern, iso_extended),
         _ => format_in_calendar(cal::Gregorian, locale, zone, pattern, iso_extended),
     }
@@ -675,6 +699,8 @@ define_format_in_calendar!(
     cal::Japanese,
     cal::Persian,
     cal::Roc,
+    cal::Hijri<cal::hijri::UmmAlQura>,
+    cal::Hijri<cal::hijri::TabularAlgorithm>,
 );
 
 fn format_in_calendar<C: FormatInCalendar>(
@@ -1273,9 +1299,9 @@ fn offset_parts(offset_seconds: i32) -> (char, i32, i32, i32) {
 mod tests {
     use super::*;
 
-    /// Residual gaps the goldens test tolerates; both are ledger items under
+    /// The residual gap the goldens test tolerates; a ledger item under
     /// `docs/unsupported-features.md#local-time-item-property-formatting`.
-    fn expected_residual(pattern: &str, locale: &str) -> bool {
+    fn expected_residual(pattern: &str) -> bool {
         // ICU4J flexible day periods have no ICU4X data.
         let mut in_quote = false;
         let has_b = pattern.chars().any(|ch| {
@@ -1284,8 +1310,7 @@ mod tests {
             }
             !in_quote && ch == 'B'
         });
-        // Hijri calendars have no ICU4X pattern formatter.
-        has_b || locale.contains("islamic")
+        has_b
     }
 
     /// Display-data renames between the CLDR revision in vanilla's icu4j 77.1
@@ -1365,7 +1390,7 @@ mod tests {
             checked += 1;
             match *status {
                 "OK" => {
-                    if expected_residual(pattern, locale) {
+                    if expected_residual(pattern) {
                         continue;
                     }
                     let matches = match actual.as_deref() {
