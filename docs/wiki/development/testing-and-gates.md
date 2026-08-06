@@ -42,23 +42,25 @@ clean HEAD、fresh locked release build、`--build-info`、headless/live/quit �
 winit/wgpu backend 日志、输入语义 focused receipts，以及当前 lifecycle-soak 祖先
 stamp、以及 **seat receipts**；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。
 
-seat receipts 来自真实 `wl_seat`：headless backend 不广播 `wl_seat`（`wayland-info` 的
-global 列表里没有该接口），而 weston 的 remote-desktop backend 在客户端接入时即广播带
-pointer/keyboard capability 的 seat。设 `BBB_PLAYABLE_SEAT_INJECT` 指向
+seat receipts 来自真实 `wl_seat`：headless backend 不广播 `wl_seat`，而
+`scripts/seat_device.py` 常驻一个 `uinput` 设备后，compositor 的 seat 才持续带
+pointer/keyboard capability。设 `BBB_PLAYABLE_SEAT_INJECT` 指向
 `scripts/seat_inject.py` 后，live playable gate 改由该 seat 驱动：不再发任何合成
-`input.*`（`_seat_input_only` 让这类写在 seat 场景内直接抛错），焦点靠点击激活 surface
-取得。**此时客户端会先按 vanilla 语义自我暂停**——未获焦点进入 Play 后
-`Minecraft.pauseIfInactive` 开暂停菜单，且事后补焦点并不会关掉它——所以 gate 不去抢
-那 4 秒窗口，而是让它暂停、再用 seat 的 Escape 把世界打开；每次 Escape 都用 seat 的
-hotbar 键复核（vanilla 只在无 screen 时执行 hotbar keybind，故这是世界级而非仅键盘级
-判据）。seat 场景随后再取一次带服务端确认的 hotbar 键与一次指针按钮 swing。
+`input.*`（`_seat_input_only` 让这类写在 seat 场景内直接抛错）。
 
-seat 的边界要照实记：remote-desktop seat 是绝对定位设备，compositor 不为其合成
-relative-pointer 事件，因此**锁定光标的游戏内视角拿不到指针移动**——这是 runner 边界
-不是客户端缺陷。GPU 侧同理——headless 默认走 pixman，加 `--use-gl` 才让 compositor 与其
-Xwayland 客户端拿到硬件 radeonsi/RADV；`scripts/gpu_duration_capture.py` 的采集依赖这一点。
-剩余的 DPI/fullscreen、relative pointer、clipboard、IME 重开条件由[缺口账本](../../unsupported-features.md)
-维护；X11 行按 2026-08-06 用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
+三条经实跑得出的硬性前提，缺一条 receipts 就取不到：① **设备必须常驻**——capability
+只在设备存在期间广播，客户端也只在其间绑定 `wl_keyboard`/`wl_pointer` 并收到焦点，
+每次调用才建设备的工具会在客户端绑定完之前就消失；② **必须走 `uinput` 而非
+virtual-keyboard 协议**——后者按调用方自带 keymap 传 keysym，而本客户端（与 vanilla
+一样）读物理键码，收到的会是工具随手挑的扫描码；③ **compositor 的按键重复必须关**
+（`input type:keyboard repeat_rate 0`，注入器会检查）——gate 是刻意长按的，600ms/25Hz
+下一次长按等于二十多次按下，会把暂停菜单这类开关切回原状。此外**焦点要在运行中重新取回**：
+任何后 map 的客户端都会夺走焦点，而在 Play 中失焦的客户端会自我暂停，事后补焦点不会关掉
+暂停菜单——只有 Escape 会，且要用 hotbar 键复核（vanilla 只在无 screen 时执行 hotbar
+keybind）。
+
+剩余的 IME 与 DPI/fullscreen 重开条件由[缺口账本](../../unsupported-features.md)
+维护（后者的阻塞点已从环境转为客户端：workspace 里没有任何 `ScaleFactorChanged` 处理分支）；X11 行按 2026-08-06 用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
 
 ## 文档测试
 

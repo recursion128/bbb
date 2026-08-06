@@ -84,9 +84,16 @@
   → `scripts/seat_inject.py`），全程零合成 `input.*`（`_seat_input_only` 结构性禁止，
   焦点授予收敛到唯一 `_ensure_focus`），不抢 4.4 秒暂停窗口而是让其暂停、再用 seat 的 Escape
   开回世界并以 seat hotbar 键复核（vanilla 只在无 screen 时执行 hotbar keybind）；seat 场景
-  再取带服务端确认的 hotbar 键与指针按钮 swing。两个实测边界入档：**注入必须长按**——
-  `xdotool key` 的 12ms 按放会整个落在地形上传风暴的 1.5~2.4 秒帧之间；**remote-desktop seat
-  是绝对定位设备**，compositor 不为其合成 relative-pointer，锁定光标的游戏内视角拿不到指针
-  移动，故 limitation 收窄为 `seat-motion-clipboard-ime`。
+  再取带服务端确认的 hotbar 键与指针按钮 swing。**注入必须长按**：`xdotool key` 的 12ms 按放会
+  整个落在地形上传风暴的 1.5~2.4 秒帧之间。remote-desktop seat 又是绝对定位设备（compositor 不
+  为其合成 relative-pointer），故当日晚改走 `uinput`→libinput→sway（headless+libinput 双 backend
+  与 seatd），relative motion 与 clipboard 随即在 live 收齐（200px→yaw 30.0°、剪贴板标记进入规范
+  chat draft），limitation 由 `seat-motion-clipboard-ime` 收窄为 `seat-ime`。三条硬前提各由一次
+  失败跑得出：① 设备须**常驻**，capability 只在设备存在期间广播，客户端也只在其间绑定并收到
+  焦点；② 必须走 `uinput` 而非 virtual-keyboard 协议，后者按调用方 keymap 传 keysym，读物理键码
+  的客户端只会收到随手挑的扫描码；③ compositor 按键重复必须关，600ms/25Hz 把一次 1.5 秒长按变成
+  二十多次按下、把暂停菜单切回原状；焦点还会被后 map 的客户端夺走，handshake 与 seat 场景各自
+  重新取回。`dpi-transition-fullscreen` 的阻塞点同时从环境移到客户端：compositor 能改 scale，但
+  workspace 里没有任何 `ScaleFactorChanged` 分支。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

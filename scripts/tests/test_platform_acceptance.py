@@ -77,6 +77,11 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             "server_confirmed": True,
             "held_slot_commands_delta": 1,
             "swing_commands_delta": 1,
+            "yaw_delta_degrees": 30.0,
+            "clipboard": {
+                "marker": "bbb-seat-clipboard-1",
+                "pasted_into_chat_draft": "bbb-seat-clipboard-1",
+            },
             "control_input_writes": 0,
         }
 
@@ -167,6 +172,8 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             ("server_confirmed", False, "server-confirmed"),
             ("to_slot", 0, "selected slot"),
             ("swing_commands_delta", 0, "canonical swings"),
+            ("yaw_delta_degrees", 0.5, "receipt threshold"),
+            ("clipboard", {"marker": "m", "pasted_into_chat_draft": "x"}, "never reached"),
         ):
             with self.subTest(field=field):
                 seat = {**self.seat_input(), field: value}
@@ -182,7 +189,7 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
         self.assertNotIn("physical-seat-input", platform_acceptance.EXPECTED_LIMITATIONS)
         self.assertEqual(
             platform_acceptance.EXPECTED_LIMITATIONS,
-            {"seat-motion-clipboard-ime", "dpi-transition-fullscreen"},
+            {"seat-ime", "dpi-transition-fullscreen"},
         )
 
     def test_lifecycle_report_requires_every_iteration_receipt(self):

@@ -30,14 +30,14 @@
   ],
   "limitations": [
     {
-      "id": "seat-motion-clipboard-ime",
+      "id": "seat-ime",
       "status": "deferred",
-      "reopen_when": "a maintained seat-backed compositor run offers a relative pointer, a clipboard source and an input method, the way it already offers focus, keyboard and pointer buttons"
+      "reopen_when": "a maintained seat-backed compositor run can drive a preedit through an input method, the way it already drives focus, keyboard, pointer buttons, relative motion and the clipboard"
     },
     {
       "id": "dpi-transition-fullscreen",
       "status": "deferred",
-      "reopen_when": "a maintained seat-backed compositor run can exercise live DPI transitions and fullscreen on the declared Wayland row"
+      "reopen_when": "a maintained seat-backed compositor run can change output scale and the client handles the scale-factor change it then receives"
     }
   ]
 }

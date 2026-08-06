@@ -1548,6 +1548,12 @@ class PlayableGateSeatInputTests(unittest.TestCase):
             "server_confirmed": True,
             "held_slot_commands_delta": 1,
             "swing_commands_delta": 1,
+            "look_pixels": 200,
+            "yaw_delta_degrees": 24.5,
+            "clipboard": {
+                "marker": "bbb-seat-clipboard-4242",
+                "pasted_into_chat_draft": "draft bbb-seat-clipboard-4242",
+            },
             "control_input_writes": 0,
             "duration_seconds": 4.5,
         }
@@ -1578,14 +1584,48 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
-    def test_missing_handshake_escape_fails_the_focus_receipt(self):
+    def test_handshake_without_an_escape_is_healthy_on_a_full_seat(self):
+        """A seat that publishes keyboard capability from the start focuses the
+        client on map, so it never pauses and the handshake presses nothing."""
+
         evidence = copy.deepcopy(self.fixture)
         evidence["seat_input"] = {
             **self.seat_input,
-            "handshake": {"focus_source": "compositor", "escape_presses": 0},
+            "handshake": {
+                "focus_source": "compositor",
+                "escape_presses": 0,
+                "world_slot_after_escape": 4,
+            },
+        }
+        playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_handshake_without_a_world_slot_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {
+            **self.seat_input,
+            "handshake": {"focus_source": "compositor", "escape_presses": 1},
         }
 
-        with self.assertRaisesRegex(playable_gate.GateFailure, "escape_presses"):
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "world_slot_after_escape"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unmoved_view_fails_the_relative_motion_receipt(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {**self.seat_input, "yaw_delta_degrees": 0.4}
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "yaw_delta_degrees"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unpasted_marker_fails_the_clipboard_receipt(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {
+            **self.seat_input,
+            "clipboard": {"marker": "m-1", "pasted_into_chat_draft": "draft only"},
+        }
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "copied marker"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
     def test_missing_swing_fails_the_pointer_button_receipt(self):
@@ -1624,7 +1664,9 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         client pause and reopens the world with a seat Escape, which only a
         client the compositor actually focused can process."""
 
-        source = inspect.getsource(playable_gate.seat_handshake)
+        source = inspect.getsource(playable_gate.seat_handshake) + inspect.getsource(
+            playable_gate._seat_reach_the_world
+        )
 
         self.assertIn('_seat_inject(injector, "focus")', source)
         self.assertIn('_seat_inject(injector, "key", "escape")', source)
@@ -1636,10 +1678,22 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         check is one a still-open screen cannot pass: a screen owns the cursor,
         so pointer motion could not turn the view."""
 
-        source = inspect.getsource(playable_gate.seat_handshake)
+        source = inspect.getsource(playable_gate._seat_reach_the_world)
 
-        self.assertIn("for attempt in range(1, SEAT_HANDSHAKE_ATTEMPTS + 1):", source)
+        self.assertIn("for presses in range(SEAT_HANDSHAKE_ATTEMPTS + 1):", source)
         self.assertIn("if slot is not None:", source)
+
+    def test_seat_scenario_re_establishes_the_world_before_driving(self):
+        """A client that mapped after the handshake took focus away, and a
+        client that loses focus in Play pauses itself, so the seat scenario
+        cannot assume the world is still reachable minutes later."""
+
+        source = inspect.getsource(playable_gate.drive_seat_input)
+
+        self.assertIn("_seat_reach_the_world(address, injector, deadline)", source)
+        self.assertLess(
+            source.index("_seat_reach_the_world("), source.index('"key", f"hotbar')
+        )
 
     def test_injector_is_read_from_the_documented_environment_variable(self):
         self.assertIsNone(playable_gate.seat_injector({}))

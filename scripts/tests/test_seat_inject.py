@@ -1,0 +1,159 @@
+import argparse
+import importlib.util
+import json
+import unittest
+from pathlib import Path
+from unittest import mock
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MODULE_PATH = REPO_ROOT / "scripts" / "seat_inject.py"
+SPEC = importlib.util.spec_from_file_location("seat_inject", MODULE_PATH)
+assert SPEC is not None and SPEC.loader is not None
+seat_inject = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(seat_inject)
+
+
+def driver_args(**overrides) -> argparse.Namespace:
+    values = {
+        "hold_seconds": seat_inject.DEFAULT_HOLD_SECONDS,
+        "settle_seconds": 0.0,
+        "output": "HEADLESS-1",
+        "device_socket": "/tmp/does-not-exist.sock",
+        "display": seat_inject.DEFAULT_DISPLAY,
+        "window_class": seat_inject.DEFAULT_WINDOW_CLASS,
+    }
+    values.update(overrides)
+    return argparse.Namespace(**values)
+
+
+def tree(*windows: dict) -> str:
+    return json.dumps({"type": "root", "nodes": list(windows)})
+
+
+def window(identifier: int, pid: int, name: str, focused: bool = False) -> dict:
+    return {"type": "con", "id": identifier, "pid": pid, "name": name, "focused": focused}
+
+
+class SeatTargetTests(unittest.TestCase):
+    """A gate run maps more than one client, and a wlroots compositor focuses
+    whichever mapped last, so picking the newest window types into a client
+    nobody is reading -- with no error to show for it."""
+
+    def build(self, tree_json: str, argv_by_pid: dict[int, list[str]]):
+        driver = seat_inject.WlrootsDriver(driver_args())
+        run = mock.patch.object(seat_inject, "_run", return_value=tree_json)
+        argv = mock.patch.object(
+            seat_inject, "_process_arguments", lambda pid: argv_by_pid.get(pid, [])
+        )
+        return driver, run, argv
+
+    def test_the_target_is_the_client_with_a_control_endpoint(self):
+        driver, run, argv = self.build(
+            tree(window(1, 10, "acceptance"), window(2, 20, "bbb-native", focused=True)),
+            {10: ["bbb-native"], 20: ["bbb-native", "--control", "127.0.0.1:9999"]},
+        )
+        with run, argv:
+            self.assertEqual(driver._target()["id"], 2)
+
+    def test_a_later_mapped_window_does_not_steal_the_target(self):
+        driver, run, argv = self.build(
+            tree(window(2, 20, "bbb-native"), window(3, 30, "acceptance", focused=True)),
+            {20: ["bbb-native", "--control", "127.0.0.1:9999"], 30: ["bbb-native"]},
+        )
+        with run, argv:
+            self.assertEqual(driver._target()["id"], 2)
+
+    def test_no_controlled_window_is_an_error_not_a_guess(self):
+        driver, run, argv = self.build(
+            tree(window(1, 10, "acceptance")), {10: ["bbb-native"]}
+        )
+        with run, argv, self.assertRaisesRegex(
+            seat_inject.InjectError, "no mapped window belongs to a client"
+        ):
+            driver._target()
+
+    def test_two_controlled_windows_are_ambiguous_rather_than_first_wins(self):
+        driver, run, argv = self.build(
+            tree(window(1, 10, "a"), window(2, 20, "b")),
+            {10: ["bbb-native", "--control", "a"], 20: ["bbb-native", "--control", "b"]},
+        )
+        with run, argv, self.assertRaisesRegex(seat_inject.InjectError, "ambiguous"):
+            driver._target()
+
+    def test_an_empty_compositor_is_an_error(self):
+        driver, run, argv = self.build(tree(), {})
+        with run, argv, self.assertRaisesRegex(
+            seat_inject.InjectError, "no toplevel window"
+        ):
+            driver._target()
+
+
+class SeatKeyRepeatTests(unittest.TestCase):
+    """The gate holds keys deliberately; under a 600ms/25Hz repeat one hold
+    becomes twenty-odd presses, which leaves a toggle such as the pause screen
+    back where it started -- and reads as the key never arriving."""
+
+    def inputs(self, *devices: dict) -> str:
+        return json.dumps(list(devices))
+
+    def test_a_repeating_keyboard_is_refused_by_name(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        raw = self.inputs(
+            {"identifier": "0:0:virtual", "type": "keyboard", "repeat_rate": 25},
+            {"identifier": "1:1:pointer", "type": "pointer"},
+        )
+        with mock.patch.object(seat_inject, "_run", return_value=raw):
+            with self.assertRaisesRegex(seat_inject.InjectError, "0:0:virtual"):
+                driver._require_no_key_repeat()
+
+    def test_a_silenced_keyboard_passes(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        raw = self.inputs(
+            {"identifier": "0:0:virtual", "type": "keyboard", "repeat_rate": 0}
+        )
+        with mock.patch.object(seat_inject, "_run", return_value=raw):
+            driver._require_no_key_repeat()
+
+
+class SeatDriverContractTests(unittest.TestCase):
+    def test_the_default_driver_is_the_held_open_uinput_device(self):
+        """The virtual-keyboard protocol carries keysyms on a caller-supplied
+        keymap, so a client reading physical key codes sees whichever scancode
+        the tool picked; uinput is the only driver that keeps that honest."""
+
+        self.assertEqual(
+            seat_inject._build_parser().parse_args(["probe"]).driver, "uinput"
+        )
+        self.assertIs(seat_inject.DRIVERS["uinput"], seat_inject.UinputDriver)
+
+    def test_every_uinput_action_re_establishes_focus_first(self):
+        """Any client that maps later takes focus away, and a client that loses
+        focus in Play pauses itself, so focus is not a once-per-run step."""
+
+        driver = seat_inject.UinputDriver(driver_args())
+        for action, arguments in (
+            ("key", ("escape",)),
+            ("chord", ("ctrl", "paste")),
+            ("move", (200, 0)),
+            ("click", ("left",)),
+        ):
+            with self.subTest(action=action):
+                with mock.patch.object(driver, "focus") as focus, mock.patch.object(
+                    driver, "_send"
+                ) as send:
+                    getattr(driver, action)(*arguments)
+                self.assertEqual(focus.call_count, 1)
+                self.assertEqual(send.call_count, 1)
+
+    def test_the_hold_outlasts_a_frame_and_stays_under_a_repeat_delay(self):
+        """A twelve-millisecond tap lands entirely between two frames of a
+        client uploading terrain; a hold past the usual 600ms repeat delay
+        would double-fire on a compositor that was not silenced."""
+
+        self.assertGreaterEqual(seat_inject.DEFAULT_HOLD_SECONDS, 0.2)
+        self.assertLess(seat_inject.DEFAULT_HOLD_SECONDS, 0.6)
+
+
+if __name__ == "__main__":
+    unittest.main()

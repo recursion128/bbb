@@ -40,15 +40,15 @@ EXPECTED_RECEIPTS = [
 ]
 # X11 is a declared non-goal (2026-08-06), so the bounded limitation set no
 # longer carries an X11 row.  `physical-seat-input` retired the same day: the
-# release run now drives the client from a compositor seat and carries the
-# focus/keyboard/pointer-button receipts (see `validate_seat_receipts`).  The
-# narrowed id names what that seat cannot reach: a remote-desktop seat is an
-# absolute pointer, so a locked cursor gets no relative motion, and it offers
-# neither a clipboard source nor an input method.
+# release run drives the client from a compositor seat holding a real input
+# device open, and carries focus, keyboard, pointer-button, relative-motion and
+# clipboard receipts (see `validate_seat_receipts`).  What that seat still has
+# no driver for is an input method, so only the IME leg remains.
 EXPECTED_LIMITATIONS = {
-    "seat-motion-clipboard-ime",
+    "seat-ime",
     "dpi-transition-fullscreen",
 }
+SEAT_MIN_YAW_DEGREES = 2.0
 ANSI_SGR_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -148,8 +148,9 @@ def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
     The gate's other scenarios replay the canonical handlers through the
     control plane, which proves the handlers but skips the platform's own
     event path.  The seat scenario crosses that path -- compositor focus, a
-    `wl_seat` key press, a `wl_seat` pointer button -- and its receipts are
-    what let this row claim seat input instead of deferring it.
+    `wl_seat` key press, a pointer button, relative pointer motion and the
+    seat's own clipboard selection -- and its receipts are what let this row
+    claim seat input instead of deferring it.
     """
 
     seat = evidence.get("seat_input")
@@ -177,11 +178,30 @@ def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
         raise PlatformFailure(
             f"the seat pointer button produced {swings!r} canonical swings"
         )
+    yaw = seat.get("yaw_delta_degrees")
+    if not isinstance(yaw, (int, float)) or abs(float(yaw)) < SEAT_MIN_YAW_DEGREES:
+        raise PlatformFailure(
+            f"relative pointer motion turned the view by {yaw!r}, below the "
+            f"{SEAT_MIN_YAW_DEGREES} degree receipt threshold"
+        )
+    clipboard = seat.get("clipboard")
+    if not isinstance(clipboard, dict):
+        raise PlatformFailure("the seat run carries no clipboard receipt")
+    marker, pasted = clipboard.get("marker"), clipboard.get("pasted_into_chat_draft")
+    if not isinstance(marker, str) or not isinstance(pasted, str) or marker not in pasted:
+        raise PlatformFailure(
+            f"the seat clipboard marker {marker!r} never reached the client"
+        )
     return {
         "injector": seat.get("injector"),
         "startup_focus_source": "compositor",
         "keyboard": {"from_slot": from_slot, "to_slot": to_slot, "server_confirmed": True},
-        "pointer": {"button": "left", "swing_commands_delta": swings},
+        "pointer": {
+            "button": "left",
+            "swing_commands_delta": swings,
+            "yaw_delta_degrees": float(yaw),
+        },
+        "clipboard": {"marker": marker},
     }
 
 

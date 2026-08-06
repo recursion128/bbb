@@ -732,6 +732,26 @@ def _validate_seat_input(seat_input: Any) -> None:
             "seat_input.swing_commands_delta must record the canonical swing "
             f"the seat pointer button produced, got {swings!r}"
         )
+    yaw_delta = seat_input.get("yaw_delta_degrees")
+    if (
+        not isinstance(yaw_delta, (int, float))
+        or isinstance(yaw_delta, bool)
+        or abs(float(yaw_delta)) < SEAT_MIN_YAW_DEGREES
+    ):
+        raise GateFailure(
+            "seat_input.yaw_delta_degrees must show relative pointer motion "
+            f"turning the view by at least {SEAT_MIN_YAW_DEGREES} degrees, "
+            f"got {yaw_delta!r}"
+        )
+    clipboard = _object(seat_input.get("clipboard"), "seat_input.clipboard")
+    marker, pasted = clipboard.get("marker"), clipboard.get("pasted_into_chat_draft")
+    if not isinstance(marker, str) or not marker:
+        raise GateFailure("seat_input.clipboard.marker must name the copied text")
+    if not isinstance(pasted, str) or marker not in pasted:
+        raise GateFailure(
+            "seat_input.clipboard.pasted_into_chat_draft must contain the "
+            f"copied marker {marker!r}, got {pasted!r}"
+        )
     if seat_input.get("control_input_writes") != 0:
         raise GateFailure(
             "seat_input.control_input_writes must be 0: any synthetic input "
@@ -745,11 +765,20 @@ def _validate_seat_input(seat_input: Any) -> None:
             "needed the focus stand-in cannot attest the seat delivered focus"
         )
     handshake = _object(seat_input.get("handshake"), "seat_input.handshake")
+    # Zero presses is the healthy reading on a seat that publishes keyboard
+    # capability from the start: the client was focused on map and never
+    # paused, so there was nothing to reopen.
     presses = handshake.get("escape_presses")
-    if not isinstance(presses, int) or isinstance(presses, bool) or presses < 1:
+    if not isinstance(presses, int) or isinstance(presses, bool) or presses < 0:
         raise GateFailure(
-            "seat_input.handshake.escape_presses must record the seat Escape "
-            f"that reopened the world, got {presses!r}"
+            "seat_input.handshake.escape_presses must count the seat Escapes "
+            f"the handshake needed, got {presses!r}"
+        )
+    slot = handshake.get("world_slot_after_escape")
+    if not isinstance(slot, int) or isinstance(slot, bool) or not 0 <= slot <= 8:
+        raise GateFailure(
+            "seat_input.handshake.world_slot_after_escape must record the slot "
+            f"a seat key moved while no screen was open, got {slot!r}"
         )
 
 
@@ -2672,6 +2701,109 @@ def drive_hotbar_interaction(
     }
 
 
+SEAT_LOOK_PIXELS = 200
+SEAT_MIN_YAW_DEGREES = 2.0
+# Enough downward motion to put the ground under the crosshair from any pitch
+# the previous scenario left; the canonical pitch clamps at straight down, so
+# overshooting is harmless.
+SEAT_PITCH_DOWN_PIXELS = 900
+SEAT_CLICK_ATTEMPTS = 3
+SEAT_CLIPBOARD_MARKER = "bbb-seat-clipboard"
+
+
+def _await_seat_click_swing(
+    address: tuple[str, int], injector: list[str], before: int, deadline: float
+) -> int:
+    """Click from the seat until the canonical swing moves.
+
+    A single click can land in a frame the client spends uploading terrain, so
+    this re-clicks the way a person would rather than declaring the button path
+    broken on the first miss.
+    """
+
+    for attempt in range(1, SEAT_CLICK_ATTEMPTS + 1):
+        _seat_inject(injector, "click", "left")
+        try:
+            return int(
+                _await_value(
+                    min(deadline, time.monotonic() + 15.0),
+                    "the seat pointer button to reach the canonical swing",
+                    lambda: _net_counter(address, "swing_commands_queued"),
+                    lambda value: value > before,
+                )
+            )
+        except GateFailure:
+            if attempt == SEAT_CLICK_ATTEMPTS:
+                raise
+
+
+def _yaw_delta_degrees(start_yaw: float, pose: dict[str, Any]) -> float:
+    """Signed yaw change wrapped into (-180, 180], so a turn across the seam
+    does not read as a full rotation."""
+
+    return (float(pose.get("y_rot", 0.0)) - start_yaw + 180.0) % 360.0 - 180.0
+
+
+def _seat_pointer_turns_view(
+    address: tuple[str, int], injector: list[str], deadline: float
+) -> float:
+    """Turn the view with relative pointer motion from the seat.
+
+    This is the leg a remote-desktop seat cannot reach: such a seat is an
+    absolute pointer device and a compositor synthesises no relative-pointer
+    events for one, so a client holding a locked cursor sees nothing.  A
+    compositor offering a virtual pointer sends real relative motion, which is
+    what the in-game view reads.
+    """
+
+    start_yaw = float(_local_player_pose(address).get("y_rot", 0.0))
+    _seat_inject(injector, "move", str(SEAT_LOOK_PIXELS), "0")
+    return float(
+        _await_value(
+            deadline,
+            "the seat pointer motion to turn the canonical view",
+            lambda: _yaw_delta_degrees(start_yaw, _local_player_pose(address)),
+            lambda delta: abs(delta) >= SEAT_MIN_YAW_DEGREES,
+        )
+    )
+
+
+def _seat_clipboard_reaches_the_client(
+    address: tuple[str, int], injector: list[str], deadline: float
+) -> dict[str, Any]:
+    """Put text on the seat's clipboard and paste it into the chat draft.
+
+    The clipboard is a seat-owned selection, not an input event: the client
+    asks the compositor for it when it sees the paste chord.  Reading it back
+    out of the canonical chat draft proves the whole round trip.
+    """
+
+    marker = f"{SEAT_CLIPBOARD_MARKER}-{int(deadline) % 100000}"
+    _seat_inject(injector, "clipboard", marker)
+    _seat_inject(injector, "key", "chat")
+    _await_value(
+        deadline,
+        "ChatScreen to open from the seat's T key",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict) and value.get("screen") == "chat",
+    )
+    _seat_inject(injector, "chord", "ctrl", "paste")
+    pasted = _await_value(
+        deadline,
+        "the seat clipboard text to reach the canonical chat draft",
+        lambda: (_chat_screen_status(address) or {}).get("input_text"),
+        lambda value: isinstance(value, str) and marker in value,
+    )
+    _seat_inject(injector, "key", "escape")
+    _await_value(
+        deadline,
+        "the ChatScreen to close from the seat's Escape",
+        lambda: _chat_screen_status(address),
+        lambda value: value is None,
+    )
+    return {"marker": marker, "pasted_into_chat_draft": pasted}
+
+
 def _seat_key_reaches_the_world(
     address: tuple[str, int], injector: list[str], deadline: float
 ) -> int | None:
@@ -2712,26 +2844,48 @@ def seat_handshake(
     receipt worth having, because a client that never received seat focus
     would not process the key at all.
 
-    Escape toggles, so each press is checked with a hotbar key, which vanilla
-    only honours while no screen is open.
+    Whether it paused depends on the seat: one that publishes keyboard
+    capability from the start focuses the client on map, so it never pauses at
+    all.  Escape toggles the pause screen either way, so the handshake asks the
+    world first and only presses when the answer is no -- and re-asks after
+    each press, with a hotbar key, which vanilla only honours while no screen
+    is open.
     """
 
     started_at = time.monotonic()
-    deadline = started_at + timeout_seconds
     with _seat_input_only():
-        # Activate the surface: the compositor routes its keyboard to whatever
-        # was last clicked, and until that happens the client has no keyboard.
-        _seat_inject(injector, "focus")
-        for attempt in range(1, SEAT_HANDSHAKE_ATTEMPTS + 1):
+        # Check the injection path before anything depends on it, so a
+        # misconfigured seat fails as itself rather than as a missing key.
+        _seat_inject(injector, "probe")
+        reach = _seat_reach_the_world(address, injector, started_at + timeout_seconds)
+    return {
+        "focus_source": "compositor",
+        **reach,
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
+def _seat_reach_the_world(
+    address: tuple[str, int], injector: list[str], deadline: float
+) -> dict[str, Any]:
+    """Get the seat to a client that is in the world, and prove it.
+
+    Any client that maps after this one takes focus away, and a client that
+    loses focus in Play pauses itself -- so this is not a once-per-run step.
+    Regaining focus does not close the pause screen; only Escape does, and
+    Escape toggles, so each press is re-checked with a hotbar key, which
+    vanilla only honours while no screen is open.
+    """
+
+    # Focus is the compositor's to give; this only takes it back if a later
+    # client took it.
+    _seat_inject(injector, "focus")
+    for presses in range(SEAT_HANDSHAKE_ATTEMPTS + 1):
+        if presses:
             _seat_inject(injector, "key", "escape")
-            slot = _seat_key_reaches_the_world(address, injector, deadline)
-            if slot is not None:
-                return {
-                    "focus_source": "compositor",
-                    "escape_presses": attempt,
-                    "world_slot_after_escape": slot,
-                    "duration_seconds": time.monotonic() - started_at,
-                }
+        slot = _seat_key_reaches_the_world(address, injector, deadline)
+        if slot is not None:
+            return {"escape_presses": presses, "world_slot_after_escape": slot}
     raise GateFailure(
         "the compositor seat never reached the world: after "
         f"{SEAT_HANDSHAKE_ATTEMPTS} seat Escape presses a seat hotbar key "
@@ -2762,22 +2916,19 @@ def drive_seat_input(
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
 
-    from_slot = _selected_hotbar_slot(address)
-    if from_slot is None:
-        raise GateFailure("canonical selected hotbar slot was not readable")
-    # A different rotation than the synthetic hotbar scenario uses, so the
-    # slot this scenario lands on cannot be one it inherited.
-    to_slot = (from_slot + 4) % 9
-
     net_before = _object(_control_request(address, "net.counters"), "net.counters")
     _require_connected(net_before, "before seat input")
     with _seat_input_only():
-        # Re-activate before driving.  Keyboard focus is the compositor's to
-        # move, and the scenarios in between this one and the handshake open
-        # screens and text input, any of which can hand it elsewhere -- so the
-        # seat takes it back the way a person would rather than assuming it
-        # still holds it from minutes ago.
-        _seat_inject(injector, "focus")
+        # Minutes of other scenarios have run since the handshake, and any
+        # client that mapped in between took focus and left this one paused,
+        # so the seat re-establishes the world rather than assuming it.
+        regained = _seat_reach_the_world(address, injector, deadline)
+        from_slot = _selected_hotbar_slot(address)
+        if from_slot is None:
+            raise GateFailure("canonical selected hotbar slot was not readable")
+        # A different rotation than the synthetic hotbar scenario uses, so the
+        # slot this scenario lands on cannot be one it inherited.
+        to_slot = (from_slot + 4) % 9
         _seat_inject(injector, "key", f"hotbar{to_slot + 1}")
         _await_value(
             deadline,
@@ -2792,19 +2943,22 @@ def drive_seat_input(
             lambda value: value > int(net_before.get("held_slot_commands_queued", 0)),
         )
 
+        yaw_delta = _seat_pointer_turns_view(address, injector, deadline)
+
         # Pointer buttons: the same `wl_seat` button path a physical mouse
         # takes, ending in the canonical swing the arm animation reads.  The
-        # button is held long enough to be sampled by a client rendering at
-        # half a frame per second, so in creative it may also break the block
-        # under the crosshair; only the lifecycle teardown runs after this.
+        # seat aims first, with its own pointer: a click at whatever the
+        # previous scenario left under the crosshair may be a click at the sky,
+        # and the receipt must not depend on that.  Pitching down onto the
+        # ground the player is standing on always has a target -- and in
+        # creative that target may break, which is why only the lifecycle
+        # teardown runs after this scenario.
+        _seat_inject(injector, "move", "0", str(SEAT_PITCH_DOWN_PIXELS))
         swings_before = _net_counter(address, "swing_commands_queued")
-        _seat_inject(injector, "click", "left")
-        swings_after = _await_value(
-            deadline,
-            "the seat pointer button to reach the canonical swing",
-            lambda: _net_counter(address, "swing_commands_queued"),
-            lambda value: value > swings_before,
+        swings_after = _await_seat_click_swing(
+            address, injector, swings_before, deadline
         )
+        clipboard = _seat_clipboard_reaches_the_client(address, injector, deadline)
 
     _await_server_selected_slot(server_command, server_log, to_slot, deadline)
 
@@ -2818,12 +2972,16 @@ def drive_seat_input(
         # compositor-delivered Escape, which only a focused client processes.
         "startup_focus_source": handshake["focus_source"],
         "handshake": handshake,
+        "regained_world": regained,
         "from_slot": from_slot,
         "to_slot": to_slot,
         "server_confirmed": True,
         "held_slot_commands_delta": int(net_after.get("held_slot_commands_queued", 0))
         - int(net_before.get("held_slot_commands_queued", 0)),
         "swing_commands_delta": int(swings_after) - swings_before,
+        "look_pixels": SEAT_LOOK_PIXELS,
+        "yaw_delta_degrees": yaw_delta,
+        "clipboard": clipboard,
         "control_input_writes": 0,
         "duration_seconds": time.monotonic() - started_at,
     }
@@ -4352,7 +4510,11 @@ def collect_live(args: argparse.Namespace) -> None:
                         handshake,
                         args.server_command,
                         args.server_log,
-                        min(90.0, gameplay_timeout),
+                        # Every seat action costs a held press plus a settle,
+                        # and this scenario re-establishes the world before it
+                        # drives five of them, so it needs a wider budget than
+                        # a single synthetic scenario.
+                        min(240.0, gameplay_timeout),
                     ),
                 ),
                 plan[-1],

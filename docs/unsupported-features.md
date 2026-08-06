@@ -180,14 +180,18 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   that publishes a real seat sends `Focused(false)` until something activates
   the window, which overrides the control-plane focus stand-in. The row rests on
   the scope decision alone; reopen only if that decision is reversed.
-- Live DPI-transition/fullscreen, relative pointer motion, clipboard and IME on
-  the declared Wayland row are `deferred`. Motion is a runner boundary rather
-  than a client one: a remote-desktop seat is an absolute pointer device, and a
-  compositor does not synthesise relative-pointer events for one, so a client
-  holding a locked cursor (any in-game view) receives no motion no matter how
-  the pointer is driven. Clipboard and IME need a text source and an input
-  method on that seat. Reopen when a seat offering those is available; do not
-  infer them from the headless Wayland row or from semantic unit tests.
+- Seat IME on the declared Wayland row is `deferred`: the seat has a driver for
+  keys, buttons, motion and the clipboard, but none for an input method, so no
+  preedit can be produced to observe. Reopen when a maintained seat-backed run
+  can drive `zwp_input_method_v2`; do not infer it from the IME unit tests,
+  which exercise the handlers rather than the platform path.
+- Live DPI-transition/fullscreen on that row is `deferred`, and the blocker has
+  moved: the runner can now drive a real scale change (the gate's compositor
+  takes `output <name> scale <n>`), but **the client has no
+  `WindowEvent::ScaleFactorChanged` arm at all** — no handler exists in the
+  workspace — so a scale change would be observed as nothing happening rather
+  than as vanilla's GUI-scale recomputation. Reopen when the client handles that
+  event; the validation environment is no longer what is missing.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,
   but no maintained host/runner with winit, wgpu, audio and input fixtures for
@@ -195,17 +199,32 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   the same declared platform matrix; do not infer support from cross-compilation
   or unit-only `cfg` coverage.
 
-Compositor-originated focus, keyboard and pointer buttons are no longer part of
-that bounded set: the release run is driven from a real `wl_seat` and
-`scripts/platform-acceptance-gate.sh` requires its receipts, which retires the
-former `physical-seat-input` entry. The gate refuses receipts from a run that
-also wrote synthetic `input.*`, so they cannot be manufactured by the control
-plane. What the seat proves: the compositor grants focus by activating the
-surface, a seat Escape reopens the world the client paused itself into after
-entering Play unfocused, a seat hotbar key moves the canonical selected slot
-with server confirmation, and a seat pointer button reaches the canonical swing.
-Injection has to hold each key and button across a frame — a twelve-millisecond
-press lands entirely between two frames while the client uploads terrain.
+Compositor-originated focus, keyboard, pointer buttons, relative pointer motion
+and the clipboard are no longer part of that bounded set: the release run is
+driven from a real `wl_seat` and `scripts/platform-acceptance-gate.sh` requires
+its receipts, which retires the former `physical-seat-input` entry. The gate
+refuses receipts from a run that also wrote synthetic `input.*`, so they cannot
+be manufactured by the control plane. What the seat proves: the compositor
+grants focus, a seat Escape reopens the world a client paused itself into after
+losing focus, a seat hotbar key moves the canonical selected slot with server
+confirmation, a seat pointer button reaches the canonical swing, relative
+pointer motion turns the canonical view, and text placed on the seat's
+selection reaches the canonical chat draft through the paste chord.
+
+Three properties of that seat are load-bearing and were each found by a failing
+run. It must hold **one input device open for the whole run**: capabilities
+only exist while a device does, a client only binds `wl_keyboard`/`wl_pointer`
+— and so only ever receives focus — while they are advertised, and a tool that
+creates a device per keystroke is gone again before the client has bound
+anything. It must go through **`uinput` rather than the virtual-keyboard
+protocol**: that protocol carries keysyms on a caller-supplied keymap, so a
+client reading physical key codes (as this one and vanilla do) sees whichever
+scancode the tool picked. And the compositor's **key repeat must be off**: the
+gate holds keys deliberately, and under the usual 600ms/25Hz repeat one hold
+becomes twenty-odd presses, which leaves a toggle such as the pause screen back
+where it started. Focus also has to be re-established mid-run, because any
+client that maps later takes it and a client that loses focus in Play pauses
+itself.
 
 ## Native input, movement, interaction, inventory, and command flows
 
