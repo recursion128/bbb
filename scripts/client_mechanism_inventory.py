@@ -4803,7 +4803,7 @@ INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE = _owner_evidence(
         OwnerEvidence(
             (
                 "crates/bbb-native/src/input.rs#pub(crate) struct ClientInputState",
-                "crates/bbb-native/src/main.rs#window.set_ime_allowed(true)",
+                "crates/bbb-native/src/main.rs#window.set_ime_allowed(false)",
             ),
             (
                 "crates/bbb-native/src/input/tests.rs#debug_advanced_item_tooltips_startup_state_is_runtime_initial_value",

@@ -28,11 +28,5 @@
     "window_minimize_requests",
     "window_restore_requests"
   ],
-  "limitations": [
-    {
-      "id": "seat-ime",
-      "status": "deferred",
-      "reopen_when": "a maintained seat-backed compositor run can drive a preedit through an input method, the way it already drives focus, keyboard, pointer buttons, relative motion and the clipboard"
-    }
-  ]
+  "limitations": []
 }

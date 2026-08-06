@@ -1477,6 +1477,39 @@ impl ClientInputState {
         std::mem::take(&mut self.narrator_status_requests)
     }
 
+    /// `TextInputManager`'s `textInputEnabled` (TextInputManager.java:26-69).
+    ///
+    /// Vanilla starts text input when an `EditBox`/`MultiLineEditBox` takes
+    /// focus and stops it when focus leaves or the screen closes, and
+    /// `TextInputManager.tick` disables the IME on every tick the window is
+    /// focused outside text input. So the IME is on exactly while something
+    /// would receive a commit -- which, here, is exactly the set of consumers
+    /// `handle_text_input_with_item_runtime` walks. Leaving it on all the time
+    /// is not a harmless superset: an input method grabs every letter key, so
+    /// `T` composes a preedit instead of opening chat.
+    pub(crate) fn text_input_is_active(&self, world: &WorldStore) -> bool {
+        if !self.focused || self.chat_restrictions_screen_is_open() {
+            return false;
+        }
+        self.social_interactions_search_is_focused()
+            || self.game_rules_text_is_focused(world)
+            || self.structure_block_editor_is_active()
+            || self.jigsaw_block_editor_is_active()
+            || self.test_block_editor_is_active()
+            || self.test_instance_block_editor_is_active()
+            || self.sign_editor_is_active_or_pending(world)
+            || world.current_book().is_some()
+            || self.player_reporting_comments_are_focused()
+            || world.dialog_screen_is_open()
+            || self.debug_options_screen_search_is_focused()
+            || world
+                .creative_inventory_snapshot()
+                .is_some_and(|snapshot| self.creative_inventory.search_is_active(snapshot))
+            || self.recipe_book_search_focused
+            || inventory::anvil_screen_is_open(world)
+            || self.chat_entry_is_active()
+    }
+
     /// `KeyboardHandler.keyPress`'s pre-screen press block
     /// (KeyboardHandler.java:465-489): on a press, the fullscreen and
     /// screenshot keys are answered before any screen sees the event and
@@ -1660,7 +1693,7 @@ impl ClientInputState {
         });
     }
 
-    fn debug_options_screen_search_is_focused(&self) -> bool {
+    pub(crate) fn debug_options_screen_search_is_focused(&self) -> bool {
         self.debug_options_screen
             .as_ref()
             .is_some_and(|screen| screen.focus == DebugOptionsScreenFocus::Search)

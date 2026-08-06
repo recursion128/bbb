@@ -219,7 +219,7 @@
       "z": -1.5
     }
   },
-  "schema": 14,
+  "schema": 15,
   "screenshot_readback": {
     "attempts": 1,
     "byte_size": 412345,

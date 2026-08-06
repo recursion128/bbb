@@ -450,6 +450,18 @@ impl ClientInputState {
         true
     }
 
+    /// Whether the social-interactions search box would take a commit right
+    /// now, which is the same test `handle_social_interactions_text` makes
+    /// before inserting.
+    pub(crate) fn social_interactions_search_is_focused(&self) -> bool {
+        self.social_interactions
+            .active
+            .as_ref()
+            .is_some_and(|state| {
+                !state.link_confirmation_open && state.focus == HudSocialInteractionsFocus::Search
+            })
+    }
+
     pub(crate) fn handle_social_interactions_text(
         &mut self,
         world: &WorldStore,

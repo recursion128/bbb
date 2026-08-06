@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "277dcc56aeff6554663b10315ca2f32a8d1e13892c3936611cbbf87a8b8a8fc8"
+      "sha256": "17fa4f6eee12bf8b9b5cd855580979b8283749fbb8f0acb9f2cdc92dda5dddf3"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -8955,7 +8955,7 @@
       "bbb_evidence": {
         "implementation": [
           "crates/bbb-native/src/input.rs#pub(crate) struct ClientInputState",
-          "crates/bbb-native/src/main.rs#window.set_ime_allowed(true)"
+          "crates/bbb-native/src/main.rs#window.set_ime_allowed(false)"
         ],
         "tests": [
           "crates/bbb-native/src/input/tests.rs#debug_advanced_item_tooltips_startup_state_is_runtime_initial_value"

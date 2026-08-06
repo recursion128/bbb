@@ -353,7 +353,10 @@ mod tests {
         assert_eq!(production_owner.matches(&catalog_call).count(), 1);
         let build = main.find("let window = build_window(").unwrap();
         let install = main.find("install_startup_window_icon(").unwrap();
-        let ime = main.find("window.set_ime_allowed(true)").unwrap();
+        // Startup revokes the IME rather than allowing it: vanilla's
+        // `TextInputManager` only turns it on while a text field has focus.
+        assert!(!main.contains("window.set_ime_allowed(true)"));
+        let ime = main.find("window.set_ime_allowed(false)").unwrap();
         let input = main
             .find("ClientInputState::new(window.has_focus())")
             .unwrap();

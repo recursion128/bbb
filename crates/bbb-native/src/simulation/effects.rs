@@ -29,6 +29,12 @@ pub(crate) enum DebugProfilingCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PlatformEffect {
     SetCursorCapture(bool),
+    /// `TextInputManager.startTextInput`/`stopTextInput` plus the `tick`
+    /// that revokes the IME outside text input (TextInputManager.java:26-69).
+    /// Vanilla keeps the IME off unless a text field has focus, and with an
+    /// input method actually installed that is load-bearing: an IME grabs
+    /// every letter key it is offered.
+    SetTextInputEnabled(bool),
     ClipboardWrite(String),
     OpenUri(String),
     Screenshot(PathBuf),

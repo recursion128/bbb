@@ -115,6 +115,23 @@ impl ClientInputState {
         state.validate_focus(world);
     }
 
+    /// Whether a game-rules text field would take a commit right now: the
+    /// buttons are not text, and a discard confirmation owns the keyboard.
+    pub(crate) fn game_rules_text_is_focused(&self, world: &WorldStore) -> bool {
+        if world
+            .game_rules_screen()
+            .is_none_or(|screen| screen.discard_confirmation_open)
+        {
+            return false;
+        }
+        self.game_rules_screen.as_ref().is_some_and(|state| {
+            matches!(
+                state.focus,
+                GameRulesScreenFocus::Search | GameRulesScreenFocus::Rule(_)
+            )
+        })
+    }
+
     pub(crate) fn game_rules_screen_input(&self) -> Option<&GameRulesScreenInputState> {
         self.game_rules_screen.as_ref()
     }

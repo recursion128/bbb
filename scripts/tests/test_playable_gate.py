@@ -791,7 +791,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 14)
+        self.assertEqual(evidence["schema"], 15)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -1521,6 +1521,85 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         )
         self.assertNotIn("_press_key", centering)
         self.assertIn("server-authoritative block-column centering", centering)
+
+
+class PlayableGateSeatImeTests(unittest.TestCase):
+    """An input method is the one seat leg whose handlers can be right while
+    the platform path is dead, so the receipt has to be something a plain
+    keyboard could not have produced."""
+
+    def setUp(self):
+        fixture_path = (
+            REPO_ROOT / "scripts" / "fixtures" / "playable-gate" / "session-26.1.json"
+        )
+        self.fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.protocol_version = playable_gate._parse_protocol_version(
+            REPO_ROOT / "crates" / "bbb-protocol" / "src" / "lib.rs"
+        )
+        self.seat_ime = {
+            "injector": "scripts/seat_inject.py",
+            "control_input_writes": 0,
+            "typed": "nihao",
+            "draft_before": "draft ",
+            "draft_while_composing": "draft ",
+            "committed_draft": "draft \u4f60\u597d",
+            "composed": "\u4f60\u597d",
+            "duration_seconds": 9.0,
+        }
+
+    def evidence_with(self, **overrides):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_ime"] = {**self.seat_ime, **overrides}
+        return evidence
+
+    def test_absent_ime_section_is_accepted_for_a_seatless_run(self):
+        playable_gate.validate_evidence(self.fixture, self.protocol_version)
+
+    def test_present_ime_section_is_held_to_the_full_contract(self):
+        playable_gate.validate_evidence(self.evidence_with(), self.protocol_version)
+
+    def test_a_draft_that_reads_back_the_typed_keys_fails(self):
+        """That is what a client with no input method in the path produces, and
+        it is the failure the whole scenario exists to catch."""
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "typed keys"):
+            playable_gate.validate_evidence(
+                self.evidence_with(composed="nihao", committed_draft="draft nihao"),
+                self.protocol_version,
+            )
+
+    def test_an_ascii_commit_proves_nothing(self):
+        with self.assertRaisesRegex(playable_gate.GateFailure, "all ASCII"):
+            playable_gate.validate_evidence(
+                self.evidence_with(composed="ni hao", committed_draft="draft ni hao"),
+                self.protocol_version,
+            )
+
+    def test_a_composed_string_missing_from_the_draft_fails(self):
+        with self.assertRaisesRegex(playable_gate.GateFailure, "must contain"):
+            playable_gate.validate_evidence(
+                self.evidence_with(committed_draft="draft "), self.protocol_version
+            )
+
+    def test_synthetic_input_write_invalidates_the_ime_receipt(self):
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "control_input_writes"
+        ):
+            playable_gate.validate_evidence(
+                self.evidence_with(control_input_writes=1), self.protocol_version
+            )
+
+    def test_the_ime_scenario_is_seat_driven_and_opens_chat_with_a_plain_key(self):
+        """Reaching the chat screen at all is half the receipt: an
+        always-allowed IME would have grabbed the `T` and composed it."""
+
+        source = inspect.getsource(playable_gate.drive_seat_ime)
+
+        self.assertIn("_seat_input_only()", source)
+        self.assertNotIn('"input.', source)
+        self.assertIn('_seat_inject(injector, "key", "chat")', source)
+        self.assertIn('_seat_inject(injector, "text", SEAT_IME_TYPED)', source)
+        self.assertLess(source.index('"key", "chat"'), source.index('"text"'))
 
 
 class PlayableGateDisplayTransitionTests(unittest.TestCase):

@@ -159,8 +159,8 @@ def validate_evidence(
 ) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 14:
-        raise GateFailure(f"playable evidence schema must be 14, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 15:
+        raise GateFailure(f"playable evidence schema must be 15, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -264,6 +264,8 @@ def validate_evidence(
         _validate_seat_input(evidence.get("seat_input"))
     if evidence.get("display_transitions") is not None:
         _validate_display_transitions(evidence.get("display_transitions"))
+    if evidence.get("seat_ime") is not None:
+        _validate_seat_ime(evidence.get("seat_ime"))
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
@@ -703,6 +705,49 @@ def _validate_hotbar_interaction(hotbar_interaction: Any) -> None:
         raise GateFailure(
             "hotbar_interaction.held_slot_commands_delta must record at least "
             f"one observed command, got {delta!r}"
+        )
+
+
+def _validate_seat_ime(seat_ime: Any) -> None:
+    """Text composed by an input method on the seat, not typed by a keyboard.
+
+    The whole point of the leg is that the platform path can be dead while the
+    handlers are right, so the receipt has to be something a plain keyboard
+    could not have produced.
+    """
+
+    seat_ime = _object(seat_ime, "seat_ime")
+    if seat_ime.get("control_input_writes") != 0:
+        raise GateFailure(
+            "seat_ime.control_input_writes must be 0: a synthetic commit would "
+            "prove the handler and skip the platform"
+        )
+    typed = seat_ime.get("typed")
+    composed = seat_ime.get("composed")
+    if not isinstance(typed, str) or not typed or not typed.isascii():
+        raise GateFailure(
+            f"seat_ime.typed must name the latin keys pressed, got {typed!r}"
+        )
+    if not isinstance(composed, str) or not composed.strip():
+        raise GateFailure(
+            f"seat_ime.composed must hold what the commit added to the draft, "
+            f"got {composed!r}"
+        )
+    if composed.strip() == typed:
+        raise GateFailure(
+            "seat_ime.composed reads back the typed keys, so the seat "
+            "delivered plain keyboard input and no input method was in the path"
+        )
+    if composed.isascii():
+        raise GateFailure(
+            f"seat_ime.composed {composed!r} is all ASCII, so nothing "
+            "distinguishes it from what a keyboard produces"
+        )
+    committed = seat_ime.get("committed_draft")
+    if not isinstance(committed, str) or composed not in committed:
+        raise GateFailure(
+            f"seat_ime.committed_draft {committed!r} must contain the composed "
+            f"text {composed!r}"
         )
 
 
@@ -3030,6 +3075,94 @@ def drive_display_transitions(
     }
 
 
+# Latin keys that a pinyin input method turns into something else entirely.
+# Nothing binds them in the client, so if they reach it as plain keys the draft
+# reads back as exactly this -- which is the failure this scenario detects.
+SEAT_IME_TYPED = "nihao"
+
+
+def drive_seat_ime(
+    address: tuple[str, int], injector: list[str], timeout_seconds: float
+) -> dict[str, Any]:
+    """Compose text through an input method on the seat.
+
+    This is the one seat leg the platform's own event path can hide: the client
+    handles `WindowEvent::Ime`, but a run without an input method on the seat
+    produces no preedit at all, so the handlers can be right while the platform
+    path is dead.
+
+    The receipt is the one thing a plain keyboard cannot produce: latin keys go
+    in, and the canonical chat draft comes back holding text that is not what
+    was typed.  Reaching the chat screen at all is half the receipt, because an
+    always-allowed IME would have grabbed the `T` and composed it instead.
+    """
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+
+    with _seat_input_only():
+        _seat_reach_the_world(address, injector, deadline)
+        _seat_inject(injector, "key", "chat")
+        _await_value(
+            deadline,
+            "ChatScreen to open for the seat's input method",
+            lambda: _chat_screen_status(address),
+            lambda value: isinstance(value, dict) and value.get("screen") == "chat",
+        )
+        # Vanilla keeps the chat draft across openings, and an earlier seat
+        # scenario pasted into it, so the receipt is what this scenario adds --
+        # not whatever the box already held.
+        draft_before = (_chat_screen_status(address) or {}).get("input_text", "")
+        _seat_inject(injector, "text", SEAT_IME_TYPED)
+        # A preedit is not the draft: vanilla's EditBox holds the committed
+        # value only, so what the input method is still composing must not have
+        # landed yet.
+        composing_draft = (_chat_screen_status(address) or {}).get("input_text", "")
+        # Space takes the input method's first candidate, which is the commit.
+        _seat_inject(injector, "key", "jump")
+        committed = _await_value(
+            deadline,
+            "the input method's commit to reach the canonical chat draft",
+            lambda: (_chat_screen_status(address) or {}).get("input_text"),
+            lambda value: isinstance(value, str) and len(value) > len(draft_before),
+        )
+        composed = (
+            committed[len(draft_before) :]
+            if committed.startswith(draft_before)
+            else committed
+        )
+        if composed.strip() == SEAT_IME_TYPED:
+            raise GateFailure(
+                f"the chat draft gained the typed keys verbatim ({composed!r}): "
+                "the seat delivered plain keyboard input, so no input method "
+                "was in the path and the receipt would be worthless"
+            )
+        if composed.isascii():
+            raise GateFailure(
+                f"the chat draft gained {composed!r}, which is all ASCII, so "
+                "nothing proves an input method composed it rather than the "
+                "keyboard"
+            )
+        _seat_inject(injector, "key", "escape")
+        _await_value(
+            deadline,
+            "the ChatScreen to close after the input-method commit",
+            lambda: _chat_screen_status(address),
+            lambda value: value is None,
+        )
+
+    return {
+        "injector": " ".join(injector),
+        "control_input_writes": 0,
+        "typed": SEAT_IME_TYPED,
+        "draft_before": draft_before,
+        "draft_while_composing": composing_draft,
+        "committed_draft": committed,
+        "composed": composed,
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _seat_key_reaches_the_world(
     address: tuple[str, int], injector: list[str], deadline: float
 ) -> int | None:
@@ -4420,6 +4553,7 @@ LIVE_SCENARIO_SECTIONS = (
 # is additive rather than part of the always-required set.
 SEAT_SCENARIO_SECTION = "seat_input"
 DISPLAY_SCENARIO_SECTION = "display_transitions"
+IME_SCENARIO_SECTION = "seat_ime"
 # Escape toggles the pause screen, so the handshake checks after each press
 # rather than assuming which side of the toggle the client started on.
 SEAT_HANDSHAKE_ATTEMPTS = 3
@@ -4521,7 +4655,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 14,
+        "schema": 15,
         "mode": "live",
         "vanilla_version": "26.1",
         "client_locale": args.client_locale,
@@ -4531,7 +4665,7 @@ def _write_live_evidence(
     }
     for name in LIVE_SCENARIO_SECTIONS:
         evidence[name] = scenarios.get(name)
-    for name in (SEAT_SCENARIO_SECTION, DISPLAY_SCENARIO_SECTION):
+    for name in (SEAT_SCENARIO_SECTION, DISPLAY_SCENARIO_SECTION, IME_SCENARIO_SECTION):
         if name in scenarios:
             evidence[name] = scenarios[name]
     if failure is not None:
@@ -4563,6 +4697,7 @@ def collect_live(args: argparse.Namespace) -> None:
     if injector is not None:
         scenarios[SEAT_SCENARIO_SECTION] = None
         scenarios[DISPLAY_SCENARIO_SECTION] = None
+        scenarios[IME_SCENARIO_SECTION] = None
     focus_granted = False
 
     while time.monotonic() < deadline:
@@ -4750,6 +4885,15 @@ def collect_live(args: argparse.Namespace) -> None:
                     DISPLAY_SCENARIO_SECTION,
                     "platform_display",
                     lambda: drive_display_transitions(
+                        address,
+                        injector,
+                        min(180.0, gameplay_timeout),
+                    ),
+                ),
+                (
+                    IME_SCENARIO_SECTION,
+                    "platform_ime",
+                    lambda: drive_seat_ime(
                         address,
                         injector,
                         min(180.0, gameplay_timeout),

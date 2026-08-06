@@ -180,23 +180,6 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   that publishes a real seat sends `Focused(false)` until something activates
   the window, which overrides the control-plane focus stand-in. The row rests on
   the scope decision alone; reopen only if that decision is reversed.
-- Seat IME on the declared Wayland row is `deferred`, and the blocker is now a
-  client one. The runner side is done: fcitx5 runs on the gate's compositor as
-  a `zwp_input_method_v2` client, the seat can type latin keys through its
-  uinput device, and a measured run shows fcitx5 receiving them and composing
-  (`waylandimserverv2 ACTIVATE`, then `KeyEvent ... result:1`). What blocks the
-  receipt is that **bbb leaves IME on for the whole session** — one
-  `window.set_ime_allowed(true)` at startup, never revoked — while vanilla
-  turns it on only while a text field has focus. `TextInputManager.tick`
-  (TextInputManager.java:26-47) disables the IME every tick the window is
-  focused and no text input is active; `EditBox.setFocused`/`MultiLineEditBox`
-  and `AbstractSignEditScreen` drive `startTextInput`/`stopTextInput`, and
-  `Minecraft.setScreen(null)` stops it. With an input method present the
-  difference is not cosmetic: the IME grabs every letter key, so `T` composes a
-  preedit instead of opening chat and the client is unplayable. Reopen when bbb
-  has the `TextInputManager` equivalent; the validation environment is no
-  longer what is missing, and do not infer the leg from the IME unit tests,
-  which exercise the handlers rather than the platform path.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,
   but no maintained host/runner with winit, wgpu, audio and input fixtures for
@@ -204,9 +187,9 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   the same declared platform matrix; do not infer support from cross-compilation
   or unit-only `cfg` coverage.
 
-Compositor-originated focus, keyboard, pointer buttons, relative pointer motion,
-the clipboard, live DPI transitions and fullscreen are no longer part of that
-bounded set: the release run is driven from a real `wl_seat` and
+Nothing else on that row is deferred. Compositor-originated focus, keyboard,
+pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
+fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and
 `scripts/platform-acceptance-gate.sh` requires its receipts, which retires the
 former `physical-seat-input` entry. The gate
 refuses receipts from a run that also wrote synthetic `input.*`, so they cannot
@@ -231,6 +214,23 @@ time and came back. The window is pinned to a fixed logical size first, because
 a tiled window's workspace shrinks by exactly the factor the buffer magnifies
 by, which would leave the physical surface unmoved and the transition
 unobservable.
+
+IME retired last, and it took a client fix rather than a runner one. fcitx5
+runs on the gate's compositor as a `zwp_input_method_v2` client and the seat
+types latin keys through its uinput device, but bbb used to call
+`window.set_ime_allowed(true)` once at startup and never revoke it, while
+vanilla turns the IME on only while a text field has focus —
+`TextInputManager.tick` disables it on every tick the window is focused outside
+text input, and `EditBox`/`MultiLineEditBox`/`AbstractSignEditScreen` drive
+`startTextInput`/`stopTextInput`. With an input method actually installed that
+difference is not cosmetic: the IME grabs every letter key, so `T` composed a
+preedit instead of opening chat and the client was unplayable. bbb now has the
+equivalent — one `text_input_is_active` owner reconciled every applied step
+through `PlatformEffect::SetTextInputEnabled`. The receipt is the thing a plain
+keyboard cannot produce: the seat types `nihao`, and the canonical chat draft
+comes back holding a character that was never typed. Reaching the chat screen
+at all is half of it, because an always-allowed IME would have swallowed the
+`T`.
 
 That run also found a real divergence, which is now fixed: the pause screen
 swallowed every key it did not recognise, including the fullscreen and

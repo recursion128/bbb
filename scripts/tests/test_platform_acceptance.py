@@ -36,9 +36,17 @@ class PlatformAcceptanceManifestTests(unittest.TestCase):
         ):
             platform_acceptance.validate_manifest(manifest)
 
-    def test_limitations_require_a_maintained_runner_restart(self):
+    def test_the_declared_row_defers_nothing(self):
+        """Every limitation this row once carried retired on evidence, and an
+        empty set is the claim -- a re-added one must be a deliberate edit."""
+
+        self.assertEqual(self.manifest["limitations"], [])
+
+    def test_a_re_added_limitation_still_needs_a_maintained_runner_restart(self):
         manifest = copy.deepcopy(self.manifest)
-        manifest["limitations"][0]["reopen_when"] = "someone wants it"
+        manifest["limitations"] = [
+            {"id": "seat-ime", "status": "deferred", "reopen_when": "someone wants it"}
+        ]
         with self.assertRaisesRegex(
             platform_acceptance.PlatformFailure, "maintained-runner"
         ):
@@ -104,6 +112,13 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             },
         }
 
+    def seat_ime(self) -> dict:
+        return {
+            "control_input_writes": 0,
+            "typed": "nihao",
+            "composed": "\u4f60\u597d",
+        }
+
     def write_playable(self, root: Path, client_log: str) -> None:
         (root / "evidence.json").write_text(
             json.dumps(
@@ -112,6 +127,7 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
                     "vanilla_version": "26.1",
                     "seat_input": self.seat_input(),
                     "display_transitions": self.display_transitions(),
+                    "seat_ime": self.seat_ime(),
                 }
             ),
             encoding="utf-8",
@@ -233,12 +249,32 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
                         {"display_transitions": transitions}
                     )
 
-    def test_retired_limitations_cannot_come_back_unnoticed(self):
-        """`physical-seat-input` and `dpi-transition-fullscreen` both retired
-        on evidence; what is left names only what the seat cannot reach."""
+    def test_release_row_requires_ime_receipts(self):
+        """Every other key receipt survives a client that never asked for IME,
+        so this leg needs its own."""
 
-        self.assertNotIn("physical-seat-input", platform_acceptance.EXPECTED_LIMITATIONS)
-        self.assertEqual(platform_acceptance.EXPECTED_LIMITATIONS, {"seat-ime"})
+        with self.assertRaisesRegex(
+            platform_acceptance.PlatformFailure, "no input method composed"
+        ):
+            platform_acceptance.validate_ime_receipts({"mode": "live"})
+
+    def test_ime_receipts_are_void_when_a_keyboard_could_have_typed_them(self):
+        for field, value in (
+            ("composed", "nihao"),
+            ("composed", "ni hao"),
+            ("control_input_writes", 1),
+        ):
+            with self.subTest(field=field, value=value):
+                with self.assertRaises(platform_acceptance.PlatformFailure):
+                    platform_acceptance.validate_ime_receipts(
+                        {"seat_ime": {**self.seat_ime(), field: value}}
+                    )
+
+    def test_retired_limitations_cannot_come_back_unnoticed(self):
+        """`physical-seat-input`, `dpi-transition-fullscreen` and `seat-ime`
+        all retired on evidence; the empty set is itself the claim."""
+
+        self.assertEqual(platform_acceptance.EXPECTED_LIMITATIONS, set())
 
     def test_lifecycle_report_requires_every_iteration_receipt(self):
         receipts = {name: 1 for name in platform_acceptance.EXPECTED_RECEIPTS}

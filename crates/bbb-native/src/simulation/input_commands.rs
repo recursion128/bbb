@@ -102,6 +102,9 @@ pub(crate) struct SimulationInputRuntime {
     /// gaining element (`Minecraft.onTextInputFocusChange`).
     last_ime_preedit: Option<(String, Option<(usize, usize)>)>,
     ime_preedit_target: ImePreeditTarget,
+    /// `TextInputManager.textInputEnabled`: the last state handed to the
+    /// window, so a steady screen does not re-request it every step.
+    text_input_enabled: bool,
     /// What `Options.buildPlayerInformation` would return. Nothing this client
     /// changes at runtime feeds it, so `broadcastOptions` re-sends the values
     /// the session was configured with.
@@ -153,6 +156,7 @@ impl SimulationInputRuntime {
                 surface_size.height.max(1),
             ),
             minimized: surface_size.width == 0 || surface_size.height == 0,
+            text_input_enabled: false,
             gui_scale: 1,
             gui_scaled_width: surface_size.width.max(1),
             gui_scaled_height: surface_size.height.max(1),
@@ -289,6 +293,7 @@ impl SimulationInputRuntime {
         // strict (`> 500L`) and an already-open screen suppresses reopening.
         context.input.pause_if_inactive(context.now, context.world);
         self.sync_ime_preedit_focus(context);
+        self.sync_text_input_enabled(context);
         context
             .input
             .sync_respawn_toggle_reset(context.net_counters);
@@ -1512,6 +1517,20 @@ impl SimulationInputRuntime {
     /// pre-edit rendering changes, the losing one is cleared
     /// (`submitPreeditEvent(element, null)`) and the stored composition is
     /// resubmitted to the gaining one (`resubmitLastPreeditEvent`).
+    /// `Minecraft.onTextInputFocusChange` plus `TextInputManager.tick`
+    /// (TextInputManager.java:26-69): the window is told to accept composed
+    /// text exactly while a text field has focus, and told to stop otherwise.
+    fn sync_text_input_enabled(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
+        let enabled = context.input.text_input_is_active(context.world);
+        if enabled == self.text_input_enabled {
+            return;
+        }
+        self.text_input_enabled = enabled;
+        context
+            .platform
+            .submit(PlatformEffect::SetTextInputEnabled(enabled));
+    }
+
     fn sync_ime_preedit_focus(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
         let target = self.ime_preedit_target(context);
         if target == self.ime_preedit_target {
@@ -3100,6 +3119,31 @@ mod tests {
                 DebugProfilingCommand::Start,
             ]
         );
+    }
+
+    #[test]
+    fn text_input_is_reconciled_once_per_applied_step() {
+        // `TextInputManager.tick` runs every tick, not only when a screen
+        // opens: a text field can lose focus without any command of its own,
+        // and an IME left allowed grabs every letter key after that.
+        let source = include_str!("input_commands.rs");
+        let body = source
+            .split_once("pub(crate) fn apply_commands(")
+            .expect("command batch owner")
+            .1;
+        let sync = body
+            .find("self.sync_text_input_enabled(context)")
+            .expect("per-step text-input reconciliation");
+        let preedit = body
+            .find("self.sync_ime_preedit_focus(context)")
+            .expect("per-step preedit reconciliation");
+        // The preedit is routed to its target first, so the window is told to
+        // stop accepting text only after the composition it owns is handed on.
+        assert!(preedit < sync);
+        // One owner: nothing else may hand the window an IME decision.  Count
+        // in production only -- this test names the effect too.
+        let production = source.split_once("\nmod tests {").expect("test boundary").0;
+        assert_eq!(production.matches("SetTextInputEnabled(").count(), 1);
     }
 
     #[test]

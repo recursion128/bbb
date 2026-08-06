@@ -39,14 +39,15 @@ EXPECTED_RECEIPTS = [
     "window_restore_requests",
 ]
 # X11 is a declared non-goal (2026-08-06), so the bounded limitation set no
-# longer carries an X11 row.  `physical-seat-input` retired the same day: the
-# release run drives the client from a compositor seat holding a real input
-# device open, and carries focus, keyboard, pointer-button, relative-motion and
-# clipboard receipts (see `validate_seat_receipts`).  `dpi-transition-fullscreen`
-# retired with it, once the same seat could change the output scale and press
-# the fullscreen keybind (see `validate_display_receipts`).  What that seat
-# still has no driver for is an input method, so only the IME leg remains.
-EXPECTED_LIMITATIONS = {"seat-ime"}
+# longer carries an X11 row.  Everything else on this row retired the same day
+# on evidence: `physical-seat-input` once the release run was driven from a
+# compositor seat holding a real input device open (`validate_seat_receipts`),
+# `dpi-transition-fullscreen` once that seat could change the output scale and
+# press the fullscreen keybind (`validate_display_receipts`), and `seat-ime`
+# once an input method on the seat composed text the keyboard could not have
+# produced (`validate_ime_receipts`).  The set is empty, which is a claim in
+# itself: nothing about this row is deferred.
+EXPECTED_LIMITATIONS: set[str] = set()
 SEAT_MIN_YAW_DEGREES = 2.0
 ANSI_SGR_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -251,6 +252,7 @@ def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
         "scale_factor": float(scale.group(1)),
         "seat_input": validate_seat_receipts(evidence),
         "display_transitions": validate_display_receipts(evidence),
+        "seat_ime": validate_ime_receipts(evidence),
     }
 
 
@@ -313,6 +315,37 @@ def validate_display_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
         },
         "fullscreen": {"windowed_surface": windowed, "fullscreen_surface": entered},
     }
+
+
+def validate_ime_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Require the release run to have composed text through an input method.
+
+    Every other key receipt survives a client that never asked for IME, so
+    this leg needs its own: latin keys go into the seat and the canonical chat
+    draft comes back holding something a keyboard could not have typed.
+    """
+
+    seat_ime = evidence.get("seat_ime")
+    if not isinstance(seat_ime, dict):
+        raise PlatformFailure(
+            "release playable evidence carries no seat_ime receipts: no input "
+            "method composed anything on that seat"
+        )
+    if seat_ime.get("control_input_writes") != 0:
+        raise PlatformFailure(
+            "IME receipts are void when the run also wrote synthetic input"
+        )
+    typed, composed = seat_ime.get("typed"), seat_ime.get("composed")
+    if not isinstance(typed, str) or not typed:
+        raise PlatformFailure("the IME receipt does not say what was typed")
+    if not isinstance(composed, str) or not composed.strip():
+        raise PlatformFailure("the IME receipt carries no composed text")
+    if composed.strip() == typed or composed.isascii():
+        raise PlatformFailure(
+            f"the chat draft gained {composed!r} from typing {typed!r}, which "
+            "a plain keyboard could have produced"
+        )
+    return {"typed": typed, "composed": composed}
 
 
 def validate_lifecycle_report(

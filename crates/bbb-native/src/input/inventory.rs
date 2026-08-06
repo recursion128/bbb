@@ -2239,7 +2239,7 @@ fn anvil_component_hover_name(stack: &ItemStackSummary) -> Option<String> {
     stack.component_patch.item_name.clone()
 }
 
-fn anvil_screen_is_open(world: &WorldStore) -> bool {
+pub(crate) fn anvil_screen_is_open(world: &WorldStore) -> bool {
     world
         .inventory()
         .open_container

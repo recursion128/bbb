@@ -173,6 +173,14 @@ pub(crate) struct PlayerReportingSubmissionRequest {
 }
 
 impl ClientInputState {
+    /// Whether the report comment box would take a commit right now.
+    pub(crate) fn player_reporting_comments_are_focused(&self) -> bool {
+        self.player_reporting
+            .active
+            .as_ref()
+            .is_some_and(|active| active.focus == HudPlayerReportingFocus::Comments)
+    }
+
     pub(crate) fn player_reporting_runtime(&self) -> Option<&PlayerReportingRuntime> {
         self.player_reporting.active.as_ref()
     }

@@ -68,11 +68,14 @@ F11 切换全屏；两侧都取证——compositor 确实换了 scale/给了全�
 客户端没有 `ScaleFactorChanged` 分支是**忠实**而非缺口：vanilla 也没有 content-scale 回调，
 GUI scale 只由 framebuffer 尺寸算出，而 winit 每次 scale 变化后都跟一条 `Resized`。
 
-IME 的 runner 侧已备齐：gate 的 compositor 上跑 fcitx5（`~/.config/fcitx5/profile` 里
-pinyin 入组、`config` 里 `ActiveByDefault=True`，否则输入上下文默认是英文直通态），seat 设备
-可用 `text` 动作逐个按下拉丁物理键。实跑已见 fcitx5 `ACTIVATE` 并 `result:1` 消费按键。剩余
-阻塞在客户端，重开条件由[缺口账本](../../unsupported-features.md)维护；X11 行按 2026-08-06
-用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
+还有 **IME receipts**：gate 的 compositor 上跑 fcitx5（`~/.config/fcitx5/profile` 里 pinyin
+入组、`config` 里 `ActiveByDefault=True`——不设它输入上下文默认是英文直通态，拼音根本不参与
+合成），seat 用 `text` 动作逐个按下拉丁物理键，判据取**普通键盘产生不出来的东西**：打
+`nihao`，规范 chat draft 回来的是非 ASCII 且不等于所打的字。能用 `T` 打开 chat 本身是半个
+判据——IME 若全程开着会把 `T` 也吞去合成。
+
+至此该发布行的 limitation 集合为空：没有任何一条是 deferred。X11 行按 2026-08-06 用户裁决为
+非目标；macOS/Windows runner 仍由[缺口账本](../../unsupported-features.md)维护。
 
 ## 文档测试
 

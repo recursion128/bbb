@@ -31388,6 +31388,62 @@ fn the_fullscreen_key_toggles_the_window_and_saves_the_option() {
 }
 
 #[test]
+fn text_input_is_inactive_during_gameplay_and_active_once_chat_takes_focus() {
+    // `TextInputManager` (TextInputManager.java:26-69) keeps the IME off
+    // unless a text field has focus.  With an input method installed this is
+    // load-bearing rather than tidy: an IME grabs every letter key it is
+    // offered, so an always-on client cannot even open chat with `T`.
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+
+    assert!(!input.text_input_is_active(&world));
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyT,
+    );
+    assert!(input.chat_entry_is_active());
+    assert!(input.text_input_is_active(&world));
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::Escape,
+    );
+    assert!(!input.chat_entry_is_active());
+    assert!(!input.text_input_is_active(&world));
+}
+
+#[test]
+fn text_input_needs_the_window_focused_like_the_vanilla_tick_does() {
+    // `TextInputManager.tick` only revokes the IME while the window is
+    // focused, and an unfocused window has no keyboard to compose with.
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyT,
+    );
+    assert!(input.text_input_is_active(&world));
+
+    input.focused = false;
+    assert!(!input.text_input_is_active(&world));
+}
+
+#[test]
 fn the_global_press_keys_ignore_screen_state_and_key_releases() {
     // `KeyboardHandler.keyPress` (KeyboardHandler.java:465-489) answers these
     // two on any press, before a screen sees the event, and returns without

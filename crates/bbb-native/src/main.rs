@@ -303,6 +303,9 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     "cursor capture result",
                 );
             }
+            PlatformEffect::SetTextInputEnabled(enabled) => {
+                self.window.set_ime_allowed(enabled);
+            }
             PlatformEffect::ClipboardWrite(text) => {
                 let success = self.clipboard.set_debug_clipboard_text(&text);
                 self.mailbox.enqueue_or_report(
@@ -878,13 +881,14 @@ fn run_client(args: startup::Args) -> Result<()> {
         "native platform window created"
     );
     window_icon::install_startup_window_icon(&window, pack_roots.as_ref(), window_backend);
-    // IME stays allowed for the whole session instead of toggling per
-    // text-input focus change (`Minecraft.onTextInputFocusChange` →
-    // `TextInputManager`): the simulation routes every `Ime::Preedit`/`Commit`
-    // to whichever text owner is focused and clears it on all other branches,
-    // so an out-of-focus composition never lands in gameplay input. Only the
-    // resubmit-on-focus-gain half is deferred (see the ledger).
-    window.set_ime_allowed(true);
+    // `TextInputManager` starts life with text input stopped and the IME
+    // revoked (TextInputManager.java:26-47 turns it off on every tick the
+    // window is focused outside text input); the simulation turns it on
+    // through `PlatformEffect::SetTextInputEnabled` exactly while a text field
+    // has focus. Leaving it allowed for the whole session is not a harmless
+    // superset -- an installed input method grabs every letter key it is
+    // offered, so `T` composes a preedit instead of opening chat.
+    window.set_ime_allowed(false);
     let mut input = ClientInputState::new(window.has_focus());
     input.set_save_chat_drafts(args.client_save_chat_drafts);
     input.set_client_text_filtering_enabled(args.client_text_filtering);

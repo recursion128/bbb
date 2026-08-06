@@ -891,7 +891,7 @@ impl CreativeInventoryInputState {
         true
     }
 
-    fn search_is_active(&self, snapshot: &CreativeInventorySnapshot) -> bool {
+    pub(crate) fn search_is_active(&self, snapshot: &CreativeInventorySnapshot) -> bool {
         self.search_focused
             && self
                 .selected_tab(snapshot)
