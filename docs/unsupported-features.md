@@ -168,15 +168,24 @@ list.
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
-Matrix routes: `platform-linux-x11-seat-matrix`, `platform-macos-windows-release`
+Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
 
-- Linux X11, live DPI-transition/fullscreen, and compositor-originated
-  focus/keyboard/mouse/clipboard/IME release validation is `deferred`: the
-  maintained headless runner has a real Wayland/Vulkan window but no
-  interactive compositor seat/input injector or X11 fixture. Reopen when a
-  maintained interactive Linux runner can capture those events and execute the
-  same release/live matrix; do not infer them from the declared windowed
-  Wayland row or semantic unit tests.
+- An X11 release row is `not-needed`: the user declared X11 a non-goal on
+  2026-08-06 in favour of the declared Wayland row. bbb keeps its winit X11
+  branches, and a measured X11 run does open an `x11` window on hardware Vulkan
+  and reach `Play`, but live look steering does not converge there while the
+  same build passes on Wayland against the same compositor and GPU — declaring
+  the row would mean owning a legacy-only input path. Reopen only if that
+  scope decision is reversed.
+- Live DPI-transition/fullscreen and compositor-originated
+  focus/keyboard/mouse/clipboard/IME release validation on the declared Wayland
+  row is `deferred`: those events need a compositor that publishes a `wl_seat`,
+  and the headless backend publishes none at all. A seat-backed run is now
+  reproducible on the maintained runner — weston's RDP backend publishes a
+  `wl_seat` with pointer and keyboard capabilities as soon as a client attaches
+  — so what remains is wiring that run's events into this gate's receipts.
+  Reopen when `scripts/platform-acceptance-gate.sh` captures them; do not infer
+  them from the headless Wayland row or from semantic unit tests.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,
   but no maintained host/runner with winit, wgpu, audio and input fixtures for

@@ -38,9 +38,12 @@ EXPECTED_RECEIPTS = [
     "window_minimize_requests",
     "window_restore_requests",
 ]
+# X11 is a declared non-goal (2026-08-06), so the bounded limitation set no
+# longer carries an X11 row; both remaining ids are scoped to the declared
+# Wayland row and reopen on the same seat-backed compositor run.
 EXPECTED_LIMITATIONS = {
     "physical-seat-input",
-    "dpi-transition-fullscreen-x11",
+    "dpi-transition-fullscreen",
 }
 
 

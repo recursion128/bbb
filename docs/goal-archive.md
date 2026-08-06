@@ -73,4 +73,13 @@
   `perf` 运行（runner 只需 tracefs 组读 + `perf_event_paranoid=-1`），preflight 改为直接探测
   能力而非按权限位推断。
 
+- **2026-08-06（平台 seat 矩阵重划范围）**：用户裁决 X11 为非目标，`platform-linux-x11-seat-matrix`
+  改名 `platform-linux-seat-matrix`，X11 发布行转 `not-needed`（实测：X11 下确实开出
+  `window_backend=x11` 窗口、硬件 Vulkan、可达 `Play`，但 live look steering 不收敛，而同一 build
+  在同 compositor/同 GPU 的 Wayland 上通过——慢帧在通过与失败的运行里同为 15~18 次，故非成因）。
+  原判词「无 maintained interactive runner」已被证伪并替换为真实技术边界：headless backend 根本
+  不广播 `wl_seat`，而 weston RDP backend 在客户端接入时即广播带 pointer/keyboard 的 seat；
+  剩余工作收窄为把 seat 事件接进平台 gate 的 receipts。manifest 两个 limitation 重划到 Wayland 行
+  并重钉守卫测试。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

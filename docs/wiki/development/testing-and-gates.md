@@ -40,10 +40,16 @@ kick 必须同时具有目标 Vanilla 服的精确 receipt、control `connected=
 `Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`。它要求 fully gated
 clean HEAD、fresh locked release build、`--build-info`、headless/live/quit 证据、实际
 winit/wgpu backend 日志、输入语义 focused receipts，以及当前 lifecycle-soak 祖先
-stamp；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。headless runner 没有
-真实 compositor seat，因此不能把 unit/semantic input receipts 宣称为物理 DPI、
-fullscreen、X11、clipboard 或 IME 注入。扩展 Linux 矩阵和 macOS/Windows runner 的
-重开条件只由[缺口账本](../../unsupported-features.md)维护。
+stamp；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。headless backend 不广播
+`wl_seat`（`wayland-info` 的 global 列表里没有该接口），因此该行的 input receipts 是
+semantic 的，不能宣称为物理 DPI、fullscreen、clipboard 或 IME 注入。
+
+真实 seat 在同一台 runner 上可复现：weston 的 RDP backend 在客户端接入时即广播带
+pointer/keyboard capability 的 `wl_seat`（headless backend 永远不会）。GPU 侧同理——
+headless 默认走 pixman，加 `--use-gl` 才让 compositor 与其 Xwayland 客户端拿到硬件
+radeonsi/RADV；`scripts/gpu_duration_capture.py` 的采集依赖这一点。把 seat 事件接进本
+gate 的 receipts 是[缺口账本](../../unsupported-features.md)里的待办；X11 行按 2026-08-06
+用户裁决为非目标。macOS/Windows runner 的重开条件同样只由该账本维护。
 
 ## 文档测试
 

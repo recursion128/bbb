@@ -32,12 +32,12 @@
     {
       "id": "physical-seat-input",
       "status": "deferred",
-      "reopen_when": "a maintained Wayland seat/input injector can capture compositor-originated focus, keyboard, mouse, clipboard and IME events"
+      "reopen_when": "a maintained seat-backed compositor run wires compositor-originated focus, keyboard, mouse, clipboard and IME events into this gate's receipts"
     },
     {
-      "id": "dpi-transition-fullscreen-x11",
+      "id": "dpi-transition-fullscreen",
       "status": "deferred",
-      "reopen_when": "a maintained interactive Linux runner can exercise DPI transitions, fullscreen and an X11 release row"
+      "reopen_when": "a maintained seat-backed compositor run can exercise live DPI transitions and fullscreen on the declared Wayland row"
     }
   ]
 }
