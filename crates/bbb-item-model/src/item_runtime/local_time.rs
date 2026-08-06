@@ -1273,8 +1273,8 @@ fn offset_parts(offset_seconds: i32) -> (char, i32, i32, i32) {
 mod tests {
     use super::*;
 
-    /// Residual gaps the goldens test tolerates; every entry is documented in
-    /// the module docs and the unsupported-features ledger.
+    /// Residual gaps the goldens test tolerates; both are ledger items under
+    /// `docs/unsupported-features.md#local-time-item-property-formatting`.
     fn expected_residual(pattern: &str, locale: &str) -> bool {
         // ICU4J flexible day periods have no ICU4X data.
         let mut in_quote = false;

@@ -235,6 +235,35 @@ resolver by adding a value provider. No new selection machinery is required.
   `!level.isClientSide()`. Reopen if
   `test_enchantment_client_effect_partition.py` finds a client-side consumer.
 
+## Local-time item property formatting
+
+Owner: `bbb-item-model` (`item_runtime/local_time.rs`, generated tables from
+`scripts/local_time_tables.py`)
+
+Matrix route: `ui-local-time-icu`
+
+Both items are measured by `goldens_26_1.tsv`, the 8656-row output dump of the
+exact icu4j 77.1 jar vanilla uses (`scripts/local-time-icu4j/`). The goldens
+test currently tolerates them through `expected_residual`; closing an item
+deletes its clause there.
+
+- **Flexible day periods (`B`).** ICU4J prints the CLDR flexible day-period
+  name — `in the evening`, `晚上`, `ค่ำ`, `شب`, `مساءً` — for `B` through
+  `BBBBB`. The native dispatch has no `B` arm and `icu_datetime` carries no
+  data for it, so the whole property currently formats to nothing whenever an
+  unquoted `B` appears in the pattern. Needs the CLDR day-period rules (the
+  per-locale time ranges that select `morning1`/`afternoon1`/`evening1`/
+  `night1`) and their names at three widths, derived into the generated tables
+  the way quarter names and the GMT zero format already are. 14 oracle rows.
+- **Hijri (`islamic-umalqura`) calendar.** `Calendar.getInstance` selects it
+  from the `@calendar=islamic-umalqura` keyword and ICU4J then formats Hijri
+  fields — `y` prints `١٤٤٨` for the sampled instant. `dispatch_calendar` has
+  no Hijri arm, so the locale silently falls through to Gregorian and prints
+  the Gregorian year instead: a wrong value rather than a missing one. Needs
+  the Hijri calendar wired into the same numeric-native / text-delegated split
+  the other seven non-Gregorian calendars already use, including its era and
+  month names. 16 oracle rows.
+
 ## Audio runtime parity
 
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`

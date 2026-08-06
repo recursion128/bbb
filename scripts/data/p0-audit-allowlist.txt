@@ -247,6 +247,20 @@
 # fallback path.
 ^crates/bbb-native/src/window_surface[.]rs$	parse/match/fallback|GLFW's current-mode fallback
 
+# The two bbb-owned client files resolve their path from an override variable,
+# then the platform configuration root, then the working directory. The last
+# step is a file-location convention, not a renderer, packet or canonical-state
+# fallback; every branch reads and writes the same store.
+^crates/bbb-native/src/platform[.]rs$	working_directory_fallback
+# Online mode is a declared non-goal, so a server opening the vanilla encryption
+# handshake gets one attributable error instead of a stall. This is a fail-closed
+# login diagnostic, not a silently dropped or misordered packet.
+^crates/bbb-net/src/login[.]rs$	online-mode servers are unsupported by this
+# The local-time goldens test names its two tolerated ICU4J divergences, both
+# tracked as active ledger items. They affect one item property's text, not
+# packet state, canonical world state or renderer submission.
+^crates/bbb-item-model/src/item_runtime/local_time[.]rs$	Known residual gaps|residual gaps the goldens test tolerates|expected_residual
+
 # key_bindings.rs documents vanilla's createNameSupplier display-name
 # resolution: the bound key's language entry is vanilla's own non-printable
 # fallback path (glfwGetKeyName has no winit equivalent). Doc comment about
