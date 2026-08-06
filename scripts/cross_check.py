@@ -54,10 +54,14 @@ def workspace_members(repo_root: Path) -> list[str]:
     """Workspace member package names, in manifest order."""
     manifest = (repo_root / "Cargo.toml").read_text(encoding="utf-8")
     members: list[str] = []
+    table = ""
     inside = False
     for line in manifest.splitlines():
         stripped = line.strip()
-        if stripped.startswith("members"):
+        if stripped.startswith("[") and not inside:
+            table = stripped
+            continue
+        if table == "[workspace]" and stripped.startswith("members"):
             inside = True
             continue
         if inside:

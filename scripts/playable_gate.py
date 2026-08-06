@@ -3118,14 +3118,34 @@ def drive_seat_ime(
         # value only, so what the input method is still composing must not have
         # landed yet.
         composing_draft = (_chat_screen_status(address) or {}).get("input_text", "")
+        if SEAT_IME_TYPED in composing_draft[len(draft_before) :]:
+            raise GateFailure(
+                f"the typed keys landed in the chat draft verbatim while the "
+                f"input method should still have been composing "
+                f"({composing_draft!r}): nothing is composing on the "
+                "compositor's seat, so this run cannot produce an IME receipt"
+            )
         # Space takes the input method's first candidate, which is the commit.
         _seat_inject(injector, "key", "jump")
-        committed = _await_value(
-            deadline,
-            "the input method's commit to reach the canonical chat draft",
-            lambda: (_chat_screen_status(address) or {}).get("input_text"),
-            lambda value: isinstance(value, str) and len(value) > len(draft_before),
-        )
+        try:
+            committed = _await_value(
+                deadline,
+                "the input method's commit to reach the canonical chat draft",
+                lambda: (_chat_screen_status(address) or {}).get("input_text"),
+                lambda value: isinstance(value, str) and len(value) > len(draft_before),
+            )
+        except GateFailure as error:
+            if composing_draft == draft_before:
+                # Neither composing nor committing moved the draft. An input
+                # method that is present but rejected the candidate would have
+                # shown a preedit; an absent one shows exactly this.
+                raise GateFailure(
+                    f"{error}; the draft did not move while the keys were typed "
+                    f"either (it stayed {draft_before!r}), which is what an "
+                    "absent input method looks like from here — check that one "
+                    "is running against this compositor"
+                ) from error
+            raise
         composed = (
             committed[len(draft_before) :]
             if committed.startswith(draft_before)

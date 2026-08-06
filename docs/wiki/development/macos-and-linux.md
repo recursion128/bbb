@@ -54,7 +54,11 @@ target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此会无声腐坏。
 `scripts/cross_check.py`（`scripts/cargo-dev.sh cross-check`）用
 `cargo check --target aarch64-apple-darwin` 把这个缺口关到能关的程度，作为 gate
-的第 6 步在 crate 源码或 manifest 改动时运行，rustup target 缺失时归因跳过。
+的第 6 步在 crate 源码或 manifest 改动时运行。Linux 开发机需要一次
+`rustup target add aarch64-apple-darwin`；target 缺失时该步归因跳过而不是假装通过，
+所以缺 target 的机器不提供这份证据。`--target` 可换其它 triple（如 Intel Mac 的
+`x86_64-apple-darwin`）。反方向不成立：macOS 主机上该步退化为本机检查，Linux 专有
+分支在 macOS 上仍然没有覆盖，Linux 是唯一发布验收主机这一点没有变。
 
 它关不掉全部：一些第三方 build script 要为目标平台编译 C 或 Objective-C，需要
 Linux 主机没有的 Apple 工具链，凡是依赖闭包碰到它们的 crate 都会停在那个 build

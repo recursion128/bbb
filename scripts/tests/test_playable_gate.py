@@ -1601,6 +1601,29 @@ class PlayableGateSeatImeTests(unittest.TestCase):
         self.assertIn('_seat_inject(injector, "text", SEAT_IME_TYPED)', source)
         self.assertLess(source.index('"key", "chat"'), source.index('"text"'))
 
+    def test_an_absent_input_method_is_named_rather_than_timed_out_into(self):
+        """The two ways this leg fails look nothing alike, and one of them
+        costs a whole live run to discover.
+
+        With an input method in the path the typed keys sit in a preedit and
+        the draft does not move until the commit; with none, either they land
+        verbatim or nothing arrives at all. The scenario already reads the
+        draft mid-composition, so both absences are attributable on the spot
+        instead of surfacing as a bare commit timeout.
+        """
+
+        source = inspect.getsource(playable_gate.drive_seat_ime)
+
+        self.assertIn("composing_draft", source)
+        # The verbatim case is caught before the commit is even attempted.
+        self.assertLess(
+            source.index("nothing is composing on the"),
+            source.index('_seat_inject(injector, "key", "jump")'),
+        )
+        # The silent case turns the commit timeout into an attributable one.
+        self.assertIn("absent input method looks like from here", source)
+        self.assertIn("if composing_draft == draft_before:", source)
+
 
 class PlayableGateDisplayTransitionTests(unittest.TestCase):
     """Vanilla derives its GUI scale from the framebuffer size alone, so a
