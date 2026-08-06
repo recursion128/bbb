@@ -4,9 +4,21 @@ bbb 在 macOS 与 Linux 上开发，只在 Linux 上发布验收。这两件事�
 全部内容：**哪些命令两个平台都跑，哪些只跑在声明发布行的 Linux 主机上，以及
 Linux 主机如何为它编译不了的那部分 macOS 代码负责**。
 
-Windows 按用户裁决为非目标，没有发布行，也不作为开发平台；仓库仍保留
-vanilla 语义的 Windows 分派分支（见下方"平台分派 owner"），与同样 `not-needed`
-的 X11 行处理一致。
+**Windows 按用户裁决为非目标，平台面已整体删除**：`PlatformTarget::Windows`
+及其 URI/路径打开与 `%APPDATA%` store 根、`WindowIconTarget::Windows` 与
+`WindowExtWindows` 任务栏图标、`Window.getPlatform` 的 `win32` 标识都不再存在。
+`bbb-native` 的 `main.rs` 用 `compile_error!` 直接拒绝 Windows target，所以这条裁决
+由编译器执行而不是由文档承诺；`test_dev_chain_portability.py` 另外拒绝任何
+`cfg(windows)` 分支或 Windows 专有 API 长回来——**这条守卫是必需的**：本仓库没有
+任何主机编译 Windows target，长回来的分支不会被任何构建或测试看见。
+
+唯一保留的 Windows 相关派生是 vanilla 的 options 事实而非平台支持：
+`syncChunkWrites` 的默认值在 vanilla 里是 `Util.getPlatform() == Util.OS.WINDOWS`
+（Options.java），生成的 catalog 继续读它，host 侧由 `platform::HOST_IS_WINDOWS`
+恒为 false 提供。
+
+X11 同为 `not-needed`，但处理不同：bbb 仍保留 winit 的 X11 分支（Linux 上真实可达、
+window icon 走 X11 路径），只是不声明 X11 发布行。
 
 ## 外部工具
 
@@ -86,8 +98,9 @@ crate 掉出受检集合时报错，`test_dev_chain_portability.py` 的同族测
 
 `crates/bbb-native/src/platform.rs` 是"操作系统决定行为"的唯一 owner：URI/路径
 打开进程与 bbb 自有 client store 的默认路径（`BBB_CODE_OF_CONDUCT_STORE`、
-`BBB_HOTBAR_PRESET_STORE` 可覆盖）都在这里分派。分类走目标名字符串而不是
-`cfg!`，所以 macOS 与 Windows 分支在 Linux 上一样被编译、一样在测试里被走到：
-`%APPDATA%`、`~/Library/Application Support`、`XDG_CONFIG_HOME`、`~/.config`
-以及工作目录兜底各有断言。新增按平台分叉的行为加到这里，不要在消费者里再写
+`BBB_HOTBAR_PRESET_STORE` 可覆盖）都在这里分派。`PlatformTarget` 只有 `MacOs` 与
+`Unix` 两个分支。分类走目标名字符串而不是 `cfg!`，所以 macOS 分支在 Linux 上一样
+被编译、一样在测试里被走到：`~/Library/Application Support`、`XDG_CONFIG_HOME`、
+`~/.config` 以及工作目录兜底各有断言，`"windows"` 这个目标名落到 `Unix` 也有断言
+钉住（它不该长出自己的分支）。新增按平台分叉的行为加到这里，不要在消费者里再写
 一条 `cfg!` 阶梯。

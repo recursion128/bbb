@@ -180,19 +180,24 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   that publishes a real seat sends `Focused(false)` until something activates
   the window, which overrides the control-plane focus stand-in. The row rests on
   the scope decision alone; reopen only if that decision is reversed.
-- A Windows release row is `not-needed`: the user declared Windows a non-goal
-  on 2026-08-06, alongside the decision to develop bbb on macOS and Linux. As
-  with the X11 row, bbb keeps the Vanilla-faithful Windows arms of its platform
-  dispatch — `Window.getPlatform`'s `win32` identity, the `%APPDATA%` store
-  root and the `rundll32 url.dll,FileProtocolHandler` URI opener are Vanilla
-  facts asserted by tests on every host, not unverifiable dead code — but no
-  Windows release row is declared, built or validated. One shim is the
-  exception and is named rather than claimed: `apply_windows_taskbar_icon`'s
-  `WindowExtWindows` call in `window_icon.rs` compiles only on Windows, so no
-  host here reads it. It stays because deleting it would silently drop a
-  Vanilla behaviour from a platform bbb still dispatches for; it must not be
-  cited as evidence of anything. Reopen only if that scope decision is
-  reversed.
+- Windows is `not-needed`: the user declared it a non-goal on 2026-08-06 and
+  then ruled that bbb supports macOS and Linux only, so the Windows surface was
+  removed rather than left as permanently unverifiable code — the same
+  treatment online mode got. Gone: `PlatformTarget::Windows` and with it the
+  `rundll32 url.dll,FileProtocolHandler` URI opener, the `explorer` path
+  opener and the `%APPDATA%` client-store root; `WindowIconTarget::Windows`
+  and the `WindowExtWindows` taskbar-icon call; `Window.getPlatform`'s `win32`
+  identity, which now has no target that could report it. `bbb-native` refuses
+  a Windows build outright (`compile_error!` in `main.rs`), so the decision is
+  enforced by the compiler rather than by this paragraph, and
+  `test_dev_chain_portability.py` rejects a returning `cfg(windows)` arm or
+  Windows-only API — necessary because nothing here compiles that target, so a
+  regrown arm would otherwise be invisible. One derivation stays because it is
+  a Vanilla options fact rather than platform support: `syncChunkWrites`
+  defaults to `Util.getPlatform() == Util.OS.WINDOWS` (Options.java), and the
+  generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
+  construction. Reopen only if the scope decision is reversed; restoring
+  Windows means reimplementing that dispatch from Vanilla source.
 - macOS release validation is `deferred`: bbb is developed on macOS and Linux,
   but no maintained macOS host/runner exists with the winit, wgpu, audio and
   input fixtures the declared platform matrix needs. Reopen when such a host is

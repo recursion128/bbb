@@ -9,11 +9,14 @@ use url::Url;
 
 /// The one place a build's operating system turns into behaviour. Classifying
 /// from a target name rather than `cfg!` keeps every branch compiled and under
-/// test on every host: the macOS and Windows arms below are reachable from the
-/// Linux dev host, which is the only host this repository gates on.
+/// test on every host: the macOS arm below is reachable from the Linux dev
+/// host, which is the only host this repository gates on.
+///
+/// bbb supports macOS and Linux. Windows is a declared non-goal, and
+/// `main.rs` refuses to build for it, so no Windows arm exists here to go
+/// unverified.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlatformTarget {
-    Windows,
     MacOs,
     Unix,
 }
@@ -25,12 +28,17 @@ impl PlatformTarget {
 
     fn for_target_os(target_os: &str) -> Self {
         match target_os {
-            "windows" => Self::Windows,
             "macos" => Self::MacOs,
             _ => Self::Unix,
         }
     }
 }
+
+/// Vanilla derives the `syncChunkWrites` options default from
+/// `Util.getPlatform() == Util.OS.WINDOWS` (Options.java). bbb cannot be built
+/// for Windows, so that comparison is false by construction rather than by
+/// target, and the options catalog keeps reading it from one place.
+pub(crate) const HOST_IS_WINDOWS: bool = false;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct UriOpenCommand {
@@ -41,10 +49,6 @@ struct UriOpenCommand {
 impl UriOpenCommand {
     fn for_target(target: PlatformTarget, url: &str) -> Self {
         match target {
-            PlatformTarget::Windows => Self {
-                program: "rundll32",
-                args: vec!["url.dll,FileProtocolHandler".to_string(), url.to_string()],
-            },
             PlatformTarget::MacOs => Self {
                 program: "open",
                 args: vec![url.to_string()],
@@ -81,7 +85,6 @@ pub(crate) fn open_uri(value: &str) -> Result<()> {
 
 pub(crate) fn open_path(path: &Path) -> Result<()> {
     let (program, args): (&str, Vec<_>) = match PlatformTarget::current() {
-        PlatformTarget::Windows => ("explorer", vec![path.as_os_str()]),
         PlatformTarget::MacOs => ("open", vec![path.as_os_str()]),
         PlatformTarget::Unix => ("xdg-open", vec![path.as_os_str()]),
     };
@@ -137,10 +140,9 @@ impl ClientStore {
         self.default_path_for(PlatformTarget::current(), std::env::var_os)
     }
 
-    /// `%APPDATA%` on Windows and `~/Library/Application Support` on macOS are
-    /// the platform conventions; every other target, and any target whose
-    /// platform variable is unset, falls through to the XDG configuration root
-    /// and then to `~/.config`.
+    /// `~/Library/Application Support` is the macOS convention; every other
+    /// target, and a macOS host with no `HOME`, falls through to the XDG
+    /// configuration root and then to `~/.config`.
     fn default_path_for(
         self,
         target: PlatformTarget,
@@ -150,11 +152,6 @@ impl ClientStore {
             return PathBuf::from(path);
         }
         match target {
-            PlatformTarget::Windows => {
-                if let Some(app_data) = env("APPDATA") {
-                    return self.under(Path::new(&app_data));
-                }
-            }
             PlatformTarget::MacOs => {
                 if let Some(home) = env("HOME") {
                     return self
@@ -201,13 +198,6 @@ mod tests {
     fn uri_open_commands_match_vanilla_platform_processes() {
         let url = "https://example.com/path?q=hello%20world";
         assert_eq!(
-            UriOpenCommand::for_target(PlatformTarget::Windows, url),
-            UriOpenCommand {
-                program: "rundll32",
-                args: vec!["url.dll,FileProtocolHandler".to_string(), url.to_string()],
-            }
-        );
-        assert_eq!(
             UriOpenCommand::for_target(PlatformTarget::MacOs, url),
             UriOpenCommand {
                 program: "open",
@@ -239,14 +229,12 @@ mod tests {
     #[test]
     fn platform_targets_are_classified_from_the_target_name() {
         assert_eq!(
-            PlatformTarget::for_target_os("windows"),
-            PlatformTarget::Windows
-        );
-        assert_eq!(
             PlatformTarget::for_target_os("macos"),
             PlatformTarget::MacOs
         );
-        for target_os in ["linux", "freebsd", "android", ""] {
+        // "windows" has no arm of its own: the build refuses that target, so
+        // it must not acquire one here by accident.
+        for target_os in ["linux", "freebsd", "android", "windows", ""] {
             assert_eq!(
                 PlatformTarget::for_target_os(target_os),
                 PlatformTarget::Unix,
@@ -271,13 +259,6 @@ mod tests {
             Path::new("/home/player/Library/Application Support/bbb-native/hotbar.nbt")
         );
         assert_eq!(
-            HOTBAR_PRESET_STORE.default_path_for(
-                PlatformTarget::Windows,
-                environment(&[("APPDATA", "C:/Users/player/AppData/Roaming")]),
-            ),
-            Path::new("C:/Users/player/AppData/Roaming/bbb-native/hotbar.nbt")
-        );
-        assert_eq!(
             HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::Unix, &home),
             Path::new("/home/player/.config/bbb-native/hotbar.nbt")
         );
@@ -292,18 +273,13 @@ mod tests {
 
     #[test]
     fn client_store_overrides_outrank_every_platform_rule() {
-        for target in [
-            PlatformTarget::Windows,
-            PlatformTarget::MacOs,
-            PlatformTarget::Unix,
-        ] {
+        for target in [PlatformTarget::MacOs, PlatformTarget::Unix] {
             assert_eq!(
                 CODE_OF_CONDUCT_STORE.default_path_for(
                     target,
                     environment(&[
                         ("BBB_CODE_OF_CONDUCT_STORE", "/explicit/store.json"),
                         ("HOME", "/home/player"),
-                        ("APPDATA", "C:/Users/player/AppData/Roaming"),
                         ("XDG_CONFIG_HOME", "/xdg"),
                     ]),
                 ),
@@ -319,18 +295,10 @@ mod tests {
     fn platform_branches_fall_through_when_their_variable_is_unset() {
         let xdg_only = environment(&[("XDG_CONFIG_HOME", "/xdg")]);
         assert_eq!(
-            HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::Windows, &xdg_only),
-            Path::new("/xdg/bbb-native/hotbar.nbt")
-        );
-        assert_eq!(
             HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::MacOs, &xdg_only),
             Path::new("/xdg/bbb-native/hotbar.nbt")
         );
-        for target in [
-            PlatformTarget::Windows,
-            PlatformTarget::MacOs,
-            PlatformTarget::Unix,
-        ] {
+        for target in [PlatformTarget::MacOs, PlatformTarget::Unix] {
             assert_eq!(
                 HOTBAR_PRESET_STORE.default_path_for(target, environment(&[])),
                 Path::new("bbb-hotbar.nbt"),

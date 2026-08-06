@@ -1,3 +1,12 @@
+// bbb supports macOS and Linux. Windows is a declared non-goal, so its
+// platform dispatch, window-icon path and store roots do not exist; a build
+// for that target would silently be missing them. Refuse it here instead, so
+// the scope decision is enforced by the compiler rather than by documentation.
+#[cfg(target_os = "windows")]
+compile_error!(
+    "bbb supports macOS and Linux; Windows is a declared non-goal and has no platform dispatch"
+);
+
 use anyhow::{Context, Result};
 use bbb_control::{AudioCounters, ControlState, NetCounters, SharedControlRequests};
 use bbb_world::{ChatPresentationConfig, ChatVisibilityState, WorldStore};
@@ -1247,7 +1256,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         args.game_dir.join("options.txt"),
         ClientOptionHost {
             locale_is_japanese: false,
-            platform_is_windows: cfg!(windows),
+            platform_is_windows: crate::platform::HOST_IS_WINDOWS,
         },
     ) {
         Ok(options) => {

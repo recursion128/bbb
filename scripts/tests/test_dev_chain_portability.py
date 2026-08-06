@@ -150,6 +150,75 @@ class LinuxOnlyScriptTests(unittest.TestCase):
                 self.assertRegex(text, r"this host is")
 
 
+class SupportedPlatformTests(unittest.TestCase):
+    """bbb supports macOS and Linux. Windows is a declared non-goal.
+
+    The removal has to stay removed, and nothing here compiles a Windows
+    target, so a Windows arm that grew back would be invisible: no host would
+    build it and no test would reach it. These checks are that visibility.
+    """
+
+    CRATES = REPO_ROOT / "crates"
+    # The one legal mention: the guard that refuses the target outright.
+    BUILD_REFUSAL = 'compile_error!(\n    "bbb supports macOS and Linux'
+
+    def rust_sources(self):
+        for path in sorted(self.CRATES.rglob("*.rs")):
+            yield path, path.read_text(encoding="utf-8")
+
+    def test_the_build_refuses_a_windows_target(self) -> None:
+        main = (self.CRATES / "bbb-native" / "src" / "main.rs").read_text(encoding="utf-8")
+        self.assertIn('#[cfg(target_os = "windows")]', main)
+        self.assertIn(self.BUILD_REFUSAL, main)
+
+    def test_no_crate_carries_windows_conditional_code(self) -> None:
+        offenders = []
+        for path, text in self.rust_sources():
+            if self.BUILD_REFUSAL in text:
+                # main.rs's refusal is the guard itself.
+                text = text.replace('#[cfg(target_os = "windows")]', "", 1)
+            for marker in ('target_os = "windows"', "target_family = \"windows\""):
+                if marker in text:
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}: {marker}")
+            if "cfg!(windows)" in text or "#[cfg(windows)]" in text:
+                offenders.append(f"{path.relative_to(REPO_ROOT)}: cfg(windows)")
+        self.assertEqual(offenders, [])
+
+    def test_no_crate_reaches_a_windows_only_api(self) -> None:
+        windows_only = (
+            "WindowExtWindows",
+            "winit::platform::windows",
+            "rundll32",
+            "FileProtocolHandler",
+            'env("APPDATA")',
+            'var_os("APPDATA")',
+        )
+        offenders = []
+        for path, text in self.rust_sources():
+            for marker in windows_only:
+                if marker in text:
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}: {marker}")
+        self.assertEqual(offenders, [])
+
+    def test_the_windows_options_default_is_a_scope_constant(self) -> None:
+        """Vanilla's `syncChunkWrites` default reads `Util.getPlatform()`.
+
+        The catalog keeps that derivation, but with no Windows target the host
+        side is false by construction; it must come from the platform owner
+        rather than from a `cfg!` nobody can evaluate.
+        """
+        platform = (self.CRATES / "bbb-native" / "src" / "platform.rs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("pub(crate) const HOST_IS_WINDOWS: bool = false;", platform)
+        for name in ("main.rs", "startup.rs"):
+            source = (self.CRATES / "bbb-native" / "src" / name).read_text(encoding="utf-8")
+            with self.subTest(source=name):
+                self.assertIn(
+                    "platform_is_windows: crate::platform::HOST_IS_WINDOWS,", source
+                )
+
+
 class DevChainToolTests(unittest.TestCase):
     """The external tools the dev chain assumes, kept in step with the Wiki.
 

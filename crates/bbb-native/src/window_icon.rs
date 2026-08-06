@@ -32,10 +32,10 @@ impl NativeWindowBackend {
     /// `Window.getPlatform` (Window.java:144-158): the GLFW platform identity.
     /// winit has no GLFW "null" backend, so a display handle that is neither
     /// X11 nor Wayland maps to the unknown label; non-Linux targets are named
-    /// by `target_os`.
+    /// by `target_os`. bbb supports macOS and Linux, so Vanilla's `win32`
+    /// identity has no target that could report it.
     pub(crate) fn platform_identity(self, target_os: &str) -> &'static str {
         match target_os {
-            "windows" => "win32",
             "macos" => "cocoa",
             "linux" => match self {
                 Self::Wayland => "wayland",
@@ -60,14 +60,12 @@ enum WindowIconTarget {
     SkipWayland,
     SkipUnsupported,
     X11,
-    Windows,
     MacOs,
 }
 
 impl WindowIconTarget {
     fn for_platform(target_os: &str, backend: NativeWindowBackend) -> Self {
         match target_os {
-            "windows" => Self::Windows,
             "macos" => Self::MacOs,
             "linux" => match backend {
                 NativeWindowBackend::Wayland => Self::SkipWayland,
@@ -80,7 +78,7 @@ impl WindowIconTarget {
 
     const fn family(self) -> Option<WindowIconFamily> {
         match self {
-            Self::X11 | Self::Windows => Some(WindowIconFamily::Standard),
+            Self::X11 => Some(WindowIconFamily::Standard),
             Self::MacOs => Some(WindowIconFamily::MacOs),
             Self::SkipWayland | Self::SkipUnsupported => None,
         }
@@ -91,7 +89,6 @@ impl WindowIconTarget {
             Self::SkipWayland => "wayland-skip",
             Self::SkipUnsupported => "unsupported-skip",
             Self::X11 => "x11",
-            Self::Windows => "windows",
             Self::MacOs => "macos",
         }
     }
@@ -175,23 +172,6 @@ fn apply_catalog(
                 taskbar_size: None,
             })
         }
-        (WindowIconTarget::Windows, WindowIconCatalog::Standard(icons)) => {
-            let mut icons = prepare_standard_icons(icons)?;
-            let resource_count = icons.len();
-            let primary = icons
-                .remove(&32)
-                .context("prepared window icon family is missing 32px icon")?;
-            let taskbar = icons
-                .remove(&256)
-                .context("prepared window icon family is missing 256px icon")?;
-            window.set_window_icon(Some(primary));
-            apply_windows_taskbar_icon(window, taskbar);
-            Ok(AppliedWindowIcon {
-                resource_count,
-                primary_size: Some(32),
-                taskbar_size: Some(256),
-            })
-        }
         (WindowIconTarget::MacOs, WindowIconCatalog::MacOs(icon)) => {
             apply_macos_application_icon(icon.into_bytes())?;
             Ok(AppliedWindowIcon {
@@ -225,15 +205,6 @@ fn prepare_standard_icons(
     Ok(prepared)
 }
 
-#[cfg(target_os = "windows")]
-fn apply_windows_taskbar_icon(window: &Window, icon: Icon) {
-    use winit::platform::windows::WindowExtWindows;
-    window.set_taskbar_icon(Some(icon));
-}
-
-#[cfg(not(target_os = "windows"))]
-fn apply_windows_taskbar_icon(_window: &Window, _icon: Icon) {}
-
 /// The AppKit call itself lives in `bbb-platform-macos`, whose closure
 /// cross-compiles from Linux; keeping it here would leave it in the one part of
 /// the tree no gate on the dev host ever compiles.
@@ -266,12 +237,14 @@ mod tests {
             Some(WindowIconFamily::Standard)
         );
         assert_eq!(
-            WindowIconTarget::for_platform("windows", NativeWindowBackend::Other),
-            WindowIconTarget::Windows
-        );
-        assert_eq!(
             WindowIconTarget::for_platform("macos", NativeWindowBackend::Other).family(),
             Some(WindowIconFamily::MacOs)
+        );
+        // Windows is a declared non-goal and the build refuses that target, so
+        // it must not acquire an icon path by falling into a live arm.
+        assert_eq!(
+            WindowIconTarget::for_platform("windows", NativeWindowBackend::Other),
+            WindowIconTarget::SkipUnsupported
         );
     }
 
@@ -287,12 +260,12 @@ mod tests {
             "unknown"
         );
         assert_eq!(
-            NativeWindowBackend::Other.platform_identity("windows"),
-            "win32"
-        );
-        assert_eq!(
             NativeWindowBackend::Other.platform_identity("macos"),
             "cocoa"
+        );
+        assert_eq!(
+            NativeWindowBackend::Other.platform_identity("windows"),
+            "unknown"
         );
     }
 

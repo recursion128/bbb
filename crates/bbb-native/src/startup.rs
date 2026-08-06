@@ -635,7 +635,7 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
     let path = args.game_dir.join("options.txt");
     let host = ClientOptionHost {
         locale_is_japanese: false,
-        platform_is_windows: cfg!(windows),
+        platform_is_windows: crate::platform::HOST_IS_WINDOWS,
     };
     let options = match ClientOptions::load(&path, host) {
         Ok(options) => options,
