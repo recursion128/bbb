@@ -45,34 +45,6 @@ Matrix route: `coverage-external-client-census`
 
 <!-- architecture-candidates:start -->
 <!-- architecture-candidates:end -->
-## ClientLevel world and effect decision surfaces
-
-Owner: `bbb-world` + `bbb-native` + `bbb-renderer` + `bbb-audio`
-
-Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`
-
-Goal route: `goal.md#p2非实体客户端行为-closeout`
-
-The generated census maps all 121 `ClientLevel` constructor/method owners exactly
-once. All 18 routes are now `equivalent`: every owner closed its Vanilla decision
-order, canonical lifetime, runtime consumer and fallback with focused evidence,
-and each matrix row carries its own reopen criteria.
-
-
-## Local-player and multiplayer game-mode decisions
-
-Owner: `bbb-world` + `bbb-native` + `bbb-net` + `bbb-protocol`
-
-Matrix routes: `player-local-session-respawn`, `player-local-vitals-status`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-permission-chat-state`, `player-local-client-status-options`, `player-local-item-use-state`, `player-local-inventory-actions`, `player-local-world-edit-ui`, `player-local-environment-effects`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
-
-Goal route: `goal.md#p2非实体客户端行为-closeout`
-
-The generated inventory maps all 104 `LocalPlayer`, 39 `MultiPlayerGameMode` and six
-`Minecraft` interaction entry owners exactly once. All 22 routes in this census are
-now `equivalent` with per-owner implementation/test evidence; reopen conditions live
-on each matrix row.
-
-
 ## Render-step and HUD presentation closure
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
@@ -81,15 +53,8 @@ Matrix routes: `hud-frame-extract-order`, `hud-player-vitals`, `hud-hotbar-selec
 `hud-overlay-effects`, `hud-text-and-lists`, `rendering-frame-order`,
 `rendering-extract-surface`, `rendering-level-pass`, `rendering-effects-screenshot`
 
-The five `hud-*` routes are closed: `Gui`'s 72 owners split into seven direct
-support accessors plus 65 decision owners, each carrying a mechanically reachable
-implementation/test evidence cell, and every route is now `equivalent` with its own
-reopen condition on the matrix row. The four game-renderer routes are closed the
-same way: `Minecraft.renderFrame` plus the `GameRenderer` members split into
-`rendering-frame-order` (10), `rendering-extract-surface` (11),
-`rendering-level-pass` (14) and `rendering-effects-screenshot` (17) — 52 decision
-owners with evidence cells plus the `getMinecraft` direct support accessor — while
-the single frame-extract/submission path stays the structural invariant.
+Structural invariant: one frame-extract/submission path, and `Gui`'s direct
+support accessors stay accessors rather than becoming a second decision owner.
 
 - The auto world-icon screenshot pair
   (`tryTakeScreenshotIfNeeded`/`takeAutoScreenshot`) is `not-needed`: both gate on
@@ -107,24 +72,6 @@ the single frame-extract/submission path stays the structural invariant.
   `SharedConstants.DEBUG_ACTIVE_TEXT_AREAS`, a dev-build `debugFlag` that is
   false whenever `DEBUG_ENABLED` is off, so no production 26.1 client renders the
   glyph-area markers. Reopen if the flag ever ships enabled.
-
-## Native input, accessibility and window lifecycle closure
-
-Owner: `bbb-native` + `bbb-renderer` + `bbb-control`
-
-Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `ui-accessibility-surface`, `ui-clipboard-surface`, `platform-window-lifecycle`, `platform-window-display-mode`, `platform-window-surface-state`, `platform-window-chrome`
-
-The ten routes are closed: the 173 owners split into 27 direct support
-accessors plus 146 decision owners, each carrying a mechanically reachable
-implementation/test evidence cell, and every route is now `equivalent` with
-its own reopen condition on the matrix row. Debug (`key.debug.*`) bindings
-remain the only ones a rebind cannot move (startup warns by name; the F3
-combinations compare hard-coded `KeyCode`s the way `handleDebugKeys` bypasses
-the mapping array), backend-scope limits stay recorded at their owners
-(GLFW error callbacks, raw-mouse switch, fullscreen error channel, cursor
-warp/first-move suppression, macOS right-click quirk, dev-only debug flags),
-and the X11/interactive-seat and macOS/Windows runner limitations stay
-external and deferred below.
 
 ## Persistence, profile and secure-session closure
 
@@ -152,17 +99,11 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   if the offline-only scope decision itself is reversed; restoring the online
   surface means reimplementing encrypted login, session join, and the
   profile-key lifecycle from vanilla source.
-The `security-secure-chat-reporting` route stays closed: the 30 security owners
-(`Minecraft` chat abilities 9, `PlayerSocialManager` 12, `ReportingContext` 9)
-each carry a mechanically reachable implementation/test evidence cell and the
-matrix row is `equivalent`. The offline service boundary follows vanilla's
-`UserApiService.OFFLINE_PROPERTIES` semantics — empty flags and ban scopes, so
-profile-flag chat restrictions, the Services block list, and the abuse-report
-sender stay inert exactly like vanilla's auth-failure fallback; with online
-mode out of scope no activation path exists at all. The census fixed one
-divergence in place: matched-name system-chat suppression now resolves through
-the social discovered-names map (vanilla `guessChatUUID`), not the live tab
-list.
+The offline service boundary follows vanilla's `UserApiService.OFFLINE_PROPERTIES`
+semantics — empty flags and ban scopes, so profile-flag chat restrictions, the
+Services block list and the abuse-report sender stay inert exactly like
+vanilla's auth-failure fallback; with online mode out of scope no activation
+path exists at all.
 
 ## P4 lifecycle, soak, and supported-platform release gates
 
@@ -224,59 +165,6 @@ confirmation, a seat pointer button reaches the canonical swing, relative
 pointer motion turns the canonical view, and text placed on the seat's
 selection reaches the canonical chat draft through the paste chord.
 
-Live DPI transitions and fullscreen retired with them, and correcting one claim
-made along the way: the client has no `WindowEvent::ScaleFactorChanged` arm, but
-that is faithful rather than a gap. Vanilla registers no content-scale callback
-either — `Window` computes its GUI scale from the framebuffer size alone
-(`Window.calculateScale`/`setGuiScale`), so a density change reaches it as a
-framebuffer resize. winit follows every scale change with `Resized`, and the
-resize arm recomputes the logical GUI surface synchronously. What was missing
-was never a handler; it was a run that crossed a real transition. The gate now
-takes that run's receipts on both sides: the compositor really moved to the new
-scale and really granted fullscreen, and the client's surface followed each
-time and came back. The window is pinned to a fixed logical size first, because
-a tiled window's workspace shrinks by exactly the factor the buffer magnifies
-by, which would leave the physical surface unmoved and the transition
-unobservable.
-
-IME retired last, and it took a client fix rather than a runner one. fcitx5
-runs on the gate's compositor as a `zwp_input_method_v2` client and the seat
-types latin keys through its uinput device, but bbb used to call
-`window.set_ime_allowed(true)` once at startup and never revoke it, while
-vanilla turns the IME on only while a text field has focus —
-`TextInputManager.tick` disables it on every tick the window is focused outside
-text input, and `EditBox`/`MultiLineEditBox`/`AbstractSignEditScreen` drive
-`startTextInput`/`stopTextInput`. With an input method actually installed that
-difference is not cosmetic: the IME grabs every letter key, so `T` composed a
-preedit instead of opening chat and the client was unplayable. bbb now has the
-equivalent — one `text_input_is_active` owner reconciled every applied step
-through `PlatformEffect::SetTextInputEnabled`. The receipt is the thing a plain
-keyboard cannot produce: the seat types `nihao`, and the canonical chat draft
-comes back holding a character that was never typed. Reaching the chat screen
-at all is half of it, because an always-allowed IME would have swallowed the
-`T`.
-
-That run also found a real divergence, which is now fixed: the pause screen
-swallowed every key it did not recognise, including the fullscreen and
-screenshot keys, so F11 and F2 were dead for as long as it was open. Vanilla
-answers `keyFullscreen` and `keyScreenshot` in `KeyboardHandler.keyPress`
-before it hands the event to `screen.keyPressed`, so those two now run ahead of
-every screen dispatch here too.
-
-Three properties of that seat are load-bearing and were each found by a failing
-run. It must hold **one input device open for the whole run**: capabilities
-only exist while a device does, a client only binds `wl_keyboard`/`wl_pointer`
-— and so only ever receives focus — while they are advertised, and a tool that
-creates a device per keystroke is gone again before the client has bound
-anything. It must go through **`uinput` rather than the virtual-keyboard
-protocol**: that protocol carries keysyms on a caller-supplied keymap, so a
-client reading physical key codes (as this one and vanilla do) sees whichever
-scancode the tool picked. And the compositor's **key repeat must be off**: the
-gate holds keys deliberately, and under the usual 600ms/25Hz repeat one hold
-becomes twenty-odd presses, which leaves a toggle such as the pause screen back
-where it started. Focus also has to be re-established mid-run, because any
-client that maps later takes it and a client that loses focus in Play pauses
-itself.
 
 ## Native input, movement, interaction, inventory, and command flows
 
