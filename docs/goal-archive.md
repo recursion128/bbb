@@ -13,17 +13,13 @@
 
 ## 里程碑
 
-- **2026-07**：原生架构、P0/coverage、生成式 entity/render policy、session/packet、resource-pack、
-  registry revision、simulation publication 与 render-thread 生命周期建立；entity client tick/movement/
-  collision/pick/equipment/passenger/leash 与 157 类 entity、194 行 registry holder/tag 与
-  light/chunk/block/event/UI packet families、world effect/screen/HUD 与 item-component 110 项六维
-  coverage、block/item use prediction 与 container/recipe/creative UI、special item/equipment rendering、
-  camera/HUD/pause/player-list、profiler、post-processing、untrusted decode budgets、stable renderer
-  extraction、tutorial/debug、resource/platform workflow、packet 256 行与粒子矩阵、block animateTick、
-  survival physics、rich text、render state/layer、双向 shaping、可见性/occlusion、entity/block-entity
-  presentation、texture sampling、generated registry fallback、lifecycle/fault soak、Linux Wayland/Vulkan
-  release gate、Vanilla `hotbar.nbt` 互换、Trial Spawner display projection 与共享 camera Water/Lava
-  sampler/Lava fog 逐项闭环。
+- **2026-07**：原生架构与 P0/coverage 骨架建立（生成式 entity/render policy、session/packet、
+  resource-pack、registry revision、simulation publication、render-thread 生命周期），并逐项闭环
+  entity 全链路与 157 类 entity、194 行 registry、packet 256 行与粒子矩阵、item-component 110 项
+  六维 coverage、use prediction 与 container/recipe/creative UI、camera/HUD/pause/player-list、
+  render state/layer 与可见性/occlusion、presentation/texture sampling、survival physics、rich text
+  与双向 shaping、profiler/post-processing/untrusted decode budgets、lifecycle/fault soak 与
+  Linux Wayland/Vulkan release gate。
 - **2026-08-02**：官方 26.1 渲染机制/可见 workload/同载性能 P0、unihex/CJK 字体、中文 Vanilla 机制 Wiki
   与 parity/document lint 闭环；文档工作流 v10（当前事实入 Wiki、历史 Git-only、`docs/` allowlist）；
   indexed default pack（asset index 30 统一 lazy `vanilla` provider，zh_cn/OGG/CJK 验收）；external-client
@@ -76,24 +72,28 @@
 - **2026-08-06（平台 seat receipts 接入 + X11 归因自我纠正）**：用户裁决 X11 为非目标，
   `platform-linux-x11-seat-matrix` 改名 `platform-linux-seat-matrix`，X11 发布行转 `not-needed`
   ——但当日把「X11 下 look steering 不收敛」当作 X11 缺陷是**错误归因**：同一症状随后在 Wayland
-  真 seat 上复现，根因是发布真 seat 的显示服务器在窗口未激活时发 `Focused(false)` 压过控制面伪造
-  焦点，客户端遂按 `pauseIfInactive` 自开暂停菜单吞掉全部输入（29 条 move 命令入队、位移 0）。
-  该行现只由 scope 裁决支撑。原判词「无 maintained interactive runner」同样被证伪。
-  `physical-seat-input` 据此关闭：live playable gate 新增 seat 模式（`BBB_PLAYABLE_SEAT_INJECT`
-  → `scripts/seat_inject.py`），全程零合成 `input.*`（`_seat_input_only` 结构性禁止，
-  焦点授予收敛到唯一 `_ensure_focus`），不抢 4.4 秒暂停窗口而是让其暂停、再用 seat 的 Escape
-  开回世界并以 seat hotbar 键复核（vanilla 只在无 screen 时执行 hotbar keybind）；seat 场景
-  再取带服务端确认的 hotbar 键与指针按钮 swing。**注入必须长按**：`xdotool key` 的 12ms 按放会
-  整个落在地形上传风暴的 1.5~2.4 秒帧之间。remote-desktop seat 又是绝对定位设备（compositor 不
-  为其合成 relative-pointer），故当日晚改走 `uinput`→libinput→sway，relative motion 与 clipboard
-  随即在 live 收齐（200px→yaw 30.0°、剪贴板标记进入规范 chat draft）。三条硬前提各由一次失败跑
-  得出：① 设备须**常驻**（capability 只在设备存在期间广播，客户端也只在其间绑定并收到焦点）；
-  ② 必须走 `uinput` 而非 virtual-keyboard 协议（后者按调用方 keymap 传 keysym，读物理键码的客户端
-  只会收到随手挑的扫描码）；③ compositor 按键重复必须关（600ms/25Hz 把一次长按变成二十多次按下、
-  把暂停菜单切回原状）；焦点还会被后 map 的客户端夺走，handshake 与 seat 场景各自重新取回。`dpi-transition-fullscreen` 随后也关闭，并**再纠正一次自己的判词**：客户端没有
-  `ScaleFactorChanged` 分支不是缺口而是忠实——vanilla 同样没有 content-scale 回调，GUI scale 只由
-  framebuffer 尺寸算出，而 winit 每次 scale 变化后都跟一条 `Resized`；缺的从来是一次真实 transition。
-  新场景把窗口钉成固定逻辑尺寸（tiled 窗口的工作区按同倍缩小，物理表面纹丝不动、改动不可观测），
-  再改 output scale 并用 seat 的 F11 切全屏，两侧取证；limitation 只剩 `seat-ime`。
+  真 seat 上复现，根因是真 seat 在窗口未激活时发 `Focused(false)` 压过控制面伪造焦点，客户端遂按
+  `pauseIfInactive` 自开暂停菜单吞掉全部输入（29 条 move 入队、位移 0）；该行现只由 scope 裁决
+  支撑，原判词「无 maintained interactive runner」同样被证伪。`physical-seat-input` 据此关闭：
+  live gate 新增 seat 模式（`BBB_PLAYABLE_SEAT_INJECT`），全程零合成 `input.*`（`_seat_input_only`
+  结构性禁止、焦点授予收敛到唯一 `_ensure_focus`），不抢 4.4 秒暂停窗口而是让其暂停、再用 seat 的
+  Escape 开回并以 hotbar 键复核（vanilla 只在无 screen 时执行 hotbar keybind）。**注入必须长按**：
+  `xdotool key` 的 12ms 按放会整个落在地形上传风暴的 1.5~2.4 秒帧之间。remote-desktop seat 又是
+  绝对定位设备，故当日晚改走 `uinput`→libinput→sway，relative motion 与 clipboard 随即收齐。
+  三条硬前提各由一次失败跑得出：① 设备须**常驻**（capability 只在设备存在期间广播，客户端也只在
+  其间绑定并收到焦点）；② 必须走 `uinput` 而非 virtual-keyboard 协议（后者按调用方 keymap 传
+  keysym，读物理键码的客户端只会收到随手挑的扫描码）；③ compositor 按键重复必须关（600ms/25Hz
+  把一次长按变成二十多次按下）；焦点还会被后 map 的客户端夺走，须各自重新取回。
+  `dpi-transition-fullscreen` 与 `seat-ime` 随后也关闭，**该行 limitation 集合清空**，各带一次判词
+  转移：前者「客户端缺 `ScaleFactorChanged` 分支」是误判——vanilla 同样没有 content-scale 回调、
+  GUI scale 只由 framebuffer 尺寸算出，winit 每次 scale 变化后都跟一条 `Resized`，缺的是一次真实
+  transition；新场景须先把窗口钉成固定逻辑尺寸（tiled 窗口工作区按同倍缩小，物理表面纹丝不动、
+  改动不可观测），再改 output scale 并用 seat 的 F11 切全屏，两侧取证。后者装上 fcitx5
+  （`ActiveByDefault=True` 是关键，否则输入上下文默认英文直通、拼音不参与合成）后暴露真 bug：
+  bbb 启动 `set_ime_allowed(true)` 一次且永不撤销，而 vanilla `TextInputManager` 只在文本框获焦时
+  开 IME；装了输入法后 IME 抓走每个字母键，`T` 变成合成预编辑而非开聊天框，客户端实际不可玩。
+  修法是单一 owner `text_input_is_active` 经 `PlatformEffect::SetTextInputEnabled` 每步 reconcile；
+  receipt 取键盘产生不出来的东西：打 `nihao`、chat draft 回来 `啊`。另一个连带修掉的 parity bug
+  是暂停屏吞掉 F11/F2（vanilla 在 screen dispatch 之前就答复这两个键）。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
