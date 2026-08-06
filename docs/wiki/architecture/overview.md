@@ -8,7 +8,7 @@ BBB 是 Minecraft Java 26.1 的 repo-native 客户端，不是官方 jar、Bevy�
 
 ```mermaid
 flowchart LR
-  A[CLI / startup] --> B[offline identity / authentication]
+  A[CLI / startup] --> B[offline identity]
   B --> C[metadata / libraries / natives / assets]
   C --> D[resource packs / registries]
   D --> E[protocol lifecycle]

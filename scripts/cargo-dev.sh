@@ -401,9 +401,25 @@ run_gate_step() {
 }
 
 # Change-aware gate steps validate one part of the tree, so they only need to
-# run when the slice under gate touched it. A dirty tree is gated against HEAD;
-# a clean tree (batch-gate bisecting a commit) is gated against its parent.
+# run when the work under gate touched it. What the gate certifies is everything
+# since the last gated commit, so that is the base on a clean tree: gating a
+# batch tip against `HEAD^` would only see the last commit and silently skip a
+# step that an earlier commit in the same batch made necessary. A dirty tree is
+# gated against HEAD, and a clean tree with no usable stamp falls back to the
+# parent commit.
 # `$1` is the path pattern, `$2` the label used in the run/skip line.
+gate_change_base() {
+  git_dir=$(git rev-parse --absolute-git-dir)
+  stamp="$git_dir/bbb/last-gated"
+  [ -r "$stamp" ] || return 1
+  base=$(cat "$stamp")
+  [ -n "$base" ] || return 1
+  git rev-parse --verify --quiet "$base^{commit}" >/dev/null 2>&1 || return 1
+  git merge-base --is-ancestor "$base" HEAD || return 1
+  [ "$(git rev-parse "$base")" != "$(git rev-parse HEAD)" ] || return 1
+  printf '%s\n' "$base"
+}
+
 gate_change_status() {
   pattern="$1"
   label="$2"
@@ -421,6 +437,9 @@ gate_change_status() {
       git ls-files --others --exclude-standard
     )"
     scope="working tree vs HEAD"
+  elif change_base=$(gate_change_base); then
+    changed="$(git diff --name-only "$change_base" HEAD)"
+    scope="HEAD vs last-gated $(git rev-parse --short "$change_base")"
   else
     if ! git rev-parse --verify --quiet 'HEAD^' >/dev/null 2>&1; then
       echo "run: clean tree without a parent commit"

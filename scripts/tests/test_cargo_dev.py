@@ -266,6 +266,65 @@ class CargoDevGateScriptsTestsStatusTests(unittest.TestCase):
                 self.status(repo), "run: scripts/ changed (HEAD vs HEAD^)"
             )
 
+    def stamp_gated(self, repo: Path, commit: str) -> None:
+        stamp_dir = repo / ".git" / "bbb"
+        stamp_dir.mkdir(parents=True, exist_ok=True)
+        (stamp_dir / "last-gated").write_text(f"{commit}\n", encoding="utf-8")
+
+    def test_clean_tree_batch_sees_scripts_change_below_the_tip(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            gated = self.run_git(repo, "rev-parse", "HEAD")
+            self.stamp_gated(repo, gated)
+            (repo / "scripts" / "tool.py").write_text("# changed\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "scripts slice")
+            (repo / "src.txt").write_text("changed\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "non-scripts tip")
+            short = self.run_git(repo, "rev-parse", "--short", gated)
+            self.assertEqual(
+                self.status(repo), f"run: scripts/ changed (HEAD vs last-gated {short})"
+            )
+
+    def test_clean_tree_batch_without_scripts_change_skips(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            gated = self.run_git(repo, "rev-parse", "HEAD")
+            self.stamp_gated(repo, gated)
+            (repo / "src.txt").write_text("one\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "first")
+            (repo / "src.txt").write_text("two\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "second")
+            short = self.run_git(repo, "rev-parse", "--short", gated)
+            self.assertEqual(
+                self.status(repo),
+                f"skip: no scripts/ change (HEAD vs last-gated {short})",
+            )
+
+    def test_clean_tree_falls_back_when_the_stamp_is_not_an_ancestor(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.run_git(repo, "checkout", "-q", "-b", "other")
+            (repo / "scripts" / "tool.py").write_text("# other\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "other branch scripts slice")
+            unrelated = self.run_git(repo, "rev-parse", "HEAD")
+            self.run_git(repo, "checkout", "-q", "-")
+            self.stamp_gated(repo, unrelated)
+            (repo / "src.txt").write_text("changed\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "non-scripts slice")
+            self.assertEqual(
+                self.status(repo), "skip: no scripts/ change (HEAD vs HEAD^)"
+            )
+
+    def test_clean_tree_falls_back_when_the_stamp_is_head(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "scripts" / "tool.py").write_text("# changed\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "scripts slice")
+            self.stamp_gated(repo, self.run_git(repo, "rev-parse", "HEAD"))
+            self.assertEqual(
+                self.status(repo), "run: scripts/ changed (HEAD vs HEAD^)"
+            )
+
     def test_clean_tree_without_parent_commit_runs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))

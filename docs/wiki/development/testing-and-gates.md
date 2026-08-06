@@ -17,7 +17,10 @@ checks，包括 focused tests、docs lint、format、diff check 和完整 diff r
 `scripts/cargo-dev.sh gate` 在 `/tmp/bbb-target-main` 运行完整门禁，并把通过 commit 写入
 `.git/bbb/last-gated`；`batch-gate` 只用于失败定位。门禁七步中两步是 change-aware：
 scripts python 套件只在 `scripts/` 改动时跑，第二平台 `cross-check` 只在 crate 源码或
-manifest 改动时跑，`BBB_GATE_FULL=1` 强制两者。cross-check 用
+manifest 改动时跑，`BBB_GATE_FULL=1` 强制两者。**改动范围按门禁实际认证的范围取**：
+工作树脏时对 `HEAD`，干净时对 `last-gated`（不是 `HEAD^`）——批次 tip 若只对上一个
+commit 取 diff，批次里较早那个 commit 需要的步骤会被静默跳过。stamp 缺失或不是 `HEAD`
+祖先时才回落到 `HEAD^`。cross-check 用
 `cargo check --target aarch64-apple-darwin` 覆盖 Linux 主机编译不到的 macOS 分支，
 边界与 crate 分区见 [macOS 与 Linux 开发](macos-and-linux.md)。
 
