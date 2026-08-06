@@ -259,7 +259,7 @@
 # The local-time goldens test names its two tolerated ICU4J divergences, both
 # tracked as active ledger items. They affect one item property's text, not
 # packet state, canonical world state or renderer submission.
-^crates/bbb-item-model/src/item_runtime/local_time[.]rs$	Known residual gaps|residual gaps the goldens test tolerates|expected_residual
+^crates/bbb-item-model/src/item_runtime/local_time[.]rs$	residual gap|expected_residual
 
 # key_bindings.rs documents vanilla's createNameSupplier display-name
 # resolution: the bound key's language entry is vanilla's own non-printable
