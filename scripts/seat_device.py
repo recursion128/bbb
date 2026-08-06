@@ -42,9 +42,9 @@ import time
 KEY_CODES = {
     "escape": 1,
     "enter": 28,
-    "ctrl": 29,
-    "shift": 42,
-    "space": 57,
+    "ctrl": 29,  # chord modifier; the injector has no gate key of its own
+    "sneak": 42,  # left shift
+    "jump": 57,  # space
     "forward": 17,  # W
     "back": 31,  # S
     "left": 30,  # A

@@ -47,7 +47,8 @@ class SeatKeyTableTests(unittest.TestCase):
             ("chat", 20),
             ("paste", 47),
             ("ctrl", 29),
-            ("space", 57),
+            ("sneak", 42),
+            ("jump", 57),
         ):
             with self.subTest(key=name):
                 self.assertEqual(seat_device.KEY_CODES[name], code)

@@ -135,6 +135,17 @@ class SeatStaleDaemonTests(unittest.TestCase):
             driver._require_current_key_table()
 
 
+class SeatVocabularyTests(unittest.TestCase):
+    def test_every_gate_key_the_injector_knows_has_a_physical_code(self):
+        """The two tables are written separately -- one in keysyms for the
+        compositor drivers, one in evdev codes for the device -- so a name that
+        exists in only one is a key that fails the moment it is pressed."""
+
+        missing = sorted(set(seat_inject.KEYSYMS) - set(seat_inject.seat_device.KEY_CODES))
+
+        self.assertEqual(missing, [])
+
+
 class SeatDriverContractTests(unittest.TestCase):
     def test_the_default_driver_is_the_held_open_uinput_device(self):
         """The virtual-keyboard protocol carries keysyms on a caller-supplied
