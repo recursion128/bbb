@@ -191,14 +191,6 @@ passed the full gate.
 
 ## Implementation Guidance
 
-- Do not write comments. Say it in the code: name the thing precisely, keep the
-  function small enough to read, and let types carry the constraint. A comment
-  that restates what the next line does, narrates a decision, or explains code
-  that could simply be clearer is churn to maintain and drifts out of date.
-  The single carve-out `goal.md` already requires is the vanilla anchor — the
-  26.1 class, method or constant a behavior is transcribed from — which cannot
-  be recovered by reading the code. Keep those to the anchor itself, not to
-  prose about it.
 - Keep changes scoped to the selected slice.
 - Organize code by semantic modules per `docs/wiki/development/architecture-rules.md`; avoid
   growing catch-all `lib.rs`/`main.rs` sections.
