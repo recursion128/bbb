@@ -234,27 +234,11 @@ fn apply_windows_taskbar_icon(window: &Window, icon: Icon) {
 #[cfg(not(target_os = "windows"))]
 fn apply_windows_taskbar_icon(_window: &Window, _icon: Icon) {}
 
-#[cfg(target_os = "macos")]
+/// The AppKit call itself lives in `bbb-platform-macos`, whose closure
+/// cross-compiles from Linux; keeping it here would leave it in the one part of
+/// the tree no gate on the dev host ever compiles.
 fn apply_macos_application_icon(bytes: Vec<u8>) -> Result<()> {
-    use objc2::{AllocAnyThread, MainThreadMarker};
-    use objc2_app_kit::{NSApplication, NSImage};
-    use objc2_foundation::NSData;
-
-    let marker =
-        MainThreadMarker::new().context("window icon apply is not on the macOS main thread")?;
-    let data = NSData::with_bytes(&bytes);
-    let image = NSImage::initWithData(NSImage::alloc(), &data)
-        .context("AppKit rejected the Vanilla ICNS window icon")?;
-    let application = NSApplication::sharedApplication(marker);
-    // SAFETY: AppKit documents a non-null NSImage for this setter; `image` is retained for the
-    // duration of the call and AppKit retains the application icon as needed.
-    unsafe { application.setApplicationIconImage(Some(&image)) };
-    Ok(())
-}
-
-#[cfg(not(target_os = "macos"))]
-fn apply_macos_application_icon(_bytes: Vec<u8>) -> Result<()> {
-    bail!("macOS application icon apply is unavailable on this target")
+    bbb_platform_macos::set_application_icon(&bytes)
 }
 
 #[cfg(test)]

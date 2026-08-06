@@ -1,11 +1,16 @@
 use std::{
-    path::Path,
+    ffi::OsString,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
 use anyhow::{bail, Context, Result};
 use url::Url;
 
+/// The one place a build's operating system turns into behaviour. Classifying
+/// from a target name rather than `cfg!` keeps every branch compiled and under
+/// test on every host: the macOS and Windows arms below are reachable from the
+/// Linux dev host, which is the only host this repository gates on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlatformTarget {
     Windows,
@@ -14,13 +19,15 @@ enum PlatformTarget {
 }
 
 impl PlatformTarget {
-    const fn current() -> Self {
-        if cfg!(target_os = "windows") {
-            Self::Windows
-        } else if cfg!(target_os = "macos") {
-            Self::MacOs
-        } else {
-            Self::Unix
+    fn current() -> Self {
+        Self::for_target_os(std::env::consts::OS)
+    }
+
+    fn for_target_os(target_os: &str) -> Self {
+        match target_os {
+            "windows" => Self::Windows,
+            "macos" => Self::MacOs,
+            _ => Self::Unix,
         }
     }
 }
@@ -95,6 +102,83 @@ pub(crate) fn open_path(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// The directory bbb's own client stores sit in under the platform's
+/// per-user configuration root.
+const CLIENT_STORE_DIRECTORY: &str = "bbb-native";
+
+/// A bbb-owned client store file — one that has no Vanilla `--gameDir`
+/// counterpart and therefore needs a per-platform home of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ClientStore {
+    /// Environment variable that names the file outright, ahead of every
+    /// platform rule.
+    override_var: &'static str,
+    /// File name inside the per-platform configuration directory.
+    file_name: &'static str,
+    /// Relative path used when neither a configuration root nor a home
+    /// directory is known.
+    working_directory_fallback: &'static str,
+}
+
+pub(crate) const CODE_OF_CONDUCT_STORE: ClientStore = ClientStore {
+    override_var: "BBB_CODE_OF_CONDUCT_STORE",
+    file_name: "code-of-conduct.json",
+    working_directory_fallback: "bbb-code-of-conduct.json",
+};
+
+pub(crate) const HOTBAR_PRESET_STORE: ClientStore = ClientStore {
+    override_var: "BBB_HOTBAR_PRESET_STORE",
+    file_name: "hotbar.nbt",
+    working_directory_fallback: "bbb-hotbar.nbt",
+};
+
+impl ClientStore {
+    pub(crate) fn default_path(self) -> PathBuf {
+        self.default_path_for(PlatformTarget::current(), std::env::var_os)
+    }
+
+    /// `%APPDATA%` on Windows and `~/Library/Application Support` on macOS are
+    /// the platform conventions; every other target, and any target whose
+    /// platform variable is unset, falls through to the XDG configuration root
+    /// and then to `~/.config`.
+    fn default_path_for(
+        self,
+        target: PlatformTarget,
+        env: impl Fn(&'static str) -> Option<OsString>,
+    ) -> PathBuf {
+        if let Some(path) = env(self.override_var) {
+            return PathBuf::from(path);
+        }
+        match target {
+            PlatformTarget::Windows => {
+                if let Some(app_data) = env("APPDATA") {
+                    return self.under(Path::new(&app_data));
+                }
+            }
+            PlatformTarget::MacOs => {
+                if let Some(home) = env("HOME") {
+                    return self
+                        .under(&Path::new(&home).join("Library").join("Application Support"));
+                }
+            }
+            PlatformTarget::Unix => {}
+        }
+        if let Some(config_home) = env("XDG_CONFIG_HOME") {
+            return self.under(Path::new(&config_home));
+        }
+        if let Some(home) = env("HOME") {
+            return self.under(&Path::new(&home).join(".config"));
+        }
+        PathBuf::from(self.working_directory_fallback)
+    }
+
+    fn under(self, configuration_root: &Path) -> PathBuf {
+        configuration_root
+            .join(CLIENT_STORE_DIRECTORY)
+            .join(self.file_name)
+    }
+}
+
 fn validate_http_uri(value: &str) -> Result<()> {
     if value
         .chars()
@@ -137,6 +221,127 @@ mod tests {
                 args: vec![url.to_string()],
             }
         );
+    }
+
+    fn environment(pairs: &[(&'static str, &str)]) -> impl Fn(&'static str) -> Option<OsString> {
+        let pairs: Vec<(&'static str, OsString)> = pairs
+            .iter()
+            .map(|(name, value)| (*name, OsString::from(*value)))
+            .collect();
+        move |name| {
+            pairs
+                .iter()
+                .find(|(candidate, _)| *candidate == name)
+                .map(|(_, value)| value.clone())
+        }
+    }
+
+    #[test]
+    fn platform_targets_are_classified_from_the_target_name() {
+        assert_eq!(
+            PlatformTarget::for_target_os("windows"),
+            PlatformTarget::Windows
+        );
+        assert_eq!(
+            PlatformTarget::for_target_os("macos"),
+            PlatformTarget::MacOs
+        );
+        for target_os in ["linux", "freebsd", "android", ""] {
+            assert_eq!(
+                PlatformTarget::for_target_os(target_os),
+                PlatformTarget::Unix,
+                "{target_os}"
+            );
+        }
+        assert_eq!(
+            PlatformTarget::current(),
+            PlatformTarget::for_target_os(std::env::consts::OS)
+        );
+    }
+
+    #[test]
+    fn client_stores_follow_the_platform_configuration_convention() {
+        let home = environment(&[("HOME", "/home/player")]);
+        assert_eq!(
+            CODE_OF_CONDUCT_STORE.default_path_for(PlatformTarget::MacOs, &home),
+            Path::new("/home/player/Library/Application Support/bbb-native/code-of-conduct.json")
+        );
+        assert_eq!(
+            HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::MacOs, &home),
+            Path::new("/home/player/Library/Application Support/bbb-native/hotbar.nbt")
+        );
+        assert_eq!(
+            HOTBAR_PRESET_STORE.default_path_for(
+                PlatformTarget::Windows,
+                environment(&[("APPDATA", "C:/Users/player/AppData/Roaming")]),
+            ),
+            Path::new("C:/Users/player/AppData/Roaming/bbb-native/hotbar.nbt")
+        );
+        assert_eq!(
+            HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::Unix, &home),
+            Path::new("/home/player/.config/bbb-native/hotbar.nbt")
+        );
+        assert_eq!(
+            HOTBAR_PRESET_STORE.default_path_for(
+                PlatformTarget::Unix,
+                environment(&[("XDG_CONFIG_HOME", "/xdg"), ("HOME", "/home/player")]),
+            ),
+            Path::new("/xdg/bbb-native/hotbar.nbt")
+        );
+    }
+
+    #[test]
+    fn client_store_overrides_outrank_every_platform_rule() {
+        for target in [
+            PlatformTarget::Windows,
+            PlatformTarget::MacOs,
+            PlatformTarget::Unix,
+        ] {
+            assert_eq!(
+                CODE_OF_CONDUCT_STORE.default_path_for(
+                    target,
+                    environment(&[
+                        ("BBB_CODE_OF_CONDUCT_STORE", "/explicit/store.json"),
+                        ("HOME", "/home/player"),
+                        ("APPDATA", "C:/Users/player/AppData/Roaming"),
+                        ("XDG_CONFIG_HOME", "/xdg"),
+                    ]),
+                ),
+                Path::new("/explicit/store.json"),
+                "{target:?}"
+            );
+        }
+    }
+
+    /// A platform variable that is not set must not strand the store in the
+    /// working directory while a configuration root is still available.
+    #[test]
+    fn platform_branches_fall_through_when_their_variable_is_unset() {
+        let xdg_only = environment(&[("XDG_CONFIG_HOME", "/xdg")]);
+        assert_eq!(
+            HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::Windows, &xdg_only),
+            Path::new("/xdg/bbb-native/hotbar.nbt")
+        );
+        assert_eq!(
+            HOTBAR_PRESET_STORE.default_path_for(PlatformTarget::MacOs, &xdg_only),
+            Path::new("/xdg/bbb-native/hotbar.nbt")
+        );
+        for target in [
+            PlatformTarget::Windows,
+            PlatformTarget::MacOs,
+            PlatformTarget::Unix,
+        ] {
+            assert_eq!(
+                HOTBAR_PRESET_STORE.default_path_for(target, environment(&[])),
+                Path::new("bbb-hotbar.nbt"),
+                "{target:?}"
+            );
+            assert_eq!(
+                CODE_OF_CONDUCT_STORE.default_path_for(target, environment(&[])),
+                Path::new("bbb-code-of-conduct.json"),
+                "{target:?}"
+            );
+        }
     }
 
     #[test]

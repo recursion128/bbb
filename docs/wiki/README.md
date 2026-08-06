@@ -32,6 +32,7 @@
 - [架构规则](development/architecture-rules.md)
 - [测试与门禁](development/testing-and-gates.md)
 - [构建与缓存](development/build-and-cache.md)
+- [macOS 与 Linux 开发](development/macos-and-linux.md)
 - [文档工作流](development/documentation-workflow.md)
 - [受维护 Markdown inventory](development/document-inventory.md)
 - [决策索引](decisions/README.md)

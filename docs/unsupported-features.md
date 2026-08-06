@@ -168,7 +168,7 @@ list.
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
-Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
+Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform-windows-release`
 
 - An X11 release row is `not-needed`: the user declared X11 a non-goal on
   2026-08-06 in favour of the declared Wayland row. bbb keeps its winit X11
@@ -180,12 +180,31 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   that publishes a real seat sends `Focused(false)` until something activates
   the window, which overrides the control-plane focus stand-in. The row rests on
   the scope decision alone; reopen only if that decision is reversed.
-- macOS and Windows release validation is `deferred`: the repository has
-  platform-specific URI/config paths and historical macOS build measurements,
-  but no maintained host/runner with winit, wgpu, audio and input fixtures for
-  either release row. Reopen when such a runner is provisioned and can execute
-  the same declared platform matrix; do not infer support from cross-compilation
-  or unit-only `cfg` coverage.
+- A Windows release row is `not-needed`: the user declared Windows a non-goal
+  on 2026-08-06, alongside the decision to develop bbb on macOS and Linux. As
+  with the X11 row, bbb keeps the Vanilla-faithful Windows arms of its platform
+  dispatch — `Window.getPlatform`'s `win32` identity, the `%APPDATA%` store
+  root and the `rundll32 url.dll,FileProtocolHandler` URI opener are Vanilla
+  facts asserted by tests on every host, not unverifiable dead code — but no
+  Windows release row is declared, built or validated. One shim is the
+  exception and is named rather than claimed: `apply_windows_taskbar_icon`'s
+  `WindowExtWindows` call in `window_icon.rs` compiles only on Windows, so no
+  host here reads it. It stays because deleting it would silently drop a
+  Vanilla behaviour from a platform bbb still dispatches for; it must not be
+  cited as evidence of anything. Reopen only if that scope decision is
+  reversed.
+- macOS release validation is `deferred`: bbb is developed on macOS and Linux,
+  but no maintained macOS host/runner exists with the winit, wgpu, audio and
+  input fixtures the declared platform matrix needs. Reopen when such a host is
+  provisioned and can execute that matrix. What is attested without one is the
+  build, not the run, and the distinction is mechanical: `cargo check --target
+  aarch64-apple-darwin` (gate step `cross-check`, `scripts/cross_check.py`)
+  type-checks every workspace crate whose closure cross-compiles from Linux,
+  and `crates/bbb-platform-macos` exists so the AppKit calls are inside that
+  set rather than in the one crate no host here compiles. Three crates stop at
+  `ring` and one at `objc_exception`, both third-party build scripts that need
+  an Apple toolchain; that boundary is measured per run, not asserted. Do not
+  read a passing cross-check as release validation.
 
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,

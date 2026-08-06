@@ -16,8 +16,10 @@ Usage:
   scripts/cargo-dev.sh timings [cargo test args...]
   scripts/cargo-dev.sh timings-clean <target-suffix> [cargo test args...]
   scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]
+  scripts/cargo-dev.sh cross-check [--target <triple>]
   scripts/cargo-dev.sh gate
   scripts/cargo-dev.sh gate-scripts-tests-status
+  scripts/cargo-dev.sh gate-cross-check-status
   scripts/cargo-dev.sh batch-gate [<good-commit>..<bad-commit>]
   scripts/cargo-dev.sh size
   scripts/cargo-dev.sh prune [--force]
@@ -48,6 +50,8 @@ Examples:
   BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh focused -p bbb-world command_tree
   scripts/cargo-dev.sh timings-clean clean-baseline-20260619 --workspace --timings
   scripts/cargo-dev.sh clean-target clean-baseline-20260619
+  scripts/cargo-dev.sh cross-check
+  scripts/cargo-dev.sh cross-check --target x86_64-apple-darwin
   scripts/cargo-dev.sh prune
   scripts/cargo-dev.sh prune --force
   scripts/cargo-dev.sh gate
@@ -373,7 +377,7 @@ run_prune() {
   echo "prune: removed $delete_count directories"
 }
 
-gate_step_total=6
+gate_step_total=7
 gate_step_index=0
 gate_step_timings=""
 
@@ -396,10 +400,13 @@ run_gate_step() {
   fi
 }
 
-# The scripts python suite only validates scripts/; skip it when the slice
-# under gate did not touch scripts/. A dirty tree is gated against HEAD; a
-# clean tree (batch-gate bisecting a commit) is gated against its parent.
-gate_scripts_tests_status() {
+# Change-aware gate steps validate one part of the tree, so they only need to
+# run when the slice under gate touched it. A dirty tree is gated against HEAD;
+# a clean tree (batch-gate bisecting a commit) is gated against its parent.
+# `$1` is the path pattern, `$2` the label used in the run/skip line.
+gate_change_status() {
+  pattern="$1"
+  label="$2"
   if [ "${BBB_GATE_FULL:-0}" = "1" ]; then
     echo "run: BBB_GATE_FULL=1"
     return 0
@@ -422,11 +429,22 @@ gate_scripts_tests_status() {
     changed="$(git diff --name-only 'HEAD^' HEAD)"
     scope="HEAD vs HEAD^"
   fi
-  if printf '%s\n' "$changed" | grep -q '^scripts/'; then
-    echo "run: scripts/ changed ($scope)"
+  if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
+    echo "run: $label changed ($scope)"
   else
-    echo "skip: no scripts/ change ($scope)"
+    echo "skip: no $label change ($scope)"
   fi
+}
+
+# The scripts python suite only validates scripts/.
+gate_scripts_tests_status() {
+  gate_change_status '^scripts/' 'scripts/'
+}
+
+# The second-platform check only sees Rust sources and the manifests that
+# decide which crates it can reach.
+gate_cross_check_status() {
+  gate_change_status '^(crates/|Cargo\.toml$|Cargo\.lock$)' 'crate source'
 }
 
 run_gate() {
@@ -457,6 +475,19 @@ run_gate() {
     esac
     run_gate_step diff-check "git diff --check" git diff --check
     run_gate_step check "cargo check --workspace" cargo check --workspace
+    cross_check_status="$(gate_cross_check_status)"
+    case "$cross_check_status" in
+      run:*)
+        run_gate_step cross-check "second-platform cross-check" \
+          python3 scripts/cross_check.py
+        ;;
+      *)
+        gate_step_index=$((gate_step_index + 1))
+        echo "== [$gate_step_index/$gate_step_total] second-platform cross-check =="
+        echo "   skipped: ${cross_check_status#skip: } (BBB_GATE_FULL=1 forces)"
+        gate_step_timings="$gate_step_timings,cross-check:skip"
+        ;;
+    esac
     run_gate_step test "cargo test --workspace" cargo test --workspace
   fi
   gate_end=$(date +%s)
@@ -738,8 +769,14 @@ case "$cmd" in
   gate)
     run_gate
     ;;
+  cross-check)
+    exec python3 "$script_dir/cross_check.py" "$@"
+    ;;
   gate-scripts-tests-status)
     gate_scripts_tests_status
+    ;;
+  gate-cross-check-status)
+    gate_cross_check_status
     ;;
   batch-gate)
     run_batch_gate "$@"

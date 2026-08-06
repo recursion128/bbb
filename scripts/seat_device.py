@@ -318,9 +318,24 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def require_linux_host() -> None:
+    """Refuse attributably off Linux instead of failing on a missing device.
+
+    A macOS developer running the full dev chain will meet this script; the
+    kernel interface it drives exists nowhere else, so say that rather than
+    surfacing a `FileNotFoundError` on `/dev/uinput`.
+    """
+    if sys.platform != "linux":
+        raise SeatDeviceError(
+            f"the seat device needs Linux uinput; this host is {sys.platform}. "
+            "Seat-driven gates run on the declared Linux release host only"
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     try:
+        require_linux_host()
         if args.command == "serve":
             return serve(args.socket)
         request(args.socket, " ".join(args.words))

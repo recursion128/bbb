@@ -335,6 +335,7 @@ dependencies = [
  "bbb-item-model",
  "bbb-net",
  "bbb-pack",
+ "bbb-platform-macos",
  "bbb-protocol",
  "bbb-render-types",
  "bbb-renderer",
@@ -345,9 +346,6 @@ dependencies = [
  "glam 0.29.3",
  "image",
  "isocountry",
- "objc2 0.6.4",
- "objc2-app-kit",
- "objc2-foundation",
  "pollster",
  "reqwest",
  "serde",
@@ -397,6 +395,16 @@ dependencies = [
  "serde_json",
  "sha1",
  "zip",
+]
+
+[[package]]
+name = "bbb-platform-macos"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "objc2 0.6.4",
+ "objc2-app-kit",
+ "objc2-foundation",
 ]
 
 [[package]]

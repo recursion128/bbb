@@ -13,6 +13,7 @@
 | `crates/bbb-renderer` | GPU backend、terrain/entity/UI passes | presented frame/counters |
 | `crates/bbb-audio` | audio backend、voice 生命周期 | playback observations |
 | `crates/bbb-control` | 外部只读 snapshot 与有界控制请求 | control API |
+| `crates/bbb-platform-macos` | macOS 系统调用（Dock 图标）；闭包保持可 cross-check | AppKit 调用 |
 | `crates/bbb-native` | CLI、platform、simulation、跨边界 wiring | 可执行客户端 |
 
 依赖方向遵循[总体架构](../architecture/overview.md)：底层 crate 不反向读取 runtime 或

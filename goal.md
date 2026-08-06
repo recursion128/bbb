@@ -503,7 +503,9 @@ archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。per-client GPU execution
 duration 已由 amdgpu 提交链采集关闭（radeonsi/RADV 共用路径、compositor 按进程排除）；
-剩余非 Linux 发布行只按其 `Reopen when ...` deferred。
+Windows 发布行经用户裁决为非目标已转 `not-needed`，macOS 发布行只按其
+`Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
+步逐 crate 实测第二平台类型检查，但通过的 cross-check 是构建证据、不是发布验收。
 官方 26.1 离线启动、共同 replay/capture 合同、当前 host/tool hash 与 GPU-duration
 采集链由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。

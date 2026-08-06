@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    env, fs,
+    fs,
     io::ErrorKind,
     path::{Path, PathBuf},
 };
@@ -130,42 +130,7 @@ impl CodeOfConductAcceptStore {
 }
 
 pub(crate) fn default_code_of_conduct_store_path() -> PathBuf {
-    if let Some(path) = env::var_os("BBB_CODE_OF_CONDUCT_STORE") {
-        return PathBuf::from(path);
-    }
-
-    if cfg!(target_os = "windows") {
-        if let Some(app_data) = env::var_os("APPDATA") {
-            return PathBuf::from(app_data)
-                .join("bbb-native")
-                .join("code-of-conduct.json");
-        }
-    }
-
-    if cfg!(target_os = "macos") {
-        if let Some(home) = env::var_os("HOME") {
-            return PathBuf::from(home)
-                .join("Library")
-                .join("Application Support")
-                .join("bbb-native")
-                .join("code-of-conduct.json");
-        }
-    }
-
-    if let Some(config_home) = env::var_os("XDG_CONFIG_HOME") {
-        return PathBuf::from(config_home)
-            .join("bbb-native")
-            .join("code-of-conduct.json");
-    }
-
-    if let Some(home) = env::var_os("HOME") {
-        return PathBuf::from(home)
-            .join(".config")
-            .join("bbb-native")
-            .join("code-of-conduct.json");
-    }
-
-    PathBuf::from("bbb-code-of-conduct.json")
+    crate::platform::CODE_OF_CONDUCT_STORE.default_path()
 }
 
 fn server_key(options: &ConnectionOptions) -> String {
@@ -177,7 +142,7 @@ mod tests {
     use super::*;
     use bbb_world::code_of_conduct_text_hash;
     use std::{
-        process,
+        env, process,
         time::{SystemTime, UNIX_EPOCH},
     };
 

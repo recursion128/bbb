@@ -15,7 +15,11 @@
 `goal.md` 是 checkpoint/full-gate 唯一排程 owner。每次 commit 前执行其 per-commit
 checks，包括 focused tests、docs lint、format、diff check 和完整 diff review。
 `scripts/cargo-dev.sh gate` 在 `/tmp/bbb-target-main` 运行完整门禁，并把通过 commit 写入
-`.git/bbb/last-gated`；`batch-gate` 只用于失败定位。
+`.git/bbb/last-gated`；`batch-gate` 只用于失败定位。门禁七步中两步是 change-aware：
+scripts python 套件只在 `scripts/` 改动时跑，第二平台 `cross-check` 只在 crate 源码或
+manifest 改动时跑，`BBB_GATE_FULL=1` 强制两者。cross-check 用
+`cargo check --target aarch64-apple-darwin` 覆盖 Linux 主机编译不到的 macOS 分支，
+边界与 crate 分区见 [macOS 与 Linux 开发](macos-and-linux.md)。
 
 playable gate 需要真实 live session 时才运行并更新 `.git/bbb/last-playable-live`。
 纯 docs/workflow slice 不改变可玩行为，可验证旧 stamp 是最终 HEAD 祖先；如果修改产品
@@ -37,7 +41,8 @@ kick 必须同时具有目标 Vanilla 服的精确 receipt、control `connected=
 有界 cadence 重取新日志行，不能把跨 console/network 通道的一次旧读复用到整个预算。
 
 `scripts/platform-acceptance-gate.sh` 当前只声明
-`Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`。它要求 fully gated
+`Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`，在非 Linux 主机上
+指名主机后拒绝而不是在 compositor bring-up 里失败。它要求 fully gated
 clean HEAD、fresh locked release build、`--build-info`、headless/live/quit 证据、实际
 winit/wgpu backend 日志、输入语义 focused receipts，以及当前 lifecycle-soak 祖先
 stamp、以及 **seat receipts**；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。

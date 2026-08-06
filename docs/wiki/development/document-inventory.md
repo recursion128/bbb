@@ -31,6 +31,7 @@ destination” 表示内容的唯一长期归属，不表示另有一份副本�
 | `docs/wiki/development/architecture-rules.md` | 代码组织与语义 owner 规则 | 是 | 同路径 | 保留 canonical | AGENTS、Wiki | 开发规则 | 无 |
 | `docs/wiki/development/build-and-cache.md` | Cargo target/cache 与测量方法 | 是 | 同路径 | 保留 canonical | AGENTS、goal、cargo helper | 开发规则 | 无 |
 | `docs/wiki/development/document-inventory.md` | 全 Markdown 双向清单 | 是 | 同路径 | 保留 canonical | docs lint、Wiki | 文档流程 | 自描述行由 lint 覆盖 |
+| `docs/wiki/development/macos-and-linux.md` | 双平台开发链路与 cross-check 边界 | 是 | 同路径 | 保留 canonical | Wiki、cargo helper、portability 测试 | 开发规则 | 无 |
 | `docs/wiki/development/documentation-workflow.md` | 文档 taxonomy 与唯一权威规则 | 是 | 同路径 | 保留 canonical | Wiki、repository map | 文档流程 | 无 |
 | `docs/wiki/development/repository-map.md` | crate、工具、生成物和文档地图 | 是 | 同路径 | 保留 canonical | Wiki | 开发导航 | 无 |
 | `docs/wiki/development/testing-and-gates.md` | focused/full/playable/soak/platform 门禁 | 是 | 同路径 | 保留 canonical | AGENTS、Wiki | 开发规则 | 排程只指向 goal |

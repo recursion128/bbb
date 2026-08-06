@@ -1,0 +1,30 @@
+[package]
+name = "bbb-platform-macos"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+
+# Kept free of wgpu, rustls and audio so the whole crate cross-compiles from a
+# Linux dev host: `cargo check -p bbb-platform-macos --target aarch64-apple-darwin`
+# type-checks the AppKit calls below without an Apple toolchain, which is the
+# only way this repository sees them compile at all.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+    "std",
+    "NSApplication",
+    "NSImage",
+    "NSResponder",
+] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+    "std",
+    "NSData",
+] }

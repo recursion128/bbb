@@ -655,8 +655,26 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def require_linux_host() -> None:
+    """Refuse attributably off Linux instead of failing on a missing device.
+
+    A macOS developer running the full dev chain will meet this script; the
+    uinput device and the wlroots compositor it drives exist nowhere else.
+    """
+    if sys.platform != "linux":
+        raise InjectError(
+            f"seat injection needs a Linux uinput seat; this host is {sys.platform}. "
+            "Seat-driven gates run on the declared Linux release host only"
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    try:
+        require_linux_host()
+    except InjectError as error:
+        print(f"seat injection failed: {error}", file=sys.stderr)
+        return 1
     driver = DRIVERS[args.driver](args)
     try:
         if args.action == "probe":

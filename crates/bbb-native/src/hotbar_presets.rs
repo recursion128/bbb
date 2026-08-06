@@ -5,7 +5,7 @@
 //! decoded only when a row is requested, after a live registry context exists.
 
 use std::{
-    env, fs,
+    fs,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
     process,
@@ -367,49 +367,17 @@ fn legacy_json_path_for(path: &Path) -> Option<PathBuf> {
 }
 
 pub(crate) fn default_hotbar_preset_store_path() -> PathBuf {
-    if let Some(path) = env::var_os("BBB_HOTBAR_PRESET_STORE") {
-        return PathBuf::from(path);
-    }
-
-    if cfg!(target_os = "windows") {
-        if let Some(app_data) = env::var_os("APPDATA") {
-            return PathBuf::from(app_data)
-                .join("bbb-native")
-                .join("hotbar.nbt");
-        }
-    }
-
-    if cfg!(target_os = "macos") {
-        if let Some(home) = env::var_os("HOME") {
-            return PathBuf::from(home)
-                .join("Library")
-                .join("Application Support")
-                .join("bbb-native")
-                .join("hotbar.nbt");
-        }
-    }
-
-    if let Some(config_home) = env::var_os("XDG_CONFIG_HOME") {
-        return PathBuf::from(config_home)
-            .join("bbb-native")
-            .join("hotbar.nbt");
-    }
-
-    if let Some(home) = env::var_os("HOME") {
-        return PathBuf::from(home)
-            .join(".config")
-            .join("bbb-native")
-            .join("hotbar.nbt");
-    }
-
-    PathBuf::from("bbb-hotbar.nbt")
+    crate::platform::HOTBAR_PRESET_STORE.default_path()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::{
+        env,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     fn unique_store_path(name: &str, extension: &str) -> PathBuf {
         let nanos = SystemTime::now()

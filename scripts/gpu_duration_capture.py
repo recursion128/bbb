@@ -431,6 +431,16 @@ def main(argv=None) -> int:
     summarize_parser.add_argument("--all-rings", action="store_true")
 
     args = parser.parse_args(argv)
+    # `summarize` only reads a capture file, so it stays host-neutral; the two
+    # commands that touch tracefs and perf say where they run instead of
+    # failing on an absent kernel interface.
+    if args.command in {"preflight", "capture"} and sys.platform != "linux":
+        print(
+            f"gpu duration {args.command} needs Linux tracefs and perf; "
+            f"this host is {sys.platform}. Summarize an existing capture instead",
+            file=sys.stderr,
+        )
+        return 2
     if args.command == "preflight":
         report = preflight(args.trace_root)
     elif args.command == "capture":

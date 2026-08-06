@@ -42,6 +42,16 @@ run_python() {
   "$python_runner" python "$helper" "$@"
 }
 
+# The only declared release row is Linux x86_64 / Wayland / Vulkan, and the
+# gate drives it from a uinput seat. Say so on another host rather than failing
+# somewhere inside the compositor bring-up.
+host_os=$(uname -s)
+if [ "$host_os" != "Linux" ]; then
+  echo "platform acceptance failed: the declared release row is Linux x86_64 / Wayland / Vulkan; this host is $host_os" >&2
+  echo "macOS and Linux development share the full gate (scripts/cargo-dev.sh gate); the seat-driven release gates do not" >&2
+  exit 2
+fi
+
 if [ -n "$(git -C "$repo_root" status --porcelain)" ]; then
   echo "platform acceptance failed: worktree must be clean" >&2
   exit 2
