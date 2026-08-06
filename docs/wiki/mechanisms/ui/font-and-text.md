@@ -6,8 +6,9 @@
 
 该机制从资源包 font JSON 解析 `bitmap`、`space`、`reference`、`unihex` 和 filter，按
 Vanilla provider 优先级生成 glyph metrics/bitmap/atlas，供 HUD、screen、map 和 entity
-text 使用。Unicode bidi/shaping 已有独立文本处理；完整 ICU locale/timezone 日期格式
-仍是另一机制边界。
+text 使用。Unicode bidi/shaping 已有独立文本处理；ICU locale/timezone 日期格式属于
+另一机制 `ui-local-time-icu`，由 [parity matrix](../../parity/vanilla-26.1-matrix.md) 的该行
+拥有，不在本页边界内。
 
 ## Vanilla 26.1 权威实现
 
@@ -78,7 +79,7 @@ roundtrip 与 System 的 blocked-message/allowed-command machine status。
 | unihex parse/override/metrics | `UnihexProvider` | `font/unihex.rs` | `equivalent` | ZIP/HEX/bounds/metrics tests |
 | atlas UV/style | `GlyphBitmap`, `FontSet` | atlas + `hud_glyphs` | `equivalent` | UV/top/bold/shadow tests |
 | bidi/shaping | language/text pipeline | native text pipeline | `equivalent` | native text-layout focused tests |
-| ICU locale/timezone parity | ICU-backed date/time | local time formatter | `deferred-external` | [ledger](../../../unsupported-features.md) |
+| ICU locale/timezone parity | ICU-backed date/time | local time formatter（属 `ui-local-time-icu`） | `equivalent` | [matrix 行](../../parity/vanilla-26.1-matrix.md) |
 
 ## 结构性不变量
 
@@ -98,12 +99,12 @@ layout 与 GPU sampling。
 
 ## 当前差异
 
-当前 consumed 26.1 font assets 已覆盖；完整 `local_time` ICU/locale/timezone parity 仍由
-外部运行时/locale 条件阻塞，不能从“中文能显示”推断已完成。
+当前 consumed 26.1 font assets 已覆盖，本机制无未关闭差异。
 
 ## 账本/goal 路由
 
-ICU 条目只在 [`unsupported-features.md`](../../../unsupported-features.md) 中维护。
+本页当前无账本条目。`local_time` 的 ICU/locale/timezone parity 由 `ui-local-time-icu`
+matrix 行拥有，其重开条件写在该行，不在本页。
 
 ## 精确重开条件
 

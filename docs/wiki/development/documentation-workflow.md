@@ -49,9 +49,12 @@ evidence。`scripts/generate-client-mechanism-inventory.py --check` 对完整输
 inventory→matrix 映射和 ledger↔matrix 双向 route。矩阵的 `equivalent` 行必须通过该
 inventory 或本地链接/路径指向可执行、可定位证据，不能只写“已有测试”。
 
-该 inventory 与 packet、registry-holder、item-component、entity 四份 coverage JSON 共同组成
-`docs/evidence/vanilla-26.1/` 的封闭版本集合。docs lint 拒绝缺失/额外成员、`docs/` 根级 JSON
-及旧路径引用；generator、Rust consumer、gate 与 Wiki 只能读取这一目录，不保留兼容副本。
+该 inventory 与 packet、registry-holder、item-component、entity、particle-provider 五份
+coverage ledger，以及 client-options、key-mapping 两份 catalog，共同组成
+`docs/evidence/vanilla-26.1/` 的封闭版本集合（八个成员）。五份 coverage ledger 的开放行
+数由 `scripts/coverage-status.py` 汇总，catalog 与 inventory 不带状态。docs lint 拒绝缺失/
+额外成员、`docs/` 根级 JSON 及旧路径引用；generator、Rust consumer、gate 与 Wiki 只能读取
+这一目录，不保留兼容副本。
 
 本地 Vanilla tree 存在时，门禁重跑 extractor 并校验全部 source hashes；不存在时明确
 打印 exact-output/source-hash 降级，但仍检查版本化 JSON 的 schema、generator-input hash、

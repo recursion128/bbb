@@ -94,8 +94,8 @@ native focused tests 分别验证 codec、apply 和 publication。共同 replay 
 
 ## 当前差异
 
-主要客户端领域已进入 parity matrix；未逐机制验证项保持 `unverified` 并链接 ledger，
-不由本页推断已完成。
+全部 clientbound packet 已关闭，本机制无未关闭差异。新增 packet 若尚未逐机制取证，
+矩阵行应先记为 `unverified` 并链接 ledger，不由本页推断已完成。
 
 ## 账本/goal 路由
 

@@ -39,61 +39,39 @@
   121 owner 拆 18 route；全部 18 route（entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing/diagnostics-report/map-data/level-events/block-entity-tracking 等）95 owner 经唯一 store/resolver/gate/装配/分派链收口，census 域关闭。
 
 - **2026-08-04（block-entity registration + client persistence closures）**：`BlockEntityRenderers`
-  27 条注册收敛为 23 个投影 owner 逐条挂 evidence（补 item display 四项、beacon/end-gateway 共用光柱、
-  structure/test 包围盒、copper_golem_statue；piston 回 `block_entity_visibility` 唯一政策点）；
-  `Options` 145 + `ServerList` 13 共 158 owner 拆完挂 evidence：新增生成式 `client_options`、CLI 降级为
-  文件 override、F3+H/F3+P 触发 `Options.save` 并补发 `ClientInformation`、server_list 按地址复用 +
-  quick-play hidden/16 上限；五行翻 `equivalent`，无消费面归 `missing`/scope 行。
+  27 条注册收敛为 23 个投影 owner；`Options` 145 + `ServerList` 13 共 158 owner 拆完挂 evidence
+  （生成式 `client_options`、CLI 降级为文件 override、F3+H/F3+P 触发 `Options.save`），五行翻
+  `equivalent`。
 
 - **2026-08-05（census closures + 用户裁决三批）**：`Gui` 72 owner 五条 `hud-*`、
   `native-input-window-surface` 173 owner 十行、`Minecraft.renderFrame`+`GameRenderer` 53 owner
-  四条、`security-secure-chat-reporting` 30 owner，全部逐 owner 挂 evidence 翻 `equivalent`
-  （camera player 唯一裁决点、debug-crash abort、totem 40-tick、离线服务边界=vanilla
-  `OFFLINE_PROPERTIES`、system-chat 抑制改走 `guessChatUUID` map）。同日用户重开的四个 deferred
-  全部落地：texture filtering 面、toast/F3 overlay 提到全屏 screen 之上、`SmoothDouble` 平滑镜头、
-  IME preedit 焦点移交（`clear_pressed` 不再越权清 composition）。用户裁决 online 模式为非目标，
-  整体移除加密登录/签名会话/Services 凭据面（服务端发起握手改为可归因失败，入站签名验证与
-  last-seen ack 不变），packet coverage 五条改 not-applicable、账本 deferred 6→5。用户裁决不卡
-  Rust 1.80，工具链升 stable 1.97.1 解锁 ICU4X 2.2，`ui-local-time-icu` 关为 `equivalent`：
-  ICU4X 承接 CLDR 文本/zone 名/每 locale 历法数字系统、native 承接数字字段与 ICU4J 周算法、
-  generated 表承接 quarter/GMT-zero/unknown-city/root 地区码，8656 行 ICU4J 77.1 goldens 全绿
-  （同 kind 多宽度须各持独立 names 实例）。账本 active 清零，P3/P4 转维护态，deferred 5→4。
+  四条、`security-secure-chat-reporting` 30 owner 全部翻 `equivalent`；同日用户重开的四个 deferred
+  （texture filtering、toast/F3 overlay、`SmoothDouble` 镜头、IME preedit 移交）全部落地。用户裁决
+  online 模式为非目标，加密登录/签名会话/Services 凭据面整体移除（入站签名验证与 last-seen ack
+  不变）。工具链升 stable 1.97.1 解锁 ICU4X 2.2，`ui-local-time-icu` 关为 `equivalent`（ICU4X 文本／
+  native 数字与周算法／generated 表三方分工，8656 行 ICU4J 77.1 goldens）。账本 active 首次清零。
 
 - **2026-08-06（per-client GPU execution duration）**：`performance-gpu-execution-duration` 关为
-  `equivalent`。原判词「内核缺 `fence:fence_signaled`」实为上游改名 `dma_fence:`，同一事件；
-  harness 写死旧名即误诊源头。`scripts/gpu_duration_capture.py` 关联 `cs_ioctl`（客户端进程
-  上下文，pid 即归属）→`sched_run_job`→`dma_fence_signaled(drm_sched)`，按 `(context, seqno)`
-  join，并区分 drm_sched 每 entity 的 scheduled/finished 双 context（join 错会把派发延迟当执行
-  时长）。radeonsi 与 RADV 共用该内核路径，一次采集覆盖两 API：关联率 Vulkan 124/124、OpenGL
-  2778/2778 均 1.0，Weston/Xwayland/官方客户端按 pid 干净分离，overhead +0.23%。采集以非特权
-  `perf` 运行（runner 只需 tracefs 组读 + `perf_event_paranoid=-1`），preflight 改为直接探测
-  能力而非按权限位推断。
+  `equivalent`。原判词「内核缺 `fence:fence_signaled`」实为上游改名 `dma_fence:`。
+  `scripts/gpu_duration_capture.py` 按 `(context, seqno)` 关联 `cs_ioctl`→`sched_run_job`→
+  `dma_fence_signaled`，区分 drm_sched 每 entity 的 scheduled/finished 双 context；radeonsi 与 RADV
+  共用该路径，关联率 1.0，overhead +0.23%，以非特权 `perf` 采集。
 
-- **2026-08-06（平台 seat receipts 接入 + X11 归因自我纠正）**：用户裁决 X11 为非目标，
-  `platform-linux-x11-seat-matrix` 改名 `platform-linux-seat-matrix`，X11 发布行转 `not-needed`
-  ——但当日把「X11 下 look steering 不收敛」当作 X11 缺陷是**错误归因**：同一症状随后在 Wayland
-  真 seat 上复现，根因是真 seat 在窗口未激活时发 `Focused(false)` 压过控制面伪造焦点，客户端遂按
-  `pauseIfInactive` 自开暂停菜单吞掉全部输入（29 条 move 入队、位移 0）；该行现只由 scope 裁决
-  支撑，原判词「无 maintained interactive runner」同样被证伪。`physical-seat-input` 据此关闭：
-  live gate 新增 seat 模式（`BBB_PLAYABLE_SEAT_INJECT`），全程零合成 `input.*`（`_seat_input_only`
-  结构性禁止、焦点授予收敛到唯一 `_ensure_focus`），不抢 4.4 秒暂停窗口而是让其暂停、再用 seat 的
-  Escape 开回并以 hotbar 键复核（vanilla 只在无 screen 时执行 hotbar keybind）。**注入必须长按**：
-  `xdotool key` 的 12ms 按放会整个落在地形上传风暴的 1.5~2.4 秒帧之间。remote-desktop seat 又是
-  绝对定位设备，故当日晚改走 `uinput`→libinput→sway，relative motion 与 clipboard 随即收齐。
-  三条硬前提各由一次失败跑得出：① 设备须**常驻**（capability 只在设备存在期间广播，客户端也只在
-  其间绑定并收到焦点）；② 必须走 `uinput` 而非 virtual-keyboard 协议（后者按调用方 keymap 传
-  keysym，读物理键码的客户端只会收到随手挑的扫描码）；③ compositor 按键重复必须关（600ms/25Hz
-  把一次长按变成二十多次按下）；焦点还会被后 map 的客户端夺走，须各自重新取回。
-  `dpi-transition-fullscreen` 与 `seat-ime` 随后也关闭，**该行 limitation 集合清空**，各带一次判词
-  转移：前者「客户端缺 `ScaleFactorChanged` 分支」是误判——vanilla 同样没有 content-scale 回调、
-  GUI scale 只由 framebuffer 尺寸算出，winit 每次 scale 变化后都跟一条 `Resized`，缺的是一次真实
-  transition；新场景须先把窗口钉成固定逻辑尺寸（tiled 窗口工作区按同倍缩小，物理表面纹丝不动、
-  改动不可观测），再改 output scale 并用 seat 的 F11 切全屏，两侧取证。后者装上 fcitx5
-  （`ActiveByDefault=True` 是关键，否则输入上下文默认英文直通、拼音不参与合成）后暴露真 bug：
-  bbb 启动 `set_ime_allowed(true)` 一次且永不撤销，而 vanilla `TextInputManager` 只在文本框获焦时
-  开 IME；装了输入法后 IME 抓走每个字母键，`T` 变成合成预编辑而非开聊天框，客户端实际不可玩。
-  修法是单一 owner `text_input_is_active` 经 `PlatformEffect::SetTextInputEnabled` 每步 reconcile；
-  receipt 取键盘产生不出来的东西：打 `nihao`、chat draft 回来 `啊`。另一个连带修掉的 parity bug
-  是暂停屏吞掉 F11/F2（vanilla 在 screen dispatch 之前就答复这两个键）。
+- **2026-08-06（平台 seat receipts 接入 + X11 归因自我纠正）**：用户裁决 X11 为非目标，X11 发布行
+  转 `not-needed`；当日把「X11 下 look steering 不收敛」判为 X11 缺陷是**错误归因**，同一症状在
+  Wayland 真 seat 上复现，根因是真 seat 的 `Focused(false)` 压过控制面伪造焦点、客户端按
+  `pauseIfInactive` 自开暂停菜单。`physical-seat-input`、`dpi-transition-fullscreen`、`seat-ime`
+  依次关闭，**该行 limitation 集合清空**：live gate 增 seat 模式（`BBB_PLAYABLE_SEAT_INJECT`，
+  全程零合成 `input.*`），配方为常驻 `uinput` 设备→libinput→sway(+fcitx5)。连带修掉两个真实
+  parity bug——暂停屏吞 F11/F2、IME 全程开着抓走每个字母键（vanilla `TextInputManager` 只在文本框
+  获焦时开）。环境陷阱与三条硬前提见 memory `seat-driven-gate`。
+
+- **2026-08-06（最后一批派生化与 declared scope 完成态）**：粒子 provider 覆盖表由
+  `scripts/particle_provider_catalog_extractor.py` 从 vanilla 源码逐行推导，成为第五份 generated
+  coverage ledger，最后一张手工维护的覆盖表退役（手写版有 12 格与自身注记矛盾）。`local_time.rs`
+  两处「已记账」假声明查实并当场关闭：Hijri 四种历法改由 ICU4X 直接格式化，flexible day period
+  `B` 改由 ICU4J 转储的 1014 行分段表驱动，goldens 自此零 tolerance。lifecycle soak 由三轮扩到
+  五轮并把 RSS spread 限额抬到实测噪声带以上。账本 active=0、五份 ledger 无 open row、路线全部
+  `closed`/`maintenance`，进入声明范围的目标维护态。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

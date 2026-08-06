@@ -236,7 +236,7 @@ Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=
 统一 provider、font、language、sound 与 root window-icon consumer 当前闭合。icon 的
 唯一 CPU owner 是 `bbb-pack::WindowIconCatalog`：standard family 在提交前完整解析五张 PNG，
 macOS family 有界读取并校验 ICNS；`bbb-native::window_icon` 只做 backend 选择和一次 startup
-apply。Wayland/未知 backend 零读取跳过，X11/Windows 使用窄 RGBA projection，macOS 使用
+apply。Wayland/未知 backend 零读取跳过，X11 使用窄 RGBA projection，macOS 使用
 原始 ICNS；任一 prepare/apply 失败继续使用平台默认图标，不保留 shadow state，也不参与
 runtime resource reload。其余未消费家族没有当前产品 surface，依据和重开条件由上表及
 唯一 ledger 保留。

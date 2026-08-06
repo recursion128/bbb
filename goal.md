@@ -523,9 +523,9 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
   胜负结论；
 - `scripts/lifecycle-soak-gate.sh` 依 Wiki 测试门禁页、场景 manifest 与 checkout-local
   report 组合
-  三轮真实 live playable、
+  五轮真实 live playable、
   quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程
-  指标趋势与 clean exit；`last-lifecycle-soak`/checkout-local report 是 maintenance
+  指标趋势与 clean exit（趋势判据要 post-warmup 采样够多才有意义，见测试门禁页）；`last-lifecycle-soak`/checkout-local report 是 maintenance
   证据，fixture 重放不能替代该 gate。
 - `scripts/platform-acceptance-gate.sh` 依 Wiki 测试门禁页声明并验收
   Linux x86_64 / Wayland /
