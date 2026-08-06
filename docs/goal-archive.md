@@ -71,7 +71,11 @@
   coverage ledger，最后一张手工维护的覆盖表退役（手写版有 12 格与自身注记矛盾）。`local_time.rs`
   两处「已记账」假声明查实并当场关闭：Hijri 四种历法改由 ICU4X 直接格式化，flexible day period
   `B` 改由 ICU4J 转储的 1014 行分段表驱动，goldens 自此零 tolerance。lifecycle soak 由三轮扩到
-  五轮并把 RSS spread 限额抬到实测噪声带以上。账本 active=0、五份 ledger 无 open row、路线全部
-  `closed`/`maintenance`，进入声明范围的目标维护态。
+  五轮并把 RSS spread 限额抬到实测噪声带以上（三轮只留 2 个 post-warmup 采样，判据退化成掷
+  硬币）。**工作流 v7**：clean tree 下 change-aware 两步改按 `last-gated` 而非 `HEAD^` 取范围
+  ——批次 tip 只看最后一个 commit 会静默跳过较早 commit 需要的步骤，实际发生过一次。全仓文档
+  过一遍删掉过时声明（evidence 成员计数、已关闭却仍写 `deferred-external` 的 ICU 行、矩阵摘要
+  计数、已删除的 Windows projection），archive 自身的散文压回路由行。账本 active=0、五份 ledger
+  无 open row、路线全部 `closed`/`maintenance`，四个 stamp 齐平 HEAD，进入声明范围的目标维护态。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
