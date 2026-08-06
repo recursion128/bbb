@@ -49,6 +49,7 @@ EXPECTED_LIMITATIONS = {
     "seat-motion-clipboard-ime",
     "dpi-transition-fullscreen",
 }
+ANSI_SGR_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class PlatformFailure(RuntimeError):
@@ -203,7 +204,12 @@ def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
         raise PlatformFailure("release client did not exit zero and disappear")
 
     client_log_path = artifact_dir / "client.log"
-    client_log = client_log_path.read_text(encoding="utf-8", errors="replace")
+    # tracing-subscriber interleaves SGR colour sequences with the key=value
+    # pairs, splitting `window_backend=wayland` into fragments no plain regex
+    # can match, so the backend proofs below read a stripped copy.
+    client_log = ANSI_SGR_RE.sub(
+        "", client_log_path.read_text(encoding="utf-8", errors="replace")
+    )
     if not re.search(
         r"native platform window created.*window_backend=wayland", client_log
     ):

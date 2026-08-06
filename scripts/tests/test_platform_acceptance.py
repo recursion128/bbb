@@ -130,6 +130,26 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             ):
                 platform_acceptance.validate_playable_artifacts(root)
 
+    def test_backend_proofs_survive_an_ansi_coloured_client_log(self):
+        """The client colours its logs, and tracing-subscriber puts the SGR
+        sequences *inside* the key=value pairs, so a literal match would read a
+        real Wayland/Vulkan run as proving neither."""
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_playable(
+                root,
+                "\x1b[2m2026-08-06T05:56:22Z\x1b[0m \x1b[32m INFO\x1b[0m "
+                "\x1b[2mbbb_native\x1b[0m\x1b[2m:\x1b[0m native platform window "
+                "created \x1b[3mwindow_backend\x1b[0m\x1b[2m=\x1b[0mwayland "
+                "\x1b[3mscale_factor\x1b[0m\x1b[2m=\x1b[0m1.0\n"
+                "\x1b[2m2026-08-06T05:56:22Z\x1b[0m renderer platform adapter "
+                "selected \x1b[3madapter_backend\x1b[0m\x1b[2m=\x1b[0mvulkan\n",
+            )
+            evidence = platform_acceptance.validate_playable_artifacts(root)
+
+            self.assertEqual(evidence["scale_factor"], 1.0)
+
     def test_release_row_requires_seat_receipts(self):
         """The row claims seat input, so a control-only run must not pass."""
 
