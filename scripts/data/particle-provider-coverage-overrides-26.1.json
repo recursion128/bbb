@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "catalog_sha256": "65992b68049201a4fd6f30e5267b12f421a4875e94e277974c8838bbcaa180b5",
+  "baseline_policy": "Provider identity, the constructed particle, and all five behavioural facts are derived from the Vanilla 26.1 particle package; no cell status is written by hand unless Vanilla exhibits a behaviour the renderer's descriptor table binds no provider for. `not-applicable` carries the derivation that decided it. The renderer's per-descriptor `has_physics` flags are cross-checked against the derived `hasPhysics` and a disagreement fails generation.",
+  "column_evidence": {
+    "renderer binding": "particle_render_binding",
+    "collision": "particle_collision",
+    "player-coupled": "particle_player_coupling",
+    "sounds": "particle_sounds",
+    "conditional-removal": "particle_conditional_removal"
+  },
+  "row_overrides": {
+    "FireworkParticles.Starter": {
+      "player-coupled": {
+        "status": "complete",
+        "evidence_ref": "particle_firework_starter"
+      },
+      "sounds": {
+        "status": "complete",
+        "evidence_ref": "particle_firework_starter"
+      }
+    }
+  },
+  "uncertainties": [],
+  "evidence_sets": {
+    "particle_render_binding": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/descriptors.rs#for_particle"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/descriptors/tests.rs#particle_descriptors_cover_vanilla_26_1_particle_resources",
+        "crates/bbb-renderer/src/particles/descriptors/tests.rs#particle_descriptor_maps_core_vanilla_providers_and_physics_flags"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/NoRenderParticle.java#NO_RENDER"
+      ]
+    },
+    "particle_collision": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#tick_motion",
+        "crates/bbb-renderer/src/particles/descriptors.rs#collision_size"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_default_tick_applies_collision_ground_friction",
+        "crates/bbb-renderer/src/particles/descriptors/tests.rs#collision_size_matches_vanilla_provider_set_size"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/Particle.java#public void move"
+      ]
+    },
+    "particle_player_coupling": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#is_close_to_scoping_player",
+        "crates/bbb-renderer/src/particles/instance.rs#nearest_player_motion_context"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_spell_alpha_tracks_scoping_player_context",
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_player_cloud_pulls_toward_nearest_player_candidate"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/SpellParticle.java#isCloseToScopingPlayer"
+      ]
+    },
+    "particle_sounds": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#removal_sound_event",
+        "crates/bbb-renderer/src/particles/render.rs#drain_particle_sound_events"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_submit_batch_queues_batch_sound_events"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/DripParticle.java#playLocalSound"
+      ]
+    },
+    "particle_conditional_removal": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#remove_if_inside_matching_fluid",
+        "crates/bbb-renderer/src/particles/instance.rs#remove_if_outside_required_fluid",
+        "crates/bbb-renderer/src/particles/instance.rs#remove_if_inside_non_air_block"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_water_drop_removes_inside_block_or_fluid_surface",
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_water_drop_removes_on_ground_when_random_passes"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/DripParticle.java#postMoveUpdate"
+      ]
+    },
+    "particle_firework_starter": {
+      "implementation": [
+        "crates/bbb-native/src/particle_runtime/resolver_firework.rs#firework_twinkle_sound_event"
+      ],
+      "tests": [
+        "crates/bbb-native/src/particle_runtime/tests.rs#level_event_particles_map_vanilla_simple_side_effects"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/FireworkParticles.java#isFarAwayFromCamera"
+      ]
+    }
+  }
+}

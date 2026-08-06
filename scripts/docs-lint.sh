@@ -277,6 +277,20 @@ else
   echo "docs lint: key-mapping catalog exact-output check skipped (Vanilla tree or repo generator absent)"
 fi
 
+particle_coverage_generator="$repo_root/scripts/generate-particle-provider-coverage.py"
+particle_coverage_output="$repo_root/docs/evidence/vanilla-26.1/particle-provider-coverage.json"
+if [ -d "$vanilla_source_root" ] && [ -f "$particle_coverage_generator" ]; then
+  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+    "$particle_coverage_generator" \
+    --source-root "$vanilla_source_root" \
+    --output "$particle_coverage_output" \
+    --check; then
+    failed=1
+  fi
+else
+  echo "docs lint: particle provider coverage exact-output check skipped (Vanilla tree or repo generator absent)"
+fi
+
 if ! python3 "$script_dir/docs_wiki_lint.py" --repo-root "$repo_root"; then
   failed=1
 fi

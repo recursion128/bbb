@@ -1,0 +1,3634 @@
+{
+  "allowed_statuses": [
+    "complete",
+    "deferred",
+    "not-applicable",
+    "partial"
+  ],
+  "baseline_policy": "Provider identity, the constructed particle, and all five behavioural facts are derived from the Vanilla 26.1 particle package; no cell status is written by hand unless Vanilla exhibits a behaviour the renderer's descriptor table binds no provider for. `not-applicable` carries the derivation that decided it. The renderer's per-descriptor `has_physics` flags are cross-checked against the derived `hasPhysics` and a disagreement fails generation.",
+  "catalog_sha256": "65992b68049201a4fd6f30e5267b12f421a4875e94e277974c8838bbcaa180b5",
+  "catalog_source": "vanilla:net/minecraft/client/particle/#ParticleProvider",
+  "cell_categories": [
+    "renderer binding",
+    "collision",
+    "player-coupled",
+    "sounds",
+    "conditional-removal"
+  ],
+  "check_command": "scripts/vanilla-source-tools.sh scripts/generate-particle-provider-coverage.py --check",
+  "coverage_overrides": "scripts/data/particle-provider-coverage-overrides-26.1.json",
+  "entries": [
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "AshParticle.Provider",
+      "particle": "AshParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "AttackSweepParticle.Provider",
+      "particle": "AttackSweepParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BlockMarker.Provider",
+      "particle": "BlockMarker",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BreakingItemParticle.CobwebProvider",
+      "particle": "BreakingItemParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BreakingItemParticle.Provider",
+      "particle": "BreakingItemParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BreakingItemParticle.SlimeProvider",
+      "particle": "BreakingItemParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BreakingItemParticle.SnowballProvider",
+      "particle": "BreakingItemParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BubbleColumnUpParticle.Provider",
+      "particle": "BubbleColumnUpParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BubbleParticle.Provider",
+      "particle": "BubbleParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "BubblePopParticle.Provider",
+      "particle": "BubblePopParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "CampfireSmokeParticle.CosyProvider",
+      "particle": "CampfireSmokeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "CampfireSmokeParticle.SignalProvider",
+      "particle": "CampfireSmokeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "CritParticle.DamageIndicatorProvider",
+      "particle": "CritParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "CritParticle.MagicProvider",
+      "particle": "CritParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "CritParticle.Provider",
+      "particle": "CritParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DragonBreathParticle.Provider",
+      "particle": "DragonBreathParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "status": "complete"
+        }
+      },
+      "name": "DripParticle.DripstoneLavaFallProvider",
+      "particle": "DripParticle.DripstoneFallAndLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.DripstoneLavaHangProvider",
+      "particle": "DripParticle.CoolingDripHangParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "status": "complete"
+        }
+      },
+      "name": "DripParticle.DripstoneWaterFallProvider",
+      "particle": "DripParticle.DripstoneFallAndLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.DripstoneWaterHangProvider",
+      "particle": "DripParticle.DripHangParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "status": "complete"
+        }
+      },
+      "name": "DripParticle.HoneyFallProvider",
+      "particle": "DripParticle.HoneyFallAndLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.HoneyHangProvider",
+      "particle": "DripParticle.DripHangParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.HoneyLandProvider",
+      "particle": "DripParticle.DripLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.LavaFallProvider",
+      "particle": "DripParticle.FallAndLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.LavaHangProvider",
+      "particle": "DripParticle.CoolingDripHangParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.LavaLandProvider",
+      "particle": "DripParticle.DripLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.NectarFallProvider",
+      "particle": "DripParticle.FallingParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.ObsidianTearFallProvider",
+      "particle": "DripParticle.FallAndLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.ObsidianTearHangProvider",
+      "particle": "DripParticle.DripHangParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.ObsidianTearLandProvider",
+      "particle": "DripParticle.DripLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.SporeBlossomFallProvider",
+      "particle": "DripParticle.FallingParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.WaterFallProvider",
+      "particle": "DripParticle.FallAndLandParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DripParticle.WaterHangProvider",
+      "particle": "DripParticle.DripHangParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DustColorTransitionParticle.Provider",
+      "particle": "DustColorTransitionParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DustParticle.Provider",
+      "particle": "DustParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "DustPlumeParticle.Provider",
+      "particle": "DustPlumeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "velocity pinned to zero",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "ElderGuardianParticle.Provider",
+      "particle": "ElderGuardianParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in EndRodParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "EndRodParticle.Provider",
+      "particle": "EndRodParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "ExplodeParticle.Provider",
+      "particle": "ExplodeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FallingDustParticle.Provider",
+      "particle": "FallingDustParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FallingLeavesParticle.CherryProvider",
+      "particle": "FallingLeavesParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FallingLeavesParticle.PaleOakProvider",
+      "particle": "FallingLeavesParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FallingLeavesParticle.TintedLeavesProvider",
+      "particle": "FallingLeavesParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FireflyParticle.FireflyProvider",
+      "particle": "FireflyParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "velocity pinned to zero",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FireworkParticles.FlashProvider",
+      "particle": "FireworkParticles.OverlayParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FireworkParticles.SparkProvider",
+      "particle": "FireworkParticles.SparkParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in FlameParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FlameParticle.Provider",
+      "particle": "FlameParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in FlameParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FlameParticle.SmallFlameProvider",
+      "particle": "FlameParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FlyStraightTowardsParticle.OminousSpawnProvider",
+      "particle": "FlyStraightTowardsParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FlyTowardsPositionParticle.EnchantProvider",
+      "particle": "FlyTowardsPositionParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FlyTowardsPositionParticle.NautilusProvider",
+      "particle": "FlyTowardsPositionParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "FlyTowardsPositionParticle.VaultConnectionProvider",
+      "particle": "FlyTowardsPositionParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GlowParticle.ElectricSparkProvider",
+      "particle": "GlowParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GlowParticle.GlowSquidProvider",
+      "particle": "GlowParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GlowParticle.ScrapeProvider",
+      "particle": "GlowParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GlowParticle.WaxOffProvider",
+      "particle": "GlowParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GlowParticle.WaxOnProvider",
+      "particle": "GlowParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GustParticle.Provider",
+      "particle": "GustParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GustParticle.SmallProvider",
+      "particle": "GustParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "gap": "NoRenderParticle subclass draws nothing",
+          "status": "not-applicable"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "GustSeedParticle.Provider",
+      "particle": "GustSeedParticle",
+      "renderer_descriptor": false,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "HeartParticle.AngryVillagerProvider",
+      "particle": "HeartParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "HeartParticle.Provider",
+      "particle": "HeartParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "HugeExplosionParticle.Provider",
+      "particle": "HugeExplosionParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "gap": "NoRenderParticle subclass draws nothing",
+          "status": "not-applicable"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "HugeExplosionSeedParticle.Provider",
+      "particle": "HugeExplosionSeedParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "LargeSmokeParticle.Provider",
+      "particle": "LargeSmokeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "LavaParticle.Provider",
+      "particle": "LavaParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "NoteParticle.Provider",
+      "particle": "NoteParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "PlayerCloudParticle.Provider",
+      "particle": "PlayerCloudParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "PlayerCloudParticle.SneezeProvider",
+      "particle": "PlayerCloudParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in PortalParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "PortalParticle.Provider",
+      "particle": "PortalParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in PortalParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "ReversePortalParticle.ReversePortalProvider",
+      "particle": "ReversePortalParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SculkChargeParticle.Provider",
+      "particle": "SculkChargeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SculkChargePopParticle.Provider",
+      "particle": "SculkChargePopParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "ShriekParticle.Provider",
+      "particle": "ShriekParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SimpleVerticalParticle.PauseMobGrowthProvider",
+      "particle": "SimpleVerticalParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SimpleVerticalParticle.ResetMobGrowthProvider",
+      "particle": "SimpleVerticalParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SmokeParticle.Provider",
+      "particle": "SmokeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SnowflakeParticle.Provider",
+      "particle": "SnowflakeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SonicBoomParticle.Provider",
+      "particle": "SonicBoomParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SoulParticle.EmissiveProvider",
+      "particle": "SoulParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SoulParticle.Provider",
+      "particle": "SoulParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SpellParticle.InstantProvider",
+      "particle": "SpellParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SpellParticle.MobEffectProvider",
+      "particle": "SpellParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SpellParticle.Provider",
+      "particle": "SpellParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SpellParticle.WitchProvider",
+      "particle": "SpellParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SpitParticle.Provider",
+      "particle": "SpitParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SplashParticle.Provider",
+      "particle": "SplashParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SquidInkParticle.GlowInkProvider",
+      "particle": "SquidInkParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SquidInkParticle.Provider",
+      "particle": "SquidInkParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedParticle.CrimsonSporeProvider",
+      "particle": "SuspendedParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedParticle.SporeBlossomAirProvider",
+      "particle": "SuspendedParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedParticle.UnderwaterProvider",
+      "particle": "SuspendedParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedParticle.WarpedSporeProvider",
+      "particle": "SuspendedParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in SuspendedTownParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedTownParticle.ComposterFillProvider",
+      "particle": "SuspendedTownParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in SuspendedTownParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedTownParticle.DolphinSpeedProvider",
+      "particle": "SuspendedTownParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in SuspendedTownParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedTownParticle.EggCrackProvider",
+      "particle": "SuspendedTownParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in SuspendedTownParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedTownParticle.HappyVillagerProvider",
+      "particle": "SuspendedTownParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "collision-free move override in SuspendedTownParticle",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "SuspendedTownParticle.Provider",
+      "particle": "SuspendedTownParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TerrainParticle.CrumblingProvider",
+      "particle": "TerrainParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TerrainParticle.DustPillarProvider",
+      "particle": "TerrainParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TerrainParticle.Provider",
+      "particle": "TerrainParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TotemParticle.Provider",
+      "particle": "TotemParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TrailParticle.Provider",
+      "particle": "TrailParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TrialSpawnerDetectionParticle.Provider",
+      "particle": "TrialSpawnerDetectionParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "VibrationSignalParticle.Provider",
+      "particle": "VibrationSignalParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "WakeParticle.Provider",
+      "particle": "WakeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "WaterCurrentDownParticle.Provider",
+      "particle": "WaterCurrentDownParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "status": "complete"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "WaterDropParticle.Provider",
+      "particle": "WaterDropParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "hasPhysics=false",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "WhiteAshParticle.Provider",
+      "particle": "WhiteAshParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "status": "complete"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "WhiteSmokeParticle.Provider",
+      "particle": "WhiteSmokeParticle",
+      "renderer_descriptor": true,
+      "spawn": "provider"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_firework_starter",
+          "status": "complete"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "gap": "NoRenderParticle subclass draws nothing",
+          "status": "not-applicable"
+        },
+        "sounds": {
+          "evidence_ref": "particle_firework_starter",
+          "status": "complete"
+        }
+      },
+      "name": "FireworkParticles.Starter",
+      "particle": "FireworkParticles.Starter",
+      "renderer_descriptor": false,
+      "spawn": "code"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "status": "complete"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "ItemPickupParticle",
+      "particle": "ItemPickupParticle",
+      "renderer_descriptor": true,
+      "spawn": "code"
+    },
+    {
+      "coverage": {
+        "collision": {
+          "evidence_ref": "particle_collision",
+          "gap": "tick never calls move",
+          "status": "not-applicable"
+        },
+        "conditional-removal": {
+          "evidence_ref": "particle_conditional_removal",
+          "gap": "removal only on lifetime expiry",
+          "status": "not-applicable"
+        },
+        "player-coupled": {
+          "evidence_ref": "particle_player_coupling",
+          "gap": "tick reads no local player or camera",
+          "status": "not-applicable"
+        },
+        "renderer binding": {
+          "evidence_ref": "particle_render_binding",
+          "gap": "NoRenderParticle subclass draws nothing",
+          "status": "not-applicable"
+        },
+        "sounds": {
+          "evidence_ref": "particle_sounds",
+          "gap": "tick raises no playLocalSound",
+          "status": "not-applicable"
+        }
+      },
+      "name": "TrackingEmitter",
+      "particle": "TrackingEmitter",
+      "renderer_descriptor": false,
+      "spawn": "code"
+    }
+  ],
+  "evidence_sets": {
+    "particle_collision": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#tick_motion",
+        "crates/bbb-renderer/src/particles/descriptors.rs#collision_size"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_default_tick_applies_collision_ground_friction",
+        "crates/bbb-renderer/src/particles/descriptors/tests.rs#collision_size_matches_vanilla_provider_set_size"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/Particle.java#public void move"
+      ]
+    },
+    "particle_conditional_removal": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#remove_if_inside_matching_fluid",
+        "crates/bbb-renderer/src/particles/instance.rs#remove_if_outside_required_fluid",
+        "crates/bbb-renderer/src/particles/instance.rs#remove_if_inside_non_air_block"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_water_drop_removes_inside_block_or_fluid_surface",
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_water_drop_removes_on_ground_when_random_passes"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/DripParticle.java#postMoveUpdate"
+      ]
+    },
+    "particle_firework_starter": {
+      "implementation": [
+        "crates/bbb-native/src/particle_runtime/resolver_firework.rs#firework_twinkle_sound_event"
+      ],
+      "tests": [
+        "crates/bbb-native/src/particle_runtime/tests.rs#level_event_particles_map_vanilla_simple_side_effects"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/FireworkParticles.java#isFarAwayFromCamera"
+      ]
+    },
+    "particle_player_coupling": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#is_close_to_scoping_player",
+        "crates/bbb-renderer/src/particles/instance.rs#nearest_player_motion_context"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_spell_alpha_tracks_scoping_player_context",
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_player_cloud_pulls_toward_nearest_player_candidate"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/SpellParticle.java#isCloseToScopingPlayer"
+      ]
+    },
+    "particle_render_binding": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/descriptors.rs#for_particle"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/descriptors/tests.rs#particle_descriptors_cover_vanilla_26_1_particle_resources",
+        "crates/bbb-renderer/src/particles/descriptors/tests.rs#particle_descriptor_maps_core_vanilla_providers_and_physics_flags"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/NoRenderParticle.java#NO_RENDER"
+      ]
+    },
+    "particle_sounds": {
+      "implementation": [
+        "crates/bbb-renderer/src/particles/instance.rs#removal_sound_event",
+        "crates/bbb-renderer/src/particles/render.rs#drain_particle_sound_events"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/particles/tests.rs#particle_runtime_submit_batch_queues_batch_sound_events"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/particle/DripParticle.java#playLocalSound"
+      ]
+    }
+  },
+  "generated_by": "scripts/generate-particle-provider-coverage.py",
+  "renderer_source": "crates/bbb-renderer/src/particles/descriptors.rs#for_particle",
+  "schema_version": 1,
+  "uncertainties": [],
+  "update_command": "scripts/vanilla-source-tools.sh scripts/generate-particle-provider-coverage.py",
+  "vanilla_version": "26.1"
+}

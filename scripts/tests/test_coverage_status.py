@@ -65,6 +65,11 @@ class CoverageStatusTests(unittest.TestCase):
             "entity-coverage.json",
             [{"resource_id": "minecraft:pig", "coverage": {"status": "complete"}}],
         )
+        self.write_ledger(
+            root,
+            "particle-provider-coverage.json",
+            [{"name": "AshParticle.Provider", "coverage": {"collision": {"status": "complete"}}}],
+        )
         (root / "docs" / "unsupported-features.md").write_text(
             "\n".join(
                 [
