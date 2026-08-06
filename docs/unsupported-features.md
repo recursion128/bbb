@@ -197,9 +197,9 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
 
 Compositor-originated focus, keyboard, pointer buttons, relative pointer motion,
 the clipboard, live DPI transitions and fullscreen are no longer part of that
-bounded set: the release run is
-driven from a real `wl_seat` and `scripts/platform-acceptance-gate.sh` requires
-its receipts, which retires the former `physical-seat-input` entry. The gate
+bounded set: the release run is driven from a real `wl_seat` and
+`scripts/platform-acceptance-gate.sh` requires its receipts, which retires the
+former `physical-seat-input` entry. The gate
 refuses receipts from a run that also wrote synthetic `input.*`, so they cannot
 be manufactured by the control plane. What the seat proves: the compositor
 grants focus, a seat Escape reopens the world a client paused itself into after
