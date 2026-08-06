@@ -16,14 +16,14 @@
 //! - Week fields port ICU4J `Calendar.computeWeekFields`/`weekNumber` over the
 //!   dispatched calendar's day-of-year, with CLDR territory week data dumped
 //!   from the icu4j 77.1 jar vanilla ships (see [`tables_26_1`]).
-//! - The four ICU4J behaviors ICU4X lacks are carried by generated tables or
-//!   local rules: quarter names, the localized-GMT zero format (`GMT`), the
-//!   `VVV` unknown-city string, and the metazone-standard fallback for
-//!   generic zone names (`vvvv` of a no-DST zone -> `中国标准时间`).
+//! - The five ICU4J behaviors ICU4X lacks are carried by generated tables or
+//!   local rules: quarter names, flexible day periods (`B`), the localized-GMT
+//!   zero format (`GMT`), the `VVV` unknown-city string, and the
+//!   metazone-standard fallback for generic zone names (`vvvv` of a no-DST zone
+//!   -> `中国标准时间`).
 //!
 //! `goldens_26_1.tsv` pins the surface against outputs of the exact icu4j
-//! 77.1 jar (`scripts/local-time-icu4j/`). One residual gap remains, tracked
-//! in the ledger: ICU4J's flexible day periods (`B`) have no ICU4X data.
+//! 77.1 jar (`scripts/local-time-icu4j/`), and every row matches.
 
 mod tables_26_1;
 
@@ -933,10 +933,31 @@ fn field_output(
         'z' | 'Z' | 'O' | 'v' | 'V' | 'x' | 'X' => text(zone_field_value(ch, count, zone, locale)?),
         // ICU4J ignores the deprecated `l` and formats nothing for it.
         'l' => text(String::new()),
-        // Flexible day periods (`B`) have no ICU4X data; every other letter
-        // is an ICU4J `IllegalArgumentException`.
+        'B' => text(day_period_name(locale, zone, count)?),
+        // Every other letter is an ICU4J `IllegalArgumentException`.
         _ => None,
     }
+}
+
+/// ICU4J's flexible day-period name for the local time of day.
+///
+/// ICU4X has no data for `B`, so the names and their boundaries come from the
+/// generated table; a locale without day-period rules falls back to the root
+/// row, which ICU4J renders as plain AM/PM.
+fn day_period_name(locale: &Locale, zone: &ZoneData, count: usize) -> Option<String> {
+    let index = match count {
+        1..=3 => 0,
+        4 => 1,
+        _ => 2,
+    };
+    let minute = u16::try_from(zone.local.hour() * 60 + zone.local.minute()).ok()?;
+    table_keys(locale).iter().find_map(|key| {
+        tables_26_1::DAY_PERIODS
+            .iter()
+            .filter(|(row_locale, start, _)| row_locale == key && *start <= minute)
+            .next_back()
+            .map(|(_, _, names)| names[index].to_string())
+    })
 }
 
 fn quarter_name(locale: &Locale, form: &str, quarter: i32) -> Option<String> {
@@ -1299,20 +1320,6 @@ fn offset_parts(offset_seconds: i32) -> (char, i32, i32, i32) {
 mod tests {
     use super::*;
 
-    /// The residual gap the goldens test tolerates; a ledger item under
-    /// `docs/unsupported-features.md#local-time-item-property-formatting`.
-    fn expected_residual(pattern: &str) -> bool {
-        // ICU4J flexible day periods have no ICU4X data.
-        let mut in_quote = false;
-        let has_b = pattern.chars().any(|ch| {
-            if ch == '\'' {
-                in_quote = !in_quote;
-            }
-            !in_quote && ch == 'B'
-        });
-        has_b
-    }
-
     /// Display-data renames between the CLDR revision in vanilla's icu4j 77.1
     /// and the one baked into ICU4X 2.2: substring pairs as
     /// `(icu4j form, icu4x form)`.
@@ -1390,9 +1397,6 @@ mod tests {
             checked += 1;
             match *status {
                 "OK" => {
-                    if expected_residual(pattern) {
-                        continue;
-                    }
                     let matches = match actual.as_deref() {
                         Some(actual) => {
                             actual == expected

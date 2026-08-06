@@ -418,7 +418,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p1-playable: maintenance
 - p1-generated-facts: maintenance
 - p2-non-entity: closed
-- p2-hud: active
+- p2-hud: closed
 - p3-resources: closed
 - p4-delivery: closed
 - architecture-convergence: maintenance
@@ -463,9 +463,6 @@ implementation/test evidence，`getMinecraft` 归 direct support）均 `equivale
 （见 archive 与 matrix 行重开判据）。2026-08-05 用户重开的两项已落地关闭：vanilla 地形
 texture filtering 面（`textureFiltering` 三模式 + `maxAnisotropyBit` 采样器/着色器/
 atlas padding）与全屏 screen 上的 toast/F3 overlay 收集路径（见 archive）。
-2026-08-06 重开：`local_time` item property 的两处 ICU4J 分歧（flexible day period
-`B` 全属性无输出、Hijri 历静默按公历取值）此前只被 goldens 测试的 `expected_residual`
-容忍而无账本项，现已具体化为 active 项，判据是 8656 行 icu4j 77.1 oracle 对应行转绿。
 
 ### P3：动态资源 presentation breadth
 

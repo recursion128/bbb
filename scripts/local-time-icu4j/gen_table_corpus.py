@@ -22,3 +22,12 @@ elif mode == "gmtzero":
 elif mode == "unknowncity":
     for lid in all_ids:
         print(f"VVV\t{lid}\tGMT+3\t{T_Q[3]}")
+elif mode == "dayperiods":
+    # Every minute of one UTC day, per width: the flexible day-period name
+    # changes exactly at ICU4J's rule boundaries, so the sweep yields both the
+    # boundaries and the names without reimplementing CLDR dayPeriodRules.
+    T_DAY = 1785888000000  # 2026-08-05 00:00 UTC
+    for lid in all_ids:
+        for width in ("B", "BBBB", "BBBBB"):
+            for minute in range(1440):
+                print(f"{width}\t{lid}\tUTC\t{T_DAY + minute * 60000}")

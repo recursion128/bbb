@@ -103,6 +103,23 @@ def generate():
     )
     for zone, value in read_rows("local-time-root-zone-location-26.1.tsv"):
         out.write(f"    ({rust_str(zone)}, {rust_str(value)}),\n")
+    out.write(
+        "];\n"
+        "\n"
+        "/// ICU4J flexible day periods (`B`), which ICU4X carries no data for:\n"
+        "/// `(locale, minute_of_day the segment starts at, [abbreviated, wide,\n"
+        "/// narrow])`, ordered by locale then minute. The segments are the observed\n"
+        "/// output of `SimpleDateFormat` over every minute of a day, so they already\n"
+        "/// include ICU4J's own rule application — `noon` spans 12:00-13:00 for `en`\n"
+        "/// rather than being instantaneous.\n"
+        "#[rustfmt::skip]\n"
+        "pub(super) const DAY_PERIODS: &[(&str, u16, [&str; 3])] = &[\n"
+    )
+    for locale, minute, abbreviated, wide, narrow in read_rows(
+        "local-time-day-periods-26.1.tsv"
+    ):
+        names = ", ".join(rust_str(name) for name in (abbreviated, wide, narrow))
+        out.write(f"    ({rust_str(locale)}, {minute}, [{names}]),\n")
     out.write("];\n")
     return out.getvalue()
 
