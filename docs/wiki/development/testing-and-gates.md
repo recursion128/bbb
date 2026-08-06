@@ -59,8 +59,17 @@ virtual-keyboard 协议**——后者按调用方自带 keymap 传 keysym，而�
 暂停菜单——只有 Escape 会，且要用 hotbar 键复核（vanilla 只在无 screen 时执行 hotbar
 keybind）。
 
-剩余的 IME 与 DPI/fullscreen 重开条件由[缺口账本](../../unsupported-features.md)
-维护（后者的阻塞点已从环境转为客户端：workspace 里没有任何 `ScaleFactorChanged` 处理分支）；X11 行按 2026-08-06 用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
+seat 设备刻意常驻，也就一直跑着它启动时的那份代码：注入器在 probe 阶段向它要一次键表，
+缺键就当场按名字报错，而不是在几十分钟后按下时才发现。
+
+同一个 seat 还驱动 **display transition receipts**：把窗口钉成固定逻辑尺寸后改 output
+scale（tiled 窗口的工作区会按同一倍数缩小，物理表面纹丝不动，改动不可观测），再用 seat 的
+F11 切换全屏；两侧都取证——compositor 确实换了 scale/给了全屏，客户端表面也确实跟上并回得来。
+客户端没有 `ScaleFactorChanged` 分支是**忠实**而非缺口：vanilla 也没有 content-scale 回调，
+GUI scale 只由 framebuffer 尺寸算出，而 winit 每次 scale 变化后都跟一条 `Resized`。
+
+剩余的 IME 重开条件由[缺口账本](../../unsupported-features.md)维护；X11 行按 2026-08-06
+用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
 
 ## 文档测试
 

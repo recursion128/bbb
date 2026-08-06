@@ -33,11 +33,6 @@
       "id": "seat-ime",
       "status": "deferred",
       "reopen_when": "a maintained seat-backed compositor run can drive a preedit through an input method, the way it already drives focus, keyboard, pointer buttons, relative motion and the clipboard"
-    },
-    {
-      "id": "dpi-transition-fullscreen",
-      "status": "deferred",
-      "reopen_when": "a maintained seat-backed compositor run can change output scale and the client handles the scale-factor change it then receives"
     }
   ]
 }

@@ -116,6 +116,25 @@ class SeatKeyRepeatTests(unittest.TestCase):
             driver._require_no_key_repeat()
 
 
+class SeatStaleDaemonTests(unittest.TestCase):
+    """The seat device outlives edits to its own source, so a key added since
+    it started is simply absent -- discovered, without this check, only when the
+    run presses it tens of minutes in."""
+
+    def test_a_daemon_missing_a_key_is_refused_by_name(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        served = "ok " + " ".join(sorted(set(seat_inject.KEYSYMS) - {"fullscreen"}))
+        with mock.patch.object(seat_inject.seat_device, "request", return_value=served):
+            with self.assertRaisesRegex(seat_inject.InjectError, "fullscreen"):
+                driver._require_current_key_table()
+
+    def test_a_current_daemon_passes(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        served = "ok " + " ".join(sorted(seat_inject.KEYSYMS))
+        with mock.patch.object(seat_inject.seat_device, "request", return_value=served):
+            driver._require_current_key_table()
+
+
 class SeatDriverContractTests(unittest.TestCase):
     def test_the_default_driver_is_the_held_open_uinput_device(self):
         """The virtual-keyboard protocol carries keysyms on a caller-supplied

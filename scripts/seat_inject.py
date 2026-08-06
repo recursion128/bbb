@@ -69,6 +69,7 @@ KEYSYMS = {
     "chat": "t",
     "enter": "Return",
     "paste": "v",
+    "fullscreen": "F11",
     **{f"hotbar{index}": str(index) for index in range(1, 10)},
 }
 
@@ -276,6 +277,53 @@ class WlrootsDriver:
         _run(["swaymsg", "output", self.output, "scale", scale])
         time.sleep(self.settle_seconds)
 
+    def window(self) -> dict[str, object]:
+        """What the compositor believes about the window under test.
+
+        The client's own surface size is the other half of a display-transition
+        receipt; this is the half that says the compositor really made the
+        change, rather than the client having resized itself.
+        """
+
+        target = self._target()
+        rect = target.get("rect") or {}
+        return {
+            "driver": self.name,
+            "window": target.get("name"),
+            "logical_width": rect.get("width"),
+            "logical_height": rect.get("height"),
+            "fullscreen": bool(target.get("fullscreen_mode")),
+            "floating": target.get("type") == "floating_con",
+            "output_scale": self._output_scale(),
+        }
+
+    def _output_scale(self) -> float | None:
+        raw = _run(["swaymsg", "-t", "get_outputs", "-r"])
+        try:
+            outputs = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise InjectError(f"could not read the compositor outputs: {error}") from error
+        for output in outputs:
+            if output.get("name") == self.output:
+                return output.get("scale")
+        raise InjectError(f"the compositor has no output named {self.output!r}")
+
+    def window_geometry(self, width: int, height: int) -> None:
+        """Pin the window to a fixed *logical* size before a scale change.
+
+        A tiled window is sized in logical pixels to fill its workspace, and a
+        scale change shrinks the workspace by exactly the factor it magnifies
+        the buffer by -- so the physical surface never moves and the transition
+        is unobservable.  A window with a fixed logical size is the desktop
+        case the transition is about: same window, denser buffer.
+        """
+
+        target = self._target()
+        selector = f"[con_id={target['id']}]"
+        _run(["swaymsg", selector, "floating", "enable"])
+        _run(["swaymsg", selector, "resize", "set", str(width), str(height)])
+        time.sleep(self.settle_seconds)
+
 
 class XtestDriver:
     """Drive a remote-desktop seat: XTEST -> remote-desktop client -> wl_seat."""
@@ -404,6 +452,17 @@ class XtestDriver:
             "wlroots driver"
         )
 
+    def window(self) -> dict[str, object]:
+        raise InjectError(
+            "the remote-desktop driver cannot report compositor window state; "
+            "use the wlroots driver"
+        )
+
+    def window_geometry(self, width: int, height: int) -> None:
+        raise InjectError(
+            "the remote-desktop driver cannot pin window geometry; use the "
+            "wlroots driver"
+        )
 
 
 class UinputDriver:
@@ -435,9 +494,29 @@ class UinputDriver:
 
     def probe(self) -> dict[str, object]:
         seat_device.request(self.socket_path, "ping")
+        self._require_current_key_table()
         window = self._wlroots.probe()
         self._require_no_key_repeat()
         return {**window, "driver": self.name, "device_socket": self.socket_path}
+
+    def _require_current_key_table(self) -> None:
+        """Refuse a daemon whose key table predates this injector.
+
+        The device is deliberately long-lived, which means it keeps running the
+        code it was started with.  A key added since then is missing from it,
+        and without this check the run discovers that only when it presses the
+        key -- tens of minutes in, and reported as a seat failure rather than
+        as the stale daemon it is.
+        """
+
+        answer = seat_device.request(self.socket_path, "keys")
+        served = set(answer.split()[1:])
+        missing = sorted(set(KEYSYMS) - served)
+        if missing:
+            raise InjectError(
+                f"the running seat device cannot press {missing}; restart "
+                f"{seat_device.__file__} so it picks up the current key table"
+            )
 
     def _require_no_key_repeat(self) -> None:
         """Refuse to drive a seat whose keyboards auto-repeat.
@@ -490,6 +569,12 @@ class UinputDriver:
     def output_scale(self, scale: str) -> None:
         self._wlroots.output_scale(scale)
 
+    def window(self) -> dict[str, object]:
+        return {**self._wlroots.window(), "driver": self.name}
+
+    def window_geometry(self, width: int, height: int) -> None:
+        self._wlroots.window_geometry(width, height)
+
 
 DRIVERS = {"uinput": UinputDriver, "wlroots": WlrootsDriver, "xtest": XtestDriver}
 
@@ -540,6 +625,10 @@ def _build_parser() -> argparse.ArgumentParser:
     clipboard_parser.add_argument("text")
     scale_parser = sub.add_parser("output-scale")
     scale_parser.add_argument("scale")
+    sub.add_parser("window")
+    geometry_parser = sub.add_parser("window-geometry")
+    geometry_parser.add_argument("width", type=int)
+    geometry_parser.add_argument("height", type=int)
     return parser
 
 
@@ -563,6 +652,10 @@ def main(argv: list[str] | None = None) -> int:
             driver.clipboard(args.text)
         elif args.action == "output-scale":
             driver.output_scale(args.scale)
+        elif args.action == "window":
+            print(json.dumps(driver.window(), sort_keys=True))
+        elif args.action == "window-geometry":
+            driver.window_geometry(args.width, args.height)
         return 0
     except InjectError as error:
         print(f"seat injection failed: {error}", file=sys.stderr)

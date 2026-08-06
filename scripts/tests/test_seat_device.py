@@ -90,6 +90,17 @@ class SeatCommandTests(unittest.TestCase):
         self.assertEqual(seat_device._handle(self.device, "ping"), "ok")
         self.assertEqual(self.device.calls, [])
 
+    def test_the_daemon_reports_the_key_table_it_was_started_with(self):
+        """It is deliberately long-lived, so it keeps running the code it
+        started with; a caller has to be able to see that table to refuse a
+        daemon that predates a key it needs."""
+
+        answer = seat_device._handle(self.device, "keys")
+
+        self.assertTrue(answer.startswith("ok "))
+        self.assertEqual(set(answer.split()[1:]), set(seat_device.KEY_CODES))
+        self.assertEqual(self.device.calls, [])
+
     def test_malformed_requests_answer_error_and_inject_nothing(self):
         for line in ("", "key", "move 200", "move x 0", "wiggle"):
             with self.subTest(line=line):

@@ -180,18 +180,14 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   that publishes a real seat sends `Focused(false)` until something activates
   the window, which overrides the control-plane focus stand-in. The row rests on
   the scope decision alone; reopen only if that decision is reversed.
-- Seat IME on the declared Wayland row is `deferred`: the seat has a driver for
-  keys, buttons, motion and the clipboard, but none for an input method, so no
-  preedit can be produced to observe. Reopen when a maintained seat-backed run
-  can drive `zwp_input_method_v2`; do not infer it from the IME unit tests,
+- Seat IME on the declared Wayland row is `deferred`, and the missing piece is
+  on the runner rather than in the client: the client asks for IME
+  (`set_ime_allowed(true)`) and handles `WindowEvent::Ime`, but the seat has a
+  driver for keys, buttons, motion and the clipboard and none for an input
+  method, so there is no preedit to observe. Reopen when a maintained
+  seat-backed run has an input method on that seat — an `zwp_input_method_v2`
+  client or a configured IME daemon; do not infer it from the IME unit tests,
   which exercise the handlers rather than the platform path.
-- Live DPI-transition/fullscreen on that row is `deferred`, and the blocker has
-  moved: the runner can now drive a real scale change (the gate's compositor
-  takes `output <name> scale <n>`), but **the client has no
-  `WindowEvent::ScaleFactorChanged` arm at all** — no handler exists in the
-  workspace — so a scale change would be observed as nothing happening rather
-  than as vanilla's GUI-scale recomputation. Reopen when the client handles that
-  event; the validation environment is no longer what is missing.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,
   but no maintained host/runner with winit, wgpu, audio and input fixtures for
@@ -199,8 +195,9 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   the same declared platform matrix; do not infer support from cross-compilation
   or unit-only `cfg` coverage.
 
-Compositor-originated focus, keyboard, pointer buttons, relative pointer motion
-and the clipboard are no longer part of that bounded set: the release run is
+Compositor-originated focus, keyboard, pointer buttons, relative pointer motion,
+the clipboard, live DPI transitions and fullscreen are no longer part of that
+bounded set: the release run is
 driven from a real `wl_seat` and `scripts/platform-acceptance-gate.sh` requires
 its receipts, which retires the former `physical-seat-input` entry. The gate
 refuses receipts from a run that also wrote synthetic `input.*`, so they cannot
@@ -210,6 +207,28 @@ losing focus, a seat hotbar key moves the canonical selected slot with server
 confirmation, a seat pointer button reaches the canonical swing, relative
 pointer motion turns the canonical view, and text placed on the seat's
 selection reaches the canonical chat draft through the paste chord.
+
+Live DPI transitions and fullscreen retired with them, and correcting one claim
+made along the way: the client has no `WindowEvent::ScaleFactorChanged` arm, but
+that is faithful rather than a gap. Vanilla registers no content-scale callback
+either — `Window` computes its GUI scale from the framebuffer size alone
+(`Window.calculateScale`/`setGuiScale`), so a density change reaches it as a
+framebuffer resize. winit follows every scale change with `Resized`, and the
+resize arm recomputes the logical GUI surface synchronously. What was missing
+was never a handler; it was a run that crossed a real transition. The gate now
+takes that run's receipts on both sides: the compositor really moved to the new
+scale and really granted fullscreen, and the client's surface followed each
+time and came back. The window is pinned to a fixed logical size first, because
+a tiled window's workspace shrinks by exactly the factor the buffer magnifies
+by, which would leave the physical surface unmoved and the transition
+unobservable.
+
+That run also found a real divergence, which is now fixed: the pause screen
+swallowed every key it did not recognise, including the fullscreen and
+screenshot keys, so F11 and F2 were dead for as long as it was open. Vanilla
+answers `keyFullscreen` and `keyScreenshot` in `KeyboardHandler.keyPress`
+before it hands the event to `screen.keyPressed`, so those two now run ahead of
+every screen dispatch here too.
 
 Three properties of that seat are load-bearing and were each found by a failing
 run. It must hold **one input device open for the whole run**: capabilities

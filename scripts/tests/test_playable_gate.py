@@ -791,7 +791,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 13)
+        self.assertEqual(evidence["schema"], 14)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -1523,6 +1523,108 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         self.assertIn("server-authoritative block-column centering", centering)
 
 
+class PlayableGateDisplayTransitionTests(unittest.TestCase):
+    """Vanilla derives its GUI scale from the framebuffer size alone, so a
+    density change reaches it as a resize -- but only a run that changed a real
+    display can attest that."""
+
+    def setUp(self):
+        fixture_path = (
+            REPO_ROOT / "scripts" / "fixtures" / "playable-gate" / "session-26.1.json"
+        )
+        self.fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.protocol_version = playable_gate._parse_protocol_version(
+            REPO_ROOT / "crates" / "bbb-protocol" / "src" / "lib.rs"
+        )
+        self.transitions = {
+            "injector": "scripts/seat_inject.py",
+            "control_input_writes": 0,
+            "dpi_transition": {
+                "windowed_surface": [800, 480],
+                "output_scale": 2,
+                "magnified_surface": [1600, 960],
+                "compositor_output_scale": 2,
+                "compositor_logical_size": [800, 480],
+                "restored_surface": [800, 480],
+            },
+            "fullscreen": {
+                "windowed_surface": [800, 480],
+                "fullscreen_surface": [1280, 720],
+                "compositor_fullscreen": True,
+                "restored_surface": [800, 480],
+            },
+            "duration_seconds": 12.0,
+        }
+
+    def evidence_with(self, **overrides):
+        evidence = copy.deepcopy(self.fixture)
+        transitions = copy.deepcopy(self.transitions)
+        for path, value in overrides.items():
+            target = transitions
+            keys = path.split("__")
+            for key in keys[:-1]:
+                target = target[key]
+            target[keys[-1]] = value
+        evidence["display_transitions"] = transitions
+        return evidence
+
+    def test_absent_display_section_is_accepted_for_a_seatless_run(self):
+        playable_gate.validate_evidence(self.fixture, self.protocol_version)
+
+    def test_present_display_section_is_held_to_the_full_contract(self):
+        playable_gate.validate_evidence(self.evidence_with(), self.protocol_version)
+
+    def test_a_surface_that_did_not_follow_the_density_fails(self):
+        with self.assertRaisesRegex(playable_gate.GateFailure, "magnified by 2"):
+            playable_gate.validate_evidence(
+                self.evidence_with(dpi_transition__magnified_surface=[1600, 961]),
+                self.protocol_version,
+            )
+
+    def test_a_window_that_also_changed_logical_size_proves_nothing(self):
+        """Then the surface grew because the window grew, which says nothing
+        about display density."""
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "logical size"):
+            playable_gate.validate_evidence(
+                self.evidence_with(dpi_transition__compositor_logical_size=[1600, 960]),
+                self.protocol_version,
+            )
+
+    def test_a_compositor_that_never_changed_scale_fails(self):
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "compositor_output_scale"
+        ):
+            playable_gate.validate_evidence(
+                self.evidence_with(dpi_transition__compositor_output_scale=1),
+                self.protocol_version,
+            )
+
+    def test_a_fullscreen_toggle_that_only_goes_one_way_fails(self):
+        with self.assertRaisesRegex(playable_gate.GateFailure, "half a receipt"):
+            playable_gate.validate_evidence(
+                self.evidence_with(fullscreen__restored_surface=[1280, 720]),
+                self.protocol_version,
+            )
+
+    def test_a_fullscreen_the_compositor_never_granted_fails(self):
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "compositor_fullscreen"
+        ):
+            playable_gate.validate_evidence(
+                self.evidence_with(fullscreen__compositor_fullscreen=False),
+                self.protocol_version,
+            )
+
+    def test_synthetic_input_write_invalidates_the_display_receipts(self):
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "control_input_writes"
+        ):
+            playable_gate.validate_evidence(
+                self.evidence_with(control_input_writes=1), self.protocol_version
+            )
+
+
 class PlayableGateSeatInputTests(unittest.TestCase):
     """A seat-driven scenario only earns its receipts if the run could not have
     reached the same canonical state through the synthetic input path."""
@@ -1693,6 +1795,31 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         self.assertIn("_seat_reach_the_world(address, injector, deadline)", source)
         self.assertLess(
             source.index("_seat_reach_the_world("), source.index('"key", f"hotbar')
+        )
+
+    def test_display_scenario_is_seat_driven_and_checks_both_sides(self):
+        """A DPI transition the client alone reports could be the client
+        resizing itself, and one the compositor alone reports could have been
+        ignored; the receipt needs both."""
+
+        source = inspect.getsource(playable_gate.drive_display_transitions)
+
+        self.assertIn("_seat_input_only()", source)
+        self.assertNotIn('"input.', source)
+        self.assertIn('_seat_inject(injector, "output-scale"', source)
+        self.assertIn('_seat_inject(injector, "key", "fullscreen")', source)
+        self.assertIn('_seat_inject_json(injector, "window")', source)
+
+    def test_display_scenario_pins_a_logical_size_before_changing_density(self):
+        """A tiled window's workspace shrinks by exactly the factor the buffer
+        magnifies by, so its physical surface never moves and the transition
+        would be unobservable."""
+
+        source = inspect.getsource(playable_gate.drive_display_transitions)
+
+        self.assertIn('"window-geometry"', source)
+        self.assertLess(
+            source.index('"window-geometry"'), source.index('"output-scale"')
         )
 
     def test_injector_is_read_from_the_documented_environment_variable(self):

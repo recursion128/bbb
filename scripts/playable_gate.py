@@ -159,8 +159,8 @@ def validate_evidence(
 ) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 13:
-        raise GateFailure(f"playable evidence schema must be 13, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 14:
+        raise GateFailure(f"playable evidence schema must be 14, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -262,6 +262,8 @@ def validate_evidence(
     # do exist they are held to the full contract.
     if evidence.get("seat_input") is not None:
         _validate_seat_input(evidence.get("seat_input"))
+    if evidence.get("display_transitions") is not None:
+        _validate_display_transitions(evidence.get("display_transitions"))
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
@@ -702,6 +704,77 @@ def _validate_hotbar_interaction(hotbar_interaction: Any) -> None:
             "hotbar_interaction.held_slot_commands_delta must record at least "
             f"one observed command, got {delta!r}"
         )
+
+
+def _validate_display_transitions(transitions: Any) -> None:
+    """A DPI transition and a fullscreen transition, each observed on both
+    sides: the compositor made the change and the client's surface followed."""
+
+    transitions = _object(transitions, "display_transitions")
+    if transitions.get("control_input_writes") != 0:
+        raise GateFailure(
+            "display_transitions.control_input_writes must be 0: the "
+            "fullscreen keybind has to arrive from the seat"
+        )
+
+    dpi = _object(transitions.get("dpi_transition"), "display_transitions.dpi_transition")
+    windowed = _size(dpi.get("windowed_surface"), "dpi_transition.windowed_surface")
+    magnified = _size(dpi.get("magnified_surface"), "dpi_transition.magnified_surface")
+    scale = dpi.get("output_scale")
+    if not isinstance(scale, int) or isinstance(scale, bool) or scale < 2:
+        raise GateFailure(
+            f"dpi_transition.output_scale must magnify the buffer, got {scale!r}"
+        )
+    if magnified != (windowed[0] * scale, windowed[1] * scale):
+        raise GateFailure(
+            f"dpi_transition.magnified_surface {magnified} is not "
+            f"{windowed} magnified by {scale}: the client did not follow the "
+            "display density"
+        )
+    if dpi.get("compositor_output_scale") != scale:
+        raise GateFailure(
+            "dpi_transition.compositor_output_scale must show the compositor "
+            f"really at scale {scale}, got {dpi.get('compositor_output_scale')!r}"
+        )
+    logical = _size(dpi.get("compositor_logical_size"), "dpi_transition.compositor_logical_size")
+    if logical != windowed:
+        raise GateFailure(
+            f"dpi_transition.compositor_logical_size {logical} must stay the "
+            f"windowed logical size {windowed}: a window that also changed "
+            "logical size proves nothing about density"
+        )
+    if _size(dpi.get("restored_surface"), "dpi_transition.restored_surface") != windowed:
+        raise GateFailure(
+            "dpi_transition.restored_surface must return to the windowed size"
+        )
+
+    fullscreen = _object(transitions.get("fullscreen"), "display_transitions.fullscreen")
+    entered = _size(fullscreen.get("fullscreen_surface"), "fullscreen.fullscreen_surface")
+    if entered == windowed or 0 in entered:
+        raise GateFailure(
+            f"fullscreen.fullscreen_surface {entered} must differ from the "
+            f"windowed surface {windowed}"
+        )
+    if fullscreen.get("compositor_fullscreen") is not True:
+        raise GateFailure(
+            "fullscreen.compositor_fullscreen must record the compositor "
+            "agreeing the window went fullscreen"
+        )
+    if _size(fullscreen.get("restored_surface"), "fullscreen.restored_surface") != windowed:
+        raise GateFailure(
+            "fullscreen.restored_surface must return to the windowed size: a "
+            "toggle that only goes one way is half a receipt"
+        )
+
+
+def _size(value: Any, label: str) -> tuple[int, int]:
+    if (
+        not isinstance(value, list)
+        or len(value) != 2
+        or any(not isinstance(part, int) or isinstance(part, bool) for part in value)
+    ):
+        raise GateFailure(f"{label} must be a [width, height] pair, got {value!r}")
+    return (value[0], value[1])
 
 
 def _validate_seat_input(seat_input: Any) -> None:
@@ -1149,6 +1222,25 @@ def _seat_inject(injector: list[str], *args: str) -> None:
             f"seat injection {' '.join(args)} failed ({completed.returncode}): "
             f"{completed.stderr.strip() or completed.stdout.strip()}"
         )
+
+
+def _seat_inject_json(injector: list[str], *args: str) -> dict[str, Any]:
+    """A seat action that answers with state rather than only acting."""
+
+    completed = subprocess.run(
+        [*injector, *args], capture_output=True, text=True, timeout=120
+    )
+    if completed.returncode != 0:
+        raise GateFailure(
+            f"seat injection {' '.join(args)} failed ({completed.returncode}): "
+            f"{completed.stderr.strip() or completed.stdout.strip()}"
+        )
+    try:
+        return json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise GateFailure(
+            f"seat injection {' '.join(args)} did not answer with JSON: {error}"
+        ) from error
 
 
 def _control_request(address: tuple[str, int], method: str, params: Any = None) -> Any:
@@ -2804,6 +2896,140 @@ def _seat_clipboard_reaches_the_client(
     return {"marker": marker, "pasted_into_chat_draft": pasted}
 
 
+# A window pinned smaller than the 1280x720 output, so entering fullscreen is
+# an unmistakable size change and a scale change has room to magnify into.
+DISPLAY_LOGICAL_WIDTH = 800
+DISPLAY_LOGICAL_HEIGHT = 480
+DISPLAY_TRANSITION_SCALE = 2
+
+
+def _renderer_surface_size(address: tuple[str, int]) -> tuple[int, int]:
+    counters = _object(_control_request(address, "renderer.counters"), "renderer.counters")
+    return (int(counters.get("width", 0)), int(counters.get("height", 0)))
+
+
+def _await_surface_size(
+    address: tuple[str, int], deadline: float, description: str, accept: Any
+) -> tuple[int, int]:
+    return tuple(
+        _await_value(
+            deadline,
+            description,
+            lambda: _renderer_surface_size(address),
+            accept,
+        )
+    )
+
+
+def drive_display_transitions(
+    address: tuple[str, int], injector: list[str], timeout_seconds: float
+) -> dict[str, Any]:
+    """Live DPI transition and fullscreen, driven on the real compositor.
+
+    Vanilla has no content-scale callback: `Window` computes the GUI scale from
+    the framebuffer size alone, so a display-density change reaches it as a
+    framebuffer resize.  The same is true here -- winit follows every scale
+    change with `WindowEvent::Resized`, and the resize arm recomputes the
+    logical GUI surface.  What could never be checked before was whether that
+    holds on a real display transition rather than in a unit test, and that is
+    what this scenario takes receipts for.
+
+    Both halves are read: the compositor's own view of the window, so the
+    change is known to have really happened, and the client's surface size, so
+    the change is known to have reached it.
+    """
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+
+    with _seat_input_only():
+        # Fullscreen is a keybind, and vanilla only runs keybinds while no
+        # screen is open, so the world has to be reachable first.
+        _seat_reach_the_world(address, injector, deadline)
+        # A tiled window is sized in logical pixels to fill its workspace, and
+        # a scale change shrinks that workspace by exactly the factor it
+        # magnifies the buffer by, leaving the physical surface untouched.  Pin
+        # a logical size first, which is the desktop case the transition is
+        # about: same window, denser buffer.
+        _seat_inject(
+            injector, "window-geometry", str(DISPLAY_LOGICAL_WIDTH), str(DISPLAY_LOGICAL_HEIGHT)
+        )
+        windowed = _await_surface_size(
+            address,
+            deadline,
+            f"the client surface to take the pinned {DISPLAY_LOGICAL_WIDTH}x"
+            f"{DISPLAY_LOGICAL_HEIGHT} logical size",
+            lambda size: size == (DISPLAY_LOGICAL_WIDTH, DISPLAY_LOGICAL_HEIGHT),
+        )
+
+        _seat_inject(injector, "output-scale", str(DISPLAY_TRANSITION_SCALE))
+        magnified = _await_surface_size(
+            address,
+            deadline,
+            f"the client surface to follow the output to scale "
+            f"{DISPLAY_TRANSITION_SCALE}",
+            lambda size: size
+            == (
+                DISPLAY_LOGICAL_WIDTH * DISPLAY_TRANSITION_SCALE,
+                DISPLAY_LOGICAL_HEIGHT * DISPLAY_TRANSITION_SCALE,
+            ),
+        )
+        scaled_window = _seat_inject_json(injector, "window")
+        # Restore before fullscreen, so the fullscreen receipt is about
+        # fullscreen and not about a scale that never went back.
+        _seat_inject(injector, "output-scale", "1")
+        restored = _await_surface_size(
+            address,
+            deadline,
+            "the client surface to follow the output back to scale 1",
+            lambda size: size == windowed,
+        )
+
+        _seat_inject(injector, "key", "fullscreen")
+        fullscreen_size = _await_surface_size(
+            address,
+            deadline,
+            "the client surface to grow into fullscreen",
+            lambda size: size != windowed and 0 not in size,
+        )
+        fullscreen_window = _seat_inject_json(injector, "window")
+        if not fullscreen_window.get("fullscreen"):
+            raise GateFailure(
+                "the client resized but the compositor does not consider the "
+                f"window fullscreen: {fullscreen_window!r}"
+            )
+        _seat_inject(injector, "key", "fullscreen")
+        windowed_again = _await_surface_size(
+            address,
+            deadline,
+            "the client surface to return to its windowed size",
+            lambda size: size == windowed,
+        )
+
+    return {
+        "injector": " ".join(injector),
+        "control_input_writes": 0,
+        "dpi_transition": {
+            "windowed_surface": list(windowed),
+            "output_scale": DISPLAY_TRANSITION_SCALE,
+            "magnified_surface": list(magnified),
+            "compositor_output_scale": scaled_window.get("output_scale"),
+            "compositor_logical_size": [
+                scaled_window.get("logical_width"),
+                scaled_window.get("logical_height"),
+            ],
+            "restored_surface": list(restored),
+        },
+        "fullscreen": {
+            "windowed_surface": list(windowed),
+            "fullscreen_surface": list(fullscreen_size),
+            "compositor_fullscreen": True,
+            "restored_surface": list(windowed_again),
+        },
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def _seat_key_reaches_the_world(
     address: tuple[str, int], injector: list[str], deadline: float
 ) -> int | None:
@@ -4193,6 +4419,7 @@ LIVE_SCENARIO_SECTIONS = (
 # Only a run with a configured seat injector can produce these, so the section
 # is additive rather than part of the always-required set.
 SEAT_SCENARIO_SECTION = "seat_input"
+DISPLAY_SCENARIO_SECTION = "display_transitions"
 # Escape toggles the pause screen, so the handshake checks after each press
 # rather than assuming which side of the toggle the client started on.
 SEAT_HANDSHAKE_ATTEMPTS = 3
@@ -4294,7 +4521,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 13,
+        "schema": 14,
         "mode": "live",
         "vanilla_version": "26.1",
         "client_locale": args.client_locale,
@@ -4304,8 +4531,9 @@ def _write_live_evidence(
     }
     for name in LIVE_SCENARIO_SECTIONS:
         evidence[name] = scenarios.get(name)
-    if SEAT_SCENARIO_SECTION in scenarios:
-        evidence[SEAT_SCENARIO_SECTION] = scenarios[SEAT_SCENARIO_SECTION]
+    for name in (SEAT_SCENARIO_SECTION, DISPLAY_SCENARIO_SECTION):
+        if name in scenarios:
+            evidence[name] = scenarios[name]
     if failure is not None:
         evidence["failure"] = failure
         evidence["failure_stage"] = failure_stage
@@ -4334,6 +4562,7 @@ def collect_live(args: argparse.Namespace) -> None:
     _SEAT_MODE = injector is not None
     if injector is not None:
         scenarios[SEAT_SCENARIO_SECTION] = None
+        scenarios[DISPLAY_SCENARIO_SECTION] = None
     focus_granted = False
 
     while time.monotonic() < deadline:
@@ -4515,6 +4744,15 @@ def collect_live(args: argparse.Namespace) -> None:
                         # drives five of them, so it needs a wider budget than
                         # a single synthetic scenario.
                         min(240.0, gameplay_timeout),
+                    ),
+                ),
+                (
+                    DISPLAY_SCENARIO_SECTION,
+                    "platform_display",
+                    lambda: drive_display_transitions(
+                        address,
+                        injector,
+                        min(180.0, gameplay_timeout),
                     ),
                 ),
                 plan[-1],

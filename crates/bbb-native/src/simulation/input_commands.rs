@@ -877,6 +877,17 @@ impl SimulationInputRuntime {
         clipboard_text: Option<String>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        // `KeyboardHandler.keyPress` (KeyboardHandler.java:465-489) answers the
+        // fullscreen and screenshot keys before it hands the event to
+        // `screen.keyPressed`, so every screen dispatch below runs after this
+        // one rather than instead of it. Without this ordering a screen that
+        // swallows unrecognised keys -- the pause screen does -- would make F11
+        // and F2 dead for as long as it is open.
+        if context.input.handle_global_key_press(physical_key, state) {
+            self.apply_debug_requests(context);
+            return;
+        }
+
         if context.input.disconnected_screen_runtime().is_some() {
             self.request_cursor_capture(false, context.platform);
             if let PhysicalKey::Code(code) = physical_key {
@@ -3089,6 +3100,38 @@ mod tests {
                 DebugProfilingCommand::Start,
             ]
         );
+    }
+
+    #[test]
+    fn the_global_press_keys_are_answered_before_any_screen_dispatch() {
+        // `KeyboardHandler.keyPress` (KeyboardHandler.java:465-489) answers
+        // `keyFullscreen` and `keyScreenshot` before `screen.keyPressed`.  The
+        // pause screen here swallows every key it does not recognise, so a
+        // dispatch that ran first would make F11 and F2 dead while it is open —
+        // which is exactly what a live seat-driven run found.
+        let source = include_str!("input_commands.rs");
+        let body = source
+            .split_once("fn apply_key(")
+            .expect("key command owner")
+            .1;
+        let global = body
+            .find("handle_global_key_press(physical_key, state)")
+            .expect("vanilla pre-screen press block");
+        for screen_branch in [
+            "disconnected_screen_runtime().is_some()",
+            "handle_debug_pause_screen_key(",
+            "handle_debug_options_screen_key_with_clipboard_and_surface(",
+            "handle_key_input_with_item_runtime(",
+        ] {
+            let dispatch = body.find(screen_branch).expect(screen_branch);
+            assert!(
+                global < dispatch,
+                "{screen_branch} must not be able to hide the global press keys"
+            );
+        }
+        // The toggle only becomes a window transition once the effect is
+        // submitted, which is what this drain does.
+        assert!(body[global..global + 200].contains("apply_debug_requests(context)"));
     }
 
     #[test]

@@ -529,9 +529,10 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
   Linux x86_64 / Wayland /
   Vulkan / windowed external-multiplayer 行：fresh locked release build、
   build-info、headless probe、完整 live/quit、实际 backend 日志、输入语义
-  focused receipts、真实 `wl_seat` 的 focus/keyboard/pointer-button receipts
-  与 lifecycle-soak 证据统一写入 report/stamp；seat receipts 由 seat 驱动的
-  live run 产出，且该 run 不得发任何合成 `input.*`。
+  focused receipts、真实 `wl_seat` 的 focus/keyboard/pointer-button/
+  relative-motion/clipboard receipts、DPI-transition 与 fullscreen 的双侧
+  receipts 与 lifecycle-soak 证据统一写入 report/stamp；这些 receipts 由 seat
+  驱动的 live run 产出，且该 run 不得发任何合成 `input.*`。
 
 维护触发只来自上述 gate/stamp 回退、已声明行/构建配置/runtime owner 变化，或
 账本 deferred 重启条件满足；不能由宽泛 soak、性能、平台愿景重新生成 ready

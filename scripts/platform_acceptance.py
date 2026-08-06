@@ -42,12 +42,11 @@ EXPECTED_RECEIPTS = [
 # longer carries an X11 row.  `physical-seat-input` retired the same day: the
 # release run drives the client from a compositor seat holding a real input
 # device open, and carries focus, keyboard, pointer-button, relative-motion and
-# clipboard receipts (see `validate_seat_receipts`).  What that seat still has
-# no driver for is an input method, so only the IME leg remains.
-EXPECTED_LIMITATIONS = {
-    "seat-ime",
-    "dpi-transition-fullscreen",
-}
+# clipboard receipts (see `validate_seat_receipts`).  `dpi-transition-fullscreen`
+# retired with it, once the same seat could change the output scale and press
+# the fullscreen keybind (see `validate_display_receipts`).  What that seat
+# still has no driver for is an input method, so only the IME leg remains.
+EXPECTED_LIMITATIONS = {"seat-ime"}
 SEAT_MIN_YAW_DEGREES = 2.0
 ANSI_SGR_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -251,6 +250,68 @@ def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
         "client_log": str(client_log_path.resolve()),
         "scale_factor": float(scale.group(1)),
         "seat_input": validate_seat_receipts(evidence),
+        "display_transitions": validate_display_receipts(evidence),
+    }
+
+
+def validate_display_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Require the release run to have crossed a real display transition.
+
+    Vanilla derives its GUI scale from the framebuffer size alone, so a
+    density change reaches it as a resize -- and so it does here.  That is a
+    claim about a live display, though, and only a run that actually changed
+    the output scale and toggled fullscreen can attest it.
+    """
+
+    transitions = evidence.get("display_transitions")
+    if not isinstance(transitions, dict):
+        raise PlatformFailure(
+            "release playable evidence carries no display_transitions "
+            "receipts: no live DPI or fullscreen transition was exercised"
+        )
+    if transitions.get("control_input_writes") != 0:
+        raise PlatformFailure(
+            "display receipts are void when the run also wrote synthetic input"
+        )
+    dpi = transitions.get("dpi_transition")
+    fullscreen = transitions.get("fullscreen")
+    if not isinstance(dpi, dict) or not isinstance(fullscreen, dict):
+        raise PlatformFailure("display receipts must cover DPI and fullscreen")
+    windowed, magnified = dpi.get("windowed_surface"), dpi.get("magnified_surface")
+    scale = dpi.get("output_scale")
+    if (
+        not isinstance(windowed, list)
+        or not isinstance(magnified, list)
+        or not isinstance(scale, int)
+        or isinstance(scale, bool)
+        or scale < 2
+        or magnified != [side * scale for side in windowed]
+    ):
+        raise PlatformFailure(
+            f"the client surface {magnified!r} did not follow the display to "
+            f"scale {scale!r} from {windowed!r}"
+        )
+    if dpi.get("compositor_output_scale") != scale:
+        raise PlatformFailure(
+            "the compositor was never really at the claimed output scale"
+        )
+    entered = fullscreen.get("fullscreen_surface")
+    if not isinstance(entered, list) or entered == windowed:
+        raise PlatformFailure(
+            f"the fullscreen surface {entered!r} never differed from the "
+            f"windowed surface {windowed!r}"
+        )
+    if fullscreen.get("compositor_fullscreen") is not True:
+        raise PlatformFailure("the compositor never made the window fullscreen")
+    if fullscreen.get("restored_surface") != windowed:
+        raise PlatformFailure("the fullscreen toggle never came back")
+    return {
+        "dpi": {
+            "output_scale": scale,
+            "windowed_surface": windowed,
+            "magnified_surface": magnified,
+        },
+        "fullscreen": {"windowed_surface": windowed, "fullscreen_surface": entered},
     }
 
 

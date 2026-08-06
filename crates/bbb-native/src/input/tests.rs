@@ -31388,6 +31388,29 @@ fn the_fullscreen_key_toggles_the_window_and_saves_the_option() {
 }
 
 #[test]
+fn the_global_press_keys_ignore_screen_state_and_key_releases() {
+    // `KeyboardHandler.keyPress` (KeyboardHandler.java:465-489) answers these
+    // two on any press, before a screen sees the event, and returns without
+    // recording the key.  The owner therefore consults neither a screen nor
+    // anything a screen could set.
+    let mut input = ClientInputState::new(true);
+
+    assert!(input.handle_global_key_press(PhysicalKey::Code(KeyCode::F11), ElementState::Pressed));
+    assert_eq!(input.take_fullscreen_requests(), vec![true]);
+    assert!(input.handle_global_key_press(PhysicalKey::Code(KeyCode::F2), ElementState::Pressed));
+    assert_eq!(input.take_screenshot_requests(), 1);
+
+    // A release is not a press, an unbound key is not one of the two, and an
+    // unfocused window has no keyboard at all.
+    assert!(!input.handle_global_key_press(PhysicalKey::Code(KeyCode::F11), ElementState::Released));
+    assert!(!input.handle_global_key_press(PhysicalKey::Code(KeyCode::KeyW), ElementState::Pressed));
+    input.focused = false;
+    assert!(!input.handle_global_key_press(PhysicalKey::Code(KeyCode::F11), ElementState::Pressed));
+    assert!(input.take_fullscreen_requests().is_empty());
+    assert_eq!(input.take_screenshot_requests(), 0);
+}
+
+#[test]
 fn the_screenshot_key_requests_one_grab_per_press_and_announces_the_saved_name() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();

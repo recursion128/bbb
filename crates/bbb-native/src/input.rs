@@ -1477,6 +1477,34 @@ impl ClientInputState {
         std::mem::take(&mut self.narrator_status_requests)
     }
 
+    /// `KeyboardHandler.keyPress`'s pre-screen press block
+    /// (KeyboardHandler.java:465-489): on a press, the fullscreen and
+    /// screenshot keys are answered before any screen sees the event and
+    /// `return` without recording the key. The only screen that defers them is
+    /// `KeyBindsScreen`, whose 20 ms rebind guard has no equivalent here
+    /// (key-binds UI is a non-goal), so these two are unconditional.
+    pub(crate) fn handle_global_key_press(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+    ) -> bool {
+        if !self.focused || !matches!(state, ElementState::Pressed) {
+            return false;
+        }
+        let PhysicalKey::Code(code) = physical_key else {
+            return false;
+        };
+        if self.binding_matches("key.fullscreen", code) {
+            self.toggle_fullscreen();
+            return true;
+        }
+        if self.binding_matches("key.screenshot", code) {
+            self.screenshot_requests = self.screenshot_requests.saturating_add(1);
+            return true;
+        }
+        false
+    }
+
     pub(crate) fn set_fullscreen(&mut self, fullscreen: bool) {
         self.fullscreen = fullscreen;
     }
@@ -12420,13 +12448,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
-    if pressed && input.binding_matches("key.fullscreen", code) {
-        input.toggle_fullscreen();
-        return;
-    }
-
-    if pressed && input.binding_matches("key.screenshot", code) {
-        input.screenshot_requests = input.screenshot_requests.saturating_add(1);
+    // One owner with the pre-screen dispatch in the simulation's `apply_key`:
+    // vanilla answers these two before any screen sees the event, so a screen
+    // that consumed the key must not have been able to hide them.
+    if input.handle_global_key_press(physical_key, state) {
         return;
     }
 

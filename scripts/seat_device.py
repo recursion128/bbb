@@ -52,6 +52,7 @@ KEY_CODES = {
     "inventory": 18,  # E
     "chat": 20,  # T
     "paste": 47,  # V
+    "fullscreen": 87,  # F11
     **{f"hotbar{index}": index + 1 for index in range(1, 10)},  # KEY_1..KEY_9
 }
 BUTTON_CODES = {"left": 0x110, "middle": 0x112, "right": 0x111}
@@ -180,6 +181,12 @@ def _handle(device: VirtualSeatDevice, line: str) -> str:
     try:
         if action == "ping":
             return "ok"
+        if action == "keys":
+            # The daemon outlives edits to this file: it holds the key table it
+            # was started with.  Answering with that table lets a caller refuse
+            # a stale daemon up front rather than discovering a missing key
+            # deep inside a run.
+            return "ok " + " ".join(sorted(KEY_CODES))
         if action == "key":
             device.key(arguments[0], float(arguments[1]) if len(arguments) > 1 else DEFAULT_HOLD_SECONDS)
             return "ok"
@@ -250,7 +257,8 @@ def request(socket_path: str, command: str, timeout: float = 120.0) -> str:
                 break
             reply += chunk
     answer = reply.decode("utf-8", "replace").strip()
-    if answer != "ok":
+    # Acting commands answer bare "ok"; reporting ones answer "ok <payload>".
+    if answer != "ok" and not answer.startswith("ok "):
         raise SeatDeviceError(answer or "the seat device gave no answer")
     return answer
 

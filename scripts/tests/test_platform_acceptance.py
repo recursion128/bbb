@@ -85,6 +85,25 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             "control_input_writes": 0,
         }
 
+    def display_transitions(self) -> dict:
+        return {
+            "control_input_writes": 0,
+            "dpi_transition": {
+                "windowed_surface": [800, 480],
+                "output_scale": 2,
+                "magnified_surface": [1600, 960],
+                "compositor_output_scale": 2,
+                "compositor_logical_size": [800, 480],
+                "restored_surface": [800, 480],
+            },
+            "fullscreen": {
+                "windowed_surface": [800, 480],
+                "fullscreen_surface": [1280, 720],
+                "compositor_fullscreen": True,
+                "restored_surface": [800, 480],
+            },
+        }
+
     def write_playable(self, root: Path, client_log: str) -> None:
         (root / "evidence.json").write_text(
             json.dumps(
@@ -92,6 +111,7 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
                     "mode": "live",
                     "vanilla_version": "26.1",
                     "seat_input": self.seat_input(),
+                    "display_transitions": self.display_transitions(),
                 }
             ),
             encoding="utf-8",
@@ -182,15 +202,43 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
                 ):
                     platform_acceptance.validate_seat_receipts({"seat_input": seat})
 
-    def test_retired_seat_limitation_cannot_come_back_unnoticed(self):
-        """`physical-seat-input` retired on evidence; the narrowed id that
-        replaced it names only what the seat run does not reach."""
+    def test_release_row_requires_display_transition_receipts(self):
+        """The row no longer defers DPI/fullscreen, so a run that skipped the
+        transitions must not pass as if it had crossed them."""
+
+        with self.assertRaisesRegex(
+            platform_acceptance.PlatformFailure, "no live DPI or fullscreen"
+        ):
+            platform_acceptance.validate_display_receipts({"mode": "live"})
+
+    def test_display_receipts_are_void_when_a_transition_did_not_land(self):
+        for path, value, message in (
+            (("control_input_writes",), 1, "synthetic input"),
+            (("dpi_transition", "magnified_surface"), [800, 480], "did not follow"),
+            (("dpi_transition", "compositor_output_scale"), 1, "never really at"),
+            (("fullscreen", "fullscreen_surface"), [800, 480], "never differed"),
+            (("fullscreen", "compositor_fullscreen"), False, "never made the window"),
+            (("fullscreen", "restored_surface"), [1280, 720], "never came back"),
+        ):
+            with self.subTest(path=path):
+                transitions = copy.deepcopy(self.display_transitions())
+                target = transitions
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                with self.assertRaisesRegex(
+                    platform_acceptance.PlatformFailure, message
+                ):
+                    platform_acceptance.validate_display_receipts(
+                        {"display_transitions": transitions}
+                    )
+
+    def test_retired_limitations_cannot_come_back_unnoticed(self):
+        """`physical-seat-input` and `dpi-transition-fullscreen` both retired
+        on evidence; what is left names only what the seat cannot reach."""
 
         self.assertNotIn("physical-seat-input", platform_acceptance.EXPECTED_LIMITATIONS)
-        self.assertEqual(
-            platform_acceptance.EXPECTED_LIMITATIONS,
-            {"seat-ime", "dpi-transition-fullscreen"},
-        )
+        self.assertEqual(platform_acceptance.EXPECTED_LIMITATIONS, {"seat-ime"})
 
     def test_lifecycle_report_requires_every_iteration_receipt(self):
         receipts = {name: 1 for name in platform_acceptance.EXPECTED_RECEIPTS}
