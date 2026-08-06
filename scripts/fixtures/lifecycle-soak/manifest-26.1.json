@@ -3,11 +3,13 @@
   "scenario": "vanilla-26.1-external-multiplayer",
   "vanilla_version": "26.1",
   "seed": "bbb-lifecycle-soak-26.1",
-  "iterations": 3,
+  "iterations": 5,
   "per_iteration_timeout_seconds": 420,
   "terminal_phase_timeout_seconds": 120,
-  "total_timeout_seconds": 1500,
+  "total_timeout_seconds": 2600,
   "termination_modes": [
+    "quit",
+    "kick",
     "quit",
     "kick",
     "quit"
@@ -60,7 +62,7 @@
     "net.simulation_output_backlog_current": 1
   },
   "process_spread_limits": {
-    "rss_bytes": 134217728,
+    "rss_bytes": 268435456,
     "file_descriptors": 8,
     "threads": 4
   }

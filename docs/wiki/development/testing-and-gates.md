@@ -27,12 +27,20 @@ playable gate 需要真实 live session 时才运行并更新 `.git/bbb/last-pla
 
 ## 生命周期与平台验收
 
-`scripts/lifecycle-soak-gate.sh` 在三次独立 live session 中交替验证 quit/kick、
+`scripts/lifecycle-soak-gate.sh` 在五次独立 live session 中交替验证 quit/kick、
 resource generation、reconfiguration、Transfer、feature-gated resize/minimize/restore、
 surface lost/outdated/timeout、no-audio fallback、终态 queue/gauge、RSS/FD/thread 趋势和
 clean process exit。唯一场景输入是
 `scripts/fixtures/lifecycle-soak/manifest-26.1.json`；成功后写入
 `.git/bbb/last-lifecycle-soak` 与本地 report。fixture 重放不能刷新 live stamp。
+
+趋势判据是「post-warmup 严格单调上升 **且** spread 超限」，两个条件都要满足。iteration
+数直接决定它的强度：3 次只留 2 个 post-warmup 采样，"严格单调"退化成一次两两比较，
+噪声就有约一半概率触发。FD 与 thread 在实跑中跨 iteration 完全持平（spread 0，限额
+8/4），是精确探针；退出时 RSS 则受 allocator 保留量与 terrain streaming 进度支配，同一
+场景实测在 1250–1451 MB 之间摆动（三轮共 11 个采样），噪声带约 200 MB。因此 iteration
+取 5（4 个 post-warmup 采样）、`rss_bytes` spread 限额取 256 MiB 抬到噪声带以上——低于
+噪声带的阈值不是更严格，只是掷硬币。
 manifest 同时唯一拥有 per-iteration 与 terminal-phase timeout；quiescence、
 kick-disconnect、process-exit 使用三个互不复用且总和受 iteration budget 约束的 deadline。
 kick 必须同时具有目标 Vanilla 服的精确 receipt、control `connected=false`、可机器解析

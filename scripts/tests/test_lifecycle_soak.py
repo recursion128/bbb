@@ -281,8 +281,12 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
             )
 
     def test_process_trend_fails_only_beyond_checked_in_spread(self):
+        limit = self.manifest["process_spread_limits"]["rss_bytes"]
+        count = self.manifest["iterations"]
+        rising = [1] + [10 + step for step in range(count - 1)]
+        rising[-1] = rising[-2] + limit + 1
         iterations = []
-        for rss in (1, 10, 10 + 134_217_729):
+        for rss in rising:
             iterations.append(
                 {
                     "process_metrics": {
