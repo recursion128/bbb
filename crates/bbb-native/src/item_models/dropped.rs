@@ -1886,6 +1886,52 @@ fn bake_held_hand(
     };
     let using_item = entity_hand_using_item(instance, off_hand);
     let using_item_ticks = entity_use_elapsed_ticks(instance, using_item);
+    // Vanilla `PlayerItemInHandLayer.submitArmWithItem`: an avatar using a spyglass in this hand
+    // outside a melee swing (`attackTime < 1e-5`) replaces the in-hand render with
+    // `renderItemHeldToEye` — the stack resolved at `ItemDisplayContext.HEAD` with the same living
+    // owner (`AvatarRenderer` fills `heldOnHead` only for `Items.SPYGLASS`) and attached to the
+    // clamped head bone. Non-avatar kinds return no eye transform and keep the in-hand render,
+    // matching the generic `ItemInHandLayer`.
+    if using_item
+        && instance.render_state.attack_anim < 1.0e-5
+        && held_stack_is_spyglass(item_runtime, &stack)
+    {
+        if let Some(eye) = player_held_to_eye_transform(instance, left_arm) {
+            bake_item_stack_at_transform(
+                &stack,
+                world,
+                eye,
+                BlockModelDisplayContext::Head,
+                left_arm,
+                Some(instance.render_state.main_arm_left),
+                Some(instance.entity_id),
+                entity_model_context_entity_type(instance.kind),
+                world.entity_team_color_rgb(instance.entity_id),
+                using_item,
+                using_item_ticks,
+                enchantment_keys,
+                damage_type_keys,
+                trim_material_keys,
+                attribute_keys,
+                context_dimension,
+                BLOCK_HEAD_FALLBACK,
+                GENERATED_HEAD_FALLBACK,
+                item_runtime,
+                terrain_textures,
+                variant_textures,
+                block_meshes,
+                block_translucent_meshes,
+                block_glint_meshes,
+                block_glint_translucent_meshes,
+                flat_meshes,
+                flat_translucent_meshes,
+                flat_glint_meshes,
+                flat_glint_translucent_meshes,
+                residency,
+            );
+            return;
+        }
+    }
     for hand in humanoid_hand_attach_transforms(instance, left_arm) {
         bake_item_stack_at_transform(
             &stack,
@@ -2485,6 +2531,21 @@ fn bake_custom_head_item(
 
 fn entity_hand_using_item(instance: &EntityModelInstance, off_hand: bool) -> bool {
     instance.render_state.is_using_item && instance.render_state.use_item_off_hand == off_hand
+}
+
+/// Vanilla `AvatarRenderer.extractRenderState`'s `useItem.is(Items.SPYGLASS)`: the held-to-eye
+/// branch keys on the item id, not the use animation.
+fn held_stack_is_spyglass(item_runtime: &NativeItemRuntime, stack: &ItemStackSummary) -> bool {
+    stack.item_id.is_some_and(|item_id| {
+        item_runtime
+            .item_resource_id(item_id)
+            .is_some_and(|resource_id| {
+                item_types::vanilla_item_resource_id_matches_type(
+                    resource_id,
+                    item_types::VANILLA_ITEM_SPYGLASS_ID,
+                )
+            })
+    })
 }
 
 fn entity_use_elapsed_ticks(instance: &EntityModelInstance, using_item: bool) -> f32 {

@@ -1771,6 +1771,100 @@ fn humanoid_item_in_hand_layer_uses_main_arm_for_hand_slot_mapping() {
 }
 
 #[test]
+fn player_scoping_spyglass_renders_held_to_eye_instead_of_in_hand() {
+    // Vanilla `PlayerItemInHandLayer.submitArmWithItem`: an avatar using a spyglass in the rendered
+    // hand outside a melee swing (`attackTime < 1e-5`) replaces the in-hand submit with
+    // `renderItemHeldToEye` — the stack resolved at `ItemDisplayContext.HEAD` on the head bone with
+    // `head.xRot` clamped to `[-π/6, π/2]`. Non-avatar humanoids keep the generic `ItemInHandLayer`
+    // in-hand render.
+    let root = unique_item_model_temp_dir("player-spyglass-held-to-eye");
+    write_flat_item_runtime_fixture(&root, &["spyglass"]);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    const ENTITY_ID: i32 = 611;
+    let terrain_textures = TerrainTextureState::default();
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+
+    let bake = |instance: EntityModelInstance| {
+        let models = held_item_models(&[instance], &world, Some(&item_runtime), &terrain_textures);
+        assert!(models.block_meshes.is_empty());
+        assert_eq!(models.flat_meshes.len(), 1);
+        models.flat_meshes.into_iter().next().unwrap()
+    };
+
+    let idle = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+    let scoping = idle.with_is_using_item(true);
+    let idle_mesh = bake(idle);
+    let scoping_mesh = bake(scoping);
+    assert_ne!(
+        idle_mesh, scoping_mesh,
+        "scoping moves the spyglass off the hand attach onto the head bone"
+    );
+
+    // The eye attach clamps `head.xRot` to `-π/6` looking up: `-80°` and the exact `-30°` boundary
+    // land on the same clamped head pose, while an in-range pitch still tracks the head.
+    let clamped_mesh = bake(scoping.with_head_look(0.0, -80.0));
+    let boundary_mesh = bake(scoping.with_head_look(0.0, -30.0));
+    let tracking_mesh = bake(scoping.with_head_look(0.0, -20.0));
+    assert_eq!(
+        clamped_mesh, boundary_mesh,
+        "pitch beyond the clamp renders exactly at the -π/6 clamp boundary"
+    );
+    assert_ne!(
+        tracking_mesh, boundary_mesh,
+        "pitch inside the clamp range tracks the posed head"
+    );
+
+    // `attackTime < 1e-5` gates the branch: a mid-swing scoping player renders in hand again. The
+    // eye transform itself is attack-invariant (root · head only), so any difference proves the
+    // branch switched.
+    let swinging_mesh = bake(scoping.with_attack_anim(0.4));
+    assert_ne!(
+        swinging_mesh, scoping_mesh,
+        "a melee swing suppresses the held-to-eye render"
+    );
+
+    // Using the off hand while the spyglass sits in the main hand renders the main arm normally.
+    let wrong_hand_mesh = bake(scoping.with_use_item_off_hand(true));
+    assert_eq!(
+        wrong_hand_mesh, idle_mesh,
+        "the held-to-eye branch requires the rendered hand to be the use hand"
+    );
+
+    // A non-avatar humanoid using a spyglass keeps the generic in-hand render.
+    let mut zombie_world = WorldStore::new();
+    zombie_world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    assert!(zombie_world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+    let zombie_bake = |instance: EntityModelInstance| {
+        let models = held_item_models(
+            &[instance],
+            &zombie_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        assert_eq!(models.flat_meshes.len(), 1);
+        models.flat_meshes.into_iter().next().unwrap()
+    };
+    let zombie = EntityModelInstance::zombie(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+    let zombie_idle_mesh = zombie_bake(zombie);
+    let zombie_scoping_mesh = zombie_bake(zombie.with_is_using_item(true));
+    assert_eq!(
+        zombie_idle_mesh, zombie_scoping_mesh,
+        "only avatar models install PlayerItemInHandLayer's held-to-eye branch"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn living_held_item_team_tint_uses_owner_scoreboard_color() {
     use bbb_protocol::packets::{
         ChatFormatting, PlayerTeamMethod, PlayerTeamParameters, SetPlayerTeam, TeamCollisionRule,

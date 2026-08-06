@@ -342,6 +342,35 @@ pub fn custom_head_item_transforms(instance: &EntityModelInstance) -> Vec<Mat4> 
     custom_head_item_transform(instance).into_iter().collect()
 }
 
+/// The model→world transform used by vanilla `PlayerItemInHandLayer.renderItemHeldToEye`: a scoping
+/// avatar's spyglass attaches to the posed head bone with `head.xRot` clamped to `[-π/6, π/2]`,
+/// then `CustomHeadLayer.translateToHead(Transforms.DEFAULT)` and the arm-side eye offset
+/// `((left ? -2.5 : 2.5) / 16, -0.0625, 0)`. Only avatar models (players and mannequins) install
+/// `PlayerItemInHandLayer`, so every other kind returns `None` and keeps the in-hand render. The
+/// native item path applies the stack's retained `ItemDisplayContext.HEAD` transform after this
+/// matrix.
+pub fn player_held_to_eye_transform(
+    instance: &EntityModelInstance,
+    left_arm: bool,
+) -> Option<Mat4> {
+    let EntityModelKind::Player { skin, .. } = instance.kind else {
+        return None;
+    };
+    let mut model = PlayerModel::new(skin.is_slim());
+    model.prepare(instance);
+    let head = model.root_mut().child_mut("head");
+    head.pose.rotation[0] = head.pose.rotation[0].clamp(-PI / 6.0, FRAC_PI_2);
+    let head_transform = model.root().try_child_attach_transform("head")?;
+    let sign = if left_arm { -1.0 } else { 1.0 };
+    Some(
+        custom_head_item_layer_transform(
+            player_model_root_transform(*instance),
+            head_transform,
+            CustomHeadTransforms::DEFAULT,
+        ) * Mat4::from_translation(Vec3::new(sign * 2.5 / 16.0, -0.0625, 0.0)),
+    )
+}
+
 /// The model->world transform used by vanilla `CustomHeadLayer` for skull block items in the HEAD
 /// equipment slot. Unlike the generic item branch, the skull branch calls `SkullBlockRenderer`
 /// directly, so it does not apply the item display rotation or the negative item-model scale.

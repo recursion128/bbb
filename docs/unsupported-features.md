@@ -256,18 +256,11 @@ Matrix routes: `debug-integrated-server-mirrors`, `movement-remote-type-exceptio
 
 Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 
-Matrix routes: `ui-context-entity-type`, `items-server-owned-effects`
+Matrix routes: `items-server-owned-effects`
 
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
 
-- Additional `minecraft:context_entity_type` non-GUI wiring is `deferred`: the
-  current generated held/head consumers carry their real living owner, while
-  `SmithingScreen.updateArmorStandPreview` deliberately calls
-  `updateForTopItem(..., level=null, owner=null, seed=0)` for both the head and
-  left-hand preview. Reopen when a different current client consumer passes a
-  real living owner to `ItemModelResolver`; non-living `ItemOwner` values remain
-  null after Vanilla's `asLivingEntity` narrowing.
 - `not-needed`: synchronized conditional value/entity/location enchantment
   effects, damage immunity, equipment-drop prevention, and crossbow charging
   sounds remain server-owned in Vanilla 26.1. Conditional execution enters

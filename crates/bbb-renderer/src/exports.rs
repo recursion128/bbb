@@ -88,8 +88,9 @@ pub use crate::entity_models::{
     fox_held_item_transform, humanoid_hand_attach_transform, humanoid_hand_attach_transforms,
     iron_golem_flower_block_transform, minecart_display_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
-    panda_held_item_transform, primed_tnt_block_transform, snow_golem_head_block_transform,
-    villager_crossed_arms_item_transform, witch_held_item_transform,
+    panda_held_item_transform, player_held_to_eye_transform, primed_tnt_block_transform,
+    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
+    witch_held_item_transform,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{

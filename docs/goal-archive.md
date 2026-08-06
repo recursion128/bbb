@@ -43,18 +43,12 @@
 - **2026-08-03/04（generated evidence/layout、ClientLevel census 与 lifecycle closures）**：五份 JSON 收敛；
   121 owner 拆 18 route；全部 18 route（entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing/diagnostics-report/map-data/level-events/block-entity-tracking 等）95 owner 经唯一 store/resolver/gate/装配/分派链收口，census 域关闭。
 
-- **2026-08-04（block-entity registration closure）**：`BlockEntityRenderers` 27 条注册收敛为 23 个投影 owner
-  并逐条挂上 implementation/test evidence；产码补齐 item display 四项、beacon 光柱（与 end gateway 共用
-  `beaconBeam` 几何/管线）、structure_block/test_instance_block 包围盒与错误标记、copper_golem_statue 雕像，
-  piston 移动方块回到 `block_entity_visibility` 唯一政策点，route 翻 `equivalent`。
-
-- **2026-08-04（client persistence closure）**：`Options` 145 + `ServerList` 13 共 158 owner 按 canonical
-  owner 拆完并逐条挂 evidence。新增 `bbb-native::client_options`（key/编码/默认值由 `Options.java` 生成），
-  CLI 参数降级为文件 override，F3+H/F3+P 成为 vanilla 同源的 `Options.save` 触发点并补发
-  `ClientInformation`；`server_list.rs` 改按地址复用条目、新建走 quick-play 的 hidden + 16 上限。
-  `persistence-options-file`/`-derived`/`-apply`/`persistence-server-list` 四行翻 `equivalent`，无消费面的
-  8 个 owner 归 `persistence-options-unconsumed`（`missing`），只服务 options 屏的归 `scope-options-ui`，
-  多人服务器选择屏的 5 个归 `scope-multiplayer-server-list`。
+- **2026-08-04（block-entity registration + client persistence closures）**：`BlockEntityRenderers`
+  27 条注册收敛为 23 个投影 owner 逐条挂 evidence（补 item display 四项、beacon/end-gateway 共用光柱、
+  structure/test 包围盒、copper_golem_statue；piston 回 `block_entity_visibility` 唯一政策点）；
+  `Options` 145 + `ServerList` 13 共 158 owner 拆完挂 evidence：新增生成式 `client_options`、CLI 降级为
+  文件 override、F3+H/F3+P 触发 `Options.save` 并补发 `ClientInformation`、server_list 按地址复用 +
+  quick-play hidden/16 上限；五行翻 `equivalent`，无消费面归 `missing`/scope 行。
 
 - **2026-08-05（HUD/input-window/game-renderer census closures）**：三个 census 工程同日收口，
   全部逐 owner 挂 implementation/test evidence：`Gui` 72 owner 五条 `hud-*` route（camera player 唯一
@@ -95,5 +89,11 @@
   数字字段与 ICU4J 周算法；generated 表承接 quarter/GMT-zero/unknown-city/root 地区码），以
   vanilla 同款 ICU4J 77.1 jar 做 oracle 的 8656 行 goldens 全绿；同宽度多字段各持独立 names
   实例（单实例装不下同 kind 两宽度）。账本 deferred 5→4（三项环境绑定 + 一项消费者门控）。
+
+- **2026-08-06（spyglass held-to-eye + context_entity_type closure）**：census 漏数的最后一个真实
+  owner 消费者落地：`PlayerItemInHandLayer.renderItemHeldToEye`——scoping avatar（玩家/mannequin）的
+  spyglass 以 HEAD context 挂头骨（xRot 钳 `[-π/6, π/2]`、`translateToHead`+眼侧偏移），melee swing
+  （`attackTime<1e-5`）门控回手部，mob 保持通用 in-hand；vanilla 26.1 全部传 living owner 的
+  `ItemModelResolver` 消费者对齐，账本 context_entity_type deferred 删除（deferred 4→3，全为环境绑定）。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
