@@ -1732,7 +1732,8 @@ mod tests {
         let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
             return;
         };
-        let roots = bbb_pack::PackRoots::discover().expect("discover local Vanilla resources");
+        let roots =
+            bbb_pack::PackRoots::from_environment().expect("discover local Vanilla resources");
         let selected = roots.selected_client_packs_or_unmanaged();
         let first_roots = roots
             .clone()

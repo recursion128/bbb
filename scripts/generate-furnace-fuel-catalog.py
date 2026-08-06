@@ -9,6 +9,8 @@ import json
 import sys
 from pathlib import Path
 
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+
 from furnace_fuel_catalog_extractor import (
     extract_furnace_fuel_operations,
     extract_item_tag_constants,
@@ -17,7 +19,6 @@ from vanilla_java_source import parse_source
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-pack/data/furnace_fuel_declarations_26_1.json"
 FUEL_VALUES_PATH = Path(
     "net/minecraft/world/level/block/entity/FuelValues.java"
@@ -27,10 +28,12 @@ ITEM_TAGS_PATH = Path("net/minecraft/tags/ItemTags.java")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
+    add_vanilla_root(parser)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.source_root = resolve_source_root(args)
+    return args
 
 
 def generate(source_root: Path) -> str:

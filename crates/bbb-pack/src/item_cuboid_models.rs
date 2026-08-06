@@ -641,7 +641,7 @@ mod tests {
     #[test]
     #[ignore]
     fn loads_local_vanilla_item_cuboid_model_catalog() {
-        let catalog = PackRoots::discover()
+        let catalog = PackRoots::from_environment()
             .unwrap()
             .load_item_cuboid_model_catalog()
             .unwrap();
@@ -727,7 +727,7 @@ mod tests {
     #[test]
     #[ignore]
     fn resolves_local_vanilla_item_definition_cuboid_models() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let item_models = roots.load_item_model_catalog().unwrap();
         let cuboid_models = roots.load_item_cuboid_model_catalog().unwrap();
         let texture_images = ItemCuboidTextureImageCatalog::load(&roots).unwrap();

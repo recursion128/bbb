@@ -35,6 +35,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
 
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_workspace
+from bbb_tools.vanilla.lockfile import load_lock
+from bbb_tools.execution.process import ManagedProcess, ProcessFailure
+
 
 BENCHMARK_SCHEMA = 1
 REPLAY_SCHEMA = 1
@@ -767,13 +771,13 @@ def _native_classifier(name: str) -> bool:
 
 
 def audit_distribution(
-    mc_root: Path,
+    vanilla_root: Path,
     *,
     java_path: Path,
     verify_asset_objects: bool = True,
+    supply_lock: Mapping[str, Any] | None = None,
 ) -> DistributionAudit:
-    downloads = mc_root / "downloads" / MINECRAFT_VERSION
-    manifest_path = downloads / "version_manifest_v2.json"
+    downloads = vanilla_root / "downloads" / MINECRAFT_VERSION
     metadata_path = downloads / f"{MINECRAFT_VERSION}.json"
     libraries_root = downloads / "libraries"
     assets_root = downloads / "assets"
@@ -782,24 +786,13 @@ def audit_distribution(
     if not java_path.is_file() or not os.access(java_path, os.X_OK):
         raise BenchmarkFailure(f"Java executable is unavailable: {java_path}")
 
-    manifest = load_json_object(manifest_path, "version manifest")
-    versions = manifest.get("versions")
-    if not isinstance(versions, list):
-        raise BenchmarkFailure("version manifest lacks versions")
-    manifest_entry = next(
-        (
-            entry
-            for entry in versions
-            if isinstance(entry, dict) and entry.get("id") == MINECRAFT_VERSION
-        ),
-        None,
-    )
-    if manifest_entry is None or not isinstance(manifest_entry.get("sha1"), str):
-        raise BenchmarkFailure(f"version manifest lacks {MINECRAFT_VERSION}")
+    if supply_lock is None:
+        _, supply_lock = load_lock(MINECRAFT_VERSION)
+    locked_metadata = supply_lock["metadata"]
     metadata_verified = validate_file(
         metadata_path,
-        expected_sha1=manifest_entry["sha1"],
-        expected_size=None,
+        expected_sha1=locked_metadata["sha1"],
+        expected_size=locked_metadata["size"],
         label="version metadata",
     )
     metadata = load_json_object(metadata_path, "version metadata")
@@ -921,8 +914,8 @@ def audit_distribution(
     )
 
 
-def validate_server_jar(mc_root: Path) -> VerifiedFile:
-    downloads = mc_root / "downloads" / MINECRAFT_VERSION
+def validate_server_jar(vanilla_root: Path) -> VerifiedFile:
+    downloads = vanilla_root / "downloads" / MINECRAFT_VERSION
     metadata = load_json_object(
         downloads / f"{MINECRAFT_VERSION}.json", "version metadata"
     )
@@ -1193,6 +1186,7 @@ def build_vanilla_launch_plan(
 def build_bbb_launch_argv(
     *,
     binary: Path,
+    vanilla_root: Path,
     server_port: int,
     control_port: int,
 ) -> tuple[str, ...]:
@@ -1200,6 +1194,8 @@ def build_bbb_launch_argv(
         raise BenchmarkFailure(f"bbb-native executable is unavailable: {binary}")
     return (
         str(binary),
+        "--vanilla-root",
+        str(vanilla_root),
         "--server",
         f"127.0.0.1:{server_port}",
         "--username",
@@ -1916,14 +1912,14 @@ def _warmup_and_start_replay(
 def prepare_world_snapshot(
     *,
     replay: Mapping[str, Any],
-    mc_root: Path,
+    vanilla_root: Path,
     java_path: Path,
     artifact_dir: Path,
     server_port: int,
     accept_eula: bool,
     timeout: float,
 ) -> WorldSnapshot:
-    server = validate_server_jar(mc_root)
+    server = validate_server_jar(vanilla_root)
     server_dir = artifact_dir / "server"
     digest = write_server_layout(
         server_dir,
@@ -2718,20 +2714,22 @@ class PerfStatSession:
             output_path=output_path,
         )
         self.output_path = output_path
+        self.managed: ManagedProcess | None = None
         self.process: subprocess.Popen[Any] | None = None
 
     def start(self) -> dict[str, Any]:
         if self.process is not None:
             raise BenchmarkFailure("perf stat session was already started")
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
-        self.process = subprocess.Popen(
+        self.managed = ManagedProcess(
             self.argv,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
-            start_new_session=True,
-        )
+        ).start()
+        self.process = self.managed.process
+        assert self.process is not None
         time.sleep(0.1)
         if self.process.poll() is not None:
             stderr = self.process.stderr.read() if self.process.stderr else ""
@@ -2750,12 +2748,11 @@ class PerfStatSession:
         if process is None:
             raise BenchmarkFailure("perf stat session was not started")
         if process.poll() is None:
-            os.killpg(process.pid, signal.SIGINT)
             try:
-                process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.wait(timeout=timeout)
+                assert self.managed is not None
+                self.managed.stop(signal.SIGINT, grace_seconds=timeout)
+            except ProcessFailure as error:
+                raise BenchmarkFailure(str(error)) from error
         stderr = process.stderr.read() if process.stderr else ""
         if process.returncode not in (0, 130, -signal.SIGINT):
             raise BenchmarkFailure(
@@ -2881,6 +2878,7 @@ class WestonTimelineSession:
             "WAYLAND_DISPLAY": wayland_display,
         }
         self.process: subprocess.Popen[Any] | None = None
+        self.managed: ManagedProcess | None = None
         self.output: Any = None
         self.start_monotonic: float | None = None
 
@@ -2889,14 +2887,15 @@ class WestonTimelineSession:
             raise BenchmarkFailure("Weston timeline session was already started")
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         self.output = self.output_path.open("w", encoding="utf-8")
-        self.process = subprocess.Popen(
+        self.managed = ManagedProcess(
             self.argv,
             stdin=subprocess.DEVNULL,
             stdout=self.output,
             stderr=subprocess.STDOUT,
             env=self.environment,
-            start_new_session=True,
-        )
+        ).start()
+        self.process = self.managed.process
+        assert self.process is not None
         time.sleep(0.1)
         if self.process.poll() is not None:
             self.output.close()
@@ -2915,12 +2914,11 @@ class WestonTimelineSession:
             raise BenchmarkFailure("Weston timeline session was not started")
         if process.poll() is None:
             end_monotonic = time.monotonic()
-            os.killpg(process.pid, signal.SIGTERM)
             try:
-                process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.wait(timeout=timeout)
+                assert self.managed is not None
+                self.managed.terminate(grace_seconds=timeout)
+            except ProcessFailure as error:
+                raise BenchmarkFailure(str(error)) from error
         else:
             end_monotonic = time.monotonic()
         if self.output is not None and not self.output.closed:
@@ -2946,66 +2944,32 @@ class ProcessGroup:
     def __init__(self, argv: Sequence[str], **popen_options: Any) -> None:
         self.argv = tuple(argv)
         self.popen_options = popen_options
+        self.managed: ManagedProcess | None = None
         self.process: subprocess.Popen[Any] | None = None
 
     def start(self) -> subprocess.Popen[Any]:
         if self.process is not None:
             raise BenchmarkFailure("process group was already started")
-        self.process = subprocess.Popen(
-            self.argv, start_new_session=True, **self.popen_options
-        )
+        self.managed = ManagedProcess(self.argv, **self.popen_options).start()
+        self.process = self.managed.process
+        assert self.process is not None
         return self.process
 
     def cleanup(self, timeout: float = 5.0) -> None:
-        process = self.process
-        if process is None:
+        if self.managed is None:
             return
         try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            return
-        if process.poll() is None:
-            try:
-                process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                pass
-        if self._wait_for_group_exit(process.pid, timeout):
-            return
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            return
-        if process.poll() is None:
-            process.wait(timeout=timeout)
-        if not self._wait_for_group_exit(process.pid, timeout):
-            raise BenchmarkFailure(
-                f"process group {process.pid} survived SIGKILL cleanup"
-            )
+            self.managed.terminate(grace_seconds=timeout)
+        except ProcessFailure as error:
+            raise BenchmarkFailure(str(error)) from error
 
     def kill(self, timeout: float = 5.0) -> None:
-        process = self.process
-        if process is None:
+        if self.managed is None:
             return
         try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            return
-        if process.poll() is None:
-            process.wait(timeout=timeout)
-        if not self._wait_for_group_exit(process.pid, timeout):
-            raise BenchmarkFailure(f"process group {process.pid} survived SIGKILL")
-
-    @staticmethod
-    def _wait_for_group_exit(process_group: int, timeout: float) -> bool:
-        deadline = time.monotonic() + timeout
-        while True:
-            try:
-                os.killpg(process_group, 0)
-            except ProcessLookupError:
-                return True
-            if time.monotonic() >= deadline:
-                return False
-            time.sleep(0.01)
+            self.managed.kill(grace_seconds=timeout)
+        except ProcessFailure as error:
+            raise BenchmarkFailure(str(error)) from error
 
     def __enter__(self) -> "ProcessGroup":
         self.start()
@@ -4548,7 +4512,7 @@ def _take_weston_screenshot(
 def run_official_smoke(
     *,
     replay: Mapping[str, Any],
-    mc_root: Path,
+    vanilla_root: Path,
     java_path: Path,
     world_manifest_path: Path,
     artifact_dir: Path,
@@ -4605,8 +4569,8 @@ def run_official_smoke(
     if digest != source_manifest.get("replay_hash"):
         raise BenchmarkFailure("world snapshot and requested replay hash differ")
 
-    audit = audit_distribution(mc_root, java_path=java_path)
-    server = validate_server_jar(mc_root)
+    audit = audit_distribution(vanilla_root, java_path=java_path)
+    server = validate_server_jar(vanilla_root)
     natives_dir = artifact_dir / "natives"
     natives = safe_extract_natives(
         (Path(entry.path) for entry in audit.native_classifiers), natives_dir
@@ -4622,7 +4586,7 @@ def run_official_smoke(
         audit,
         java_path=java_path,
         game_dir=game_dir,
-        assets_dir=mc_root / "downloads" / MINECRAFT_VERSION / "assets",
+        assets_dir=vanilla_root / "downloads" / MINECRAFT_VERSION / "assets",
         natives_dir=natives_dir,
         server_port=server_port,
         prefer_wayland=x_display is None,
@@ -5208,7 +5172,7 @@ def bbb_renderdoc_residency_evidence(
 def run_bbb_smoke(
     *,
     replay: Mapping[str, Any],
-    mc_root: Path,
+    vanilla_root: Path,
     java_path: Path,
     bbb_binary: Path,
     world_manifest_path: Path,
@@ -5263,10 +5227,11 @@ def run_bbb_smoke(
     )
     if digest != source_manifest.get("replay_hash"):
         raise BenchmarkFailure("world snapshot and requested replay hash differ")
-    audit = audit_distribution(mc_root, java_path=java_path)
-    server = validate_server_jar(mc_root)
+    audit = audit_distribution(vanilla_root, java_path=java_path)
+    server = validate_server_jar(vanilla_root)
     client_argv = build_bbb_launch_argv(
         binary=bbb_binary,
+        vanilla_root=vanilla_root,
         server_port=server_port,
         control_port=control_port,
     )
@@ -5387,7 +5352,7 @@ def run_bbb_smoke(
         environment.update(
             {
                 "XDG_RUNTIME_DIR": str(runtime_dir),
-                "BBB_MC_CODE_ROOT": str(mc_root),
+                "BBB_VANILLA_ROOT": str(vanilla_root),
                 "RUST_LOG": (
                     "bbb_net=info,bbb_native=info,bbb_control=info,"
                     "bbb_renderer=info"
@@ -5443,7 +5408,7 @@ def run_bbb_smoke(
                     "environment": {
                         key: environment[key]
                         for key in (
-                            "BBB_MC_CODE_ROOT",
+                            "BBB_VANILLA_ROOT",
                             "WAYLAND_DISPLAY",
                             "DISPLAY",
                             "WINIT_UNIX_BACKEND",
@@ -5828,7 +5793,7 @@ def _json_ready(value: Any) -> Any:
 
 def _command_audit(args: argparse.Namespace) -> None:
     audit = audit_distribution(
-        Path(args.mc_code_root),
+        resolve_workspace(args).root,
         java_path=Path(args.java),
         verify_asset_objects=not args.skip_asset_objects,
     )
@@ -5836,10 +5801,10 @@ def _command_audit(args: argparse.Namespace) -> None:
 
 
 def _command_prepare_vanilla(args: argparse.Namespace) -> None:
-    mc_root = Path(args.mc_code_root)
+    vanilla_root = resolve_workspace(args).root
     artifact_dir = Path(args.artifact_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    audit = audit_distribution(mc_root, java_path=Path(args.java))
+    audit = audit_distribution(vanilla_root, java_path=Path(args.java))
     natives = safe_extract_natives(
         (Path(entry.path) for entry in audit.native_classifiers),
         artifact_dir / "natives",
@@ -5850,7 +5815,7 @@ def _command_prepare_vanilla(args: argparse.Namespace) -> None:
         audit,
         java_path=Path(args.java),
         game_dir=game_dir,
-        assets_dir=mc_root / "downloads" / MINECRAFT_VERSION / "assets",
+        assets_dir=vanilla_root / "downloads" / MINECRAFT_VERSION / "assets",
         natives_dir=artifact_dir / "natives",
         server_port=args.server_port,
     )
@@ -5891,7 +5856,7 @@ def _command_prepare_world(args: argparse.Namespace) -> None:
     replay = load_json_object(Path(args.replay), "replay")
     snapshot = prepare_world_snapshot(
         replay=replay,
-        mc_root=Path(args.mc_code_root),
+        vanilla_root=resolve_workspace(args).root,
         java_path=Path(args.java),
         artifact_dir=Path(args.artifact_dir),
         server_port=args.server_port or reserve_loopback_port(),
@@ -5906,7 +5871,7 @@ def _command_run_official_smoke(args: argparse.Namespace) -> None:
     replay = load_json_object(Path(args.replay), "replay")
     result = run_official_smoke(
         replay=replay,
-        mc_root=Path(args.mc_code_root),
+        vanilla_root=resolve_workspace(args).root,
         java_path=Path(args.java),
         world_manifest_path=Path(args.world_manifest),
         artifact_dir=Path(args.artifact_dir),
@@ -5942,7 +5907,7 @@ def _command_run_bbb_smoke(args: argparse.Namespace) -> None:
         control_port = reserve_loopback_port()
     result = run_bbb_smoke(
         replay=replay,
-        mc_root=Path(args.mc_code_root),
+        vanilla_root=resolve_workspace(args).root,
         java_path=Path(args.java),
         bbb_binary=Path(args.bbb_binary),
         world_manifest_path=Path(args.world_manifest),
@@ -6085,13 +6050,13 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     audit = subparsers.add_parser("audit")
-    audit.add_argument("--mc-code-root", required=True)
+    add_vanilla_root(audit)
     audit.add_argument("--java", required=True)
     audit.add_argument("--skip-asset-objects", action="store_true")
     audit.set_defaults(handler=_command_audit)
 
     prepare = subparsers.add_parser("prepare-vanilla")
-    prepare.add_argument("--mc-code-root", required=True)
+    add_vanilla_root(prepare)
     prepare.add_argument("--java", required=True)
     prepare.add_argument("--artifact-dir", required=True)
     prepare.add_argument("--server-port", required=True, type=int)
@@ -6112,7 +6077,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     prepare_world = subparsers.add_parser("prepare-world")
     prepare_world.add_argument("--replay", required=True)
-    prepare_world.add_argument("--mc-code-root", required=True)
+    add_vanilla_root(prepare_world)
     prepare_world.add_argument("--java", required=True)
     prepare_world.add_argument("--artifact-dir", required=True)
     prepare_world.add_argument("--server-port", type=int)
@@ -6122,7 +6087,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     smoke = subparsers.add_parser("run-official-smoke")
     smoke.add_argument("--replay", required=True)
-    smoke.add_argument("--mc-code-root", required=True)
+    add_vanilla_root(smoke)
     smoke.add_argument("--java", required=True)
     smoke.add_argument("--world-manifest", required=True)
     smoke.add_argument("--artifact-dir", required=True)
@@ -6159,7 +6124,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     bbb_smoke = subparsers.add_parser("run-bbb-smoke")
     bbb_smoke.add_argument("--replay", required=True)
-    bbb_smoke.add_argument("--mc-code-root", required=True)
+    add_vanilla_root(bbb_smoke)
     bbb_smoke.add_argument("--java", required=True)
     bbb_smoke.add_argument("--bbb-binary", required=True)
     bbb_smoke.add_argument("--world-manifest", required=True)

@@ -28,7 +28,7 @@ window icon 走 X11 路径），只是不声明 X11 发布行。
 | --- | --- | --- |
 | `cargo` | 构建与测试；工具链版本由 `rust-toolchain.toml` 钉死 | `rustup` |
 | `git` | 版本控制与门禁 stamp | Xcode Command Line Tools |
-| `python3` | `scripts/` 分析与门禁脚本 | Xcode Command Line Tools |
+| `python3` 3.12 | `scripts/` package、Vanilla tooling 与门禁 | `brew install python@3.12` |
 | `rg` | docs lint 的模式检索 | `brew install ripgrep` |
 | `uv` | `scripts/vanilla-source-tools.sh` 的离线 Python 环境 | `brew install uv` |
 
@@ -41,9 +41,12 @@ macOS 上——所以由这条测试代替 macOS 主机发现它们。
 ## 两个平台都跑的
 
 - `scripts/cargo-dev.sh fast-test` / `test -p <crate> <filter>`：日常 focused 测试。
-- `scripts/cargo-dev.sh gate`：完整门禁，7 步，写 `.git/bbb/last-gated`。
+- `scripts/dev doctor --profile portable`：能力探测，不用 `uname` 猜行为。
+- `scripts/dev lint python` / `scripts/dev test python --suite unit|integration|vanilla|all`。
+- `scripts/cargo-dev.sh gate`：完整门禁，10 步，写 `.git/bbb/last-gated`。
 - `scripts/cargo-dev.sh cross-check`：第二平台类型检查，见下节。
 - `scripts/docs-lint.sh`：文档与账本 lint。
+- `scripts/vanilla prepare|verify|path|clean 26.1`：同一 Python 3.12 标准库实现。
 
 target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 
@@ -54,7 +57,8 @@ target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 相关脚本会指名主机后拒绝，而不是在缺失的内核接口上失败：
 
 - `scripts/platform-acceptance-gate.sh`：发布行验收。
-- `scripts/seat_device.py` / `scripts/seat_inject.py`：seat 注入。
+- `scripts/input --backend linux-release`：发布 seat 的稳定入口；底层持久 uinput
+  设备与 compositor adapter 是 Linux release 专用。
 - `scripts/gpu_duration_capture.py preflight|capture`：需要 tracefs 与 perf；
   `summarize` 只读既有 capture，与主机无关，不受限制。
 
@@ -66,7 +70,7 @@ target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此会无声腐坏。
 `scripts/cross_check.py`（`scripts/cargo-dev.sh cross-check`）用
 `cargo check --target aarch64-apple-darwin` 把这个缺口关到能关的程度，作为 gate
-的第 6 步在 crate 源码或 manifest 改动时运行。Linux 开发机需要一次
+的第二平台步骤在 crate 源码或 manifest 改动时运行。Linux 开发机需要一次
 `rustup target add aarch64-apple-darwin`；target 缺失时该步归因跳过而不是假装通过，
 所以缺 target 的机器不提供这份证据。`--target` 可换其它 triple（如 Intel Mac 的
 `x86_64-apple-darwin`）。反方向不成立：macOS 主机上该步退化为本机检查，Linux 专有

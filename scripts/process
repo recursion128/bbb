@@ -1,0 +1,7 @@
+#!/usr/bin/env python3.12
+"""Stable process-supervision entry point."""
+
+from bbb_tools.execution.cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

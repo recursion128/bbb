@@ -569,7 +569,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_shader_catalog() {
-        let catalog = ShaderSourceCatalog::load(&PackRoots::discover().unwrap()).unwrap();
+        let catalog = ShaderSourceCatalog::load(&PackRoots::from_environment().unwrap()).unwrap();
         assert_eq!(catalog.sources().len(), 79);
         assert!(catalog.load_failures().is_empty());
         assert!(catalog

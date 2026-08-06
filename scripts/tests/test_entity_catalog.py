@@ -7,7 +7,10 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-VANILLA_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+VANILLA_ROOT = VanillaWorkspace.resolve("26.1").root
 
 
 class EntityCatalogTests(unittest.TestCase):
@@ -17,8 +20,8 @@ class EntityCatalogTests(unittest.TestCase):
                 sys.executable,
                 str(REPO_ROOT / "scripts/generate-entity-metadata-schema.py"),
                 "check",
-                "--source-root",
-                str(VANILLA_SOURCE_ROOT),
+                "--vanilla-root",
+                str(VANILLA_ROOT),
             ],
             cwd=REPO_ROOT,
             text=True,

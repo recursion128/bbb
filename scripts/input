@@ -1,0 +1,7 @@
+#!/usr/bin/env python3.12
+"""Stable host-input entry point."""
+
+from bbb_tools.input.cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

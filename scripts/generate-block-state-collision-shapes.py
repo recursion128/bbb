@@ -13,10 +13,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+from bbb_tools.vanilla.arguments import add_vanilla_runtime, resolve_runtime_inputs
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DOWNLOAD_ROOT = Path.home() / "Work/mc-code/downloads/26.1"
-DEFAULT_JDK_ROOT = Path.home() / ".local/jdks/jdk-25.0.3+9"
 DEFAULT_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/block_state_types/collision_shapes_26_1.rs"
 )
@@ -30,22 +30,13 @@ ShapeBits = tuple[BoxBits, ...]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--client-jar",
-        type=Path,
-        default=DEFAULT_DOWNLOAD_ROOT / "client-26.1.jar",
-    )
-    parser.add_argument(
-        "--libraries-root",
-        type=Path,
-        default=DEFAULT_DOWNLOAD_ROOT / "libraries",
-    )
-    parser.add_argument("--javac", type=Path, default=DEFAULT_JDK_ROOT / "bin/javac")
-    parser.add_argument("--java", type=Path, default=DEFAULT_JDK_ROOT / "bin/java")
+    add_vanilla_runtime(parser)
     parser.add_argument("--facts-input", type=Path)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    resolve_runtime_inputs(args)
+    return args
 
 
 def expected_state_count() -> int:

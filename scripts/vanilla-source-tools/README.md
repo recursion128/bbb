@@ -13,6 +13,12 @@ fails explicitly when the locked environment/cache is unavailable. Ordinary
 Cargo build/test commands do not invoke this environment or read the external
 vanilla source tree.
 
+The stable developer commands are `scripts/dev lint python` and
+`scripts/dev test python --suite unit|integration|vanilla|all`. Tests are
+collected by pytest; Ruff owns formatting-independent Python lint. Vanilla
+inputs are resolved only through `scripts/vanilla path 26.1` and are prepared
+separately, never by a test or generator.
+
 The shared Java frontend derives source structure only. Wire codecs, world
 state transitions, client tick/physics/animation/rendering, persistent
 Codec/SNBT semantics, and runtime fallback remain handwritten in their owning

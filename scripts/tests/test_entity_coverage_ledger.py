@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace
+
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 REPO_ROOT = SCRIPTS.parent
@@ -140,7 +142,7 @@ class EntityCoverageLedgerTests(unittest.TestCase):
         overrides = GENERATOR.load_overrides(GENERATOR.DEFAULT_OVERRIDES)
         with self.assertRaisesRegex(ValueError, "entity catalog changed"):
             GENERATOR.render_ledger(
-                new_catalog, overrides, GENERATOR.DEFAULT_SOURCE_ROOT
+                new_catalog, overrides, VanillaWorkspace.resolve("26.1").sources
             )
 
     def test_complete_cell_requires_implementation_and_test_evidence(self) -> None:
@@ -166,11 +168,11 @@ class EntityCoverageLedgerTests(unittest.TestCase):
                 GENERATOR.load_overrides(path)
 
     def test_checked_in_output_is_current_when_vanilla_sources_are_available(self) -> None:
-        if not GENERATOR.DEFAULT_SOURCE_ROOT.is_dir():
+        if not VanillaWorkspace.resolve("26.1").sources.is_dir():
             self.skipTest("local vanilla 26.1 sources are unavailable")
         overrides = GENERATOR.load_overrides(GENERATOR.DEFAULT_OVERRIDES)
         rendered = GENERATOR.render_ledger(
-            self.catalog, overrides, GENERATOR.DEFAULT_SOURCE_ROOT
+            self.catalog, overrides, VanillaWorkspace.resolve("26.1").sources
         )
         self.assertEqual(rendered, GENERATOR.DEFAULT_OUTPUT.read_text())
 

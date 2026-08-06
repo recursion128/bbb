@@ -11,6 +11,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+
 from tree_sitter import Node
 
 from entity_metadata_extractor import (
@@ -33,7 +35,6 @@ from vanilla_java_source import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = (
     REPO_ROOT / "crates/bbb-world/src/entities/schema/generated_26_1.rs"
 )
@@ -1347,9 +1348,11 @@ def rust_string(value: str) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("update", "check"))
-    parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
+    add_vanilla_root(parser)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.source_root = resolve_source_root(args)
+    return args
 
 
 def source_for_owner(result: ExtractionResult, owner: str) -> JavaSource:

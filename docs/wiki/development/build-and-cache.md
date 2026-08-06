@@ -17,6 +17,10 @@
 run，用 keep list 清理真正陈旧 cache。sccache、linker 或 profile 改动必须先记录可复现
 基线（host、commit、cold/warm、command、wall time、target size）再采用。
 
+Vanilla JAR、libraries、assets 与反编译源码使用独立的平台 cache，既不放进 target，
+也不进入 Git；位置、完整性和按版本清理由
+[Vanilla workspace](vanilla-workspace.md)统一管理。
+
 ## 检查点（checkpoint）
 
 `gate` 对最终 HEAD 运行完整检查并写 last-gated stamp。高风险工程按 `goal.md` 的阶段

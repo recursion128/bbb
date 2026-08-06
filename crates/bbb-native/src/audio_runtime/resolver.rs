@@ -1322,7 +1322,7 @@ mod tests {
     #[test]
     #[ignore = "requires the local Vanilla 26.1 asset object store"]
     fn real_indexed_sound_resolves_and_opens_through_the_bounded_decoder() {
-        let roots = bbb_pack::PackRoots::discover().unwrap();
+        let roots = bbb_pack::PackRoots::from_environment().unwrap();
         let catalog = roots.load_required_sound_catalog().unwrap();
         let registry = SoundEventRegistry::default();
         let resolver = AudioCommandResolver::new(&catalog, &registry);

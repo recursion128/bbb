@@ -3,9 +3,33 @@ name = "bbb-vanilla-source-tools"
 version = "0.0.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "pytest==9.1.1",
+    "ruff==0.16.1",
     "tree-sitter==0.25.2",
     "tree-sitter-java==0.23.5",
 ]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers", "-ra", "-p", "no:cacheprovider"]
+pythonpath = [".."]
+testpaths = ["../tests"]
+markers = [
+    "integration: local multi-process or local-server integration tests",
+    "linux: Linux-only behavior",
+    "linux_release: authoritative Linux release acceptance",
+    "live: requires a graphical session or live server",
+    "macos: macOS-only behavior",
+    "slow: intentionally slow validation",
+    "unit: hermetic unit tests",
+    "vanilla: requires a prepared managed Vanilla workspace",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

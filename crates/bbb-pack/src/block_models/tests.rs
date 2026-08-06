@@ -2023,7 +2023,7 @@ fn block_model_catalog_applies_blockstate_rotation_to_faces() {
 #[test]
 #[ignore = "requires local vanilla 26.1 sources"]
 fn loads_local_vanilla_block_model_catalog() {
-    let roots = PackRoots::discover().unwrap();
+    let roots = PackRoots::from_environment().unwrap();
     let catalog = roots.load_block_model_catalog().unwrap();
     assert!(catalog.len() > 1_000);
 
@@ -2250,7 +2250,7 @@ fn loads_local_vanilla_block_model_catalog() {
 #[test]
 #[ignore = "requires local vanilla 26.1 sources"]
 fn resolves_all_local_vanilla_block_state_models() {
-    let roots = PackRoots::discover().unwrap();
+    let roots = PackRoots::from_environment().unwrap();
     let catalog = roots.load_block_model_catalog().unwrap();
     let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
     assert_eq!(report.version, "26.1");

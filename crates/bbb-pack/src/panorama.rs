@@ -287,7 +287,7 @@ mod tests {
     #[test]
     #[ignore = "requires the local Vanilla 26.1 asset object store"]
     fn loads_real_index_30_panorama_through_the_default_pack() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let observation = roots
             .vanilla_asset_index_observation()
             .expect("local Vanilla index must be mounted");

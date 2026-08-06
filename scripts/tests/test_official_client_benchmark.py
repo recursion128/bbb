@@ -29,7 +29,7 @@ def sha1(payload: bytes) -> str:
 
 
 class DistributionTests(unittest.TestCase):
-    def write_distribution(self, root: Path) -> tuple[Path, Path]:
+    def write_distribution(self, root: Path) -> tuple[Path, Path, dict[str, object]]:
         downloads = root / "downloads" / "26.1"
         libraries = downloads / "libraries"
         assets = downloads / "assets"
@@ -126,12 +126,20 @@ class DistributionTests(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-        return root, java
+        supply_lock = {
+            "metadata": {
+                "sha1": sha1(metadata_payload),
+                "size": len(metadata_payload),
+            }
+        }
+        return root, java, supply_lock
 
     def test_distribution_applies_rules_and_validates_hashes(self):
         with tempfile.TemporaryDirectory() as directory:
-            root, java = self.write_distribution(Path(directory))
-            audit = benchmark.audit_distribution(root, java_path=java)
+            root, java, supply_lock = self.write_distribution(Path(directory))
+            audit = benchmark.audit_distribution(
+                root, java_path=java, supply_lock=supply_lock
+            )
             self.assertEqual(len(audit.libraries), 1)
             self.assertEqual(len(audit.native_classifiers), 1)
             self.assertEqual(audit.asset_objects, 1)
@@ -141,12 +149,14 @@ class DistributionTests(unittest.TestCase):
 
     def test_distribution_rejects_hash_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
-            root, java = self.write_distribution(Path(directory))
+            root, java, supply_lock = self.write_distribution(Path(directory))
             (root / "downloads/26.1/client-26.1.jar").write_bytes(b"wrong!")
             with self.assertRaisesRegex(
                 benchmark.BenchmarkFailure, "client jar SHA-1 mismatch"
             ):
-                benchmark.audit_distribution(root, java_path=java)
+                benchmark.audit_distribution(
+                    root, java_path=java, supply_lock=supply_lock
+                )
 
     def test_library_rule_order_and_feature_matching(self):
         library = {
@@ -494,6 +504,7 @@ class LaunchPlanTests(unittest.TestCase):
             binary.chmod(0o755)
             argv = benchmark.build_bbb_launch_argv(
                 binary=binary,
+                vanilla_root=Path(directory) / "vanilla",
                 server_port=25565,
                 control_port=25566,
             )

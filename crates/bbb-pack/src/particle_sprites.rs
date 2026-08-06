@@ -172,7 +172,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_particle_sprite_catalog() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let definitions = roots.load_particle_definition_catalog().unwrap();
         let sprites = roots.load_particle_sprite_catalog().unwrap();
 

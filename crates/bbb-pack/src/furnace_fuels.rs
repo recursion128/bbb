@@ -266,7 +266,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_furnace_fuel_catalog() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let registry = ItemRegistryCatalog::load(&roots).unwrap();
 
         let catalog = FurnaceFuelCatalog::load(&roots, &registry).unwrap();

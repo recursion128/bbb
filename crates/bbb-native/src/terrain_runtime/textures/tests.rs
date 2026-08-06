@@ -411,7 +411,7 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
 #[test]
 #[ignore = "requires local vanilla 26.1 resources"]
 fn local_vanilla_block_material_flags_distinguish_stone_and_glass() {
-    let roots = bbb_pack::PackRoots::discover().expect("discover local Vanilla resources");
+    let roots = bbb_pack::PackRoots::from_environment().expect("discover local Vanilla resources");
     let images = roots
         .load_block_texture_images()
         .expect("load local Vanilla block textures");

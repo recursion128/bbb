@@ -459,7 +459,7 @@ mod tests {
     #[ignore = "requires local vanilla 26.1 resources"]
     fn local_kor_catalog_prepares_and_emits_real_notification_keys() {
         let catalog = bbb_pack::PeriodicNotificationCatalog::load(
-            &bbb_pack::PackRoots::discover().expect("local vanilla roots"),
+            &bbb_pack::PackRoots::from_environment().expect("local vanilla roots"),
         )
         .expect("local periodic catalog");
         let schedule = PeriodicNotificationSchedule::prepare(&catalog, Some("KOR"))

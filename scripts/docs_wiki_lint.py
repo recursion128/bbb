@@ -12,6 +12,8 @@ from pathlib import Path
 import re
 import sys
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace
+
 
 ALLOWED_STATUSES = {
     "equivalent",
@@ -684,12 +686,7 @@ class WikiLint:
             elif self.sha256_file(candidate) != expected:
                 self.fail(f"client mechanism inventory generator input is stale: {input_path}")
 
-        source_root_value = os.environ.get("BBB_DOCS_LINT_VANILLA_SOURCE_ROOT")
-        source_root = (
-            Path(source_root_value)
-            if source_root_value
-            else Path.home() / "Work" / "mc-code" / "sources" / "26.1"
-        )
+        source_root = VanillaWorkspace.resolve("26.1").require_prepared().sources
         checked_sources = 0
         if source_root.is_dir():
             for item in source_files:
@@ -954,9 +951,7 @@ class WikiLint:
                 )
 
     def check_vanilla_sources(self) -> str:
-        source_root = Path.home() / "Work" / "mc-code" / "sources" / "26.1"
-        if not source_root.is_dir():
-            return "local Vanilla 26.1 sources absent; source-location checks skipped"
+        source_root = VanillaWorkspace.resolve("26.1").require_prepared().sources
         required = [
             "net/minecraft/client/main/Main.java",
             "net/minecraft/client/Minecraft.java",

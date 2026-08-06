@@ -12262,7 +12262,7 @@ fn native_item_runtime_loads_assets_with_empty_registry_override() {
 #[test]
 #[ignore = "requires local vanilla 26.1 sources"]
 fn loads_local_vanilla_item_runtime_assets() {
-    let roots = PackRoots::discover().unwrap();
+    let roots = PackRoots::from_environment().unwrap();
     let runtime = NativeItemRuntime::load(&roots).unwrap();
 
     assert_eq!(runtime.item_definition_count(), 1506);

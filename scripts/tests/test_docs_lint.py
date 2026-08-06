@@ -2,6 +2,7 @@ import os
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -267,11 +268,49 @@ Matrix route: `fixture-valid`
     def run_lint(
         self, repo: Path, vanilla_source_root: Path | None = None
     ) -> subprocess.CompletedProcess[str]:
+        workspace_root = repo / "vanilla-workspace"
+        sources = workspace_root / "sources" / "26.1"
+        if vanilla_source_root is not None:
+            shutil.copytree(vanilla_source_root, sources, dirs_exist_ok=True)
+        owner = sources / "fixture" / "Owner.java"
+        if not owner.exists():
+            owner.parent.mkdir(parents=True, exist_ok=True)
+            owner.write_text("class Owner { void method() {} }\n", encoding="utf-8")
+            inventory = (
+                repo
+                / "docs"
+                / "evidence"
+                / "vanilla-26.1"
+                / "client-mechanism-inventory.json"
+            )
+            payload = json.loads(inventory.read_text(encoding="utf-8"))
+            payload["source_files"][0]["sha256"] = hashlib.sha256(
+                owner.read_bytes()
+            ).hexdigest()
+            inventory.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+        for relative in (
+            "net/minecraft/client/main/Main.java",
+            "net/minecraft/client/Minecraft.java",
+            "net/minecraft/client/multiplayer/ClientPacketListener.java",
+            "net/minecraft/client/renderer/block/BlockModelLighter.java",
+            "net/minecraft/client/renderer/block/FluidRenderer.java",
+            "net/minecraft/client/gui/font/FontSet.java",
+            "net/minecraft/client/gui/font/providers/UnihexProvider.java",
+        ):
+            source = sources / relative
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.touch()
+        (sources / "assets" / "minecraft").mkdir(parents=True, exist_ok=True)
+        (workspace_root / "downloads" / "26.1").mkdir(parents=True, exist_ok=True)
+        state = workspace_root / "state" / "26.1.json"
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text('{"status":"complete"}\n', encoding="utf-8")
         env = os.environ.copy()
         env["BBB_DOCS_LINT_REPO_ROOT"] = str(repo)
-        env["BBB_DOCS_LINT_VANILLA_SOURCE_ROOT"] = str(
-            vanilla_source_root or repo / "missing-vanilla"
-        )
+        env["BBB_VANILLA_ROOT"] = str(workspace_root)
         return subprocess.run(
             ["sh", str(DOCS_LINT)],
             cwd=repo,

@@ -18,9 +18,8 @@ Modes:
   live       Require and run the vanilla 26.1 offline server + bbb-native path.
 
 Live environment:
-  BBB_PLAYABLE_SERVER_JAR       Explicit vanilla 26.1 dedicated server jar path
   BBB_PLAYABLE_ACCEPT_EULA=1    Required acknowledgement before writing eula.txt
-  BBB_PLAYABLE_JAVA             Java executable, defaults to java from PATH
+  BBB_PLAYABLE_JAVA             Optional Java override; prepared workspace Java is default
   BBB_PLAYABLE_CLIENT_BIN       bbb-native executable; known external targets are probed
   BBB_PLAYABLE_PORT             Dedicated server port; default is an available loopback port
   BBB_PLAYABLE_TRANSFER_PORT    Transfer-target server port; default is an available loopback port
@@ -29,6 +28,7 @@ Live environment:
   BBB_PLAYABLE_TIMEOUT_SECONDS  Client/canonical-state timeout; default 120
   BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS  Server-ready timeout; default 120
   BBB_PLAYABLE_CLIENT_LOCALE  Deterministic client locale: en_us (default), ar_sa, or zh_cn
+  BBB_PLAYABLE_INPUT_BACKEND  linux-release for attributable compositor-seat receipts
   BBB_PLAYABLE_TERMINATION_MODE  Optional validation-only clean quit or server kick
   BBB_LIFECYCLE_SOAK_MANIFEST    Required manifest when termination mode is set
 
@@ -36,7 +36,8 @@ The live path uses the bbb-native --server/--connect-server/--control CLI and
 the narrow `bbb-native --status-server <addr>` JSON CLI (which must delegate to
 `bbb_net::status_ping`), then queries bbb-control for canonical dimension,
 chunk, and local-player state.
-It never downloads Java or a server jar.  This is a milestone/slow gate and is
+It never downloads Java or a server jar; run `scripts/vanilla prepare 26.1`
+explicitly first. This is a milestone/slow gate and is
 not part of the pre-commit gate in goal.md.
 EOF
 }
@@ -79,24 +80,19 @@ fi
 live_reason=
 java_bin=${BBB_PLAYABLE_JAVA:-}
 if [ -z "$java_bin" ]; then
-  java_bin=$(command -v java 2>/dev/null || true)
+  java_bin=$("$repo_root/scripts/vanilla" path 26.1 --kind java 2>/dev/null || true)
 fi
 if [ -z "$java_bin" ] || [ ! -x "$java_bin" ]; then
   live_reason="Java executable unavailable (set BBB_PLAYABLE_JAVA)"
 fi
 
-server_jar=${BBB_PLAYABLE_SERVER_JAR:-}
+server_jar=$("$repo_root/scripts/vanilla" path 26.1 --kind server-jar 2>/dev/null || true)
 if [ -z "$live_reason" ] && { [ -z "$server_jar" ] || [ ! -f "$server_jar" ]; }; then
-  live_reason="vanilla server jar unavailable (set BBB_PLAYABLE_SERVER_JAR)"
+  live_reason="managed Vanilla server jar unavailable; run scripts/vanilla prepare 26.1"
 fi
+vanilla_root=$("$repo_root/scripts/vanilla" path 26.1 --kind root 2>/dev/null || true)
 if [ -z "$live_reason" ] && [ "${BBB_PLAYABLE_ACCEPT_EULA:-0}" != 1 ]; then
   live_reason="BBB_PLAYABLE_ACCEPT_EULA=1 was not set"
-fi
-if [ -z "$live_reason" ] && ! command -v setsid >/dev/null 2>&1; then
-  live_reason="setsid is unavailable for leak-free process-group cleanup"
-fi
-if [ -z "$live_reason" ] && ! command -v timeout >/dev/null 2>&1; then
-  live_reason="timeout is unavailable for the delegated status probe"
 fi
 if [ -z "$live_reason" ] && ! command -v mkfifo >/dev/null 2>&1; then
   live_reason="mkfifo is unavailable for the persistent server command channel"
@@ -357,7 +353,8 @@ trap on_signal HUP INT TERM
 
 echo "playable gate: artifacts: $artifact_dir"
 echo "playable gate: serving lifecycle resource pack on 127.0.0.1:$server_pack_port"
-setsid "$python_runner" python -m http.server "$server_pack_port" \
+"$repo_root/scripts/process" exec -- \
+  "$python_runner" python -m http.server "$server_pack_port" \
   --bind 127.0.0.1 \
   --directory "$server_pack_dir" \
   >"$artifact_dir/server-pack-http.log" 2>&1 &
@@ -365,7 +362,7 @@ server_pack_http_pid=$!
 echo "playable gate: starting vanilla 26.1 offline server on 127.0.0.1:$server_port"
 (
   cd "$server_dir"
-  exec setsid "$java_bin" \
+  exec "$repo_root/scripts/process" exec -- "$java_bin" \
     -DMC_DEBUG_ENABLED \
     -DMC_DEBUG_DEV_COMMANDS \
     -Xms512M -Xmx1G -jar "$server_jar" nogui
@@ -374,7 +371,8 @@ server_pid=$!
 echo "playable gate: starting vanilla 26.1 transfer target on 127.0.0.1:$transfer_server_port"
 (
   cd "$transfer_server_dir"
-  exec setsid "$java_bin" -Xms512M -Xmx1G -jar "$server_jar" nogui
+  exec "$repo_root/scripts/process" exec -- \
+    "$java_bin" -Xms512M -Xmx1G -jar "$server_jar" nogui
 ) <"$transfer_server_command" >"$transfer_server_log" 2>&1 &
 transfer_server_pid=$!
 
@@ -402,7 +400,7 @@ wait_server_ready() {
 wait_server_ready "$server_log" "$server_pid" "vanilla server"
 wait_server_ready "$transfer_server_log" "$transfer_server_pid" "vanilla transfer server"
 
-if ! timeout "$timeout_seconds" \
+if ! "$repo_root/scripts/process" run --timeout "$timeout_seconds" -- \
   "$client_bin" --status-server "127.0.0.1:$server_port" \
   </dev/null >"$status_raw_json" 2>>"$client_log"
 then
@@ -424,8 +422,9 @@ then
   exit 1
 fi
 
-if ! timeout "$timeout_seconds" \
+if ! "$repo_root/scripts/process" run --timeout "$timeout_seconds" -- \
   "$client_bin" \
+    --vanilla-root "$vanilla_root" \
     --server "127.0.0.1:$server_port" \
     --username bbb-probe \
     --probe-server \
@@ -446,7 +445,8 @@ fi
 
 echo "playable gate: launching bbb-native with bbb-control on 127.0.0.1:$control_port"
 RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
-  setsid "$client_bin" \
+  "$repo_root/scripts/process" exec -- "$client_bin" \
+    --vanilla-root "$vanilla_root" \
     --server "127.0.0.1:$server_port" \
     --username bbb-playablegate \
     --connect-server \
@@ -485,7 +485,8 @@ fi
 
 echo "playable gate: launching system-visibility ChatScreen acceptance client"
 RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
-  setsid "$client_bin" \
+  "$repo_root/scripts/process" exec -- "$client_bin" \
+    --vanilla-root "$vanilla_root" \
     --server "127.0.0.1:$server_port" \
     --username bbb-restricted \
     --connect-server \

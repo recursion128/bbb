@@ -15,8 +15,9 @@ configuration UI.
 
 ## Authoritative References
 
-- Use local vanilla 26.1 sources first:
-  `~/Work/mc-code/sources/26.1/`
+- Use the verified repo-managed Vanilla 26.1 workspace first. Resolve it with
+  `scripts/vanilla path 26.1`; prepare it explicitly with
+  `scripts/vanilla prepare 26.1`. Never infer a source path from `$HOME`.
 - Follow the repo code organization and style rules in:
   `docs/wiki/development/architecture-rules.md`
 - Crate boundaries, ownership rules, and state taxonomy:

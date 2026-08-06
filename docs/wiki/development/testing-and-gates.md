@@ -15,8 +15,9 @@
 `goal.md` 是 checkpoint/full-gate 唯一排程 owner。每次 commit 前执行其 per-commit
 checks，包括 focused tests、docs lint、format、diff check 和完整 diff review。
 `scripts/cargo-dev.sh gate` 在 `/tmp/bbb-target-main` 运行完整门禁，并把通过 commit 写入
-`.git/bbb/last-gated`；`batch-gate` 只用于失败定位。门禁七步中两步是 change-aware：
-scripts python 套件只在 `scripts/` 改动时跑，第二平台 `cross-check` 只在 crate 源码或
+`.git/bbb/last-gated`；`batch-gate` 只用于失败定位。门禁先执行 Vanilla 完整性校验和
+portable host capability 检查；Ruff 与 pytest 取代散落的 unittest discovery。十步中
+scripts Python lint/套件只在 `scripts/` 改动时跑，第二平台 `cross-check` 只在 crate 源码或
 manifest 改动时跑，`BBB_GATE_FULL=1` 强制两者。**改动范围按门禁实际认证的范围取**：
 工作树脏时对 `HEAD`，干净时对 `last-gated`（不是 `HEAD^`）——批次 tip 若只对上一个
 commit 取 diff，批次里较早那个 commit 需要的步骤会被静默跳过。stamp 缺失或不是 `HEAD`
@@ -60,9 +61,16 @@ stamp、以及 **seat receipts**；成功后写入 `.git/bbb/last-linux-platform
 
 seat receipts 来自真实 `wl_seat`：headless backend 不广播 `wl_seat`，而
 `scripts/seat_device.py` 常驻一个 `uinput` 设备后，compositor 的 seat 才持续带
-pointer/keyboard capability。设 `BBB_PLAYABLE_SEAT_INJECT` 指向
-`scripts/seat_inject.py` 后，live playable gate 改由该 seat 驱动：不再发任何合成
+pointer/keyboard capability。设 `BBB_PLAYABLE_INPUT_BACKEND=linux-release` 后，
+live playable gate 只调用 repo-owned `scripts/input`，由它选择持久 uinput seat；不再接受
+任意外部命令字符串，也不再发任何合成
 `input.*`（`_seat_input_only` 让这类写在 seat 场景内直接抛错）。
+
+`scripts/process` 是 live gate 与 benchmark 的进程监管合同：子进程进入独立 POSIX
+process group，超时使用 monotonic deadline，退出时先 TERM、到期再 KILL 并回收。
+shell 不再依赖 GNU `setsid` 或 `timeout`。fixture/unit 层用 pytest marker 区分
+`integration`、`vanilla`、`live` 与 `linux_release`；普通 `scripts/dev test python`
+默认不运行后两类真实环境场景。
 
 三条经实跑得出的硬性前提，缺一条 receipts 就取不到：① **设备必须常驻**——capability
 只在设备存在期间广播，客户端也只在其间绑定 `wl_keyboard`/`wl_pointer` 并收到焦点，

@@ -40,11 +40,10 @@ use crate::{
 };
 
 pub const MC_VERSION: &str = "26.1";
-pub const DEFAULT_MC_CODE_ROOT: &str = "/Users/zhangguyu/Work/mc-code";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackRoots {
-    pub mc_code_root: PathBuf,
+    pub vanilla_root: PathBuf,
     pub sources_dir: PathBuf,
     pub assets_dir: PathBuf,
     #[serde(skip, default)]
@@ -60,40 +59,35 @@ pub struct PackRoots {
 }
 
 impl PackRoots {
-    pub fn discover() -> Result<Self> {
-        let root = std::env::var_os("BBB_MC_CODE_ROOT")
-            .or_else(|| std::env::var_os("MC_CODE_ROOT"))
+    /// Test/maintenance adapter for the root resolved by `scripts/vanilla`.
+    /// Production startup passes `--vanilla-root` to [`Self::from_root`].
+    pub fn from_environment() -> Result<Self> {
+        let root = std::env::var_os("BBB_VANILLA_ROOT")
             .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var_os("HOME")
-                    .map(PathBuf::from)
-                    .map(|home| home.join("Work/mc-code"))
-                    .filter(|root| root.join("sources").join(MC_VERSION).is_dir())
-            })
-            .unwrap_or_else(|| PathBuf::from(DEFAULT_MC_CODE_ROOT));
+            .context("BBB_VANILLA_ROOT is required; run scripts/vanilla path 26.1 --kind root")?;
         Self::from_root(root)
     }
 
     pub fn from_root(root: impl Into<PathBuf>) -> Result<Self> {
-        let mc_code_root = root.into();
-        let sources_dir = mc_code_root.join("sources").join(MC_VERSION);
+        let vanilla_root = root.into();
+        let sources_dir = vanilla_root.join("sources").join(MC_VERSION);
         let assets_dir = sources_dir.join("assets").join("minecraft");
         if !sources_dir.is_dir() {
             bail!("missing vanilla source directory {}", sources_dir.display());
         }
-        let indexed_vanilla_assets = VanillaAssetIndex::discover(&mc_code_root)?;
-        let mut roots = Self::from_paths(mc_code_root, sources_dir, assets_dir);
+        let indexed_vanilla_assets = VanillaAssetIndex::discover(&vanilla_root)?;
+        let mut roots = Self::from_paths(vanilla_root, sources_dir, assets_dir);
         roots.indexed_vanilla_assets = indexed_vanilla_assets.map(Arc::new);
         Ok(roots)
     }
 
     pub fn from_paths(
-        mc_code_root: impl Into<PathBuf>,
+        vanilla_root: impl Into<PathBuf>,
         sources_dir: impl Into<PathBuf>,
         assets_dir: impl Into<PathBuf>,
     ) -> Self {
         Self {
-            mc_code_root: mc_code_root.into(),
+            vanilla_root: vanilla_root.into(),
             sources_dir: sources_dir.into(),
             assets_dir: assets_dir.into(),
             indexed_vanilla_assets: None,
@@ -1503,7 +1497,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_resource_data_within_generation_budget() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let selected = SelectedClientPackStack::from_startup_dirs(&roots, []).unwrap();
         let roots = roots.with_client_resource_generation(1, selected).unwrap();
 
@@ -1535,7 +1529,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_all_local_vanilla_atlases() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let expected = [
             ("armor_trims", 577),
             ("banner_patterns", 45),
@@ -1577,7 +1571,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_block_texture_dimensions() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let sources = roots.load_block_texture_sources().unwrap();
         assert_eq!(sources.len(), 1_122);
         let biome_colors = roots.load_biome_color_catalog().unwrap();
@@ -1699,7 +1693,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn stitches_local_vanilla_block_texture_mip_atlas() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let images = roots.load_block_texture_images().unwrap();
         assert_eq!(images.len(), 1_122);
 
@@ -1728,7 +1722,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_item_and_armor_trim_atlases() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let item_sources = roots.load_atlas_texture_sources("items").unwrap();
         assert_eq!(item_sources.len(), 857);
         let helmet_trim = item_sources
@@ -1754,7 +1748,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_gui_atlas() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let gui_sources = roots.load_atlas_texture_sources("gui").unwrap();
         assert_eq!(gui_sources.len(), 487);
         let crosshair = gui_sources

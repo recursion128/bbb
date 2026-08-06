@@ -61,7 +61,7 @@
   转 `not-needed`；当日把「X11 下 look steering 不收敛」判为 X11 缺陷是**错误归因**，同一症状在
   Wayland 真 seat 上复现，根因是真 seat 的 `Focused(false)` 压过控制面伪造焦点、客户端按
   `pauseIfInactive` 自开暂停菜单。`physical-seat-input`、`dpi-transition-fullscreen`、`seat-ime`
-  依次关闭，**该行 limitation 集合清空**：live gate 增 seat 模式（`BBB_PLAYABLE_SEAT_INJECT`，
+  依次关闭，**该行 limitation 集合清空**：live gate 增 seat 模式（现由 `BBB_PLAYABLE_INPUT_BACKEND` 选择，
   全程零合成 `input.*`），配方为常驻 `uinput` 设备→libinput→sway(+fcitx5)。连带修掉两个真实
   parity bug——暂停屏吞 F11/F2、IME 全程开着抓走每个字母键（vanilla `TextInputManager` 只在文本框
   获焦时开）。环境陷阱与三条硬前提见 memory `seat-driven-gate`。

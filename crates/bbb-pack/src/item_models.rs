@@ -3267,7 +3267,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_item_model_catalog() {
-        let catalog = PackRoots::discover()
+        let catalog = PackRoots::from_environment()
             .unwrap()
             .load_item_model_catalog()
             .unwrap();
@@ -3368,7 +3368,7 @@ mod tests {
     }
 
     fn local_vanilla_source(relative: &[&str]) -> Option<String> {
-        let roots = PackRoots::discover().ok()?;
+        let roots = PackRoots::from_environment().ok()?;
         let mut path = roots.sources_dir.clone();
         for segment in relative {
             path.push(segment);

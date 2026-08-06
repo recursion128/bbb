@@ -10,6 +10,8 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from creative_mode_tab_catalog_extractor import (  # noqa: E402
     CreativeModeTabCatalogExtractionError,
     extract_creative_mode_tab_catalog,
@@ -246,7 +248,7 @@ class CreativeModeTabCatalogExtractorTests(unittest.TestCase):
         self.assertIn("CreativeInventoryBackground::ItemSearch", rendered)
 
     def test_checked_in_catalog_matches_local_vanilla_when_available(self) -> None:
-        root = Path.home() / "Work/mc-code/sources/26.1"
+        root = VanillaWorkspace.resolve("26.1").sources
         if not root.is_dir():
             self.skipTest("local vanilla 26.1 sources are unavailable")
         generated = GENERATOR.generate(root)

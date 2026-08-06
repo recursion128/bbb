@@ -977,7 +977,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_post_effect_catalog() {
-        let catalog = PostEffectCatalog::load(&PackRoots::discover().unwrap()).unwrap();
+        let catalog = PostEffectCatalog::load(&PackRoots::from_environment().unwrap()).unwrap();
         assert_eq!(catalog.graphs().len(), 6);
         assert_eq!(catalog.graph("minecraft:blur").unwrap().passes.len(), 6);
         assert_eq!(

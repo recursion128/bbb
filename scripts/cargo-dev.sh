@@ -377,9 +377,16 @@ run_prune() {
   echo "prune: removed $delete_count directories"
 }
 
-gate_step_total=7
+gate_step_total=10
 gate_step_index=0
 gate_step_timings=""
+
+require_vanilla_workspace() {
+  if [ -z "${BBB_VANILLA_ROOT:-}" ]; then
+    BBB_VANILLA_ROOT=$("$script_dir/vanilla" path 26.1 --kind root)
+    export BBB_VANILLA_ROOT
+  fi
+}
 
 run_gate_step() {
   step_key="$1"
@@ -467,6 +474,7 @@ gate_cross_check_status() {
 }
 
 run_gate() {
+  require_vanilla_workspace
   gate_start=$(date +%s)
   gate_step_timings=""
   if [ -n "${BBB_GATE_TEST_COMMAND:-}" ]; then
@@ -477,15 +485,25 @@ run_gate() {
     gate_step_total=1
     run_gate_step test-command "gate test command" sh -c "$BBB_GATE_TEST_COMMAND"
   else
+    run_gate_step vanilla-verify "Vanilla workspace verify" \
+      scripts/vanilla verify 26.1
+    run_gate_step host-doctor "portable host capabilities" \
+      scripts/dev doctor --profile portable
     run_gate_step docs-lint "docs-lint" scripts/docs-lint.sh
     run_gate_step fmt "cargo fmt --all --check" cargo fmt --all --check
     scripts_tests_status="$(gate_scripts_tests_status)"
     case "$scripts_tests_status" in
       run:*)
+        run_gate_step scripts-lint "scripts python lint" \
+          scripts/dev lint python
         run_gate_step scripts-tests "scripts python tests" \
-          scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
+          scripts/dev test python --suite all
         ;;
       *)
+        gate_step_index=$((gate_step_index + 1))
+        echo "== [$gate_step_index/$gate_step_total] scripts python lint =="
+        echo "   skipped: ${scripts_tests_status#skip: } (BBB_GATE_FULL=1 forces)"
+        gate_step_timings="$gate_step_timings,scripts-lint:skip"
         gate_step_index=$((gate_step_index + 1))
         echo "== [$gate_step_index/$gate_step_total] scripts python tests =="
         echo "   skipped: ${scripts_tests_status#skip: } (BBB_GATE_FULL=1 forces)"
@@ -739,6 +757,7 @@ shift
 
 case "$cmd" in
   focused|default|test)
+    require_vanilla_workspace
     exec cargo test "$@"
     ;;
   fast-test)
@@ -747,6 +766,7 @@ case "$cmd" in
     # ~10.3 KiB/level). Give fast-test threads explicit headroom so the same
     # tests fit in every profile; the default gate profile keeps the standard
     # 2 MiB stacks as its frame-size discipline.
+    require_vanilla_workspace
     RUST_MIN_STACK="${RUST_MIN_STACK:-16777216}" exec cargo test --profile fast-test "$@"
     ;;
   check)

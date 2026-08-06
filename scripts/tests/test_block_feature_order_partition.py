@@ -6,10 +6,13 @@ from pathlib import Path
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
-SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from vanilla_java_source import JavaCall, JavaMethod, JavaSource, parse_source  # noqa: E402
+
+SOURCE_ROOT = VanillaWorkspace.resolve("26.1").sources
 
 
 class BlockFeatureOrderPartitionTests(unittest.TestCase):

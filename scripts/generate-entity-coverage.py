@@ -18,12 +18,13 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG = REPO_ROOT / "crates/bbb-protocol/src/entity_types.rs"
 DEFAULT_OVERRIDES = REPO_ROOT / "scripts/data/entity-coverage-overrides-26.1.json"
 DEFAULT_OUTPUT = REPO_ROOT / "docs/evidence/vanilla-26.1/entity-coverage.json"
-DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 
 CELL_CATEGORIES = (
     "spawn/default",
@@ -61,9 +62,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG)
     parser.add_argument("--overrides", type=Path, default=DEFAULT_OVERRIDES)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
+    add_vanilla_root(parser)
     parser.add_argument("--check", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.source_root = resolve_source_root(args)
+    return args
 
 
 def strict_json(path: Path) -> object:

@@ -1606,7 +1606,7 @@ mod tests {
     }
 
     fn local_vanilla_source(relative: &[&str]) -> Option<String> {
-        let roots = PackRoots::discover().ok()?;
+        let roots = PackRoots::from_environment().ok()?;
         let mut path = roots.sources_dir.clone();
         for segment in relative {
             path.push(segment);

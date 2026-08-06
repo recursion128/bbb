@@ -251,7 +251,8 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_regional_compliancies() {
-        let catalog = PeriodicNotificationCatalog::load(&PackRoots::discover().unwrap()).unwrap();
+        let catalog =
+            PeriodicNotificationCatalog::load(&PackRoots::from_environment().unwrap()).unwrap();
         assert_eq!(catalog.groups().len(), 1);
         assert_eq!(catalog.notifications_for_iso3("KOR").len(), 2);
         assert_eq!(catalog.notifications_for_iso3("KOR")[0].delay, 1_440);

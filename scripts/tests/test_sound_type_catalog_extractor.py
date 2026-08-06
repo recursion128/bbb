@@ -8,6 +8,8 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from sound_type_catalog_extractor import (  # noqa: E402
     SoundTypeCatalogExtractionError,
     extract_sound_type_catalog,
@@ -121,7 +123,7 @@ class SoundTypeCatalogExtractorTests(unittest.TestCase):
             )
 
     def test_local_vanilla_closes_all_sound_types_when_available(self) -> None:
-        root = Path.home() / "Work/mc-code/sources/26.1"
+        root = VanillaWorkspace.resolve("26.1").sources
         types_path = root / "net/minecraft/world/level/block/SoundType.java"
         events_path = root / "net/minecraft/sounds/SoundEvents.java"
         if not types_path.is_file() or not events_path.is_file():

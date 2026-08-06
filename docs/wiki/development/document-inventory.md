@@ -35,6 +35,7 @@ destination” 表示内容的唯一长期归属，不表示另有一份副本�
 | `docs/wiki/development/documentation-workflow.md` | 文档 taxonomy 与唯一权威规则 | 是 | 同路径 | 保留 canonical | Wiki、repository map | 文档流程 | 无 |
 | `docs/wiki/development/repository-map.md` | crate、工具、生成物和文档地图 | 是 | 同路径 | 保留 canonical | Wiki | 开发导航 | 无 |
 | `docs/wiki/development/testing-and-gates.md` | focused/full/playable/soak/platform 门禁 | 是 | 同路径 | 保留 canonical | AGENTS、Wiki | 开发规则 | 排程只指向 goal |
+| `docs/wiki/development/vanilla-workspace.md` | Vanilla 供应链、cache、CLI 与能力矩阵 | 是 | 同路径 | 保留 canonical | scripts/vanilla、开发入口 | 开发流程 | raw Vanilla 内容在仓外 |
 | `docs/wiki/glossary.md` | 中英文术语规范 | 是 | 同路径 | 保留 canonical | Wiki 页面 | 术语 | 无 |
 | `docs/wiki/mechanism-template.md` | 机制页固定中文模板 | 是 | 同路径 | 保留 canonical | 文档工作流 | 模板 | 无 |
 | `docs/wiki/mechanisms/performance/equal-load-benchmark.md` | 官方客户端同载机制与当前证据摘要 | 是 | 同路径 | 保留 canonical | performance 架构页、parity | 机制/证据 | raw 产物在仓外 |

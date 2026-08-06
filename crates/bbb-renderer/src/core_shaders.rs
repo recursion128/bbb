@@ -4971,7 +4971,7 @@ void main() { gl_Position = vec4(Position, 1.0); }
     #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
     fn compiles_local_vanilla_terrain_pipeline_generation() {
         let catalog = bbb_pack::ShaderSourceCatalog::load(
-            &bbb_pack::PackRoots::discover().expect("local vanilla roots"),
+            &bbb_pack::PackRoots::from_environment().expect("local vanilla roots"),
         )
         .expect("local shader catalog");
         let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
@@ -4998,7 +4998,7 @@ void main() { gl_Position = vec4(Position, 1.0); }
             &overlay.join("assets/minecraft/shaders/core/terrain.fsh"),
             "#version 330\nin float sphericalVertexDistance;\nin float cylindricalVertexDistance;\nin vec4 vertexColor;\nin vec2 texCoord0;\nout vec4 fragColor;\nvoid main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }\n",
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected override pack");
@@ -5058,7 +5058,7 @@ void main() { gl_Position = vec4(Position, 1.0); }
         let root = unique_temp_dir("selected-entity-shader");
         let overlay = root.join("overlay");
         write_pack_metadata(&overlay, None);
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         write_text(
             &overlay.join("assets/minecraft/shaders/core/entity.fsh"),
             r#"#version 330
@@ -5245,7 +5245,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected end-portal shader pack");
@@ -5407,7 +5407,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected outline shader pack");
@@ -5493,7 +5493,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected beacon-beam shader pack");
@@ -5557,7 +5557,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected lightning shader pack");
@@ -5621,7 +5621,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected line shader pack");
@@ -5700,7 +5700,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected text shader pack");
@@ -5765,7 +5765,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected text-background shader pack");
@@ -5827,7 +5827,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected cloud shader pack");
@@ -5900,7 +5900,7 @@ void main() {
 }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected lightmap shader pack");
@@ -5985,7 +5985,7 @@ out vec4 fragColor;
 void main() { fragColor = texture(Sampler0, texCoord0) * ColorModulator; }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected sky-family shader pack");
@@ -6095,7 +6095,7 @@ out vec4 fragColor;
 void main() { fragColor = texture(Sampler0, clamp(texCoord0, 0.0, 1.0)) * vertexColor + vec4((sphericalVertexDistance + cylindricalVertexDistance) * 0.0); }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected entity-special shader pack");
@@ -6188,7 +6188,7 @@ out vec4 fragColor;
 void main() { fragColor = texture(InSampler, texCoord); }
 "#,
         );
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         let selected =
             bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
                 .expect("selected final-static shader pack");
@@ -6262,7 +6262,7 @@ void main() { fragColor = texture(InSampler, texCoord); }
         let root = unique_temp_dir("selected-item-shader");
         let overlay = root.join("overlay");
         write_pack_metadata(&overlay, None);
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         write_text(
             &overlay.join("assets/minecraft/shaders/core/item.fsh"),
             r#"#version 330
@@ -6396,7 +6396,7 @@ void main() {
         let root = unique_temp_dir("selected-glint-shader");
         let overlay = root.join("overlay");
         write_pack_metadata(&overlay, None);
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         write_text(
             &overlay.join("assets/minecraft/shaders/core/glint.fsh"),
             r#"#version 330
@@ -6538,7 +6538,7 @@ void main() {
         let root = unique_temp_dir("selected-particle-shader");
         let overlay = root.join("overlay");
         write_pack_metadata(&overlay, None);
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         write_text(
             &overlay.join("assets/minecraft/shaders/core/particle.fsh"),
             r#"#version 330
@@ -6628,7 +6628,7 @@ void main() {
         let root = unique_temp_dir("selected-position-color-shader");
         let overlay = root.join("overlay");
         write_pack_metadata(&overlay, None);
-        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let base = bbb_pack::PackRoots::from_environment().expect("local vanilla roots");
         write_text(
             &overlay.join("assets/minecraft/shaders/core/position_color.fsh"),
             r#"#version 330

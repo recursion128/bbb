@@ -8,6 +8,8 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from furnace_fuel_catalog_extractor import (  # noqa: E402
     FurnaceFuelCatalogExtractionError,
     extract_furnace_fuel_operations,
@@ -141,7 +143,7 @@ class FurnaceFuelCatalogExtractorTests(unittest.TestCase):
             )
 
     def test_local_vanilla_closes_all_builder_operations_when_available(self) -> None:
-        root = Path.home() / "Work/mc-code/sources/26.1"
+        root = VanillaWorkspace.resolve("26.1").sources
         fuel_path = root / "net/minecraft/world/level/block/entity/FuelValues.java"
         tags_path = root / "net/minecraft/tags/ItemTags.java"
         if not fuel_path.is_file() or not tags_path.is_file():

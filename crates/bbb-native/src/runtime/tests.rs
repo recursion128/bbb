@@ -15259,7 +15259,7 @@ fn native_hud_item_projection_has_no_empty_layer_compatibility_branch() {
 #[test]
 #[ignore = "requires local vanilla 26.1 resources"]
 fn local_vanilla_hud_block_item_projection_reaches_one_resident_owner() {
-    let roots = bbb_pack::PackRoots::discover().expect("discover local Vanilla resources");
+    let roots = bbb_pack::PackRoots::from_environment().expect("discover local Vanilla resources");
     let item_runtime = NativeItemRuntime::load(&roots).expect("load local Vanilla item runtime");
     let images = roots
         .load_block_texture_images()

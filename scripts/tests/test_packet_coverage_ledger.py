@@ -11,6 +11,8 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from packet_catalog_extractor import Packet  # noqa: E402
 
 
@@ -69,7 +71,7 @@ class PacketCoverageLedgerTests(unittest.TestCase):
                 )
 
     def test_local_vanilla_ledger_has_all_256_packets_when_available(self) -> None:
-        root = Path.home() / "Work/mc-code/sources/26.1"
+        root = VanillaWorkspace.resolve("26.1").sources
         if not root.is_dir():
             self.skipTest("local vanilla 26.1 sources are unavailable")
         catalogs = GENERATOR.extract_catalogs(root)

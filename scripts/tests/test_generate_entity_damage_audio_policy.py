@@ -9,10 +9,13 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 REPO_ROOT = SCRIPTS.parent
-SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from vanilla_java_source import parse_source  # noqa: E402
+
+SOURCE_ROOT = VanillaWorkspace.resolve("26.1").sources
 
 
 def load_generator():

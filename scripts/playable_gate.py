@@ -1212,7 +1212,7 @@ def normalize_status_capture(
     }
 
 
-SEAT_INJECT_ENV = "BBB_PLAYABLE_SEAT_INJECT"
+SEAT_BACKEND_ENV = "BBB_PLAYABLE_INPUT_BACKEND"
 
 # A seat-driven scenario is only worth its receipts if the run could not have
 # reached the same canonical state through the synthetic `input.*` control
@@ -1252,10 +1252,18 @@ class _seat_input_only:
 
 
 def seat_injector(environ: dict[str, str] | None = None) -> list[str] | None:
-    """The configured seat injector command, or None when no seat drives."""
+    """The repo-owned release input backend, or None when no seat drives."""
 
-    raw = (environ if environ is not None else os.environ).get(SEAT_INJECT_ENV, "")
-    return shlex.split(raw) if raw.strip() else None
+    backend = (environ if environ is not None else os.environ).get(
+        SEAT_BACKEND_ENV, ""
+    )
+    if not backend.strip():
+        return None
+    if backend != "linux-release":
+        raise GateFailure(
+            f"{SEAT_BACKEND_ENV} must be 'linux-release' for attributable seat receipts"
+        )
+    return [str(Path(__file__).resolve().with_name("input")), "--backend", backend]
 
 
 def _seat_inject(injector: list[str], *args: str) -> None:

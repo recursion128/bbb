@@ -1022,10 +1022,10 @@ mod tests {
 
     /// Local acceptance against the SHA-1-verified launcher object store. CI
     /// fixtures cover the same parser without external files; setting
-    /// `BBB_MC_CODE_ROOT` turns this into the real 26.1 asset check.
+    /// `BBB_VANILLA_ROOT` turns this into the real 26.1 asset check.
     #[test]
     fn local_vanilla_26_1_unihex_cjk_acceptance() {
-        let Some(root) = std::env::var_os("BBB_MC_CODE_ROOT") else {
+        let Some(root) = std::env::var_os("BBB_VANILLA_ROOT") else {
             return;
         };
         let roots = PackRoots::from_root(root).unwrap();

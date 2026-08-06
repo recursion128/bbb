@@ -12,6 +12,8 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 SPEC = importlib.util.spec_from_file_location(
     "generate_particle_provider_coverage", SCRIPTS / "generate-particle-provider-coverage.py"
 )
@@ -452,7 +454,7 @@ class LedgerTests(unittest.TestCase):
             sounds=Fact(False, "tick raises no playLocalSound"),
             conditional_removal=Fact(False, "removal only on lifetime expiry"),
         )
-        if not GENERATOR.DEFAULT_SOURCE_ROOT.is_dir():
+        if not VanillaWorkspace.resolve("26.1").sources.is_dir():
             self.skipTest("local vanilla 26.1 sources are unavailable")
         overrides = dict(
             self.overrides,
@@ -464,7 +466,7 @@ class LedgerTests(unittest.TestCase):
                 [row],
                 GENERATOR.RendererBinding("", frozenset(), {}),
                 overrides,
-                GENERATOR.DEFAULT_SOURCE_ROOT,
+                VanillaWorkspace.resolve("26.1").sources,
             )
 
     def test_a_renderer_physics_flag_may_not_contradict_vanilla(self) -> None:
@@ -500,7 +502,7 @@ class LedgerTests(unittest.TestCase):
                 ],
             },
         )
-        sources = GENERATOR.DEFAULT_SOURCE_ROOT
+        sources = VanillaWorkspace.resolve("26.1").sources
         if not sources.is_dir():
             self.skipTest("local vanilla 26.1 sources are unavailable")
         facts = extract_particle_facts(ParticleSources.load(sources))
@@ -516,13 +518,13 @@ class LedgerTests(unittest.TestCase):
                 GENERATOR.load_overrides(path)
 
     def test_checked_in_output_is_current_when_vanilla_sources_are_available(self) -> None:
-        if not GENERATOR.DEFAULT_SOURCE_ROOT.is_dir():
+        if not VanillaWorkspace.resolve("26.1").sources.is_dir():
             self.skipTest("local vanilla 26.1 sources are unavailable")
-        facts = extract_particle_facts(ParticleSources.load(GENERATOR.DEFAULT_SOURCE_ROOT))
+        facts = extract_particle_facts(ParticleSources.load(VanillaWorkspace.resolve("26.1").sources))
         binding = GENERATOR.parse_renderer_binding(GENERATOR.DEFAULT_DESCRIPTORS)
         GENERATOR.cross_check_physics(facts, binding)
         rendered = GENERATOR.render_ledger(
-            facts, binding, self.overrides, GENERATOR.DEFAULT_SOURCE_ROOT
+            facts, binding, self.overrides, VanillaWorkspace.resolve("26.1").sources
         )
         self.assertEqual(rendered, GENERATOR.DEFAULT_OUTPUT.read_text())
 

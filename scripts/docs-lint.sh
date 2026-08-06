@@ -228,17 +228,20 @@ if [ "$failed" -ne 0 ]; then
 fi
 
 # The checked JSON is an exact generated artifact, not merely a collection of
-# independently valid hashes. Re-render it when the local Vanilla tree and the
-# repo-owned generator are both available; source-absent environments retain
-# the structural/hash validation in docs_wiki_lint.py and skip this comparison
-# explicitly.
-vanilla_source_root=${BBB_DOCS_LINT_VANILLA_SOURCE_ROOT:-${HOME}/Work/mc-code/sources/26.1}
+# independently valid hashes. The full gate consumes a verified, explicitly
+# prepared workspace and never downloads it implicitly.
+if ! vanilla_root=$(
+  "$script_dir/vanilla" path 26.1 --kind root
+); then
+  failed=1
+  vanilla_root=
+fi
 client_inventory_generator="$repo_root/scripts/generate-client-mechanism-inventory.py"
 client_inventory_output="$repo_root/docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
-if [ -d "$vanilla_source_root" ] && [ -f "$client_inventory_generator" ]; then
+if [ -n "$vanilla_root" ] && [ -f "$client_inventory_generator" ]; then
   if ! "$repo_root/scripts/vanilla-source-tools.sh" \
     "$client_inventory_generator" \
-    --source-root "$vanilla_source_root" \
+    --vanilla-root "$vanilla_root" \
     --output "$client_inventory_output" \
     --check; then
     failed=1
@@ -249,10 +252,10 @@ fi
 
 menu_screen_generator="$repo_root/scripts/generate-menu-screen-catalog.py"
 menu_screen_output="$repo_root/crates/bbb-native/src/input/inventory/menu_screens_26_1.rs"
-if [ -d "$vanilla_source_root" ] && [ -f "$menu_screen_generator" ]; then
+if [ -n "$vanilla_root" ] && [ -f "$menu_screen_generator" ]; then
   if ! "$repo_root/scripts/vanilla-source-tools.sh" \
     "$menu_screen_generator" \
-    --source-root "$vanilla_source_root" \
+    --vanilla-root "$vanilla_root" \
     --output "$menu_screen_output" \
     --check; then
     failed=1
@@ -264,10 +267,10 @@ fi
 key_mapping_generator="$repo_root/scripts/generate-key-mapping-catalog.py"
 key_mapping_output="$repo_root/docs/evidence/vanilla-26.1/key-mapping-catalog.json"
 key_mapping_rust_output="$repo_root/crates/bbb-native/src/client_options/key_mappings_26_1.rs"
-if [ -d "$vanilla_source_root" ] && [ -f "$key_mapping_generator" ]; then
+if [ -n "$vanilla_root" ] && [ -f "$key_mapping_generator" ]; then
   if ! "$repo_root/scripts/vanilla-source-tools.sh" \
     "$key_mapping_generator" \
-    --source-root "$vanilla_source_root" \
+    --vanilla-root "$vanilla_root" \
     --output "$key_mapping_output" \
     --rust-output "$key_mapping_rust_output" \
     --check; then
@@ -279,10 +282,10 @@ fi
 
 particle_coverage_generator="$repo_root/scripts/generate-particle-provider-coverage.py"
 particle_coverage_output="$repo_root/docs/evidence/vanilla-26.1/particle-provider-coverage.json"
-if [ -d "$vanilla_source_root" ] && [ -f "$particle_coverage_generator" ]; then
+if [ -n "$vanilla_root" ] && [ -f "$particle_coverage_generator" ]; then
   if ! "$repo_root/scripts/vanilla-source-tools.sh" \
     "$particle_coverage_generator" \
-    --source-root "$vanilla_source_root" \
+    --vanilla-root "$vanilla_root" \
     --output "$particle_coverage_output" \
     --check; then
     failed=1

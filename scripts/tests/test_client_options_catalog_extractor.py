@@ -12,6 +12,8 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from client_options_catalog_extractor import (  # noqa: E402
     ClientOptionsCatalogExtractionError,
     client_option_entries,
@@ -155,7 +157,7 @@ class ClientOptionsCatalogExtractorTests(unittest.TestCase):
 
 class ClientOptionsCatalogGeneratorTests(unittest.TestCase):
     def test_committed_catalog_matches_the_vanilla_source(self) -> None:
-        source_root = generator.DEFAULT_SOURCE_ROOT
+        source_root = VanillaWorkspace.resolve("26.1").sources
         if not (source_root / generator.OPTIONS_SOURCE).is_file():
             self.skipTest("local Vanilla 26.1 source tree is absent")
         rendered = generator.render_catalog(source_root)

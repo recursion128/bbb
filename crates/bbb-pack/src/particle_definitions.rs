@@ -220,7 +220,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_particle_definitions() {
-        let catalog = PackRoots::discover()
+        let catalog = PackRoots::from_environment()
             .unwrap()
             .load_particle_definition_catalog()
             .unwrap();

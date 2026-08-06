@@ -9,6 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from entity_metadata_extractor import (  # noqa: E402
     Accessor,
     EntityTypeRegistration,
@@ -285,7 +287,7 @@ class EntityMetadataExtractorFixtureTests(unittest.TestCase):
         )
 
     def test_local_vanilla_cst_closes_227_accessors_defaults_and_157_types(self) -> None:
-        source_root = Path.home() / "Work/mc-code/sources/26.1"
+        source_root = VanillaWorkspace.resolve("26.1").sources
         if not source_root.is_dir():
             self.skipTest("local vanilla 26.1 sources unavailable")
         result = extract(source_root)

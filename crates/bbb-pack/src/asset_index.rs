@@ -65,8 +65,8 @@ struct AssetObject {
 }
 
 impl VanillaAssetIndex {
-    pub(crate) fn discover(mc_code_root: &Path) -> Result<Option<Self>> {
-        let downloads = mc_code_root.join("downloads").join(crate::MC_VERSION);
+    pub(crate) fn discover(vanilla_root: &Path) -> Result<Option<Self>> {
+        let downloads = vanilla_root.join("downloads").join(crate::MC_VERSION);
         let version_metadata_path = downloads.join(format!("{}.json", crate::MC_VERSION));
         if !version_metadata_path.is_file() {
             return Ok(None);

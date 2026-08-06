@@ -321,8 +321,8 @@ class LifecycleSoakScriptContractTests(unittest.TestCase):
 
         self.assertIn("--features lifecycle-soak", source)
         self.assertIn("scripts/playable-gate.sh", source)
-        self.assertIn("BBB_MC_CODE_ROOT", source)
-        self.assertIn("sources/26.1/assets/minecraft", source)
+        self.assertIn("BBB_VANILLA_ROOT", source)
+        self.assertIn('scripts/vanilla" path 26.1 --kind root', source)
         self.assertIn("last-lifecycle-soak-report.json", source)
         self.assertLess(source.index('"$python_runner" python "$helper" run'), source.index("record_gate_stamp"))
 

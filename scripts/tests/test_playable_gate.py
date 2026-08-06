@@ -1926,13 +1926,17 @@ class PlayableGateSeatInputTests(unittest.TestCase):
 
     def test_injector_is_read_from_the_documented_environment_variable(self):
         self.assertIsNone(playable_gate.seat_injector({}))
-        self.assertIsNone(playable_gate.seat_injector({"BBB_PLAYABLE_SEAT_INJECT": "  "}))
-        self.assertEqual(
-            playable_gate.seat_injector(
-                {"BBB_PLAYABLE_SEAT_INJECT": "python3 scripts/seat_inject.py"}
-            ),
-            ["python3", "scripts/seat_inject.py"],
+        self.assertIsNone(
+            playable_gate.seat_injector({"BBB_PLAYABLE_INPUT_BACKEND": "  "})
         )
+        injector = playable_gate.seat_injector(
+            {"BBB_PLAYABLE_INPUT_BACKEND": "linux-release"}
+        )
+        self.assertEqual(injector[-2:], ["--backend", "linux-release"])
+        with self.assertRaisesRegex(playable_gate.GateFailure, "linux-release"):
+            playable_gate.seat_injector(
+                {"BBB_PLAYABLE_INPUT_BACKEND": "macos-quartz"}
+            )
 
 
 if __name__ == "__main__":

@@ -380,7 +380,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_block_tags() {
-        let catalog = PackRoots::discover()
+        let catalog = PackRoots::from_environment()
             .unwrap()
             .load_tag_catalog("block")
             .unwrap();

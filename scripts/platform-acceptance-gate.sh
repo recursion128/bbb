@@ -13,10 +13,9 @@ usage() {
 Usage: scripts/platform-acceptance-gate.sh
 
 Environment:
-  BBB_PLAYABLE_SERVER_JAR       Explicit local vanilla 26.1 server jar
   BBB_PLAYABLE_ACCEPT_EULA=1    Required EULA acknowledgement
   BBB_PLAYABLE_JAVA             Explicit Java executable
-  BBB_MC_CODE_ROOT              Vanilla 26.1 sources/assets root
+  BBB_VANILLA_ROOT              Optional managed Vanilla cache root
   BBB_PLATFORM_ARTIFACT_DIR     Result directory; default is fresh /tmp
   WAYLAND_DISPLAY               Maintained Wayland compositor socket
 
@@ -84,17 +83,18 @@ if [ -z "${WAYLAND_DISPLAY:-}" ]; then
   echo "platform acceptance failed: WAYLAND_DISPLAY is required" >&2
   exit 2
 fi
-mc_code_root=${BBB_MC_CODE_ROOT:-}
-if [ -z "$mc_code_root" ] ||
-  [ ! -d "$mc_code_root/sources/26.1/assets/minecraft" ]
-then
-  echo "platform acceptance failed: set BBB_MC_CODE_ROOT to the Vanilla 26.1 code root" >&2
+if ! vanilla_root=$("$repo_root/scripts/vanilla" path 26.1 --kind root); then
+  echo "platform acceptance failed: prepare the managed Vanilla 26.1 workspace" >&2
   exit 2
 fi
-if [ -z "${BBB_PLAYABLE_SERVER_JAR:-}" ] ||
-  [ ! -f "$BBB_PLAYABLE_SERVER_JAR" ]
-then
-  echo "platform acceptance failed: BBB_PLAYABLE_SERVER_JAR is required" >&2
+export BBB_VANILLA_ROOT="$vanilla_root"
+export BBB_PLAYABLE_INPUT_BACKEND=linux-release
+if [ -z "${BBB_PLAYABLE_JAVA:-}" ]; then
+  BBB_PLAYABLE_JAVA=$("$repo_root/scripts/vanilla" path 26.1 --kind java)
+  export BBB_PLAYABLE_JAVA
+fi
+if ! "$repo_root/scripts/dev" doctor --profile linux-release; then
+  echo "platform acceptance failed: Linux release host capabilities are incomplete" >&2
   exit 2
 fi
 if [ "${BBB_PLAYABLE_ACCEPT_EULA:-0}" != 1 ]; then

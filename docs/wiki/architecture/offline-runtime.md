@@ -8,6 +8,10 @@ asset index、SHA-1 object store、独立 `gameDir`、固定 options、离线身
 
 ## 文件与校验链
 
+下载、锁与本地缓存的 owner 是
+[Vanilla workspace 与供应链](../development/vanilla-workspace.md)。普通构建、测试、
+generator 与 gate 只消费已准备内容，绝不触发网络。
+
 1. 读取 `26.1.json`，校验 version id、main class、client download 与 libraries。
 2. 按 metadata 的 SHA-1/size 校验 client jar、每个 library 和 Linux native classifier。
 3. 提取 native 前拒绝绝对路径、`..`、反斜杠、NUL、symlink 和 basename 冲突。

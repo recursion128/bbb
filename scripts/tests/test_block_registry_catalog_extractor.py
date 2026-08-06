@@ -8,6 +8,8 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
     block_factory_class,
@@ -641,7 +643,7 @@ class WeatheringCopperChainBlock extends ChainBlock {}
             )
 
     def test_local_vanilla_closes_all_block_fields_when_available(self) -> None:
-        root = Path.home() / "Work/mc-code/sources/26.1"
+        root = VanillaWorkspace.resolve("26.1").sources
         blocks_path = root / "net/minecraft/world/level/block/Blocks.java"
         ids_path = root / "net/minecraft/references/BlockIds.java"
         block_entity_types_path = (

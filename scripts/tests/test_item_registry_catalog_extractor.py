@@ -8,6 +8,8 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
+from bbb_tools.vanilla.workspace import VanillaWorkspace  # noqa: E402
+
 from item_registry_catalog_extractor import (  # noqa: E402
     ItemRegistryCatalogExtractionError,
     extract_block_item_behaviors,
@@ -630,7 +632,7 @@ class DebugStickItem extends Item {
             )
 
     def test_local_vanilla_catalog_closes_every_field_when_available(self) -> None:
-        root = Path.home() / "Work/mc-code/sources/26.1"
+        root = VanillaWorkspace.resolve("26.1").sources
         items_path = root / "net/minecraft/world/item/Items.java"
         ids_path = root / "net/minecraft/references/ItemIds.java"
         item_path = root / "net/minecraft/world/item/Item.java"

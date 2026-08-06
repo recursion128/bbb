@@ -7,7 +7,7 @@
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
-      "sha256": "998b56be3a0b1b7a78cd92a2fd7af0d6729d7acbee3c0d5dd3d6c9d78eb91531"
+      "sha256": "e36d188cfedbc732f73154c398fc9d34876865a6dc72b6c7fb4a6ea01342ecbf"
     },
     {
       "path": "scripts/packet_catalog_extractor.py",

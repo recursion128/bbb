@@ -480,7 +480,7 @@ mod tests {
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_language_catalog() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let catalog = roots.load_language_catalog(DEFAULT_LANGUAGE_CODE).unwrap();
 
         assert!(catalog.len() > 1_000);
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     #[ignore = "requires the local Vanilla 26.1 asset object store"]
     fn loads_real_indexed_zh_cn_through_the_default_resource_pack() {
-        let roots = PackRoots::discover().unwrap();
+        let roots = PackRoots::from_environment().unwrap();
         let stack = roots.resource_stack();
         let observation = stack
             .vanilla_asset_index_observation()

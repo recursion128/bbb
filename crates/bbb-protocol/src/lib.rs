@@ -123,14 +123,16 @@ impl PackFormatVersion {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
 
     #[test]
     fn version_constants_match_local_vanilla_version_json() {
-        let version_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../mc-code/sources")
+        let Some(root) = std::env::var_os("BBB_VANILLA_ROOT") else {
+            eprintln!("skipping local vanilla version.json check; BBB_VANILLA_ROOT is unset");
+            return;
+        };
+        let version_path = std::path::PathBuf::from(root)
+            .join("sources")
             .join(MC_VERSION)
             .join("version.json");
         if !version_path.exists() {

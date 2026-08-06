@@ -32,6 +32,7 @@
 - [架构规则](development/architecture-rules.md)
 - [测试与门禁](development/testing-and-gates.md)
 - [构建与缓存](development/build-and-cache.md)
+- [Vanilla workspace 与供应链](development/vanilla-workspace.md)
 - [macOS 与 Linux 开发](development/macos-and-linux.md)
 - [文档工作流](development/documentation-workflow.md)
 - [受维护 Markdown inventory](development/document-inventory.md)
@@ -41,8 +42,8 @@
 ## 阅读和维护规则
 
 页面中的 Rust/Java 类型、方法、packet、registry、resource location、路径和命令保留
-原文，叙述使用简体中文。关键 Vanilla 行为必须重新核对本地
-`~/Work/mc-code/sources/26.1/`；源码定位描述类与方法，不把官方源码复制进仓库。
+原文，叙述使用简体中文。关键 Vanilla 行为必须重新核对
+`scripts/vanilla path 26.1` 返回的已校验源码；源码定位描述类与方法，不把官方源码复制进仓库。
 
 机制审计使用 `equivalent`、`partial`、`missing`、`active`、
 `deferred-external`、`not-needed`、`unverified`。这些词描述覆盖证据；真正的工程

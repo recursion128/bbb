@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+
 from block_registry_catalog_extractor import extract_block_registry_catalog
 from item_registry_catalog_extractor import (
     extract_block_item_behaviors,
@@ -33,7 +35,6 @@ from vanilla_java_source import expression_fact, parse_source, type_body_members
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_FACTS_OUTPUT = REPO_ROOT / "crates/bbb-pack/data/item_registry_declarations_26_1.json"
 DEFAULT_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/item_types.rs"
 ITEMS_PATH = Path("net/minecraft/world/item/Items.java")
@@ -82,11 +83,13 @@ EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT = 17
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
+    add_vanilla_root(parser)
     parser.add_argument("--facts-output", type=Path, default=DEFAULT_FACTS_OUTPUT)
     parser.add_argument("--types-output", type=Path, default=DEFAULT_TYPES_OUTPUT)
     parser.add_argument("--check", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.source_root = resolve_source_root(args)
+    return args
 
 
 def _field_access(fact: dict, owner: str) -> str | None:

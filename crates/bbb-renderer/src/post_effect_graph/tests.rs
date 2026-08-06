@@ -474,7 +474,7 @@ fn compiles_all_local_vanilla_post_effect_graphs() {
     let Some((device, queue)) = request_test_device() else {
         return;
     };
-    let catalog = PostEffectCatalog::load(&PackRoots::discover().unwrap()).unwrap();
+    let catalog = PostEffectCatalog::load(&PackRoots::from_environment().unwrap()).unwrap();
     let generation = PostEffectGraphGeneration::new(
         &device,
         &queue,

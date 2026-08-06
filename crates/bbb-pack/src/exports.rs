@@ -62,7 +62,7 @@ pub use crate::resource_textures::ResourceTextureImage;
 pub use crate::resources::{
     PackResource, PackResourceStack, PackRootResource, ResourceIntegrity, ResourceLocation,
 };
-pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
+pub use crate::roots::{PackRoots, MC_VERSION};
 pub use crate::selected_packs::{
     ClientPackCompatibility, ClientPackPosition, ClientPackSelection, ClientPackSource,
     ClientResourceGeneration, SelectedClientPack, SelectedClientPackStack,

@@ -1025,7 +1025,7 @@ mod tests {
     #[test]
     #[ignore = "requires the local Vanilla 26.1 asset object store"]
     fn indexed_vanilla_26_1_sounds_catalog_loads_representative_events() {
-        let catalog = PackRoots::discover()
+        let catalog = PackRoots::from_environment()
             .unwrap()
             .load_required_sound_catalog()
             .unwrap();

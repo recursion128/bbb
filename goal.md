@@ -40,7 +40,7 @@ non-goals 不因进入维护态而自动转成 TODO。
 
 ## 硬性约束
 
-- 严格按 vanilla 26.1 源码转写：优先使用 `~/Work/mc-code/sources/26.1/`。
+- 严格按 vanilla 26.1 源码转写：只通过 `scripts/vanilla path 26.1` 解析并使用已校验 workspace。
 - 协议、metadata 索引、render type、layer order、transform、texture path、
   tint、light、overlay 不能凭记忆实现。
 - `bbb-renderer` 不得依赖 `bbb-pack`；`bbb-item-model` 不得依赖 `bbb-renderer`
@@ -135,12 +135,16 @@ non-goals 不因进入维护态而自动转成 TODO。
 
 完整门禁统一入口 `scripts/cargo-dev.sh gate`，等价于：
 
+- `scripts/vanilla verify 26.1`
+- `scripts/dev doctor --profile portable`
 - `scripts/docs-lint.sh`
 - `cargo fmt --all --check`
-- `scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests`
+- `scripts/dev lint python`
+- `scripts/dev test python --suite all`
   （仅当被门禁的改动触及 `scripts/`；`BBB_GATE_FULL=1` 强制全跑）
 - `git diff --check`
 - `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo check --workspace`
+- `scripts/cargo-dev.sh cross-check`（crate/manifest 改动时；`BBB_GATE_FULL=1` 强制）
 - `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`
 
 deny-warnings 由根 Cargo.toml 的 `[workspace.lints.rust] warnings = "deny"`
@@ -312,7 +316,7 @@ texture/target/submit 归 `bbb-renderer`。外部客户端、assets、world、ca
 #### P0 渲染机制权威原则
 
 所有关键渲染行为必须逐项重新对照本地
-`~/Work/mc-code/sources/26.1/`，复刻 Vanilla 的决策输入、查询坐标、判断顺序与
+`scripts/vanilla path 26.1` 返回的已校验源码，复刻 Vanilla 的决策输入、查询坐标、判断顺序与
 fallback；不能从最终截图反向调常量。最低权威矩阵包括 `BlockModelLighter`、
 `BlockBehaviour` / `BlockState`、`Block.shouldRenderFace`、`ModelBlockRenderer`、
 `TextureAtlas` / `TextureAtlasSprite`、terrain shader 与 RGSS、chunk render-layer

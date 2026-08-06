@@ -4,41 +4,40 @@ export const meta = {
   phases: [{ title: 'Extract', detail: 'one agent per entity, read-only transcription' }],
 }
 
-const VANILLA = '/home/zgy/Work/mc-code/sources/26.1'
-const BBB = '/home/zgy/Work/bbb/crates/bbb-renderer/src/entity_models/model_layers'
+const BBB = 'crates/bbb-renderer/src/entity_models/model_layers'
 
 // Each entity: the vanilla model class file, the bbb colored model file, the renderer texture, and a
 // hint about deferred layers/variants. The agent transcribes texOffs per cube aligned to bbb order.
 const ENTITIES = [
-  { entity: 'guardian', vanilla: `${VANILLA}/net/minecraft/client/model/monster/guardian/GuardianModel.java`,
+  { entity: 'guardian', vanilla: 'net/minecraft/client/model/monster/guardian/GuardianModel.java',
     bbb: `${BBB}/guardian.rs`, texture: 'textures/entity/guardian/guardian.png',
     hint: 'GuardianModel.createBodyLayer(). Elder variant (guardian_elder.png, GUARDIAN_ELDER_SCALE) deferred — extract the base only. The single moving eye + 12 spikes + 3 tail segments are part of the base mesh.' },
-  { entity: 'frog', vanilla: `${VANILLA}/net/minecraft/client/model/animal/frog/FrogModel.java`,
+  { entity: 'frog', vanilla: 'net/minecraft/client/model/animal/frog/FrogModel.java',
     bbb: `${BBB}/frog.rs`, texture: 'textures/entity/frog/frog_temperate.png',
     hint: 'FrogModel.createBodyLayer(). The warm/cold colour variants are deferred — only the default temperate texture is wired. Note the croaking-body cube + tongue (pose-gated visibility).' },
-  { entity: 'warden', vanilla: `${VANILLA}/net/minecraft/client/model/monster/warden/WardenModel.java`,
+  { entity: 'warden', vanilla: 'net/minecraft/client/model/monster/warden/WardenModel.java',
     bbb: `${BBB}/warden.rs`, texture: 'textures/entity/warden/warden.png',
     hint: 'WardenModel.createBodyLayer(). The emissive overlay layers (bioluminescent, pulsating spots, heart) are DEFERRED — extract ONLY the base body texOffs.' },
-  { entity: 'armadillo', vanilla: `${VANILLA}/net/minecraft/client/model/animal/armadillo/AdultArmadilloModel.java`,
-    vanilla2: `${VANILLA}/net/minecraft/client/model/animal/armadillo/BabyArmadilloModel.java`,
+  { entity: 'armadillo', vanilla: 'net/minecraft/client/model/animal/armadillo/AdultArmadilloModel.java',
+    vanilla2: 'net/minecraft/client/model/animal/armadillo/BabyArmadilloModel.java',
     bbb: `${BBB}/armadillo.rs`, texture: 'textures/entity/armadillo/armadillo.png', babyTexture: 'textures/entity/armadillo/armadillo_baby.png',
     hint: 'AdultArmadilloModel + BabyArmadilloModel createBodyLayer(). Two-model entity (adult/baby). Map BOTH adult and baby cube consts. The shell-ball cube + ear planes carry their own texOffs.' },
-  { entity: 'wither', vanilla: `${VANILLA}/net/minecraft/client/model/monster/wither/WitherBossModel.java`,
+  { entity: 'wither', vanilla: 'net/minecraft/client/model/monster/wither/WitherBossModel.java',
     bbb: `${BBB}/wither.rs`, texture: 'textures/entity/wither/wither.png',
     hint: 'WitherBossModel.createBodyLayer(). The invulnerable variant (wither_invulnerable.png) and the dither/armor are deferred — extract the base only. 3 heads (center + 2 side), shoulders, ribcage, tail.' },
-  { entity: 'arrow', vanilla: `${VANILLA}/net/minecraft/client/model/object/projectile/ArrowModel.java`,
+  { entity: 'arrow', vanilla: 'net/minecraft/client/model/object/projectile/ArrowModel.java',
     bbb: `${BBB}/arrow.rs`, texture: 'textures/entity/projectiles/arrow.png',
     hint: 'ArrowModel.createBodyLayer(). CRITICAL: arrows use a cross of 0-width planes. Vanilla scales the V texOffs by a factor (often texOffs(0,0).addBox with a 0.8 / specific v-scale). Report the EXACT texOffs and the box dims passed to addBox for the back-cube and each cross-plane, plus any texHeight/texWidth that differs from the PNG.' },
-  { entity: 'llama_spit', vanilla: `${VANILLA}/net/minecraft/client/model/animal/llama/LlamaSpitModel.java`,
+  { entity: 'llama_spit', vanilla: 'net/minecraft/client/model/animal/llama/LlamaSpitModel.java',
     bbb: `${BBB}/llama_spit.rs`, texture: 'textures/entity/llama/llama_spit.png',
     hint: 'LlamaSpitModel.createBodyLayer(). Small single-part spit ball (several cubes).' },
-  { entity: 'wither_skull', vanilla: `${VANILLA}/net/minecraft/client/model/object/skull/SkullModel.java`,
+  { entity: 'wither_skull', vanilla: 'net/minecraft/client/model/object/skull/SkullModel.java',
     bbb: `${BBB}/wither_skull.rs`, texture: 'textures/entity/wither/wither.png',
     hint: 'Wither skull uses SkullModel (createWitherHeadModel / the skull layer). The charged (wither_invulnerable.png) variant is deferred. Extract the single head cube texOffs and the texWidth/texHeight the skull layer declares.' },
-  { entity: 'shulker_bullet', vanilla: `${VANILLA}/net/minecraft/client/model/object/projectile/ShulkerBulletModel.java`,
+  { entity: 'shulker_bullet', vanilla: 'net/minecraft/client/model/object/projectile/ShulkerBulletModel.java',
     bbb: `${BBB}/shulker_bullet.rs`, texture: 'textures/entity/shulker/spark.png',
     hint: 'ShulkerBulletModel.createBodyLayer(). Note the texWidth/texHeight of the spark layer (often 64x32).' },
-  { entity: 'wind_charge', vanilla: `${VANILLA}/net/minecraft/client/model/object/projectile/WindChargeModel.java`,
+  { entity: 'wind_charge', vanilla: 'net/minecraft/client/model/object/projectile/WindChargeModel.java',
     bbb: `${BBB}/wind_charge.rs`, texture: 'textures/entity/projectiles/wind_charge.png',
     hint: 'WindChargeModel.createBodyLayer(). The wind_charge.png is ANIMATED (a vertical frame strip via .mcmeta). Report the layer texWidth/texHeight (one frame) AND whether the PNG is taller than texHeight — if so, flag in notes that this entity may need animated-texture handling and is NOT a plain static UV.' },
 ]
@@ -92,9 +91,10 @@ const results = await parallel(ENTITIES.map((e) => () =>
   agent(
     `You are extracting vanilla Minecraft 26.1 texture-UV data for the bbb native client's "${e.entity}" entity model, so its colored-only ModelCubeDesc cubes can be converted to UV-bearing ModelCube cubes.
 
-Read the vanilla model class:
+Run \`scripts/vanilla path 26.1 --kind sources\` from the bbb repository root and
+resolve these paths beneath the returned source root:
   ${e.vanilla}
-${e.vanilla2 ? `  ${e.vanilla2}\n` : ''}Read the bbb colored model file:
+${e.vanilla2 ? `  ${e.vanilla2}\n` : ''}Read the repository-relative bbb colored model file:
   ${e.bbb}
 
 Renderer texture: ${e.texture}

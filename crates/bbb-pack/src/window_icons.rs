@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn loads_all_real_local_index_30_window_icon_objects_when_available() {
-        let Ok(roots) = PackRoots::discover() else {
+        let Ok(roots) = PackRoots::from_environment() else {
             return;
         };
         if roots

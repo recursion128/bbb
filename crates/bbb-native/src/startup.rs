@@ -53,6 +53,9 @@ pub(crate) struct Args {
     /// written back to.
     #[arg(long = "game-dir", value_name = "PATH", default_value = ".")]
     pub(crate) game_dir: PathBuf,
+    /// Managed cache root printed by `scripts/vanilla path 26.1 --kind root`.
+    #[arg(long = "vanilla-root", value_name = "PATH")]
+    pub(crate) vanilla_root: Option<PathBuf>,
     #[arg(long, default_value = "127.0.0.1:25565")]
     pub(crate) server: String,
     #[arg(long, default_value = "bbb-client")]
@@ -1051,7 +1054,11 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
 }
 
 pub(crate) fn load_pack_roots(args: &Args) -> Result<Option<PackRoots>> {
-    match PackRoots::discover() {
+    let Some(vanilla_root) = args.vanilla_root.as_ref() else {
+        tracing::warn!("--vanilla-root was not supplied; Vanilla resources are unavailable");
+        return Ok(None);
+    };
+    match PackRoots::from_root(vanilla_root) {
         Ok(roots) => Ok(Some(apply_resource_pack_dirs(
             roots,
             args.resource_pack_dirs.iter().cloned(),
