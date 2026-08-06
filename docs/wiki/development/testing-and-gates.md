@@ -68,7 +68,10 @@ F11 切换全屏；两侧都取证——compositor 确实换了 scale/给了全�
 客户端没有 `ScaleFactorChanged` 分支是**忠实**而非缺口：vanilla 也没有 content-scale 回调，
 GUI scale 只由 framebuffer 尺寸算出，而 winit 每次 scale 变化后都跟一条 `Resized`。
 
-剩余的 IME 重开条件由[缺口账本](../../unsupported-features.md)维护；X11 行按 2026-08-06
+IME 的 runner 侧已备齐：gate 的 compositor 上跑 fcitx5（`~/.config/fcitx5/profile` 里
+pinyin 入组、`config` 里 `ActiveByDefault=True`，否则输入上下文默认是英文直通态），seat 设备
+可用 `text` 动作逐个按下拉丁物理键。实跑已见 fcitx5 `ACTIVATE` 并 `result:1` 消费按键。剩余
+阻塞在客户端，重开条件由[缺口账本](../../unsupported-features.md)维护；X11 行按 2026-08-06
 用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
 
 ## 文档测试

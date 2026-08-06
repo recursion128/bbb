@@ -73,6 +73,11 @@ KEYSYMS = {
     **{f"hotbar{index}": str(index) for index in range(1, 10)},
 }
 
+# Letters the injector may type through the seat.  They are not gate keys --
+# nothing binds them -- but the device must be able to reach them, so the
+# stale-daemon check covers them too.
+TYPEABLE_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+
 BUTTONS = {"left": "1", "middle": "2", "right": "3"}
 WLROOTS_BUTTONS = {"left": "left", "middle": "middle", "right": "right"}
 
@@ -248,6 +253,12 @@ class WlrootsDriver:
             raise InjectError(f"unknown pointer button {button!r}")
         _run(["wlrctl", "pointer", "click", code])
         time.sleep(self.settle_seconds)
+
+    def text(self, characters: str) -> None:
+        raise InjectError(
+            "typing through the compositor's virtual keyboard would carry "
+            "keysyms rather than physical keys; use the uinput driver"
+        )
 
     def clipboard(self, text: str) -> None:
         """Put text on the seat's clipboard.
@@ -440,6 +451,12 @@ class XtestDriver:
         self._xdotool("mouseup", code)
         time.sleep(self.settle_seconds)
 
+    def text(self, characters: str) -> None:
+        raise InjectError(
+            "the remote-desktop driver cannot type through the seat; use the "
+            "uinput driver"
+        )
+
     def clipboard(self, text: str) -> None:
         raise InjectError(
             "the remote-desktop driver has no seat clipboard; use the wlroots "
@@ -511,7 +528,7 @@ class UinputDriver:
 
         answer = seat_device.request(self.socket_path, "keys")
         served = set(answer.split()[1:])
-        missing = sorted(set(KEYSYMS) - served)
+        missing = sorted((set(KEYSYMS) | set(TYPEABLE_LETTERS)) - served)
         if missing:
             raise InjectError(
                 f"the running seat device cannot press {missing}; restart "
@@ -562,6 +579,10 @@ class UinputDriver:
     def click(self, button: str) -> None:
         self.focus()
         self._send("click", button, str(self.hold_seconds))
+
+    def text(self, characters: str) -> None:
+        self.focus()
+        self._send("text", characters)
 
     def clipboard(self, text: str) -> None:
         self._wlroots.clipboard(text)
@@ -621,6 +642,8 @@ def _build_parser() -> argparse.ArgumentParser:
     move_parser.add_argument("dy", type=int)
     click_parser = sub.add_parser("click")
     click_parser.add_argument("button", choices=sorted(BUTTONS))
+    text_parser = sub.add_parser("text")
+    text_parser.add_argument("characters")
     clipboard_parser = sub.add_parser("clipboard")
     clipboard_parser.add_argument("text")
     scale_parser = sub.add_parser("output-scale")
@@ -648,6 +671,8 @@ def main(argv: list[str] | None = None) -> int:
             driver.move(args.dx, args.dy)
         elif args.action == "click":
             driver.click(args.button)
+        elif args.action == "text":
+            driver.text(args.characters)
         elif args.action == "clipboard":
             driver.clipboard(args.text)
         elif args.action == "output-scale":

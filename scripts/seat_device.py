@@ -55,7 +55,21 @@ KEY_CODES = {
     "fullscreen": 87,  # F11
     **{f"hotbar{index}": index + 1 for index in range(1, 10)},  # KEY_1..KEY_9
 }
+# QWERTY letter positions, for typing a literal string one physical key at a
+# time.  An input method turns these into something else entirely, which is the
+# point of typing through the seat rather than writing text into the client.
+LETTER_CODES = {
+    "q": 16, "w": 17, "e": 18, "r": 19, "t": 20,
+    "y": 21, "u": 22, "i": 23, "o": 24, "p": 25,
+    "a": 30, "s": 31, "d": 32, "f": 33, "g": 34,
+    "h": 35, "j": 36, "k": 37, "l": 38,
+    "z": 44, "x": 45, "c": 46, "v": 47, "b": 48, "n": 49, "m": 50,
+    " ": 57,
+}
 BUTTON_CODES = {"left": 0x110, "middle": 0x112, "right": 0x111}
+# One key of a typed string: long enough for the compositor to route it, short
+# enough that a whole word does not outlast the scenario budget.
+TYPE_HOLD_SECONDS = 0.08
 
 UI_SET_EVBIT = 0x40045564
 UI_SET_KEYBIT = 0x40045565
@@ -157,6 +171,25 @@ class VirtualSeatDevice:
         self._emit(EV_KEY, code, 0)
         self._sync()
 
+    def text(self, characters: str) -> None:
+        """Type a literal ASCII string through the physical keys.
+
+        With an input method on the seat, what the client receives is a commit
+        of something else entirely -- which is exactly what makes the receipt
+        worth having.
+        """
+
+        for character in characters:
+            code = LETTER_CODES.get(character.lower())
+            if code is None:
+                raise SeatDeviceError(f"no physical key types {character!r}")
+            self._emit(EV_KEY, code, 1)
+            self._sync()
+            time.sleep(TYPE_HOLD_SECONDS)
+            self._emit(EV_KEY, code, 0)
+            self._sync()
+            time.sleep(TYPE_HOLD_SECONDS)
+
     def move(self, dx: int, dy: int, steps: int = 10) -> None:
         """Relative pointer motion, delivered as a real device would: in
         several small deltas rather than one jump, so a client sampling per
@@ -186,7 +219,17 @@ def _handle(device: VirtualSeatDevice, line: str) -> str:
             # was started with.  Answering with that table lets a caller refuse
             # a stale daemon up front rather than discovering a missing key
             # deep inside a run.
-            return "ok " + " ".join(sorted(KEY_CODES))
+            # Space is reported as `jump`, since a bare space cannot survive
+            # this whitespace-separated answer.
+            typeable = {name for name in LETTER_CODES if not name.isspace()}
+            return "ok " + " ".join(sorted({*KEY_CODES, *typeable}))
+        if action == "text":
+            # The rest of the line verbatim, so a typed space survives.
+            _, _, characters = line.partition(" ")
+            if not characters:
+                return "error text needs something to type"
+            device.text(characters)
+            return "ok"
         if action == "key":
             device.key(arguments[0], float(arguments[1]) if len(arguments) > 1 else DEFAULT_HOLD_SECONDS)
             return "ok"

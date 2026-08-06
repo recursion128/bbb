@@ -180,13 +180,22 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
   that publishes a real seat sends `Focused(false)` until something activates
   the window, which overrides the control-plane focus stand-in. The row rests on
   the scope decision alone; reopen only if that decision is reversed.
-- Seat IME on the declared Wayland row is `deferred`, and the missing piece is
-  on the runner rather than in the client: the client asks for IME
-  (`set_ime_allowed(true)`) and handles `WindowEvent::Ime`, but the seat has a
-  driver for keys, buttons, motion and the clipboard and none for an input
-  method, so there is no preedit to observe. Reopen when a maintained
-  seat-backed run has an input method on that seat — an `zwp_input_method_v2`
-  client or a configured IME daemon; do not infer it from the IME unit tests,
+- Seat IME on the declared Wayland row is `deferred`, and the blocker is now a
+  client one. The runner side is done: fcitx5 runs on the gate's compositor as
+  a `zwp_input_method_v2` client, the seat can type latin keys through its
+  uinput device, and a measured run shows fcitx5 receiving them and composing
+  (`waylandimserverv2 ACTIVATE`, then `KeyEvent ... result:1`). What blocks the
+  receipt is that **bbb leaves IME on for the whole session** — one
+  `window.set_ime_allowed(true)` at startup, never revoked — while vanilla
+  turns it on only while a text field has focus. `TextInputManager.tick`
+  (TextInputManager.java:26-47) disables the IME every tick the window is
+  focused and no text input is active; `EditBox.setFocused`/`MultiLineEditBox`
+  and `AbstractSignEditScreen` drive `startTextInput`/`stopTextInput`, and
+  `Minecraft.setScreen(null)` stops it. With an input method present the
+  difference is not cosmetic: the IME grabs every letter key, so `T` composes a
+  preedit instead of opening chat and the client is unplayable. Reopen when bbb
+  has the `TextInputManager` equivalent; the validation environment is no
+  longer what is missing, and do not infer the leg from the IME unit tests,
   which exercise the handlers rather than the platform path.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,

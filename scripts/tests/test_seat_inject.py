@@ -123,19 +123,33 @@ class SeatStaleDaemonTests(unittest.TestCase):
 
     def test_a_daemon_missing_a_key_is_refused_by_name(self):
         driver = seat_inject.UinputDriver(driver_args())
-        served = "ok " + " ".join(sorted(set(seat_inject.KEYSYMS) - {"fullscreen"}))
+        served = "ok " + " ".join(
+            sorted((set(seat_inject.KEYSYMS) | set(seat_inject.TYPEABLE_LETTERS)) - {"fullscreen"})
+        )
         with mock.patch.object(seat_inject.seat_device, "request", return_value=served):
             with self.assertRaisesRegex(seat_inject.InjectError, "fullscreen"):
                 driver._require_current_key_table()
 
     def test_a_current_daemon_passes(self):
         driver = seat_inject.UinputDriver(driver_args())
-        served = "ok " + " ".join(sorted(seat_inject.KEYSYMS))
+        served = "ok " + " ".join(
+            sorted(set(seat_inject.KEYSYMS) | set(seat_inject.TYPEABLE_LETTERS))
+        )
         with mock.patch.object(seat_inject.seat_device, "request", return_value=served):
             driver._require_current_key_table()
 
 
 class SeatVocabularyTests(unittest.TestCase):
+    def test_a_daemon_that_cannot_type_is_refused(self):
+        """Typing is how an input method gets something to compose, so a device
+        without the letters is as stale as one missing a gate key."""
+
+        driver = seat_inject.UinputDriver(driver_args())
+        served = "ok " + " ".join(sorted(seat_inject.KEYSYMS))
+        with mock.patch.object(seat_inject.seat_device, "request", return_value=served):
+            with self.assertRaisesRegex(seat_inject.InjectError, "'n'"):
+                driver._require_current_key_table()
+
     def test_every_gate_key_the_injector_knows_has_a_physical_code(self):
         """The two tables are written separately -- one in keysyms for the
         compositor drivers, one in evdev codes for the device -- so a name that

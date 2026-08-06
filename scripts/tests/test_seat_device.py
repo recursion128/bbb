@@ -97,16 +97,63 @@ class SeatCommandTests(unittest.TestCase):
         daemon that predates a key it needs."""
 
         answer = seat_device._handle(self.device, "keys")
+        typeable = {name for name in seat_device.LETTER_CODES if not name.isspace()}
 
         self.assertTrue(answer.startswith("ok "))
-        self.assertEqual(set(answer.split()[1:]), set(seat_device.KEY_CODES))
+        self.assertEqual(set(answer.split()[1:]), set(seat_device.KEY_CODES) | typeable)
+        # A bare space cannot survive a whitespace-separated answer, so it is
+        # reported under the gate key that already owns it.
+        self.assertIn(" ", seat_device.LETTER_CODES)
+        self.assertNotIn(" ", answer.split()[1:])
         self.assertEqual(self.device.calls, [])
+
+    def test_typed_text_keeps_its_spaces(self):
+        """The command's argument is the rest of the line, because a typed
+        space is a key like any other."""
+
+        typed = []
+        self.device.text = lambda characters: typed.append(characters)
+
+        self.assertEqual(seat_device._handle(self.device, "text ni hao"), "ok")
+
+        self.assertEqual(typed, ["ni hao"])
+        self.assertTrue(seat_device._handle(self.device, "text").startswith("error"))
 
     def test_malformed_requests_answer_error_and_inject_nothing(self):
         for line in ("", "key", "move 200", "move x 0", "wiggle"):
             with self.subTest(line=line):
                 self.assertTrue(seat_device._handle(self.device, line).startswith("error"))
         self.assertEqual(self.device.calls, [])
+
+
+class SeatTypingTests(unittest.TestCase):
+    def test_typing_presses_one_physical_key_per_character(self):
+        """An input method turns these into something else entirely, which is
+        the point: the receipt is that the client did not get what was typed."""
+
+        emitted = []
+        device = seat_device.VirtualSeatDevice.__new__(seat_device.VirtualSeatDevice)
+        device._emit = lambda event_type, code, value: emitted.append((code, value))
+        device._sync = lambda: None
+        seat_device.VirtualSeatDevice.text(device, "hi")
+
+        self.assertEqual(
+            emitted,
+            [
+                (seat_device.LETTER_CODES["h"], 1),
+                (seat_device.LETTER_CODES["h"], 0),
+                (seat_device.LETTER_CODES["i"], 1),
+                (seat_device.LETTER_CODES["i"], 0),
+            ],
+        )
+
+    def test_an_unmapped_character_is_refused_rather_than_skipped(self):
+        device = seat_device.VirtualSeatDevice.__new__(seat_device.VirtualSeatDevice)
+        device._emit = lambda *_: None
+        device._sync = lambda: None
+
+        with self.assertRaisesRegex(seat_device.SeatDeviceError, "no physical key"):
+            seat_device.VirtualSeatDevice.text(device, "ni3")
 
 
 class SeatMotionTests(unittest.TestCase):
