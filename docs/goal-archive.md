@@ -38,8 +38,7 @@
   MenuScreens registration、remote disconnect screen lifecycle、indexed disconnect panorama、phase-aware
   disconnect audio teardown、ChatScreen（25 owner）与 DeathScreen（16 owner）decision surfaces、external
   session lifecycle（187 `Minecraft` owner）、LevelRenderer 七机制（77 owner）。
-- **2026-08-03/04（LocalPlayer census 首批 closure）**：149 owner 拆 23 route；block-breaking/prediction 统一 level-bound
-  handler+barrier；input-movement 20 owner 经唯一 tick/归一/sprint 链收口；environment-effects 8 owner（crit 经 AndSelf 验证、portal intensity/trigger/spinning 补实现）、world-edit-ui 9 owner（九面唯一 sync_*_editor/screen 链）、camera-targeting 9 owner（唯一 crosshair resolver/camera pose/leash/SetCamera 链）、inventory-actions 9 owner（drop 预测/close 命令/creative throttler/recipe/tutorial-noop 链）、vehicle-control 7 owner（ride tick/riding jump/sprintable/SetPassengers/minecart-flag 链）、item-use-state 6 owner（use-prediction/movement 乘子/flags 投影链）、permission-chat-state 6 owner（permission event/system-chat/visibility/text-filtering 链）、game-mode-lifecycle 7 owner（game-event/login-respawn 重建/abilities/switcher 链）、primary-action-routing 3 owner（mouse 左/右键唯一路由链）、game-mode-guards 5 owner（HUD 门/miss-time/spectator/mount 判定链）、session-respawn 4 owner（login-respawn 重建/respawn 命令/death 计数链）、vitals-status 4 owner（health/experience 应用与 contextual bar 链）、movement-reporting 4 owner（per-tick 报文/sprint 转换/abilities 命令链）、status-options/item-use/entity-actions/container-actions/creative-actions 批量 18 owner（game-event/命令族链，补 spectator 垂直清零）、carried-slot-sync/pick-actions 5 owner 收口——**LocalPlayer/game-mode census 22 route 全 equivalent，域关闭**。
+- **2026-08-03/04（LocalPlayer census 首批 closure）**：149 owner 拆 23 route，block-breaking/prediction 统一 level-bound handler+barrier，input-movement 经唯一 tick/归一/sprint 链收口；environment-effects、world-edit-ui、camera-targeting、inventory-actions、vehicle-control、item-use-state、permission-chat-state、game-mode-lifecycle/guards、primary-action-routing、session-respawn、vitals-status、movement-reporting、status-options/item-use/entity/container/creative-actions、carried-slot-sync/pick-actions 各按其唯一 owner 链逐条挂 evidence——LocalPlayer/game-mode census 22 route 全 equivalent，域关闭。
 - **2026-08-03/04（generated evidence/layout、ClientLevel census 与 lifecycle closures）**：五份 JSON 收敛；
   121 owner 拆 18 route；全部 18 route（entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing/diagnostics-report/map-data/level-events/block-entity-tracking 等）95 owner 经唯一 store/resolver/gate/装配/分派链收口，census 域关闭。
 
@@ -50,50 +49,28 @@
   文件 override、F3+H/F3+P 触发 `Options.save` 并补发 `ClientInformation`、server_list 按地址复用 +
   quick-play hidden/16 上限；五行翻 `equivalent`，无消费面归 `missing`/scope 行。
 
-- **2026-08-05（HUD/input-window/game-renderer census closures）**：三个 census 工程同日收口，
-  全部逐 owner 挂 implementation/test evidence：`Gui` 72 owner 五条 `hud-*` route（camera player 唯一
-  裁决点、nausea overlay、`LevelLoadingScreen`、subtitle 位置按 in-game UI 裁决）；
-  `native-input-window-surface` 173 owner 十行 route（debug-crash abort、`saySystemQueued` 门控、
-  respawn/screen toggle 重置、keybind 组件解析、narrator toast/音量链，GLFW 专有面逐 owner 记 scope）；
-  `Minecraft.renderFrame`+`GameRenderer` 53 owner 四条 route（totem 40-tick 状态机、glint/panorama
-  接线、framerate 节流表、renderClouds、ao 开关、redraw-arm/clearLevel 守卫；auto-screenshot 记
-  `not-needed`）。十九行 matrix 全翻 `equivalent`。
+- **2026-08-05（census closures + 用户裁决三批）**：`Gui` 72 owner 五条 `hud-*`、
+  `native-input-window-surface` 173 owner 十行、`Minecraft.renderFrame`+`GameRenderer` 53 owner
+  四条、`security-secure-chat-reporting` 30 owner，全部逐 owner 挂 evidence 翻 `equivalent`
+  （camera player 唯一裁决点、debug-crash abort、totem 40-tick、离线服务边界=vanilla
+  `OFFLINE_PROPERTIES`、system-chat 抑制改走 `guessChatUUID` map）。同日用户重开的四个 deferred
+  全部落地：texture filtering 面、toast/F3 overlay 提到全屏 screen 之上、`SmoothDouble` 平滑镜头、
+  IME preedit 焦点移交（`clear_pressed` 不再越权清 composition）。用户裁决 online 模式为非目标，
+  整体移除加密登录/签名会话/Services 凭据面（服务端发起握手改为可归因失败，入站签名验证与
+  last-seen ack 不变），packet coverage 五条改 not-applicable、账本 deferred 6→5。用户裁决不卡
+  Rust 1.80，工具链升 stable 1.97.1 解锁 ICU4X 2.2，`ui-local-time-icu` 关为 `equivalent`：
+  ICU4X 承接 CLDR 文本/zone 名/每 locale 历法数字系统、native 承接数字字段与 ICU4J 周算法、
+  generated 表承接 quarter/GMT-zero/unknown-city/root 地区码，8656 行 ICU4J 77.1 goldens 全绿
+  （同 kind 多宽度须各持独立 names 实例）。账本 active 清零，P3/P4 转维护态，deferred 5→4。
 
-- **2026-08-05（secure-chat/social/reporting closure）**：`security-secure-chat-reporting` 30 owner
-  （`Minecraft` chat abilities 9 + `PlayerSocialManager` 12 + `ReportingContext` 9）逐条挂
-  implementation/test evidence，matrix 行翻 `equivalent`；离线服务边界=vanilla `OFFLINE_PROPERTIES`
-  语义（block list/abuse sender/签名会话仅凭 startup 凭据激活）；census 修一处分歧：matched-name
-  system-chat 抑制改走 discovered-names map（vanilla `guessChatUUID`）。authenticated Services 端到端
-  仍按账本 deferred。账本 active 项清零，P3/P4 节转维护态。
-
-- **2026-08-05（user-reopened deferred quartet）**：用户重开的四个 deferred 项同日全部落地关闭：
-  vanilla 地形 texture filtering 面（`TextureFilteringMethod` 三模式 wrap 解析 + `maxAnisotropyBit`
-  采样器 `anisotropy_clamp`/nearest 着色器路由/atlas padding `1<<clamp(bit-1,0,4)`）；toast 与 F3
-  overlay 提取到全屏 screen（level-loading/disconnected/win）之上；`SmoothDouble` 平滑镜头转向
-  （每帧 mousea 采样、grab 冻结、scoping 优先级、未绑定 `key.smoothCamera` 切换）；IME preedit
-  焦点移交（`lastPreeditEvent` 常存 + gain/lose 双向 handoff，`clear_pressed` 不再越权清
-  composition，失效由 dialog revision/sign signature 护栏承担）。四 route 回到 `equivalent`。
-
-- **2026-08-05（online-mode removal）**：用户裁决 online 模式为非目标，整体移除已实现但永不可
-  验收的在线面：RSA/AES-CFB8 加密登录与 sessionserver join、profile-key 拉取与
-  `ChatSessionUpdate`/本地签名链（`chat_session/runtime.rs` 整文件）、bearer-token Services
-  block-list/abuse-report REST client（`user_api.rs`）、`--profile-id`/`--access-token` 凭据参数、
-  `PlaySessionSecurity` 事件与 tab-list heads 加密位。服务端发起加密握手改为可归因失败；出站
-  聊天/命令保持 vanilla「无 key pair」语义；入站签名验证与 last-seen ack 不变。packet coverage
-  五条目改判 not-applicable、`identity-profile-key-lifecycle` 行转 `not-needed`、账本 deferred #1
-  改 `not-needed`（deferred 6→5）。
-
-- **2026-08-05（toolchain + local_time ICU parity）**：用户裁决不卡 Rust 1.80，工具链升 stable
-  1.97.1（MSRV 1.97），解锁 ICU4X 2.2。`ui-local-time-icu` 从 `deferred-external` 关为
-  `equivalent`：混合实现（ICU4X 承接 CLDR 文本/zone 名/每 locale 历法数字系统；native 承接全部
-  数字字段与 ICU4J 周算法；generated 表承接 quarter/GMT-zero/unknown-city/root 地区码），以
-  vanilla 同款 ICU4J 77.1 jar 做 oracle 的 8656 行 goldens 全绿；同宽度多字段各持独立 names
-  实例（单实例装不下同 kind 两宽度）。账本 deferred 5→4（三项环境绑定 + 一项消费者门控）。
-
-- **2026-08-06（spyglass held-to-eye + context_entity_type closure）**：census 漏数的最后一个真实
-  owner 消费者落地：`PlayerItemInHandLayer.renderItemHeldToEye`——scoping avatar（玩家/mannequin）的
-  spyglass 以 HEAD context 挂头骨（xRot 钳 `[-π/6, π/2]`、`translateToHead`+眼侧偏移），melee swing
-  （`attackTime<1e-5`）门控回手部，mob 保持通用 in-hand；vanilla 26.1 全部传 living owner 的
-  `ItemModelResolver` 消费者对齐，账本 context_entity_type deferred 删除（deferred 4→3，全为环境绑定）。
+- **2026-08-06（per-client GPU execution duration）**：`performance-gpu-execution-duration` 关为
+  `equivalent`。原判词「内核缺 `fence:fence_signaled`」实为上游改名 `dma_fence:`，同一事件；
+  harness 写死旧名即误诊源头。`scripts/gpu_duration_capture.py` 关联 `cs_ioctl`（客户端进程
+  上下文，pid 即归属）→`sched_run_job`→`dma_fence_signaled(drm_sched)`，按 `(context, seqno)`
+  join，并区分 drm_sched 每 entity 的 scheduled/finished 双 context（join 错会把派发延迟当执行
+  时长）。radeonsi 与 RADV 共用该内核路径，一次采集覆盖两 API：关联率 Vulkan 124/124、OpenGL
+  2778/2778 均 1.0，Weston/Xwayland/官方客户端按 pid 干净分离，overhead +0.23%。采集以非特权
+  `perf` 运行（runner 只需 tracefs 组读 + `perf_event_paranoid=-1`），preflight 改为直接探测
+  能力而非按权限位推断。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

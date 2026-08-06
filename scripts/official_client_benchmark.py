@@ -76,9 +76,22 @@ REQUIRED_PERF_EVENTS = (
 REQUIRED_FTRACE_EVENTS = (
     "amdgpu:amdgpu_cs_ioctl",
     "amdgpu:amdgpu_sched_run_job",
-    "fence:fence_signaled",
+    # Upstream renamed the `fence:` tracepoint subsystem to `dma_fence:` when the
+    # fence API became dma_fence; this is the same completion event, not a
+    # substitute for a missing one.
+    "dma_fence:dma_fence_signaled",
     "drm:drm_vblank_event",
     "sched:sched_switch",
+)
+# The submission -> dispatch -> completion chain that yields per-client GPU
+# execution duration. It sits in the amdgpu kernel driver, below both radeonsi
+# (the official client's OpenGL) and RADV (bbb's Vulkan), so one capture covers
+# both APIs without instrumenting either client. `scripts/gpu_duration_capture.py`
+# owns the join and the reporting.
+GPU_DURATION_CHAIN_EVENTS = (
+    "amdgpu:amdgpu_cs_ioctl",
+    "amdgpu:amdgpu_sched_run_job",
+    "dma_fence:dma_fence_signaled",
 )
 MANGOHUD_VERSION = "0.8.4"
 FIXED_WARMUP_SECONDS = 30
@@ -3161,25 +3174,69 @@ def capture_preflight(
     trace_events: dict[str, dict[str, Any]] = {}
     for event in REQUIRED_FTRACE_EVENTS:
         group, name = event.split(":", 1)
-        candidates = [
-            root / "events" / group / name / "enable" for root in trace_roots
-        ]
+        candidates = [root / "events" / group / name / "id" for root in trace_roots]
         trace_events[event] = {
             "paths": [str(path) for path in candidates],
+            "present": any(path.is_file() for path in candidates),
             "readable": any(os.access(path, os.R_OK) for path in candidates),
-            "writable": any(os.access(path, os.W_OK) for path in candidates),
         }
-    trace_access = bool(trace_roots) and all(
-        event["readable"] and event["writable"]
-        for event in trace_events.values()
+    missing_events = sorted(
+        event for event, status in trace_events.items() if not status["present"]
     )
-    if not trace_access:
+    if missing_events:
         gpu_duration_blockers.append(
             {
-                "code": "tracefs_events_unavailable",
+                "code": "trace_events_absent",
+                "detail": f"this kernel exposes no {', '.join(missing_events)}",
+            }
+        )
+    # Probe the capability directly instead of inferring it from permission bits:
+    # perf resolves the tracepoint ids out of tracefs and then opens them, and
+    # only an actual open proves an unprivileged capture can run.
+    gpu_chain_events = ",".join(GPU_DURATION_CHAIN_EVENTS)
+    gpu_probe_argv = (
+        "perf",
+        "record",
+        "-q",
+        "-o",
+        "/dev/null",
+        "-e",
+        gpu_chain_events,
+        "-a",
+        "--",
+        "/bin/true",
+    )
+    try:
+        gpu_probe = subprocess.run(
+            gpu_probe_argv,
+            check=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=30.0,
+        )
+        gpu_probe_status = {
+            "argv": list(gpu_probe_argv),
+            "returncode": gpu_probe.returncode,
+            "output": gpu_probe.stdout,
+        }
+    except (OSError, subprocess.TimeoutExpired) as error:
+        gpu_probe_status = {
+            "argv": list(gpu_probe_argv),
+            "returncode": None,
+            "output": f"{type(error).__name__}: {error}",
+        }
+    if gpu_probe_status["returncode"] != 0 or "can't access trace events" in (
+        gpu_probe_status["output"] or ""
+    ):
+        gpu_duration_blockers.append(
+            {
+                "code": "unprivileged_tracepoint_capture_unavailable",
                 "detail": (
-                    "required amdgpu/fence/drm/sched trace events are not "
-                    "user-readable and writable"
+                    "perf cannot open the GPU chain tracepoints as this user; "
+                    "provision the runner with tracefs group read access and "
+                    "kernel.perf_event_paranoid=-1"
                 ),
             }
         )
@@ -3214,6 +3271,8 @@ def capture_preflight(
         "trace_roots": [str(path) for path in trace_roots],
         "trace_root_errors": trace_root_errors,
         "trace_events": trace_events,
+        "gpu_duration_chain": list(GPU_DURATION_CHAIN_EVENTS),
+        "gpu_duration_probe": gpu_probe_status,
         "gpu_duration_blockers": gpu_duration_blockers,
         "mangohud": mango,
         "tools": {
@@ -3228,7 +3287,10 @@ def capture_preflight(
         "blockers": blockers,
         "formal_capture_ready": not blockers,
         "gpu_duration_preflight_ready": not gpu_duration_blockers,
-        "gpu_duration_claim_allowed": False,
+        # A per-client GPU execution duration may be published once the chain can
+        # actually be captured. The claim still rests on the capture's own
+        # association ratio, which `gpu_duration_capture.summarize` reports per run.
+        "gpu_duration_claim_allowed": not gpu_duration_blockers,
     }
 
 

@@ -17,9 +17,11 @@
 - `perf stat` 记录客户端进程总 task-clock、cycles、instructions 等，只能按实际 frame
   数归一化为均值，不能产生 CPU frame percentile。
 - GPU load/clock/temperature 是采样 telemetry，不是 per-frame GPU duration。
-- API-neutral per-client GPU execution duration 只有在能跨 radeonsi/RADV 按客户端
-  context 关联 submit、queue、fence 且排除 compositor 时才可发布；目前其外部验证边界
-  仍链接[缺口 ledger](../../unsupported-features.md)。
+- API-neutral per-client GPU execution duration 由 `scripts/gpu_duration_capture.py`
+  在 amdgpu 提交链上按客户端 context 关联 submit、queue、fence 得到，radeonsi 与 RADV
+  共用该路径，compositor 按进程排除；发布判据是该次采集自身的 association ratio 与
+  overhead，链路细节见[等负载机制页](../mechanisms/performance/equal-load-benchmark.md)。
+  它与上面三项互不替代：present interval、进程均值和 telemetry 仍不能当作 GPU duration。
 
 完整合同见[官方客户端等负载比较](../mechanisms/performance/equal-load-benchmark.md)，构建
 基线和 repo-native owner 证据见[构建与缓存](../development/build-and-cache.md)。

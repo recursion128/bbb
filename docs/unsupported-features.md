@@ -164,21 +164,6 @@ divergence in place: matched-name system-chat suppression now resolves through
 the social discovered-names map (vanilla `guessChatUUID`), not the live tab
 list.
 
-## Runtime performance parity and stable frame tails
-
-Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
-
-Matrix route: `performance-gpu-execution-duration`
-
-- API-neutral per-client GPU execution duration is `deferred`: the current
-  kernel exposes `dma_fence:dma_fence_signaled` instead of the requested
-  `fence:fence_signaled`, and the headless Xwayland path has no proven
-  radeonsi/RADV client-context chain across submission, scheduler queue, fence
-  signal, and presentation while excluding Weston. Reopen when one common
-  capture proves that full association with acceptable overhead for both APIs.
-  Do not relabel MangoHud application-frame intervals, `perf stat` process
-  means, Weston surface commits, or GPU busy/load as GPU frame duration.
-
 ## P4 lifecycle, soak, and supported-platform release gates
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`

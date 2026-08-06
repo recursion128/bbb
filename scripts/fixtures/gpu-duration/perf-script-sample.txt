@@ -1,0 +1,40 @@
+# Real `perf script -F comm,pid,time,event,trace --ns` excerpt captured on the
+# maintained AMD runner: the official 26.1 client (radeonsi/OpenGL, comm java),
+# Weston's own compositing submissions, and a bbb-renderer GPU test
+# (RADV/Vulkan). Trimmed to whole submit -> dispatch -> finished-fence chains.
+ hud::tests::com 3332795 4447430.562772111:       amdgpu:amdgpu_cs_ioctl: sched_job=13478334, timeline=gfx_0.0.0, context=2650355, seqno=1, ring_name=gfx_0.0.0, num_ibs=2
+ kworker/u64:0-e 2883525 4447430.563811740:  amdgpu:amdgpu_sched_run_job: sched_job=13478334, timeline=gfx_0.0.0, context=2650355, seqno=1, ring_name=gfx_0.0.0, num_ibs=2
+ offscreen::test 3332795 4447430.563990044: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650355 seqno=1
+ hud::tests::com 3332795 4447430.564539595:       amdgpu:amdgpu_cs_ioctl: sched_job=13478335, timeline=gfx_0.0.0, context=2650355, seqno=2, ring_name=gfx_0.0.0, num_ibs=2
+        kthreadd 3332892 4447430.565889336:  amdgpu:amdgpu_sched_run_job: sched_job=13478335, timeline=gfx_0.0.0, context=2650355, seqno=2, ring_name=gfx_0.0.0, num_ibs=2
+ kworker/u64:2-s 3325858 4447430.565952284: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650355 seqno=2
+ offscreen::test 3332795 4447430.594479218:       amdgpu:amdgpu_cs_ioctl: sched_job=13478336, timeline=gfx_0.0.0, context=2650362, seqno=1, ring_name=gfx_0.0.0, num_ibs=2
+ offscreen::test 3332795 4447430.595907887:       amdgpu:amdgpu_cs_ioctl: sched_job=13478337, timeline=gfx_0.0.0, context=2650362, seqno=2, ring_name=gfx_0.0.0, num_ibs=2
+ kworker/u64:2-s 3325858 4447430.597315596:  amdgpu:amdgpu_sched_run_job: sched_job=13478336, timeline=gfx_0.0.0, context=2650362, seqno=1, ring_name=gfx_0.0.0, num_ibs=2
+ offscreen::test 3332795 4447430.597501635: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650362 seqno=1
+ kworker/u64:2-s 3325858 4447430.598390071:  amdgpu:amdgpu_sched_run_job: sched_job=13478337, timeline=gfx_0.0.0, context=2650362, seqno=2, ring_name=gfx_0.0.0, num_ibs=2
+ offscreen::test 3332795 4447430.598438302: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650362 seqno=2
+        java:cs0 3340528 4447973.867033471:       amdgpu:amdgpu_cs_ioctl: sched_job=13480350, timeline=gfx_0.0.0, context=2650575, seqno=782, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.867042398:  amdgpu:amdgpu_sched_run_job: sched_job=13480350, timeline=gfx_0.0.0, context=2650575, seqno=782, ring_name=gfx_0.0.0, num_ibs=1
+        java:cs0 3340528 4447973.867167493:       amdgpu:amdgpu_cs_ioctl: sched_job=13480351, timeline=gfx_0.0.0, context=2650575, seqno=783, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.867172242:  amdgpu:amdgpu_sched_run_job: sched_job=13480351, timeline=gfx_0.0.0, context=2650575, seqno=783, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.867519302: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650575 seqno=782
+         swapper       0 4447973.870587666: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650575 seqno=783
+      weston:cs0 3339885 4447973.877328597:       amdgpu:amdgpu_cs_ioctl: sched_job=13480352, timeline=gfx_0.0.0, context=2650537, seqno=351, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.877348955:  amdgpu:amdgpu_sched_run_job: sched_job=13480352, timeline=gfx_0.0.0, context=2650537, seqno=351, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.878135179: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650537 seqno=351
+        java:cs0 3340528 4447973.883628220:       amdgpu:amdgpu_cs_ioctl: sched_job=13480355, timeline=gfx_0.0.0, context=2650575, seqno=784, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.883642487:  amdgpu:amdgpu_sched_run_job: sched_job=13480355, timeline=gfx_0.0.0, context=2650575, seqno=784, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.887419690: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650575 seqno=784
+        java:cs0 3340528 4447973.900238918:       amdgpu:amdgpu_cs_ioctl: sched_job=13480357, timeline=gfx_0.0.0, context=2650575, seqno=785, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.900254177:  amdgpu:amdgpu_sched_run_job: sched_job=13480357, timeline=gfx_0.0.0, context=2650575, seqno=785, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.900348604: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650575 seqno=785
+      weston:cs0 3339885 4447973.902383349:       amdgpu:amdgpu_cs_ioctl: sched_job=13480359, timeline=gfx_0.0.0, context=2650537, seqno=352, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.902403247:  amdgpu:amdgpu_sched_run_job: sched_job=13480359, timeline=gfx_0.0.0, context=2650537, seqno=352, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.904246814: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650537 seqno=352
+      weston:cs0 3339885 4447973.927477586:       amdgpu:amdgpu_cs_ioctl: sched_job=13480364, timeline=gfx_0.0.0, context=2650537, seqno=353, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.927497854:  amdgpu:amdgpu_sched_run_job: sched_job=13480364, timeline=gfx_0.0.0, context=2650537, seqno=353, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.928286663: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650537 seqno=353
+      weston:cs0 3339885 4447973.952549010:       amdgpu:amdgpu_cs_ioctl: sched_job=13480371, timeline=gfx_0.0.0, context=2650537, seqno=354, ring_name=gfx_0.0.0, num_ibs=1
+ kworker/u64:3-g 3340686 4447973.952568737:  amdgpu:amdgpu_sched_run_job: sched_job=13480371, timeline=gfx_0.0.0, context=2650537, seqno=354, ring_name=gfx_0.0.0, num_ibs=1
+         swapper       0 4447973.954034716: dma_fence:dma_fence_signaled: driver=drm_sched timeline=gfx_0.0.0 context=2650537 seqno=354

@@ -5,8 +5,9 @@
 ## 机制目的和边界
 
 该机制在同机、同 compositor、同服务端权威相机序列和渲染一致性门禁下，比较未修改
-官方客户端与 BBB。它提供 end-to-end frame interval 和进程 CPU 均值；不把 present
-interval 或 GPU telemetry 冒充 GPU execution duration。
+官方客户端与 BBB。它提供 end-to-end frame interval、进程 CPU 均值，以及经内核提交链
+关联出的 per-client GPU execution duration；present interval 与 GPU telemetry 仍是各自
+独立的量，不得互相冒充。
 
 ## Vanilla 26.1 权威实现
 
@@ -35,8 +36,9 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。
-MangoHud 对任一 API hook 失败或自身 median overhead >1% 时不作正式结果。无法建立
-API-neutral GPU context 链时只报告共同 frame interval 与 GPU load，不降格猜测。
+MangoHud 对任一 API hook 失败或自身 median overhead >1% 时不作正式结果。GPU 采集
+的 association ratio 不足或 overhead 超同一阈值时，只报告共同 frame interval 与 GPU
+load，不降格猜测。
 
 ## BBB 实现映射
 
@@ -54,7 +56,7 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 | 渲染/可见 workload gate | official screenshot/draw | BBB counters + ROI/draw evidence | `equivalent` | 3 scene anchors |
 | frame interval | MangoHud OpenGL/Vulkan hook | parser/summary | `equivalent` | overhead audit + ABBA raw |
 | CPU process means | `perf stat` client PID | normalization parser | `equivalent` | event availability + raw CSV |
-| per-client GPU duration | driver/API context tracing | 无共同可验证 owner | `deferred-external` | [ledger](../../../unsupported-features.md) |
+| per-client GPU duration | amdgpu 提交链（radeonsi/RADV 共用） | `scripts/gpu_duration_capture.py` | `equivalent` | 双 API 关联率 1.0 + overhead 审计 |
 
 ## 结构性不变量
 
@@ -108,20 +110,55 @@ archive SHA-256 是
 只证明三个锚点的 OpenGL/Vulkan draw 内容非空；API batching 不同使 draw count 不能
 作为等负载或性能倍数。
 
+## per-client GPU execution duration
+
+该指标测在两个图形 API 之下：radeonsi（官方客户端的 OpenGL）与 RADV（BBB 的 Vulkan）
+共用同一条 amdgpu 提交路径，因此一次采集覆盖两者，且无需给任一客户端插桩。
+
+| 链段 | tracepoint | 携带的关联键 |
+| --- | --- | --- |
+| 提交 | `amdgpu:amdgpu_cs_ioctl` | 在客户端自身进程上下文触发，`pid` 即归属 |
+| 派发 | `amdgpu:amdgpu_sched_run_job` | `sched_job` / `(context, seqno)` / ring |
+| 完成 | `dma_fence:dma_fence_signaled` | `driver=drm_sched` + `(context, seqno)` |
+
+`drm/scheduler` 为每个 entity 分配两个相邻 fence context：`scheduled` 在
+`entity->fence_context`，`finished` 在 `+1`。amdgpu 追踪的是 finished fence，所以
+作业自身的 `(context, seqno)` join 到完成信号，而 `(context-1, seqno)` 是它开始执行
+的时刻——join 错一个会把派发延迟当成执行时长。由此：
+
+    queue wait = run_job - cs_ioctl
+    execution  = finished signal - run_job
+
+compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永远不会落进客户端的数字。
+实测同一次采集里 Weston、Xwayland 与官方客户端三个进程被干净分离。
+
+采集在 runner 完成两项标准授权后以**非特权**身份运行（`perf record`，见
+`scripts/gpu_duration_capture.py preflight`）：tracefs 对 benchmark 组可读以便 perf
+解析 tracepoint id，以及 `kernel.perf_event_paranoid=-1` 以便打开它们。
+
+发布该指标的判据是采集自身的 association ratio（完成整条链的客户端提交占比），低于
+门槛的采集按失败报告，不降格汇总。分母只计 `amdgpu_cs_ioctl` 提交：调度器还会跑无
+客户端归属的内核内部作业（SDMA 上的 TTM 缓冲搬运），把它们计入会低估一个实际完整的
+关联，故单独计数而非静默丢弃。
+
+`fence:fence_signaled` 在上游随 fence API 更名为 `dma_fence:` 子系统，是同一个完成
+事件；早期把它记为“内核缺少所需 tracepoint”的判断源于名称，而非能力缺失。
+
 ## 当前差异
 
-GPU-only duration 尚不能跨 radeonsi OpenGL 与 RADV Vulkan 按 client context 关联
-submission、queue wait、fence signal 并排除 Weston，故不得报告“GPU frame duration”。
+本机制无 active gap。frame interval、进程 CPU 均值与 GPU execution duration 是三个各自
+独立测得的量，任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，
+同样不能作为等负载或性能倍数。
 
 ## 账本/goal 路由
 
-GPU duration 的 `deferred` 状态只由
-[`unsupported-features.md`](../../../unsupported-features.md)维护。
+等负载比较与 GPU duration 均无 active 账本项。非 Linux 发布行等相邻平台状态只取
+[`unsupported-features.md`](../../../unsupported-features.md)。
 
 ## 精确重开条件
 
-当同一无特权工具能在两 API 上提供 client-context submit→queue→fence 关联、可排除
-compositor，且 overhead 通过阈值时重开。
+采集链、fence context 配对规则、ring 归类或 runner 授权方式变化时重开；association
+ratio 跌破门槛或 overhead 超阈值同样重开。
 
 ## 相关页面和源码索引
 

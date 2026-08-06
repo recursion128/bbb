@@ -501,10 +501,11 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 两项输入面已落地关闭：`SmoothDouble` 平滑镜头转向与 IME preedit 焦点移交（见
 archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
-runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
-关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
+runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。per-client GPU execution
+duration 已由 amdgpu 提交链采集关闭（radeonsi/RADV 共用路径、compositor 按进程排除）；
+剩余非 Linux 发布行只按其 `Reopen when ...` deferred。
 官方 26.1 离线启动、共同 replay/capture 合同、当前 host/tool hash 与 GPU-duration
-边界由 Wiki 等负载机制页维护；不得把 MangoHud
+采集链由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
 已有维护证据：
