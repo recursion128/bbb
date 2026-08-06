@@ -791,7 +791,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 12)
+        self.assertEqual(evidence["schema"], 13)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -1447,14 +1447,30 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         ]
 
         self.assertLess(
-            movement.index('"input.focus"'), movement.index('"input.look_delta"')
+            movement.index("_ensure_focus(address)"),
+            movement.index('"input.look_delta"'),
         )
         self.assertLess(
-            movement.index('"input.focus"'), movement.index('"forward", True')
+            movement.index("_ensure_focus(address)"), movement.index('"forward", True')
         )
         self.assertLess(
-            interaction.index('"input.focus"'), interaction.index("_tap_mouse(")
+            interaction.index("_ensure_focus(address)"), interaction.index("_tap_mouse(")
         )
+
+    def test_focus_has_exactly_one_synthetic_grant_point(self):
+        """Every driver routes through `_ensure_focus`, so a seat-backed run
+        can suppress the stand-in in one place instead of nine."""
+
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        ensure = source[
+            source.index("def _ensure_focus(") : source.index(
+                "class _seat_input_only:"
+            )
+        ]
+
+        self.assertEqual(source.count('"input.focus"'), 1)
+        self.assertIn('_control_request(address, "input.focus"', ensure)
+        self.assertIn("if _SEAT_MODE:", ensure)
 
     def test_block_interaction_builds_deterministic_support_column(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
@@ -1505,6 +1521,135 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         )
         self.assertNotIn("_press_key", centering)
         self.assertIn("server-authoritative block-column centering", centering)
+
+
+class PlayableGateSeatInputTests(unittest.TestCase):
+    """A seat-driven scenario only earns its receipts if the run could not have
+    reached the same canonical state through the synthetic input path."""
+
+    def setUp(self):
+        fixture_path = (
+            REPO_ROOT / "scripts" / "fixtures" / "playable-gate" / "session-26.1.json"
+        )
+        self.fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.protocol_version = playable_gate._parse_protocol_version(
+            REPO_ROOT / "crates" / "bbb-protocol" / "src" / "lib.rs"
+        )
+        self.seat_input = {
+            "injector": "scripts/seat_inject.py",
+            "startup_focus_source": "compositor",
+            "handshake": {
+                "focus_source": "compositor",
+                "escape_presses": 1,
+                "world_slot_after_escape": 4,
+            },
+            "from_slot": 0,
+            "to_slot": 4,
+            "server_confirmed": True,
+            "held_slot_commands_delta": 1,
+            "swing_commands_delta": 1,
+            "control_input_writes": 0,
+            "duration_seconds": 4.5,
+        }
+
+    def test_absent_seat_section_is_accepted_for_a_seatless_run(self):
+        playable_gate.validate_evidence(self.fixture, self.protocol_version)
+
+    def test_present_seat_section_is_held_to_the_full_contract(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = self.seat_input
+        playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_synthetic_input_write_invalidates_the_seat_receipts(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {**self.seat_input, "control_input_writes": 1}
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "control_input_writes"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_focus_stand_in_invalidates_the_seat_receipts(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {**self.seat_input, "startup_focus_source": "control"}
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "startup_focus_source"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_missing_handshake_escape_fails_the_focus_receipt(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {
+            **self.seat_input,
+            "handshake": {"focus_source": "compositor", "escape_presses": 0},
+        }
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "escape_presses"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_missing_swing_fails_the_pointer_button_receipt(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = {**self.seat_input, "swing_commands_delta": 0}
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "swing_commands_delta"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_guard_rejects_every_synthetic_input_write_while_a_seat_drives(self):
+        with playable_gate._seat_input_only():
+            for method in ("input.focus", "input.key", "input.look_delta"):
+                with self.assertRaisesRegex(playable_gate.GateFailure, method):
+                    playable_gate._control_request(("127.0.0.1", 1), method, {})
+
+    def test_guard_leaves_readouts_and_later_writes_alone(self):
+        with playable_gate._seat_input_only():
+            pass
+        # The guard must not outlive its scenario, or every later synthetic
+        # scenario in the same run would fail.
+        self.assertFalse(playable_gate._SEAT_INPUT_GUARD)
+
+    def test_seat_driver_never_reaches_for_the_synthetic_input_surface(self):
+        source = inspect.getsource(playable_gate.drive_seat_input)
+
+        self.assertIn("_seat_input_only()", source)
+        self.assertNotIn('"input.', source)
+        self.assertNotIn("_press_key", source)
+        self.assertNotIn("_tap_key", source)
+
+    def test_seat_mode_takes_the_pause_and_undoes_it_from_the_seat(self):
+        """A seat-backed run cannot win the race against the pause timer -- the
+        window maps only seconds before Play -- so it does not race: it lets the
+        client pause and reopens the world with a seat Escape, which only a
+        client the compositor actually focused can process."""
+
+        source = inspect.getsource(playable_gate.seat_handshake)
+
+        self.assertIn('_seat_inject(injector, "focus")', source)
+        self.assertIn('_seat_inject(injector, "key", "escape")', source)
+        self.assertIn("_seat_key_reaches_the_world(", source)
+        self.assertNotIn("input.", source)
+
+    def test_handshake_proves_the_screen_closed_rather_than_assuming_it(self):
+        """Escape toggles, so the handshake re-checks after each press, and the
+        check is one a still-open screen cannot pass: a screen owns the cursor,
+        so pointer motion could not turn the view."""
+
+        source = inspect.getsource(playable_gate.seat_handshake)
+
+        self.assertIn("for attempt in range(1, SEAT_HANDSHAKE_ATTEMPTS + 1):", source)
+        self.assertIn("if slot is not None:", source)
+
+    def test_injector_is_read_from_the_documented_environment_variable(self):
+        self.assertIsNone(playable_gate.seat_injector({}))
+        self.assertIsNone(playable_gate.seat_injector({"BBB_PLAYABLE_SEAT_INJECT": "  "}))
+        self.assertEqual(
+            playable_gate.seat_injector(
+                {"BBB_PLAYABLE_SEAT_INJECT": "python3 scripts/seat_inject.py"}
+            ),
+            ["python3", "scripts/seat_inject.py"],
+        )
 
 
 if __name__ == "__main__":

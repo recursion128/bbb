@@ -1,375 +1,375 @@
 {
- "artifacts": {
-  "server_log": "scripts/fixtures/playable-gate/recorded-server.log",
-  "timeline": "scripts/fixtures/playable-gate/session-26.1.json",
-  "transfer_server_log": "scripts/fixtures/playable-gate/recorded-transfer-server.log",
-  "world_snapshot": "scripts/fixtures/playable-gate/session-26.1.json"
- },
- "block_interaction": {
-  "block_updates_applied_delta": 2,
-  "destroyed": true,
-  "duration_seconds": 2.4,
-  "initial_block": "minecraft:grass_block",
-  "pick_item_commands_delta": 1,
-  "player_action_commands_delta": 1,
-  "restored": true,
-  "swing_commands_delta": 1,
-  "target": {
-   "x": 0,
-   "y": 63,
-   "z": 0
+  "artifacts": {
+    "server_log": "scripts/fixtures/playable-gate/recorded-server.log",
+    "timeline": "scripts/fixtures/playable-gate/session-26.1.json",
+    "transfer_server_log": "scripts/fixtures/playable-gate/recorded-transfer-server.log",
+    "world_snapshot": "scripts/fixtures/playable-gate/session-26.1.json"
   },
-  "use_item_on_commands_delta": 1
- },
- "chat_interaction": {
-  "chat_command_commands_delta": 1,
-  "chat_message_commands_delta": 1,
-  "command_status_observed": true,
-  "command_echoed": true,
-  "draft_restored": true,
-  "duration_seconds": 1.5,
-  "history_restored": true,
-  "input_path": true,
-  "message": "bbb gate chat probe",
-  "message_echoed": true,
-  "message_status_observed": true,
-  "server_logged_emote": true,
-  "server_logged_message": true
- },
- "chat_restriction": {
-  "blocked_message_not_sent": true,
-  "commands_allowed": true,
-  "messages_allowed": false,
-  "restricted_prompt_reachable": true,
-  "screen": "chat",
-  "status_observed": true,
-  "visibility": "system"
- },
- "client_locale": "en_us",
- "container_interaction": {
-  "chest_position": {
-   "x": 4,
-   "y": 63,
-   "z": 0
-  },
-  "closed": true,
-  "container_click_commands_delta": 1,
-  "container_close_commands_delta": 1,
-  "container_id": 1,
-  "duration_seconds": 4.2,
-  "menu_type_id": 2,
-  "moved": true,
-  "opened": true,
-  "server_chest_emptied": true,
-  "use_item_on_commands_delta": 1
- },
- "entity_interaction": {
-  "attack_entity_commands_delta": 1,
-  "duration_seconds": 3.1,
-  "entity_id": 173,
-  "entity_type": "minecraft:armor_stand",
-  "removed": true,
-  "seen_in_pick_targets": true,
-  "summon_position": {
-   "x": 2.5,
-   "y": 63.0,
-   "z": 0.5
-  },
-  "swing_commands_delta": 1
- },
- "hotbar_interaction": {
-  "duration_seconds": 0.8,
-  "from_slot": 0,
-  "held_slot_commands_delta": 1,
-  "server_confirmed": true,
-  "to_slot": 3
- },
- "inventory_interaction": {
-  "closed": true,
-  "container_click_commands_delta": 1,
-  "duration_seconds": 1.1,
-  "from_slot": 44,
-  "moved_to_hotbar": false,
-  "opened": true,
-  "server_confirmed": true,
-  "to_slot": 9
- },
- "lifecycle": {
-  "death_respawn": {
-   "active_buttons_active": true,
-   "active_elapsed_ticks": 20,
-   "dead_health": 0.0,
-   "dimension_after": "minecraft:overworld",
-   "dimension_before": "minecraft:overworld",
-   "focused": "respawn",
-   "health_after": 20.0,
-   "initial_buttons_active": false,
-   "initial_elapsed_ticks": 1,
-   "input_path": "input.key:enter",
-   "kill_commands_delta": 1,
-   "perform_respawn_commands_delta": 1,
-   "respawns_delta": 1,
-   "screen": "main"
-  },
-  "dimension_round_trip": {
-   "dimensions": [
-    "minecraft:overworld",
-    "minecraft:the_nether",
-    "minecraft:overworld"
-   ],
-   "nether_chunk_absent_after_return": true,
-   "overworld_chunk_absent_in_nether": true,
-   "respawns_delta": 2
-  },
-  "reconfiguration": {
-   "chunk_cleared": true,
-   "fresh_chunk": true,
-   "level_cleared": true,
-   "play_logins_delta": 1,
-   "registry_revision_after": {
-    "contents": 1,
-    "session": 1,
-    "tags": 1
-   },
-   "registry_revision_before": {
-    "contents": 1,
-    "session": 1,
-    "tags": 1
-   },
-   "states": [
-    "Play",
-    "Configuration",
-    "Play"
-   ]
-  },
-  "resource_pack": {
-   "active_phase": "active",
-   "active_resource_generation": 1,
-   "after_pop_resource_generation": 2,
-   "language_bidirectional_after_pop": false,
-   "language_bidirectional_while_active": false,
-   "pack_id": "5d77e69d-1c8f-4fd8-9884-4ce89238f170",
-   "pop_packets_delta": 1,
-   "push_packets_delta": 1,
-   "reload_barriers_delta": 2,
-   "reload_failure_stage": null,
-   "response_packets_delta": 3,
-   "server_pack_selected_after_pop": false,
-   "server_pack_selected_while_active": true,
-   "tracked_after_pop": 0
-  },
-  "stage": "complete",
-  "transfer": {
-   "dimension_after": "minecraft:overworld",
-   "first_server_motd": "bbb playable gate 26.1",
-   "first_session_chunk": {
-    "x": -100,
-    "z": -100
-   },
-   "first_session_chunk_absent": true,
-   "last_transfer": {
-    "host": "127.0.0.1",
-    "port": 25566
-   },
-   "old_last_death_location_absent": true,
-   "play_logins_delta": 1,
-   "registry_revision_after": {
-    "contents": 1,
-    "session": 2,
-    "tags": 1
-   },
-   "registry_revision_before": {
-    "contents": 1,
-    "session": 1,
-    "tags": 1
-   },
-   "resource_packs_empty": true,
-   "resource_packs_tracked": 0,
-   "same_process_control": true,
-   "second_server_joined": true,
-   "server_data_carried": true,
-   "server_motd_after": "bbb playable gate 26.1",
-   "state_after": "Play",
-   "target": {
-    "host": "127.0.0.1",
-    "port": 25566
-   },
-   "transfer_chunk": {
-    "x": 0,
-    "z": 0
-   },
-   "transfer_packets_delta": 1
-  }
- },
- "mode": "fixture",
- "movement": {
-  "duration_seconds": 0.6,
-  "end_position": {
-   "x": 0.5,
-   "y": 64.0,
-   "z": 0.5
-  },
-  "horizontal_distance": 2.0,
-  "look_yaw_delta": 0.75,
-  "move_commands_queued_delta": 4,
-  "position_corrections": 0,
-  "start_position": {
-   "x": 0.5,
-   "y": 64.0,
-   "z": -1.5
-  }
- },
- "schema": 12,
- "screenshot_readback": {
-  "attempts": 1,
-  "byte_size": 412345,
-  "deterministic": true,
-  "duration_seconds": 3.4,
-  "exact": false,
-  "height": 720,
-  "lightmap_flicker_pixels": 532,
-  "platform": {
-   "x": 8,
-   "y": 63,
-   "z": 8
-  },
-  "width": 1280
- },
- "sound_particle_push": {
-  "duration_seconds": 0.6,
-  "level_particles_packets_delta": 1,
-  "sound_location": null,
-  "sound_packets_delta": 1,
-  "sound_pitch": 1.3,
-  "sound_position_matched": true,
-  "sound_registry_id": 812,
-  "sound_volume": 0.8
- },
- "source": {
-  "authority": [
-   "crates/bbb-net/src/status.rs#status_ping",
-   "crates/bbb-net/src/probe/configuration.rs#configuration_packets_advance_world_state",
-   "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs",
-   "crates/bbb-control/src/server.rs#dispatch"
-  ],
-  "kind": "checked-in recorded control/probe fixture",
-  "live": false
- },
- "status": {
-  "ok": true,
-  "protocol_version": 775,
-  "server_version": "26.1"
- },
- "timeline": [
-  {
-   "phase": "status",
-   "sequence": 0,
-   "source": "recorded status handshake/request/ping response"
-  },
-  {
-   "phase": "login",
-   "sequence": 1,
-   "source": "recorded bbb-net packet trace"
-  },
-  {
-   "phase": "compression",
-   "sequence": 2,
-   "source": "recorded bbb-net packet trace"
-  },
-  {
-   "phase": "known_packs",
-   "sequence": 3,
-   "source": "recorded bbb-net packet trace"
-  },
-  {
-   "phase": "configuration_registry_tags",
-   "sequence": 4,
-   "source": "recorded bbb-net packet trace"
-  },
-  {
-   "phase": "finish_configuration",
-   "sequence": 5,
-   "source": "recorded bbb-net packet trace"
-  },
-  {
-   "phase": "play_login",
-   "sequence": 6,
-   "source": "recorded bbb-net packet trace"
-  },
-  {
-   "phase": "initial_chunk_local_player_spawn",
-   "sequence": 7,
-   "source": "recorded control/probe snapshot"
-  }
- ],
- "vanilla_version": "26.1",
- "world_snapshot": {
-  "apply_diagnostics": {
-   "apply_errors": [],
-   "last_apply_error": null
-  },
-  "chunk_view": {
-   "center": {
-    "x": 0,
-    "z": 0
-   },
-   "first_chunk": {
-    "x": 0,
-    "z": 0
-   },
-   "radius": 2
-  },
-  "first_chunk": {
-   "block_entities": 0,
-   "block_light_arrays": 0,
-   "heightmaps": 1,
-   "pos": {
-    "x": 0,
-    "z": 0
-   },
-   "sections": 24,
-   "sky_light_arrays": 0,
-   "state": "Decoded"
-  },
-  "level_state": {
-   "dimension": {
-    "height": 384,
-    "min_y": -64
-   },
-   "gameplay": {},
-   "level": {
-    "dimension": "minecraft:overworld",
-    "dimension_type_id": 0,
-    "dimension_type_name": "minecraft:overworld"
-   }
-  },
-  "local_player": {
-   "pose": {
-    "on_ground": true,
-    "pitch": 0.0,
-    "position": {
-     "x": 0.5,
-     "y": 64.0,
-     "z": 0.5
+  "block_interaction": {
+    "block_updates_applied_delta": 2,
+    "destroyed": true,
+    "duration_seconds": 2.4,
+    "initial_block": "minecraft:grass_block",
+    "pick_item_commands_delta": 1,
+    "player_action_commands_delta": 1,
+    "restored": true,
+    "swing_commands_delta": 1,
+    "target": {
+      "x": 0,
+      "y": 63,
+      "z": 0
     },
-    "yaw": 0.0
-   }
+    "use_item_on_commands_delta": 1
   },
-  "net": {
-   "compression_threshold": 256,
-   "connected": true,
-   "last_unsupported_packet_id": null,
-   "last_unsupported_packet_state": null,
-   "packets_seen": 18,
-   "state": "Play",
-   "unsupported_packets": 0
+  "chat_interaction": {
+    "chat_command_commands_delta": 1,
+    "chat_message_commands_delta": 1,
+    "command_echoed": true,
+    "command_status_observed": true,
+    "draft_restored": true,
+    "duration_seconds": 1.5,
+    "history_restored": true,
+    "input_path": true,
+    "message": "bbb gate chat probe",
+    "message_echoed": true,
+    "message_status_observed": true,
+    "server_logged_emote": true,
+    "server_logged_message": true
   },
-  "world": {
-   "chunks_decoded": 1,
-   "play_logins_received": 1,
-   "registries_seen": 1,
-   "select_known_packs_packets": 1,
-   "update_tags_packets": 1
+  "chat_restriction": {
+    "blocked_message_not_sent": true,
+    "commands_allowed": true,
+    "messages_allowed": false,
+    "restricted_prompt_reachable": true,
+    "screen": "chat",
+    "status_observed": true,
+    "visibility": "system"
+  },
+  "client_locale": "en_us",
+  "container_interaction": {
+    "chest_position": {
+      "x": 4,
+      "y": 63,
+      "z": 0
+    },
+    "closed": true,
+    "container_click_commands_delta": 1,
+    "container_close_commands_delta": 1,
+    "container_id": 1,
+    "duration_seconds": 4.2,
+    "menu_type_id": 2,
+    "moved": true,
+    "opened": true,
+    "server_chest_emptied": true,
+    "use_item_on_commands_delta": 1
+  },
+  "entity_interaction": {
+    "attack_entity_commands_delta": 1,
+    "duration_seconds": 3.1,
+    "entity_id": 173,
+    "entity_type": "minecraft:armor_stand",
+    "removed": true,
+    "seen_in_pick_targets": true,
+    "summon_position": {
+      "x": 2.5,
+      "y": 63.0,
+      "z": 0.5
+    },
+    "swing_commands_delta": 1
+  },
+  "hotbar_interaction": {
+    "duration_seconds": 0.8,
+    "from_slot": 0,
+    "held_slot_commands_delta": 1,
+    "server_confirmed": true,
+    "to_slot": 3
+  },
+  "inventory_interaction": {
+    "closed": true,
+    "container_click_commands_delta": 1,
+    "duration_seconds": 1.1,
+    "from_slot": 44,
+    "moved_to_hotbar": false,
+    "opened": true,
+    "server_confirmed": true,
+    "to_slot": 9
+  },
+  "lifecycle": {
+    "death_respawn": {
+      "active_buttons_active": true,
+      "active_elapsed_ticks": 20,
+      "dead_health": 0.0,
+      "dimension_after": "minecraft:overworld",
+      "dimension_before": "minecraft:overworld",
+      "focused": "respawn",
+      "health_after": 20.0,
+      "initial_buttons_active": false,
+      "initial_elapsed_ticks": 1,
+      "input_path": "input.key:enter",
+      "kill_commands_delta": 1,
+      "perform_respawn_commands_delta": 1,
+      "respawns_delta": 1,
+      "screen": "main"
+    },
+    "dimension_round_trip": {
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:overworld"
+      ],
+      "nether_chunk_absent_after_return": true,
+      "overworld_chunk_absent_in_nether": true,
+      "respawns_delta": 2
+    },
+    "reconfiguration": {
+      "chunk_cleared": true,
+      "fresh_chunk": true,
+      "level_cleared": true,
+      "play_logins_delta": 1,
+      "registry_revision_after": {
+        "contents": 1,
+        "session": 1,
+        "tags": 1
+      },
+      "registry_revision_before": {
+        "contents": 1,
+        "session": 1,
+        "tags": 1
+      },
+      "states": [
+        "Play",
+        "Configuration",
+        "Play"
+      ]
+    },
+    "resource_pack": {
+      "active_phase": "active",
+      "active_resource_generation": 1,
+      "after_pop_resource_generation": 2,
+      "language_bidirectional_after_pop": false,
+      "language_bidirectional_while_active": false,
+      "pack_id": "5d77e69d-1c8f-4fd8-9884-4ce89238f170",
+      "pop_packets_delta": 1,
+      "push_packets_delta": 1,
+      "reload_barriers_delta": 2,
+      "reload_failure_stage": null,
+      "response_packets_delta": 3,
+      "server_pack_selected_after_pop": false,
+      "server_pack_selected_while_active": true,
+      "tracked_after_pop": 0
+    },
+    "stage": "complete",
+    "transfer": {
+      "dimension_after": "minecraft:overworld",
+      "first_server_motd": "bbb playable gate 26.1",
+      "first_session_chunk": {
+        "x": -100,
+        "z": -100
+      },
+      "first_session_chunk_absent": true,
+      "last_transfer": {
+        "host": "127.0.0.1",
+        "port": 25566
+      },
+      "old_last_death_location_absent": true,
+      "play_logins_delta": 1,
+      "registry_revision_after": {
+        "contents": 1,
+        "session": 2,
+        "tags": 1
+      },
+      "registry_revision_before": {
+        "contents": 1,
+        "session": 1,
+        "tags": 1
+      },
+      "resource_packs_empty": true,
+      "resource_packs_tracked": 0,
+      "same_process_control": true,
+      "second_server_joined": true,
+      "server_data_carried": true,
+      "server_motd_after": "bbb playable gate 26.1",
+      "state_after": "Play",
+      "target": {
+        "host": "127.0.0.1",
+        "port": 25566
+      },
+      "transfer_chunk": {
+        "x": 0,
+        "z": 0
+      },
+      "transfer_packets_delta": 1
+    }
+  },
+  "mode": "fixture",
+  "movement": {
+    "duration_seconds": 0.6,
+    "end_position": {
+      "x": 0.5,
+      "y": 64.0,
+      "z": 0.5
+    },
+    "horizontal_distance": 2.0,
+    "look_yaw_delta": 0.75,
+    "move_commands_queued_delta": 4,
+    "position_corrections": 0,
+    "start_position": {
+      "x": 0.5,
+      "y": 64.0,
+      "z": -1.5
+    }
+  },
+  "schema": 13,
+  "screenshot_readback": {
+    "attempts": 1,
+    "byte_size": 412345,
+    "deterministic": true,
+    "duration_seconds": 3.4,
+    "exact": false,
+    "height": 720,
+    "lightmap_flicker_pixels": 532,
+    "platform": {
+      "x": 8,
+      "y": 63,
+      "z": 8
+    },
+    "width": 1280
+  },
+  "sound_particle_push": {
+    "duration_seconds": 0.6,
+    "level_particles_packets_delta": 1,
+    "sound_location": null,
+    "sound_packets_delta": 1,
+    "sound_pitch": 1.3,
+    "sound_position_matched": true,
+    "sound_registry_id": 812,
+    "sound_volume": 0.8
+  },
+  "source": {
+    "authority": [
+      "crates/bbb-net/src/status.rs#status_ping",
+      "crates/bbb-net/src/probe/configuration.rs#configuration_packets_advance_world_state",
+      "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs",
+      "crates/bbb-control/src/server.rs#dispatch"
+    ],
+    "kind": "checked-in recorded control/probe fixture",
+    "live": false
+  },
+  "status": {
+    "ok": true,
+    "protocol_version": 775,
+    "server_version": "26.1"
+  },
+  "timeline": [
+    {
+      "phase": "status",
+      "sequence": 0,
+      "source": "recorded status handshake/request/ping response"
+    },
+    {
+      "phase": "login",
+      "sequence": 1,
+      "source": "recorded bbb-net packet trace"
+    },
+    {
+      "phase": "compression",
+      "sequence": 2,
+      "source": "recorded bbb-net packet trace"
+    },
+    {
+      "phase": "known_packs",
+      "sequence": 3,
+      "source": "recorded bbb-net packet trace"
+    },
+    {
+      "phase": "configuration_registry_tags",
+      "sequence": 4,
+      "source": "recorded bbb-net packet trace"
+    },
+    {
+      "phase": "finish_configuration",
+      "sequence": 5,
+      "source": "recorded bbb-net packet trace"
+    },
+    {
+      "phase": "play_login",
+      "sequence": 6,
+      "source": "recorded bbb-net packet trace"
+    },
+    {
+      "phase": "initial_chunk_local_player_spawn",
+      "sequence": 7,
+      "source": "recorded control/probe snapshot"
+    }
+  ],
+  "vanilla_version": "26.1",
+  "world_snapshot": {
+    "apply_diagnostics": {
+      "apply_errors": [],
+      "last_apply_error": null
+    },
+    "chunk_view": {
+      "center": {
+        "x": 0,
+        "z": 0
+      },
+      "first_chunk": {
+        "x": 0,
+        "z": 0
+      },
+      "radius": 2
+    },
+    "first_chunk": {
+      "block_entities": 0,
+      "block_light_arrays": 0,
+      "heightmaps": 1,
+      "pos": {
+        "x": 0,
+        "z": 0
+      },
+      "sections": 24,
+      "sky_light_arrays": 0,
+      "state": "Decoded"
+    },
+    "level_state": {
+      "dimension": {
+        "height": 384,
+        "min_y": -64
+      },
+      "gameplay": {},
+      "level": {
+        "dimension": "minecraft:overworld",
+        "dimension_type_id": 0,
+        "dimension_type_name": "minecraft:overworld"
+      }
+    },
+    "local_player": {
+      "pose": {
+        "on_ground": true,
+        "pitch": 0.0,
+        "position": {
+          "x": 0.5,
+          "y": 64.0,
+          "z": 0.5
+        },
+        "yaw": 0.0
+      }
+    },
+    "net": {
+      "compression_threshold": 256,
+      "connected": true,
+      "last_unsupported_packet_id": null,
+      "last_unsupported_packet_state": null,
+      "packets_seen": 18,
+      "state": "Play",
+      "unsupported_packets": 0
+    },
+    "world": {
+      "chunks_decoded": 1,
+      "play_logins_received": 1,
+      "registries_seen": 1,
+      "select_known_packs_packets": 1,
+      "update_tags_packets": 1
+    }
   }
- }
 }

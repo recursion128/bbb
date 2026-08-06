@@ -40,16 +40,25 @@ kick 必须同时具有目标 Vanilla 服的精确 receipt、control `connected=
 `Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`。它要求 fully gated
 clean HEAD、fresh locked release build、`--build-info`、headless/live/quit 证据、实际
 winit/wgpu backend 日志、输入语义 focused receipts，以及当前 lifecycle-soak 祖先
-stamp；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。headless backend 不广播
-`wl_seat`（`wayland-info` 的 global 列表里没有该接口），因此该行的 input receipts 是
-semantic 的，不能宣称为物理 DPI、fullscreen、clipboard 或 IME 注入。
+stamp、以及 **seat receipts**；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。
 
-真实 seat 在同一台 runner 上可复现：weston 的 RDP backend 在客户端接入时即广播带
-pointer/keyboard capability 的 `wl_seat`（headless backend 永远不会）。GPU 侧同理——
-headless 默认走 pixman，加 `--use-gl` 才让 compositor 与其 Xwayland 客户端拿到硬件
-radeonsi/RADV；`scripts/gpu_duration_capture.py` 的采集依赖这一点。把 seat 事件接进本
-gate 的 receipts 是[缺口账本](../../unsupported-features.md)里的待办；X11 行按 2026-08-06
-用户裁决为非目标。macOS/Windows runner 的重开条件同样只由该账本维护。
+seat receipts 来自真实 `wl_seat`：headless backend 不广播 `wl_seat`（`wayland-info` 的
+global 列表里没有该接口），而 weston 的 remote-desktop backend 在客户端接入时即广播带
+pointer/keyboard capability 的 seat。设 `BBB_PLAYABLE_SEAT_INJECT` 指向
+`scripts/seat_inject.py` 后，live playable gate 改由该 seat 驱动：不再发任何合成
+`input.*`（`_seat_input_only` 让这类写在 seat 场景内直接抛错），焦点靠点击激活 surface
+取得。**此时客户端会先按 vanilla 语义自我暂停**——未获焦点进入 Play 后
+`Minecraft.pauseIfInactive` 开暂停菜单，且事后补焦点并不会关掉它——所以 gate 不去抢
+那 4 秒窗口，而是让它暂停、再用 seat 的 Escape 把世界打开；每次 Escape 都用 seat 的
+hotbar 键复核（vanilla 只在无 screen 时执行 hotbar keybind，故这是世界级而非仅键盘级
+判据）。seat 场景随后再取一次带服务端确认的 hotbar 键与一次指针按钮 swing。
+
+seat 的边界要照实记：remote-desktop seat 是绝对定位设备，compositor 不为其合成
+relative-pointer 事件，因此**锁定光标的游戏内视角拿不到指针移动**——这是 runner 边界
+不是客户端缺陷。GPU 侧同理——headless 默认走 pixman，加 `--use-gl` 才让 compositor 与其
+Xwayland 客户端拿到硬件 radeonsi/RADV；`scripts/gpu_duration_capture.py` 的采集依赖这一点。
+剩余的 DPI/fullscreen、relative pointer、clipboard、IME 重开条件由[缺口账本](../../unsupported-features.md)
+维护；X11 行按 2026-08-06 用户裁决为非目标。macOS/Windows runner 同样只由该账本维护。
 
 ## 文档测试
 

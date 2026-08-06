@@ -39,10 +39,14 @@ EXPECTED_RECEIPTS = [
     "window_restore_requests",
 ]
 # X11 is a declared non-goal (2026-08-06), so the bounded limitation set no
-# longer carries an X11 row; both remaining ids are scoped to the declared
-# Wayland row and reopen on the same seat-backed compositor run.
+# longer carries an X11 row.  `physical-seat-input` retired the same day: the
+# release run now drives the client from a compositor seat and carries the
+# focus/keyboard/pointer-button receipts (see `validate_seat_receipts`).  The
+# narrowed id names what that seat cannot reach: a remote-desktop seat is an
+# absolute pointer, so a locked cursor gets no relative motion, and it offers
+# neither a clipboard source nor an input method.
 EXPECTED_LIMITATIONS = {
-    "physical-seat-input",
+    "seat-motion-clipboard-ime",
     "dpi-transition-fullscreen",
 }
 
@@ -137,6 +141,49 @@ def validate_build_info(info: dict[str, Any]) -> None:
         raise PlatformFailure(f"build_info.client_version is invalid: {version!r}")
 
 
+def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Require the release run to have been driven from a compositor seat.
+
+    The gate's other scenarios replay the canonical handlers through the
+    control plane, which proves the handlers but skips the platform's own
+    event path.  The seat scenario crosses that path -- compositor focus, a
+    `wl_seat` key press, a `wl_seat` pointer button -- and its receipts are
+    what let this row claim seat input instead of deferring it.
+    """
+
+    seat = evidence.get("seat_input")
+    if not isinstance(seat, dict):
+        raise PlatformFailure(
+            "release playable evidence carries no seat_input receipts: the run "
+            "was not driven from a compositor seat"
+        )
+    if seat.get("startup_focus_source") != "compositor":
+        raise PlatformFailure(
+            "seat receipts must show the compositor granting focus, not the "
+            f"control-plane stand-in (got {seat.get('startup_focus_source')!r})"
+        )
+    if seat.get("control_input_writes") != 0:
+        raise PlatformFailure(
+            "seat receipts are void when the run also wrote synthetic input"
+        )
+    if seat.get("server_confirmed") is not True:
+        raise PlatformFailure("the seat key press was never server-confirmed")
+    from_slot, to_slot = seat.get("from_slot"), seat.get("to_slot")
+    if not isinstance(from_slot, int) or not isinstance(to_slot, int) or from_slot == to_slot:
+        raise PlatformFailure("the seat key press did not move the selected slot")
+    swings = seat.get("swing_commands_delta")
+    if not isinstance(swings, int) or isinstance(swings, bool) or swings < 1:
+        raise PlatformFailure(
+            f"the seat pointer button produced {swings!r} canonical swings"
+        )
+    return {
+        "injector": seat.get("injector"),
+        "startup_focus_source": "compositor",
+        "keyboard": {"from_slot": from_slot, "to_slot": to_slot, "server_confirmed": True},
+        "pointer": {"button": "left", "swing_commands_delta": swings},
+    }
+
+
 def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
     evidence = load_json(artifact_dir / "evidence.json")
     probe = load_json(artifact_dir / "probe.json")
@@ -177,6 +224,7 @@ def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
         "termination": str((artifact_dir / "termination.json").resolve()),
         "client_log": str(client_log_path.resolve()),
         "scale_factor": float(scale.group(1)),
+        "seat_input": validate_seat_receipts(evidence),
     }
 
 

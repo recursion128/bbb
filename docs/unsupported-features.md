@@ -173,25 +173,39 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-windows-release`
 - An X11 release row is `not-needed`: the user declared X11 a non-goal on
   2026-08-06 in favour of the declared Wayland row. bbb keeps its winit X11
   branches, and a measured X11 run does open an `x11` window on hardware Vulkan
-  and reach `Play`, but live look steering does not converge there while the
-  same build passes on Wayland against the same compositor and GPU — declaring
-  the row would mean owning a legacy-only input path. Reopen only if that
-  scope decision is reversed.
-- Live DPI-transition/fullscreen and compositor-originated
-  focus/keyboard/mouse/clipboard/IME release validation on the declared Wayland
-  row is `deferred`: those events need a compositor that publishes a `wl_seat`,
-  and the headless backend publishes none at all. A seat-backed run is now
-  reproducible on the maintained runner — weston's RDP backend publishes a
-  `wl_seat` with pointer and keyboard capabilities as soon as a client attaches
-  — so what remains is wiring that run's events into this gate's receipts.
-  Reopen when `scripts/platform-acceptance-gate.sh` captures them; do not infer
-  them from the headless Wayland row or from semantic unit tests.
+  and reach `Play`. That run's live look steering did not converge, but that is
+  not an X11 defect and must not be cited as one: the same symptom then
+  reproduced on Wayland against a seat-backed compositor, where it was traced to
+  the client pausing itself after entering Play unfocused — a display server
+  that publishes a real seat sends `Focused(false)` until something activates
+  the window, which overrides the control-plane focus stand-in. The row rests on
+  the scope decision alone; reopen only if that decision is reversed.
+- Live DPI-transition/fullscreen, relative pointer motion, clipboard and IME on
+  the declared Wayland row are `deferred`. Motion is a runner boundary rather
+  than a client one: a remote-desktop seat is an absolute pointer device, and a
+  compositor does not synthesise relative-pointer events for one, so a client
+  holding a locked cursor (any in-game view) receives no motion no matter how
+  the pointer is driven. Clipboard and IME need a text source and an input
+  method on that seat. Reopen when a seat offering those is available; do not
+  infer them from the headless Wayland row or from semantic unit tests.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,
   but no maintained host/runner with winit, wgpu, audio and input fixtures for
   either release row. Reopen when such a runner is provisioned and can execute
   the same declared platform matrix; do not infer support from cross-compilation
   or unit-only `cfg` coverage.
+
+Compositor-originated focus, keyboard and pointer buttons are no longer part of
+that bounded set: the release run is driven from a real `wl_seat` and
+`scripts/platform-acceptance-gate.sh` requires its receipts, which retires the
+former `physical-seat-input` entry. The gate refuses receipts from a run that
+also wrote synthetic `input.*`, so they cannot be manufactured by the control
+plane. What the seat proves: the compositor grants focus by activating the
+surface, a seat Escape reopens the world the client paused itself into after
+entering Play unfocused, a seat hotbar key moves the canonical selected slot
+with server confirmation, and a seat pointer button reaches the canonical swing.
+Injection has to hold each key and button across a frame — a twelve-millisecond
+press lands entirely between two frames while the client uploads terrain.
 
 ## Native input, movement, interaction, inventory, and command flows
 

@@ -68,9 +68,27 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
         ):
             platform_acceptance.validate_build_info(info)
 
+    def seat_input(self) -> dict:
+        return {
+            "injector": "python3 scripts/seat_inject.py",
+            "startup_focus_source": "compositor",
+            "from_slot": 0,
+            "to_slot": 4,
+            "server_confirmed": True,
+            "held_slot_commands_delta": 1,
+            "swing_commands_delta": 1,
+            "control_input_writes": 0,
+        }
+
     def write_playable(self, root: Path, client_log: str) -> None:
         (root / "evidence.json").write_text(
-            json.dumps({"mode": "live", "vanilla_version": "26.1"}),
+            json.dumps(
+                {
+                    "mode": "live",
+                    "vanilla_version": "26.1",
+                    "seat_input": self.seat_input(),
+                }
+            ),
             encoding="utf-8",
         )
         (root / "probe.json").write_text(
@@ -111,6 +129,41 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
                 platform_acceptance.PlatformFailure, "Wayland"
             ):
                 platform_acceptance.validate_playable_artifacts(root)
+
+    def test_release_row_requires_seat_receipts(self):
+        """The row claims seat input, so a control-only run must not pass."""
+
+        with self.assertRaisesRegex(
+            platform_acceptance.PlatformFailure, "not driven from a compositor seat"
+        ):
+            platform_acceptance.validate_seat_receipts(
+                {"mode": "live", "vanilla_version": "26.1"}
+            )
+
+    def test_seat_receipts_are_void_when_the_run_faked_focus_or_input(self):
+        for field, value, message in (
+            ("startup_focus_source", "control", "compositor granting focus"),
+            ("control_input_writes", 2, "synthetic input"),
+            ("server_confirmed", False, "server-confirmed"),
+            ("to_slot", 0, "selected slot"),
+            ("swing_commands_delta", 0, "canonical swings"),
+        ):
+            with self.subTest(field=field):
+                seat = {**self.seat_input(), field: value}
+                with self.assertRaisesRegex(
+                    platform_acceptance.PlatformFailure, message
+                ):
+                    platform_acceptance.validate_seat_receipts({"seat_input": seat})
+
+    def test_retired_seat_limitation_cannot_come_back_unnoticed(self):
+        """`physical-seat-input` retired on evidence; the narrowed id that
+        replaced it names only what the seat run does not reach."""
+
+        self.assertNotIn("physical-seat-input", platform_acceptance.EXPECTED_LIMITATIONS)
+        self.assertEqual(
+            platform_acceptance.EXPECTED_LIMITATIONS,
+            {"seat-motion-clipboard-ime", "dpi-transition-fullscreen"},
+        )
 
     def test_lifecycle_report_requires_every_iteration_receipt(self):
         receipts = {name: 1 for name in platform_acceptance.EXPECTED_RECEIPTS}

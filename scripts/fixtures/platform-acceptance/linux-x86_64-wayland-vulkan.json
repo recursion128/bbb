@@ -30,9 +30,9 @@
   ],
   "limitations": [
     {
-      "id": "physical-seat-input",
+      "id": "seat-motion-clipboard-ime",
       "status": "deferred",
-      "reopen_when": "a maintained seat-backed compositor run wires compositor-originated focus, keyboard, mouse, clipboard and IME events into this gate's receipts"
+      "reopen_when": "a maintained seat-backed compositor run offers a relative pointer, a clipboard source and an input method, the way it already offers focus, keyboard and pointer buttons"
     },
     {
       "id": "dpi-transition-fullscreen",

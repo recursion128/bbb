@@ -12,8 +12,11 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
+import shlex
 import socket
+import subprocess
 import sys
 import time
 import uuid
@@ -156,8 +159,8 @@ def validate_evidence(
 ) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 12:
-        raise GateFailure(f"playable evidence schema must be 12, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 13:
+        raise GateFailure(f"playable evidence schema must be 13, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -255,6 +258,10 @@ def validate_evidence(
     if require_chat_restriction:
         _validate_chat_restriction(evidence.get("chat_restriction"))
     _validate_hotbar_interaction(evidence.get("hotbar_interaction"))
+    # Seat receipts only exist when a compositor seat drove the run; when they
+    # do exist they are held to the full contract.
+    if evidence.get("seat_input") is not None:
+        _validate_seat_input(evidence.get("seat_input"))
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
@@ -697,6 +704,55 @@ def _validate_hotbar_interaction(hotbar_interaction: Any) -> None:
         )
 
 
+def _validate_seat_input(seat_input: Any) -> None:
+    """The seat scenario must show the compositor moving canonical state on
+    both the keyboard and the pointer, with the synthetic input path unused."""
+
+    seat_input = _object(seat_input, "seat_input")
+    from_slot = seat_input.get("from_slot")
+    to_slot = seat_input.get("to_slot")
+    for name, value in (("from_slot", from_slot), ("to_slot", to_slot)):
+        if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 8:
+            raise GateFailure(
+                f"seat_input.{name} must be a hotbar slot index, got {value!r}"
+            )
+    if from_slot == to_slot:
+        raise GateFailure("seat_input must select a different slot")
+    if seat_input.get("server_confirmed") is not True:
+        raise GateFailure("seat_input.server_confirmed must be true")
+    delta = seat_input.get("held_slot_commands_delta")
+    if not isinstance(delta, int) or isinstance(delta, bool) or delta < 1:
+        raise GateFailure(
+            "seat_input.held_slot_commands_delta must record at least one "
+            f"observed command, got {delta!r}"
+        )
+    swings = seat_input.get("swing_commands_delta")
+    if not isinstance(swings, int) or isinstance(swings, bool) or swings < 1:
+        raise GateFailure(
+            "seat_input.swing_commands_delta must record the canonical swing "
+            f"the seat pointer button produced, got {swings!r}"
+        )
+    if seat_input.get("control_input_writes") != 0:
+        raise GateFailure(
+            "seat_input.control_input_writes must be 0: any synthetic input "
+            "write would make the receipts prove nothing about the compositor"
+        )
+    if not isinstance(seat_input.get("injector"), str) or not seat_input["injector"]:
+        raise GateFailure("seat_input.injector must name the injection command")
+    if seat_input.get("startup_focus_source") != "compositor":
+        raise GateFailure(
+            "seat_input.startup_focus_source must be 'compositor': a run that "
+            "needed the focus stand-in cannot attest the seat delivered focus"
+        )
+    handshake = _object(seat_input.get("handshake"), "seat_input.handshake")
+    presses = handshake.get("escape_presses")
+    if not isinstance(presses, int) or isinstance(presses, bool) or presses < 1:
+        raise GateFailure(
+            "seat_input.handshake.escape_presses must record the seat Escape "
+            f"that reopened the world, got {presses!r}"
+        )
+
+
 def _validate_sound_particle_push(sound_particle_push: Any) -> None:
     """The push smoke must observe the canonical presentation inputs: the
     positioned sound with its exact volume/pitch and the particle batch."""
@@ -1009,7 +1065,70 @@ def normalize_status_capture(
     }
 
 
+SEAT_INJECT_ENV = "BBB_PLAYABLE_SEAT_INJECT"
+
+# A seat-driven scenario is only worth its receipts if the run could not have
+# reached the same canonical state through the synthetic `input.*` control
+# path.  While the guard is armed every such write raises, so "the compositor
+# delivered this" is a structural property of the run rather than a promise.
+_SEAT_INPUT_GUARD = False
+
+
+_SEAT_MODE = False
+
+
+def _ensure_focus(address: tuple[str, int]) -> None:
+    """Give the client focus the only way this run is entitled to.
+
+    A run without a seat has no other source: no `wl_seat` exists, so the
+    driver replays the same focus handler the window event would.  A
+    seat-backed run has a real source and must not fall back to the synthetic
+    one, or nothing downstream could tell the two apart.
+    """
+
+    if _SEAT_MODE:
+        return
+    _control_request(address, "input.focus", {"focused": True})
+
+
+class _seat_input_only:
+    """Forbid synthetic control-plane input for the duration of the block."""
+
+    def __enter__(self) -> "_seat_input_only":
+        global _SEAT_INPUT_GUARD
+        _SEAT_INPUT_GUARD = True
+        return self
+
+    def __exit__(self, *_exc: Any) -> None:
+        global _SEAT_INPUT_GUARD
+        _SEAT_INPUT_GUARD = False
+
+
+def seat_injector(environ: dict[str, str] | None = None) -> list[str] | None:
+    """The configured seat injector command, or None when no seat drives."""
+
+    raw = (environ if environ is not None else os.environ).get(SEAT_INJECT_ENV, "")
+    return shlex.split(raw) if raw.strip() else None
+
+
+def _seat_inject(injector: list[str], *args: str) -> None:
+    completed = subprocess.run(
+        [*injector, *args], capture_output=True, text=True, timeout=120
+    )
+    if completed.returncode != 0:
+        raise GateFailure(
+            f"seat injection {' '.join(args)} failed ({completed.returncode}): "
+            f"{completed.stderr.strip() or completed.stdout.strip()}"
+        )
+
+
 def _control_request(address: tuple[str, int], method: str, params: Any = None) -> Any:
+    if _SEAT_INPUT_GUARD and method.startswith("input."):
+        raise GateFailure(
+            f"a seat-driven scenario must not issue the synthetic {method} "
+            "control write: its receipts would no longer prove that the "
+            "compositor delivered the event"
+        )
     # Join-time mesh builds hold the native world lock for multiple seconds,
     # so control reads can legitimately stall well past a request's usual
     # tens-of-milliseconds turnaround.
@@ -1385,7 +1504,7 @@ def drive_basic_movement(
     deadline = started_at + timeout_seconds
     # Weston-headless surfaces never receive real keyboard focus, so the
     # control surface drives the same focus handler the window event uses.
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
     _control_request(address, "input.look_delta", {"dx": 40.0, "dy": 0.0})
     _press_key(address, "forward", True)
     _press_key(address, "jump", True)
@@ -1589,7 +1708,7 @@ def drive_block_interaction(
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
 
     # The movement smoke ends mid-jump; wait for the player to land, then
     # center on the block column so the pitch-90 ray, the fall after the
@@ -1888,7 +2007,7 @@ def drive_entity_interaction(
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
 
     pose = _await_settled_player(address, deadline)
     position = _object(pose.get("position"), "local_player.pose.position")
@@ -2078,7 +2197,7 @@ def drive_container_interaction(
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
 
     pose = _await_settled_player(address, deadline)
     position = _object(pose.get("position"), "local_player.pose.position")
@@ -2266,7 +2385,7 @@ def drive_chat_interaction(
     net_before = _object(_control_request(address, "net.counters"), "net.counters")
     _require_connected(net_before, "before chat interaction")
 
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
     _tap_key(address, "chat")
     _await_value(
         deadline,
@@ -2413,7 +2532,7 @@ def collect_chat_restriction(args: argparse.Namespace) -> None:
         lambda: _control_request(address, "app.status"),
         lambda value: isinstance(value, dict),
     )
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
     _await_value(
         deadline,
         "restricted client Play session",
@@ -2473,6 +2592,34 @@ def _selected_hotbar_slot(address: tuple[str, int]) -> int | None:
     return int(slot) if isinstance(slot, int) and not isinstance(slot, bool) else None
 
 
+def _await_server_selected_slot(
+    server_command: Path, server_log: Path, slot: int, deadline: float
+) -> None:
+    """Server-authoritative result: the server's own player data must report
+    the new selected slot, proving the SetHeldSlot packet was applied."""
+
+    marker = "has the following entity data"
+    occurrences_before = _log_occurrences(server_log, marker)
+    _server_console_command(
+        server_command,
+        "data get entity bbb-playablegate SelectedItemSlot",
+    )
+
+    def _server_confirmed() -> bool:
+        text = server_log.read_text(encoding="utf-8", errors="replace")
+        lines = [line for line in text.splitlines() if marker in line]
+        if len(lines) <= occurrences_before:
+            return False
+        return lines[-1].rstrip().endswith(f"entity data: {slot}")
+
+    _await_value(
+        deadline,
+        "the server console to report the new selected hotbar slot",
+        _server_confirmed,
+        lambda value: value is True,
+    )
+
+
 def drive_hotbar_interaction(
     address: tuple[str, int],
     server_command: Path,
@@ -2485,7 +2632,7 @@ def drive_hotbar_interaction(
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
 
     from_slot = _selected_hotbar_slot(address)
     if from_slot is None:
@@ -2510,28 +2657,7 @@ def drive_hotbar_interaction(
         lambda value: value > int(net_before.get("held_slot_commands_queued", 0)),
     )
 
-    # Server-authoritative result: the server's own player data must report
-    # the new selected slot, proving the SetHeldSlot packet was applied.
-    marker = "has the following entity data"
-    occurrences_before = _log_occurrences(server_log, marker)
-    _server_console_command(
-        server_command,
-        "data get entity bbb-playablegate SelectedItemSlot",
-    )
-
-    def _server_confirmed() -> bool:
-        text = server_log.read_text(encoding="utf-8", errors="replace")
-        lines = [line for line in text.splitlines() if marker in line]
-        if len(lines) <= occurrences_before:
-            return False
-        return lines[-1].rstrip().endswith(f"entity data: {to_slot}")
-
-    _await_value(
-        deadline,
-        "the server console to report the new selected hotbar slot",
-        _server_confirmed,
-        lambda value: value is True,
-    )
+    _await_server_selected_slot(server_command, server_log, to_slot, deadline)
 
     net_after = _object(_control_request(address, "net.counters"), "net.counters")
     _require_connected(net_after, "after hotbar interaction")
@@ -2542,6 +2668,163 @@ def drive_hotbar_interaction(
         "server_confirmed": True,
         "held_slot_commands_delta": int(net_after.get("held_slot_commands_queued", 0))
         - int(net_before.get("held_slot_commands_queued", 0)),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
+def _seat_key_reaches_the_world(
+    address: tuple[str, int], injector: list[str], deadline: float
+) -> int | None:
+    """Select a hotbar slot from the seat and report the slot that took.
+
+    Returns None when the canonical slot did not move, which is also how the
+    handshake reads "a screen is still up": vanilla only runs the hotbar
+    keybinds while no screen is open (`Minecraft.handleKeybinds`), so this is
+    a world-level receipt and not merely a keyboard one.
+    """
+
+    current = _selected_hotbar_slot(address)
+    if current is None:
+        raise GateFailure("canonical selected hotbar slot was not readable")
+    wanted = (current + 4) % 9
+    _seat_inject(injector, "key", f"hotbar{wanted + 1}")
+    try:
+        _await_value(
+            min(deadline, time.monotonic() + 10.0),
+            f"the seat key press to move the canonical selected slot to {wanted}",
+            lambda: _selected_hotbar_slot(address),
+            lambda slot: slot == wanted,
+        )
+    except GateFailure:
+        return None
+    return wanted
+
+
+def seat_handshake(
+    address: tuple[str, int], injector: list[str], timeout_seconds: float
+) -> dict[str, Any]:
+    """Hand the session over to the compositor seat before gameplay starts.
+
+    A seat-backed run gets no synthetic focus, so by the time canonical state
+    is up the client has done what vanilla does when it enters Play unfocused:
+    paused itself (`Minecraft.pauseIfInactive`).  Focus alone does not undo
+    that -- only the Escape key does -- and pressing Escape is precisely the
+    receipt worth having, because a client that never received seat focus
+    would not process the key at all.
+
+    Escape toggles, so each press is checked with a hotbar key, which vanilla
+    only honours while no screen is open.
+    """
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    with _seat_input_only():
+        # Activate the surface: the compositor routes its keyboard to whatever
+        # was last clicked, and until that happens the client has no keyboard.
+        _seat_inject(injector, "focus")
+        for attempt in range(1, SEAT_HANDSHAKE_ATTEMPTS + 1):
+            _seat_inject(injector, "key", "escape")
+            slot = _seat_key_reaches_the_world(address, injector, deadline)
+            if slot is not None:
+                return {
+                    "focus_source": "compositor",
+                    "escape_presses": attempt,
+                    "world_slot_after_escape": slot,
+                    "duration_seconds": time.monotonic() - started_at,
+                }
+    raise GateFailure(
+        "the compositor seat never reached the world: after "
+        f"{SEAT_HANDSHAKE_ATTEMPTS} seat Escape presses a seat hotbar key "
+        "still could not move the canonical selected slot, so either seat "
+        "focus or the seat keyboard is not reaching the client"
+    )
+
+
+def drive_seat_input(
+    address: tuple[str, int],
+    injector: list[str],
+    handshake: dict[str, Any],
+    server_command: Path,
+    server_log: Path,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """Drive the client from the compositor's own seat instead of the control
+    plane, and require the same canonical receipts the synthetic scenarios
+    require.
+
+    Every event here crosses the platform path the synthetic `input.*` writes
+    skip: the compositor's `wl_seat` hands the window keyboard focus, key and
+    pointer events, winit turns them into window events, and only then does the
+    canonical handler run.  The control plane stays readable throughout -- it
+    just may not *write* input, which `_seat_input_only` enforces.
+    """
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+
+    from_slot = _selected_hotbar_slot(address)
+    if from_slot is None:
+        raise GateFailure("canonical selected hotbar slot was not readable")
+    # A different rotation than the synthetic hotbar scenario uses, so the
+    # slot this scenario lands on cannot be one it inherited.
+    to_slot = (from_slot + 4) % 9
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before seat input")
+    with _seat_input_only():
+        # Re-activate before driving.  Keyboard focus is the compositor's to
+        # move, and the scenarios in between this one and the handshake open
+        # screens and text input, any of which can hand it elsewhere -- so the
+        # seat takes it back the way a person would rather than assuming it
+        # still holds it from minutes ago.
+        _seat_inject(injector, "focus")
+        _seat_inject(injector, "key", f"hotbar{to_slot + 1}")
+        _await_value(
+            deadline,
+            f"the seat key press to move the canonical selected slot to {to_slot}",
+            lambda: _selected_hotbar_slot(address),
+            lambda slot: slot == to_slot,
+        )
+        _await_value(
+            deadline,
+            "the held-slot command queue acknowledgement for the seat key press",
+            lambda: _net_counter(address, "held_slot_commands_queued"),
+            lambda value: value > int(net_before.get("held_slot_commands_queued", 0)),
+        )
+
+        # Pointer buttons: the same `wl_seat` button path a physical mouse
+        # takes, ending in the canonical swing the arm animation reads.  The
+        # button is held long enough to be sampled by a client rendering at
+        # half a frame per second, so in creative it may also break the block
+        # under the crosshair; only the lifecycle teardown runs after this.
+        swings_before = _net_counter(address, "swing_commands_queued")
+        _seat_inject(injector, "click", "left")
+        swings_after = _await_value(
+            deadline,
+            "the seat pointer button to reach the canonical swing",
+            lambda: _net_counter(address, "swing_commands_queued"),
+            lambda value: value > swings_before,
+        )
+
+    _await_server_selected_slot(server_command, server_log, to_slot, deadline)
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after seat input")
+
+    return {
+        "injector": shlex.join(injector),
+        # A seat-driven run never issues the synthetic focus write; the
+        # handshake took the client out of its pause screen with a
+        # compositor-delivered Escape, which only a focused client processes.
+        "startup_focus_source": handshake["focus_source"],
+        "handshake": handshake,
+        "from_slot": from_slot,
+        "to_slot": to_slot,
+        "server_confirmed": True,
+        "held_slot_commands_delta": int(net_after.get("held_slot_commands_queued", 0))
+        - int(net_before.get("held_slot_commands_queued", 0)),
+        "swing_commands_delta": int(swings_after) - swings_before,
+        "control_input_writes": 0,
         "duration_seconds": time.monotonic() - started_at,
     }
 
@@ -2746,7 +3029,7 @@ def drive_inventory_interaction(
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
 
     _control_request(address, "input.key", {"key": "inventory", "pressed": True})
     _control_request(address, "input.key", {"key": "inventory", "pressed": False})
@@ -2995,7 +3278,7 @@ def drive_screenshot_readback(
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
-    _control_request(address, "input.focus", {"focused": True})
+    _ensure_focus(address)
 
     for command in (
         "kill @e[type=!minecraft:player]",
@@ -3749,6 +4032,13 @@ LIVE_SCENARIO_SECTIONS = (
     "lifecycle",
 )
 
+# Only a run with a configured seat injector can produce these, so the section
+# is additive rather than part of the always-required set.
+SEAT_SCENARIO_SECTION = "seat_input"
+# Escape toggles the pause screen, so the handshake checks after each press
+# rather than assuming which side of the toggle the client started on.
+SEAT_HANDSHAKE_ATTEMPTS = 3
+
 
 def _classify_pre_gameplay_failure(
     status: Any, snapshot: dict[str, Any] | None
@@ -3846,7 +4136,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 12,
+        "schema": 13,
         "mode": "live",
         "vanilla_version": "26.1",
         "client_locale": args.client_locale,
@@ -3856,6 +4146,8 @@ def _write_live_evidence(
     }
     for name in LIVE_SCENARIO_SECTIONS:
         evidence[name] = scenarios.get(name)
+    if SEAT_SCENARIO_SECTION in scenarios:
+        evidence[SEAT_SCENARIO_SECTION] = scenarios[SEAT_SCENARIO_SECTION]
     if failure is not None:
         evidence["failure"] = failure
         evidence["failure_stage"] = failure_stage
@@ -3879,19 +4171,22 @@ def collect_live(args: argparse.Namespace) -> None:
     last_snapshot: dict[str, Any] | None = None
     last_error: str | None = None
     scenarios: dict[str, Any] = {name: None for name in LIVE_SCENARIO_SECTIONS}
+    injector = seat_injector()
+    global _SEAT_MODE
+    _SEAT_MODE = injector is not None
+    if injector is not None:
+        scenarios[SEAT_SCENARIO_SECTION] = None
     focus_granted = False
 
     while time.monotonic() < deadline:
         try:
             if not focus_granted:
-                # The headless weston seat never delivers keyboard focus, so a
-                # vanilla-faithful client pauses itself half a second after
-                # entering Play (`Minecraft.pauseIfInactive` with the default
-                # `pauseOnLostFocus`), and regaining focus does not close an
-                # already-open pause screen.  The driver stands in for the
-                # compositor seat: grant focus as soon as bbb-control answers,
-                # before the pause timer can fire.
-                _control_request(address, "input.focus", {"focused": True})
+                # A headless compositor publishes no `wl_seat` at all, so the
+                # driver stands in for one: grant focus as soon as bbb-control
+                # answers, before the pause timer can fire.  A seat-backed run
+                # must not have that stand-in -- it takes the pause and undoes
+                # it from the seat afterwards, in `seat_handshake`.
+                _ensure_focus(address)
                 focus_granted = True
             last_snapshot = _capture_control_snapshot(address)
             world = _object(last_snapshot.get("world"), "world_snapshot.world")
@@ -3934,9 +4229,18 @@ def collect_live(args: argparse.Namespace) -> None:
 
     failure_stage = "canonical_apply"
     failure_scenario = "await_control_stability"
+    handshake: dict[str, Any] = {}
     try:
         _await_control_stability(address, deadline)
         gameplay_timeout = float(args.timeout)
+        if injector is not None:
+            # Every scenario after this one needs a focused, unpaused client,
+            # and in a seat-backed run only the seat can supply that.
+            failure_stage = "platform_seat"
+            failure_scenario = "seat_handshake"
+            handshake = seat_handshake(
+                address, injector, min(90.0, gameplay_timeout)
+            )
 
         def _run_lifecycle() -> dict[str, Any]:
             # The progress dict is registered before driving so partial
@@ -4033,6 +4337,26 @@ def collect_live(args: argparse.Namespace) -> None:
             ),
             ("lifecycle", "runtime_side_effect", _run_lifecycle),
         )
+        if injector is not None:
+            # The seat scenario runs before the lifecycle teardown, and after
+            # the synthetic scenarios have proven the canonical paths, so a
+            # seat failure is unambiguously about the platform event path.
+            plan = (
+                *plan[:-1],
+                (
+                    SEAT_SCENARIO_SECTION,
+                    "platform_seat",
+                    lambda: drive_seat_input(
+                        address,
+                        injector,
+                        handshake,
+                        args.server_command,
+                        args.server_log,
+                        min(90.0, gameplay_timeout),
+                    ),
+                ),
+                plan[-1],
+            )
         for scenario_name, stage, run in plan:
             failure_scenario = scenario_name
             failure_stage = stage
