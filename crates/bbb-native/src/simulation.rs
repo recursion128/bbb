@@ -168,6 +168,8 @@ impl SimulationCore {
         if let Some(telemetry) = self.command_mailbox.take_backend_telemetry() {
             self.renderer_counters = telemetry.renderer;
             self.audio_counters = telemetry.audio;
+        }
+        if let Some(telemetry) = self.command_mailbox.take_simulation_output_telemetry() {
             self.net_counters.simulation_render_wakes_sent = telemetry.render_wakes_sent;
             self.net_counters.simulation_render_wakes_coalesced = telemetry.render_wakes_coalesced;
             self.net_counters.simulation_output_backlog_current = telemetry.output_backlog_current;

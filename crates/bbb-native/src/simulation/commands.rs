@@ -350,6 +350,10 @@ impl std::error::Error for SimulationMailboxSubmitError {}
 pub(crate) struct BackendTelemetry {
     pub(crate) renderer: RendererCounters,
     pub(crate) audio: AudioCounters,
+}
+
+#[derive(Debug)]
+pub(crate) struct SimulationOutputTelemetry {
     pub(crate) render_wakes_sent: u64,
     pub(crate) render_wakes_coalesced: u64,
     pub(crate) output_backlog_current: u64,
@@ -373,6 +377,7 @@ struct SimulationMailboxState {
     closed_rejections: u64,
     closed: bool,
     backend_telemetry: Option<BackendTelemetry>,
+    simulation_output_telemetry: Option<SimulationOutputTelemetry>,
 }
 
 impl Default for SimulationMailboxState {
@@ -393,6 +398,7 @@ impl Default for SimulationMailboxState {
             closed_rejections: 0,
             closed: false,
             backend_telemetry: None,
+            simulation_output_telemetry: None,
         }
     }
 }
@@ -583,6 +589,30 @@ impl SimulationMailbox {
         &self,
         renderer: RendererCounters,
         audio: AudioCounters,
+    ) {
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        state.backend_telemetry = Some(BackendTelemetry { renderer, audio });
+    }
+
+    pub(crate) fn take_backend_telemetry(&self) -> Option<BackendTelemetry> {
+        self.shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .backend_telemetry
+            .take()
+    }
+
+    /// Replaces simulation-to-render transport telemetry without waking the
+    /// simulation owner. Unlike frame-owned renderer/audio counters, this is
+    /// sampled after every complete output drain so an occluded surface cannot
+    /// leave a stale non-zero terminal gauge behind.
+    pub(crate) fn update_simulation_output_telemetry(
+        &self,
         render_wakes_sent: u64,
         render_wakes_coalesced: u64,
         output_backlog_current: u64,
@@ -593,9 +623,7 @@ impl SimulationMailbox {
             .state
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
-        state.backend_telemetry = Some(BackendTelemetry {
-            renderer,
-            audio,
+        state.simulation_output_telemetry = Some(SimulationOutputTelemetry {
             render_wakes_sent,
             render_wakes_coalesced,
             output_backlog_current,
@@ -603,12 +631,12 @@ impl SimulationMailbox {
         });
     }
 
-    pub(crate) fn take_backend_telemetry(&self) -> Option<BackendTelemetry> {
+    pub(crate) fn take_simulation_output_telemetry(&self) -> Option<SimulationOutputTelemetry> {
         self.shared
             .state
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .backend_telemetry
+            .simulation_output_telemetry
             .take()
     }
 
@@ -1606,14 +1634,7 @@ mod tests {
             renderer.frame_index = frame;
             let mut audio = AudioCounters::default();
             audio.commands_submitted = frame;
-            mailbox.update_backend_telemetry(
-                renderer,
-                audio,
-                frame,
-                frame + 1,
-                frame + 2,
-                frame + 3,
-            );
+            mailbox.update_backend_telemetry(renderer, audio);
         }
 
         assert_eq!(mailbox.wake_generation(), wake_generation);
@@ -1624,11 +1645,27 @@ mod tests {
             telemetry.audio.commands_submitted,
             latest_audio.commands_submitted
         );
+        assert!(mailbox.take_backend_telemetry().is_none());
+    }
+
+    #[test]
+    fn simulation_output_telemetry_is_independent_latest_value_without_feedback_wake() {
+        let mailbox = SimulationMailbox::default();
+        let wake_generation = mailbox.wake_generation();
+
+        for sample in 0..260 {
+            mailbox.update_simulation_output_telemetry(sample, sample + 1, sample + 2, sample + 3);
+        }
+
+        assert_eq!(mailbox.wake_generation(), wake_generation);
+        assert_eq!(mailbox.pending_len(), 0);
+        assert!(mailbox.take_backend_telemetry().is_none());
+        let telemetry = mailbox.take_simulation_output_telemetry().unwrap();
         assert_eq!(telemetry.render_wakes_sent, 259);
         assert_eq!(telemetry.render_wakes_coalesced, 260);
         assert_eq!(telemetry.output_backlog_current, 261);
         assert_eq!(telemetry.output_backlog_peak, 262);
-        assert!(mailbox.take_backend_telemetry().is_none());
+        assert!(mailbox.take_simulation_output_telemetry().is_none());
     }
 
     #[test]

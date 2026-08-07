@@ -1276,6 +1276,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         let _ = simulation_event_proxy.send_event(());
     })?;
     let mut render_publication = shared_publication.load_full();
+    let mut last_simulation_output_telemetry = None;
     let mut event_cursor_position = window_surface::CursorPositionCache::default();
     let mut current_cursor_icon = CursorIcon::Default;
     let mut current_window_title = None;
@@ -1456,6 +1457,19 @@ fn run_client(args: startup::Args) -> Result<()> {
                 SimulationCommand::ResourceReloadAck(Box::new(ack)),
                 "resource reload acknowledgement",
             );
+        }
+        // Output transport is live even when the compositor suppresses redraws
+        // for an occluded surface. Sample it after the complete drain rather
+        // than tying its terminal gauge to renderer-frame publication.
+        let drained_output_backlog = simulation_thread.output_backlog();
+        if last_simulation_output_telemetry != Some(drained_output_backlog) {
+            simulation_mailbox.update_simulation_output_telemetry(
+                drained_output_backlog.render_wakes_sent as u64,
+                drained_output_backlog.render_wakes_coalesced as u64,
+                drained_output_backlog.pending as u64,
+                drained_output_backlog.peak as u64,
+            );
+            last_simulation_output_telemetry = Some(drained_output_backlog);
         }
         let latest_publication = shared_publication.load_full();
         if latest_publication.effect_sequence <= render_effect_consumer.last_sequence() {
@@ -1985,14 +1999,19 @@ fn run_client(args: startup::Args) -> Result<()> {
                             renderer.gpu_utilization(),
                         )
                     });
-                    simulation_mailbox.update_backend_telemetry(
-                        renderer_counters,
-                        audio_counters,
-                        output_backlog.render_wakes_sent as u64,
-                        output_backlog.render_wakes_coalesced as u64,
-                        output_backlog.pending as u64,
-                        output_backlog.peak as u64,
-                    );
+                    simulation_mailbox.update_backend_telemetry(renderer_counters, audio_counters);
+                    // Preserve the backlog observed while a frame was in
+                    // flight; the next event-loop drain replaces `current`
+                    // with zero without requiring another redraw.
+                    if last_simulation_output_telemetry != Some(output_backlog) {
+                        simulation_mailbox.update_simulation_output_telemetry(
+                            output_backlog.render_wakes_sent as u64,
+                            output_backlog.render_wakes_coalesced as u64,
+                            output_backlog.pending as u64,
+                            output_backlog.peak as u64,
+                        );
+                        last_simulation_output_telemetry = Some(output_backlog);
+                    }
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
                     let profiler_frame_work_duration = profiler_frame_started_at.elapsed();
                     frame_phase_diagnostics.record(FramePhaseSample {

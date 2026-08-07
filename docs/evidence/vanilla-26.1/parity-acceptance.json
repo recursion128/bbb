@@ -257,8 +257,13 @@
         "lifecycle-client-task-handoff",
         "lifecycle-session-replacement",
         "movement-remote-type-exceptions",
+        "persistence-options-apply",
         "platform-linux-seat-matrix",
         "platform-macos-release",
+        "platform-window-chrome",
+        "platform-window-display-mode",
+        "platform-window-lifecycle",
+        "platform-window-surface-state",
         "platform-windows-release",
         "player-local-camera-targeting",
         "player-local-input-movement",
@@ -278,6 +283,7 @@
         "rendering-client-biome-tint",
         "rendering-client-block-entity-tracking",
         "rendering-client-level-dirty-handoff",
+        "rendering-frame-order",
         "rendering-level-backend-lifecycle",
         "rendering-nondeterministic-golden-exclusions",
         "rendering-official-noop-surfaces",
@@ -304,8 +310,10 @@
         "scope-title-screen",
         "startup-client-bootstrap",
         "startup-session-identity",
+        "ui-accessibility-surface",
         "ui-bidirectional-shaping",
         "ui-chat-screen-surface",
+        "ui-clipboard-surface",
         "ui-container-server-authority-exclusions",
         "ui-context-entity-type",
         "ui-death-screen-surface",
@@ -315,6 +323,7 @@
         "ui-local-time-icu",
         "ui-menu-screen-registration",
         "ui-pause-screen-surface",
+        "ui-screen-lifecycle",
         "world-client-ambient-animation",
         "world-client-chunk-light-lifecycle",
         "world-client-clock-weather",
@@ -327,7 +336,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "cdf925a0a4fdc96256f92bd4d042f2debc1d0534ab368729c49a15a13b03b801",
+      "sha256": "ac083d2b95412c31c46b3d61a3392eef81b39d8d601b82bda489c49148a7ebef",
       "valid": true
     },
     {
@@ -434,7 +443,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-07T21:10:08Z\t8a3d91dc6880007e7e823559ea863a36ecb5652c\tclean\ttotal:23s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:12s",
-      "sha256": "d386bcf3b4182eb439cbfe7f86b4b83c5f62fcd9dd5c4b5fd5f89eed1427e9df",
+      "sha256": "24ae98b87396173bae1710b23de9274cff324cbf78ccddadf898914856e40440",
       "valid": true
     },
     {
@@ -687,7 +696,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "8b35dc15a9df02e93ba58a1a76ee9c5ff5171b142db5adb81719c37a12773a65",
+      "sha256": "454956cf7c5990712d21c33f41c0f70c6772c38fc43fd5dd96c61620605efaf1",
       "valid": true
     },
     {
@@ -2008,7 +2017,7 @@
       ],
       "path": "crates/bbb-native/src/main.rs",
       "scenario_ids": [],
-      "sha256": "506c9e9d476f1b8ac64e576e55fa596550a52cea91fd4d8234563a78b28a7e6e",
+      "sha256": "15bd81e87bbe2cfb90afa9e9b94d0f3ee663d3bea6d85866a4db695162a3fd59",
       "valid": true
     },
     {
@@ -2737,7 +2746,7 @@
       ],
       "path": "crates/bbb-native/src/simulation.rs",
       "scenario_ids": [],
-      "sha256": "b6eee91d970aacab078994f59a5b4ad0c04fe5058b044a79f4c389d162fa600b",
+      "sha256": "8133c1df6cd9c51e41854b9ac4364742ea20c3b07ed1bf37e1b29832773a7d7d",
       "valid": true
     },
     {
@@ -2753,7 +2762,7 @@
       ],
       "path": "crates/bbb-native/src/simulation/commands.rs",
       "scenario_ids": [],
-      "sha256": "80d76533d058df0a14b1a30d3c3c94f6a55c8004db34326a980693ef8952530b",
+      "sha256": "2c98aefec2091cbb39fe3d57fd36ce2356ab7b1001652813a1ed3a675338c474",
       "valid": true
     },
     {
@@ -7510,7 +7519,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "cdf925a0a4fdc96256f92bd4d042f2debc1d0534ab368729c49a15a13b03b801",
+      "sha256": "ac083d2b95412c31c46b3d61a3392eef81b39d8d601b82bda489c49148a7ebef",
       "valid": true
     },
     {
@@ -8040,7 +8049,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "8b35dc15a9df02e93ba58a1a76ee9c5ff5171b142db5adb81719c37a12773a65"
+      "sha256": "454956cf7c5990712d21c33f41c0f70c6772c38fc43fd5dd96c61620605efaf1"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8048,7 +8057,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "cdf925a0a4fdc96256f92bd4d042f2debc1d0534ab368729c49a15a13b03b801"
+      "sha256": "ac083d2b95412c31c46b3d61a3392eef81b39d8d601b82bda489c49148a7ebef"
     }
   ],
   "mechanisms": [
@@ -8537,7 +8546,7 @@
         "domain": "lifecycle/tasks",
         "line": 14,
         "required_state_projection": "ordered handoff、wake、close、stale task rejection",
-        "route_reopen_condition": "task producer、mailbox partition 或 close contract 变化时重开；[ledger](../../unsupported-features.md)",
+        "route_reopen_condition": "task producer、mailbox partition、output transport telemetry 或 close contract 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "partial"
       },
       "mechanism_id": "lifecycle-client-task-handoff",
@@ -24633,6 +24642,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/main.rs",
@@ -24676,7 +24686,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native redraw_arm_orders_update_render_and_framerate_resample_like_render_frame",
@@ -24839,12 +24849,14 @@
         "domain": "rendering/frame",
         "line": 89,
         "required_state_projection": "update→extract→render 单一帧路径与 `FRAME_STEPS` 顺序、per-tick 渲染态推进（camera spin/totem/boss darkening 走 runsNormally 门控）、framerate limiter（10..260、iconified/AFK/menu 节流）、resize 重配置、clearLevel 触发 `resetData`（维度重生不触发）、setLevel 重绑 cardinal lighting",
-        "route_reopen_condition": "owner/symbol、FRAME_STEPS 顺序、tick 门控、framerate 节流表或 resetData 归属变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、FRAME_STEPS 顺序、tick 门控、framerate 节流表或 resetData 归属变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-frame-order",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 10,
@@ -27735,6 +27747,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input.rs",
@@ -27766,7 +27779,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native dialog_stack_suspends_and_restores_the_native_chat_screen",
@@ -27797,12 +27810,14 @@
         "domain": "ui",
         "line": 109,
         "required_state_projection": "per-screen 状态替换（鼠标 grab/release 由 runtime_wants_cursor 统一判定、null→restore-chat 由 dialog stack 先例、teardown 全关 screen）、setOverlay 唯一用途 reload LoadingOverlay 由 reload barrier 拥有、canInterruptScreen 唯一消费点 debug-options 快捷键由打开门拥有",
-        "route_reopen_condition": "screen 替换语义、reload overlay 或 interrupt 门变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "screen 替换语义、reload overlay 或 interrupt 门变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "ui-screen-lifecycle",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 3,
@@ -27881,6 +27896,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/client_options.rs",
@@ -27921,7 +27937,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native an_enum_option_write_stores_the_numeric_id",
@@ -28048,12 +28064,14 @@
         "domain": "accessibility",
         "line": 111,
         "required_state_projection": "进程式 TTS 后端承接四条 narration 入口（chat/system-chat/system 队列 + system-now 打断），状态门控与 vanilla 相同；Ctrl+B 循环发 `NARRATOR_TOGGLE` toast 并按启动冻结的 voice*master 音量朗读；RAII Drop 收割子进程；`checkStatus`/`NarratorInitException` 的 MessageBox 中止面按 CLI 显式后端记录为警告继续；IME preedit 按焦点 owner 路由并在焦点切换时双向移交（`lastPreeditEvent` 常存 + resubmit/清除）",
-        "route_reopen_condition": "owner/symbol、narration 门控、toast/音量链或 TTS 生命周期变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、narration 门控、toast/音量链或 TTS 生命周期变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "ui-accessibility-surface",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 17,
@@ -28093,6 +28111,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -28120,7 +28139,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native absent_or_failing_clipboard_is_a_safe_noop_for_edit_shortcuts",
@@ -28157,12 +28176,14 @@
         "domain": "accessibility",
         "line": 112,
         "required_state_projection": "`arboard` 后端读写：读失败折叠为 `None`（vanilla `FORMAT_UNAVAILABLE`→`\"\"` 等价）、空文本写直接吞掉、写失败回报 `success:false`；GLFW 8 KiB scratch-buffer push 路径与 surrogate 过滤按 Rust `String` 良构性记录为结构性不需要",
-        "route_reopen_condition": "owner/symbol、剪贴板后端或空文本/错误折叠语义变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、剪贴板后端或空文本/错误折叠语义变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "ui-clipboard-surface",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 5,
@@ -29144,6 +29165,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/crash_report.rs",
@@ -29181,7 +29203,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native friendly_report_has_vanilla_sections_and_bounded_accounting",
@@ -29260,12 +29282,14 @@
         "domain": "platform",
         "line": 119,
         "required_state_projection": "`build_window` 单 owner 承担创建（`allowedWindowMinSize` 钳制存储尺寸）、`CloseRequested`→单次 Shutdown 命令、`LoopExiting` 冻结顺序 teardown、平台名映射 GLFW 家族、失败走 typed `Result`→guarded crash report；GLFW error-queue/callback 族按 winit/wgpu typed-error 记录为结构性不需要",
-        "route_reopen_condition": "owner/symbol、创建/关闭顺序、平台名映射或错误路径变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、创建/关闭顺序、平台名映射或错误路径变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "platform-window-lifecycle",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 16,
@@ -29300,6 +29324,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -29331,7 +29356,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native the_fullscreen_key_toggles_the_window_and_saves_the_option",
@@ -29410,12 +29435,14 @@
         "domain": "platform",
         "line": 120,
         "required_state_projection": "单一确定性 mode policy（exact winit mode+exclusive 后端才 Exclusive，否则 borderless；Wayland 恒 borderless）、`fullscreenResolution` 仅启动行（无 runtime writer，dirty 重放面记录为不可达）、vsync 过渡后重放、rawMouseInput 有界警告、毫赫兹→GLFW 整数刷新率",
-        "route_reopen_condition": "owner/symbol、mode policy、vsync 重放或分辨率解析变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、mode policy、vsync 重放或分辨率解析变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "platform-window-display-mode",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 11,
@@ -29449,6 +29476,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -29482,7 +29510,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native focus_loss_clears_pressed_input_and_queues_release",
@@ -29603,12 +29631,14 @@
         "domain": "platform",
         "line": 121,
         "required_state_projection": "非零 resize 清 minimized 并同步发布逻辑 GUI 面（ceiling division），零尺寸只标 minimized；`calculateScale` 逐级增长+manual cap+unicode 奇数上取；焦点丢失清输入并释放捕获、严格 >500ms 失焦暂停在步末裁决；物理/逻辑尺寸各归其 owner、线宽走物理宽度；resize 失败带新旧尺寸入 crash report",
-        "route_reopen_condition": "owner/symbol、scale 公式、resize/焦点/暂停判据变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、scale 公式、resize/焦点/暂停判据变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "platform-window-surface-state",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 17,
@@ -29648,6 +29678,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/main.rs",
@@ -29677,7 +29708,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native cursor_icon_changes_flow_through_select_cursor_gating",
@@ -29732,12 +29763,14 @@
         "domain": "platform",
         "line": 122,
         "required_state_projection": "图标按平台族（X11/Windows 标准族、macOS ICNS、Wayland skip）、标题 `Minecraft* <version> - Multiplayer` 按连接态 diff 后设置、光标经 `selectCursor` 门控（不允许时强制 Default、跳过冗余变更）",
-        "route_reopen_condition": "owner/symbol、图标平台族、标题构成或光标门控变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、图标平台族、标题构成或光标门控变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "platform-window-chrome",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 6,
@@ -30049,6 +30082,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-audio/src/device.rs",
@@ -30113,7 +30147,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-audio only_the_empty_name_selects_the_default_device",
@@ -30276,12 +30310,14 @@
         "domain": "persistence",
         "line": 125,
         "required_state_projection": "`buildPlayerInformation`、`Options.save` 收尾的 `broadcastOptions`、crash report option dump、fullscreen mode、font provider filters；graphics preset 在 options load 后覆盖 17 项并进入 biome blend、section compile policy、mipmap atlas、entity distance、weather render/tick 与 adapter-resolved filtering；无显式 CLI pack roots 时按 stored ID/兼容性重放 `loadSelectedResourcePacks` 后建立同一 immutable generation；`isSoundDeviceDefault` 为空串系统默认判据并进入异步设备 reload 链；`simulationDistance` 只影响已裁决不需要的 integrated-server surface",
-        "route_reopen_condition": "这八个 owner、preset 17 项、`dirtyFromPlayer`/`<768` 同步判据、pack ID/兼容性裁决、音频设备选择、资源 reload 保留或 adapter filtering 规则变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "这八个 owner、preset 17 项、`dirtyFromPlayer`/`<768` 同步判据、pack ID/兼容性裁决、音频设备选择、资源 reload 保留或 adapter filtering 规则变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "persistence-options-apply",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 8,
@@ -37995,7 +38031,12 @@
       "lifecycle-client-runtime",
       "lifecycle-client-task-handoff",
       "lifecycle-session-replacement",
+      "persistence-options-apply",
       "platform-linux-seat-matrix",
+      "platform-window-chrome",
+      "platform-window-display-mode",
+      "platform-window-lifecycle",
+      "platform-window-surface-state",
       "player-local-camera-targeting",
       "player-local-input-movement",
       "player-local-item-use-state",
@@ -38012,6 +38053,7 @@
       "rendering-client-biome-tint",
       "rendering-client-block-entity-tracking",
       "rendering-client-level-dirty-handoff",
+      "rendering-frame-order",
       "rendering-level-backend-lifecycle",
       "resources-default-pack-stack",
       "resources-indexed-panorama",
@@ -38024,8 +38066,10 @@
       "resources-window-icons",
       "startup-client-bootstrap",
       "startup-session-identity",
+      "ui-accessibility-surface",
       "ui-bidirectional-shaping",
       "ui-chat-screen-surface",
+      "ui-clipboard-surface",
       "ui-context-entity-type",
       "ui-death-screen-surface",
       "ui-disconnected-screen-surface",
@@ -38034,6 +38078,7 @@
       "ui-local-time-icu",
       "ui-menu-screen-registration",
       "ui-pause-screen-surface",
+      "ui-screen-lifecycle",
       "world-client-ambient-animation",
       "world-client-chunk-light-lifecycle",
       "world-client-clock-weather",
@@ -38047,11 +38092,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 51,
+      "equivalent": 42,
       "not-needed": 25,
-      "partial": 70
+      "partial": 79
     },
-    "valid_count": 77
+    "valid_count": 68
   },
   "vanilla_version": "26.1"
 }
