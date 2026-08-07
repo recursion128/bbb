@@ -1860,16 +1860,22 @@ pub(crate) fn terrain_cardinal_lighting(world: &WorldStore) -> TerrainCardinalLi
 }
 
 fn convert_terrain_snapshot(
-    snapshot: bbb_world::TerrainChunkSnapshot,
+    snapshot: bbb_world::TerrainRenderChunkSnapshot,
     textures: &TerrainTextureState,
     cardinal_lighting: TerrainCardinalLighting,
     biome_sampler: &bbb_world::ChunkBiomeSampler,
 ) -> TerrainChunkSnapshot {
-    let chunk_origin_x = snapshot.pos.x * 16;
-    let chunk_origin_z = snapshot.pos.z * 16;
+    let bbb_world::TerrainRenderChunkSnapshot {
+        pos,
+        min_y,
+        height,
+        block_states,
+        cells,
+    } = snapshot;
+    let chunk_origin_x = pos.x * 16;
+    let chunk_origin_z = pos.z * 16;
     let cutout_leaves = textures.cutout_leaves();
-    let cells = snapshot
-        .cells
+    let cells = cells
         .into_iter()
         .enumerate()
         .map(|(index, cell)| {
@@ -1877,9 +1883,19 @@ fn convert_terrain_snapshot(
                 sky: cell.light.sky,
                 block: cell.light.block,
             };
-            if matches!(cell.material, bbb_world::TerrainMaterialClass::Empty) {
+            let Some(state) = usize::try_from(cell.block_state_index)
+                .ok()
+                .and_then(|index| block_states.get(index))
+            else {
+                debug_assert!(false, "render cell references a missing block state");
                 return TerrainCell {
-                    block_state_id: cell.block_state_id,
+                    light,
+                    ..TerrainCell::EMPTY
+                };
+            };
+            if matches!(state.material, bbb_world::TerrainMaterialClass::Empty) {
+                return TerrainCell {
+                    block_state_id: state.block_state_id,
                     light,
                     ..TerrainCell::EMPTY
                 };
@@ -1889,38 +1905,38 @@ fn convert_terrain_snapshot(
             let local_z = ((index / 16) % 16) as i32;
             let position = BlockRenderPosition {
                 x: chunk_origin_x + local_x,
-                y: snapshot.min_y + local_y,
+                y: min_y + local_y,
                 z: chunk_origin_z + local_z,
             };
-            let world_material = cell.material;
-            let has_water_fluid = cell
+            let world_material = state.material;
+            let has_water_fluid = state
                 .fluid
                 .is_some_and(|fluid| matches!(fluid.kind, bbb_world::TerrainFluidKind::Water));
             // Only biome-resolver blocks (grass / foliage / dry-foliage / water)
             // read the blend window, so we skip building the 5x5 sample grid for
             // the interior stone/dirt/air majority of a chunk.
-            let wants_blend = cell
+            let wants_blend = state
                 .block_name
                 .as_deref()
                 .map(|name| block_wants_biome_blend(name, has_water_fluid))
                 .unwrap_or(has_water_fluid);
             let blend = wants_blend.then(|| build_chunk_biome_blend(biome_sampler, position));
             let mut render_data = textures.block_render_data(
-                cell.block_name.as_deref(),
-                &cell.block_properties,
+                state.block_name.as_deref(),
+                &state.block_properties,
                 world_material,
                 cell.biome_id,
                 Some(position),
                 blend.as_ref(),
             );
             textures.force_opaque_leaves(
-                cell.block_name.as_deref(),
+                state.block_name.as_deref(),
                 &mut render_data.2,
                 &mut render_data.3,
             );
             let (texture_indices, tint, face_transparency, render_shape, ambient_occlusion) =
                 render_data;
-            let fluid = cell.fluid.map(renderer_fluid);
+            let fluid = state.fluid.map(renderer_fluid);
             let (fluid_texture_indices, fluid_tint) = fluid
                 .map(|fluid| {
                     textures.fluid_render_data(
@@ -1934,25 +1950,25 @@ fn convert_terrain_snapshot(
             let fluid_overlay_texture_index =
                 fluid.and_then(|fluid| textures.fluid_overlay_texture_index(fluid.kind));
             TerrainCell {
-                block_state_id: cell.block_state_id,
-                is_air: matches!(cell.material, bbb_world::TerrainMaterialClass::Empty),
-                solid_render: cell.solid_render,
-                can_occlude: cell.can_occlude,
-                face_occlusion_shape_indices: cell.face_occlusion_shape_indices,
-                view_blocking: cell.view_blocking,
-                light_dampening: cell.light_dampening,
-                shade_brightness: cell.shade_brightness,
+                block_state_id: state.block_state_id,
+                is_air: matches!(state.material, bbb_world::TerrainMaterialClass::Empty),
+                solid_render: state.solid_render,
+                can_occlude: state.can_occlude,
+                face_occlusion_shape_indices: state.face_occlusion_shape_indices,
+                view_blocking: state.view_blocking,
+                light_dampening: state.light_dampening,
+                shade_brightness: state.shade_brightness,
                 fluid,
                 fluid_texture_indices,
                 fluid_overlay_texture_index,
-                fluid_overlay_neighbor: cell.fluid_overlay_neighbor,
+                fluid_overlay_neighbor: state.fluid_overlay_neighbor,
                 fluid_tint,
                 texture_indices,
                 render_shape,
                 ambient_occlusion,
-                state_light_emission: cell.state_light_emission,
-                emissive_rendering: cell.emissive_rendering,
-                material: match cell.material {
+                state_light_emission: state.state_light_emission,
+                emissive_rendering: state.emissive_rendering,
+                material: match state.material {
                     bbb_world::TerrainMaterialClass::Empty => TerrainMaterialClass::Empty,
                     bbb_world::TerrainMaterialClass::Invisible => TerrainMaterialClass::Empty,
                     bbb_world::TerrainMaterialClass::Opaque => TerrainMaterialClass::Opaque,
@@ -1965,18 +1981,12 @@ fn convert_terrain_snapshot(
                 light,
                 tint,
                 face_transparency,
-                skip_rendering: renderer_skip_rendering(cell.skip_rendering, cutout_leaves),
+                skip_rendering: renderer_skip_rendering(state.skip_rendering, cutout_leaves),
             }
         })
         .collect();
-    TerrainChunkSnapshot::new(
-        snapshot.pos.x,
-        snapshot.pos.z,
-        snapshot.min_y,
-        snapshot.height,
-        cells,
-    )
-    .with_cardinal_lighting(cardinal_lighting)
+    TerrainChunkSnapshot::new(pos.x, pos.z, min_y, height, cells)
+        .with_cardinal_lighting(cardinal_lighting)
 }
 
 /// Samples the `biomeBlendRadius` window (x/z plane, fixed y) for `center`,

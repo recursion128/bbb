@@ -283,6 +283,58 @@ pub struct TerrainChunkSnapshot {
     pub cells: Vec<TerrainBlockCell>,
 }
 
+/// Immutable block-state data shared by every matching cell in a render-only
+/// chunk snapshot. Vanilla's `SectionCompiler` likewise reads canonical
+/// `BlockState` owners from its region instead of cloning the resource name
+/// and property map for every block position.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainBlockRenderState {
+    pub block_state_id: i32,
+    pub block_name: Option<String>,
+    pub block_properties: BTreeMap<String, String>,
+    pub material: TerrainMaterialClass,
+    pub solid_render: bool,
+    pub can_occlude: bool,
+    pub view_blocking: bool,
+    pub light_dampening: u8,
+    pub shade_brightness: u8,
+    pub skip_rendering: TerrainSkipRendering,
+    pub face_occlusion_shape_indices: [u8; 6],
+    pub fluid_overlay_neighbor: bool,
+    pub state_light_emission: u8,
+    pub emissive_rendering: bool,
+    pub fluid: Option<TerrainFluidState>,
+}
+
+/// Position-varying inputs for one cell in a render-only chunk snapshot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TerrainRenderBlockCell {
+    pub block_state_index: u32,
+    pub biome_id: Option<i32>,
+    pub light: TerrainLight,
+}
+
+/// Compact world-to-renderer projection. Static state facts are interned once
+/// per snapshot while biome and light samples remain per position.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainRenderChunkSnapshot {
+    pub pos: ChunkPos,
+    pub min_y: i32,
+    pub height: usize,
+    pub block_states: Vec<TerrainBlockRenderState>,
+    pub cells: Vec<TerrainRenderBlockCell>,
+}
+
+impl TerrainRenderChunkSnapshot {
+    pub fn block_state_for_cell(
+        &self,
+        cell: TerrainRenderBlockCell,
+    ) -> Option<&TerrainBlockRenderState> {
+        self.block_states
+            .get(usize::try_from(cell.block_state_index).ok()?)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TerrainSectionMeshRevision {
     pub section_y: i32,

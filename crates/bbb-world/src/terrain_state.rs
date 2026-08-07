@@ -122,7 +122,8 @@ pub use crate::terrain::{
     block_name_triggers_ambient_desert_dry_vegetation_block_sounds,
     block_name_triggers_ambient_desert_sand_block_sounds, leaf_animate_particle_profile,
     torch_animate_particle_profile, vanilla_block_animate_tick_names, BlockProbe,
-    LeafAnimateParticleProfile, LeafParticleTint, TerrainBlockCell, TerrainChunkSnapshot,
-    TerrainChunkSummary, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    LeafAnimateParticleProfile, LeafParticleTint, TerrainBlockCell, TerrainBlockRenderState,
+    TerrainChunkSnapshot, TerrainChunkSummary, TerrainFluidKind, TerrainFluidState, TerrainLight,
+    TerrainMaterialClass, TerrainRenderBlockCell, TerrainRenderChunkSnapshot,
     TerrainSectionMeshRevision, TerrainSkipRendering, TorchAnimateParticleProfile,
 };

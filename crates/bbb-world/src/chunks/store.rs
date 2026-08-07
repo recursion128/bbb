@@ -29,9 +29,10 @@ use crate::{
     },
     BannerPatternsState, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos,
     ChunkProbeSummaryState, ChunkViewState, DecoratedPotSherdsState, RegistrySet, Result,
-    SignBlockEntityTextState, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
-    WorldDecodeError, WorldDimension, WorldStore,
+    SignBlockEntityTextState, TerrainBlockCell, TerrainBlockRenderState, TerrainChunkSnapshot,
+    TerrainLight, TerrainRenderBlockCell, TerrainRenderChunkSnapshot, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState, WorldDecodeError, WorldDimension,
+    WorldStore,
 };
 
 use super::{
@@ -864,7 +865,10 @@ impl WorldStore {
     /// non-empty span retains the block/light samples used by face culling and
     /// ambient occlusion without allocating full-height heavy render cells for
     /// hundreds of provably empty sections.
-    pub fn extract_terrain_render_chunk(&self, pos: ChunkPos) -> Option<TerrainChunkSnapshot> {
+    pub fn extract_terrain_render_chunk(
+        &self,
+        pos: ChunkPos,
+    ) -> Option<TerrainRenderChunkSnapshot> {
         self.probe_chunk(pos)?;
         let section_count = self.dimension.section_count();
         let mut first_non_empty = None::<usize>;
@@ -896,7 +900,7 @@ impl WorldStore {
             .checked_sub(first_section)?
             .checked_add(1)?
             .checked_mul(16)?;
-        self.extract_terrain_chunk_y_range(pos, min_y, height)
+        self.extract_terrain_render_chunk_y_range(pos, min_y, height)
     }
 
     fn extract_terrain_chunk_y_range(
@@ -918,51 +922,29 @@ impl WorldStore {
                 for x in 0..16 {
                     let block_index = section_block_index(x as u8, local_y, z as u8);
                     let block_value = section.block_states.value_at(block_index)?;
-                    let block_state = self.registries.block_state(block_value.global_id);
-                    let block_name = block_state.map(|state| state.name.clone());
-                    let block_properties = block_state
-                        .map(|state| state.properties.clone())
-                        .unwrap_or_default();
                     let biome_index = section_biome_index(x as u8 / 4, local_y / 4, z as u8 / 4);
                     let biome_id = section
                         .biomes
                         .value_at(biome_index)
                         .map(|value| value.global_id);
-                    let support_facts = vanilla_block_state_support_facts(block_value.global_id);
-                    let render_facts = vanilla_block_state_render_facts(block_value.global_id);
+                    let state = self.terrain_block_render_state(block_value.global_id);
                     cells.push(TerrainBlockCell {
-                        block_state_id: block_value.global_id,
+                        block_state_id: state.block_state_id,
                         biome_id,
-                        material: classify_terrain_material(block_name.as_deref()),
-                        solid_render: support_facts.is_some_and(|facts| facts.solid_render()),
-                        can_occlude: support_facts.is_some_and(|facts| facts.can_occlude()),
-                        view_blocking: support_facts.is_some_and(|facts| facts.view_blocking()),
-                        light_dampening: support_facts.map_or(0, |facts| facts.light_dampening()),
-                        shade_brightness: support_facts
-                            .map_or(255, |facts| facts.shade_brightness()),
-                        skip_rendering: render_facts
-                            .map(|facts| {
-                                terrain_skip_rendering_from_vanilla_facts(
-                                    facts,
-                                    self.registry_holder_is_in_tag(
-                                        "minecraft:block",
-                                        "minecraft:bars",
-                                        facts.block_type_id(),
-                                    ),
-                                )
-                            })
-                            .unwrap_or_default(),
-                        face_occlusion_shape_indices: render_facts
-                            .map_or([0; 6], |facts| facts.face_occlusion_shape_indices()),
-                        fluid_overlay_neighbor: render_facts
-                            .is_some_and(|facts| facts.fluid_water_overlay_neighbor()),
-                        state_light_emission: render_facts
-                            .map_or(0, |facts| facts.light_emission()),
-                        emissive_rendering: render_facts
-                            .is_some_and(|facts| facts.emissive_rendering()),
-                        fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
-                        block_name,
-                        block_properties,
+                        material: state.material,
+                        solid_render: state.solid_render,
+                        can_occlude: state.can_occlude,
+                        view_blocking: state.view_blocking,
+                        light_dampening: state.light_dampening,
+                        shade_brightness: state.shade_brightness,
+                        skip_rendering: state.skip_rendering,
+                        face_occlusion_shape_indices: state.face_occlusion_shape_indices,
+                        fluid_overlay_neighbor: state.fluid_overlay_neighbor,
+                        state_light_emission: state.state_light_emission,
+                        emissive_rendering: state.emissive_rendering,
+                        fluid: state.fluid,
+                        block_name: state.block_name,
+                        block_properties: state.block_properties,
                         light: sample_terrain_light(&chunk.light, self.dimension, x, y, z),
                     });
                 }
@@ -975,6 +957,114 @@ impl WorldStore {
             height,
             cells,
         })
+    }
+
+    fn extract_terrain_render_chunk_y_range(
+        &self,
+        pos: ChunkPos,
+        min_y: i32,
+        height: usize,
+    ) -> Option<TerrainRenderChunkSnapshot> {
+        let chunk = self.probe_chunk(pos)?;
+        let mut block_states = Vec::new();
+        let mut state_indices = vec![u32::MAX; self.registries.block_state_count()];
+        let mut cells = Vec::with_capacity(16 * height * 16);
+
+        for y_offset in 0..height {
+            let y = min_y.checked_add(i32::try_from(y_offset).ok()?)?;
+            let section_y = y.div_euclid(16);
+            let section_index = usize::try_from(section_y - self.dimension.min_section_y()).ok()?;
+            let section = chunk.sections.get(section_index)?;
+            let local_y = y.rem_euclid(16) as u8;
+            for z in 0..16 {
+                for x in 0..16 {
+                    let block_index = section_block_index(x as u8, local_y, z as u8);
+                    let block_state_id = section.block_states.value_at(block_index)?.global_id;
+                    let cached_state_index = usize::try_from(block_state_id)
+                        .ok()
+                        .and_then(|index| state_indices.get(index).copied())
+                        .filter(|index| *index != u32::MAX);
+                    let block_state_index = if let Some(index) = cached_state_index {
+                        index
+                    } else if let Some(index) =
+                        block_states
+                            .iter()
+                            .position(|state: &TerrainBlockRenderState| {
+                                state.block_state_id == block_state_id
+                            })
+                    {
+                        u32::try_from(index).ok()?
+                    } else {
+                        let index = u32::try_from(block_states.len()).ok()?;
+                        block_states.push(self.terrain_block_render_state(block_state_id));
+                        if let Ok(state_id) = usize::try_from(block_state_id) {
+                            if let Some(slot) = state_indices.get_mut(state_id) {
+                                *slot = index;
+                            }
+                        }
+                        index
+                    };
+                    let biome_index = section_biome_index(x as u8 / 4, local_y / 4, z as u8 / 4);
+                    let biome_id = section
+                        .biomes
+                        .value_at(biome_index)
+                        .map(|value| value.global_id);
+                    cells.push(TerrainRenderBlockCell {
+                        block_state_index,
+                        biome_id,
+                        light: sample_terrain_light(&chunk.light, self.dimension, x, y, z),
+                    });
+                }
+            }
+        }
+
+        Some(TerrainRenderChunkSnapshot {
+            pos,
+            min_y,
+            height,
+            block_states,
+            cells,
+        })
+    }
+
+    fn terrain_block_render_state(&self, block_state_id: i32) -> TerrainBlockRenderState {
+        let block_state = self.registries.block_state(block_state_id);
+        let block_name = block_state.map(|state| state.name.clone());
+        let block_properties = block_state
+            .map(|state| state.properties.clone())
+            .unwrap_or_default();
+        let support_facts = vanilla_block_state_support_facts(block_state_id);
+        let render_facts = vanilla_block_state_render_facts(block_state_id);
+        TerrainBlockRenderState {
+            block_state_id,
+            material: classify_terrain_material(block_name.as_deref()),
+            solid_render: support_facts.is_some_and(|facts| facts.solid_render()),
+            can_occlude: support_facts.is_some_and(|facts| facts.can_occlude()),
+            view_blocking: support_facts.is_some_and(|facts| facts.view_blocking()),
+            light_dampening: support_facts.map_or(0, |facts| facts.light_dampening()),
+            shade_brightness: support_facts.map_or(255, |facts| facts.shade_brightness()),
+            skip_rendering: render_facts
+                .map(|facts| {
+                    terrain_skip_rendering_from_vanilla_facts(
+                        facts,
+                        self.registry_holder_is_in_tag(
+                            "minecraft:block",
+                            "minecraft:bars",
+                            facts.block_type_id(),
+                        ),
+                    )
+                })
+                .unwrap_or_default(),
+            face_occlusion_shape_indices: render_facts
+                .map_or([0; 6], |facts| facts.face_occlusion_shape_indices()),
+            fluid_overlay_neighbor: render_facts
+                .is_some_and(|facts| facts.fluid_water_overlay_neighbor()),
+            state_light_emission: render_facts.map_or(0, |facts| facts.light_emission()),
+            emissive_rendering: render_facts.is_some_and(|facts| facts.emissive_rendering()),
+            fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
+            block_name,
+            block_properties,
+        }
     }
 
     /// Builds a biome sampler for the 3x3 chunk neighbourhood centred on

@@ -210,10 +210,38 @@ fn render_extraction_crops_empty_vertical_sections_but_keeps_neighbor_sampling_b
         .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
         .unwrap();
     let full_offset = usize::try_from(render.min_y - full.min_y).unwrap() * 16 * 16;
-    assert_eq!(
-        render.cells,
-        full.cells[full_offset..full_offset + render.cells.len()]
-    );
+    assert!(render.block_states.len() < render.cells.len());
+    for (render_cell, full_cell) in render
+        .cells
+        .iter()
+        .copied()
+        .zip(full.cells[full_offset..full_offset + render.cells.len()].iter())
+    {
+        let state = render.block_state_for_cell(render_cell).unwrap();
+        assert_eq!(render_cell.biome_id, full_cell.biome_id);
+        assert_eq!(render_cell.light, full_cell.light);
+        assert_eq!(state.block_state_id, full_cell.block_state_id);
+        assert_eq!(state.block_name, full_cell.block_name);
+        assert_eq!(state.block_properties, full_cell.block_properties);
+        assert_eq!(state.material, full_cell.material);
+        assert_eq!(state.solid_render, full_cell.solid_render);
+        assert_eq!(state.can_occlude, full_cell.can_occlude);
+        assert_eq!(state.view_blocking, full_cell.view_blocking);
+        assert_eq!(state.light_dampening, full_cell.light_dampening);
+        assert_eq!(state.shade_brightness, full_cell.shade_brightness);
+        assert_eq!(state.skip_rendering, full_cell.skip_rendering);
+        assert_eq!(
+            state.face_occlusion_shape_indices,
+            full_cell.face_occlusion_shape_indices
+        );
+        assert_eq!(
+            state.fluid_overlay_neighbor,
+            full_cell.fluid_overlay_neighbor
+        );
+        assert_eq!(state.state_light_emission, full_cell.state_light_emission);
+        assert_eq!(state.emissive_rendering, full_cell.emissive_rendering);
+        assert_eq!(state.fluid, full_cell.fluid);
+    }
 }
 
 #[test]
@@ -231,8 +259,9 @@ fn render_extraction_keeps_one_empty_section_for_an_empty_neighborhood() {
         .unwrap();
     assert_eq!(render.min_y, -32);
     assert_eq!(render.height, 16);
-    assert!(render
-        .cells
-        .iter()
-        .all(|cell| matches!(cell.material, crate::TerrainMaterialClass::Empty)));
+    assert!(render.cells.iter().copied().all(|cell| {
+        render
+            .block_state_for_cell(cell)
+            .is_some_and(|state| matches!(state.material, crate::TerrainMaterialClass::Empty))
+    }));
 }
