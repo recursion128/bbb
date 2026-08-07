@@ -457,6 +457,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(options["guiScale"], "1")
         self.assertNotIn("hideGui", options)
         self.assertEqual(options["bobView"], "true")
+        self.assertEqual(options["pauseOnLostFocus"], "false")
         self.assertEqual(options["soundCategory_master"], "0.0")
         self.assertEqual(options["enableVsync"], "false")
         self.assertEqual(options["maxFps"], "260")
@@ -517,6 +518,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
         self.assertEqual(argv[argv.index("--client-vsync") + 1], "false")
         self.assertEqual(argv[argv.index("--client-framerate-limit") + 1], "260")
+        self.assertEqual(argv[argv.index("--pause-on-lost-focus") + 1], "false")
         self.assertEqual(argv[argv.index("--terrain-texture-filtering") + 1], "rgss")
         settings = benchmark.equal_load_settings()
         self.assertEqual(settings["window"], {
@@ -527,6 +529,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(settings["gui_scale"], 1)
         self.assertEqual(settings["particles"], "minimal")
         self.assertTrue(settings["view_bobbing"])
+        self.assertFalse(settings["pause_on_lost_focus"])
         self.assertEqual(settings["audio"], "disabled")
 
 

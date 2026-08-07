@@ -263,6 +263,7 @@ def equal_load_settings() -> dict[str, Any]:
         "hud_hidden": False,
         "gui_scale": 1,
         "view_bobbing": True,
+        "pause_on_lost_focus": False,
         "audio": "disabled",
         "vsync": False,
         "framerate_limit": "unlimited",
@@ -1027,6 +1028,10 @@ def vanilla_options() -> dict[str, str]:
         "textureFiltering": "1",
         "guiScale": "1",
         "bobView": "true",
+        # A headless compositor has no physical seat to focus either client.
+        # Pin both sides to the same gameplay surface instead of allowing
+        # Minecraft.pauseIfInactive to replace it with the pause screen.
+        "pauseOnLostFocus": "false",
         "soundCategory_master": "0.0",
         "lang": "en_us",
         "tutorialStep": "none",
@@ -1217,6 +1222,8 @@ def build_bbb_launch_argv(
         "false",
         "--client-framerate-limit",
         "260",
+        "--pause-on-lost-focus",
+        "false",
         "--cutout-leaves",
         "true",
         "--terrain-texture-filtering",
