@@ -309,6 +309,21 @@ pub(super) struct OctreeVisit {
     pub(super) is_close: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct VisibleSection {
+    pub(super) position: SectionPosition,
+    pub(super) nearby: bool,
+}
+
+impl From<SectionPosition> for VisibleSection {
+    fn from(position: SectionPosition) -> Self {
+        Self {
+            position,
+            nearby: false,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub(super) struct TerrainSectionOcclusionGraph {
     nodes: TerrainCoordinateMap<SectionPosition, OcclusionNode>,
@@ -607,11 +622,32 @@ impl TerrainSectionOcclusionGraph {
         visits
     }
 
-    pub(super) fn visible_sections(&self, frustum: CameraFrustum) -> Vec<SectionPosition> {
-        self.octree_visits(frustum, 32)
-            .into_iter()
-            .filter_map(|visit| visit.section)
-            .collect()
+    pub(super) fn visible_sections(&self, frustum: CameraFrustum) -> Vec<VisibleSection> {
+        let mut visible = Vec::new();
+        self.fill_visible_sections(frustum, &mut visible);
+        visible
+    }
+
+    pub(super) fn fill_visible_sections(
+        &self,
+        frustum: CameraFrustum,
+        visible: &mut Vec<VisibleSection>,
+    ) {
+        visible.clear();
+        if let Some(octree) = &self.octree {
+            // Vanilla `SectionOcclusionGraph.addSectionsInFrustum` consumes
+            // leaves directly from one octree visitor. Production needs only
+            // the section and its nearby flag; branch bounds/depth snapshots
+            // remain exclusive to `octree_visits` and the debug renderer.
+            octree.visit(frustum, 32, |visit| {
+                if let Some(position) = visit.section {
+                    visible.push(VisibleSection {
+                        position,
+                        nearby: visit.is_close,
+                    });
+                }
+            });
+        }
     }
 }
 
@@ -1131,7 +1167,13 @@ mod tests {
 
         assert_eq!(graph.reachable_sections().len(), 2);
         let visible = graph.visible_sections(test_frustum());
-        assert_eq!(visible, vec![SectionPosition { x: 0, y: 0, z: 1 }]);
+        assert_eq!(
+            visible,
+            vec![VisibleSection {
+                position: SectionPosition { x: 0, y: 0, z: 1 },
+                nearby: true,
+            }]
+        );
     }
 
     #[test]
@@ -1219,6 +1261,18 @@ mod tests {
                 SectionPosition { x: 0, y: 0, z: 1 },
                 SectionPosition { x: 1, y: 0, z: 1 },
             ]
+        );
+        assert_eq!(
+            graph
+                .visible_sections(test_frustum())
+                .into_iter()
+                .map(|visible| (visible.position, visible.nearby))
+                .collect::<Vec<_>>(),
+            visits
+                .iter()
+                .filter_map(|visit| visit.section.map(|section| (section, visit.is_close)))
+                .collect::<Vec<_>>(),
+            "production visibility must preserve the debug visitor's leaf order and nearby flags"
         );
     }
 

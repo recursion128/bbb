@@ -27,7 +27,7 @@ use mesh_worker::{
 use occlusion::{
     ChunkSectionDebugGizmos, ResidentSection, SectionPosition, TerrainCoordinateMap,
     TerrainCoordinateSet, TerrainOcclusionJob, TerrainOcclusionWorker,
-    TerrainSectionOcclusionGraph,
+    TerrainSectionOcclusionGraph, VisibleSection,
 };
 pub(crate) use textures::{
     load_terrain_textures, terrain_particle_biome_blend_center, try_load_terrain_textures,
@@ -68,18 +68,22 @@ struct TerrainSectionFrameProjection {
 }
 
 impl TerrainSectionFrameProjection {
-    fn replace(
+    fn replace<I, V>(
         &mut self,
         level_generation: u64,
-        positions: impl IntoIterator<Item = SectionPosition>,
+        visible_sections: I,
         residency: &TerrainCoordinateMap<SectionPosition, TerrainSectionResidency>,
         now: Instant,
-    ) {
+    ) where
+        I: IntoIterator<Item = V>,
+        V: Into<VisibleSection>,
+    {
         self.revision = self.revision.wrapping_add(1);
         self.states.clear();
         self.by_position.clear();
         self.has_fading_sections = false;
-        for position in positions {
+        for visible in visible_sections.into_iter().map(Into::into) {
+            let position = visible.position;
             let Some(section) = residency.get(&position) else {
                 continue;
             };
@@ -95,6 +99,7 @@ impl TerrainSectionFrameProjection {
                     section_y: position.y,
                 },
                 visibility,
+                nearby: visible.nearby,
             });
             self.by_position.insert(position, visibility);
         }
@@ -228,6 +233,7 @@ pub(crate) struct TerrainUploadState {
     occlusion_loaded_chunks: Arc<TerrainCoordinateSet<ChunkPos>>,
     occlusion_worker: Option<TerrainOcclusionWorker>,
     frustum_visibility_key: Option<TerrainFrustumVisibilityKey>,
+    frustum_visible_sections: Vec<VisibleSection>,
     renderer_sections: TerrainSectionFrameProjection,
     reported_readiness: Option<(u64, usize, bool)>,
 }
@@ -1642,6 +1648,7 @@ fn clear_terrain_occlusion_inputs(upload: &mut TerrainUploadState) {
     upload.occlusion_sections = Arc::default();
     upload.occlusion_loaded_chunks = Arc::default();
     upload.frustum_visibility_key = None;
+    upload.frustum_visible_sections.clear();
 }
 
 fn terrain_occlusion_input_key(
@@ -1731,7 +1738,7 @@ fn publish_terrain_frustum_visibility(
         .frustum()
         .filter(|_| upload.occlusion_graph.is_valid())
     else {
-        let visible = selected_resident_sections(upload);
+        let visible = selected_resident_sections(upload, context);
         upload.renderer_sections.replace(
             upload.observed_level_generation,
             visible,
@@ -1744,15 +1751,16 @@ fn publish_terrain_frustum_visibility(
     // Like Vanilla's stable ViewArea graph, partial propagation is monotonic until
     // the next full invalidation. Do not publish stale graph leaves whose current
     // resident mesh has already been removed or remapped.
-    let visible = upload
+    upload
         .occlusion_graph
-        .visible_sections(frustum)
-        .into_iter()
-        .filter(|position| has_resident_section(upload, *position))
-        .collect::<Vec<_>>();
+        .fill_visible_sections(frustum, &mut upload.frustum_visible_sections);
+    let meshes = &upload.meshes;
+    upload
+        .frustum_visible_sections
+        .retain(|visible| has_resident_section_in_meshes(meshes, visible.position));
     upload.renderer_sections.replace(
         upload.observed_level_generation,
-        visible,
+        upload.frustum_visible_sections.iter().copied(),
         &upload.section_residency,
         now,
     );
@@ -1779,7 +1787,17 @@ fn terrain_frustum_visibility_key(
     }
 }
 
-fn selected_resident_sections(upload: &TerrainUploadState) -> Vec<SectionPosition> {
+fn selected_resident_sections(
+    upload: &TerrainUploadState,
+    context: TerrainVisibilityContext,
+) -> Vec<VisibleSection> {
+    let camera_section = context.camera_pose.and_then(|pose| {
+        SectionPosition::from_block_position([
+            f64::from(pose.position[0]),
+            f64::from(pose.position[1] + pose.eye_height),
+            f64::from(pose.position[2]),
+        ])
+    });
     upload
         .selected_chunks
         .iter()
@@ -1788,18 +1806,34 @@ fn selected_resident_sections(upload: &TerrainUploadState) -> Vec<SectionPositio
             cached
                 .resident_revisions
                 .iter()
-                .map(move |&(section_y, _)| SectionPosition {
-                    x: pos.x,
-                    y: section_y,
-                    z: pos.z,
+                .map(move |&(section_y, _)| {
+                    let position = SectionPosition {
+                        x: pos.x,
+                        y: section_y,
+                        z: pos.z,
+                    };
+                    VisibleSection {
+                        position,
+                        nearby: camera_section.is_some_and(|camera| {
+                            (i64::from(camera.x) - i64::from(position.x)).abs() <= 2
+                                && (i64::from(camera.y) - i64::from(position.y)).abs() <= 2
+                                && (i64::from(camera.z) - i64::from(position.z)).abs() <= 2
+                        }),
+                    }
                 })
         })
         .collect()
 }
 
 fn has_resident_section(upload: &TerrainUploadState, position: SectionPosition) -> bool {
-    upload
-        .meshes
+    has_resident_section_in_meshes(&upload.meshes, position)
+}
+
+fn has_resident_section_in_meshes(
+    meshes: &HashMap<ChunkPos, CachedTerrainMesh>,
+    position: SectionPosition,
+) -> bool {
+    meshes
         .get(&ChunkPos {
             x: position.x,
             z: position.z,
@@ -2342,6 +2376,7 @@ mod tests {
                     section_y: 0,
                 },
                 visibility: 1.0,
+                nearby: true,
             }]
         );
     }
@@ -2533,7 +2568,13 @@ mod tests {
         };
 
         assert_eq!(
-            selected_resident_sections(&upload),
+            selected_resident_sections(
+                &upload,
+                TerrainVisibilityContext::new(None, [1280, 720], 70.0, 12, true),
+            )
+            .into_iter()
+            .map(|visible| visible.position)
+            .collect::<Vec<_>>(),
             vec![
                 SectionPosition { x: -1, y: -4, z: 2 },
                 SectionPosition { x: -1, y: 3, z: 2 },

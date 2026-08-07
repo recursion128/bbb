@@ -83,7 +83,8 @@ impl TerrainSectionOcclusionGraph {
         show_visibility: bool,
         output: &mut ChunkSectionDebugGizmos,
     ) {
-        for position in self.visible_sections(frustum) {
+        for visible in self.visible_sections(frustum) {
+            let position = visible.position;
             let Some(node) = self.nodes.get(&position).copied() else {
                 continue;
             };
