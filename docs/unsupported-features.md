@@ -103,6 +103,13 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Library.java:64-114,124-155`, `SoundEngine.java:101-109,227-327,516-530`, and
   `Sound.java:68-70`; reopen owner census if any source hash or method set moves.
+  `scripts/capture-vanilla-audio-receipt.py` executes those official owners from
+  the verified client jar in both HRTF branches and binds raw output to their
+  source hashes. `--driver null` is diagnostic only; formal backend closure
+  requires the default/ALSA host-device receipt. On the current host both real
+  paths reproducibly fail `Library.openDeviceOrFallback`: UID 1000 is not in
+  device group 29 and every `/dev/snd` character node is mode `crw-rw----`
+  root:audio, while the null receipt remains valid and explicitly non-formal.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.

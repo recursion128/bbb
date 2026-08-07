@@ -506,11 +506,11 @@ decision evidence，7 个不可达 pause/manual-loop owner 另有 Vanilla caller
 condition；审计同时修复了 11 个 stored `soundCategory_*` 仅 round-trip、播放仍用默认值的
 真实缺口，并把余下 HRTF、device-derived pool/admission 与 active/delete-time 差异留在账本。
 
-下一 audio 工程合同必须先用同机 Vanilla receipt 冻结 OpenAL 总/静态/流式 capacity、HRTF
-支持与短声音 tick/delete-time，再冻结 Kira/native admission API、诊断字段和 fallback。
-实现不得以共享固定容量冒充两个 pool，不得把普通 stereo pan 命名为 HRTF，也不得因 backend 提前回收而改变 `isActive`/音乐 replacement 时序。
-focused tests 覆盖容量公式与饱和拒绝、stream/static 隔离、HRTF 支持/不支持分支、20-tick 最短保留和 reload/reset；正式结论仍需真实设备 receipt。
-owner-evidence 里程碑提交并 full gate 后才进入下一 audio 实现阶段；失败只在干净阶段提交处停。
+audio 工程以 `scripts/capture-vanilla-audio-receipt.py` 的官方可执行 receipt 冻结 OpenAL
+总/静态/流式 capacity、HRTF 与短声音 tick/delete-time；null 输出只解锁实现，不形成正式结论，
+当前 host-device 路径因 UID 无 `/dev/snd` 权限保持精确 blocker。Kira/native admission 不得以共享固定
+容量冒充两个 pool，不得把普通 stereo pan 命名为 HRTF，也不得因 backend 提前回收改变 `isActive`/
+音乐 replacement 时序；focused tests 覆盖公式、隔离、HRTF 双分支、20-tick 保留和 reload/reset。
 census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻

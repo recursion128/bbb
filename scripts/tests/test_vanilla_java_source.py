@@ -97,6 +97,7 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
         self.assertEqual(
             runtime_probes,
             {
+                "capture-vanilla-audio-receipt.py",
                 "generate-block-placement-defaults.py",
                 "generate-block-state-collision-shapes.py",
                 "generate-block-state-fluid-replaceability.py",
