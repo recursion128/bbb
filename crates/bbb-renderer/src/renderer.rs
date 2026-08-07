@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    hash::{BuildHasher, Hasher},
     time::{Duration, Instant},
 };
 
@@ -333,6 +334,39 @@ pub struct TerrainSectionMeshOwner {
     pub section_y: i32,
 }
 
+/// Terrain residency keys are trusted packed coordinates, mirroring
+/// Vanilla's primitive-long fastutil maps. Avoid SipHash on every visible
+/// section while retaining collision-safe HashMap/HashSet equality semantics.
+#[derive(Debug, Clone, Copy, Default)]
+struct TerrainMeshOwnerBuildHasher;
+
+#[derive(Debug, Clone, Copy)]
+struct TerrainMeshOwnerHasher(u64);
+
+impl BuildHasher for TerrainMeshOwnerBuildHasher {
+    type Hasher = TerrainMeshOwnerHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        TerrainMeshOwnerHasher(0xcbf2_9ce4_8422_2325)
+    }
+}
+
+impl Hasher for TerrainMeshOwnerHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for byte in bytes {
+            self.0 ^= u64::from(*byte);
+            self.0 = self.0.wrapping_mul(0x1000_0000_01b3);
+        }
+    }
+}
+
+type TerrainSectionMap<V> = HashMap<TerrainSectionMeshOwner, V, TerrainMeshOwnerBuildHasher>;
+type TerrainSectionSet = HashSet<TerrainSectionMeshOwner, TerrainMeshOwnerBuildHasher>;
+
 /// Immutable native section-lifecycle projection consumed by the terrain GPU
 /// owner in near-to-far traversal order.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -619,8 +653,8 @@ pub struct Renderer {
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
     pub(super) terrain_cutout: Vec<ResidentTerrainMesh>,
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
-    terrain_section_revisions: HashMap<TerrainSectionMeshOwner, u64>,
-    terrain_section_visibility: HashMap<TerrainSectionMeshOwner, f32>,
+    terrain_section_revisions: TerrainSectionMap<u64>,
+    terrain_section_visibility: TerrainSectionMap<f32>,
     terrain_visible_section_order: Vec<TerrainSectionMeshOwner>,
     terrain_section_states_revision: Option<u64>,
     // Cross-section back-to-front draw order (far→near) of indices into
@@ -1168,7 +1202,7 @@ pub(super) struct ResidentTerrainMesh {
 
 fn retain_resident_terrain_sections(
     meshes: &mut Vec<ResidentTerrainMesh>,
-    desired_sections: &HashSet<TerrainSectionMeshOwner>,
+    desired_sections: &TerrainSectionSet,
 ) -> usize {
     let before = meshes.len();
     meshes.retain(|mesh| {
@@ -2486,8 +2520,8 @@ impl Renderer {
             terrain_opaque: Vec::new(),
             terrain_cutout: Vec::new(),
             terrain_translucent: Vec::new(),
-            terrain_section_revisions: HashMap::new(),
-            terrain_section_visibility: HashMap::new(),
+            terrain_section_revisions: TerrainSectionMap::default(),
+            terrain_section_visibility: TerrainSectionMap::default(),
             terrain_visible_section_order: Vec::new(),
             terrain_section_states_revision: None,
             terrain_translucent_order: Vec::new(),
@@ -3600,7 +3634,10 @@ impl Renderer {
         if self.terrain_section_states_revision == Some(revision) {
             return;
         }
-        let mut visible = HashMap::with_capacity(sections.len());
+        let mut visible = TerrainSectionMap::with_capacity_and_hasher(
+            sections.len(),
+            TerrainMeshOwnerBuildHasher,
+        );
         let mut order = Vec::with_capacity(sections.len());
         for section in sections {
             if !self.terrain_section_revisions.contains_key(&section.owner)
@@ -3660,7 +3697,10 @@ impl Renderer {
         >,
     ) {
         let chunks: Vec<_> = chunks.into_iter().collect();
-        let mut desired_sections = HashSet::with_capacity(source_sections);
+        let mut desired_sections = TerrainSectionSet::with_capacity_and_hasher(
+            source_sections,
+            TerrainMeshOwnerBuildHasher,
+        );
         let mut visibility_stale = false;
         for (chunk, revisions, _, _) in &chunks {
             for &(section_y, revision) in *revisions {
@@ -4288,7 +4328,7 @@ impl Renderer {
                 .iter()
                 .copied()
                 .filter(|owner| translucent_section_is_nearby(camera_position, *owner))
-                .collect::<HashSet<_>>();
+                .collect::<TerrainSectionSet>();
             self.translucency_resort_iteration_index %= visible.len();
             let resorts = (visible.len() / 8).max(15);
             for _ in 0..resorts {
