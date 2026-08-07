@@ -1511,16 +1511,29 @@ fn mesh_vertices_carry_terrain_light() {
 
 #[test]
 fn mesh_vertices_apply_state_emission_and_emissive_rendering() {
-    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
-    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
-        .with_light(TerrainLight { sky: 9, block: 2 })
-        .with_state_light(7, false)
-        .with_ambient_occlusion(false);
-    cells[cell_index(3, 0, 2, 1)] = TerrainCell::with_texture(2, TerrainMaterialClass::Opaque, 0)
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 3 * 16];
+    let first = (1, 1, 2);
+    for (x, y, z) in [
+        (1, 0, 2),
+        (1, 2, 2),
+        (1, 1, 1),
+        (1, 1, 3),
+        (0, 1, 2),
+        (2, 1, 2),
+    ] {
+        cells[cell_index(x, y, z, 3)] =
+            TerrainCell::EMPTY.with_light(TerrainLight { sky: 9, block: 2 });
+    }
+    cells[cell_index(first.0, first.1, first.2, 3)] =
+        TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+            .with_light(TerrainLight { sky: 9, block: 2 })
+            .with_state_light(7, false)
+            .with_ambient_occlusion(false);
+    cells[cell_index(3, 1, 2, 3)] = TerrainCell::with_texture(2, TerrainMaterialClass::Opaque, 0)
         .with_light(TerrainLight { sky: 3, block: 1 })
         .with_state_light(3, true)
         .with_ambient_occlusion(false);
-    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 3, cells);
 
     let mesh = build_opaque_chunk_mesh(&snapshot);
 
@@ -1537,13 +1550,17 @@ fn mesh_vertices_apply_state_emission_and_emissive_rendering() {
 }
 
 #[test]
-fn cubic_face_offset_samples_neighbor_brightness_with_current_state() {
+fn ambient_cubic_face_offset_samples_neighbor_brightness_and_state() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
     cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0)
         .with_light(TerrainLight { sky: 2, block: 1 })
         .with_state_light(3, true);
-    cells[cell_index(1, 1, 2, 2)] =
-        TerrainCell::EMPTY.with_light(TerrainLight { sky: 9, block: 4 });
+    for x in 0..=2 {
+        for z in 1..=3 {
+            cells[cell_index(x, 1, z, 2)] =
+                TerrainCell::EMPTY.with_light(TerrainLight { sky: 9, block: 4 });
+        }
+    }
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
     let lookup = TerrainChunkLookup::with_target(&snapshot, []);
 
@@ -1561,7 +1578,35 @@ fn cubic_face_offset_samples_neighbor_brightness_with_current_state() {
         &lookup,
     );
 
-    assert_eq!(lights, [[1.0, 1.0]; 4]);
+    assert_eq!(lights, [[4.0 / 15.0, 9.0 / 15.0]; 4]);
+}
+
+#[test]
+fn flat_cubic_face_keeps_current_state_at_neighbor_brightness_position() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0)
+        .with_light(TerrainLight { sky: 2, block: 1 })
+        .with_state_light(7, false);
+    cells[cell_index(1, 1, 2, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 9, block: 4 });
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+    let lookup = TerrainChunkLookup::with_target(&snapshot, []);
+
+    let lights = face_vertex_lights(
+        false,
+        TerrainFace::Up,
+        1,
+        0,
+        2,
+        true,
+        TerrainLight { sky: 2, block: 1 },
+        7,
+        false,
+        0,
+        &lookup,
+    );
+
+    assert_eq!(lights, [[7.0 / 15.0, 9.0 / 15.0]; 4]);
 }
 
 #[test]
@@ -1599,7 +1644,7 @@ fn ambient_occlusion_flag_disables_light_smoothing() {
         .with_light(TerrainLight { sky: 5, block: 6 })
         .with_ambient_occlusion(false);
     cells[cell_index(1, 1, 2, 2)] =
-        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 15 });
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 5, block: 6 });
     cells[cell_index(0, 1, 2, 2)] =
         TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 15 });
     cells[cell_index(1, 1, 1, 2)] =

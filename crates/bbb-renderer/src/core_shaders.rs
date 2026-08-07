@@ -162,7 +162,7 @@ pub(crate) struct AdaptedStaticCoreShaders {
     pub(crate) entity_outline_blit: Option<AdaptedShaderPair>,
 }
 
-pub(crate) fn adapt_terrain_shaders(
+pub(crate) fn adapt_selected_terrain_shaders(
     resources: &CoreShaderSourceProjection,
     use_rgss: bool,
 ) -> Result<Option<AdaptedTerrainShaders>> {
@@ -174,12 +174,28 @@ pub(crate) fn adapt_terrain_shaders(
         }
         return Ok(None);
     };
+    // The embedded pipeline is the repo-owned implementation for the unchanged
+    // Vanilla stages. Only a selected pack override needs the GLSL adapter;
+    // adapting the stock stages would create a second implementation of the
+    // default terrain pixels and previously drifted from the verified path.
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
     Ok(Some(AdaptedTerrainShaders {
         vertex: adapt_terrain_stage(&vertex.source, true, use_rgss, true)
             .context("adapt selected terrain vertex shader")?,
         fragment: adapt_terrain_stage(&fragment.source, false, use_rgss, true)
             .context("adapt selected terrain fragment shader")?,
     }))
+}
+
+pub(crate) fn has_terrain_shader_sources(resources: &CoreShaderSourceProjection) -> bool {
+    resources
+        .source_by_id(TERRAIN_SHADER_ID, ShaderStage::Vertex)
+        .is_some()
+        && resources
+            .source_by_id(TERRAIN_SHADER_ID, ShaderStage::Fragment)
+            .is_some()
 }
 
 pub(crate) fn adapt_selected_entity_shaders(
@@ -3454,6 +3470,20 @@ void main() { fragColor = vertexColor; }
     }
 
     #[test]
+    fn terrain_shader_selection_keeps_vanilla_embedded_and_adapts_overrides() {
+        let vanilla = test_projection(30, "vec4(1.0)", "vanilla");
+        assert!(has_terrain_shader_sources(&vanilla));
+        assert!(adapt_selected_terrain_shaders(&vanilla, true)
+            .expect("classify vanilla terrain shaders")
+            .is_none());
+
+        let selected = test_projection(31, "vec4(1.0)", "fixture");
+        assert!(adapt_selected_terrain_shaders(&selected, true)
+            .expect("adapt selected terrain shaders")
+            .is_some());
+    }
+
+    #[test]
     fn entity_adapter_projects_scroll_dynamic_item_and_resident_vertex_inputs() {
         let base = r#"#version 450
 layout(location = 0) in vec3 Position;
@@ -4276,14 +4306,14 @@ void main() {
             ..crate::terrain::TerrainMesh::default()
         }]);
 
-        let red = test_projection(31, "vec4(1.0, 0.0, 0.0, 1.0)");
+        let red = test_projection(31, "vec4(1.0, 0.0, 0.0, 1.0)", "fixture");
         renderer
             .transactional_resource_reload(|renderer| renderer.reload_core_shaders(&red, false))
             .expect("install red selected shader");
         assert_eq!(renderer.core_shader_generation(), Some(31));
         assert_red(renderer.render_offscreen_frame().unwrap().pixel(16, 16));
 
-        let green = test_projection(32, "vec4(0.0, 1.0, 0.0, 1.0)");
+        let green = test_projection(32, "vec4(0.0, 1.0, 0.0, 1.0)", "fixture");
         renderer
             .transactional_resource_reload(|renderer| -> Result<()> {
                 renderer.reload_core_shaders(&green, false)?;
@@ -4304,7 +4334,11 @@ void main() {
         );
     }
 
-    fn test_projection(generation: u64, color: &str) -> CoreShaderSourceProjection {
+    fn test_projection(
+        generation: u64,
+        color: &str,
+        terrain_pack_id: &str,
+    ) -> CoreShaderSourceProjection {
         let vertex_key = ShaderSourceKey {
             id: TERRAIN_SHADER_ID.to_string(),
             stage: ShaderStage::Vertex,
@@ -4500,7 +4534,7 @@ void main() {
                     ShaderSource {
                         key: vertex_key,
                         resource_id: "minecraft:shaders/core/terrain.vsh".to_string(),
-                        pack_id: "fixture".to_string(),
+                        pack_id: terrain_pack_id.to_string(),
                         source: r#"#version 330
 in vec3 Position;
 in vec4 Color;
@@ -4517,7 +4551,7 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: fragment_key,
                         resource_id: "minecraft:shaders/core/terrain.fsh".to_string(),
-                        pack_id: "fixture".to_string(),
+                        pack_id: terrain_pack_id.to_string(),
                         source: format!(
                             "#version 330\nout vec4 fragColor;\nvoid main() {{ fragColor = {color}; }}\n"
                         ),

@@ -756,6 +756,15 @@ pub(super) fn face_vertex_lights(
     lookup: &TerrainChunkLookup<'_>,
 ) -> [[f32; 2]; 4] {
     if !enabled {
+        // `BlockModelLighter.prepareQuadFlat` keeps the rendered block state
+        // while moving only the brightness query to the adjacent position for
+        // a cubic face.
+        let light = if face_cubic {
+            let (dx, dy, dz) = cull_offset(face);
+            sample_raw_light(x + dx, y + dy, z + dz, lookup).unwrap_or(light)
+        } else {
+            light
+        };
         return [shader_light_with_emission(
             state_render_light(light, state_light_emission, emissive_rendering),
             light_emission,
@@ -768,13 +777,17 @@ pub(super) fn face_vertex_lights(
         (0, 0, 0)
     };
     let base = (x + normal.0, y + normal.1, z + normal.2);
-    let center_raw_light = if face_cubic {
-        sample_raw_light(base.0, base.1, base.2, lookup).unwrap_or(light)
+    let current_light = state_render_light(light, state_light_emission, emissive_rendering);
+    let (dx, dy, dz) = cull_offset(face);
+    let next = lookup.cell(x + dx, y + dy, z + dz);
+    // `prepareQuadAmbientOcclusion` starts with the current state/position,
+    // then switches both state and brightness position to the neighbor when
+    // the face is cubic or that neighbor is not solid-rendering.
+    let center_light = if face_cubic || next.is_some_and(|cell| !cell.solid_render) {
+        next.map_or(current_light, render_light_for_cell)
     } else {
-        light
+        current_light
     };
-    let center_light =
-        state_render_light(center_raw_light, state_light_emission, emissive_rendering);
 
     std::array::from_fn(|corner| {
         let (side_a, side_b) = face_corner_sides(face, corner);

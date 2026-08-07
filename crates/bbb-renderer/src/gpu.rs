@@ -829,12 +829,12 @@ pub(super) fn create_terrain_core_pipelines(
     texture_filtering: crate::renderer::TerrainTextureFiltering,
     allow_embedded_fallback: bool,
 ) -> Result<TerrainCorePipelines> {
-    let adapted = crate::core_shaders::adapt_terrain_shaders(
+    let adapted = crate::core_shaders::adapt_selected_terrain_shaders(
         resources,
         texture_filtering == crate::renderer::TerrainTextureFiltering::Rgss,
     )?;
     let Some(adapted) = adapted else {
-        if !allow_embedded_fallback {
+        if !allow_embedded_fallback && !crate::core_shaders::has_terrain_shader_sources(resources) {
             bail!("prepared core shaders are missing minecraft:core/terrain");
         }
         return Ok(TerrainCorePipelines {
