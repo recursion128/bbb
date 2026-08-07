@@ -455,6 +455,9 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(options["maxAnisotropyBit"], "1")
         self.assertEqual(options["textureFiltering"], "1")
         self.assertEqual(options["guiScale"], "1")
+        self.assertEqual(options["forceUnicodeFont"], "false")
+        self.assertEqual(options["fov"], "0.0")
+        self.assertEqual(options["gamma"], "0.5")
         self.assertNotIn("hideGui", options)
         self.assertEqual(options["bobView"], "true")
         self.assertEqual(options["pauseOnLostFocus"], "false")
@@ -518,9 +521,18 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
         self.assertEqual(argv[argv.index("--client-vsync") + 1], "false")
         self.assertEqual(argv[argv.index("--client-framerate-limit") + 1], "260")
+        self.assertEqual(argv[argv.index("--inactivity-fps-limit") + 1], "minimized")
         self.assertEqual(argv[argv.index("--client-gui-scale") + 1], "1")
+        self.assertEqual(argv[argv.index("--client-force-unicode-font") + 1], "false")
+        self.assertEqual(argv[argv.index("--client-fov") + 1], "70")
+        self.assertEqual(argv[argv.index("--client-gamma") + 1], "0.5")
         self.assertEqual(argv[argv.index("--pause-on-lost-focus") + 1], "false")
+        self.assertEqual(argv[argv.index("--render-clouds") + 1], "fancy")
         self.assertEqual(argv[argv.index("--terrain-texture-filtering") + 1], "rgss")
+        self.assertEqual(argv[argv.index("--client-max-anisotropy-bit") + 1], "1")
+        self.assertEqual(argv[argv.index("--client-smooth-lighting") + 1], "true")
+        self.assertEqual(argv[argv.index("--client-view-bobbing") + 1], "true")
+        self.assertIn("--improved-transparency", argv)
         settings = benchmark.equal_load_settings()
         self.assertEqual(settings["window"], {
             "width": 1280,
@@ -529,9 +541,13 @@ class LaunchPlanTests(unittest.TestCase):
         })
         self.assertEqual(settings["gui_scale"], 1)
         self.assertEqual(settings["particles"], "minimal")
+        self.assertEqual(settings["fov_degrees"], 70)
+        self.assertEqual(settings["gamma"], 0.5)
+        self.assertFalse(settings["force_unicode_font"])
         self.assertTrue(settings["view_bobbing"])
         self.assertFalse(settings["pause_on_lost_focus"])
         self.assertEqual(settings["audio"], "disabled")
+        self.assertEqual(settings["inactivity_fps_limit"], "minimized")
 
 
 class ReplayTests(unittest.TestCase):
