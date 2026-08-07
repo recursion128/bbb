@@ -188,7 +188,11 @@ impl WorldStore {
             sample_position[1] - f64::from(integral[1]),
             sample_position[2] - f64::from(integral[2]),
         ];
-        let mut weighted_sources: Vec<(ClientEnvironmentAttributeMap, f64)> = Vec::new();
+        // Vanilla's 6x6x6 cubic sampler often visits the same biome holder for
+        // every source cell. Aggregate those cheap integer holder samples
+        // before resolving registry projections: otherwise one camera sample
+        // repeats the holder -> resource id -> projection lookup 216 times.
+        let mut weighted_holders: Vec<(Option<i32>, f64)> = Vec::new();
         for z in 0..6 {
             let weight_z = gaussian_axis_weight(z, relative[2]);
             let sample_z = integral[2].saturating_add(z as i32 - 2);
@@ -199,17 +203,37 @@ impl WorldStore {
                     let weight_y = gaussian_axis_weight(y, relative[1]);
                     let sample_y = integral[1].saturating_add(y as i32 - 2);
                     let weight = weight_x * weight_y * weight_z;
-                    let source =
-                        self.environment_attribute_map_at_quart(sample_x, sample_y, sample_z);
-                    if let Some((_, accumulated_weight)) = weighted_sources
+                    let holder_id =
+                        self.noise_biome_holder_id_at_quart(sample_x, sample_y, sample_z);
+                    if let Some((_, accumulated_weight)) = weighted_holders
                         .iter_mut()
-                        .find(|(existing, _)| existing.same_source(&source))
+                        .find(|(existing, _)| *existing == holder_id)
                     {
                         *accumulated_weight += weight;
                     } else {
-                        weighted_sources.push((source, weight));
+                        weighted_holders.push((holder_id, weight));
                     }
                 }
+            }
+        }
+        let mut weighted_sources: Vec<(ClientEnvironmentAttributeMap, f64)> = Vec::new();
+        for (holder_id, weight) in weighted_holders {
+            let source = holder_id
+                .and_then(|holder_id| {
+                    self.registries
+                        .biome_client_projection(holder_id)
+                        .ok()
+                        .flatten()
+                })
+                .map(|projection| projection.environment_attribute_modifiers)
+                .unwrap_or_default();
+            if let Some((_, accumulated_weight)) = weighted_sources
+                .iter_mut()
+                .find(|(existing, _)| existing.same_source(&source))
+            {
+                *accumulated_weight += weight;
+            } else {
+                weighted_sources.push((source, weight));
             }
         }
         weighted_sources
