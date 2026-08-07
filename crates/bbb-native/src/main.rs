@@ -98,8 +98,9 @@ mod window_icon;
 mod window_surface;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
-use bbb_item_model::default_player_skin_cache_dir;
-use bbb_item_model::NativeItemRuntime;
+use bbb_item_model::{
+    default_player_skin_cache_dir, font::providers::FontOptions, NativeItemRuntime,
+};
 use camera_fov::CameraFovTickState;
 use camera_pose::CameraEyeHeightTickState;
 use client_options::{ClientOptionHost, ClientOptionsFile};
@@ -793,12 +794,19 @@ fn run_client(args: startup::Args) -> Result<()> {
         .map(|resources| (Some(resources.simulation), Some(resources.render)))
         .unwrap_or((None, None));
     let mut item_runtime = pack_roots.as_ref().and_then(|roots| {
-        NativeItemRuntime::load_with_locale(roots, &args.client_locale)
-            .map_err(|err| {
-                tracing::warn!(?err, "continuing without native item asset runtime");
-                err
-            })
-            .ok()
+        NativeItemRuntime::load_with_locale_and_font_options(
+            roots,
+            &args.client_locale,
+            FontOptions {
+                uniform: args.client_force_unicode_font,
+                japanese_variants: args.client_japanese_glyph_variants,
+            },
+        )
+        .map_err(|err| {
+            tracing::warn!(?err, "continuing without native item asset runtime");
+            err
+        })
+        .ok()
     });
     let player_skin_cache_dir = args
         .player_skin_cache_dir
@@ -1024,7 +1032,14 @@ fn run_client(args: startup::Args) -> Result<()> {
             particles.set_default_item_particle_sprite_ids(items);
         }
     }
-    load_hud_textures(&mut renderer, pack_roots.as_ref());
+    load_hud_textures(
+        &mut renderer,
+        pack_roots.as_ref(),
+        FontOptions {
+            uniform: args.client_force_unicode_font,
+            japanese_variants: args.client_japanese_glyph_variants,
+        },
+    );
     load_panorama(&mut renderer, pack_roots.as_ref());
     renderer.set_default_text_right_to_left(
         item_runtime
@@ -1256,7 +1271,9 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut client_options = match ClientOptionsFile::load(
         args.game_dir.join("options.txt"),
         ClientOptionHost {
-            locale_is_japanese: false,
+            locale_is_japanese: client_options::locale_is_japanese(
+                sys_locale::get_locale().as_deref(),
+            ),
             platform_is_windows: crate::platform::HOST_IS_WINDOWS,
         },
     ) {
@@ -1400,6 +1417,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                 &mut hud_render_runtime,
                 &mut renderer,
                 &args.client_locale,
+                FontOptions {
+                    uniform: args.client_force_unicode_font,
+                    japanese_variants: args.client_japanese_glyph_variants,
+                },
                 client_particle_status,
                 &player_skin_cache_dir,
                 &args.username,

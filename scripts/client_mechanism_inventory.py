@@ -405,6 +405,7 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "broadcastOptions",
             "dumpOptionsForReport",
             "getFullscreenVideoModeString",
+            "updateFontOptions",
         ),
     ),
     (
@@ -416,7 +417,6 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "isSoundDeviceDefault",
             "applyGraphicsPreset",
             "loadSelectedResourcePacks",
-            "updateFontOptions",
         ),
     ),
     (
@@ -4111,8 +4111,15 @@ OPTIONS_DERIVED_OWNER_EVIDENCE = _owner_evidence(
     ),
     (
         OwnerEvidence(
-            ("crates/bbb-native/src/client_options.rs#LocaleIsJapanese",),
-            ("crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host",),
+            (
+                "crates/bbb-native/src/client_options.rs#LocaleIsJapanese",
+                "crates/bbb-native/src/client_options.rs#locale_is_japanese",
+            ),
+            (
+                "crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host",
+                "crates/bbb-native/src/client_options.rs"
+                "#japanese_font_default_uses_only_the_system_language_subtag",
+            ),
         ),
         ("japaneseGlyphVariantsDefault",),
     ),
@@ -4209,6 +4216,25 @@ OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
             ),
         ),
         ("getFullscreenVideoModeString",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-item-model/src/font/providers.rs#pub struct FontOptions",
+                "crates/bbb-item-model/src/font/providers.rs#fn provider_enabled",
+                "crates/bbb-native/src/startup.rs#client_japanese_glyph_variants",
+                "crates/bbb-native/src/resource_reload.rs#font_options: FontOptions",
+            ),
+            (
+                "crates/bbb-item-model/src/font/providers.rs"
+                "#font_options_filter_providers_before_reference_expansion",
+                "crates/bbb-native/src/startup.rs"
+                "#the_stored_window_family_options_feed_the_window_owner",
+                "crates/bbb-native/src/resource_reload.rs"
+                "#renderer_resource_owners_commit_inside_one_reload_barrier",
+            ),
+        ),
+        ("updateFontOptions",),
     ),
 )
 

@@ -87,7 +87,7 @@ use icon_model::{
     CrossbowChargeType, IconResolveContext, ItemIconModel, ResolvedItemIconModelLayer, TimeSource,
 };
 
-use crate::font::load_hud_font_atlas;
+use crate::font::{load_hud_font_atlas_with_options, providers::FontOptions};
 
 mod icon;
 mod profiles;
@@ -156,8 +156,8 @@ fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapB
     .collect()
 }
 
-fn load_map_text_fonts(roots: &PackRoots) -> Result<HudFontGlyphBook> {
-    Ok(load_hud_font_atlas(roots)?.fonts)
+fn load_map_text_fonts(roots: &PackRoots, options: FontOptions) -> Result<HudFontGlyphBook> {
+    Ok(load_hud_font_atlas_with_options(roots, options)?.fonts)
 }
 
 fn set_map_text_direction(
@@ -685,6 +685,14 @@ impl NativeItemRuntime {
     }
 
     pub fn load_with_locale(roots: &PackRoots, language_code: &str) -> Result<Self> {
+        Self::load_with_locale_and_font_options(roots, language_code, FontOptions::default())
+    }
+
+    pub fn load_with_locale_and_font_options(
+        roots: &PackRoots,
+        language_code: &str,
+        font_options: FontOptions,
+    ) -> Result<Self> {
         let item_models = roots
             .load_item_model_catalog()
             .context("load item model catalog")?;
@@ -834,7 +842,7 @@ impl NativeItemRuntime {
                 err
             })
             .unwrap_or_default();
-        let mut map_text_fonts = load_map_text_fonts(roots)
+        let mut map_text_fonts = load_map_text_fonts(roots, font_options)
             .context("load shared world-text font metrics")
             .map_err(|err| {
                 tracing::warn!(?err, "continuing without native world text");

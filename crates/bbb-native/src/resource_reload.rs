@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use bbb_control::{AudioCounters, ClientResourceDiagnostics, ClientResourcePackDiagnostic};
-use bbb_item_model::NativeItemRuntime;
+use bbb_item_model::{font::providers::FontOptions, NativeItemRuntime};
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
@@ -151,6 +151,7 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
     hud_render_runtime: &mut crate::runtime::HudRenderRuntime,
     renderer: &mut bbb_renderer::Renderer,
     client_locale: &str,
+    font_options: FontOptions,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
     player_skin_cache_dir: &Path,
     username: &str,
@@ -172,6 +173,7 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
         hud_render_runtime,
         renderer,
         client_locale,
+        font_options,
         particle_status,
         player_skin_cache_dir,
         username,
@@ -221,6 +223,7 @@ fn apply_native_resource_reload(
     hud_render_runtime: &mut crate::runtime::HudRenderRuntime,
     renderer: &mut bbb_renderer::Renderer,
     client_locale: &str,
+    font_options: FontOptions,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
     player_skin_cache_dir: &Path,
     username: &str,
@@ -232,6 +235,7 @@ fn apply_native_resource_reload(
         reload.server_packs,
         audio_runtime.is_some(),
         client_locale,
+        font_options,
         particle_status,
     )
     .map_err(|error| NativeResourceReloadFailure {
@@ -271,7 +275,7 @@ fn apply_native_resource_reload(
                 atlas_base_padding,
             )
             .context("upload terrain resources during resource reload")?;
-            try_load_hud_textures(renderer, &prepared.roots)
+            try_load_hud_textures(renderer, &prepared.roots, font_options)
                 .context("upload HUD resources during resource reload")?;
             upload_panorama(renderer, &prepared.panorama)
                 .context("upload panorama resources during resource reload")?;
@@ -485,6 +489,7 @@ fn prepare_native_resource_reload(
     server_packs: Vec<SelectedClientPack>,
     has_audio_runtime: bool,
     client_locale: &str,
+    font_options: FontOptions,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
 ) -> Result<PreparedNativeResourceReload> {
     let roots =
@@ -496,8 +501,9 @@ fn prepare_native_resource_reload(
     };
     let particles = NativeParticleResources::load(&roots, particle_status)
         .context("prepare particle resources for reload")?;
-    let items = NativeItemRuntime::load_with_locale(&roots, client_locale)
-        .context("prepare item, model, texture, and language resources for reload")?;
+    let items =
+        NativeItemRuntime::load_with_locale_and_font_options(&roots, client_locale, font_options)
+            .context("prepare item, model, texture, and language resources for reload")?;
     let post_effects = prepare_native_shader_resources(&roots)?;
     let panorama = roots
         .load_panorama_catalog()
@@ -1242,7 +1248,7 @@ mod tests {
             .find("let textures = try_load_terrain_textures")
             .expect("reload should upload terrain material metadata inside the transaction");
         let hud_commit = source
-            .find("try_load_hud_textures(renderer, &prepared.roots)")
+            .find("try_load_hud_textures(renderer, &prepared.roots, font_options)")
             .expect("reload should install generation-matched HUD resources");
         let panorama_commit = source
             .find("upload_panorama(renderer, &prepared.panorama)")

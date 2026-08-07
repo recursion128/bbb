@@ -2,8 +2,8 @@
 //! (`FontManager.FontDefinitionFile`) into a flattened, priority-ordered list
 //! of provider definitions.
 //!
-//! `bitmap`, `space`, `unihex`, and `reference` providers are consumed with
-//! Vanilla's fixed default font options (`uniform=false`, `jp=false`).
+//! `bitmap`, `space`, `unihex`, and `reference` providers are filtered by the
+//! same `uniform` / `jp` option set that Vanilla passes to `FontSet.reload`.
 
 use std::collections::HashSet;
 
@@ -19,6 +19,14 @@ const MAX_FONT_UNIHEX_OVERRIDES: u64 = 4_096;
 const FONT_DEFINITION_LOGICAL_BYTES: u64 = 512;
 const FONT_PROVIDER_LOGICAL_BYTES: u64 = 256;
 const FONT_GLYPH_SLOT_LOGICAL_BYTES: u64 = 64;
+
+/// `FontManager.getFontOptions`: the two options consulted by provider
+/// `FontOption.Filter` values before reference expansion.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FontOptions {
+    pub uniform: bool,
+    pub japanese_variants: bool,
+}
 
 /// One flattened `"type": "bitmap"` provider, mirroring vanilla
 /// `BitmapProvider.Definition` (codec fields `file`, `height` default 8,
@@ -87,6 +95,14 @@ pub fn load_font_providers(
     roots: &PackRoots,
     font_id: &str,
 ) -> Result<Vec<FontProviderDefinition>> {
+    load_font_providers_with_options(roots, font_id, FontOptions::default())
+}
+
+pub fn load_font_providers_with_options(
+    roots: &PackRoots,
+    font_id: &str,
+    options: FontOptions,
+) -> Result<Vec<FontProviderDefinition>> {
     let stack = roots.resource_stack();
     let mut definition_count = 0_u64;
     let mut load_definition = |id: &str| -> Result<Value> {
@@ -108,7 +124,7 @@ pub fn load_font_providers(
         definition_count = next_definition_count;
         Ok(value)
     };
-    let providers = flatten_font_provider_values(font_id, &mut load_definition)?;
+    let providers = flatten_font_provider_values(font_id, options, &mut load_definition)?;
     admit_font_collections(&stack, definition_count, &providers)?;
     Ok(providers)
 }
@@ -129,25 +145,42 @@ pub(crate) fn flatten_font_providers(
     font_id: &str,
     load_definition: &mut dyn FnMut(&str) -> Result<String>,
 ) -> Result<Vec<FontProviderDefinition>> {
+    flatten_font_providers_with_options(font_id, FontOptions::default(), load_definition)
+}
+
+#[cfg(test)]
+fn flatten_font_providers_with_options(
+    font_id: &str,
+    options: FontOptions,
+    load_definition: &mut dyn FnMut(&str) -> Result<String>,
+) -> Result<Vec<FontProviderDefinition>> {
     let mut load_value = |id: &str| -> Result<Value> {
         let json = load_definition(id)?;
         serde_json::from_str(&json).with_context(|| format!("parse font definition {id}"))
     };
-    flatten_font_provider_values(font_id, &mut load_value)
+    flatten_font_provider_values(font_id, options, &mut load_value)
 }
 
 fn flatten_font_provider_values(
     font_id: &str,
+    options: FontOptions,
     load_definition: &mut dyn FnMut(&str) -> Result<Value>,
 ) -> Result<Vec<FontProviderDefinition>> {
     let mut visited = HashSet::new();
     let mut providers = Vec::new();
-    flatten_into(font_id, load_definition, &mut visited, &mut providers)?;
+    flatten_into(
+        font_id,
+        options,
+        load_definition,
+        &mut visited,
+        &mut providers,
+    )?;
     Ok(providers)
 }
 
 fn flatten_into(
     font_id: &str,
+    options: FontOptions,
     load_definition: &mut dyn FnMut(&str) -> Result<Value>,
     visited: &mut HashSet<String>,
     out: &mut Vec<FontProviderDefinition>,
@@ -169,7 +202,7 @@ fn flatten_into(
         .and_then(Value::as_array)
         .with_context(|| format!("font definition {font_id} has no \"providers\" array"))?;
     for provider in providers {
-        if !provider_enabled(font_id, provider)? {
+        if !provider_enabled(font_id, provider, options)? {
             continue;
         }
         let provider_type = provider
@@ -193,7 +226,7 @@ fn flatten_into(
                     .with_context(|| {
                         format!("reference font provider in {font_id} has no \"id\"")
                     })?;
-                flatten_into(id, load_definition, visited, out)?;
+                flatten_into(id, options, load_definition, visited, out)?;
             }
             // Vanilla safely skips an individual provider whose type codec is
             // unavailable. Preserve that forward-compatible behavior for
@@ -300,9 +333,8 @@ fn admit_font_collections(
 }
 
 /// `FontOption.Filter.apply`: every declared option must match the enabled
-/// option set. BBB's startup contract uses Vanilla's default options, where
-/// neither `uniform` nor `jp` is enabled.
-fn provider_enabled(font_id: &str, provider: &Value) -> Result<bool> {
+/// option set; both true and false constraints participate in the conjunction.
+fn provider_enabled(font_id: &str, provider: &Value, options: FontOptions) -> Result<bool> {
     let Some(filter) = provider.get("filter") else {
         return Ok(true);
     };
@@ -316,7 +348,12 @@ fn provider_enabled(font_id: &str, provider: &Value) -> Result<bool> {
         let expected = expected.as_bool().with_context(|| {
             format!("font provider in {font_id} has non-boolean font option {option:?}")
         })?;
-        if expected {
+        let enabled = match option.as_str() {
+            "uniform" => options.uniform,
+            "jp" => options.japanese_variants,
+            _ => unreachable!("validated font option"),
+        };
+        if enabled != expected {
             return Ok(false);
         }
     }
@@ -756,6 +793,44 @@ mod tests {
             panic!("default unihex should pass");
         };
         assert_eq!(unihex.hex_file, "minecraft:font/default.zip");
+
+        let mut load = test_loader(&[
+            (
+                "minecraft:default",
+                r#"{"providers":[
+                    {"type":"reference","id":"minecraft:uniform","filter":{"uniform":true}},
+                    {"type":"reference","id":"minecraft:normal","filter":{"uniform":false}},
+                    {"type":"unihex","hex_file":"minecraft:font/jp.zip","filter":{"jp":true}},
+                    {"type":"unihex","hex_file":"minecraft:font/default.zip","filter":{"jp":false}}
+                ]}"#,
+            ),
+            (
+                "minecraft:uniform",
+                r#"{"providers":[{"type":"space","advances":{" ":99}}]}"#,
+            ),
+            (
+                "minecraft:normal",
+                r#"{"providers":[{"type":"space","advances":{" ":4}}]}"#,
+            ),
+        ]);
+        let providers = flatten_font_providers_with_options(
+            "minecraft:default",
+            FontOptions {
+                uniform: true,
+                japanese_variants: true,
+            },
+            &mut load,
+        )
+        .unwrap();
+        assert_eq!(providers.len(), 2);
+        let FontProviderDefinition::Space(space) = &providers[0] else {
+            panic!("uniform reference should pass");
+        };
+        assert_eq!(space.advances, vec![(' ', 99)]);
+        let FontProviderDefinition::Unihex(unihex) = &providers[1] else {
+            panic!("jp unihex should pass");
+        };
+        assert_eq!(unihex.hex_file, "minecraft:font/jp.zip");
     }
 
     #[test]

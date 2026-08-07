@@ -134,6 +134,12 @@ pub(crate) struct Args {
     )]
     pub(crate) client_force_unicode_font: bool,
     #[arg(
+        long = "client-japanese-glyph-variants",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_japanese_glyph_variants: bool,
+    #[arg(
         long = "client-raw-mouse-input",
         default_value_t = true,
         action = ArgAction::Set
@@ -637,7 +643,9 @@ pub(crate) fn parse_args() -> Args {
 fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
     let path = args.game_dir.join("options.txt");
     let host = ClientOptionHost {
-        locale_is_japanese: false,
+        locale_is_japanese: crate::client_options::locale_is_japanese(
+            sys_locale::get_locale().as_deref(),
+        ),
         platform_is_windows: crate::platform::HOST_IS_WINDOWS,
     };
     let options = match ClientOptions::load(&path, host) {
@@ -816,6 +824,11 @@ fn bind_stored_client_options(
         "client_force_unicode_font",
         "forceUnicodeFont",
         client_force_unicode_font
+    );
+    flag!(
+        "client_japanese_glyph_variants",
+        "japaneseGlyphVariants",
+        client_japanese_glyph_variants
     );
     flag!(
         "client_raw_mouse_input",
@@ -2567,6 +2580,7 @@ mod tests {
         let mut options = ClientOptions::defaults(ClientOptionHost::default());
         options.set_raw_for_test("guiScale", "3");
         options.set_raw_for_test("forceUnicodeFont", "true");
+        options.set_raw_for_test("japaneseGlyphVariants", "true");
         options.set_raw_for_test("rawMouseInput", "false");
         options.set_raw_for_test("allowCursorChanges", "false");
         options.set_raw_for_test("fullscreenResolution", "1920x1080@144:24");
@@ -2574,6 +2588,7 @@ mod tests {
         assert!(args.client_fullscreen_resolution.is_none());
         assert_eq!(args.client_gui_scale, 0);
         assert!(!args.client_force_unicode_font);
+        assert!(!args.client_japanese_glyph_variants);
         assert!(args.client_raw_mouse_input);
         assert!(args.client_allow_cursor_changes);
 
@@ -2581,6 +2596,7 @@ mod tests {
 
         assert_eq!(args.client_gui_scale, 3);
         assert!(args.client_force_unicode_font);
+        assert!(args.client_japanese_glyph_variants);
         assert!(!args.client_raw_mouse_input);
         assert!(!args.client_allow_cursor_changes);
         assert_eq!(

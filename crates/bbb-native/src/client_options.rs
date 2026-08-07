@@ -37,6 +37,15 @@ pub(crate) struct ClientOptionHost {
     pub(crate) platform_is_windows: bool,
 }
 
+/// `Locale.getDefault().getLanguage().equalsIgnoreCase("ja")`. `sys-locale`
+/// returns a BCP-47/POSIX-shaped locale on the supported desktop platforms;
+/// only the leading language subtag participates in Vanilla's default.
+pub(crate) fn locale_is_japanese(locale: Option<&str>) -> bool {
+    locale
+        .and_then(|locale| locale.split(['-', '_']).next())
+        .is_some_and(|language| language.eq_ignore_ascii_case("ja"))
+}
+
 /// The client's `options.txt` state: every catalogued key, plus the per-element
 /// lines the three trailing loops own, plus the one special startup line
 /// (`fullscreenResolution`) that `Options.save` writes outside the catalog.
@@ -621,6 +630,15 @@ mod tests {
         assert_eq!(japanese.raw("syncChunkWrites"), Some("true"));
         assert_eq!(options().raw("japaneseGlyphVariants"), Some("false"));
         assert_eq!(options().raw("syncChunkWrites"), Some("false"));
+    }
+
+    #[test]
+    fn japanese_font_default_uses_only_the_system_language_subtag() {
+        assert!(locale_is_japanese(Some("ja")));
+        assert!(locale_is_japanese(Some("ja-JP")));
+        assert!(locale_is_japanese(Some("JA_jp.UTF-8")));
+        assert!(!locale_is_japanese(Some("en-JP")));
+        assert!(!locale_is_japanese(None));
     }
 
     #[test]

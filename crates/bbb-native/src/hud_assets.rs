@@ -13,7 +13,8 @@ use bbb_renderer::{
 use bbb_world::vanilla_sign_wood_kinds;
 
 use bbb_item_model::font::{
-    hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas,
+    hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas_with_options,
+    providers::FontOptions,
 };
 
 use crate::sign_scene::sign_model_wood;
@@ -47,12 +48,16 @@ macro_rules! upload_standalone_hud {
     };
 }
 
-pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
+pub(crate) fn load_hud_textures(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: Option<&PackRoots>,
+    font_options: FontOptions,
+) {
     let Some(roots) = roots else {
         tracing::warn!("continuing without vanilla HUD sprites because pack roots are unavailable");
         return;
     };
-    if let Err(err) = try_load_hud_textures(renderer, roots) {
+    if let Err(err) = try_load_hud_textures(renderer, roots, font_options) {
         tracing::warn!(?err, "continuing without vanilla HUD sprites");
     }
 }
@@ -94,6 +99,7 @@ pub(crate) fn upload_panorama(
 pub(crate) fn try_load_hud_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
+    font_options: FontOptions,
 ) -> Result<()> {
     let sprites = load_gui_sprites(roots)?;
     let vignette = load_vignette_image(roots)?;
@@ -1836,7 +1842,7 @@ pub(crate) fn try_load_hud_textures(
     )?;
     // The `font/default.json` bitmap provider chain baked into one multi-page
     // glyph atlas; HUD text and map decoration labels share the same texture.
-    let font_atlas = load_hud_font_atlas(roots)?;
+    let font_atlas = load_hud_font_atlas_with_options(roots, font_options)?;
     renderer.upload_hud_font_atlas(
         font_atlas.width,
         font_atlas.height,

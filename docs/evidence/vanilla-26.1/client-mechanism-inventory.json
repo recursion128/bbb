@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "b688c469cd162e08c4274c423fd6907ef53e284d3ca8f0c4266e3866dde9982c"
+      "sha256": "43b2693c65d8eda6368075c43d4bbc0cb350050a7642b49e015487399b5ccd07"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -259,8 +259,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/client_options.rs"
       ],
-      "owner_count": 4,
-      "owner_evidence_count": 4
+      "owner_count": 5,
+      "owner_evidence_count": 5
     },
     "persistence-options-derived": {
       "bbb_evidence": [
@@ -280,7 +280,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 5
+      "owner_count": 4
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -14257,10 +14257,12 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-native/src/client_options.rs#LocaleIsJapanese"
+          "crates/bbb-native/src/client_options.rs#LocaleIsJapanese",
+          "crates/bbb-native/src/client_options.rs#locale_is_japanese"
         ],
         "tests": [
-          "crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host"
+          "crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host",
+          "crates/bbb-native/src/client_options.rs#japanese_font_default_uses_only_the_system_language_subtag"
         ]
       },
       "category": "persistence",
@@ -15129,10 +15131,23 @@
       "vanilla_owner": "net.minecraft.client.Options#unlogMouse(final double value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-item-model/src/font/providers.rs#pub struct FontOptions",
+          "crates/bbb-item-model/src/font/providers.rs#fn provider_enabled",
+          "crates/bbb-native/src/startup.rs#client_japanese_glyph_variants",
+          "crates/bbb-native/src/resource_reload.rs#font_options: FontOptions"
+        ],
+        "tests": [
+          "crates/bbb-item-model/src/font/providers.rs#font_options_filter_providers_before_reference_expansion",
+          "crates/bbb-native/src/startup.rs#the_stored_window_family_options_feed_the_window_owner",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-unconsumed",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#updateFontOptions()",
       "role": "decision",
       "scope": "external-client",

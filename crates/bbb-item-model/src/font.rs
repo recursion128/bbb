@@ -68,6 +68,13 @@ struct FontAtlasLoadCache {
 /// semantics while their UVs address that shared image, so Component font
 /// changes do not require per-run texture binds.
 pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
+    load_hud_font_atlas_with_options(roots, providers::FontOptions::default())
+}
+
+pub fn load_hud_font_atlas_with_options(
+    roots: &PackRoots,
+    options: providers::FontOptions,
+) -> Result<HudFontAtlasImage> {
     let stack = roots.resource_stack();
     let mut fonts = Vec::new();
     let mut cache = FontAtlasLoadCache::default();
@@ -81,7 +88,7 @@ pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
             continue;
         };
         let font_id = format!("{}:{path}", resource.location.namespace());
-        let definitions = providers::load_font_providers(roots, &font_id)?;
+        let definitions = providers::load_font_providers_with_options(roots, &font_id, options)?;
         let entries = load_font_atlas_entries(roots, definitions, &mut cache)?;
         fonts.push((font_id, entries));
     }
