@@ -2902,6 +2902,7 @@ mod tests {
     #[test]
     fn stored_options_fill_arguments_the_user_did_not_type() {
         let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("graphicsPreset", "\"custom\"");
         options.set_raw_for_test("renderDistance", "16");
         options.set_raw_for_test("entityShadows", "false");
         options.set_raw_for_test("lang", "zh_cn");
@@ -3228,6 +3229,7 @@ mod tests {
     #[test]
     fn an_out_of_range_stored_line_keeps_the_argument_value() {
         let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("graphicsPreset", "\"custom\"");
         options.set_raw_for_test("renderDistance", "9999");
         let mut args = Args::parse_from(["bbb-native"]);
         let default_distance = args.render_distance_chunks;

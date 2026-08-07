@@ -3403,7 +3403,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance player input before HUD extraction");
     let destroy_advance = source
-        .find("advance_destroying_block_at_partial_tick(")
+        .find("advance_destroying_block_at_partial_tick_with_biome_blend_radius(")
         .expect("pump should advance destroy input before HUD extraction");
     let use_advance = source
         .find("advance_using_item_at_partial_tick_with_effects_and_presentation(")
@@ -8843,7 +8843,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance player input before particle tick");
     let destroy_advance = source
-        .find("advance_destroying_block_at_partial_tick(")
+        .find("advance_destroying_block_at_partial_tick_with_biome_blend_radius(")
         .expect("pump should advance destroy input before particle tick");
     let local_player_action_particles = source
         .find("submit_local_player_action_particles(")
