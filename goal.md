@@ -516,11 +516,11 @@ census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口
 两项输入面已落地关闭：`SmoothDouble` 平滑镜头转向与 IME preedit 焦点移交（见
 archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload 与共同 draw evidence；post-`538121f8f` 的三场景 current-binary
-visual/workload/OpenGL+Vulkan draw receipt 已在 `bd7bcc87b` capture commit 重采通过，
-正式两轮 ABBA 与 GPU-duration 仍须重采后才能恢复性能结论；安全预算、bounded
+visual/workload/OpenGL+Vulkan draw receipt 已在 `bd7bcc87b` 重采通过并由 byte-identical provenance 绑定到 `e195d60d0`；
+该 evidence commit 的正式两轮 ABBA 与 GPU-duration 已通过，性能结论恢复；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。per-client GPU execution
 duration 的 amdgpu 提交链已具备（radeonsi/RADV 共用路径、compositor 按进程排除），
-但旧采集不再证明当前二进制；
+current association/overhead receipt 有效；
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
 步逐 crate 实测第二平台类型检查，但通过的 cross-check 是构建证据、不是发布验收。
