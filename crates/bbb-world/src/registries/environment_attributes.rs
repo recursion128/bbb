@@ -291,6 +291,26 @@ pub(crate) fn apply_spatial_environment_attribute_maps(
     attributes: &mut ClientEnvironmentAttributes,
     weighted_sources: &[(ClientEnvironmentAttributeMap, f64)],
 ) -> Result<(), EnvironmentAttributeProjectionError> {
+    apply_filtered_spatial_environment_attribute_maps(attributes, weighted_sources, None)
+}
+
+pub(crate) fn apply_selected_spatial_environment_attribute_maps(
+    attributes: &mut ClientEnvironmentAttributes,
+    weighted_sources: &[(ClientEnvironmentAttributeMap, f64)],
+    selected_attributes: &[&str],
+) -> Result<(), EnvironmentAttributeProjectionError> {
+    apply_filtered_spatial_environment_attribute_maps(
+        attributes,
+        weighted_sources,
+        Some(selected_attributes),
+    )
+}
+
+fn apply_filtered_spatial_environment_attribute_maps(
+    attributes: &mut ClientEnvironmentAttributes,
+    weighted_sources: &[(ClientEnvironmentAttributeMap, f64)],
+    selected_attributes: Option<&[&str]>,
+) -> Result<(), EnvironmentAttributeProjectionError> {
     if weighted_sources.is_empty() {
         return Ok(());
     }
@@ -301,6 +321,8 @@ pub(crate) fn apply_spatial_environment_attribute_maps(
             descriptor.syncable
                 && descriptor.positional
                 && descriptor.spatially_interpolated
+                && selected_attributes
+                    .is_none_or(|selected| selected.contains(&descriptor.resource_id))
                 && weighted_sources
                     .iter()
                     .any(|(source, _)| source.contains(descriptor.resource_id))

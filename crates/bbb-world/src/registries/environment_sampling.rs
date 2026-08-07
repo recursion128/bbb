@@ -1,13 +1,32 @@
 use crate::{BlockPos, ClientAmbientParticle, ClientEnvironmentAttributes, WorldStore};
 
 use super::environment_attributes::{
-    apply_spatial_environment_attribute_maps, sanitize_environment_attributes,
-    ClientEnvironmentAttributeMap, EnvironmentAttributeProjectionError,
+    apply_selected_spatial_environment_attribute_maps, apply_spatial_environment_attribute_maps,
+    sanitize_environment_attributes, ClientEnvironmentAttributeMap,
+    EnvironmentAttributeProjectionError,
 };
 use super::timelines::{apply_environment_track, TimelineProjectionError};
 
 const GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const AMBIENT_PARTICLES_ATTRIBUTE: &str = "minecraft:visual/ambient_particles";
+const CAMERA_ENVIRONMENT_ATTRIBUTES: [&str; 15] = [
+    "minecraft:visual/fog_color",
+    "minecraft:visual/fog_start_distance",
+    "minecraft:visual/fog_end_distance",
+    "minecraft:visual/sky_fog_end_distance",
+    "minecraft:visual/cloud_fog_end_distance",
+    "minecraft:visual/water_fog_color",
+    "minecraft:visual/water_fog_start_distance",
+    "minecraft:visual/water_fog_end_distance",
+    "minecraft:visual/sky_color",
+    "minecraft:visual/sunrise_sunset_color",
+    "minecraft:visual/sun_angle",
+    "minecraft:visual/moon_angle",
+    "minecraft:visual/star_angle",
+    "minecraft:visual/moon_phase",
+    "minecraft:visual/star_brightness",
+];
+const CAMERA_NON_SPATIAL_ENVIRONMENT_ATTRIBUTES: [&str; 1] = ["minecraft:visual/moon_phase"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnvironmentBiomeSampling {
@@ -16,6 +35,35 @@ pub enum EnvironmentBiomeSampling {
 }
 
 impl WorldStore {
+    /// Samples only the attributes consumed by the rendered camera's sky and
+    /// fog projection. Vanilla owns samplers per environment attribute; avoid
+    /// cloning and applying unrelated particle, audio and gameplay values on
+    /// every presented frame.
+    pub fn sampled_client_camera_environment_attributes_at(
+        &self,
+        position: [f64; 3],
+    ) -> Result<ClientEnvironmentAttributes, TimelineProjectionError> {
+        let Some(mut attributes) = self.camera_dimension_environment_attributes() else {
+            return Ok(ClientEnvironmentAttributes::default());
+        };
+        let center = self.environment_attribute_map_at_position(position);
+        for attribute in CAMERA_NON_SPATIAL_ENVIRONMENT_ATTRIBUTES {
+            center
+                .apply_attribute_to(attribute, &mut attributes)
+                .map_err(environment_sampling_error)?;
+        }
+        let weighted_sources = self.gaussian_environment_attribute_maps(position);
+        apply_selected_spatial_environment_attribute_maps(
+            &mut attributes,
+            &weighted_sources,
+            &CAMERA_ENVIRONMENT_ATTRIBUTES,
+        )
+        .map_err(environment_sampling_error)?;
+        self.apply_selected_environment_timelines(&mut attributes, &CAMERA_ENVIRONMENT_ATTRIBUTES)?;
+        sanitize_environment_attributes(&mut attributes);
+        Ok(attributes)
+    }
+
     /// Samples only Vanilla's `AMBIENT_PARTICLES` value for `ClientLevel.doAnimateTick`.
     ///
     /// Vanilla bakes one sampler per environment attribute and does not project every unrelated
@@ -131,6 +179,18 @@ impl WorldStore {
         )
     }
 
+    fn camera_dimension_environment_attributes(&self) -> Option<ClientEnvironmentAttributes> {
+        let level = self.level_info()?;
+        let dimension = self
+            .registries
+            .dimension_type_client_projection_ref(level.dimension_type_id);
+        let source = dimension
+            .as_ref()
+            .map(|projection| &projection.environment_attributes)
+            .unwrap_or(&level.environment_attributes);
+        Some(camera_environment_attributes(source))
+    }
+
     fn apply_environment_timelines(
         &self,
         attributes: &mut ClientEnvironmentAttributes,
@@ -141,6 +201,23 @@ impl WorldStore {
             }
         }
         Ok(())
+    }
+
+    fn apply_selected_environment_timelines(
+        &self,
+        attributes: &mut ClientEnvironmentAttributes,
+        selected_attributes: &[&str],
+    ) -> Result<(), TimelineProjectionError> {
+        self.visit_resolved_dimension_timelines(|timeline, total_ticks| {
+            for track in timeline
+                .tracks
+                .iter()
+                .filter(|track| selected_attributes.contains(&track.attribute.as_str()))
+            {
+                apply_environment_track(attributes, timeline, track, total_ticks)?;
+            }
+            Ok(())
+        })
     }
 
     fn environment_attribute_map_at_position(
@@ -237,6 +314,29 @@ impl WorldStore {
             }
         }
         weighted_sources
+    }
+}
+
+fn camera_environment_attributes(
+    source: &ClientEnvironmentAttributes,
+) -> ClientEnvironmentAttributes {
+    ClientEnvironmentAttributes {
+        fog_color: source.fog_color,
+        fog_start_distance: source.fog_start_distance,
+        fog_end_distance: source.fog_end_distance,
+        sky_fog_end_distance: source.sky_fog_end_distance,
+        cloud_fog_end_distance: source.cloud_fog_end_distance,
+        water_fog_color: source.water_fog_color,
+        water_fog_start_distance: source.water_fog_start_distance,
+        water_fog_end_distance: source.water_fog_end_distance,
+        sky_color: source.sky_color,
+        sunrise_sunset_color: source.sunrise_sunset_color,
+        sun_angle_degrees: source.sun_angle_degrees,
+        moon_angle_degrees: source.moon_angle_degrees,
+        star_angle_degrees: source.star_angle_degrees,
+        moon_phase: source.moon_phase,
+        star_brightness: source.star_brightness,
+        ..ClientEnvironmentAttributes::default()
     }
 }
 
@@ -394,6 +494,27 @@ mod tests {
             full_timeline
         );
         assert_eq!(full_timeline[0].particle.resource_id, "minecraft:ash");
+    }
+
+    #[test]
+    fn camera_query_matches_full_gaussian_visual_projection_only() {
+        let mut world = environment_world();
+        insert_gaussian_neighborhood(&mut world);
+        let position = [8.0, 32.0, 8.0];
+        let full = world
+            .sampled_client_environment_attributes_at(position, EnvironmentBiomeSampling::Gaussian)
+            .unwrap();
+        let camera = world
+            .sampled_client_camera_environment_attributes_at(position)
+            .unwrap();
+
+        assert_eq!(camera, camera_environment_attributes(&full));
+        assert_eq!(camera.fog_color, Some([50, 100, 125]));
+        assert!((camera.water_fog_end_distance.unwrap() - 160.0).abs() < 0.0001);
+        assert_eq!(camera.sun_angle_degrees, Some(180.0));
+        assert_eq!(camera.music_volume, None);
+        assert_eq!(camera.ambient_particles, None);
+        assert_eq!(camera.sky_light_factor, None);
     }
 
     #[test]

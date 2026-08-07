@@ -19942,12 +19942,7 @@ fn sampled_environment_attributes_at_camera(
 ) -> ClientEnvironmentAttributes {
     let sampled = camera_pose.map(camera_eye_position).map_or_else(
         || world.sampled_client_environment_attributes(),
-        |eye| {
-            world.sampled_client_environment_attributes_at(
-                eye.map(f64::from),
-                EnvironmentBiomeSampling::Gaussian,
-            )
-        },
+        |eye| world.sampled_client_camera_environment_attributes_at(eye.map(f64::from)),
     );
     sampled.unwrap_or_else(|_| {
         world
