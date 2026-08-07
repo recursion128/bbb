@@ -1116,26 +1116,12 @@ pub fn build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera<'a>(
     section_ys: &[i32],
 ) -> TerrainSectionMeshLayers {
     let lookup = mesh::TerrainChunkLookup::with_target(target, neighborhood);
-    let opaque = mesh::build_chunk_section_subset_meshes_with_lookup(
-        target,
-        &lookup,
-        atlas,
-        mesh::TerrainMeshMode::OpaqueOnly,
-        section_ys,
-    );
-    let cutout = mesh::build_chunk_section_subset_meshes_with_lookup(
-        target,
-        &lookup,
-        atlas,
-        mesh::TerrainMeshMode::CutoutOnly,
-        section_ys,
-    );
-    let mut translucent = mesh::build_chunk_section_subset_meshes_with_lookup(
-        target,
-        &lookup,
-        atlas,
-        mesh::TerrainMeshMode::TranslucentOnly,
-        section_ys,
+    let mesh::TerrainSectionLayerMeshes {
+        opaque,
+        cutout,
+        mut translucent,
+    } = mesh::build_chunk_section_subset_mesh_layers_with_lookup(
+        target, &lookup, atlas, section_ys,
     );
     for section in &mut translucent {
         mesh::sort_translucent_quads_by_distance(&mut section.mesh, camera_position);

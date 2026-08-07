@@ -2004,6 +2004,37 @@ fn quad_shape_emits_custom_vertices_in_texture_layer() {
 }
 
 #[test]
+fn section_layer_builder_reuses_texture_layer_routing_without_changing_meshes() {
+    let mut face_transparency = [TerrainTransparency::OPAQUE; 6];
+    face_transparency[TerrainFace::Up.index()] = TerrainTransparency {
+        has_transparent: true,
+        has_translucent: false,
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+        .with_face_transparency(face_transparency);
+    cells[cell_index(3, 0, 4, 1)] = water_cell(86, 8);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+    let lookup = TerrainChunkLookup::with_target(&snapshot, []);
+    let atlas = TerrainTextureAtlas::unit();
+    let layers =
+        build_chunk_section_subset_mesh_layers_with_lookup(&snapshot, &lookup, &atlas, &[0]);
+
+    assert_eq!(
+        layers.opaque[0].mesh,
+        build_chunk_mesh_with_lookup(&snapshot, &lookup, &atlas, TerrainMeshMode::OpaqueOnly)
+    );
+    assert_eq!(
+        layers.cutout[0].mesh,
+        build_chunk_mesh_with_lookup(&snapshot, &lookup, &atlas, TerrainMeshMode::CutoutOnly)
+    );
+    assert_eq!(
+        layers.translucent[0].mesh,
+        build_chunk_mesh_with_lookup(&snapshot, &lookup, &atlas, TerrainMeshMode::TranslucentOnly,)
+    );
+}
+
+#[test]
 fn forced_translucent_box_faces_emit_in_translucent_layer() {
     let mut shape = slab_box_shape();
     let TerrainRenderShape::Box {

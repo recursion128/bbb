@@ -37,7 +37,22 @@ impl TerrainMeshMode {
             Self::OpaqueCutout => material.is_meshed_terrain(),
         }
     }
+
+    fn route_mask(self) -> u8 {
+        match self {
+            Self::OpaqueOnly => MESH_ROUTE_OPAQUE,
+            Self::CutoutOnly => MESH_ROUTE_CUTOUT,
+            Self::TranslucentOnly => MESH_ROUTE_TRANSLUCENT,
+            Self::OpaqueCutout => MESH_ROUTE_SURFACE,
+        }
+    }
 }
+
+const MESH_ROUTE_OPAQUE: u8 = 1 << 0;
+const MESH_ROUTE_CUTOUT: u8 = 1 << 1;
+const MESH_ROUTE_TRANSLUCENT: u8 = 1 << 2;
+const MESH_ROUTE_FLUID_OVERLAY: u8 = 1 << 3;
+const MESH_ROUTE_SURFACE: u8 = MESH_ROUTE_OPAQUE | MESH_ROUTE_CUTOUT | MESH_ROUTE_TRANSLUCENT;
 
 pub(super) fn build_chunk_mesh_with_lookup(
     snapshot: &TerrainChunkSnapshot,
@@ -46,27 +61,50 @@ pub(super) fn build_chunk_mesh_with_lookup(
     mode: TerrainMeshMode,
 ) -> TerrainMesh {
     let mut mesh =
-        build_chunk_mesh_range_with_lookup(snapshot, lookup, atlas, mode, 0, snapshot.height);
+        build_chunk_mesh_range_with_lookup(snapshot, lookup, atlas, mode, 0, snapshot.height, None);
     mesh.source_sections = snapshot.height.div_ceil(16);
     mesh
 }
 
-pub(super) fn build_chunk_section_subset_meshes_with_lookup(
+pub(super) struct TerrainSectionLayerMeshes {
+    pub(super) opaque: Vec<TerrainSectionMesh>,
+    pub(super) cutout: Vec<TerrainSectionMesh>,
+    pub(super) translucent: Vec<TerrainSectionMesh>,
+}
+
+pub(super) fn build_chunk_section_subset_mesh_layers_with_lookup(
     snapshot: &TerrainChunkSnapshot,
     lookup: &TerrainChunkLookup<'_>,
     atlas: &TerrainTextureAtlas,
-    mode: TerrainMeshMode,
     section_ys: &[i32],
-) -> Vec<TerrainSectionMesh> {
-    section_ys
-        .iter()
-        .copied()
-        .filter_map(|section_y| {
-            let section_min_y = section_y.checked_mul(16)?;
-            let start_y = usize::try_from(section_min_y.checked_sub(snapshot.min_y)?).ok()?;
-            (start_y < snapshot.height).then_some((section_y, start_y))
-        })
-        .map(|(section_y, start_y)| TerrainSectionMesh {
+) -> TerrainSectionLayerMeshes {
+    let mut layers = TerrainSectionLayerMeshes {
+        opaque: Vec::with_capacity(section_ys.len()),
+        cutout: Vec::with_capacity(section_ys.len()),
+        translucent: Vec::with_capacity(section_ys.len()),
+    };
+    let mut cell_mesh_routes = Vec::with_capacity(16 * 16 * 16);
+    for section_y in section_ys.iter().copied() {
+        let Some(section_min_y) = section_y.checked_mul(16) else {
+            continue;
+        };
+        let Some(relative_y) = section_min_y.checked_sub(snapshot.min_y) else {
+            continue;
+        };
+        let Ok(start_y) = usize::try_from(relative_y) else {
+            continue;
+        };
+        if start_y >= snapshot.height {
+            continue;
+        }
+        let end_y = (start_y + 16).min(snapshot.height);
+        cell_mesh_routes.clear();
+        cell_mesh_routes.extend(
+            snapshot.cells[start_y * 16 * 16..end_y * 16 * 16]
+                .iter()
+                .map(cell_mesh_route),
+        );
+        let build = |mode| TerrainSectionMesh {
             section_y,
             mesh: build_chunk_mesh_range_with_lookup(
                 snapshot,
@@ -74,10 +112,17 @@ pub(super) fn build_chunk_section_subset_meshes_with_lookup(
                 atlas,
                 mode,
                 start_y,
-                (start_y + 16).min(snapshot.height),
+                end_y,
+                Some(&cell_mesh_routes),
             ),
-        })
-        .collect()
+        };
+        layers.opaque.push(build(TerrainMeshMode::OpaqueOnly));
+        layers.cutout.push(build(TerrainMeshMode::CutoutOnly));
+        layers
+            .translucent
+            .push(build(TerrainMeshMode::TranslucentOnly));
+    }
+    layers
 }
 
 fn build_chunk_mesh_range_with_lookup(
@@ -87,34 +132,36 @@ fn build_chunk_mesh_range_with_lookup(
     mode: TerrainMeshMode,
     start_y: usize,
     end_y: usize,
+    cell_mesh_routes: Option<&[u8]>,
 ) -> TerrainMesh {
+    debug_assert!(cell_mesh_routes.is_none_or(|routes| routes.len() == (end_y - start_y) * 256));
     let mut mesh = TerrainMesh {
         source_sections: usize::from(start_y < end_y),
         ..TerrainMesh::default()
     };
     let cardinal = snapshot.cardinal_lighting;
-    for y in start_y as i32..end_y as i32 {
-        for z in 0..16 {
-            for x in 0..16 {
-                let cell = snapshot
-                    .cell(x, y, z)
-                    .expect("in-bounds terrain cell exists");
-                let has_fluid_overlay = has_fluid_overlay(cell);
-                if !mode.is_meshed(cell.material)
-                    && !has_texture_layer_overrides(cell)
-                    && !(matches!(mode, TerrainMeshMode::TranslucentOnly) && has_fluid_overlay)
-                {
+    for y in start_y..end_y {
+        for z in 0..16_usize {
+            for x in 0..16_usize {
+                let cell = &snapshot.cells[cell_index(x, y, z, snapshot.height)];
+                let route_index = ((y - start_y) * 16 + z) * 16 + x;
+                let mesh_route = cell_mesh_routes
+                    .map_or_else(|| cell_mesh_route(cell), |routes| routes[route_index]);
+                let has_fluid_overlay = mesh_route & MESH_ROUTE_FLUID_OVERLAY != 0;
+                let emits_fluid_overlay =
+                    matches!(mode, TerrainMeshMode::TranslucentOnly) && has_fluid_overlay;
+                if mesh_route & mode.route_mask() == 0 && !emits_fluid_overlay {
                     continue;
                 }
 
-                let world_x = snapshot.chunk_x * 16 + x;
-                let world_y = snapshot.min_y + y;
-                let world_z = snapshot.chunk_z * 16 + z;
-                if matches!(mode, TerrainMeshMode::TranslucentOnly) && has_fluid_overlay {
+                let world_x = snapshot.chunk_x * 16 + x as i32;
+                let world_y = snapshot.min_y + y as i32;
+                let world_z = snapshot.chunk_z * 16 + z as i32;
+                if emits_fluid_overlay {
                     emit_fluid_overlay(
                         &mut mesh, world_x, world_y, world_z, cell, lookup, atlas, cardinal,
                     );
-                    if !mode.is_meshed(cell.material) && !has_texture_layer_overrides(cell) {
+                    if mesh_route & MESH_ROUTE_TRANSLUCENT == 0 {
                         continue;
                     }
                 }
@@ -415,6 +462,22 @@ fn has_texture_layer_overrides(cell: &TerrainCell) -> bool {
                 .any(|model_quad| !is_opaque_transparency(model_quad.transparency)),
             TerrainRenderShape::Cube | TerrainRenderShape::Cross { .. } => false,
         }
+}
+
+fn cell_mesh_route(cell: &TerrainCell) -> u8 {
+    let mut route = match cell.material {
+        TerrainMaterialClass::Empty => 0,
+        TerrainMaterialClass::Opaque => MESH_ROUTE_OPAQUE,
+        TerrainMaterialClass::Cutout => MESH_ROUTE_CUTOUT,
+        TerrainMaterialClass::Fluid | TerrainMaterialClass::Translucent => MESH_ROUTE_TRANSLUCENT,
+    };
+    if has_texture_layer_overrides(cell) {
+        route |= MESH_ROUTE_SURFACE;
+    }
+    if has_fluid_overlay(cell) {
+        route |= MESH_ROUTE_FLUID_OVERLAY;
+    }
+    route
 }
 
 fn has_fluid_overlay(cell: &TerrainCell) -> bool {
