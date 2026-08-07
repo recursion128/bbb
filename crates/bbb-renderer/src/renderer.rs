@@ -3695,7 +3695,15 @@ impl Renderer {
             }
         }
         self.rebuild_translucent_section_order();
-        self.refresh_terrain_counters();
+        // Residency did not change here, and `visible` was already filtered
+        // against the current owner table above. Keep the visibility counter
+        // on that hot projection path without rescanning every resident mesh
+        // for bytes, bounds and face totals.
+        self.counters.visible_sections = if self.terrain_section_revisions.is_empty() {
+            self.counters.uploaded_sections
+        } else {
+            self.terrain_section_visibility.len()
+        };
     }
 
     /// Synchronizes renderer-owned section/layer GPU residency by stable
