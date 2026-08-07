@@ -7,6 +7,8 @@
 
 use std::sync::OnceLock;
 
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ARMOR_STAND_ID;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaEntityMetadataFamily {
     Entity,
@@ -978,11 +980,12 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
     entity_type_id: i32,
     java_name: &str,
 ) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
-    vanilla_entity_metadata_accessor_index()
-        .get(usize::try_from(entity_type_id).ok()?)?
-        .iter()
-        .copied()
-        .find(|entry| entry.java_name == java_name)
+    let accessors =
+        vanilla_entity_metadata_accessor_index().get(usize::try_from(entity_type_id).ok()?)?;
+    accessors
+        .binary_search_by(|entry| entry.java_name.cmp(java_name))
+        .ok()
+        .map(|index| accessors[index])
 }
 
 /// Resolves the accessor occupying `data_id` along an entity type's generated
@@ -1052,6 +1055,7 @@ fn vanilla_entity_metadata_accessor_index(
                     java_class = vanilla_entity_metadata_class(class_name)
                         .and_then(|class| class.superclass);
                 }
+                resolved.sort_unstable_by_key(|entry| entry.java_name);
                 resolved.into_boxed_slice()
             })
             .collect()
@@ -3298,6 +3302,16 @@ pub fn vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
 pub fn vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
     entity_type_id: i32,
 ) -> Option<VanillaArmorStandMetadataAccessors> {
+    if entity_type_id != VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+        return None;
+    }
+    static ACCESSORS: OnceLock<Option<VanillaArmorStandMetadataAccessors>> = OnceLock::new();
+    *ACCESSORS.get_or_init(resolve_vanilla_entity_metadata_armor_stand_accessors)
+}
+
+fn resolve_vanilla_entity_metadata_armor_stand_accessors(
+) -> Option<VanillaArmorStandMetadataAccessors> {
+    let entity_type_id = VANILLA_ENTITY_TYPE_ARMOR_STAND_ID;
     let client_flags =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_CLIENT_FLAGS")?;
     let client_flags_default = match (
@@ -3920,6 +3934,11 @@ pub fn vanilla_entity_metadata_mob_accessors_for_entity_type(
 
 /// Resolves the generated base Entity fields, typed defaults, and shared flag masks.
 pub fn vanilla_entity_metadata_entity_accessors() -> Option<VanillaEntityMetadataAccessors> {
+    static ACCESSORS: OnceLock<Option<VanillaEntityMetadataAccessors>> = OnceLock::new();
+    *ACCESSORS.get_or_init(resolve_vanilla_entity_metadata_entity_accessors)
+}
+
+fn resolve_vanilla_entity_metadata_entity_accessors() -> Option<VanillaEntityMetadataAccessors> {
     let accessor = |java_name| {
         VANILLA_ENTITY_METADATA_ACCESSORS_26_1.iter().find(|entry| {
             entry.owner == "net.minecraft.world.entity.Entity" && entry.java_name == java_name
