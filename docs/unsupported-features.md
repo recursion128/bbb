@@ -45,6 +45,25 @@ Matrix route: `coverage-external-client-census`
 
 <!-- architecture-candidates:start -->
 <!-- architecture-candidates:end -->
+
+## Machine-readable parity acceptance closure
+
+Owner: `scripts` + the matrix-declared BBB owners
+
+Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-client-runtime`, `lifecycle-session-replacement`, `lifecycle-client-task-handoff`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-default-pack-stack`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-packet-tables`, `protocol-listener-contracts`, `protocol-login-handler-decisions`, `protocol-configuration-handler-decisions`, `protocol-play-handler-decisions`, `protocol-client-state-flow`, `protocol-serverbound-call-sites`
+Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
+Matrix routes: `rendering-client-biome-tint`, `rendering-block-entity-registration`, `rendering-level-backend-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-block-model-pipeline`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-camera-fluid-fog`, `performance-official-equal-load`, `performance-gpu-execution-duration`, `platform-linux-seat-matrix`
+Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`, `coverage-external-client-census`, `docs-chinese-mechanism-wiki`
+
+- Produce a current-HEAD parity acceptance report whose 147 records and reverse
+  artifact/scenario mappings validate without a false `equivalent`: refresh the
+  Linux live/lifecycle receipts currently stamped at `f4b0cf1bb`, regenerate
+  visual/draw/two-round ABBA artifacts with an explicit BBB commit, and add exact
+  decision-test/source-owner evidence for every remaining matrix-only record.
+  The report must preserve the invalid host-audio receipt until real ALSA device
+  access exists; the user-waived macOS `deferred-external` row is not a closure
+  blocker but retains its source basis and reopen condition.
+
 ## Render-step and HUD presentation closure
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
@@ -205,6 +224,9 @@ Living-entity render state:
   getters directly without partial-tick interpolation. Only `yRot` uses
   `Mth.rotLerp`, and hit `wiggle` adds `partialTicks`; bbb already covers both.
 
+Reopen `rendering-official-noop-surfaces` if any routed Vanilla no-op owner gains
+a client-visible render state, submission, particle, or debug effect.
+
 ## HUD overlay and screen render surfaces
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
@@ -301,6 +323,10 @@ Matrix route: `ui-container-server-authority-exclusions`
   26.1 client handler is empty.
 - A combat-mode runtime transition for PlayerCombatEnd is `not-needed`: its
   decoded duration is diagnostic and its 26.1 client handler is empty.
+
+Reopen this route if any cited 26.1 handler changes its id guard, empty-body
+decision, or current-menu authority semantics.
+
 ## HUD and debug overlay
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
@@ -367,6 +393,10 @@ Matrix routes: `scope-telemetry-upload`, `protocol-framing-no-world-state`
   consumed by `PacketBundlePacker` / `BundlerInfo` as connection framing before
   listener dispatch; it has no payload, listener handler, or canonical world
   mutation.
+
+Reopen `scope-telemetry-upload` if the offline external-client scope gains a
+telemetry sender; reopen `protocol-framing-no-world-state` if the delimiter gains
+a payload, listener call, or observable canonical-world effect.
 
 ## Source inventory support owners
 
@@ -531,6 +561,10 @@ Matrix route: `rendering-nondeterministic-golden-exclusions`
   atlas and lightmap, and `RenderTypes.itemCutout` / `itemTranslucent` never call
   `useOverlay()`.
 - **Lightning sky flash tinting water fog.** Vanilla does not tint it.
+
+Reopen `rendering-nondeterministic-golden-exclusions` if a same-backend,
+same-driver deterministic raster contract becomes available, or if a cited
+Vanilla pipeline begins consuming one of the currently absent bindings/effects.
 
 ## Block entities
 

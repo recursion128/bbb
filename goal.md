@@ -498,10 +498,10 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。`audio-sound-manager-engine` 仍为 `partial`：inventory 的 144 个 audio owner 已全部有 decision-level implementation/test
-evidence，9 个 pause/manual-loop owner 另有 reopen condition；审计修复了 11 个 stored `soundCategory_*` 仅 round-trip、
-播放仍用默认值的真实缺口，并以已验证官方 OpenAL native 关闭 `Library` HRTF/device source count 和 `Channel`
-source/distance/static/四缓冲 streaming 实现差异；只余正式真实设备 differential receipt 留在账本。
+状态：`active`。machine-readable parity acceptance 首轮审计已把陈旧 live/lifecycle/visual/ABBA receipt 和缺精确
+focused/source evidence 的虚假 `equivalent` 降为 `partial` 并路由到账本；只有当前 HEAD 的 147-row 双向报告全绿才能恢复。
+`audio-sound-manager-engine` 也仍为 `partial`：144 个 owner 已有 decision implementation/test evidence，OpenAL HRTF/device
+capacity/static/streaming/lifecycle 已实现，只余正式真实设备 differential receipt；9 个不可达 pause/manual-loop owner 保留 reopen condition。
 
 audio 工程以 `scripts/capture-vanilla-audio-receipt.py` 冻结 OpenAL capacity、HRTF、短声音 lifecycle；生产 runtime
 从 26.1 manifest 校验/提取官方 OpenAL native，直接拥有 context/source/buffer/listener，消费 `directionalAudio`，以

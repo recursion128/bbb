@@ -25,6 +25,7 @@ LEDGERS = (
     "docs/evidence/vanilla-26.1/particle-provider-coverage.json",
 )
 FEATURE_LEDGER = "docs/unsupported-features.md"
+PARITY_REPORT = "docs/evidence/vanilla-26.1/parity-acceptance.json"
 CLOSED_STATUSES = frozenset({"complete", "not-applicable", "not-needed"})
 DEFERRED_STATUSES = frozenset({"deferred"})
 ROW_LABEL_KEYS = ("resource_id", "constant_name", "class_name", "id")
@@ -182,6 +183,28 @@ def summarize_feature_ledger(path: Path) -> list[str]:
     return lines
 
 
+def summarize_parity_report(path: Path) -> list[str]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    mechanisms = value.get("mechanisms", [])
+    false_equivalents = value.get("summary", {}).get("false_equivalent_ids", [])
+    open_ids = [
+        item.get("mechanism_id")
+        for item in mechanisms
+        if isinstance(item, dict) and item.get("final_conclusion") == "open"
+    ]
+    invalid = [
+        item.get("mechanism_id")
+        for item in mechanisms
+        if isinstance(item, dict) and item.get("valid") is not True
+    ]
+    return [
+        f"{path.name}: {len(mechanisms)} mechanisms"
+        f" | valid {len(mechanisms) - len(invalid)}"
+        f" | open {len(open_ids)}"
+        f" | false-equivalent {len(false_equivalents)}"
+    ]
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -192,6 +215,7 @@ def main(argv=None) -> int:
     )
     args = parser.parse_args(argv)
     blocks = [summarize_ledger(args.repo_root / ledger) for ledger in LEDGERS]
+    blocks.append(summarize_parity_report(args.repo_root / PARITY_REPORT))
     blocks.append(summarize_feature_ledger(args.repo_root / FEATURE_LEDGER))
     print("\n".join(line for block in blocks for line in block))
     return 0

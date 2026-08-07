@@ -299,6 +299,19 @@ if ! "$script_dir/python" python "$script_dir/docs_wiki_lint.py" \
   failed=1
 fi
 
+parity_acceptance="$repo_root/scripts/parity_acceptance.py"
+parity_report="$repo_root/docs/evidence/vanilla-26.1/parity-acceptance.json"
+if [ -n "$vanilla_root" ] && [ -f "$parity_acceptance" ] && [ -f "$parity_report" ]; then
+  if ! "$repo_root/scripts/python" python "$parity_acceptance" check \
+    --repo-root "$repo_root" \
+    --vanilla-root "$vanilla_root" \
+    --output "$parity_report"; then
+    failed=1
+  fi
+else
+  echo "docs lint: parity acceptance check skipped (Vanilla tree, checker, or report absent)"
+fi
+
 if [ "$failed" -ne 0 ]; then
   exit 1
 fi

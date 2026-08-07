@@ -66,6 +66,7 @@ VANILLA_EVIDENCE_MEMBERS = frozenset(
         "key-mapping-catalog.json",
         "packet-coverage.json",
         "particle-provider-coverage.json",
+        "parity-acceptance.json",
         "registry-holder-consumer-coverage.json",
     }
 )

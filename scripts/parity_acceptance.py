@@ -1,0 +1,1455 @@
+#!/usr/bin/env python3
+"""Build and validate the Vanilla 26.1 mechanism acceptance report.
+
+The parity matrix remains the only mechanism-status index.  This module joins
+that index to the generated Vanilla owner inventory, the feature ledger, the
+last full-gate receipt, and optional live/differential artifacts.  The output
+is evidence, not a second hand-maintained checklist: every artifact and
+scenario carries its reverse Mechanism-ID mapping and every mechanism record
+is derived from the matrix row with which it must agree.
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections import defaultdict
+from functools import lru_cache
+import hashlib
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+from typing import Iterable
+
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+MATRIX_PATH = Path("docs/wiki/parity/vanilla-26.1-matrix.md")
+INVENTORY_PATH = Path(
+    "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+)
+LEDGER_PATH = Path("docs/unsupported-features.md")
+REPORT_PATH = Path("docs/evidence/vanilla-26.1/parity-acceptance.json")
+GATE_LOG_PATH = Path(".git/bbb/gate-log.tsv")
+SCHEMA_VERSION = 1
+OPEN_STATUSES = frozenset(
+    {"partial", "missing", "active", "unverified", "deferred-external"}
+)
+ROUTED_STATUSES = OPEN_STATUSES | {"not-needed"}
+LIVE_SCENARIO_DOMAINS = frozenset(
+    {
+        "startup",
+        "lifecycle",
+        "protocol",
+        "world",
+        "movement",
+        "input",
+        "interaction",
+        "resources",
+    }
+)
+VISUAL_MECHANISMS = frozenset(
+    {
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-fluid-mesh",
+        "rendering-level-frame-graph",
+        "rendering-level-scene-projection",
+        "rendering-client-biome-tint",
+        "rendering-block-entity-registration",
+        "entities-renderer-registration",
+        "entities-layer-registration",
+        "entities-model-presentation",
+    }
+)
+EVIDENCE_ONLY_PREFIXES = (
+    "docs/",
+    "goal.md",
+)
+CODE_REF_RE = re.compile(
+    r"(?P<path>(?:crates|scripts|docs)/[A-Za-z0-9_./-]+(?:\.[A-Za-z0-9_-]+)?)"
+    r"(?:#(?P<symbol>[A-Za-z0-9_:<>.-]+))?"
+)
+LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+CLASS_TOKEN_RE = re.compile(r"\b[A-Z][A-Za-z0-9_$]*\b")
+RUST_TEST_RE = re.compile(
+    r"(?P<attrs>(?:\s*#\[[^\]]+\])+)\s*(?:pub(?:\([^)]*\))?\s+)?fn\s+"
+    r"(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\("
+)
+PYTHON_TEST_RE = re.compile(r"^\s*(?:async\s+)?def\s+(test_[A-Za-z0-9_]+)\s*\(", re.MULTILINE)
+
+
+class AcceptanceError(RuntimeError):
+    """The acceptance inputs or report violate the frozen contract."""
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def canonical_sha256(value: object) -> str:
+    encoded = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return sha256_bytes(encoded)
+
+
+def git(repo: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise AcceptanceError(
+            f"git {' '.join(args)} failed: {result.stderr.strip()}"
+        )
+    return result.stdout.strip()
+
+
+def changed_repo_paths(repo: Path, commit: str) -> set[str]:
+    """Return tracked and untracked paths not represented by ``commit``.
+
+    Unit-test fixtures intentionally are not Git repositories, so absence of a
+    repository means there is no commit-compatibility assertion to make there.
+    Production generation always runs in the real checkout.
+    """
+    tracked = subprocess.run(
+        ["git", "diff", "--name-only", commit, "--"],
+        cwd=repo,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if tracked.returncode != 0:
+        return set()
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=repo,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    values = set(tracked.stdout.splitlines())
+    if untracked.returncode == 0:
+        values.update(untracked.stdout.splitlines())
+    return values
+
+
+def parse_matrix(path: Path) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not line.startswith("| `"):
+            continue
+        cells = [cell.strip() for cell in line.strip().split("|")[1:-1]]
+        if len(cells) != 8:
+            raise AcceptanceError(f"malformed matrix row at {path}:{line_number}")
+        mechanism_id = cells[0].strip("`")
+        if mechanism_id in seen:
+            raise AcceptanceError(f"duplicate matrix mechanism {mechanism_id}")
+        seen.add(mechanism_id)
+        status_match = re.fullmatch(r"`([^`]+)`", cells[5])
+        if status_match is None:
+            raise AcceptanceError(f"malformed status for {mechanism_id}")
+        rows.append(
+            {
+                "mechanism_id": mechanism_id,
+                "domain": cells[1],
+                "vanilla_owner": cells[2],
+                "bbb_owner": cells[3],
+                "required_state": cells[4],
+                "status": status_match.group(1),
+                "evidence": cells[6],
+                "route": cells[7],
+                "line": str(line_number),
+            }
+        )
+    if not rows:
+        raise AcceptanceError("parity matrix has no mechanism rows")
+    return rows
+
+
+def ledger_sections(text: str) -> tuple[dict[str, str], set[str]]:
+    sections: list[str] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("## ") and current:
+            sections.append("\n".join(current))
+            current = []
+        current.append(line)
+    if current:
+        sections.append("\n".join(current))
+    routed_sections: dict[str, list[str]] = defaultdict(list)
+    for section in sections:
+        for mechanism_id in re.findall(r"`([a-z0-9]+(?:-[a-z0-9]+)*)`", section):
+            if section not in routed_sections[mechanism_id]:
+                routed_sections[mechanism_id].append(section)
+    by_id = {
+        mechanism_id: "\n\n".join(values)
+        for mechanism_id, values in routed_sections.items()
+    }
+    return by_id, set(by_id)
+
+
+def source_index(source_root: Path) -> dict[str, list[Path]]:
+    result: dict[str, list[Path]] = defaultdict(list)
+    for path in source_root.rglob("*.java"):
+        result[path.stem].append(path)
+    for paths in result.values():
+        paths.sort()
+    return dict(result)
+
+
+def relative_source(source_root: Path, path: Path) -> str:
+    return path.relative_to(source_root).as_posix()
+
+
+def matched_source_hashes(
+    *,
+    row: dict[str, str],
+    owners: list[dict[str, object]],
+    inventory_hashes: dict[str, str],
+    class_sources: dict[str, list[Path]],
+    source_root: Path,
+    ledger_basis: str,
+    evidence_basis: str,
+) -> list[dict[str, object]]:
+    paths: set[str] = set()
+    for owner in owners:
+        source = owner.get("source")
+        if isinstance(source, dict) and isinstance(source.get("path"), str):
+            paths.add(source["path"])
+
+    def add_matching_tokens(text: str, maximum: int | None = None) -> None:
+        for token in CLASS_TOKEN_RE.findall(text):
+            for path in class_sources.get(token, []):
+                paths.add(relative_source(source_root, path))
+                if maximum is not None and len(paths) >= maximum:
+                    return
+
+    if not paths:
+        add_matching_tokens(" ".join((row["vanilla_owner"], row["required_state"])))
+    if not paths:
+        add_matching_tokens(evidence_basis, maximum=16)
+    if not paths:
+        add_matching_tokens(ledger_basis, maximum=16)
+    result: list[dict[str, object]] = []
+    for relative in sorted(paths):
+        candidate = source_root / relative
+        digest = inventory_hashes.get(relative)
+        if candidate.is_file():
+            actual = sha256_file(candidate)
+            if digest is not None and digest != actual:
+                raise AcceptanceError(f"stale inventory source hash: {relative}")
+            digest = actual
+        if digest is not None:
+            result.append({"path": relative, "sha256": digest})
+    return result
+
+
+def resolve_markdown_link(repo: Path, source: Path, raw: str) -> Path | None:
+    target = raw.strip().strip("<>").split("#", 1)[0]
+    if not target or target.startswith(("http://", "https://", "mailto:")):
+        return None
+    candidate = (source.parent / target).resolve()
+    try:
+        candidate.relative_to(repo.resolve())
+    except ValueError:
+        return None
+    return candidate
+
+
+def evidence_references(
+    repo: Path,
+    matrix_path: Path,
+    row: dict[str, str],
+    mechanism: dict[str, object] | None,
+) -> list[str]:
+    refs: set[str] = set()
+    if isinstance(mechanism, dict):
+        values = mechanism.get("bbb_evidence")
+        if isinstance(values, list):
+            refs.update(value for value in values if isinstance(value, str))
+    for match in CODE_REF_RE.finditer(row["evidence"]):
+        reference = match.group("path")
+        if match.group("symbol"):
+            reference += f"#{match.group('symbol')}"
+        refs.add(reference)
+    for raw in LINK_RE.findall(row["evidence"]):
+        candidate = resolve_markdown_link(repo, matrix_path, raw)
+        if candidate is not None and candidate.is_file():
+            refs.add(candidate.relative_to(repo).as_posix())
+    return sorted(refs)
+
+
+def nested_code_references(value: object) -> Iterable[str]:
+    if isinstance(value, str):
+        for match in CODE_REF_RE.finditer(value):
+            reference = match.group("path")
+            if match.group("symbol"):
+                reference += f"#{match.group('symbol')}"
+            yield reference
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from nested_code_references(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from nested_code_references(child)
+
+
+def nested_document_references(path: Path) -> Iterable[str]:
+    text = path.read_text(encoding="utf-8")
+    yield from nested_code_references(text)
+
+
+def reference_path(reference: str) -> str:
+    return reference.split("#", 1)[0]
+
+
+def reference_symbol(reference: str) -> str | None:
+    _path, separator, symbol = reference.partition("#")
+    return symbol if separator and symbol else None
+
+
+@lru_cache(maxsize=None)
+def test_symbols(path: Path) -> dict[str, bool]:
+    if path.suffix not in {".rs", ".py"}:
+        return {}
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".py":
+        return {name: False for name in PYTHON_TEST_RE.findall(text)}
+    result: dict[str, bool] = {}
+    for match in RUST_TEST_RE.finditer(text):
+        attrs = match.group("attrs")
+        if "#[test]" not in attrs:
+            continue
+        result[match.group("name")] = "#[ignore" in attrs
+    return result
+
+
+def focused_test_references(repo: Path, initial: Iterable[str]) -> list[dict[str, object]]:
+    queue = list(initial)
+    visited: set[str] = set()
+    candidates: set[str] = set()
+    while queue:
+        reference = queue.pop()
+        if reference in visited:
+            continue
+        visited.add(reference)
+        relative = reference_path(reference)
+        path = repo / relative
+        if not path.is_file():
+            continue
+        symbol = reference_symbol(reference)
+        symbols = test_symbols(path)
+        if symbol is not None:
+            leaf = symbol.rsplit("::", 1)[-1]
+            if leaf in symbols:
+                candidates.add(f"{relative}#{leaf}")
+        else:
+            if path.suffix == ".json":
+                try:
+                    queue.extend(nested_code_references(json.loads(path.read_text(encoding="utf-8"))))
+                except json.JSONDecodeError:
+                    pass
+            elif path.suffix == ".md":
+                queue.extend(nested_document_references(path))
+            elif path.name.startswith("test_"):
+                candidates.update(f"{relative}#{name}" for name in symbols)
+    tests: list[dict[str, object]] = []
+    for reference in sorted(candidates):
+        relative, symbol = reference.split("#", 1)
+        path = repo / relative
+        ignored = test_symbols(path).get(symbol, False)
+        if relative.startswith("crates/"):
+            crate = Path(relative).parts[1]
+            command = f"scripts/cargo-dev.sh test -p {crate} {symbol}"
+        else:
+            command = "scripts/dev test python --suite all"
+        tests.append(
+            {
+                "command": command,
+                "ignored": ignored,
+                "reference": reference,
+                "result": "ignored" if ignored else "passed-via-full-gate",
+            }
+        )
+    return tests
+
+
+def gate_receipt(repo: Path, gate_log: Path, commit: str) -> dict[str, object]:
+    if not gate_log.is_file():
+        return {
+            "artifact_id": "full-gate",
+            "bbb_commit": commit,
+            "exists": False,
+            "invalid_reasons": ["gate log is absent"],
+            "kind": "gate",
+            "path": gate_log.relative_to(repo).as_posix()
+            if gate_log.is_relative_to(repo)
+            else str(gate_log),
+            "sha256": None,
+            "valid": False,
+        }
+    selected = None
+    for line in gate_log.read_text(encoding="utf-8").splitlines():
+        cells = line.split("\t")
+        if len(cells) >= 4 and cells[1] == commit and cells[2] == "clean":
+            selected = line
+    reasons = [] if selected else [f"no clean full-gate receipt for {commit}"]
+    return {
+        "artifact_id": "full-gate",
+        "bbb_commit": commit,
+        "exists": True,
+        "invalid_reasons": reasons,
+        "kind": "gate",
+        "path": gate_log.relative_to(repo).as_posix()
+        if gate_log.is_relative_to(repo)
+        else str(gate_log),
+        "receipt": selected,
+        "sha256": sha256_file(gate_log),
+        "valid": not reasons,
+    }
+
+
+def artifact_commit(kind: str, value: object, path: Path) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    for key in ("head", "bbb_commit", "commit"):
+        candidate = value.get(key)
+        if isinstance(candidate, str) and re.fullmatch(r"[0-9a-f]{40}", candidate):
+            return candidate
+    if kind == "workload":
+        review = value.get("visual_review")
+        if isinstance(review, dict) and isinstance(review.get("note"), str):
+            match = re.search(r"\b([0-9a-f]{7,40})\b", review["note"])
+            if match:
+                return match.group(1)
+    if kind == "lifecycle":
+        stamp = path.parent / "last-lifecycle-soak"
+        if stamp.is_file():
+            candidate = stamp.read_text(encoding="utf-8").strip()
+            if re.fullmatch(r"[0-9a-f]{40}", candidate):
+                return candidate
+    return None
+
+
+def artifact_scenario_ids(kind: str, value: dict[str, object]) -> list[str]:
+    """Extract stable experiment names without interpreting their outcome."""
+    candidates: object = None
+    if kind == "workload":
+        candidates = value.get("screenshot_pairs")
+    elif kind == "draw":
+        candidates = value.get("captures")
+    if not isinstance(candidates, list):
+        return []
+    scenario_ids = {
+        item.get("capture_segment")
+        for item in candidates
+        if isinstance(item, dict) and isinstance(item.get("capture_segment"), str)
+    }
+    return sorted(scenario_ids)
+
+
+def external_artifact(
+    *, kind: str, artifact_id: str, path: Path | None, evidence_commit: str
+) -> dict[str, object]:
+    if path is None:
+        return {
+            "artifact_id": artifact_id,
+            "bbb_commit": None,
+            "exists": False,
+            "invalid_reasons": [f"{kind} artifact was not supplied"],
+            "kind": kind,
+            "path": None,
+            "scenario_ids": [],
+            "sha256": None,
+            "valid": False,
+        }
+    if not path.is_file():
+        return {
+            "artifact_id": artifact_id,
+            "bbb_commit": None,
+            "exists": False,
+            "invalid_reasons": [f"artifact does not exist: {path}"],
+            "kind": kind,
+            "path": str(path),
+            "scenario_ids": [],
+            "sha256": None,
+            "valid": False,
+        }
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        return {
+            "artifact_id": artifact_id,
+            "bbb_commit": None,
+            "exists": True,
+            "invalid_reasons": [f"invalid JSON artifact: {error}"],
+            "kind": kind,
+            "path": str(path),
+            "scenario_ids": [],
+            "sha256": sha256_file(path),
+            "valid": False,
+        }
+    if not isinstance(value, dict):
+        return {
+            "artifact_id": artifact_id,
+            "bbb_commit": None,
+            "exists": True,
+            "invalid_reasons": ["artifact JSON root is not an object"],
+            "kind": kind,
+            "path": str(path),
+            "scenario_ids": [],
+            "sha256": sha256_file(path),
+            "valid": False,
+        }
+    commit = artifact_commit(kind, value, path)
+    reasons: list[str] = []
+    status = value.get("status") if isinstance(value, dict) else None
+    if kind == "performance" and value.get("formal_comparison_complete") is not True:
+        reasons.append("formal comparison is incomplete")
+    elif kind == "workload" and status != "matched":
+        reasons.append(f"workload status is {status!r}, not 'matched'")
+    elif kind == "draw" and status != "validated":
+        reasons.append(f"draw status is {status!r}, not 'validated'")
+    elif kind == "platform" and status != "passed":
+        reasons.append(f"platform status is {status!r}, not 'passed'")
+    elif kind == "audio" and value.get("valid") is not True:
+        reasons.append("formal host-device audio receipt is invalid")
+    if commit is None:
+        reasons.append("artifact does not identify the BBB commit")
+    elif not evidence_commit.startswith(commit) and commit != evidence_commit:
+        reasons.append(
+            f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
+        )
+    return {
+        "artifact_id": artifact_id,
+        "bbb_commit": commit,
+        "exists": True,
+        "invalid_reasons": reasons,
+        "kind": kind,
+        "path": str(path),
+        "scenario_ids": artifact_scenario_ids(kind, value),
+        "sha256": sha256_file(path),
+        "valid": not reasons,
+    }
+
+
+def repo_artifact(repo: Path, artifact_id: str, relative: str) -> dict[str, object]:
+    path = repo / relative
+    return {
+        "artifact_id": artifact_id,
+        "bbb_commit": None,
+        "exists": path.is_file(),
+        "invalid_reasons": [] if path.is_file() else [f"missing repo evidence: {relative}"],
+        "kind": "repo-evidence",
+        "path": relative,
+        "scenario_ids": [],
+        "sha256": sha256_file(path) if path.is_file() else None,
+        "valid": path.is_file(),
+    }
+
+
+def external_artifact_ids(row: dict[str, str]) -> list[str]:
+    mechanism_id = row["mechanism_id"]
+    domain_parts = set(re.split(r"[/,]", row["domain"]))
+    result: list[str] = []
+    if mechanism_id == "audio-sound-manager-engine":
+        result.append("audio-host-device")
+    if mechanism_id.startswith("performance-"):
+        result.extend(("performance-abba", "visual-workload", "draw-evidence"))
+    if mechanism_id in VISUAL_MECHANISMS or mechanism_id.startswith("rendering-block"):
+        result.extend(("visual-workload", "draw-evidence"))
+    if mechanism_id == "platform-linux-seat-matrix":
+        result.append("linux-platform")
+    if mechanism_id.startswith("lifecycle-") or mechanism_id == "resources-indexed-panorama":
+        result.append("lifecycle-soak")
+    if (
+        domain_parts & LIVE_SCENARIO_DOMAINS
+        and row["status"] not in {"not-needed", "deferred-external"}
+        and not mechanism_id.startswith("performance-")
+        and mechanism_id not in {"audio-sound-manager-engine"}
+    ):
+        result.append("linux-platform")
+    return sorted(set(result))
+
+
+def differential_kind(row: dict[str, str]) -> str:
+    domain = row["domain"]
+    if "protocol" in domain:
+        return "packet-trace"
+    if "render" in domain or row["mechanism_id"] in VISUAL_MECHANISMS:
+        return "visual/draw"
+    if "platform" in domain:
+        return "platform-receipt"
+    return "state-trace"
+
+
+def build_report(
+    *,
+    repo: Path,
+    source_root: Path,
+    evidence_commit: str,
+    gate_log: Path,
+    performance_summary: Path | None = None,
+    workload_summary: Path | None = None,
+    draw_summary: Path | None = None,
+    platform_report: Path | None = None,
+    lifecycle_report: Path | None = None,
+    audio_report: Path | None = None,
+) -> dict[str, object]:
+    repo = repo.resolve()
+    matrix_path = repo / MATRIX_PATH
+    inventory_path = repo / INVENTORY_PATH
+    ledger_path = repo / LEDGER_PATH
+    rows = parse_matrix(matrix_path)
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    if inventory.get("vanilla_version") != "26.1":
+        raise AcceptanceError("client mechanism inventory is not Vanilla 26.1")
+    mechanisms = inventory.get("mechanisms")
+    owners_value = inventory.get("owners")
+    source_files = inventory.get("source_files")
+    if not isinstance(mechanisms, dict) or not isinstance(owners_value, list):
+        raise AcceptanceError("malformed client mechanism inventory")
+    if not isinstance(source_files, list):
+        raise AcceptanceError("inventory lacks source hashes")
+    inventory_hashes = {
+        item["path"]: item["sha256"]
+        for item in source_files
+        if isinstance(item, dict)
+        and isinstance(item.get("path"), str)
+        and isinstance(item.get("sha256"), str)
+    }
+    corpus_source_sha256 = canonical_sha256(source_files)
+    owners_by_mechanism: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for owner in owners_value:
+        if isinstance(owner, dict) and isinstance(owner.get("mechanism_id"), str):
+            owners_by_mechanism[owner["mechanism_id"]].append(owner)
+    ledger_text = ledger_path.read_text(encoding="utf-8")
+    ledger_by_id, ledger_ids = ledger_sections(ledger_text)
+    class_sources = source_index(source_root)
+    changed_paths = changed_repo_paths(repo, evidence_commit)
+
+    artifacts: dict[str, dict[str, object]] = {
+        "parity-matrix": repo_artifact(repo, "parity-matrix", MATRIX_PATH.as_posix()),
+        "client-owner-inventory": repo_artifact(
+            repo, "client-owner-inventory", INVENTORY_PATH.as_posix()
+        ),
+        "feature-ledger": repo_artifact(repo, "feature-ledger", LEDGER_PATH.as_posix()),
+        "full-gate": gate_receipt(repo, gate_log, evidence_commit),
+        "performance-abba": external_artifact(
+            kind="performance",
+            artifact_id="performance-abba",
+            path=performance_summary,
+            evidence_commit=evidence_commit,
+        ),
+        "visual-workload": external_artifact(
+            kind="workload",
+            artifact_id="visual-workload",
+            path=workload_summary,
+            evidence_commit=evidence_commit,
+        ),
+        "draw-evidence": external_artifact(
+            kind="draw",
+            artifact_id="draw-evidence",
+            path=draw_summary,
+            evidence_commit=evidence_commit,
+        ),
+        "linux-platform": external_artifact(
+            kind="platform",
+            artifact_id="linux-platform",
+            path=platform_report,
+            evidence_commit=evidence_commit,
+        ),
+        "lifecycle-soak": external_artifact(
+            kind="lifecycle",
+            artifact_id="lifecycle-soak",
+            path=lifecycle_report,
+            evidence_commit=evidence_commit,
+        ),
+        "audio-host-device": external_artifact(
+            kind="audio",
+            artifact_id="audio-host-device",
+            path=audio_report,
+            evidence_commit=evidence_commit,
+        ),
+    }
+    artifact_mechanisms: dict[str, set[str]] = defaultdict(set)
+    scenario_mechanisms: dict[str, set[str]] = defaultdict(set)
+    scenario_artifacts: dict[str, set[str]] = defaultdict(set)
+    scenario_kinds: dict[str, set[str]] = defaultdict(set)
+    scenario_statuses: dict[str, set[str]] = defaultdict(set)
+    records: list[dict[str, object]] = []
+
+    for row in rows:
+        mechanism_id = row["mechanism_id"]
+        owner_rows = owners_by_mechanism.get(mechanism_id, [])
+        mechanism = mechanisms.get(mechanism_id)
+        ledger_basis = ledger_by_id.get(mechanism_id, "")
+        refs = evidence_references(
+            repo, matrix_path, row, mechanism if isinstance(mechanism, dict) else None
+        )
+        evidence_basis_parts = [row["evidence"]]
+        for reference in refs:
+            path = repo / reference_path(reference)
+            if path.is_file() and path.suffix == ".md":
+                evidence_basis_parts.append(path.read_text(encoding="utf-8"))
+        source_hashes = matched_source_hashes(
+            row=row,
+            owners=owner_rows,
+            inventory_hashes=inventory_hashes,
+            class_sources=class_sources,
+            source_root=source_root,
+            ledger_basis=ledger_basis,
+            evidence_basis="\n".join(evidence_basis_parts),
+        )
+        owner_tests: set[str] = set()
+        for owner in owner_rows:
+            bbb_evidence = owner.get("bbb_evidence")
+            if isinstance(bbb_evidence, dict):
+                tests = bbb_evidence.get("tests")
+                if isinstance(tests, list):
+                    owner_tests.update(item for item in tests if isinstance(item, str))
+        tests = focused_test_references(repo, [*refs, *owner_tests])
+        test_source_artifact_ids = sorted(
+            {
+                f"repo:{reference_path(str(test['reference']))}"
+                for test in tests
+                if isinstance(test.get("reference"), str)
+            }
+        )
+        if len(tests) > 128:
+            test_references = [str(test["reference"]) for test in tests]
+            tests = [
+                {
+                    "command": "scripts/cargo-dev.sh gate",
+                    "evidence_set_count": len(test_references),
+                    "evidence_set_sha256": canonical_sha256(test_references),
+                    "ignored": False,
+                    "result": "passed-via-full-gate",
+                    "source_artifact_ids": sorted(
+                        test_source_artifact_ids
+                    ),
+                }
+            ]
+        has_executable_tests = bool(tests)
+
+        artifact_ids = {"parity-matrix"}
+        artifact_ids.add("client-owner-inventory")
+        if row["status"] in ROUTED_STATUSES:
+            artifact_ids.add("feature-ledger")
+        for reference in refs:
+            relative = reference_path(reference)
+            path = repo / relative
+            if not path.is_file():
+                continue
+            artifact_id = f"repo:{relative}"
+            artifacts.setdefault(artifact_id, repo_artifact(repo, artifact_id, relative))
+            artifact_ids.add(artifact_id)
+        for artifact_id in test_source_artifact_ids:
+            relative = artifact_id.removeprefix("repo:")
+            artifacts.setdefault(artifact_id, repo_artifact(repo, artifact_id, relative))
+            artifact_ids.add(artifact_id)
+        external_ids = external_artifact_ids(row)
+        artifact_ids.update(external_ids)
+        if has_executable_tests:
+            artifact_ids.add("full-gate")
+
+        scenarios: list[dict[str, object]] = []
+        if has_executable_tests:
+            scenario_id = f"focused-{mechanism_id}"
+            scenario_artifact_ids = sorted(
+                {"full-gate"}
+                | set(test_source_artifact_ids)
+            )
+            scenarios.append(
+                {
+                    "artifact_ids": scenario_artifact_ids,
+                    "kind": differential_kind(row),
+                    "scenario_id": scenario_id,
+                    "status": "passed"
+                    if artifacts["full-gate"]["valid"]
+                    and any(not test["ignored"] for test in tests)
+                    else "invalid",
+                }
+            )
+        for artifact_id in external_ids:
+            detailed_ids = artifacts[artifact_id].get("scenario_ids", [])
+            suffixes = [None]
+            if isinstance(detailed_ids, list):
+                suffixes.extend(
+                    item for item in detailed_ids if isinstance(item, str)
+                )
+            for suffix in suffixes:
+                scenario_id = f"receipt-{artifact_id}"
+                if suffix is not None:
+                    scenario_id += f":{suffix}"
+                scenarios.append(
+                    {
+                        "artifact_ids": [artifact_id],
+                        "kind": artifacts[artifact_id]["kind"],
+                        "scenario_id": scenario_id,
+                        "status": "passed"
+                        if artifacts[artifact_id]["valid"]
+                        else "invalid",
+                    }
+                )
+        if row["status"] in {"not-needed", "deferred-external"}:
+            scenarios.append(
+                {
+                    "artifact_ids": ["feature-ledger", "client-owner-inventory"],
+                    "kind": "scope-ruling",
+                    "scenario_id": f"scope-{mechanism_id}",
+                    "status": "passed" if mechanism_id in ledger_ids else "invalid",
+                }
+            )
+        if not scenarios:
+            scenarios.append(
+                {
+                    "artifact_ids": ["parity-matrix", "client-owner-inventory"],
+                    "kind": differential_kind(row),
+                    "scenario_id": f"missing-{mechanism_id}",
+                    "status": "invalid",
+                }
+            )
+
+        reported_tests = tests
+        if not reported_tests:
+            reported_tests = [
+                {
+                    "command": None,
+                    "ignored": False,
+                    "reference": None,
+                    "result": "not-applicable"
+                    if row["status"] in {"not-needed", "deferred-external"}
+                    else "missing",
+                }
+            ]
+
+        reasons: list[str] = []
+        if not source_hashes and not mechanism_id.startswith(("coverage-", "docs-")):
+            reasons.append("no hashed Vanilla owner source was resolved")
+        if row["status"] in ROUTED_STATUSES and mechanism_id not in ledger_ids:
+            reasons.append("matrix status has no bilateral ledger route")
+        missing_refs = sorted(
+            reference for reference in refs if not (repo / reference_path(reference)).is_file()
+        )
+        if missing_refs:
+            reasons.append("missing BBB evidence references: " + ", ".join(missing_refs))
+        for artifact_id in external_ids:
+            if not artifacts[artifact_id]["valid"]:
+                reasons.append(
+                    f"required {artifact_id} receipt is invalid: "
+                    + "; ".join(artifacts[artifact_id]["invalid_reasons"])
+                )
+        if row["status"] == "equivalent":
+            changed_evidence = sorted(
+                {
+                    relative
+                    for relative in (
+                        [reference_path(reference) for reference in refs]
+                        + [
+                            artifact_id.removeprefix("repo:")
+                            for artifact_id in test_source_artifact_ids
+                        ]
+                    )
+                    if relative in changed_paths
+                }
+            )
+            if changed_evidence:
+                reasons.append(
+                    "BBB evidence changed after the gated commit: "
+                    + ", ".join(changed_evidence)
+                )
+            passed_focused = any(
+                scenario["scenario_id"] == f"focused-{mechanism_id}"
+                and scenario["status"] == "passed"
+                for scenario in scenarios
+            )
+            passed_external = any(
+                scenario["scenario_id"].startswith("receipt-")
+                and scenario["status"] == "passed"
+                for scenario in scenarios
+            )
+            if not passed_focused and not passed_external:
+                reasons.append("equivalent row has no current passing focused or differential receipt")
+        elif row["status"] == "not-needed":
+            if not ledger_basis or "Reopen" not in ledger_basis:
+                reasons.append("not-needed ruling lacks a ledger reopen condition")
+        elif row["status"] == "deferred-external":
+            if not ledger_basis or "Reopen when" not in ledger_basis:
+                reasons.append("deferred ruling lacks an exact Reopen when condition")
+        else:
+            if not has_executable_tests and not external_ids:
+                reasons.append("focused decision evidence is missing")
+            reasons.append(f"mechanism remains open with matrix status {row['status']}")
+
+        valid = not reasons
+        if row["status"] == "equivalent":
+            conclusion = "equivalent" if valid else "invalid-equivalent"
+        elif row["status"] == "not-needed":
+            conclusion = "not-needed" if valid else "invalid-scope-ruling"
+        elif row["status"] == "deferred-external":
+            conclusion = "deferred-external" if valid else "invalid-deferred-ruling"
+        else:
+            conclusion = "open"
+        owner_ids = sorted(
+            owner["owner_id"]
+            for owner in owner_rows
+            if isinstance(owner.get("owner_id"), str)
+        )
+        record = {
+            "artifact_ids": sorted(artifact_ids),
+            "bbb": {
+                "evidence_commit": evidence_commit,
+                "evidence_references": refs,
+                "owner": row["bbb_owner"],
+            },
+            "differential_scenarios": scenarios,
+            "final_conclusion": conclusion,
+            "focused_tests": reported_tests,
+            "mechanism_id": mechanism_id,
+            "matrix": {
+                "domain": row["domain"],
+                "line": int(row["line"]),
+                "required_state_projection": row["required_state"],
+                "route_reopen_condition": row["route"],
+                "status": row["status"],
+            },
+            "valid": valid,
+            "validity_reasons": reasons,
+            "vanilla": {
+                "corpus_source_sha256": corpus_source_sha256,
+                "inventory_owner_count": len(owner_ids),
+                "inventory_owner_ids": owner_ids,
+                "inventory_owner_set_sha256": canonical_sha256(owner_ids),
+                "matrix_owner": row["vanilla_owner"],
+                "source_hashes": source_hashes,
+            },
+        }
+        records.append(record)
+        for artifact_id in artifact_ids:
+            artifact_mechanisms[artifact_id].add(mechanism_id)
+        for scenario in scenarios:
+            scenario_id = str(scenario["scenario_id"])
+            scenario_mechanisms[scenario_id].add(mechanism_id)
+            scenario_artifacts[scenario_id].update(
+                str(item) for item in scenario["artifact_ids"]
+            )
+            scenario_kinds[scenario_id].add(str(scenario["kind"]))
+            scenario_statuses[scenario_id].add(str(scenario["status"]))
+
+    artifact_values = []
+    for artifact_id in sorted(artifacts):
+        artifact = dict(artifacts[artifact_id])
+        artifact["mechanism_ids"] = sorted(artifact_mechanisms.get(artifact_id, set()))
+        artifact_values.append(artifact)
+    scenario_values = []
+    for scenario_id, mechanism_ids in sorted(scenario_mechanisms.items()):
+        kinds = scenario_kinds[scenario_id]
+        statuses = scenario_statuses[scenario_id]
+        if len(kinds) != 1 or len(statuses) != 1:
+            raise AcceptanceError(f"inconsistent shared scenario metadata: {scenario_id}")
+        scenario_values.append(
+            {
+                "artifact_ids": sorted(scenario_artifacts[scenario_id]),
+                "kind": next(iter(kinds)),
+                "mechanism_ids": sorted(mechanism_ids),
+                "scenario_id": scenario_id,
+                "status": next(iter(statuses)),
+            }
+        )
+    status_counts: dict[str, int] = defaultdict(int)
+    invalid_ids: list[str] = []
+    false_equivalents: list[str] = []
+    for record in records:
+        status = str(record["matrix"]["status"])
+        status_counts[status] += 1
+        if not record["valid"]:
+            invalid_ids.append(str(record["mechanism_id"]))
+            if status == "equivalent":
+                false_equivalents.append(str(record["mechanism_id"]))
+    invalid_ids.sort()
+    false_equivalents.sort()
+    generator_inputs = []
+    for relative in (
+        "scripts/parity_acceptance.py",
+        MATRIX_PATH.as_posix(),
+        INVENTORY_PATH.as_posix(),
+        LEDGER_PATH.as_posix(),
+    ):
+        path = repo / relative
+        generator_inputs.append({"path": relative, "sha256": sha256_file(path)})
+    return {
+        "artifacts": artifact_values,
+        "bbb_evidence_commit": evidence_commit,
+        "commands": {
+            "portable_check": "scripts/python python scripts/parity_acceptance.py check",
+            "strict_artifact_check": "scripts/python python scripts/parity_acceptance.py check --require-artifacts --require-complete",
+        },
+        "generated_by": "scripts/parity_acceptance.py",
+        "generator_inputs": generator_inputs,
+        "mechanisms": records,
+        "scenarios": scenario_values,
+        "schema_version": SCHEMA_VERSION,
+        "summary": {
+            "declared_scope_complete": not invalid_ids,
+            "false_equivalent_ids": false_equivalents,
+            "invalid_ids": invalid_ids,
+            "mechanism_count": len(records),
+            "status_counts": dict(sorted(status_counts.items())),
+            "valid_count": len(records) - len(invalid_ids),
+        },
+        "vanilla_version": "26.1",
+    }
+
+
+def validate_report(
+    report: dict[str, object],
+    *,
+    repo: Path,
+    source_root: Path,
+    enforce_current: bool,
+    require_artifacts: bool = False,
+    require_complete: bool = False,
+) -> list[str]:
+    issues: list[str] = []
+    if report.get("schema_version") != SCHEMA_VERSION:
+        issues.append("unsupported parity acceptance schema")
+    if report.get("vanilla_version") != "26.1":
+        issues.append("parity acceptance report is not Vanilla 26.1")
+    rows = parse_matrix(repo / MATRIX_PATH)
+    rows_by_id = {row["mechanism_id"]: row for row in rows}
+    matrix_ids = [row["mechanism_id"] for row in rows]
+    inventory = json.loads((repo / INVENTORY_PATH).read_text(encoding="utf-8"))
+    inventory_owners = inventory.get("owners", [])
+    inventory_source_files = inventory.get("source_files", [])
+    if not isinstance(inventory_owners, list) or not isinstance(
+        inventory_source_files, list
+    ):
+        return [*issues, "client mechanism inventory is malformed"]
+    inventory_owner_ids: dict[str, list[str]] = defaultdict(list)
+    for owner in inventory_owners:
+        if (
+            isinstance(owner, dict)
+            and isinstance(owner.get("mechanism_id"), str)
+            and isinstance(owner.get("owner_id"), str)
+        ):
+            inventory_owner_ids[owner["mechanism_id"]].append(owner["owner_id"])
+    for owner_ids in inventory_owner_ids.values():
+        owner_ids.sort()
+    corpus_source_sha256 = canonical_sha256(inventory_source_files)
+    ledger_by_id, ledger_ids = ledger_sections(
+        (repo / LEDGER_PATH).read_text(encoding="utf-8")
+    )
+    evidence_commit = report.get("bbb_evidence_commit")
+    if not isinstance(evidence_commit, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", evidence_commit
+    ):
+        issues.append("report has no exact BBB evidence commit")
+        evidence_commit = ""
+    changed_paths = changed_repo_paths(repo, evidence_commit) if evidence_commit else set()
+    records = report.get("mechanisms")
+    artifacts = report.get("artifacts")
+    scenarios = report.get("scenarios")
+    if not isinstance(records, list) or not isinstance(artifacts, list) or not isinstance(scenarios, list):
+        return [*issues, "report mechanisms/artifacts/scenarios are malformed"]
+    record_ids = [
+        record.get("mechanism_id") for record in records if isinstance(record, dict)
+    ]
+    if record_ids != matrix_ids:
+        issues.append("report mechanism order/set differs from the canonical matrix")
+    artifact_map = {
+        item.get("artifact_id"): item for item in artifacts if isinstance(item, dict)
+    }
+    scenario_map = {
+        item.get("scenario_id"): item for item in scenarios if isinstance(item, dict)
+    }
+    if len(artifact_map) != len(artifacts):
+        issues.append("duplicate or malformed artifact ids")
+    if len(scenario_map) != len(scenarios):
+        issues.append("duplicate or malformed scenario ids")
+    reverse_artifacts: dict[str, set[str]] = defaultdict(set)
+    reverse_scenarios: dict[str, set[str]] = defaultdict(set)
+    reverse_scenario_artifacts: dict[str, set[str]] = defaultdict(set)
+    reverse_scenario_kinds: dict[str, set[str]] = defaultdict(set)
+    reverse_scenario_statuses: dict[str, set[str]] = defaultdict(set)
+    matrix_status = {row["mechanism_id"]: row["status"] for row in rows}
+    for record in records:
+        if not isinstance(record, dict) or not isinstance(record.get("mechanism_id"), str):
+            issues.append("malformed mechanism record")
+            continue
+        mechanism_id = record["mechanism_id"]
+        row = rows_by_id.get(mechanism_id)
+        if row is None:
+            issues.append(f"unknown mechanism record: {mechanism_id}")
+            continue
+        matrix = record.get("matrix")
+        if not isinstance(matrix, dict) or matrix.get("status") != matrix_status.get(mechanism_id):
+            issues.append(f"stale matrix status for {mechanism_id}")
+        elif matrix != {
+            "domain": row["domain"],
+            "line": int(row["line"]),
+            "required_state_projection": row["required_state"],
+            "route_reopen_condition": row["route"],
+            "status": row["status"],
+        }:
+            issues.append(f"stale matrix projection for {mechanism_id}")
+        record_artifacts = record.get("artifact_ids", [])
+        if not isinstance(record_artifacts, list) or not record_artifacts:
+            issues.append(f"mechanism has no artifacts: {mechanism_id}")
+            record_artifacts = []
+        for artifact_id in record_artifacts:
+            if artifact_id not in artifact_map:
+                issues.append(f"unknown artifact {artifact_id!r} for {mechanism_id}")
+            else:
+                reverse_artifacts[str(artifact_id)].add(mechanism_id)
+        record_scenarios = record.get("differential_scenarios", [])
+        if not isinstance(record_scenarios, list) or not record_scenarios:
+            issues.append(f"mechanism has no differential scenario: {mechanism_id}")
+            record_scenarios = []
+        for scenario in record_scenarios:
+            if not isinstance(scenario, dict) or scenario.get("scenario_id") not in scenario_map:
+                issues.append(f"unknown scenario for {mechanism_id}")
+                continue
+            scenario_id = str(scenario["scenario_id"])
+            reverse_scenarios[scenario_id].add(mechanism_id)
+            reverse_scenario_kinds[scenario_id].add(str(scenario.get("kind")))
+            reverse_scenario_statuses[scenario_id].add(str(scenario.get("status")))
+            for artifact_id in scenario.get("artifact_ids", []):
+                if artifact_id not in artifact_map:
+                    issues.append(
+                        f"unknown scenario artifact {artifact_id!r} for {mechanism_id}"
+                    )
+                reverse_scenario_artifacts[scenario_id].add(str(artifact_id))
+        focused_tests = record.get("focused_tests")
+        if not isinstance(focused_tests, list) or not focused_tests:
+            issues.append(f"mechanism has no focused-test result: {mechanism_id}")
+        vanilla = record.get("vanilla")
+        if not isinstance(vanilla, dict) or not isinstance(
+            vanilla.get("corpus_source_sha256"), str
+        ):
+            issues.append(f"mechanism lacks a Vanilla corpus hash: {mechanism_id}")
+        else:
+            expected_owner_ids = inventory_owner_ids.get(mechanism_id, [])
+            if vanilla.get("corpus_source_sha256") != corpus_source_sha256:
+                issues.append(f"stale Vanilla corpus hash for {mechanism_id}")
+            if vanilla.get("matrix_owner") != row["vanilla_owner"]:
+                issues.append(f"stale Vanilla matrix owner for {mechanism_id}")
+            if vanilla.get("inventory_owner_ids") != expected_owner_ids:
+                issues.append(f"stale Vanilla owner mapping for {mechanism_id}")
+            if vanilla.get("inventory_owner_count") != len(expected_owner_ids):
+                issues.append(f"stale Vanilla owner count for {mechanism_id}")
+            if vanilla.get("inventory_owner_set_sha256") != canonical_sha256(
+                expected_owner_ids
+            ):
+                issues.append(f"stale Vanilla owner-set hash for {mechanism_id}")
+            if (
+                not vanilla.get("source_hashes")
+                and not mechanism_id.startswith(("coverage-", "docs-"))
+                and record.get("valid") is True
+            ):
+                issues.append(f"mechanism lacks hashed Vanilla owner source: {mechanism_id}")
+        bbb = record.get("bbb")
+        if (
+            not isinstance(bbb, dict)
+            or not isinstance(bbb.get("evidence_commit"), str)
+            or not isinstance(bbb.get("owner"), str)
+        ):
+            issues.append(f"mechanism lacks BBB commit/owner evidence: {mechanism_id}")
+        else:
+            if bbb.get("evidence_commit") != evidence_commit:
+                issues.append(f"stale BBB evidence commit for {mechanism_id}")
+            if bbb.get("owner") != row["bbb_owner"]:
+                issues.append(f"stale BBB owner for {mechanism_id}")
+            references = bbb.get("evidence_references")
+            if not isinstance(references, list):
+                issues.append(f"malformed BBB evidence references for {mechanism_id}")
+                references = []
+            missing_references = sorted(
+                reference
+                for reference in references
+                if not isinstance(reference, str)
+                or not (repo / reference_path(reference)).is_file()
+            )
+            if missing_references:
+                issues.append(f"missing BBB evidence for {mechanism_id}")
+        validity_reasons = record.get("validity_reasons")
+        if not isinstance(validity_reasons, list) or any(
+            not isinstance(reason, str) for reason in validity_reasons
+        ):
+            issues.append(f"malformed validity reasons for {mechanism_id}")
+            validity_reasons = []
+        if record.get("valid") is not (not validity_reasons):
+            issues.append(f"inconsistent validity result for {mechanism_id}")
+
+        status = matrix_status.get(mechanism_id)
+        if status in ROUTED_STATUSES and mechanism_id not in ledger_ids:
+            issues.append(f"unrouted matrix status for {mechanism_id}")
+        if status == "equivalent":
+            test_paths: set[str] = set()
+            if isinstance(focused_tests, list):
+                for focused_test in focused_tests:
+                    if not isinstance(focused_test, dict):
+                        continue
+                    reference = focused_test.get("reference")
+                    if isinstance(reference, str):
+                        test_paths.add(reference_path(reference))
+                    source_artifact_ids = focused_test.get("source_artifact_ids", [])
+                    if isinstance(source_artifact_ids, list):
+                        test_paths.update(
+                            str(item).removeprefix("repo:")
+                            for item in source_artifact_ids
+                            if isinstance(item, str)
+                        )
+            evidence_paths = {
+                reference_path(reference)
+                for reference in bbb.get("evidence_references", [])
+                if isinstance(reference, str)
+            } if isinstance(bbb, dict) else set()
+            if sorted((evidence_paths | test_paths) & changed_paths):
+                issues.append(f"ungated BBB evidence for {mechanism_id}")
+            passing_receipt = False
+            for scenario in record_scenarios:
+                if not isinstance(scenario, dict) or scenario.get("status") != "passed":
+                    continue
+                scenario_id = scenario.get("scenario_id")
+                if not isinstance(scenario_id, str) or not scenario_id.startswith(
+                    ("focused-", "receipt-")
+                ):
+                    continue
+                artifact_ids = scenario.get("artifact_ids", [])
+                if isinstance(artifact_ids, list) and artifact_ids and all(
+                    isinstance(artifact_map.get(artifact_id), dict)
+                    and artifact_map[artifact_id].get("valid") is True
+                    for artifact_id in artifact_ids
+                ):
+                    passing_receipt = True
+            if not passing_receipt or record.get("valid") is not True:
+                issues.append(f"false equivalent: {mechanism_id}")
+        elif status == "not-needed":
+            if "Reopen" not in ledger_by_id.get(mechanism_id, ""):
+                issues.append(f"not-needed ruling lacks reopen condition: {mechanism_id}")
+        elif status == "deferred-external":
+            if "Reopen when" not in ledger_by_id.get(mechanism_id, ""):
+                issues.append(f"deferred ruling lacks reopen condition: {mechanism_id}")
+        if (
+            status in OPEN_STATUSES - {"deferred-external"}
+            and record.get("final_conclusion") != "open"
+        ):
+            issues.append(f"open mechanism has a closed conclusion: {mechanism_id}")
+        expected_conclusion = {
+            "equivalent": "equivalent" if record.get("valid") is True else "invalid-equivalent",
+            "not-needed": "not-needed" if record.get("valid") is True else "invalid-scope-ruling",
+            "deferred-external": "deferred-external" if record.get("valid") is True else "invalid-deferred-ruling",
+        }.get(status, "open")
+        if record.get("final_conclusion") != expected_conclusion:
+            issues.append(f"inconsistent final conclusion for {mechanism_id}")
+    for artifact_id, artifact in artifact_map.items():
+        invalid_reasons = artifact.get("invalid_reasons")
+        if not isinstance(invalid_reasons, list) or any(
+            not isinstance(reason, str) for reason in invalid_reasons
+        ):
+            issues.append(f"malformed artifact validity for {artifact_id}")
+        elif artifact.get("valid") is not (not invalid_reasons):
+            issues.append(f"inconsistent artifact validity for {artifact_id}")
+        if artifact.get("mechanism_ids") != sorted(reverse_artifacts.get(str(artifact_id), set())):
+            issues.append(f"stale reverse Mechanism-ID mapping for artifact {artifact_id}")
+        path_value = artifact.get("path")
+        digest = artifact.get("sha256")
+        if enforce_current and artifact.get("kind") == "repo-evidence" and isinstance(path_value, str):
+            path = repo / path_value
+            if not path.is_file() or sha256_file(path) != digest:
+                issues.append(f"stale repo artifact hash: {artifact_id}")
+        if require_artifacts and artifact.get("kind") != "repo-evidence":
+            if not isinstance(path_value, str):
+                issues.append(f"external artifact path is absent: {artifact_id}")
+            else:
+                path = Path(path_value)
+                if not path.is_absolute():
+                    path = repo / path
+                if not path.is_file():
+                    issues.append(f"external artifact is absent: {artifact_id}")
+                elif not isinstance(digest, str) or sha256_file(path) != digest:
+                    issues.append(f"external artifact hash is stale: {artifact_id}")
+    for scenario_id, scenario in scenario_map.items():
+        if scenario.get("mechanism_ids") != sorted(reverse_scenarios.get(str(scenario_id), set())):
+            issues.append(f"stale reverse Mechanism-ID mapping for scenario {scenario_id}")
+        if scenario.get("artifact_ids") != sorted(
+            reverse_scenario_artifacts.get(str(scenario_id), set())
+        ):
+            issues.append(f"stale reverse artifact mapping for scenario {scenario_id}")
+        kinds = reverse_scenario_kinds.get(str(scenario_id), set())
+        statuses = reverse_scenario_statuses.get(str(scenario_id), set())
+        if len(kinds) != 1 or scenario.get("kind") != next(iter(kinds), None):
+            issues.append(f"stale kind mapping for scenario {scenario_id}")
+        if len(statuses) != 1 or scenario.get("status") != next(iter(statuses), None):
+            issues.append(f"stale status mapping for scenario {scenario_id}")
+    for item in report.get("generator_inputs", []):
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+            issues.append("malformed generator input")
+            continue
+        path = repo / item["path"]
+        if not path.is_file() or sha256_file(path) != item.get("sha256"):
+            issues.append(f"stale generator input: {item['path']}")
+    source_hashes = {
+        (source.get("path"), source.get("sha256"))
+        for record in records
+        if isinstance(record, dict)
+        for source in record.get("vanilla", {}).get("source_hashes", [])
+        if isinstance(source, dict)
+    }
+    if enforce_current:
+        for relative, digest in sorted(source_hashes):
+            if not isinstance(relative, str) or not isinstance(digest, str):
+                issues.append("malformed Vanilla source hash")
+                continue
+            path = source_root / relative
+            if not path.is_file() or sha256_file(path) != digest:
+                issues.append(f"stale Vanilla source hash: {relative}")
+    summary = report.get("summary")
+    if isinstance(summary, dict):
+        false_equivalents = sorted(
+            record["mechanism_id"]
+            for record in records
+            if isinstance(record, dict)
+            and record.get("matrix", {}).get("status") == "equivalent"
+            and record.get("valid") is not True
+        )
+        if summary.get("false_equivalent_ids") != false_equivalents:
+            issues.append("stale false-equivalent summary")
+        invalid_ids = sorted(
+            str(record["mechanism_id"])
+            for record in records
+            if isinstance(record, dict) and record.get("valid") is not True
+        )
+        if summary.get("declared_scope_complete") != (not invalid_ids):
+            issues.append("stale declared-scope completion summary")
+        if summary.get("invalid_ids") != invalid_ids:
+            issues.append("stale invalid-mechanism summary")
+        status_counts: dict[str, int] = defaultdict(int)
+        for record in records:
+            if isinstance(record, dict):
+                status_counts[str(record.get("matrix", {}).get("status"))] += 1
+        if summary.get("status_counts") != dict(sorted(status_counts.items())):
+            issues.append("stale mechanism-status summary")
+        if summary.get("mechanism_count") != len(records):
+            issues.append("stale mechanism-count summary")
+        if summary.get("valid_count") != len(records) - len(invalid_ids):
+            issues.append("stale valid-mechanism summary")
+    else:
+        issues.append("report summary is malformed")
+    if require_complete and isinstance(summary, dict) and summary.get("declared_scope_complete") is not True:
+        issues.append("declared-scope parity acceptance is incomplete")
+    return issues
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command", choices=("generate", "check"))
+    parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
+    add_vanilla_root(parser)
+    parser.add_argument("--output", type=Path, default=REPO_ROOT / REPORT_PATH)
+    parser.add_argument("--evidence-commit")
+    parser.add_argument("--gate-log", type=Path)
+    parser.add_argument("--performance-summary", type=Path)
+    parser.add_argument("--workload-summary", type=Path)
+    parser.add_argument("--draw-summary", type=Path)
+    parser.add_argument("--platform-report", type=Path)
+    parser.add_argument("--lifecycle-report", type=Path)
+    parser.add_argument("--audio-report", type=Path)
+    parser.add_argument("--allow-false-equivalent", action="store_true")
+    parser.add_argument("--require-artifacts", action="store_true")
+    parser.add_argument("--require-complete", action="store_true")
+    args = parser.parse_args()
+    args.repo_root = args.repo_root.resolve()
+    args.source_root = resolve_source_root(args)
+    if args.gate_log is None:
+        args.gate_log = args.repo_root / GATE_LOG_PATH
+    return args
+
+
+def main() -> int:
+    args = parse_args()
+    if args.command == "generate":
+        evidence_commit = args.evidence_commit or git(args.repo_root, "rev-parse", "HEAD")
+        report = build_report(
+            repo=args.repo_root,
+            source_root=args.source_root,
+            evidence_commit=evidence_commit,
+            gate_log=args.gate_log,
+            performance_summary=args.performance_summary,
+            workload_summary=args.workload_summary,
+            draw_summary=args.draw_summary,
+            platform_report=args.platform_report,
+            lifecycle_report=args.lifecycle_report,
+            audio_report=args.audio_report,
+        )
+        issues = validate_report(
+            report,
+            repo=args.repo_root,
+            source_root=args.source_root,
+            enforce_current=True,
+            require_artifacts=args.require_artifacts,
+            require_complete=args.require_complete,
+        )
+        false_equivalents = report["summary"]["false_equivalent_ids"]
+        if false_equivalents and not args.allow_false_equivalent:
+            issues.append("false equivalent rows: " + ", ".join(false_equivalents))
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        print(
+            f"parity acceptance: wrote {args.output} with "
+            f"{report['summary']['mechanism_count']} mechanisms, "
+            f"{len(false_equivalents)} false equivalents"
+        )
+        if issues and not args.allow_false_equivalent:
+            for issue in sorted(set(issues)):
+                print(f"parity acceptance: {issue}", file=sys.stderr)
+            return 1
+        return 0
+    if not args.output.is_file():
+        print(f"parity acceptance: report missing: {args.output}", file=sys.stderr)
+        return 1
+    report = json.loads(args.output.read_text(encoding="utf-8"))
+    issues = validate_report(
+        report,
+        repo=args.repo_root,
+        source_root=args.source_root,
+        enforce_current=True,
+        require_artifacts=args.require_artifacts,
+        require_complete=args.require_complete,
+    )
+    if issues:
+        for issue in sorted(set(issues)):
+            print(f"parity acceptance: {issue}", file=sys.stderr)
+        return 1
+    print(
+        f"parity acceptance: {len(report['mechanisms'])} mechanisms, "
+        "artifact/scenario reverse mappings and source hashes valid"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

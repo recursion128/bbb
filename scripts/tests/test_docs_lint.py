@@ -210,6 +210,7 @@ Matrix routes: `fixture-not-needed`
             "key-mapping-catalog.json",
             "packet-coverage.json",
             "particle-provider-coverage.json",
+            "parity-acceptance.json",
             "registry-holder-consumer-coverage.json",
         ):
             (evidence / name).write_text("{}\n", encoding="utf-8")

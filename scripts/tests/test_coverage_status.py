@@ -70,6 +70,26 @@ class CoverageStatusTests(unittest.TestCase):
             "particle-provider-coverage.json",
             [{"name": "AshParticle.Provider", "coverage": {"collision": {"status": "complete"}}}],
         )
+        (root / coverage_status.PARITY_REPORT).write_text(
+            json.dumps(
+                {
+                    "mechanisms": [
+                        {
+                            "final_conclusion": "equivalent",
+                            "mechanism_id": "closed",
+                            "valid": True,
+                        },
+                        {
+                            "final_conclusion": "open",
+                            "mechanism_id": "open",
+                            "valid": False,
+                        },
+                    ],
+                    "summary": {"false_equivalent_ids": []},
+                }
+            ),
+            encoding="utf-8",
+        )
         (root / "docs" / "unsupported-features.md").write_text(
             "\n".join(
                 [
@@ -128,6 +148,11 @@ class CoverageStatusTests(unittest.TestCase):
         )
         self.assertIn(
             "open minecraft:no_status_fields: (no status fields):?", output
+        )
+        self.assertIn(
+            "parity-acceptance.json: 2 mechanisms | valid 1 | open 1"
+            " | false-equivalent 0",
+            output,
         )
         self.assertIn(
             "unsupported-features.md: 3 active todo domains"
