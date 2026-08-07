@@ -161,7 +161,7 @@
 资源、渲染、性能和范围排除的长期机制行，共 147 行。`equivalent` 只用于已有 generated
 coverage、决策级 focused evidence 或真实 acceptance 的行。
 
-当前分布：121 行 `equivalent`、25 行 `not-needed`、1 行 `missing`
+当前分布：120 行 `equivalent`、25 行 `not-needed`、1 行 `missing`
 （`persistence-options-unconsumed`，六个 `options.txt` key 尚无消费子系统）、1 行
 `deferred-external`（`platform-macos-release`）。无 `partial`、`active` 或 `unverified` 行；
 这三种状态一旦出现，其实现工作只由账本排程，矩阵不能单独改变调度。

@@ -80,7 +80,23 @@ Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
 Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `persistence-options-apply`, `persistence-server-list`,
 `identity-profile-key-lifecycle`, `identity-skin-presentation`,
-`security-secure-chat-reporting`
+`security-secure-chat-reporting`, `persistence-options-unconsumed`
+
+- Implement the six startup-reachable `Options` consumer owners currently
+  missing from the native options path. `Options.dataFix` migrates older
+  `options.txt` versions before any field is decoded;
+  `applyGraphicsPreset` overwrites the preset-owned rendering values after the
+  file load; `getFullscreenVideoModeString` reads/writes and applies the
+  preferred native mode; `isSoundDeviceDefault` selects the stored audio
+  device; `loadSelectedResourcePacks` reconciles the stored selected list
+  against the repository; and `updateFontOptions` applies the `UNIFORM` /
+  `JAPANESE_VARIANTS` provider filters. The fullscreen path already has a
+  native consumer and must be re-routed to its implementation evidence; the
+  other five require their actual startup behavior and decision-level focused
+  tests. Owner: `bbb-native` + `bbb-audio` + `bbb-pack` + `bbb-item-model`.
+  Vanilla anchors: `Options.java:928,971,1190,1595,1691,1759,1770,1825`,
+  `Minecraft.java:517,522,551`, `SoundEngine.java:106,198`, and
+  `FontManager.java:182-229`.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.
@@ -577,25 +593,7 @@ Matrix route: `interaction-server-authority-exclusions`
 
 Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-ui`,
 `resources-runtime-mipmap-update`, `scope-singleplayer-integrated`,
-`debug-integrated-server-mirrors`, `persistence-options-unconsumed`
-
-- **`options.txt` keys whose consumer subsystem does not exist yet.** The values
-  round-trip through `crates/bbb-native/src/client_options.rs` like every other
-  key, but six `Options` owners have nothing to hand them to. `dataFix` needs a
-  DataFixer, which bbb does not have at all, so an options file written by an
-  older version is read as-is rather than migrated.
-  `getFullscreenVideoModeString` needs the window's video-mode list, which the
-  native window never enumerates.
-  `isSoundDeviceDefault` picks the OpenAL device in `SoundEngine.java:106, 198`;
-  bbb-audio always uses the system default. `applyGraphicsPreset`
-  (`Minecraft.java:517`) fans a preset out over the individual graphics options,
-  none of which bbb models. `loadSelectedResourcePacks` (`Minecraft.java:522`)
-  reconciles the stored pack list against the repository — bbb takes packs from
-  explicit startup/server arguments and has no options-selected list — and
-  `updateFontOptions` reloads every `FontSet` for the `UNIFORM` /
-  `JAPANESE_VARIANTS` `FontOption`s, which the font pipeline does not implement.
-  Reopen each one with its consumer, not before; the persisted line already
-  survives, so no options work is owed first.
+`debug-integrated-server-mirrors`
 
 - **Shift-local F3+I server-private entity save residuals.** Not needed on an
   external client: ordinary F3+I queries the authoritative server tag, while

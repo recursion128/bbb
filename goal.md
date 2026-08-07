@@ -425,7 +425,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: closed
 - p2-hud: closed
 - p3-resources: closed
-- p4-delivery: closed
+- p4-delivery: active
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -498,7 +498,10 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`closed`。census 登记的 runtime/crash 与 input/accessibility/window 证据缺口已
+状态：`active`。`persistence-options-unconsumed` 的六个 Vanilla `Options` owner
+已重新确认为无游戏内配置 UI 也可从启动路径到达；当前工程 slice 必须逐 owner
+实现真实消费或重路由到已有实现证据，不能以 options 行可 round-trip 代替行为。
+census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻
 `equivalent`；online 模式经用户裁决为非目标，加密登录/签名会话/Services 凭据面已整体移除
