@@ -680,9 +680,14 @@ pub(crate) fn maybe_upload_decoded_terrain(
     textures: &TerrainTextureState,
     visibility: TerrainVisibilityContext,
 ) {
-    let mesh_worker_counters_before = upload.mesh_worker_counters;
+    let mesh_worker_counters_before = upload
+        .mesh_worker
+        .as_ref()
+        .is_some_and(TerrainMeshWorker::has_outstanding_work)
+        .then_some(upload.mesh_worker_counters);
     let mut renderer_dirty = drain_terrain_mesh_results(world, upload);
-    let mesh_worker_counters_changed = upload.mesh_worker_counters != mesh_worker_counters_before;
+    let mesh_worker_counters_changed =
+        mesh_worker_counters_before.is_some_and(|before| upload.mesh_worker_counters != before);
     let level_generation_changed =
         upload.observed_level_generation != world.client_level_generation();
     let level_changed =
@@ -1164,6 +1169,13 @@ fn queue_terrain_chunk_mesh(
 }
 
 fn drain_terrain_mesh_results(world: &WorldStore, upload: &mut TerrainUploadState) -> bool {
+    if !upload
+        .mesh_worker
+        .as_ref()
+        .is_some_and(TerrainMeshWorker::has_outstanding_work)
+    {
+        return false;
+    }
     let mut renderer_dirty = false;
     loop {
         let result = match upload.mesh_worker.as_mut() {
@@ -1559,7 +1571,11 @@ fn refresh_terrain_visibility(
 
     let pending_key = upload.pending_occlusion_rebuild_key;
     let mut accepted_result = None;
-    if let Some(worker) = upload.occlusion_worker.as_mut() {
+    if pending_key.is_some() {
+        let worker = upload
+            .occlusion_worker
+            .as_mut()
+            .expect("pending terrain occlusion rebuild has a worker");
         while let Some(result) = worker.try_recv() {
             if pending_key == Some(result.key) {
                 accepted_result = Some(result);

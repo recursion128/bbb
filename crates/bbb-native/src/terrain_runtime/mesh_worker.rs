@@ -128,6 +128,7 @@ pub(super) struct TerrainMeshWorker {
     shared: Arc<TerrainMeshWorkerShared>,
     result_rx: Receiver<TerrainMeshResult>,
     handle: Option<JoinHandle<()>>,
+    outstanding_jobs: usize,
 }
 
 impl TerrainMeshWorker {
@@ -143,6 +144,7 @@ impl TerrainMeshWorker {
             shared,
             result_rx,
             handle: Some(handle),
+            outstanding_jobs: 0,
         }
     }
 
@@ -154,7 +156,13 @@ impl TerrainMeshWorker {
             .lock()
             .expect("terrain mesh queue lock poisoned")
             .submit(job);
-        if matches!(outcome, TerrainMeshSubmit::Queued { .. }) {
+        if let TerrainMeshSubmit::Queued { evicted } = outcome {
+            if evicted.is_none() {
+                self.outstanding_jobs = self
+                    .outstanding_jobs
+                    .checked_add(1)
+                    .expect("terrain mesh outstanding job count overflowed");
+            }
             self.shared.ready.notify_one();
         }
         outcome
@@ -163,7 +171,13 @@ impl TerrainMeshWorker {
     pub(super) fn try_recv(&mut self) -> Option<TerrainMeshResult> {
         self.propagate_panic();
         match self.result_rx.try_recv() {
-            Ok(result) => Some(result),
+            Ok(result) => {
+                self.outstanding_jobs = self
+                    .outstanding_jobs
+                    .checked_sub(1)
+                    .expect("terrain mesh worker returned an untracked result");
+                Some(result)
+            }
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 self.propagate_panic();
@@ -179,7 +193,19 @@ impl TerrainMeshWorker {
             .queue
             .lock()
             .expect("terrain mesh queue lock poisoned");
-        queue.jobs.drain(..).map(|job| job.key).collect()
+        let cancelled = queue.jobs.drain(..).map(|job| job.key).collect::<Vec<_>>();
+        self.outstanding_jobs = self
+            .outstanding_jobs
+            .checked_sub(cancelled.len())
+            .expect("terrain mesh worker cancelled more jobs than were tracked");
+        cancelled
+    }
+
+    /// Whether a queued, active, or completed result still needs render-thread
+    /// attention. Worker transitions do not change the total: submit adds one,
+    /// queue replacement preserves it, cancellation and receive remove one.
+    pub(super) fn has_outstanding_work(&self) -> bool {
+        self.outstanding_jobs != 0
     }
 
     pub(super) fn queue_depth(&self) -> usize {
@@ -366,11 +392,13 @@ mod tests {
     #[test]
     fn worker_builds_from_immutable_values_and_joins_on_drop() {
         let mut worker = TerrainMeshWorker::spawn();
+        assert!(!worker.has_outstanding_work());
         let key = job(ChunkPos { x: 0, z: 0 }, 7, 0).key;
         assert_eq!(
             worker.submit(job(key.pos, key.mesh_revision, 0)),
             TerrainMeshSubmit::Queued { evicted: None }
         );
+        assert!(worker.has_outstanding_work());
         let result = loop {
             if let Some(result) = worker.try_recv() {
                 break result;
@@ -380,6 +408,7 @@ mod tests {
         assert_eq!(result.key, key);
         assert_eq!(result.sections, [(0, 7)]);
         assert_eq!(result.layers.source_sections, 1);
+        assert!(!worker.has_outstanding_work());
     }
 
     #[test]
@@ -411,6 +440,7 @@ mod tests {
                 thread::yield_now();
             }
         }
+        assert!(!worker.has_outstanding_work());
     }
 
     #[test]
