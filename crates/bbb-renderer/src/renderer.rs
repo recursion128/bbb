@@ -1320,7 +1320,7 @@ impl TerrainTranslucentSortState {
 // small number synchronously per camera update instead of sorting every nearby
 // section on the render thread at a block boundary. Pending requests coalesce to
 // the newest camera above, matching the worker task's late camera read.
-const MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE: usize = 2;
+const MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE: usize = 1;
 
 fn camera_block_position(camera_position: [f32; 3]) -> [i32; 3] {
     camera_position.map(|coordinate| coordinate.floor() as i32)
@@ -5757,7 +5757,7 @@ mod tests {
         );
 
         let mut completed = 0;
-        for x in [0.5, 0.6, 0.7] {
+        for x in [0.5, 0.6, 0.7, 0.8, 0.9] {
             renderer.set_camera_pose(Some(CameraPose {
                 position: [x, 32.5, 4.0],
                 y_rot: 0.0,
