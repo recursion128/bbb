@@ -62,6 +62,12 @@ pub struct AudioCounters {
     #[serde(default)]
     pub sound_channel_admission_rejections: u64,
     #[serde(default)]
+    pub sound_native_static_buffers: usize,
+    #[serde(default)]
+    pub sound_native_static_bytes: u64,
+    #[serde(default)]
+    pub sound_native_static_evictions: u64,
+    #[serde(default)]
     pub sound_channel_capacity_origin: Option<String>,
     #[serde(default)]
     pub sound_mood_percent: u8,
@@ -99,6 +105,20 @@ pub struct AudioCounters {
     pub last_device_reload_reason: Option<String>,
     #[serde(default)]
     pub last_device_error: Option<String>,
+    #[serde(default)]
+    pub requested_directional_audio: bool,
+    #[serde(default)]
+    pub openal_hrtf_extension: bool,
+    #[serde(default)]
+    pub openal_hrtf_specifiers: i32,
+    #[serde(default)]
+    pub openal_hrtf_status: i32,
+    #[serde(default)]
+    pub openal_output_limiter: bool,
+    #[serde(default)]
+    pub openal_supports_disconnection: bool,
+    #[serde(default)]
+    pub openal_device_tracking_mode: Option<String>,
 }
 
 impl AudioCounters {
@@ -129,10 +149,14 @@ mod tests {
         assert_eq!(counters.sound_preload_pending, 0);
         assert_eq!(counters.last_sound_preload_error, None);
         assert_eq!(counters.sound_channel_admission_rejections, 0);
+        assert_eq!(counters.sound_native_static_buffers, 0);
+        assert_eq!(counters.sound_native_static_bytes, 0);
+        assert_eq!(counters.sound_native_static_evictions, 0);
         assert_eq!(counters.sound_channel_capacity_origin, None);
         assert_eq!(counters.active_music_event_id, None);
         assert_eq!(counters.preferred_device, None);
         assert_eq!(counters.available_device_count, 0);
         assert_eq!(counters.device_reloads, 0);
+        assert_eq!(counters.openal_device_tracking_mode, None);
     }
 }

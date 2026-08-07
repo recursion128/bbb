@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "07b8812d0b9eae2a69ae1491bba1d9b3f7c102963f087e8b91e3c9ba8679a937"
+      "sha256": "3b667bc4ae9b67dbd03162ce203be1c05c54c77b789085773d161ec0eac197e0"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -30,13 +30,14 @@
     "audio-sound-manager-engine": {
       "bbb_evidence": [
         "crates/bbb-pack/src/sounds.rs",
+        "crates/bbb-pack/src/openal_native.rs",
         "crates/bbb-audio/src/device.rs",
+        "crates/bbb-audio/src/openal.rs",
         "crates/bbb-audio/src/runtime.rs",
         "crates/bbb-native/src/audio_runtime.rs"
       ],
       "owner_count": 144,
-      "owner_evidence_count": 144,
-      "owner_gap_count": 24
+      "owner_evidence_count": 144
     },
     "diagnostics-client-level-report": {
       "bbb_evidence": [
@@ -4920,11 +4921,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -4941,11 +4951,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -4962,11 +4981,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -4983,11 +5011,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5004,11 +5041,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5025,11 +5071,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5046,11 +5101,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5067,11 +5131,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5088,11 +5161,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5141,11 +5223,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5162,11 +5253,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5183,11 +5283,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5204,11 +5313,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5225,11 +5343,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5246,11 +5373,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5267,11 +5403,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5288,11 +5433,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5309,11 +5463,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5330,11 +5493,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5351,11 +5523,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5404,11 +5585,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
-        }
+        "implementation": [
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5426,17 +5616,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5455,15 +5643,14 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
-          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
-          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
-          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlDeviceContext",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
-          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
-          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+          "crates/bbb-audio/src/openal.rs#verified_openal_sources_restore_their_context_across_device_reload",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains"
         ]
       },
       "category": "audio-backend",
@@ -5481,11 +5668,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, derives independent pool limits from ALC_MONO_SOURCES, and publishes a reproducible real-device differential receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
-        }
+        "implementation": [
+          "crates/bbb-pack/src/openal_native.rs#pub fn materialize_verified_openal_library",
+          "crates/bbb-audio/src/openal.rs#pub struct OpenAlDeviceContext",
+          "crates/bbb-audio/src/openal.rs#fn finish_context_initialization",
+          "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+          "crates/bbb-native/src/startup.rs#client_directional_audio"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#context_attributes_match_vanilla_supported_hrtf_fallback",
+          "crates/bbb-audio/src/openal.rs#verified_openal_library_executes_both_hrtf_context_branches",
+          "crates/bbb-audio/src/openal.rs#verified_openal_sources_restore_their_context_across_device_reload",
+          "crates/bbb-pack/src/openal_native.rs#verified_workspace_materializes_manifest_owned_openal",
+          "crates/bbb-native/src/startup.rs#stored_directional_audio_reaches_startup_and_explicit_cli_wins"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5503,12 +5699,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+          "crates/bbb-audio/src/openal.rs#pub(crate) fn install_system_event_tracker",
+          "crates/bbb-audio/src/device.rs#pub(crate) struct AudioDeviceTracker",
+          "crates/bbb-audio/src/runtime.rs#pub fn poll_audio_device"
         ],
         "tests": [
-          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
-          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+          "crates/bbb-audio/src/openal.rs#system_event_callback_requests_only_playback_updates",
+          "crates/bbb-audio/src/openal.rs#verified_openal_device_tracker_executes_callback_or_polling_selection",
+          "crates/bbb-audio/src/device.rs#verified_device_tracker_runs_selected_mode_and_forced_refresh",
+          "crates/bbb-audio/src/device.rs#reload_decision_preserves_vanilla_branch_order"
         ]
       },
       "category": "audio-backend",
@@ -5550,11 +5749,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, derives independent pool limits from ALC_MONO_SOURCES, and publishes a reproducible real-device differential receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
-        }
+        "implementation": [
+          "crates/bbb-pack/src/openal_native.rs#pub fn materialize_verified_openal_library",
+          "crates/bbb-audio/src/openal.rs#pub struct OpenAlDeviceContext",
+          "crates/bbb-audio/src/openal.rs#fn finish_context_initialization",
+          "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+          "crates/bbb-native/src/startup.rs#client_directional_audio"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#context_attributes_match_vanilla_supported_hrtf_fallback",
+          "crates/bbb-audio/src/openal.rs#verified_openal_library_executes_both_hrtf_context_branches",
+          "crates/bbb-audio/src/openal.rs#verified_openal_sources_restore_their_context_across_device_reload",
+          "crates/bbb-pack/src/openal_native.rs#verified_workspace_materializes_manifest_owned_openal",
+          "crates/bbb-native/src/startup.rs#stored_directional_audio_reaches_startup_and_explicit_cli_wins"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5572,17 +5780,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5601,12 +5807,12 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#listener_position:",
-          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
-          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+          "crates/bbb-audio/src/openal.rs#pub(crate) fn set_listener",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/runtime.rs#fn tick_entity_sound_positions"
         ],
         "tests": [
-          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
           "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
         ]
       },
@@ -5625,11 +5831,20 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, derives independent pool limits from ALC_MONO_SOURCES, and publishes a reproducible real-device differential receipt.",
-          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
-          "reason": "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
-        }
+        "implementation": [
+          "crates/bbb-pack/src/openal_native.rs#pub fn materialize_verified_openal_library",
+          "crates/bbb-audio/src/openal.rs#pub struct OpenAlDeviceContext",
+          "crates/bbb-audio/src/openal.rs#fn finish_context_initialization",
+          "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+          "crates/bbb-native/src/startup.rs#client_directional_audio"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/openal.rs#context_attributes_match_vanilla_supported_hrtf_fallback",
+          "crates/bbb-audio/src/openal.rs#verified_openal_library_executes_both_hrtf_context_branches",
+          "crates/bbb-audio/src/openal.rs#verified_openal_sources_restore_their_context_across_device_reload",
+          "crates/bbb-pack/src/openal_native.rs#verified_workspace_materializes_manifest_owned_openal",
+          "crates/bbb-native/src/startup.rs#stored_directional_audio_reaches_startup_and_explicit_cli_wins"
+        ]
       },
       "category": "audio-backend",
       "domain": "audio",
@@ -5647,12 +5862,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+          "crates/bbb-audio/src/openal.rs#pub(crate) fn install_system_event_tracker",
+          "crates/bbb-audio/src/device.rs#pub(crate) struct AudioDeviceTracker",
+          "crates/bbb-audio/src/runtime.rs#pub fn poll_audio_device"
         ],
         "tests": [
-          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
-          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+          "crates/bbb-audio/src/openal.rs#system_event_callback_requests_only_playback_updates",
+          "crates/bbb-audio/src/openal.rs#verified_openal_device_tracker_executes_callback_or_polling_selection",
+          "crates/bbb-audio/src/device.rs#verified_device_tracker_runs_selected_mode_and_forced_refresh",
+          "crates/bbb-audio/src/device.rs#reload_decision_preserves_vanilla_branch_order"
         ]
       },
       "category": "audio-backend",
@@ -5719,17 +5937,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5772,17 +5988,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5801,15 +6015,14 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
-          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
-          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
-          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlDeviceContext",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
-          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
-          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+          "crates/bbb-audio/src/openal.rs#verified_openal_sources_restore_their_context_across_device_reload",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains"
         ]
       },
       "category": "audio-backend",
@@ -5828,17 +6041,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5857,17 +6068,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5886,17 +6095,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5915,17 +6122,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5944,17 +6149,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -5973,15 +6176,14 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
-          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
-          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
-          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlBackend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlDeviceContext",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
-          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
-          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+          "crates/bbb-audio/src/openal.rs#verified_openal_sources_restore_their_context_across_device_reload",
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains"
         ]
       },
       "category": "audio-backend",
@@ -6000,17 +6202,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -6029,17 +6229,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -6058,17 +6256,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
           "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation"
         ],
         "tests": [
           "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt"
         ]
       },
       "category": "audio-backend",
@@ -6087,12 +6283,12 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#listener_position:",
-          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
-          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+          "crates/bbb-audio/src/openal.rs#pub(crate) fn set_listener",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/runtime.rs#fn tick_entity_sound_positions"
         ],
         "tests": [
-          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
           "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
         ]
       },
@@ -6112,12 +6308,12 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#listener_position:",
-          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
-          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+          "crates/bbb-audio/src/openal.rs#pub(crate) fn set_listener",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/runtime.rs#fn tick_entity_sound_positions"
         ],
         "tests": [
-          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
           "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
         ]
       },
@@ -6137,12 +6333,12 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#listener_position:",
-          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
-          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+          "crates/bbb-audio/src/openal.rs#pub(crate) fn set_listener",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/runtime.rs#fn tick_entity_sound_positions"
         ],
         "tests": [
-          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
           "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
         ]
       },
@@ -6162,14 +6358,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -6188,14 +6385,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -6214,14 +6412,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -6240,14 +6439,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -6266,14 +6466,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -6292,14 +6493,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -6318,14 +6520,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
-          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
-          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+          "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+          "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+          "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+          "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound"
         ],
         "tests": [
-          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
-          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
-          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/residency.rs#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+          "crates/bbb-audio/src/residency.rs#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned"
         ]
       },
       "category": "audio-backend",
@@ -35203,17 +35406,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35232,17 +35434,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35261,17 +35462,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35290,17 +35490,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35319,17 +35518,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35348,17 +35546,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35377,17 +35574,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35406,17 +35602,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -35435,17 +35630,16 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
-          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
-          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
-          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+          "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+          "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+          "crates/bbb-audio/src/runtime.rs#fn update_stream",
+          "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+          "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
-          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
-          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+          "crates/bbb-audio/src/runtime.rs#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+          "crates/bbb-audio/src/openal.rs#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick"
         ]
       },
       "category": "audio-backend",
@@ -36022,7 +36216,7 @@
           "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#stopped_backend_handle_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
           "crates/bbb-audio/src/runtime.rs#backend_music_identity_retains_stopped_instance_until_delete_tick",
           "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload"
         ]
@@ -36532,7 +36726,7 @@
         "tests": [
           "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
           "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_ticks_after_player_movement_and_before_music",
-          "crates/bbb-audio/src/runtime.rs#stopped_backend_handle_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
           "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
         ]
       },
@@ -36559,7 +36753,7 @@
         "tests": [
           "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
           "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_ticks_after_player_movement_and_before_music",
-          "crates/bbb-audio/src/runtime.rs#stopped_backend_handle_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
           "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
         ]
       },
@@ -36952,7 +37146,7 @@
           "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:"
         ],
         "tests": [
-          "crates/bbb-audio/src/runtime.rs#stopped_backend_handle_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
           "crates/bbb-audio/src/runtime.rs#backend_music_identity_retains_stopped_instance_until_delete_tick",
           "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload"
         ]
@@ -37299,7 +37493,7 @@
         "tests": [
           "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
           "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_ticks_after_player_movement_and_before_music",
-          "crates/bbb-audio/src/runtime.rs#stopped_backend_handle_remains_projected_until_twentieth_tick",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
           "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
         ]
       },

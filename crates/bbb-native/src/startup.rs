@@ -193,6 +193,14 @@ pub(crate) struct Args {
     /// wins over `Options.soundDevice` because there is no in-game options UI.
     #[arg(long = "client-sound-device", value_name = "NAME", default_value = "")]
     pub(crate) client_sound_device: String,
+    /// Vanilla `Options.directionalAudio`: requests HRTF only when the
+    /// verified OpenAL implementation reports a supported specifier.
+    #[arg(
+        long = "client-directional-audio",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_directional_audio: bool,
     /// All `soundCategory_*` values are startup-only configuration in this
     /// external client. They still feed every native sound resolution just as
     /// `Options.getFinalSoundSourceVolume` does in Vanilla.
@@ -883,6 +891,11 @@ fn bind_stored_client_options(
         Text,
         client_sound_device,
         parse_stored_sound_device
+    );
+    flag!(
+        "client_directional_audio",
+        "directionalAudio",
+        client_directional_audio
     );
     flag!(
         "client_save_chat_drafts",
@@ -3093,6 +3106,24 @@ mod tests {
         bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
 
         assert!(args.client_sound_device.is_empty());
+    }
+
+    #[test]
+    fn stored_directional_audio_reaches_startup_and_explicit_cli_wins() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("directionalAudio", "true");
+        let mut stored_args = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(
+            &mut stored_args,
+            StoredOptions::without_command_line(&options),
+        );
+        assert!(stored_args.client_directional_audio);
+
+        let matches =
+            Args::command().get_matches_from(["bbb-native", "--client-directional-audio", "false"]);
+        let mut explicit_args = Args::from_arg_matches(&matches).unwrap();
+        bind_stored_client_options(&mut explicit_args, StoredOptions::new(&options, &matches));
+        assert!(!explicit_args.client_directional_audio);
     }
 
     #[test]

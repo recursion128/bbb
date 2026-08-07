@@ -98,8 +98,8 @@ public class Owner {
             144,
         )
         self.assertEqual(
-            value["mechanisms"]["audio-sound-manager-engine"]["owner_gap_count"],
-            24,
+            value["mechanisms"]["audio-sound-manager-engine"].get("owner_gap_count", 0),
+            0,
         )
         self.assertTrue(
             all(
@@ -107,7 +107,6 @@ public class Owner {
                     owner["bbb_evidence"].get("implementation")
                     and owner["bbb_evidence"].get("tests")
                 )
-                or owner["bbb_evidence"].get("open_gap")
                 for owner in owners
             )
         )

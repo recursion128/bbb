@@ -741,6 +741,7 @@ fn run_client(args: startup::Args) -> Result<()> {
             Some(roots) => match NativeAudioRuntime::load(
                 roots,
                 &args.client_sound_device,
+                args.client_directional_audio,
                 args.client_audio_volumes,
             ) {
                 Ok(runtime) => {

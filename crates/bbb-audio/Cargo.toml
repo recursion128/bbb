@@ -12,11 +12,11 @@ workspace = true
 [features]
 default = ["kira"]
 kira = ["dep:kira", "dep:symphonia"]
-device = ["kira", "kira/cpal", "dep:cpal"]
+device = ["kira", "dep:al-sys"]
 
 [dependencies]
+al-sys = { workspace = true, optional = true }
 anyhow = { workspace = true }
-cpal = { workspace = true, optional = true }
 kira = { workspace = true, optional = true }
 serde = { workspace = true }
 symphonia = { workspace = true, optional = true }

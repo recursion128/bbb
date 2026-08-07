@@ -21,6 +21,7 @@ mod known_packs;
 mod language;
 mod metadata;
 mod mipmap;
+mod openal_native;
 mod panorama;
 mod particle_definitions;
 mod particle_sprites;

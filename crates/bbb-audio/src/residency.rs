@@ -73,8 +73,30 @@ struct AudioResourceKey {
 
 struct StaticCacheEntry {
     data: StaticSoundData,
+    channels: u16,
     decoded_bytes: u64,
     last_used: u64,
+}
+
+#[cfg(feature = "device")]
+pub(crate) struct OpenAlStaticSound {
+    pub(crate) sample_rate: u32,
+    pub(crate) channels: u16,
+    pub(crate) samples: Vec<i16>,
+}
+
+#[cfg(feature = "device")]
+pub(crate) struct OpenAlStreamDecoder {
+    decoder: BoundedAudioDecoder,
+    path: PathBuf,
+    looping: bool,
+}
+
+#[cfg(feature = "device")]
+pub(crate) struct OpenAlPcmChunk {
+    pub(crate) sample_rate: u32,
+    pub(crate) channels: u16,
+    pub(crate) samples: Vec<i16>,
 }
 
 pub(crate) struct AudioResidency {
@@ -134,11 +156,11 @@ impl AudioResidency {
         };
         let admitted_bytes = decoder.admitted_static_bytes();
         self.ensure_preload_capacity(admitted_bytes)?;
-        let Some(data) = decoder.decode_static_until(cancelled)? else {
+        let Some((data, channels)) = decoder.decode_static_until(cancelled)? else {
             return Ok(PreloadDecodeOutcome::Cancelled);
         };
         let decoded_bytes = frame_bytes(data.frames.len())?;
-        self.insert_static_owner(key, data, decoded_bytes)?;
+        self.insert_static_owner(key, data, channels, decoded_bytes)?;
         Ok(PreloadDecodeOutcome::Decoded)
     }
 
@@ -171,7 +193,9 @@ impl AudioResidency {
                 outcome.last_error = Some(error.to_string());
                 continue;
             }
-            if let Err(error) = self.insert_static_owner(key, entry.data, entry.decoded_bytes) {
+            if let Err(error) =
+                self.insert_static_owner(key, entry.data, entry.channels, entry.decoded_bytes)
+            {
                 outcome.failures = outcome.failures.saturating_add(1);
                 outcome.last_error = Some(error.to_string());
                 continue;
@@ -200,13 +224,31 @@ impl AudioResidency {
         };
         let admitted_bytes = decoder.admitted_static_bytes();
         self.ensure_static_capacity(admitted_bytes)?;
-        let data = match decoder.decode_static() {
+        let (data, channels) = match decoder.decode_static() {
             Ok(data) => data,
             Err(error) => return self.reject(error),
         };
         let decoded_bytes = frame_bytes(data.frames.len())?;
-        self.insert_static_owner(key, data.clone(), decoded_bytes)?;
+        self.insert_static_owner(key, data.clone(), channels, decoded_bytes)?;
         Ok(data)
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn openal_static_sound(
+        &mut self,
+        sound: &ResolvedSound,
+    ) -> Result<OpenAlStaticSound> {
+        let key = self.key_for_sound(sound)?;
+        let _ = self.static_sound(sound)?;
+        let entry = self
+            .static_cache
+            .get(&key)
+            .expect("static sound decode installs the requested owner");
+        Ok(OpenAlStaticSound {
+            sample_rate: entry.data.sample_rate,
+            channels: entry.channels,
+            samples: pcm16_samples(&entry.data.frames, entry.channels),
+        })
     }
 
     pub(crate) fn streaming_sound(
@@ -220,6 +262,25 @@ impl AudioResidency {
         };
         self.observation.streaming_starts = self.observation.streaming_starts.saturating_add(1);
         Ok(StreamingSoundData::from_decoder(decoder))
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn openal_streaming_sound(
+        &mut self,
+        sound: &ResolvedSound,
+        looping: bool,
+    ) -> Result<OpenAlStreamDecoder> {
+        self.key_for_sound(sound)?;
+        let decoder = match BoundedAudioDecoder::open(&sound.ogg_path, false) {
+            Ok(decoder) => decoder,
+            Err(error) => return self.reject(error),
+        };
+        self.observation.streaming_starts = self.observation.streaming_starts.saturating_add(1);
+        Ok(OpenAlStreamDecoder {
+            decoder,
+            path: sound.ogg_path.clone(),
+            looping,
+        })
     }
 
     fn key_for_sound(&mut self, sound: &ResolvedSound) -> Result<AudioResourceKey> {
@@ -288,6 +349,7 @@ impl AudioResidency {
         &mut self,
         key: AudioResourceKey,
         data: StaticSoundData,
+        channels: u16,
         decoded_bytes: u64,
     ) -> Result<()> {
         self.use_sequence = self.use_sequence.wrapping_add(1);
@@ -304,6 +366,7 @@ impl AudioResidency {
             key,
             StaticCacheEntry {
                 data,
+                channels,
                 decoded_bytes,
                 last_used: self.use_sequence,
             },
@@ -349,6 +412,7 @@ struct BoundedAudioDecoder {
     format_reader: Box<dyn FormatReader>,
     decoder: Box<dyn SymphoniaDecoder>,
     sample_rate: u32,
+    channels: u16,
     admitted_frames: usize,
     emitted_frames: usize,
     track_id: u32,
@@ -393,6 +457,8 @@ impl BoundedAudioDecoder {
             format_reader,
             decoder,
             sample_rate,
+            channels: u16::try_from(channels.count())
+                .expect("admitted mono/stereo channel count fits u16"),
             admitted_frames,
             emitted_frames: 0,
             track_id,
@@ -403,7 +469,7 @@ impl BoundedAudioDecoder {
         frame_bytes(self.admitted_frames).expect("admitted audio frame byte count was validated")
     }
 
-    fn decode_static(&mut self) -> Result<StaticSoundData, AudioDecodeError> {
+    fn decode_static(&mut self) -> Result<(StaticSoundData, u16), AudioDecodeError> {
         self.decode_static_until(|| false)?.ok_or_else(|| {
             AudioDecodeError::Limit("unconditional static decode was cancelled".into())
         })
@@ -412,7 +478,7 @@ impl BoundedAudioDecoder {
     fn decode_static_until(
         &mut self,
         cancelled: impl Fn() -> bool,
-    ) -> Result<Option<StaticSoundData>, AudioDecodeError> {
+    ) -> Result<Option<(StaticSoundData, u16)>, AudioDecodeError> {
         let mut frames = Vec::new();
         frames
             .try_reserve_exact(self.admitted_frames)
@@ -444,12 +510,15 @@ impl BoundedAudioDecoder {
                 .ok_or_else(|| AudioDecodeError::Limit("decoded audio frame overflow".into()))?;
             frames.append(&mut decoded);
         }
-        Ok(Some(StaticSoundData {
-            sample_rate: self.sample_rate,
-            frames: frames.into(),
-            settings: StaticSoundSettings::default(),
-            slice: None,
-        }))
+        Ok(Some((
+            StaticSoundData {
+                sample_rate: self.sample_rate,
+                frames: frames.into(),
+                settings: StaticSoundSettings::default(),
+                slice: None,
+            },
+            self.channels,
+        )))
     }
 
     fn next_track_packet(&mut self) -> Result<symphonia::core::formats::Packet, AudioDecodeError> {
@@ -460,6 +529,61 @@ impl BoundedAudioDecoder {
             }
         }
     }
+}
+
+#[cfg(feature = "device")]
+impl OpenAlStreamDecoder {
+    pub(crate) fn read_one_second(&mut self) -> Result<OpenAlPcmChunk, AudioDecodeError> {
+        let expected_samples = usize::try_from(self.decoder.sample_rate)
+            .ok()
+            .and_then(|rate| rate.checked_mul(usize::from(self.decoder.channels)))
+            .ok_or_else(|| AudioDecodeError::Limit("streaming PCM size overflow".into()))?;
+        let mut frames = Vec::new();
+        loop {
+            match self.decoder.decode() {
+                Ok(mut decoded) => frames.append(&mut decoded),
+                Err(AudioDecodeError::Symphonia(symphonia::core::errors::Error::IoError(
+                    error,
+                ))) if error.kind() == io::ErrorKind::UnexpectedEof => {
+                    if frames.is_empty() && self.looping {
+                        self.decoder = BoundedAudioDecoder::open(&self.path, false)?;
+                        continue;
+                    }
+                    break;
+                }
+                Err(error) => return Err(error),
+            }
+            if frames
+                .len()
+                .checked_mul(usize::from(self.decoder.channels))
+                .is_some_and(|samples| samples >= expected_samples)
+            {
+                break;
+            }
+        }
+        Ok(OpenAlPcmChunk {
+            sample_rate: self.decoder.sample_rate,
+            channels: self.decoder.channels,
+            samples: pcm16_samples(&frames, self.decoder.channels),
+        })
+    }
+}
+
+#[cfg(feature = "device")]
+fn pcm16_samples(frames: &[Frame], channels: u16) -> Vec<i16> {
+    let mut samples = Vec::with_capacity(frames.len() * usize::from(channels));
+    for frame in frames {
+        samples.push(vanilla_pcm16(frame.left));
+        if channels == 2 {
+            samples.push(vanilla_pcm16(frame.right));
+        }
+    }
+    samples
+}
+
+#[cfg(feature = "device")]
+fn vanilla_pcm16(sample: f32) -> i16 {
+    (sample * 32767.5 - 0.5).clamp(-32768.0, 32767.0) as i16
 }
 
 impl KiraStreamingDecoder for BoundedAudioDecoder {
@@ -737,6 +861,18 @@ mod tests {
         .is_err());
     }
 
+    #[cfg(feature = "device")]
+    #[test]
+    fn pcm16_conversion_matches_vanilla_chunked_sample_buffer() {
+        assert_eq!(vanilla_pcm16(-1.0), -32768);
+        assert_eq!(vanilla_pcm16(0.0), 0);
+        assert_eq!(vanilla_pcm16(1.0), 32767);
+        assert_eq!(vanilla_pcm16(2.0), 32767);
+        let frames = [Frame::new(-1.0, 1.0), Frame::new(0.5, -0.5)];
+        assert_eq!(pcm16_samples(&frames, 1), [-32768, 16383]);
+        assert_eq!(pcm16_samples(&frames, 2), [-32768, 32767, 16383, -16384]);
+    }
+
     #[test]
     fn compressed_file_admission_rejects_before_probe() {
         let exact_path = unique_temp_path("exact-sized-audio");
@@ -844,6 +980,7 @@ mod tests {
             },
             StaticCacheEntry {
                 data,
+                channels: 2,
                 decoded_bytes: frame_bytes(4).unwrap(),
                 last_used: 0,
             },
@@ -872,6 +1009,7 @@ mod tests {
                 },
                 StaticCacheEntry {
                     data: test_static_sound(1),
+                    channels: 2,
                     decoded_bytes: MAX_STATIC_SOUND_CACHE_BYTES / 2,
                     last_used,
                 },
@@ -901,6 +1039,7 @@ mod tests {
             },
             StaticCacheEntry {
                 data: active,
+                channels: 2,
                 decoded_bytes: MAX_STATIC_SOUND_CACHE_BYTES,
                 last_used: 2,
             },
@@ -925,6 +1064,7 @@ mod tests {
             },
             StaticCacheEntry {
                 data: reset_data,
+                channels: 2,
                 decoded_bytes: frame_bytes(1).unwrap(),
                 last_used: 3,
             },

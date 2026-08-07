@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[cfg(feature = "device")]
+use std::path::{Path, PathBuf};
+
+#[cfg(feature = "device")]
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
@@ -11,9 +14,6 @@ use kira::{
     AudioManager, AudioManagerSettings, Capacities, Decibels, DefaultBackend, Tween,
 };
 
-#[cfg(feature = "device")]
-use kira::backend::cpal::CpalBackendSettings;
-
 use crate::{
     preload::{AudioPreloadObservation, AudioPreloadRequest, AudioPreloadWorker},
     residency::{AudioDecodeError, AudioResidency},
@@ -21,6 +21,9 @@ use crate::{
     EntitySoundPosition, PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand,
     StopSoundCommand, TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
 };
+
+#[cfg(feature = "device")]
+use crate::openal::{OpenAlBackend, OpenAlSoundSource, OpenAlSourceSettings};
 
 #[cfg(feature = "device")]
 use crate::device::{
@@ -45,14 +48,15 @@ const KIRA_CHANNEL_CAPACITY_ORIGIN: &str = "kira-logical-main-plus-spatial";
 const DEVICE_TICK_INTERVAL: Duration = Duration::from_millis(50);
 
 pub struct KiraAudioRuntime {
-    manager: AudioManager<DefaultBackend>,
-    listener: ListenerHandle,
+    manager: Option<AudioManager<DefaultBackend>>,
+    listener: Option<ListenerHandle>,
     listener_position: [f64; 3],
     delayed_positioned: Vec<KiraDelayedPositionedSound>,
     playing: Vec<KiraPlayingSound>,
     music_gain: f32,
     residency: AudioResidency,
     channel_limits: AudioChannelLimits,
+    channel_capacity_origin: &'static str,
     channel_admission_rejections: u64,
     tick_count: u64,
     playback_events: VecDeque<AudioPlaybackEvent>,
@@ -62,10 +66,14 @@ pub struct KiraAudioRuntime {
     preload_token: Option<u64>,
     #[cfg(feature = "device")]
     device: Option<KiraAudioDeviceRuntime>,
+    #[cfg(feature = "device")]
+    openal: Option<OpenAlBackend>,
 }
 
 #[cfg(feature = "device")]
 struct KiraAudioDeviceRuntime {
+    openal_library_path: PathBuf,
+    use_hrtf: bool,
     preferred_device: String,
     current_device: Option<String>,
     inventory: AudioDeviceInventory,
@@ -93,8 +101,10 @@ pub struct AudioChannelObservation {
     pub static_capacity: usize,
     pub streaming_capacity: usize,
     pub admission_rejections: u64,
-    /// This is deliberately attributable while Kira lacks an OpenAL
-    /// ALC_MONO_SOURCES/HRTF capability owner.
+    pub native_static_buffers: usize,
+    pub native_static_bytes: u64,
+    pub native_static_evictions: u64,
+    /// Exact capability owner for the active backend.
     pub capacity_origin: &'static str,
 }
 
@@ -126,6 +136,11 @@ struct KiraPlayingSound {
 enum KiraSoundHandle {
     Static(StaticSoundHandle),
     Streaming(StreamingSoundHandle<AudioDecodeError>),
+    #[cfg(feature = "device")]
+    OpenAl {
+        source: Option<OpenAlSoundSource>,
+        streaming: bool,
+    },
 }
 
 impl KiraAudioRuntime {
@@ -141,18 +156,23 @@ impl KiraAudioRuntime {
 
     #[cfg(feature = "device")]
     pub fn new_with_device_preference(
+        openal_library_path: impl AsRef<Path>,
         preferred_device: impl Into<String>,
+        use_hrtf: bool,
         resource_generation: u64,
     ) -> Result<Self> {
         let preferred_device = preferred_device.into();
-        let (inventory, initial_query_error) = initial_audio_devices();
-        let (manager, current_device, preferred_fallback) =
-            start_device_audio_manager(&preferred_device, &inventory)?;
+        let (inventory, initial_query_error) = initial_audio_devices(openal_library_path.as_ref());
+        let (openal, current_device, preferred_fallback) =
+            start_openal_backend(openal_library_path.as_ref(), &preferred_device, use_hrtf)?;
+        let mono_sources = openal.observation().mono_sources;
         let device = KiraAudioDeviceRuntime {
+            openal_library_path: openal_library_path.as_ref().to_path_buf(),
+            use_hrtf,
             preferred_device,
             current_device,
             inventory,
-            tracker: AudioDeviceTracker::spawn()?,
+            tracker: AudioDeviceTracker::spawn(openal_library_path.as_ref().to_path_buf())?,
             reloads: 0,
             reload_failures: 0,
             query_failures: u64::from(initial_query_error.is_some()),
@@ -161,7 +181,15 @@ impl KiraAudioRuntime {
             last_error: initial_query_error,
             next_poll_at: Instant::now(),
         };
-        Self::from_manager(manager, resource_generation, Some(device))
+        Self::from_parts(
+            None,
+            None,
+            resource_generation,
+            Some(device),
+            Some(openal),
+            AudioChannelLimits::from_mono_sources(mono_sources),
+            "openal-alc-mono-sources",
+        )
     }
 
     fn from_manager(
@@ -173,6 +201,32 @@ impl KiraAudioRuntime {
         let listener = manager
             .add_listener([0.0, 0.0, 0.0], identity_quaternion())
             .map_err(|_| anyhow!("initialize Kira audio listener"))?;
+        Self::from_parts(
+            Some(manager),
+            Some(listener),
+            resource_generation,
+            #[cfg(feature = "device")]
+            device,
+            #[cfg(not(feature = "device"))]
+            _device,
+            #[cfg(feature = "device")]
+            None,
+            AudioChannelLimits::from_mono_sources(KIRA_LOGICAL_MONO_SOURCES),
+            KIRA_CHANNEL_CAPACITY_ORIGIN,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn from_parts(
+        manager: Option<AudioManager<DefaultBackend>>,
+        listener: Option<ListenerHandle>,
+        resource_generation: u64,
+        #[cfg(feature = "device")] device: Option<KiraAudioDeviceRuntime>,
+        #[cfg(not(feature = "device"))] _device: Option<()>,
+        #[cfg(feature = "device")] openal: Option<OpenAlBackend>,
+        channel_limits: AudioChannelLimits,
+        channel_capacity_origin: &'static str,
+    ) -> Result<Self> {
         let preload_worker = AudioPreloadWorker::spawn()
             .map_err(|error| anyhow!("initialize audio preload worker: {error}"))?;
         Ok(Self {
@@ -183,7 +237,8 @@ impl KiraAudioRuntime {
             playing: Vec::new(),
             music_gain: 1.0,
             residency: AudioResidency::new(resource_generation),
-            channel_limits: AudioChannelLimits::from_mono_sources(KIRA_LOGICAL_MONO_SOURCES),
+            channel_limits,
+            channel_capacity_origin,
             channel_admission_rejections: 0,
             tick_count: 0,
             playback_events: VecDeque::new(),
@@ -196,6 +251,8 @@ impl KiraAudioRuntime {
             preload_token: None,
             #[cfg(feature = "device")]
             device,
+            #[cfg(feature = "device")]
+            openal,
         })
     }
 
@@ -326,21 +383,33 @@ impl KiraAudioRuntime {
         let (static_used, streaming_used) = active_channel_counts(
             self.playing
                 .iter()
-                .map(|sound| (sound.handle.is_streaming(), sound.handle.is_active())),
+                .map(|sound| (sound.handle.is_streaming(), sound.handle.holds_channel())),
         );
+        #[cfg(feature = "device")]
+        let (native_static_buffers, native_static_bytes, native_static_evictions) = self
+            .openal
+            .as_ref()
+            .map(OpenAlBackend::static_cache_observation)
+            .unwrap_or_default();
+        #[cfg(not(feature = "device"))]
+        let (native_static_buffers, native_static_bytes, native_static_evictions) = (0, 0, 0);
         AudioChannelObservation {
             static_used,
             streaming_used,
             static_capacity: self.channel_limits.static_capacity,
             streaming_capacity: self.channel_limits.streaming_capacity,
             admission_rejections: self.channel_admission_rejections,
-            capacity_origin: KIRA_CHANNEL_CAPACITY_ORIGIN,
+            native_static_buffers,
+            native_static_bytes,
+            native_static_evictions,
+            capacity_origin: self.channel_capacity_origin,
         }
     }
 
     #[cfg(feature = "device")]
     pub fn audio_device_observation(&self) -> Option<AudioDeviceObservation> {
         let device = self.device.as_ref()?;
+        let openal = self.openal.as_ref()?.observation();
         Some(AudioDeviceObservation {
             preferred_device: (!is_sound_device_default(&device.preferred_device))
                 .then(|| device.preferred_device.clone()),
@@ -356,6 +425,13 @@ impl KiraAudioRuntime {
                 .map(AudioDeviceReloadReason::as_str)
                 .map(str::to_owned),
             last_error: device.last_error.clone(),
+            requested_directional_audio: openal.requested_hrtf,
+            hrtf_extension: openal.hrtf_extension,
+            hrtf_specifiers: openal.hrtf_specifiers,
+            hrtf_status: openal.hrtf_status,
+            output_limiter: openal.output_limiter,
+            supports_disconnection: openal.supports_disconnection,
+            tracking_mode: device.tracker.tracking_mode(),
         })
     }
 
@@ -376,18 +452,21 @@ impl KiraAudioRuntime {
         device.next_poll_at = now + DEVICE_TICK_INTERVAL;
         let mut disconnected = false;
         let mut observation_changed = false;
-        while let Some(error) = self.manager.backend_mut().pop_error() {
-            if matches!(
-                error,
-                cpal::StreamError::DeviceNotAvailable | cpal::StreamError::StreamInvalidated
-            ) {
-                disconnected = true;
-            }
-            device.last_error = Some(error.to_string());
+        if self
+            .openal
+            .as_ref()
+            .is_some_and(OpenAlBackend::is_disconnected)
+        {
+            disconnected = true;
+            device.last_error = Some("OpenAL device disconnected".to_owned());
             observation_changed = true;
         }
 
-        let update = device.tracker.latest();
+        let update = if disconnected {
+            Some(device.tracker.force_refresh())
+        } else {
+            device.tracker.latest()
+        };
         let mut poll_error = None;
         let next_inventory = match update {
             Some(Ok(inventory)) => Some(inventory),
@@ -435,12 +514,15 @@ impl KiraAudioRuntime {
             };
         };
 
-        match start_device_audio_manager(&device.preferred_device, &inventory).and_then(
-            |(manager, current_device, preferred_fallback)| {
-                self.replace_audio_manager(manager)?;
-                Ok((current_device, preferred_fallback))
-            },
-        ) {
+        match start_openal_backend(
+            &device.openal_library_path,
+            &device.preferred_device,
+            device.use_hrtf,
+        )
+        .and_then(|(backend, current_device, preferred_fallback)| {
+            self.replace_openal_backend(backend)?;
+            Ok((current_device, preferred_fallback))
+        }) {
             Ok((current_device, preferred_fallback)) => {
                 device.current_device = current_device;
                 device.inventory = inventory;
@@ -473,25 +555,30 @@ impl KiraAudioRuntime {
     }
 
     #[cfg(feature = "device")]
-    fn replace_audio_manager(&mut self, mut manager: AudioManager<DefaultBackend>) -> Result<()> {
-        let listener = manager
-            .add_listener(
-                audio_position(self.listener_position),
-                self.listener_orientation,
-            )
-            .map_err(|_| anyhow!("initialize replacement Kira audio listener"))?;
+    fn replace_openal_backend(&mut self, backend: OpenAlBackend) -> Result<()> {
+        let previous_backend = self.openal.take();
         for sound in &mut self.playing {
             sound.handle.stop();
         }
         self.playing.clear();
+        if let Err(error) = backend.set_listener([0.0; 3], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]) {
+            self.openal = previous_backend;
+            return Err(error);
+        }
+        // The listener call restores the new context after stopping old
+        // sources. Destroying the old owner now leaves the new context current.
+        drop(previous_backend);
         self.delayed_positioned.clear();
         self.playback_events.clear();
         let resource_generation = self.residency.active_generation();
         self.cancel_audio_preload(resource_generation);
         self.residency.reset_generation(resource_generation);
-        self.manager = manager;
-        self.listener = listener;
-        self.channel_limits = AudioChannelLimits::from_mono_sources(KIRA_LOGICAL_MONO_SOURCES);
+        self.listener_position = [0.0; 3];
+        self.listener_orientation = identity_quaternion();
+        self.channel_limits =
+            AudioChannelLimits::from_mono_sources(backend.observation().mono_sources);
+        self.channel_capacity_origin = backend.observation().capacity_origin;
+        self.openal = Some(backend);
         Ok(())
     }
 
@@ -517,6 +604,10 @@ impl KiraAudioRuntime {
             sound.handle.stop();
         }
         self.playing.clear();
+        #[cfg(feature = "device")]
+        if let Some(openal) = self.openal.as_mut() {
+            openal.clear_static_buffers();
+        }
         self.cancel_audio_preload(resource_generation);
         self.residency.reset_generation(resource_generation);
     }
@@ -618,14 +709,45 @@ impl KiraAudioRuntime {
         let effective_gain = effective_channel_gain(&category, channel_gain, self.music_gain);
         let volume = channel_decibels_from_gain(effective_gain);
         let playback_rate = channel_playback_rate(playback_rate);
-        let handle = if sound.stream {
+        #[cfg(feature = "device")]
+        let handle = if let Some(openal) = self.openal.as_mut() {
+            let settings = OpenAlSourceSettings {
+                position: [0.0, 0.0, 0.0],
+                pitch: playback_rate,
+                gain: effective_gain,
+                looping: looping && !sound.stream,
+                relative: true,
+                max_distance: None,
+            };
+            let source = if sound.stream {
+                let decoder = self.residency.openal_streaming_sound(sound, looping)?;
+                openal.play_stream(decoder, settings)?
+            } else {
+                let residency = &mut self.residency;
+                openal.play_static(
+                    sound.resource_generation,
+                    &sound.ogg_path,
+                    || residency.openal_static_sound(sound),
+                    settings,
+                )?
+            };
+            KiraSoundHandle::OpenAl {
+                source: Some(source),
+                streaming: sound.stream,
+            }
+        } else if sound.stream {
             let data = self
                 .residency
                 .streaming_sound(sound)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
             let data = if looping { data.loop_region(..) } else { data };
-            KiraSoundHandle::Streaming(self.manager.play(data)?)
+            KiraSoundHandle::Streaming(
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists when OpenAL is absent")
+                    .play(data)?,
+            )
         } else {
             let data = self
                 .residency
@@ -633,7 +755,40 @@ impl KiraAudioRuntime {
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
             let data = if looping { data.loop_region(..) } else { data };
-            KiraSoundHandle::Static(self.manager.play(data)?)
+            KiraSoundHandle::Static(
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists when OpenAL is absent")
+                    .play(data)?,
+            )
+        };
+        #[cfg(not(feature = "device"))]
+        let handle = if sound.stream {
+            let data = self
+                .residency
+                .streaming_sound(sound)?
+                .volume(volume)
+                .playback_rate(playback_rate as f64);
+            let data = if looping { data.loop_region(..) } else { data };
+            KiraSoundHandle::Streaming(
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists")
+                    .play(data)?,
+            )
+        } else {
+            let data = self
+                .residency
+                .static_sound(sound)?
+                .volume(volume)
+                .playback_rate(playback_rate as f64);
+            let data = if looping { data.loop_region(..) } else { data };
+            KiraSoundHandle::Static(
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists")
+                    .play(data)?,
+            )
         };
         self.playing.push(KiraPlayingSound {
             event_id: sound.event_id.clone(),
@@ -705,25 +860,57 @@ impl KiraAudioRuntime {
         if !self.try_admit_channel(sound.stream) {
             return Ok(());
         }
-        let mut track = if linear_attenuation {
+        let mut track = if linear_attenuation && !self.uses_openal() {
             Some(
-                self.manager.add_spatial_sub_track(
-                    &self.listener,
-                    audio_position(position),
-                    SpatialTrackBuilder::new()
-                        .persist_until_sounds_finish(true)
-                        .distances((
-                            MIN_SPATIAL_DISTANCE,
-                            spatial_max_distance(sound, gain, fixed_range),
-                        )),
-                )?,
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists when OpenAL is absent")
+                    .add_spatial_sub_track(
+                        self.listener
+                            .as_ref()
+                            .expect("Kira listener exists with Kira backend"),
+                        audio_position(position),
+                        SpatialTrackBuilder::new()
+                            .persist_until_sounds_finish(true)
+                            .distances((
+                                MIN_SPATIAL_DISTANCE,
+                                spatial_max_distance(sound, gain, fixed_range),
+                            )),
+                    )?,
             )
         } else {
             None
         };
         let volume = channel_decibels_from_gain(channel_gain);
         let playback_rate = channel_playback_rate(playback_rate);
-        let handle = if sound.stream {
+        #[cfg(feature = "device")]
+        let handle = if let Some(openal) = self.openal.as_mut() {
+            let settings = OpenAlSourceSettings {
+                position: audio_position(position),
+                pitch: playback_rate,
+                gain: channel_gain,
+                looping: looping && !sound.stream,
+                relative: false,
+                max_distance: linear_attenuation
+                    .then(|| spatial_max_distance(sound, gain, fixed_range)),
+            };
+            let source = if sound.stream {
+                let decoder = self.residency.openal_streaming_sound(sound, looping)?;
+                openal.play_stream(decoder, settings)?
+            } else {
+                let residency = &mut self.residency;
+                openal.play_static(
+                    sound.resource_generation,
+                    &sound.ogg_path,
+                    || residency.openal_static_sound(sound),
+                    settings,
+                )?
+            };
+            KiraSoundHandle::OpenAl {
+                source: Some(source),
+                streaming: sound.stream,
+            }
+        } else if sound.stream {
             let data = self
                 .residency
                 .streaming_sound(sound)?
@@ -733,7 +920,10 @@ impl KiraAudioRuntime {
             KiraSoundHandle::Streaming(if let Some(track) = track.as_mut() {
                 track.play(data)?
             } else {
-                self.manager.play(data)?
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists when OpenAL is absent")
+                    .play(data)?
             })
         } else {
             let data = self
@@ -745,7 +935,42 @@ impl KiraAudioRuntime {
             KiraSoundHandle::Static(if let Some(track) = track.as_mut() {
                 track.play(data)?
             } else {
-                self.manager.play(data)?
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists when OpenAL is absent")
+                    .play(data)?
+            })
+        };
+        #[cfg(not(feature = "device"))]
+        let handle = if sound.stream {
+            let data = self
+                .residency
+                .streaming_sound(sound)?
+                .volume(volume)
+                .playback_rate(playback_rate as f64);
+            let data = if looping { data.loop_region(..) } else { data };
+            KiraSoundHandle::Streaming(if let Some(track) = track.as_mut() {
+                track.play(data)?
+            } else {
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists")
+                    .play(data)?
+            })
+        } else {
+            let data = self
+                .residency
+                .static_sound(sound)?
+                .volume(volume)
+                .playback_rate(playback_rate as f64);
+            let data = if looping { data.loop_region(..) } else { data };
+            KiraSoundHandle::Static(if let Some(track) = track.as_mut() {
+                track.play(data)?
+            } else {
+                self.manager
+                    .as_mut()
+                    .expect("Kira backend exists")
+                    .play(data)?
             })
         };
         self.playing.push(KiraPlayingSound {
@@ -878,10 +1103,27 @@ impl KiraAudioRuntime {
         if let Some(listener) = command.listener {
             self.listener_position = listener.position;
             self.listener_orientation = listener_orientation(listener);
-            self.listener
-                .set_position(audio_position(listener.position), Tween::default());
-            self.listener
-                .set_orientation(self.listener_orientation, Tween::default());
+            #[cfg(feature = "device")]
+            if let Some(openal) = self.openal.as_ref() {
+                let (forward, up) = listener_vectors(listener);
+                openal.set_listener(audio_position(listener.position), forward, up)?;
+            } else {
+                let kira_listener = self
+                    .listener
+                    .as_mut()
+                    .expect("Kira listener exists when OpenAL is absent");
+                kira_listener.set_position(audio_position(listener.position), Tween::default());
+                kira_listener.set_orientation(self.listener_orientation, Tween::default());
+            }
+            #[cfg(not(feature = "device"))]
+            {
+                let kira_listener = self.listener.as_mut().expect("Kira listener exists");
+                kira_listener.set_position(audio_position(listener.position), Tween::default());
+                kira_listener.set_orientation(self.listener_orientation, Tween::default());
+            }
+        }
+        for sound in &mut self.playing {
+            sound.handle.update_stream()?;
         }
         let active_entity_ids = active_entity_sound_ids(&command.entities);
         let active_tickable_sounds = active_tickable_entity_sounds(&command.tickable_sounds);
@@ -903,6 +1145,9 @@ impl KiraAudioRuntime {
         for command in advance_delayed_positioned_sounds(&mut self.delayed_positioned) {
             self.play_positioned_sound_now(&command)?;
         }
+        for sound in &mut self.playing {
+            sound.handle.release_stopped_channel();
+        }
         Ok(())
     }
 
@@ -912,6 +1157,7 @@ impl KiraAudioRuntime {
                 if let Some(track) = &mut sound.track {
                     track.set_position(audio_position(entity.position), Tween::default());
                 }
+                sound.handle.set_position(audio_position(entity.position));
             }
         }
     }
@@ -925,6 +1171,7 @@ impl KiraAudioRuntime {
                 if let Some(track) = &mut sound.track {
                     track.set_position(audio_position(update.position), Tween::default());
                 }
+                sound.handle.set_position(audio_position(update.position));
                 sound.handle.set_volume(update.channel_gain);
                 sound.base_channel_gain = update.channel_gain;
                 sound.handle.set_playback_rate(update.playback_rate);
@@ -942,7 +1189,7 @@ impl KiraAudioRuntime {
         let (static_used, streaming_used) = active_channel_counts(
             self.playing
                 .iter()
-                .map(|sound| (sound.handle.is_streaming(), sound.handle.is_active())),
+                .map(|sound| (sound.handle.is_streaming(), sound.handle.holds_channel())),
         );
         if self
             .channel_limits
@@ -951,6 +1198,17 @@ impl KiraAudioRuntime {
             true
         } else {
             self.channel_admission_rejections = self.channel_admission_rejections.saturating_add(1);
+            false
+        }
+    }
+
+    fn uses_openal(&self) -> bool {
+        #[cfg(feature = "device")]
+        {
+            self.openal.is_some()
+        }
+        #[cfg(not(feature = "device"))]
+        {
             false
         }
     }
@@ -976,40 +1234,17 @@ fn kira_audio_manager_settings() -> AudioManagerSettings<DefaultBackend> {
 }
 
 #[cfg(feature = "device")]
-fn start_device_audio_manager(
+fn start_openal_backend(
+    openal_library_path: &Path,
     preferred_device: &str,
-    inventory: &AudioDeviceInventory,
-) -> Result<(AudioManager<DefaultBackend>, Option<String>, bool)> {
-    if !is_sound_device_default(preferred_device) {
-        if let Some((device, current_device)) = inventory.preferred_device(preferred_device) {
-            if let Ok(manager) = audio_manager_for_device(Some(device)) {
-                return Ok((manager, Some(current_device), false));
-            }
-        }
-    }
-
-    let manager = audio_manager_for_device(None)?;
-    Ok((
-        manager,
-        inventory.snapshot.default_device.clone(),
-        !is_sound_device_default(preferred_device),
-    ))
-}
-
-#[cfg(feature = "device")]
-fn audio_manager_for_device(device: Option<cpal::Device>) -> Result<AudioManager<DefaultBackend>> {
-    let settings = AudioManagerSettings {
-        capacities: kira_capacities(),
-        main_track_builder: kira_main_track_builder(),
-        backend_settings: CpalBackendSettings {
-            device,
-            config: None,
-        },
-        ..AudioManagerSettings::default()
-    };
-    AudioManager::<DefaultBackend>::new(settings)
-        .map_err(anyhow::Error::new)
-        .map_err(|error| error.context("initialize Kira CPAL audio manager"))
+    use_hrtf: bool,
+) -> Result<(OpenAlBackend, Option<String>, bool)> {
+    let preferred = (!is_sound_device_default(preferred_device)).then_some(preferred_device);
+    let backend = OpenAlBackend::open(openal_library_path, preferred, use_hrtf)?;
+    let fallback = preferred
+        .is_some_and(|preferred| backend.observation().current_device.as_str() != preferred);
+    let current_device = Some(backend.observation().current_device.clone());
+    Ok((backend, current_device, fallback))
 }
 
 impl KiraSoundHandle {
@@ -1017,6 +1252,12 @@ impl KiraSoundHandle {
         match self {
             Self::Static(handle) => handle.stop(Tween::default()),
             Self::Streaming(handle) => handle.stop(Tween::default()),
+            #[cfg(feature = "device")]
+            Self::OpenAl { source, .. } => {
+                if let Some(source) = source {
+                    source.stop();
+                }
+            }
         }
     }
 
@@ -1024,15 +1265,36 @@ impl KiraSoundHandle {
         match self {
             Self::Static(handle) => handle.state(),
             Self::Streaming(handle) => handle.state(),
+            #[cfg(feature = "device")]
+            Self::OpenAl { source, .. } => {
+                if source.as_ref().is_some_and(OpenAlSoundSource::is_active) {
+                    PlaybackState::Playing
+                } else {
+                    PlaybackState::Stopped
+                }
+            }
         }
     }
 
     fn is_streaming(&self) -> bool {
-        matches!(self, Self::Streaming(_))
+        match self {
+            Self::Streaming(_) => true,
+            Self::Static(_) => false,
+            #[cfg(feature = "device")]
+            Self::OpenAl { streaming, .. } => *streaming,
+        }
     }
 
     fn is_active(&self) -> bool {
         self.state() != PlaybackState::Stopped
+    }
+
+    fn holds_channel(&self) -> bool {
+        match self {
+            Self::Static(_) | Self::Streaming(_) => self.is_active(),
+            #[cfg(feature = "device")]
+            Self::OpenAl { source, .. } => source.is_some(),
+        }
     }
 
     fn set_volume(&mut self, gain: f32) {
@@ -1040,6 +1302,12 @@ impl KiraSoundHandle {
         match self {
             Self::Static(handle) => handle.set_volume(volume, Tween::default()),
             Self::Streaming(handle) => handle.set_volume(volume, Tween::default()),
+            #[cfg(feature = "device")]
+            Self::OpenAl { source, .. } => {
+                if let Some(source) = source {
+                    source.set_volume(normalized_gain(gain));
+                }
+            }
         }
     }
 
@@ -1048,6 +1316,45 @@ impl KiraSoundHandle {
         match self {
             Self::Static(handle) => handle.set_playback_rate(playback_rate, Tween::default()),
             Self::Streaming(handle) => handle.set_playback_rate(playback_rate, Tween::default()),
+            #[cfg(feature = "device")]
+            Self::OpenAl { source, .. } => {
+                if let Some(source) = source {
+                    source.set_playback_rate(playback_rate as f32);
+                }
+            }
+        }
+    }
+
+    fn set_position(&mut self, position: [f32; 3]) {
+        #[cfg(feature = "device")]
+        if let Self::OpenAl { source, .. } = self {
+            if let Some(source) = source {
+                source.set_position(position);
+            }
+        }
+        #[cfg(not(feature = "device"))]
+        let _ = position;
+    }
+
+    fn update_stream(&mut self) -> Result<()> {
+        #[cfg(feature = "device")]
+        if let Self::OpenAl { source, .. } = self {
+            if let Some(source) = source {
+                source.update_stream()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Mirrors `ChannelAccess.scheduleTick`: the instance keeps its handle
+    /// shell until `soundDeleteTime`, but a stopped native channel returns to
+    /// its static/streaming pool at the end of the current sound tick.
+    fn release_stopped_channel(&mut self) {
+        #[cfg(feature = "device")]
+        if let Self::OpenAl { source, .. } = self {
+            if source.as_ref().is_some_and(|source| !source.is_active()) {
+                source.take();
+            }
         }
     }
 }
@@ -1358,6 +1665,18 @@ fn listener_orientation(listener: AudioListenerState) -> [f32; 4] {
     quat_mul(quat_from_yaw(yaw), quat_from_pitch(pitch))
 }
 
+#[cfg(feature = "device")]
+fn listener_vectors(listener: AudioListenerState) -> ([f32; 3], [f32; 3]) {
+    let yaw = listener.y_rot.to_radians();
+    let pitch = listener.x_rot.to_radians();
+    let (sin_yaw, cos_yaw) = yaw.sin_cos();
+    let (sin_pitch, cos_pitch) = pitch.sin_cos();
+    (
+        [-sin_yaw * cos_pitch, -sin_pitch, cos_yaw * cos_pitch],
+        [-sin_yaw * sin_pitch, cos_pitch, cos_yaw * sin_pitch],
+    )
+}
+
 fn quat_from_yaw(yaw: f32) -> [f32; 4] {
     let half = yaw * 0.5;
     [0.0, half.sin(), 0.0, half.cos()]
@@ -1411,7 +1730,7 @@ mod tests {
     }
 
     #[test]
-    fn channel_diagnostics_count_only_active_handles_by_decode_mode() {
+    fn channel_diagnostics_count_only_held_pool_slots_by_decode_mode() {
         assert_eq!(
             active_channel_counts([
                 (false, true),
@@ -1458,6 +1777,47 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "device")]
+    #[ignore = "requires BBB_TEST_OPENAL_LIBRARY and an explicitly selected OpenAL driver"]
+    fn stopped_openal_channel_returns_pool_slot_while_instance_shell_remains() {
+        let _receipt = crate::openal::OPENAL_RECEIPT_LOCK.lock().unwrap();
+        let library = std::env::var_os("BBB_TEST_OPENAL_LIBRARY")
+            .expect("BBB_TEST_OPENAL_LIBRARY must name the verified OpenAL library");
+        let mut backend = OpenAlBackend::open(&library, None, false).unwrap();
+        let source = backend
+            .play_static(
+                1,
+                std::path::Path::new("schedule-tick.ogg"),
+                || {
+                    Ok(crate::residency::OpenAlStaticSound {
+                        sample_rate: 48_000,
+                        channels: 1,
+                        samples: vec![0; 48_000],
+                    })
+                },
+                OpenAlSourceSettings {
+                    position: [0.0; 3],
+                    pitch: 1.0,
+                    gain: 1.0,
+                    looping: true,
+                    relative: true,
+                    max_distance: None,
+                },
+            )
+            .unwrap();
+        let mut handle = KiraSoundHandle::OpenAl {
+            source: Some(source),
+            streaming: false,
+        };
+        assert!(handle.holds_channel());
+        handle.stop();
+        assert!(handle.holds_channel());
+        handle.release_stopped_channel();
+        assert!(!handle.holds_channel());
+        assert!(!handle.is_active());
+    }
+
+    #[test]
     #[cfg(not(feature = "device"))]
     fn kira_capacity_has_headroom_for_both_logical_pools() {
         let mut manager =
@@ -1479,7 +1839,7 @@ mod tests {
 
     #[test]
     #[cfg(not(feature = "device"))]
-    fn stopped_backend_handle_remains_projected_until_twentieth_tick() {
+    fn stopped_instance_shell_remains_projected_until_twentieth_tick() {
         use std::sync::Arc;
 
         use kira::{
@@ -1494,9 +1854,19 @@ mod tests {
             settings: StaticSoundSettings::default(),
             slice: None,
         };
-        let handle = runtime.manager.play(data.clone()).unwrap();
-        runtime.manager.backend_mut().on_start_processing();
-        runtime.manager.backend_mut().process();
+        let handle = runtime
+            .manager
+            .as_mut()
+            .unwrap()
+            .play(data.clone())
+            .unwrap();
+        runtime
+            .manager
+            .as_mut()
+            .unwrap()
+            .backend_mut()
+            .on_start_processing();
+        runtime.manager.as_mut().unwrap().backend_mut().process();
         runtime.playing.push(KiraPlayingSound {
             event_id: "minecraft:music.test".to_owned(),
             category: AudioCategory::Music,
@@ -1513,8 +1883,13 @@ mod tests {
             category: None,
             name: Some("minecraft:music.test".to_owned()),
         });
-        runtime.manager.backend_mut().on_start_processing();
-        runtime.manager.backend_mut().process();
+        runtime
+            .manager
+            .as_mut()
+            .unwrap()
+            .backend_mut()
+            .on_start_processing();
+        runtime.manager.as_mut().unwrap().backend_mut().process();
         assert!(!runtime.playing[0].handle.is_active());
 
         let empty_tick = TickEntitySoundPositionsCommand {
@@ -1535,9 +1910,14 @@ mod tests {
         assert_eq!(runtime.active_music_event_id(), None);
         assert!(runtime.playing.is_empty());
 
-        let stop_all_handle = runtime.manager.play(data).unwrap();
-        runtime.manager.backend_mut().on_start_processing();
-        runtime.manager.backend_mut().process();
+        let stop_all_handle = runtime.manager.as_mut().unwrap().play(data).unwrap();
+        runtime
+            .manager
+            .as_mut()
+            .unwrap()
+            .backend_mut()
+            .on_start_processing();
+        runtime.manager.as_mut().unwrap().backend_mut().process();
         runtime.playing.push(KiraPlayingSound {
             event_id: "minecraft:music.stop_all".to_owned(),
             category: AudioCategory::Music,

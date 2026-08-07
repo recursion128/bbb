@@ -46,6 +46,7 @@ pub use crate::known_packs::{KnownPackDataSource, KnownPacksManager};
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::generate_sprite_mip_levels;
+pub use crate::openal_native::materialize_verified_openal_library;
 pub use crate::panorama::PanoramaCatalog;
 pub use crate::particle_definitions::{ParticleDefinition, ParticleDefinitionCatalog};
 pub use crate::particle_sprites::ParticleSpriteCatalog;

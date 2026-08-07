@@ -1,17 +1,13 @@
 use std::{
+    path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError},
     thread::{self, JoinHandle},
     time::Duration,
 };
 
 use anyhow::{Context, Result};
-use cpal::{
-    traits::{DeviceTrait, HostTrait},
-    Device,
-};
-
 const DEVICE_QUERY_INTERVAL: Duration = Duration::from_millis(1_000);
-const OPEN_AL_SOFT_PREFIX: &str = "OpenAL Soft on ";
+const CALLBACK_QUERY_INTERVAL: Duration = Duration::from_millis(50);
 
 /// The device-name state `DeviceList` exposes to `SoundEngine`. Names and
 /// ordering deliberately remain observable: Vanilla compares the complete
@@ -53,6 +49,13 @@ pub struct AudioDeviceObservation {
     pub preferred_fallbacks: u64,
     pub last_reload_reason: Option<String>,
     pub last_error: Option<String>,
+    pub requested_directional_audio: bool,
+    pub hrtf_extension: bool,
+    pub hrtf_specifiers: i32,
+    pub hrtf_status: i32,
+    pub output_limiter: bool,
+    pub supports_disconnection: bool,
+    pub tracking_mode: &'static str,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -91,10 +94,12 @@ pub fn audio_device_reload_reason(
         if current_device != current.default_device.as_deref() {
             return Some(AudioDeviceReloadReason::SystemDefaultChanged);
         }
-    } else if let Some(preferred_backend_name) =
-        matching_preferred_device_name(preferred_device, &current.all_devices)
+    } else if current
+        .all_devices
+        .iter()
+        .any(|name| name == preferred_device)
     {
-        if current_device != Some(preferred_backend_name) {
+        if current_device != Some(preferred_device) {
             return Some(AudioDeviceReloadReason::PreferredDeviceAvailable);
         }
     }
@@ -103,89 +108,26 @@ pub fn audio_device_reload_reason(
 
 pub(crate) struct AudioDeviceInventory {
     pub(crate) snapshot: AudioDeviceSnapshot,
-    devices: Vec<NamedDevice>,
-}
-
-struct NamedDevice {
-    name: String,
-    device: Device,
 }
 
 impl AudioDeviceInventory {
     pub(crate) fn empty() -> Self {
         Self {
             snapshot: AudioDeviceSnapshot::default(),
-            devices: Vec::new(),
         }
-    }
-
-    pub(crate) fn preferred_device(&self, preferred: &str) -> Option<(Device, String)> {
-        let name = matching_preferred_device_name(preferred, &self.snapshot.all_devices)?;
-        self.devices
-            .iter()
-            .find(|entry| entry.name == name)
-            .map(|entry| (entry.device.clone(), entry.name.clone()))
     }
 }
 
-/// Vanilla persists the OpenAL enumeration string but hides this stable prefix
-/// in its options UI. CPAL exposes the underlying display name without that
-/// transport prefix on common desktop backends, so exact matching wins first
-/// and the UI-equivalent stripped form is the only adapter fallback.
-fn matching_preferred_device_name<'a>(
-    preferred: &'a str,
-    available: &'a [String],
-) -> Option<&'a str> {
-    available
-        .iter()
-        .find(|name| name.as_str() == preferred)
-        .map(String::as_str)
-        .or_else(|| {
-            let stripped = preferred.strip_prefix(OPEN_AL_SOFT_PREFIX)?;
-            available
-                .iter()
-                .find(|name| name.as_str() == stripped)
-                .map(String::as_str)
-        })
-}
-
-fn query_audio_devices() -> Result<AudioDeviceInventory> {
-    let host = cpal::default_host();
-    let default_entry = host.default_output_device().and_then(|device| {
-        let name = device.description().ok()?.name().to_owned();
-        Some(NamedDevice { name, device })
-    });
-    let default_device = default_entry.as_ref().map(|entry| entry.name.clone());
-    let mut devices = Vec::new();
-    for device in host
-        .output_devices()
-        .context("enumerate CPAL output devices")?
-    {
-        let Ok(description) = device.description() else {
-            continue;
-        };
-        devices.push(NamedDevice {
-            name: description.name().to_owned(),
-            device,
-        });
-    }
-    if let Some(default_entry) = default_entry {
-        if !devices.iter().any(|entry| entry.name == default_entry.name) {
-            devices.push(default_entry);
-        }
-    }
-    let all_devices = devices.iter().map(|entry| entry.name.clone()).collect();
+fn query_audio_devices(openal_library_path: &Path) -> Result<AudioDeviceInventory> {
     Ok(AudioDeviceInventory {
-        snapshot: AudioDeviceSnapshot {
-            default_device,
-            all_devices,
-        },
-        devices,
+        snapshot: crate::openal::query_device_snapshot(openal_library_path)?,
     })
 }
 
-pub(crate) fn initial_audio_devices() -> (AudioDeviceInventory, Option<String>) {
-    match query_audio_devices() {
+pub(crate) fn initial_audio_devices(
+    openal_library_path: &Path,
+) -> (AudioDeviceInventory, Option<String>) {
+    match query_audio_devices(openal_library_path) {
         Ok(inventory) => (inventory, None),
         Err(error) => (AudioDeviceInventory::empty(), Some(format!("{error:#}"))),
     }
@@ -199,30 +141,72 @@ pub(crate) struct AudioDeviceTracker {
     updates: Receiver<std::result::Result<AudioDeviceInventory, String>>,
     shutdown: SyncSender<()>,
     worker: Option<JoinHandle<()>>,
+    openal_library_path: PathBuf,
+    tracking_mode: &'static str,
 }
 
 impl AudioDeviceTracker {
-    pub(crate) fn spawn() -> Result<Self> {
+    pub(crate) fn spawn(openal_library_path: PathBuf) -> Result<Self> {
         let (update_sender, updates) = mpsc::sync_channel(1);
         let (shutdown, shutdown_receiver) = mpsc::sync_channel(1);
+        let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+        let worker_library_path = openal_library_path.clone();
         let worker = thread::Builder::new()
             .name("bbb-audio-device-tracker".to_owned())
-            .spawn(move || loop {
-                match shutdown_receiver.recv_timeout(DEVICE_QUERY_INTERVAL) {
-                    Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+            .spawn(move || {
+                let enumerator = crate::openal::OpenAlDeviceEnumerator::open(&worker_library_path)
+                    .map_err(|error| format!("{error:#}"));
+                let system_events = enumerator
+                    .as_ref()
+                    .ok()
+                    .and_then(|enumerator| enumerator.install_system_event_tracker());
+                let tracking_mode = if system_events.is_some() {
+                    "openal-soft-system-events"
+                } else {
+                    "openal-polling-1000ms"
+                };
+                if ready_sender.send(tracking_mode).is_err() {
+                    return;
                 }
-                let update = query_audio_devices().map_err(|error| format!("{error:#}"));
-                match update_sender.try_send(update) {
-                    Ok(()) | Err(TrySendError::Full(_)) => {}
-                    Err(TrySendError::Disconnected(_)) => break,
+                loop {
+                    let interval = if system_events.is_some() {
+                        CALLBACK_QUERY_INTERVAL
+                    } else {
+                        DEVICE_QUERY_INTERVAL
+                    };
+                    match shutdown_receiver.recv_timeout(interval) {
+                        Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                        Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    }
+                    if system_events
+                        .as_ref()
+                        .is_some_and(|events| !events.take_update_request())
+                    {
+                        continue;
+                    }
+                    let update = match &enumerator {
+                        Ok(enumerator) => enumerator
+                            .snapshot()
+                            .map(|snapshot| AudioDeviceInventory { snapshot })
+                            .map_err(|error| format!("{error:#}")),
+                        Err(error) => Err(error.clone()),
+                    };
+                    match update_sender.try_send(update) {
+                        Ok(()) | Err(TrySendError::Full(_)) => {}
+                        Err(TrySendError::Disconnected(_)) => break,
+                    }
                 }
             })
             .context("spawn bounded audio device tracker")?;
+        let tracking_mode = ready_receiver
+            .recv()
+            .context("initialize OpenAL audio device tracker")?;
         Ok(Self {
             updates,
             shutdown,
             worker: Some(worker),
+            openal_library_path,
+            tracking_mode,
         })
     }
 
@@ -234,6 +218,15 @@ impl AudioDeviceTracker {
                 Err(TryRecvError::Empty | TryRecvError::Disconnected) => return latest,
             }
         }
+    }
+
+    pub(crate) fn force_refresh(&self) -> std::result::Result<AudioDeviceInventory, String> {
+        let _ = self.latest();
+        query_audio_devices(&self.openal_library_path).map_err(|error| format!("{error:#}"))
+    }
+
+    pub(crate) fn tracking_mode(&self) -> &'static str {
+        self.tracking_mode
     }
 }
 
@@ -318,22 +311,42 @@ mod tests {
     }
 
     #[test]
-    fn vanilla_openal_display_prefix_maps_to_the_cpal_device_name() {
-        let before = snapshot(Some("Built-in Audio"), &["Built-in Audio"]);
-        let after = snapshot(Some("Built-in Audio"), &["Built-in Audio", "USB Headset"]);
+    fn preferred_device_matching_uses_the_exact_openal_enumeration_name() {
+        let before = snapshot(
+            Some("OpenAL Soft on Built-in Audio"),
+            &["OpenAL Soft on Built-in Audio"],
+        );
+        let after = snapshot(
+            Some("OpenAL Soft on Built-in Audio"),
+            &[
+                "OpenAL Soft on Built-in Audio",
+                "OpenAL Soft on USB Headset",
+            ],
+        );
         assert_eq!(
             audio_device_reload_reason(
                 false,
                 "OpenAL Soft on USB Headset",
-                Some("Built-in Audio"),
+                Some("OpenAL Soft on Built-in Audio"),
                 &before,
                 &after,
             ),
             Some(AudioDeviceReloadReason::PreferredDeviceAvailable)
         );
-        assert_eq!(
-            matching_preferred_device_name("OpenAL Soft on USB Headset", &after.all_devices),
-            Some("USB Headset")
-        );
+    }
+
+    #[test]
+    #[ignore = "requires BBB_TEST_OPENAL_LIBRARY and an explicitly selected OpenAL driver"]
+    fn verified_device_tracker_runs_selected_mode_and_forced_refresh() {
+        let _receipt = crate::openal::OPENAL_RECEIPT_LOCK.lock().unwrap();
+        let library = std::env::var_os("BBB_TEST_OPENAL_LIBRARY")
+            .expect("BBB_TEST_OPENAL_LIBRARY must name the verified OpenAL library");
+        let tracker = AudioDeviceTracker::spawn(PathBuf::from(library)).unwrap();
+        assert!(matches!(
+            tracker.tracking_mode(),
+            "openal-soft-system-events" | "openal-polling-1000ms"
+        ));
+        let snapshot = tracker.force_refresh().unwrap().snapshot;
+        assert!(snapshot.all_devices.iter().all(|name| !name.is_empty()));
     }
 }

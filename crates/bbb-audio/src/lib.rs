@@ -5,6 +5,8 @@ mod preload;
 
 #[cfg(feature = "device")]
 mod device;
+#[cfg(feature = "device")]
+mod openal;
 
 #[cfg(feature = "kira")]
 mod residency;
@@ -24,6 +26,8 @@ pub use device::{
     audio_device_reload_reason, is_sound_device_default, AudioDeviceObservation, AudioDevicePoll,
     AudioDeviceReloadReason, AudioDeviceSnapshot,
 };
+#[cfg(feature = "device")]
+pub use openal::{OpenAlContextObservation, OpenAlDeviceContext};
 #[cfg(feature = "kira")]
 pub use preload::{AudioPreloadObservation, AudioPreloadRequest};
 #[cfg(feature = "kira")]

@@ -13,7 +13,10 @@ use bbb_audio::{
     TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
-use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
+use bbb_pack::{
+    materialize_verified_openal_library, JukeboxSongRegistry, PackRoots, SoundCatalog,
+    SoundEventRegistry,
+};
 use bbb_world::{
     AmbientLoopSoundState, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
     SoundEventState, StopSoundEventState,
@@ -85,16 +88,21 @@ impl NativeAudioRuntime {
     pub(crate) fn load(
         roots: &PackRoots,
         preferred_device: &str,
+        directional_audio: bool,
         volume_settings: AudioVolumeSettings,
     ) -> Result<Self> {
         let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
         let jukebox_registry = JukeboxSongRegistry::vanilla_26_1();
+        let openal_library = materialize_verified_openal_library(&roots.vanilla_root)
+            .context("materialize verified Vanilla OpenAL library")?;
         let mut playback = KiraAudioRuntime::new_with_device_preference(
+            openal_library,
             preferred_device,
+            directional_audio,
             catalog.resource_generation(),
         )
-        .context("initialize Kira audio runtime")?;
+        .context("initialize OpenAL audio runtime")?;
         playback.request_preload(audio_preload_requests(&catalog));
         let mut counters = AudioCounters {
             enabled: true,
@@ -235,6 +243,9 @@ fn project_audio_channel_observation(
     counters.sound_streaming_channels_used = channels.streaming_used;
     counters.sound_streaming_channels_capacity = channels.streaming_capacity;
     counters.sound_channel_admission_rejections = channels.admission_rejections;
+    counters.sound_native_static_buffers = channels.native_static_buffers;
+    counters.sound_native_static_bytes = channels.native_static_bytes;
+    counters.sound_native_static_evictions = channels.native_static_evictions;
     counters.sound_channel_capacity_origin = Some(channels.capacity_origin.to_owned());
 }
 
@@ -249,6 +260,13 @@ fn project_audio_device_observation(counters: &mut AudioCounters, device: AudioD
     counters.preferred_device_fallbacks = device.preferred_fallbacks;
     counters.last_device_reload_reason = device.last_reload_reason;
     counters.last_device_error = device.last_error;
+    counters.requested_directional_audio = device.requested_directional_audio;
+    counters.openal_hrtf_extension = device.hrtf_extension;
+    counters.openal_hrtf_specifiers = device.hrtf_specifiers;
+    counters.openal_hrtf_status = device.hrtf_status;
+    counters.openal_output_limiter = device.output_limiter;
+    counters.openal_supports_disconnection = device.supports_disconnection;
+    counters.openal_device_tracking_mode = Some(device.tracking_mode.to_owned());
 }
 
 fn project_audio_preload_observation(
@@ -557,6 +575,9 @@ mod tests {
                 static_capacity: 248,
                 streaming_capacity: 8,
                 admission_rejections: 4,
+                native_static_buffers: 6,
+                native_static_bytes: 96_000,
+                native_static_evictions: 2,
                 capacity_origin: "kira-logical-main-plus-spatial",
             },
         );
@@ -566,6 +587,9 @@ mod tests {
         assert_eq!(counters.sound_static_channels_capacity, 248);
         assert_eq!(counters.sound_streaming_channels_capacity, 8);
         assert_eq!(counters.sound_channel_admission_rejections, 4);
+        assert_eq!(counters.sound_native_static_buffers, 6);
+        assert_eq!(counters.sound_native_static_bytes, 96_000);
+        assert_eq!(counters.sound_native_static_evictions, 2);
         assert_eq!(
             counters.sound_channel_capacity_origin.as_deref(),
             Some("kira-logical-main-plus-spatial")
@@ -585,6 +609,13 @@ mod tests {
                 available_device_count: 1,
                 reloads: 2,
                 query_failures: 1,
+                requested_directional_audio: true,
+                hrtf_extension: true,
+                hrtf_specifiers: 2,
+                hrtf_status: 1,
+                output_limiter: true,
+                supports_disconnection: true,
+                tracking_mode: "openal-soft-system-events",
                 ..AudioDeviceObservation::default()
             },
         );
@@ -594,6 +625,15 @@ mod tests {
         assert_eq!(counters.available_device_count, 1);
         assert_eq!(counters.device_reloads, 2);
         assert_eq!(counters.device_query_failures, 1);
+        assert!(counters.requested_directional_audio);
+        assert!(counters.openal_hrtf_extension);
+        assert_eq!(counters.openal_hrtf_specifiers, 2);
+        assert!(counters.openal_output_limiter);
+        assert!(counters.openal_supports_disconnection);
+        assert_eq!(
+            counters.openal_device_tracking_mode.as_deref(),
+            Some("openal-soft-system-events")
+        );
     }
 
     #[test]

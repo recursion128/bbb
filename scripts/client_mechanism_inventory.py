@@ -7683,7 +7683,7 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
             ),
             (
                 "crates/bbb-audio/src/runtime.rs"
-                "#stopped_backend_handle_remains_projected_until_twentieth_tick",
+                "#stopped_instance_shell_remains_projected_until_twentieth_tick",
                 "crates/bbb-audio/src/runtime.rs"
                 "#backend_music_identity_retains_stopped_instance_until_delete_tick",
                 "crates/bbb-native/src/audio_runtime.rs"
@@ -7872,7 +7872,7 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
                 "crates/bbb-native/src/environment_audio_runtime.rs"
                 "#environment_audio_ticks_after_player_movement_and_before_music",
                 "crates/bbb-audio/src/runtime.rs"
-                "#stopped_backend_handle_remains_projected_until_twentieth_tick",
+                "#stopped_instance_shell_remains_projected_until_twentieth_tick",
                 "crates/bbb-native/src/audio_runtime/resolver.rs"
                 "#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position",
             ),
@@ -7931,36 +7931,118 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
-AUDIO_OPENAL_CONTEXT_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#audio-sound-manager-engine",
-    reason=(
-        "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context "
-        "attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
+AUDIO_OPENAL_CONTEXT_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/openal_native.rs#pub fn materialize_verified_openal_library",
+        "crates/bbb-audio/src/openal.rs#pub struct OpenAlDeviceContext",
+        "crates/bbb-audio/src/openal.rs#fn finish_context_initialization",
+        "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+        "crates/bbb-native/src/startup.rs#client_directional_audio",
     ),
-    close_condition=(
-        "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, "
-        "derives independent pool limits from ALC_MONO_SOURCES, and publishes a "
-        "reproducible real-device differential receipt."
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#context_attributes_match_vanilla_supported_hrtf_fallback",
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_library_executes_both_hrtf_context_branches",
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_sources_restore_their_context_across_device_reload",
+        "crates/bbb-pack/src/openal_native.rs"
+        "#verified_workspace_materializes_manifest_owned_openal",
+        "crates/bbb-native/src/startup.rs"
+        "#stored_directional_audio_reaches_startup_and_explicit_cli_wins",
     ),
 )
 
-AUDIO_OPENAL_CHANNEL_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#audio-sound-manager-engine",
-    reason=(
-        "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact "
-        "OpenAL source, per-source distance-model, buffer attachment, or four-buffer "
-        "one-second streaming queue decisions."
+AUDIO_OPENAL_CHANNEL_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlBackend",
+        "crates/bbb-audio/src/openal.rs#pub(crate) struct OpenAlSoundSource",
+        "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+        "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStreamDecoder",
+        "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound",
     ),
-    close_condition=(
-        "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, "
-        "static buffer attachment, and four-buffer streaming pump with focused tests "
-        "and a real-device receipt."
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+        "crates/bbb-audio/src/residency.rs"
+        "#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_instance_shell_remains_projected_until_twentieth_tick",
+        "crates/bbb-audio/src/runtime.rs"
+        "#channel_limits_match_vanilla_formula_and_isolate_pools",
+    ),
+)
+
+AUDIO_OPENAL_DEVICE_TRACKER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#pub(crate) fn install_system_event_tracker",
+        "crates/bbb-audio/src/device.rs#pub(crate) struct AudioDeviceTracker",
+        "crates/bbb-audio/src/runtime.rs#pub fn poll_audio_device",
+    ),
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#system_event_callback_requests_only_playback_updates",
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_device_tracker_executes_callback_or_polling_selection",
+        "crates/bbb-audio/src/device.rs"
+        "#verified_device_tracker_runs_selected_mode_and_forced_refresh",
+        "crates/bbb-audio/src/device.rs"
+        "#reload_decision_preserves_vanilla_branch_order",
+    ),
+)
+
+AUDIO_OPENAL_LISTENER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/openal.rs#pub(crate) fn set_listener",
+        "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+        "crates/bbb-audio/src/runtime.rs#fn tick_entity_sound_positions",
+    ),
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+        "crates/bbb-audio/src/runtime.rs"
+        "#listener_orientation_matches_kira_forward_at_minecraft_north",
+    ),
+)
+
+AUDIO_OPENAL_CLEANUP_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlBackend",
+        "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource",
+        "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlDeviceContext",
+        "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+    ),
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_sources_restore_their_context_across_device_reload",
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+    ),
+)
+
+AUDIO_OPENAL_POOL_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/runtime.rs#struct AudioChannelLimits",
+        "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+        "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+        "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+    ),
+    (
+        "crates/bbb-audio/src/runtime.rs"
+        "#channel_limits_match_vanilla_formula_and_isolate_pools",
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+        "crates/bbb-native/src/audio_runtime.rs"
+        "#audio_channel_diagnostics_project_independent_pool_receipt",
     ),
 )
 
 AUDIO_LIBRARY_OWNER_EVIDENCE = _owner_evidence(
     (
-        AUDIO_OPENAL_CONTEXT_GAP,
+        AUDIO_OPENAL_CONTEXT_EVIDENCE,
         ("init", "createAttributes", "getChannelCount"),
     ),
     (
@@ -7970,20 +8052,22 @@ AUDIO_LIBRARY_OWNER_EVIDENCE = _owner_evidence(
             "queryDeviceName",
             "openDeviceOrFallback",
             "tryOpenDevice",
-            "isCurrentDeviceDisconnected",
-            "createDeviceTracker",
         ),
     ),
     (
-        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["destroy"],
+        AUDIO_OPENAL_DEVICE_TRACKER_EVIDENCE,
+        ("isCurrentDeviceDisconnected", "createDeviceTracker"),
+    ),
+    (
+        AUDIO_OPENAL_CLEANUP_EVIDENCE,
         ("cleanup",),
     ),
     (
-        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["updateSource"],
+        AUDIO_OPENAL_LISTENER_EVIDENCE,
         ("getListener",),
     ),
     (
-        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["getChannelDebugString"],
+        AUDIO_OPENAL_POOL_EVIDENCE,
         (
             "acquireChannel",
             "releaseChannel",
@@ -7999,7 +8083,7 @@ AUDIO_LIBRARY_OWNER_EVIDENCE = _owner_evidence(
 
 AUDIO_CHANNEL_OWNER_EVIDENCE = _owner_evidence(
     (
-        AUDIO_OPENAL_CHANNEL_GAP,
+        AUDIO_OPENAL_CHANNEL_EVIDENCE,
         (
             "create",
             "Channel",
@@ -8032,14 +8116,31 @@ AUDIO_CHANNEL_OWNER_EVIDENCE = _owner_evidence(
 
 AUDIO_LISTENER_OWNER_EVIDENCE = _owner_evidence(
     (
-        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["updateSource"],
+        AUDIO_OPENAL_LISTENER_EVIDENCE,
         ("setTransform", "reset", "getTransform"),
+    ),
+)
+
+AUDIO_OPENAL_SOUND_BUFFER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/openal.rs#struct OpenAlStaticBuffer",
+        "crates/bbb-audio/src/openal.rs#fn upload_pcm_buffer",
+        "crates/bbb-audio/src/openal.rs#fn ensure_static_buffer_capacity",
+        "crates/bbb-audio/src/residency.rs#pub(crate) struct OpenAlStaticSound",
+    ),
+    (
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+        "crates/bbb-audio/src/residency.rs"
+        "#pcm16_conversion_matches_vanilla_chunked_sample_buffer",
+        "crates/bbb-audio/src/residency.rs"
+        "#capacity_evicts_only_inactive_lru_and_rejects_when_all_are_pinned",
     ),
 )
 
 AUDIO_SOUND_BUFFER_OWNER_EVIDENCE = _owner_evidence(
     (
-        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["requestPreload"],
+        AUDIO_OPENAL_SOUND_BUFFER_EVIDENCE,
         (
             "SoundBuffer",
             "getAlBuffer",
@@ -8052,9 +8153,27 @@ AUDIO_SOUND_BUFFER_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+AUDIO_OPENAL_CHANNEL_ACCESS_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-audio/src/runtime.rs#enum KiraSoundHandle",
+        "crates/bbb-audio/src/runtime.rs#fn release_stopped_channel",
+        "crates/bbb-audio/src/runtime.rs#fn update_stream",
+        "crates/bbb-audio/src/runtime.rs#fn replace_openal_backend",
+        "crates/bbb-audio/src/openal.rs#impl Drop for OpenAlSoundSource",
+    ),
+    (
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_openal_channel_returns_pool_slot_while_instance_shell_remains",
+        "crates/bbb-audio/src/openal.rs"
+        "#verified_openal_channel_executes_static_and_four_buffer_stream_owners",
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_instance_shell_remains_projected_until_twentieth_tick",
+    ),
+)
+
 AUDIO_CHANNEL_ACCESS_OWNER_EVIDENCE = _owner_evidence(
     (
-        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["getChannelDebugString"],
+        AUDIO_OPENAL_CHANNEL_ACCESS_EVIDENCE,
         (
             "ChannelAccess",
             "createHandle",
@@ -8755,7 +8874,9 @@ MECHANISM_EVIDENCE = {
     "ui-font-manager": ("crates/bbb-item-model/src/font.rs",),
     "audio-sound-manager-engine": (
         "crates/bbb-pack/src/sounds.rs",
+        "crates/bbb-pack/src/openal_native.rs",
         "crates/bbb-audio/src/device.rs",
+        "crates/bbb-audio/src/openal.rs",
         "crates/bbb-audio/src/runtime.rs",
         "crates/bbb-native/src/audio_runtime.rs",
     ),

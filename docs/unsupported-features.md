@@ -90,33 +90,19 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   Vanilla anchors: `Options.java:1190,1691,1770,1825` and the verified
   `DataFixTypes.OPTIONS` schema/fix registrations.
 
-- Close the remaining `audio-sound-manager-engine` backend differences. The
-  generated inventory now covers 144 owners through Vanilla's `Library`,
-  `Channel`, `Listener`, `SoundBuffer`, `ChannelAccess`, and
-  `SoundBufferLibrary` backend boundary. Of those, 120 carry decision-level
-  implementation and focused-test evidence; 24 `Library` context/HRTF/source-count
-  and `Channel` OpenAL source/distance/buffer-queue owners carry machine-readable
-  `open_gap` records routed back to this item. Its nine unreachable
-  integrated-pause/manual-loop owners additionally carry machine-readable
-  Vanilla caller basis, current-scope reason and reopen condition. Stored device/reload, generation-aware preload
-  and all eleven stored `soundCategory_*` startup gains are consumed. The row
-  remains `partial`: consume `directionalAudio` with Vanilla's supported-HRTF
-  fallback and replace the attributable Kira-logical source-count origin with
-  the real device-derived count. BBB currently applies Vanilla's formula to
-  independent static/streaming admission pools (248/8 for its logical 256
-  origin), exposes saturation/origin receipts, and retains stopped handles
-  through tick 19 before deletion at tick 20; these are not evidence for HRTF,
-  exact OpenAL per-source distance/buffer behavior, or real-device capacity. Owner:
-  `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
-  `Library.java:64-114,124-155`, `SoundEngine.java:101-109,227-327,516-530`, and
-  `Sound.java:68-70`; reopen owner census if any source hash or method set moves.
-  `scripts/capture-vanilla-audio-receipt.py` executes those official owners from
-  the verified client jar in both HRTF branches and binds raw output to their
-  source hashes. `--driver null` is diagnostic only; formal backend closure
-  requires the default/ALSA host-device receipt. On the current host both real
-  paths reproducibly fail `Library.openDeviceOrFallback`: UID 1000 is not in
-  device group 29 and every `/dev/snd` character node is mode `crw-rw----`
-  root:audio, while the null receipt remains valid and explicitly non-formal.
+- Produce the formal Vanilla↔BBB default/ALSA host-device differential receipt
+  for `audio-sound-manager-engine`, exercising both HRTF requests, device-derived
+  pool capacity, static/streaming source state, buffer lifecycle, listener state,
+  device reload and stopped-channel release. The 144-owner generated census has
+  implementation/focused-test evidence; its nine unreachable integrated-pause/
+  manual-loop owners retain caller basis and reopen conditions. `--driver null`
+  remains diagnostic only. The 2026-08-07 default-driver recapture is invalid:
+  both HRTF branches fail in Vanilla `Library.openDeviceOrFallback`; UID 1000 is
+  not in device group 29 and every `/dev/snd` character node is `crw-rw----`
+  root:audio. Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
+  `Library.java:64-114,124-155`, `Channel.java:35-149`,
+  `SoundEngine.java:101-109,215-327,402-443`, and `Sound.java:68-70`.
+  Reopen the owner census if any source hash, OpenAL artifact or method set moves.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.
