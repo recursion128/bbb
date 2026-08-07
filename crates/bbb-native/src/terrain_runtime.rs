@@ -34,7 +34,11 @@ pub(crate) use textures::{
     BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState,
 };
 
-const MAX_TERRAIN_CACHE_WORK_PER_FRAME: usize = 8;
+// Snapshot extraction clones a full chunk-height block/biome input before the
+// mesh worker can own it. Keep that unavoidable copy to one render-thread step
+// per frame so a view-center change cannot batch several multi-section clones
+// into one presentation hitch; the selected/resident target remains unchanged.
+const MAX_TERRAIN_CACHE_WORK_PER_FRAME: usize = 1;
 const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_SECTION_FADE_DURATION: Duration = Duration::from_millis(750);
 const VANILLA_SECTION_CONSUMER_VISIBILITY: f32 = 0.3;
