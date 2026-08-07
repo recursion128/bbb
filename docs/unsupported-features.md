@@ -80,18 +80,28 @@ Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
 Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `persistence-options-apply`, `persistence-server-list`,
 `identity-profile-key-lifecycle`, `identity-skin-presentation`,
-`security-secure-chat-reporting`, `persistence-options-unconsumed`
+`security-secure-chat-reporting`, `persistence-options-unconsumed`,
+`audio-sound-manager-engine`
 
-- Implement the two startup-reachable `Options` consumer owners still
-  missing from the native options path. `Options.dataFix` migrates older
-  `options.txt` versions before any field is decoded, and
-  `isSoundDeviceDefault` selects the stored audio device. The repository
-  reconciliation owner is now routed to `persistence-options-apply`: when no
-  explicit `--resource-pack-dir` overrides it, `<gameDir>/resourcepacks` is
-  reconciled against both stored lists before the immutable resource
-  generation is prepared. Owner: `bbb-native` + `bbb-audio`. Vanilla anchors:
-  `Options.java:928,1190,1691,1759,1770,1825`, `Minecraft.java:522,551`, and
-  `SoundEngine.java:106,198`.
+- Implement the remaining startup-reachable `Options.dataFix` owner before
+  any `options.txt` field is decoded. It must migrate each older supported
+  options version through the Vanilla 26.1 options DataFixer schema rather
+  than merely accepting the current catalog keys. Owner: `bbb-native`.
+  Vanilla anchors: `Options.java:1190,1691,1770,1825` and the verified
+  `DataFixTypes.OPTIONS` schema/fix registrations.
+
+- Close the reopened `audio-sound-manager-engine` owner census. The stored
+  device selection/reload path is implemented, but Vanilla `Sound.preload`
+  reaches `SoundEngine.requestPreload` and asynchronously decodes the queued
+  static buffers during `loadLibrary`; BBB currently carries `preload:true`
+  into `ResolvedSound` without a reload-time consumer. Implement that cache
+  warming without moving decode onto the application frame, then attach
+  decision-level evidence or an authoritative current-scope ruling to all 68
+  `SoundManager`/`SoundEngine` owners; external-client-unreachable integrated
+  pause branches must be proved from Vanilla callers, not silently counted as
+  implemented. Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
+  `Sound.java:68-70`, `SoundManager.java:264-310`, and
+  `SoundEngine.java:75,101-109,455-457,471-484`.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.

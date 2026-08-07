@@ -1,5 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+#[cfg(feature = "device")]
+use std::time::{Duration, Instant};
+
 use anyhow::{anyhow, Result};
 use kira::{
     listener::ListenerHandle,
@@ -8,6 +11,9 @@ use kira::{
     AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Tween,
 };
 
+#[cfg(feature = "device")]
+use kira::backend::cpal::CpalBackendSettings;
+
 use crate::{
     residency::{AudioDecodeError, AudioResidency},
     AudioCategory, AudioCommand, AudioListenerState, AudioResidencyObservation,
@@ -15,10 +21,19 @@ use crate::{
     StopSoundCommand, TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
 };
 
+#[cfg(feature = "device")]
+use crate::device::{
+    audio_device_reload_reason, initial_audio_devices, is_sound_device_default,
+    AudioDeviceInventory, AudioDeviceObservation, AudioDevicePoll, AudioDeviceReloadReason,
+    AudioDeviceTracker,
+};
+
 const MIN_SPATIAL_DISTANCE: f32 = 1.0;
 const DISTANCE_DELAY_THRESHOLD_SQR: f64 = 100.0;
 const DISTANCE_DELAY_TICKS_PER_BLOCK: f64 = 0.5;
 const MAX_PLAYBACK_EVENTS: usize = 1024;
+#[cfg(feature = "device")]
+const DEVICE_TICK_INTERVAL: Duration = Duration::from_millis(50);
 
 pub struct KiraAudioRuntime {
     manager: AudioManager<DefaultBackend>,
@@ -30,6 +45,24 @@ pub struct KiraAudioRuntime {
     residency: AudioResidency,
     channel_capacity: usize,
     playback_events: VecDeque<AudioPlaybackEvent>,
+    listener_orientation: [f32; 4],
+    #[cfg(feature = "device")]
+    device: Option<KiraAudioDeviceRuntime>,
+}
+
+#[cfg(feature = "device")]
+struct KiraAudioDeviceRuntime {
+    preferred_device: String,
+    current_device: Option<String>,
+    inventory: AudioDeviceInventory,
+    tracker: AudioDeviceTracker,
+    reloads: u64,
+    reload_failures: u64,
+    query_failures: u64,
+    preferred_fallbacks: u64,
+    last_reload_reason: Option<AudioDeviceReloadReason>,
+    last_error: Option<String>,
+    next_poll_at: Instant,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -77,8 +110,42 @@ impl KiraAudioRuntime {
     }
 
     pub fn new_with_resource_generation(resource_generation: u64) -> Result<Self> {
-        let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
+        let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
             .map_err(|_| anyhow!("initialize Kira audio manager"))?;
+        Self::from_manager(manager, resource_generation, None)
+    }
+
+    #[cfg(feature = "device")]
+    pub fn new_with_device_preference(
+        preferred_device: impl Into<String>,
+        resource_generation: u64,
+    ) -> Result<Self> {
+        let preferred_device = preferred_device.into();
+        let (inventory, initial_query_error) = initial_audio_devices();
+        let (manager, current_device, preferred_fallback) =
+            start_device_audio_manager(&preferred_device, &inventory)?;
+        let device = KiraAudioDeviceRuntime {
+            preferred_device,
+            current_device,
+            inventory,
+            tracker: AudioDeviceTracker::spawn()?,
+            reloads: 0,
+            reload_failures: 0,
+            query_failures: u64::from(initial_query_error.is_some()),
+            preferred_fallbacks: u64::from(preferred_fallback),
+            last_reload_reason: None,
+            last_error: initial_query_error,
+            next_poll_at: Instant::now(),
+        };
+        Self::from_manager(manager, resource_generation, Some(device))
+    }
+
+    fn from_manager(
+        mut manager: AudioManager<DefaultBackend>,
+        resource_generation: u64,
+        #[cfg(feature = "device")] device: Option<KiraAudioDeviceRuntime>,
+        #[cfg(not(feature = "device"))] _device: Option<()>,
+    ) -> Result<Self> {
         let channel_capacity = manager
             .main_track()
             .sound_capacity()
@@ -96,6 +163,9 @@ impl KiraAudioRuntime {
             residency: AudioResidency::new(resource_generation),
             channel_capacity,
             playback_events: VecDeque::new(),
+            listener_orientation: identity_quaternion(),
+            #[cfg(feature = "device")]
+            device,
         })
     }
 
@@ -114,6 +184,166 @@ impl KiraAudioRuntime {
             streaming_used,
             shared_capacity: self.channel_capacity,
         }
+    }
+
+    #[cfg(feature = "device")]
+    pub fn audio_device_observation(&self) -> Option<AudioDeviceObservation> {
+        let device = self.device.as_ref()?;
+        Some(AudioDeviceObservation {
+            preferred_device: (!is_sound_device_default(&device.preferred_device))
+                .then(|| device.preferred_device.clone()),
+            current_device: device.current_device.clone(),
+            default_device: device.inventory.snapshot.default_device.clone(),
+            available_device_count: device.inventory.snapshot.all_devices.len(),
+            reloads: device.reloads,
+            reload_failures: device.reload_failures,
+            query_failures: device.query_failures,
+            preferred_fallbacks: device.preferred_fallbacks,
+            last_reload_reason: device
+                .last_reload_reason
+                .map(AudioDeviceReloadReason::as_str)
+                .map(str::to_owned),
+            last_error: device.last_error.clone(),
+        })
+    }
+
+    /// Consume the newest asynchronously queried device list and apply
+    /// `SoundEngine.shouldChangeDevice` before the next native audio tick.
+    /// The per-event fast path only probes bounded channels maintained by Kira
+    /// and the one background tracker; host enumeration stays off-thread.
+    #[cfg(feature = "device")]
+    pub fn poll_audio_device(&mut self) -> AudioDevicePoll {
+        let Some(mut device) = self.device.take() else {
+            return AudioDevicePoll::default();
+        };
+        let now = Instant::now();
+        if now < device.next_poll_at {
+            self.device = Some(device);
+            return AudioDevicePoll::default();
+        }
+        device.next_poll_at = now + DEVICE_TICK_INTERVAL;
+        let mut disconnected = false;
+        let mut observation_changed = false;
+        while let Some(error) = self.manager.backend_mut().pop_error() {
+            if matches!(
+                error,
+                cpal::StreamError::DeviceNotAvailable | cpal::StreamError::StreamInvalidated
+            ) {
+                disconnected = true;
+            }
+            device.last_error = Some(error.to_string());
+            observation_changed = true;
+        }
+
+        let update = device.tracker.latest();
+        let mut poll_error = None;
+        let next_inventory = match update {
+            Some(Ok(inventory)) => Some(inventory),
+            Some(Err(error)) => {
+                device.query_failures = device.query_failures.saturating_add(1);
+                device.last_error = Some(error.clone());
+                if !disconnected {
+                    self.device = Some(device);
+                    return AudioDevicePoll {
+                        reload_reason: None,
+                        error: Some(error),
+                        observation_changed: true,
+                    };
+                }
+                poll_error = Some(error);
+                None
+            }
+            None => None,
+        };
+
+        if !disconnected && next_inventory.is_none() {
+            self.device = Some(device);
+            return AudioDevicePoll {
+                observation_changed,
+                ..AudioDevicePoll::default()
+            };
+        }
+        let inventory = next_inventory.unwrap_or_else(|| {
+            std::mem::replace(&mut device.inventory, AudioDeviceInventory::empty())
+        });
+        let reason = audio_device_reload_reason(
+            disconnected,
+            &device.preferred_device,
+            device.current_device.as_deref(),
+            &device.inventory.snapshot,
+            &inventory.snapshot,
+        );
+        let Some(reason) = reason else {
+            observation_changed |= inventory.snapshot != device.inventory.snapshot;
+            device.inventory = inventory;
+            self.device = Some(device);
+            return AudioDevicePoll {
+                observation_changed,
+                ..AudioDevicePoll::default()
+            };
+        };
+
+        match start_device_audio_manager(&device.preferred_device, &inventory).and_then(
+            |(manager, current_device, preferred_fallback)| {
+                self.replace_audio_manager(manager)?;
+                Ok((current_device, preferred_fallback))
+            },
+        ) {
+            Ok((current_device, preferred_fallback)) => {
+                device.current_device = current_device;
+                device.inventory = inventory;
+                device.reloads = device.reloads.saturating_add(1);
+                device.preferred_fallbacks = device
+                    .preferred_fallbacks
+                    .saturating_add(u64::from(preferred_fallback));
+                device.last_reload_reason = Some(reason);
+                device.last_error = poll_error.clone();
+                self.device = Some(device);
+                AudioDevicePoll {
+                    reload_reason: Some(reason),
+                    error: poll_error,
+                    observation_changed: true,
+                }
+            }
+            Err(error) => {
+                let error = format!("{error:#}");
+                device.reload_failures = device.reload_failures.saturating_add(1);
+                device.last_error = Some(error.clone());
+                device.inventory = inventory;
+                self.device = Some(device);
+                AudioDevicePoll {
+                    reload_reason: None,
+                    error: Some(error),
+                    observation_changed: true,
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "device")]
+    fn replace_audio_manager(&mut self, mut manager: AudioManager<DefaultBackend>) -> Result<()> {
+        let listener = manager
+            .add_listener(
+                audio_position(self.listener_position),
+                self.listener_orientation,
+            )
+            .map_err(|_| anyhow!("initialize replacement Kira audio listener"))?;
+        let channel_capacity = manager
+            .main_track()
+            .sound_capacity()
+            .saturating_add(manager.sub_track_capacity());
+        for sound in &mut self.playing {
+            sound.handle.stop();
+        }
+        self.playing.clear();
+        self.delayed_positioned.clear();
+        self.playback_events.clear();
+        let resource_generation = self.residency.active_generation();
+        self.residency.reset_generation(resource_generation);
+        self.manager = manager;
+        self.listener = listener;
+        self.channel_capacity = channel_capacity;
+        Ok(())
     }
 
     /// Returns the most recently started music-category event that the audio
@@ -473,10 +703,11 @@ impl KiraAudioRuntime {
     ) -> Result<()> {
         if let Some(listener) = command.listener {
             self.listener_position = listener.position;
+            self.listener_orientation = listener_orientation(listener);
             self.listener
                 .set_position(audio_position(listener.position), Tween::default());
             self.listener
-                .set_orientation(listener_orientation(listener), Tween::default());
+                .set_orientation(self.listener_orientation, Tween::default());
         }
         let active_entity_ids = active_entity_sound_ids(&command.entities);
         let active_tickable_sounds = active_tickable_entity_sounds(&command.tickable_sounds);
@@ -530,6 +761,41 @@ impl KiraAudioRuntime {
     fn retain_active_sounds(&mut self) {
         self.playing.retain(KiraPlayingSound::is_active);
     }
+}
+
+#[cfg(feature = "device")]
+fn start_device_audio_manager(
+    preferred_device: &str,
+    inventory: &AudioDeviceInventory,
+) -> Result<(AudioManager<DefaultBackend>, Option<String>, bool)> {
+    if !is_sound_device_default(preferred_device) {
+        if let Some((device, current_device)) = inventory.preferred_device(preferred_device) {
+            if let Ok(manager) = audio_manager_for_device(Some(device)) {
+                return Ok((manager, Some(current_device), false));
+            }
+        }
+    }
+
+    let manager = audio_manager_for_device(None)?;
+    Ok((
+        manager,
+        inventory.snapshot.default_device.clone(),
+        !is_sound_device_default(preferred_device),
+    ))
+}
+
+#[cfg(feature = "device")]
+fn audio_manager_for_device(device: Option<cpal::Device>) -> Result<AudioManager<DefaultBackend>> {
+    let settings = AudioManagerSettings {
+        backend_settings: CpalBackendSettings {
+            device,
+            config: None,
+        },
+        ..AudioManagerSettings::default()
+    };
+    AudioManager::<DefaultBackend>::new(settings)
+        .map_err(anyhow::Error::new)
+        .map_err(|error| error.context("initialize Kira CPAL audio manager"))
 }
 
 impl KiraSoundHandle {

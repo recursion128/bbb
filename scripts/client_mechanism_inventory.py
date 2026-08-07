@@ -408,16 +408,12 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "updateFontOptions",
             "applyGraphicsPreset",
             "loadSelectedResourcePacks",
+            "isSoundDeviceDefault",
         ),
     ),
     (
-        # The stored value round-trips, but the subsystem that would read it does
-        # not exist here yet. Each caller is named in the ledger.
         MethodRoute("persistence", "persistence", "persistence-options-unconsumed"),
-        (
-            "dataFix",
-            "isSoundDeviceDefault",
-        ),
+        ("dataFix",),
     ),
     (
         # Caption/label factories consumed only by `OptionsSubScreen` widgets,
@@ -4279,6 +4275,25 @@ OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
         ),
         ("loadSelectedResourcePacks",),
     ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/device.rs#pub fn is_sound_device_default",
+                "crates/bbb-native/src/startup.rs#parse_stored_sound_device",
+                "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn load",
+            ),
+            (
+                "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+                "crates/bbb-audio/src/device.rs#reload_decision_preserves_vanilla_branch_order",
+                "crates/bbb-native/src/startup.rs"
+                "#stored_sound_device_decodes_codec_string_and_explicit_cli_wins",
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#device_reload_invalidates_backend_tickable_identity_only_after_success",
+            ),
+        ),
+        ("isSoundDeviceDefault",),
+    ),
 )
 
 
@@ -8090,7 +8105,12 @@ MECHANISM_EVIDENCE = {
     ),
     "resources-language-manager": ("crates/bbb-pack/src/language.rs",),
     "ui-font-manager": ("crates/bbb-item-model/src/font.rs",),
-    "audio-sound-manager-engine": ("crates/bbb-pack/src/sounds.rs", "crates/bbb-audio/src/runtime.rs"),
+    "audio-sound-manager-engine": (
+        "crates/bbb-pack/src/sounds.rs",
+        "crates/bbb-audio/src/device.rs",
+        "crates/bbb-audio/src/runtime.rs",
+        "crates/bbb-native/src/audio_runtime.rs",
+    ),
     "input-keyboard-routing": ("crates/bbb-native/src/input.rs",),
     "input-debug-key-actions": ("crates/bbb-native/src/input.rs",),
     "input-mouse-routing": ("crates/bbb-native/src/input/mouse.rs",),

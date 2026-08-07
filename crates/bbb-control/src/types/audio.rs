@@ -55,6 +55,28 @@ pub struct AudioCounters {
     pub last_resolve_error: Option<String>,
     #[serde(default)]
     pub last_submit_error: Option<String>,
+    /// Empty `Options.soundDevice` is projected as `None`; any non-empty
+    /// display name remains attributable in control receipts.
+    #[serde(default)]
+    pub preferred_device: Option<String>,
+    #[serde(default)]
+    pub current_device: Option<String>,
+    #[serde(default)]
+    pub default_device: Option<String>,
+    #[serde(default)]
+    pub available_device_count: usize,
+    #[serde(default)]
+    pub device_reloads: u64,
+    #[serde(default)]
+    pub device_reload_failures: u64,
+    #[serde(default)]
+    pub device_query_failures: u64,
+    #[serde(default)]
+    pub preferred_device_fallbacks: u64,
+    #[serde(default)]
+    pub last_device_reload_reason: Option<String>,
+    #[serde(default)]
+    pub last_device_error: Option<String>,
 }
 
 impl AudioCounters {
@@ -81,5 +103,8 @@ mod tests {
         assert_eq!(counters.sound_admission_rejections, 0);
         assert_eq!(counters.sound_streaming_starts, 0);
         assert_eq!(counters.active_music_event_id, None);
+        assert_eq!(counters.preferred_device, None);
+        assert_eq!(counters.available_device_count, 0);
+        assert_eq!(counters.device_reloads, 0);
     }
 }

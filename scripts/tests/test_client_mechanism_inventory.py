@@ -1462,9 +1462,9 @@ class LocalPlayer {
             {
                 "persistence-options-file": 14,
                 "persistence-options-derived": 15,
-                "persistence-options-apply": 7,
+                "persistence-options-apply": 8,
                 # Values that round-trip but have no consumer subsystem here.
-                "persistence-options-unconsumed": 2,
+                "persistence-options-unconsumed": 1,
                 "scope-options-ui": 13,
                 "scope-support-accessors": 94,
             },

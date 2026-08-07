@@ -498,9 +498,13 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。`persistence-options-unconsumed` 剩余两个 Vanilla `Options` owner
+状态：`active`。`persistence-options-unconsumed` 剩余一个 Vanilla `Options.dataFix` owner
 已重新确认为无游戏内配置 UI 也可从启动路径到达；当前工程 slice 必须逐 owner
 实现真实消费或重路由到已有实现证据，不能以 options 行可 round-trip 代替行为。
+`audio-sound-manager-engine` 因本轮逐 owner 复核诚实降为 `partial`：设备选择/reload
+已有实现与 focused evidence，但 `preload:true` 尚未在 loadLibrary/reload 阶段消费，
+且 68 个 owner 仍需 decision-level evidence 或基于 Vanilla caller 的 current-scope
+裁决；该项与 dataFix 共同由账本排程，不能用机制级通用路径保留虚假 `equivalent`。
 census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻

@@ -187,6 +187,11 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_show_subtitles: bool,
+    /// Empty is Vanilla's system-default sentinel; a non-empty value is the
+    /// persisted audio device display name. Explicit startup configuration
+    /// wins over `Options.soundDevice` because there is no in-game options UI.
+    #[arg(long = "client-sound-device", value_name = "NAME", default_value = "")]
+    pub(crate) client_sound_device: String,
     #[arg(long = "high-contrast-block-outline")]
     pub(crate) high_contrast_block_outline: bool,
     #[arg(
@@ -751,6 +756,14 @@ fn stored_text_list(options: &ClientOptions, key: &'static str) -> Vec<String> {
     }
 }
 
+/// `soundDevice` is written through `Codec.STRING`, so unlike the raw `lang`
+/// field its text is JSON quoted in `options.txt`. The empty decoded string is
+/// the exact `Options.isSoundDeviceDefault` sentinel.
+fn parse_stored_sound_device(value: &str) -> std::result::Result<String, String> {
+    serde_json::from_str::<String>(value)
+        .map_err(|error| format!("expected a JSON string: {error}"))
+}
+
 /// `GameNarrator.narrateMessage` speaks at
 /// `getFinalSoundSourceVolume(SoundSource.VOICE)` — the stored voice volume
 /// times the stored master volume, each defaulting to 1.0 and clamped to the
@@ -842,6 +855,13 @@ fn bind_stored_client_options(
         "client_show_subtitles",
         "showSubtitles",
         client_show_subtitles
+    );
+    parsed!(
+        "client_sound_device",
+        "soundDevice",
+        Text,
+        client_sound_device,
+        parse_stored_sound_device
     );
     flag!(
         "client_save_chat_drafts",
@@ -3016,6 +3036,42 @@ mod tests {
 
         options.set_raw_for_test("resourcePacks", r#"["one",7]"#);
         assert!(stored_text_list(&options, "resourcePacks").is_empty());
+    }
+
+    #[test]
+    fn stored_sound_device_decodes_codec_string_and_explicit_cli_wins() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("soundDevice", r#""OpenAL Soft on USB Headset""#);
+
+        let mut stored_args = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(
+            &mut stored_args,
+            StoredOptions::without_command_line(&options),
+        );
+        assert_eq!(
+            stored_args.client_sound_device,
+            "OpenAL Soft on USB Headset"
+        );
+
+        let matches = Args::command().get_matches_from([
+            "bbb-native",
+            "--client-sound-device",
+            "Built-in Audio",
+        ]);
+        let mut explicit_args = Args::from_arg_matches(&matches).unwrap();
+        bind_stored_client_options(&mut explicit_args, StoredOptions::new(&options, &matches));
+        assert_eq!(explicit_args.client_sound_device, "Built-in Audio");
+    }
+
+    #[test]
+    fn invalid_stored_sound_device_keeps_the_default_sentinel() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("soundDevice", "not-json");
+        let mut args = Args::parse_from(["bbb-native"]);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert!(args.client_sound_device.is_empty());
     }
 
     #[test]

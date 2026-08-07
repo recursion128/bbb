@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "a5096289d850a2d8b0fcb76f5f61c376a603c64a989750a0d4abd1514d850ffe"
+      "sha256": "69f932ddedd89cb1cd20ae54e28049bd0fa38f8a7f3b04a7f706e07b376c3f28"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -30,7 +30,9 @@
     "audio-sound-manager-engine": {
       "bbb_evidence": [
         "crates/bbb-pack/src/sounds.rs",
-        "crates/bbb-audio/src/runtime.rs"
+        "crates/bbb-audio/src/device.rs",
+        "crates/bbb-audio/src/runtime.rs",
+        "crates/bbb-native/src/audio_runtime.rs"
       ],
       "owner_count": 67
     },
@@ -266,8 +268,8 @@
         "crates/bbb-renderer/src/renderer.rs",
         "crates/bbb-pack/src/selected_packs.rs"
       ],
-      "owner_count": 7,
-      "owner_evidence_count": 7
+      "owner_count": 8,
+      "owner_evidence_count": 8
     },
     "persistence-options-derived": {
       "bbb_evidence": [
@@ -287,7 +289,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 2
+      "owner_count": 1
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -14228,10 +14230,24 @@
       "vanilla_owner": "net.minecraft.client.Options#isModelPartEnabled(final PlayerModelPart part)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub fn is_sound_device_default",
+          "crates/bbb-native/src/startup.rs#parse_stored_sound_device",
+          "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn load"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-audio/src/device.rs#reload_decision_preserves_vanilla_branch_order",
+          "crates/bbb-native/src/startup.rs#stored_sound_device_decodes_codec_string_and_explicit_cli_wins",
+          "crates/bbb-native/src/audio_runtime.rs#device_reload_invalidates_backend_tickable_identity_only_after_success"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-unconsumed",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#isSoundDeviceDefault(final String deviceName)",
       "role": "decision",
       "scope": "external-client",

@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 
 use anyhow::{Context, Result};
 use bbb_audio::{
-    AudioChannelObservation, AudioCommand, AudioPlaybackEvent, KiraAudioRuntime,
-    TickEntitySoundPositionsCommand,
+    AudioChannelObservation, AudioCommand, AudioDeviceObservation, AudioPlaybackEvent,
+    KiraAudioRuntime, TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
 use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
@@ -79,19 +79,24 @@ pub(crate) struct NativeAudioReload {
 }
 
 impl NativeAudioRuntime {
-    pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
+    pub(crate) fn load(roots: &PackRoots, preferred_device: &str) -> Result<Self> {
         let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
         let jukebox_registry = JukeboxSongRegistry::vanilla_26_1();
-        let playback =
-            KiraAudioRuntime::new_with_resource_generation(catalog.resource_generation())
-                .context("initialize Kira audio runtime")?;
-        let counters = AudioCounters {
+        let playback = KiraAudioRuntime::new_with_device_preference(
+            preferred_device,
+            catalog.resource_generation(),
+        )
+        .context("initialize Kira audio runtime")?;
+        let mut counters = AudioCounters {
             enabled: true,
             catalog_events: catalog.len(),
             registry_entries: registry.len(),
             ..AudioCounters::default()
         };
+        if let Some(device) = playback.audio_device_observation() {
+            project_audio_device_observation(&mut counters, device);
+        }
         Ok(Self {
             catalog,
             registry,
@@ -116,6 +121,29 @@ impl NativeAudioRuntime {
         counters.sound_streaming_starts = observation.streaming_starts;
         project_audio_channel_observation(&mut counters, self.playback.channel_observation());
         counters
+    }
+
+    /// `SoundEngine.tick` checks device changes before advancing any sound.
+    /// A successful library reload stops every backend handle, so the native
+    /// duplicate-suppression set must be cleared and rebuilt from canonical
+    /// world tickable state on the next audio tick.
+    pub(crate) fn poll_audio_device(&mut self) {
+        let poll = self.playback.poll_audio_device();
+        if poll.observation_changed {
+            if let Some(device) = self.playback.audio_device_observation() {
+                project_audio_device_observation(&mut self.counters, device);
+            }
+        }
+        if let Some(reason) = poll.reload_reason {
+            reset_tickable_sound_identity_after_device_reload(
+                &mut self.active_tickable_sounds,
+                true,
+            );
+            tracing::info!(reason = reason.as_str(), "reloaded native audio device");
+        }
+        if let Some(error) = poll.error {
+            tracing::warn!(%error, "audio device poll or reload failed");
+        }
     }
 
     pub(crate) fn available_sound_ids(&self) -> Vec<String> {
@@ -194,6 +222,19 @@ fn project_audio_channel_observation(
     counters.sound_static_channels_capacity = channels.shared_capacity;
     counters.sound_streaming_channels_used = channels.streaming_used;
     counters.sound_streaming_channels_capacity = channels.shared_capacity;
+}
+
+fn project_audio_device_observation(counters: &mut AudioCounters, device: AudioDeviceObservation) {
+    counters.preferred_device = device.preferred_device;
+    counters.current_device = device.current_device;
+    counters.default_device = device.default_device;
+    counters.available_device_count = device.available_device_count;
+    counters.device_reloads = device.reloads;
+    counters.device_reload_failures = device.reload_failures;
+    counters.device_query_failures = device.query_failures;
+    counters.preferred_device_fallbacks = device.preferred_fallbacks;
+    counters.last_device_reload_reason = device.last_reload_reason;
+    counters.last_device_error = device.last_error;
 }
 
 fn load_required_native_sound_catalog(roots: &PackRoots) -> Result<SoundCatalog> {
@@ -402,6 +443,15 @@ fn tickable_sound_needs_start(active: &BTreeSet<(i32, String)>, key: &(i32, Stri
     !active.contains(key)
 }
 
+fn reset_tickable_sound_identity_after_device_reload(
+    active: &mut BTreeSet<(i32, String)>,
+    reloaded: bool,
+) {
+    if reloaded {
+        active.clear();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -420,6 +470,18 @@ mod tests {
         assert!(!tickable_sound_needs_start(&active, &normal));
         assert!(tickable_sound_needs_start(&active, &aggressive));
         assert!(tickable_sound_needs_start(&BTreeSet::new(), &normal));
+    }
+
+    #[test]
+    fn device_reload_invalidates_backend_tickable_identity_only_after_success() {
+        let key = (7, "minecraft:entity.bee.loop".to_owned());
+        let mut active = BTreeSet::from([key.clone()]);
+
+        reset_tickable_sound_identity_after_device_reload(&mut active, false);
+        assert_eq!(active, BTreeSet::from([key]));
+
+        reset_tickable_sound_identity_after_device_reload(&mut active, true);
+        assert!(active.is_empty());
     }
 
     #[test]
@@ -444,6 +506,29 @@ mod tests {
         assert_eq!(counters.sound_static_channels_capacity, 256);
         assert_eq!(counters.sound_streaming_channels_capacity, 256);
         assert_eq!(counters.resolve_failures, 3);
+    }
+
+    #[test]
+    fn device_observation_projects_cached_receipt_fields() {
+        let mut counters = AudioCounters::default();
+        project_audio_device_observation(
+            &mut counters,
+            AudioDeviceObservation {
+                preferred_device: Some("USB Headset".to_owned()),
+                current_device: Some("Built-in Audio".to_owned()),
+                default_device: Some("Built-in Audio".to_owned()),
+                available_device_count: 1,
+                reloads: 2,
+                query_failures: 1,
+                ..AudioDeviceObservation::default()
+            },
+        );
+
+        assert_eq!(counters.preferred_device.as_deref(), Some("USB Headset"));
+        assert_eq!(counters.current_device.as_deref(), Some("Built-in Audio"));
+        assert_eq!(counters.available_device_count, 1);
+        assert_eq!(counters.device_reloads, 2);
+        assert_eq!(counters.device_query_failures, 1);
     }
 
     #[test]

@@ -98,6 +98,11 @@ impl AudioResidency {
         self.observation
     }
 
+    #[cfg(feature = "device")]
+    pub(crate) fn active_generation(&self) -> u64 {
+        self.active_generation
+    }
+
     pub(crate) fn reset_generation(&mut self, generation: u64) {
         self.active_generation = generation;
         self.static_cache.clear();

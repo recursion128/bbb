@@ -270,6 +270,7 @@ name = "bbb-audio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cpal",
  "kira",
  "serde",
  "symphonia",

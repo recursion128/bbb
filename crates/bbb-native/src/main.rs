@@ -738,7 +738,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         )
     } else {
         match pack_roots.as_ref() {
-            Some(roots) => match NativeAudioRuntime::load(roots) {
+            Some(roots) => match NativeAudioRuntime::load(roots, &args.client_sound_device) {
                 Ok(runtime) => {
                     let status = runtime.counters();
                     (Some(runtime), status)
@@ -1344,6 +1344,11 @@ fn run_client(args: startup::Args) -> Result<()> {
         #[cfg(feature = "lifecycle-soak")]
         if let Some(runtime) = lifecycle_soak.as_mut() {
             runtime.apply_due(Instant::now(), &window, &mut renderer);
+        }
+        if matches!(&event, Event::NewEvents(_)) {
+            if let Some(audio) = audio_runtime.as_mut() {
+                audio.poll_audio_device();
+            }
         }
         loop {
             // A reload is the terminal effect of its simulation batch. Apply

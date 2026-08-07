@@ -1,5 +1,8 @@
 mod command;
 
+#[cfg(feature = "device")]
+mod device;
+
 #[cfg(feature = "kira")]
 mod residency;
 #[cfg(feature = "kira")]
@@ -13,6 +16,11 @@ pub use command::{
     TickableEntitySoundUpdate,
 };
 
+#[cfg(feature = "device")]
+pub use device::{
+    audio_device_reload_reason, is_sound_device_default, AudioDeviceObservation, AudioDevicePoll,
+    AudioDeviceReloadReason, AudioDeviceSnapshot,
+};
 #[cfg(feature = "kira")]
 pub use residency::{probe_bounded_audio_file, AudioFileProbe, AudioResidencyObservation};
 #[cfg(feature = "kira")]
