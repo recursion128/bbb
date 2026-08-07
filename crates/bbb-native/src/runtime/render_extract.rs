@@ -33,7 +33,8 @@ use bbb_renderer::{
     HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
     ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
     ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
-    SelectionOutline, SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
+    RendererCameraFrame, SelectionOutline, SignTextOutlineContext, SignTextSurface,
+    WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -3320,10 +3321,7 @@ pub(crate) fn apply_renderer_frame(
     frame: RendererFrame<'_>,
     entity_render_extraction: &mut crate::entity_scene::EntityRenderExtractionScratch,
 ) -> DebugRenderExtractionBuffers {
-    renderer.set_lightmap_environment(frame.lightmap_environment);
     renderer.set_clear_color(frame.clear_color);
-    renderer.set_fog_environment(frame.fog_environment);
-    renderer.set_sky_environment(frame.sky_environment);
     renderer.set_cloud_environment(frame.cloud_environment);
     renderer.set_hide_gui(frame.hide_gui);
     renderer.set_hud_crosshair_visible(frame.hud_crosshair_visible);
@@ -3475,16 +3473,22 @@ pub(crate) fn apply_renderer_frame(
     let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
     entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_terrain_section_states(frame.terrain_sections_revision, frame.terrain_sections);
-    renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
-    renderer.set_camera_view_bob_effect(frame.camera_view_bob_effect);
-    renderer.set_camera_spinning_effect(frame.camera_spinning_effect);
-    renderer.set_camera_fov_degrees(frame.camera_fov_degrees, frame.camera_hud_fov_degrees);
-    renderer.set_camera_pose(frame.camera_pose);
+    renderer.set_camera_frame(RendererCameraFrame {
+        lightmap_environment: frame.lightmap_environment,
+        fog_environment: frame.fog_environment,
+        sky_environment: frame.sky_environment,
+        pose: frame.camera_pose,
+        hurt_effect: frame.camera_hurt_effect,
+        view_bob_effect: frame.camera_view_bob_effect,
+        spinning_effect: frame.camera_spinning_effect,
+        fov_degrees: frame.camera_fov_degrees,
+        hud_fov_degrees: frame.camera_hud_fov_degrees,
+        shader_game_time_ticks: frame.shader_game_time_ticks,
+    });
     renderer.set_camera_post_effect(
         frame.current_post_effect_id,
         frame.camera_post_effect_active,
     );
-    renderer.set_shader_game_time_ticks(frame.shader_game_time_ticks);
     renderer.set_cloud_frame(frame.cloud_frame);
     renderer.set_weather_render_state(frame.weather_render_state);
     renderer.set_world_border_render_state(frame.world_border_render_state);

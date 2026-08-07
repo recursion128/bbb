@@ -3954,15 +3954,25 @@ fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
     let hud_field = frame_source
         .find("pub(crate) camera_hud_fov_degrees: f32")
         .expect("renderer frame carries HUD FOV");
-    let setter = frame_source
-        .find("renderer.set_camera_fov_degrees(")
-        .expect("frame applies both FOV projections atomically");
+    let camera_frame = frame_source
+        .find("renderer.set_camera_frame(RendererCameraFrame {")
+        .expect("frame applies all camera-uniform inputs atomically");
     let pose = frame_source
-        .find("renderer.set_camera_pose(frame.camera_pose);")
-        .expect("frame applies the camera pose");
+        .find("pose: frame.camera_pose,")
+        .expect("camera frame carries the camera pose");
+    let fov = frame_source
+        .find("fov_degrees: frame.camera_fov_degrees,")
+        .expect("camera frame carries the world FOV");
+    let hud_fov = frame_source
+        .find("hud_fov_degrees: frame.camera_hud_fov_degrees,")
+        .expect("camera frame carries the HUD FOV");
     assert!(
-        world_field < hud_field && hud_field < setter && setter < pose,
-        "world/HUD FOV must be applied together before the pose refreshes both uniforms"
+        world_field < hud_field
+            && hud_field < camera_frame
+            && camera_frame < pose
+            && pose < fov
+            && fov < hud_fov,
+        "pose and world/HUD FOV must share one camera-frame publication"
     );
 }
 

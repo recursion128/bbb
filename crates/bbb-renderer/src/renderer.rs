@@ -321,6 +321,44 @@ pub struct RendererFrameProfile {
     pub swap_buffers: Duration,
 }
 
+/// Complete camera-uniform inputs extracted for one presented frame.
+///
+/// Vanilla composes the camera pose, hurt/view-bob/spinning transforms, FOV,
+/// fog and game-time state before publishing the world and HUD projections.
+/// Keeping the same boundary here lets the native runtime replace all inputs
+/// before one GPU uniform refresh instead of exposing intermediate states to
+/// several redundant queue writes.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RendererCameraFrame {
+    pub lightmap_environment: LightmapEnvironment,
+    pub fog_environment: FogEnvironment,
+    pub sky_environment: SkyEnvironment,
+    pub pose: Option<CameraPose>,
+    pub hurt_effect: Option<CameraHurtEffect>,
+    pub view_bob_effect: Option<CameraViewBobEffect>,
+    pub spinning_effect: Option<CameraSpinningEffect>,
+    pub fov_degrees: f32,
+    pub hud_fov_degrees: f32,
+    pub shader_game_time_ticks: f64,
+}
+
+impl Default for RendererCameraFrame {
+    fn default() -> Self {
+        Self {
+            lightmap_environment: LightmapEnvironment::default(),
+            fog_environment: FogEnvironment::default(),
+            sky_environment: SkyEnvironment::default(),
+            pose: None,
+            hurt_effect: None,
+            view_bob_effect: None,
+            spinning_effect: None,
+            fov_degrees: 70.0,
+            hud_fov_degrees: 70.0,
+            shader_game_time_ticks: 0.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TerrainChunkMeshOwner {
     pub level_generation: u64,
@@ -3337,6 +3375,51 @@ impl Renderer {
         self.update_camera();
     }
 
+    /// Replaces every camera-uniform input for one renderer frame and publishes
+    /// the final projection once. Standalone setters remain available for
+    /// initialization and event-driven updates outside the frame handoff.
+    pub fn set_camera_frame(&mut self, frame: RendererCameraFrame) {
+        let RendererCameraFrame {
+            lightmap_environment,
+            fog_environment,
+            sky_environment,
+            pose,
+            hurt_effect,
+            view_bob_effect,
+            spinning_effect,
+            fov_degrees,
+            hud_fov_degrees,
+            shader_game_time_ticks,
+        } = frame;
+
+        self.replace_lightmap_environment(lightmap_environment);
+        self.replace_fog_environment(fog_environment);
+        self.replace_sky_environment(sky_environment);
+
+        let pose_changed = self.camera_pose != pose;
+        self.camera_pose = pose;
+        self.camera_hurt_effect = hurt_effect;
+        self.camera_view_bob_effect = view_bob_effect;
+        self.camera_spinning_effect = spinning_effect;
+        self.camera_fov_degrees = sanitize_camera_fov_degrees(fov_degrees);
+        self.camera_hud_fov_degrees = sanitize_camera_fov_degrees(hud_fov_degrees);
+        self.shader_game_time_ticks = sanitize_shader_game_time_ticks(shader_game_time_ticks);
+
+        if pose_changed {
+            self.resort_translucent_terrain_for_camera();
+            if self.entity_model_texture_atlas.is_some()
+                && !self.entity_model_instances.is_empty()
+                && self.entity_model_meshes_depend_on_camera()
+            {
+                self.rebuild_entity_model_meshes();
+            }
+        }
+        // This call also advances the real-time glint transform while the
+        // simulation clock is paused, so every presented frame publishes once
+        // even when all extracted values compare equal.
+        self.update_camera();
+    }
+
     pub fn set_camera_hurt_effect(&mut self, effect: Option<CameraHurtEffect>) {
         if self.camera_hurt_effect == effect {
             return;
@@ -3362,16 +3445,8 @@ impl Renderer {
     }
 
     pub fn set_camera_fov_degrees(&mut self, fov_degrees: f32, hud_fov_degrees: f32) {
-        let fov_degrees = if fov_degrees.is_finite() {
-            fov_degrees.clamp(0.1, 179.0)
-        } else {
-            70.0
-        };
-        let hud_fov_degrees = if hud_fov_degrees.is_finite() {
-            hud_fov_degrees.clamp(0.1, 179.0)
-        } else {
-            70.0
-        };
+        let fov_degrees = sanitize_camera_fov_degrees(fov_degrees);
+        let hud_fov_degrees = sanitize_camera_fov_degrees(hud_fov_degrees);
         if self.camera_fov_degrees == fov_degrees && self.camera_hud_fov_degrees == hud_fov_degrees
         {
             return;
@@ -3382,11 +3457,7 @@ impl Renderer {
     }
 
     pub fn set_shader_game_time_ticks(&mut self, ticks: f64) {
-        let ticks = if ticks.is_finite() {
-            ticks.max(0.0)
-        } else {
-            0.0
-        };
+        let ticks = sanitize_shader_game_time_ticks(ticks);
         if (self.shader_game_time_ticks - ticks).abs() <= f64::EPSILON {
             return;
         }
@@ -4533,9 +4604,16 @@ impl Renderer {
     }
 
     pub fn set_lightmap_environment(&mut self, environment: LightmapEnvironment) {
+        if !self.replace_lightmap_environment(environment) {
+            return;
+        }
+        self.update_camera();
+    }
+
+    fn replace_lightmap_environment(&mut self, environment: LightmapEnvironment) -> bool {
         let environment = environment.sanitized();
         if self.lightmap_environment == environment {
-            return;
+            return false;
         }
         self.lightmap_environment = environment;
         // Vanilla 26.1 `LightmapRenderStateExtractor.tick` dirties the
@@ -4545,18 +4623,29 @@ impl Renderer {
         // publication must keep sampling the resident 16x16 texture rather
         // than redrawing it every frame.
         self.lightmap_dirty = true;
-        self.update_camera();
+        true
     }
 
     pub fn set_fog_environment(&mut self, environment: FogEnvironment) {
-        self.fog_environment = environment.sanitized();
+        self.replace_fog_environment(environment);
         self.update_camera();
     }
 
+    fn replace_fog_environment(&mut self, environment: FogEnvironment) {
+        self.fog_environment = environment.sanitized();
+    }
+
     pub fn set_sky_environment(&mut self, environment: SkyEnvironment) {
+        if !self.replace_sky_environment(environment) {
+            return;
+        }
+        self.update_camera();
+    }
+
+    fn replace_sky_environment(&mut self, environment: SkyEnvironment) -> bool {
         let environment = environment.sanitized();
         if self.sky_environment == environment {
-            return;
+            return false;
         }
         self.sky_environment = environment;
         self.sky_disc = create_sky_disc_gpu(
@@ -4577,7 +4666,7 @@ impl Renderer {
             &self.sky_dynamic_bind_group_layout,
             environment,
         );
-        self.update_camera();
+        true
     }
 
     pub fn set_cloud_environment(&mut self, environment: CloudEnvironment) {
@@ -4788,14 +4877,31 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
         })
 }
 
+fn sanitize_camera_fov_degrees(fov_degrees: f32) -> f32 {
+    if fov_degrees.is_finite() {
+        fov_degrees.clamp(0.1, 179.0)
+    } else {
+        70.0
+    }
+}
+
+fn sanitize_shader_game_time_ticks(ticks: f64) -> f64 {
+    if ticks.is_finite() {
+        ticks.max(0.0)
+    } else {
+        0.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         choose_format, choose_present_mode, translucency_point_of_view,
         translucent_section_draw_order, translucent_section_draw_order_from_visible,
-        translucent_section_is_nearby, LevelFrameRoute, Renderer, RendererResizePrepareStage,
-        TerrainChunkMeshOwner, TerrainSectionMeshOwner, TerrainSectionRenderState,
-        TerrainTranslucentSortState, MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE,
+        translucent_section_is_nearby, LevelFrameRoute, Renderer, RendererCameraFrame,
+        RendererResizePrepareStage, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
+        TerrainSectionRenderState, TerrainTranslucentSortState,
+        MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE,
     };
     use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
     use crate::terrain::{
@@ -5002,6 +5108,74 @@ mod tests {
         // 427x240 (ceiling division).
         renderer.set_gui_surface_size(PhysicalSize::new(427, 240));
         assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(427, 240));
+        assert_eq!(renderer.camera_uniform_writes.get(), baseline + 2);
+    }
+
+    #[test]
+    fn camera_frame_publishes_all_uniform_inputs_once() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(1920, 1080) else {
+            return;
+        };
+        let baseline = renderer.camera_uniform_writes.get();
+        let pose = CameraPose {
+            position: [8.0, 72.0, 8.0],
+            y_rot: 45.0,
+            x_rot: -12.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let mut lightmap_environment = LightmapEnvironment::default();
+        lightmap_environment.sky_factor = 0.5;
+
+        renderer.set_camera_frame(RendererCameraFrame {
+            lightmap_environment,
+            fog_environment: crate::FogEnvironment::world([0.1, 0.2, 0.3, 1.0], 0.0, 96.0, 12),
+            sky_environment: crate::SkyEnvironment::from_rgb([0.2, 0.3, 0.4]),
+            pose: Some(pose),
+            hurt_effect: Some(crate::CameraHurtEffect {
+                hurt_time: 4.0,
+                hurt_duration: 10.0,
+                hurt_dir: 15.0,
+                death_time: 0.0,
+                is_dead_or_dying: false,
+                damage_tilt_strength: 1.0,
+            }),
+            view_bob_effect: Some(crate::CameraViewBobEffect {
+                backwards_interpolated_walk_distance: 2.0,
+                bob: 0.25,
+            }),
+            spinning_effect: Some(crate::CameraSpinningEffect {
+                intensity: 0.2,
+                angle_degrees: 30.0,
+            }),
+            fov_degrees: 90.0,
+            hud_fov_degrees: 80.0,
+            shader_game_time_ticks: 6000.5,
+            ..RendererCameraFrame::default()
+        });
+
+        assert_eq!(renderer.camera_uniform_writes.get(), baseline + 1);
+        assert_eq!(renderer.camera_pose, Some(pose));
+        assert_eq!(renderer.lightmap_environment, lightmap_environment);
+        assert_eq!(renderer.camera_fov_degrees, 90.0);
+        assert_eq!(renderer.camera_hud_fov_degrees, 80.0);
+        assert_eq!(renderer.shader_game_time_ticks, 6000.5);
+        assert!(renderer.lightmap_dirty);
+
+        // The frame boundary still refreshes real-time glint state while the
+        // simulation is paused, but never more than once per publication.
+        renderer.set_camera_frame(RendererCameraFrame {
+            lightmap_environment,
+            fog_environment: renderer.fog_environment,
+            sky_environment: renderer.sky_environment,
+            pose: Some(pose),
+            hurt_effect: renderer.camera_hurt_effect,
+            view_bob_effect: renderer.camera_view_bob_effect,
+            spinning_effect: renderer.camera_spinning_effect,
+            fov_degrees: 90.0,
+            hud_fov_degrees: 80.0,
+            shader_game_time_ticks: 6000.5,
+            ..RendererCameraFrame::default()
+        });
         assert_eq!(renderer.camera_uniform_writes.get(), baseline + 2);
     }
 

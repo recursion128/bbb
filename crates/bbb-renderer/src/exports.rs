@@ -233,7 +233,7 @@ pub use crate::player_skin::{
 #[cfg(feature = "lifecycle-soak")]
 pub use crate::renderer::LifecycleSoakSurfaceError;
 pub use crate::renderer::{
-    LevelFrameRoute, Renderer, RendererFrameProfile, TerrainChunkMeshOwner,
+    LevelFrameRoute, Renderer, RendererCameraFrame, RendererFrameProfile, TerrainChunkMeshOwner,
     TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTextureFiltering,
 };
 pub use crate::screen_blur::{
