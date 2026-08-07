@@ -610,12 +610,16 @@ pub(super) fn entity_model_instance(
     let fishing_line_origin_offset = world
         .fishing_hook_render_source_at_partial_tick(source.entity_id, entity_partial_tick)
         .map(fishing_hook_third_person_line_origin_offset);
-    // Vanilla still fills `LivingEntityRenderState.ageInTicks` for armor stands, but
-    // `ArmorStandModel.setupAnim` consumes only the six synced `Rotations` poses and its armor,
-    // hand, wings and head layers do not use age. Canonicalize that renderer-irrelevant field so
-    // a settled, stationary stand keeps the same baked mesh across render partial ticks. The
-    // independently projected `< 5` hit wiggle remains time-varying below.
-    let mesh_age_in_ticks = if matches!(kind, EntityModelKind::ArmorStand { .. }) {
+    // Vanilla still fills `LivingEntityRenderState.ageInTicks` for armor stands and felines, but
+    // neither model's `setupAnim` nor their registered layers consume it. Native already folds the
+    // generic frozen shake into `body_rot` and projects auto-spin through its dedicated field, so
+    // this value cannot affect their emitted geometry. Canonicalize it so settled stands, cats, and
+    // ocelots keep the same baked mesh across render partial ticks. Independently projected state
+    // such as the armor-stand hit wiggle and cat lie-down amounts remains time-varying below.
+    let mesh_age_in_ticks = if matches!(
+        kind,
+        EntityModelKind::ArmorStand { .. } | EntityModelKind::Feline { .. }
+    ) {
         0.0
     } else {
         source.age_ticks as f32 + entity_partial_tick

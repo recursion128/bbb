@@ -11944,34 +11944,37 @@ fn entity_model_instances_project_cat_variants_from_world_registry_order() {
         ],
     }));
 
+    let start_instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
 
     assert_eq!(
+        start_instances, instances,
+        "feline geometry does not consume the generic per-frame age"
+    );
+
+    assert_eq!(
         instances,
-        aged(
-            vec![
-                EntityModelInstance::feline(
-                    41,
-                    [1.0, 64.0, -2.0],
-                    0.0,
-                    true,
-                    false,
-                    CatModelVariant::Jellie,
-                    None,
-                ),
-                EntityModelInstance::feline(
-                    42,
-                    [3.0, 64.0, -2.0],
-                    0.0,
-                    true,
-                    true,
-                    CatModelVariant::White,
-                    None,
-                )
-                .with_age_scale(0.5),
-            ],
-            1.0,
-        )
+        vec![
+            EntityModelInstance::feline(
+                41,
+                [1.0, 64.0, -2.0],
+                0.0,
+                true,
+                false,
+                CatModelVariant::Jellie,
+                None,
+            ),
+            EntityModelInstance::feline(
+                42,
+                [3.0, 64.0, -2.0],
+                0.0,
+                true,
+                true,
+                CatModelVariant::White,
+                None,
+            )
+            .with_age_scale(0.5),
+        ]
     );
 }
 
