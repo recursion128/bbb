@@ -289,6 +289,40 @@ pub(crate) struct Args {
         value_parser = parse_render_distance
     )]
     pub(crate) render_distance_chunks: u32,
+    #[arg(long = "graphics-preset", value_enum, default_value = "fancy")]
+    pub(crate) graphics_preset: GraphicsPresetArg,
+    #[arg(
+        long = "biome-blend-radius",
+        default_value_t = 2,
+        value_parser = clap::value_parser!(u32).range(0..=7)
+    )]
+    pub(crate) biome_blend_radius: u32,
+    #[arg(long = "prioritize-chunk-updates", value_enum, default_value = "none")]
+    pub(crate) prioritize_chunk_updates: PrioritizeChunkUpdatesArg,
+    #[arg(
+        long = "client-simulation-distance",
+        default_value_t = 12,
+        value_parser = clap::value_parser!(u32).range(5..=32)
+    )]
+    pub(crate) client_simulation_distance_chunks: u32,
+    #[arg(
+        long = "client-mipmap-levels",
+        default_value_t = 4,
+        value_parser = clap::value_parser!(u32).range(0..=4)
+    )]
+    pub(crate) client_mipmap_levels: u32,
+    #[arg(
+        long = "client-entity-distance-scaling",
+        default_value_t = 1.0,
+        value_parser = parse_client_entity_distance_scaling
+    )]
+    pub(crate) client_entity_distance_scaling: f64,
+    #[arg(
+        long = "client-weather-radius",
+        default_value_t = 10,
+        value_parser = clap::value_parser!(u32).range(3..=10)
+    )]
+    pub(crate) client_weather_radius: u32,
     #[arg(
         long = "cloud-range",
         default_value_t = VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
@@ -317,6 +351,12 @@ pub(crate) struct Args {
     pub(crate) client_vsync: bool,
     #[arg(long = "terrain-texture-filtering", value_enum, default_value = "none")]
     pub(crate) terrain_texture_filtering: TerrainTextureFilteringArg,
+    /// `GraphicsPreset.FABULOUS` chooses RGSS on an AMD renderer and
+    /// anisotropic filtering otherwise. Resolution is deferred until wgpu has
+    /// selected the actual adapter; an explicit filtering argument disables
+    /// this automatic branch.
+    #[arg(skip)]
+    pub(crate) fabulous_texture_filtering: bool,
     /// Vanilla `maxAnisotropyBit` is `OptionInstance.IntRange(1, 3)` with
     /// default 2 (2^bit anisotropy); only consumed under `anisotropic`
     /// terrain texture filtering.
@@ -520,6 +560,24 @@ pub(crate) enum ClientParticleStatusArg {
     All,
     Decreased,
     Minimal,
+}
+
+/// Vanilla 26.1 `GraphicsPreset`; `CUSTOM` deliberately performs no writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum GraphicsPresetArg {
+    Fast,
+    Fancy,
+    Fabulous,
+    Custom,
+}
+
+/// Vanilla 26.1 `PrioritizeChunkUpdates`, persisted through its wrapped
+/// integer id codec.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum PrioritizeChunkUpdatesArg {
+    None,
+    PlayerAffected,
+    Nearby,
 }
 
 /// Vanilla `AttackIndicatorStatus` (`AttackIndicatorStatus.java:8-11`), stored
@@ -882,6 +940,62 @@ fn bind_stored_client_options(
         parse_render_distance
     );
     parsed!(
+        "graphics_preset",
+        "graphicsPreset",
+        EnumName,
+        graphics_preset,
+        parse_stored_graphics_preset
+    );
+    parsed!(
+        "biome_blend_radius",
+        "biomeBlendRadius",
+        Integer,
+        biome_blend_radius,
+        parse_biome_blend_radius
+    );
+    parsed!(
+        "prioritize_chunk_updates",
+        "prioritizeChunkUpdates",
+        EnumId,
+        prioritize_chunk_updates,
+        parse_stored_prioritize_chunk_updates
+    );
+    parsed!(
+        "client_simulation_distance_chunks",
+        "simulationDistance",
+        Integer,
+        client_simulation_distance_chunks,
+        parse_client_simulation_distance
+    );
+    parsed!(
+        "client_mipmap_levels",
+        "mipmapLevels",
+        Integer,
+        client_mipmap_levels,
+        parse_client_mipmap_levels
+    );
+    parsed!(
+        "client_entity_distance_scaling",
+        "entityDistanceScaling",
+        Double,
+        client_entity_distance_scaling,
+        parse_client_entity_distance_scaling
+    );
+    parsed!(
+        "client_weather_radius",
+        "weatherRadius",
+        Integer,
+        client_weather_radius,
+        parse_client_weather_radius
+    );
+    parsed!(
+        "client_particles",
+        "particles",
+        EnumId,
+        client_particles,
+        parse_stored_particle_status
+    );
+    parsed!(
         "cloud_range_chunks",
         "cloudRange",
         Integer,
@@ -1002,7 +1116,159 @@ fn bind_stored_client_options(
         |raw: &str| Ok(raw.to_owned())
     );
 
+    apply_graphics_preset(args, &stored);
+
     stored.bound()
+}
+
+/// `Minecraft` invokes `Options.applyGraphicsPreset` after the window and
+/// input owners exist. During the earlier `Options.load`, `Minecraft.running`
+/// is still false, so `OptionInstance.set` stores raw values without invoking
+/// callbacks; this final application therefore intentionally overwrites every
+/// preset-owned stored value. BBB's startup-only CLI is an additional source,
+/// and an argument the user actually typed remains the final override.
+fn apply_graphics_preset(args: &mut Args, stored: &StoredOptions<'_>) {
+    macro_rules! preset_value {
+        ($arg_id:literal, $field:ident, $value:expr) => {
+            if !stored.is_explicit($arg_id) {
+                args.$field = $value;
+            }
+        };
+    }
+
+    let preset = args.graphics_preset;
+    if preset == GraphicsPresetArg::Custom {
+        args.fabulous_texture_filtering = false;
+        return;
+    }
+
+    match preset {
+        GraphicsPresetArg::Fast => {
+            preset_value!("biome_blend_radius", biome_blend_radius, 1);
+            preset_value!("render_distance_chunks", render_distance_chunks, 8);
+            preset_value!(
+                "prioritize_chunk_updates",
+                prioritize_chunk_updates,
+                PrioritizeChunkUpdatesArg::None
+            );
+            preset_value!(
+                "client_simulation_distance_chunks",
+                client_simulation_distance_chunks,
+                6
+            );
+            preset_value!("client_smooth_lighting", client_smooth_lighting, false);
+            preset_value!("render_clouds", render_clouds, RenderCloudsArg::Fast);
+            preset_value!(
+                "client_particles",
+                client_particles,
+                ClientParticleStatusArg::Decreased
+            );
+            preset_value!("client_mipmap_levels", client_mipmap_levels, 2);
+            preset_value!("entity_shadows", entity_shadows, false);
+            preset_value!(
+                "client_entity_distance_scaling",
+                client_entity_distance_scaling,
+                0.75
+            );
+            preset_value!("menu_background_blurriness", menu_background_blurriness, 2);
+            preset_value!("cloud_range_chunks", cloud_range_chunks, 32);
+            preset_value!("cutout_leaves", cutout_leaves, false);
+            preset_value!("improved_transparency", improved_transparency, false);
+            preset_value!("client_weather_radius", client_weather_radius, 5);
+            preset_value!("client_max_anisotropy_bit", client_max_anisotropy_bit, 1);
+            preset_value!(
+                "terrain_texture_filtering",
+                terrain_texture_filtering,
+                TerrainTextureFilteringArg::None
+            );
+            args.fabulous_texture_filtering = false;
+        }
+        GraphicsPresetArg::Fancy => {
+            preset_value!("biome_blend_radius", biome_blend_radius, 2);
+            preset_value!("render_distance_chunks", render_distance_chunks, 16);
+            preset_value!(
+                "prioritize_chunk_updates",
+                prioritize_chunk_updates,
+                PrioritizeChunkUpdatesArg::PlayerAffected
+            );
+            preset_value!(
+                "client_simulation_distance_chunks",
+                client_simulation_distance_chunks,
+                12
+            );
+            preset_value!("client_smooth_lighting", client_smooth_lighting, true);
+            preset_value!("render_clouds", render_clouds, RenderCloudsArg::Fancy);
+            preset_value!(
+                "client_particles",
+                client_particles,
+                ClientParticleStatusArg::All
+            );
+            preset_value!("client_mipmap_levels", client_mipmap_levels, 4);
+            preset_value!("entity_shadows", entity_shadows, true);
+            preset_value!(
+                "client_entity_distance_scaling",
+                client_entity_distance_scaling,
+                1.0
+            );
+            preset_value!("menu_background_blurriness", menu_background_blurriness, 5);
+            preset_value!("cloud_range_chunks", cloud_range_chunks, 64);
+            preset_value!("cutout_leaves", cutout_leaves, true);
+            preset_value!("improved_transparency", improved_transparency, false);
+            preset_value!("client_weather_radius", client_weather_radius, 10);
+            preset_value!("client_max_anisotropy_bit", client_max_anisotropy_bit, 1);
+            preset_value!(
+                "terrain_texture_filtering",
+                terrain_texture_filtering,
+                TerrainTextureFilteringArg::Rgss
+            );
+            args.fabulous_texture_filtering = false;
+        }
+        GraphicsPresetArg::Fabulous => {
+            preset_value!("biome_blend_radius", biome_blend_radius, 2);
+            preset_value!("render_distance_chunks", render_distance_chunks, 32);
+            preset_value!(
+                "prioritize_chunk_updates",
+                prioritize_chunk_updates,
+                PrioritizeChunkUpdatesArg::PlayerAffected
+            );
+            preset_value!(
+                "client_simulation_distance_chunks",
+                client_simulation_distance_chunks,
+                12
+            );
+            preset_value!("client_smooth_lighting", client_smooth_lighting, true);
+            preset_value!("render_clouds", render_clouds, RenderCloudsArg::Fancy);
+            preset_value!(
+                "client_particles",
+                client_particles,
+                ClientParticleStatusArg::All
+            );
+            preset_value!("client_mipmap_levels", client_mipmap_levels, 4);
+            preset_value!("entity_shadows", entity_shadows, true);
+            preset_value!(
+                "client_entity_distance_scaling",
+                client_entity_distance_scaling,
+                1.25
+            );
+            preset_value!("menu_background_blurriness", menu_background_blurriness, 5);
+            preset_value!("cloud_range_chunks", cloud_range_chunks, 128);
+            preset_value!("cutout_leaves", cutout_leaves, true);
+            preset_value!(
+                "improved_transparency",
+                improved_transparency,
+                !cfg!(target_os = "macos")
+            );
+            preset_value!("client_weather_radius", client_weather_radius, 10);
+            preset_value!("client_max_anisotropy_bit", client_max_anisotropy_bit, 2);
+            preset_value!(
+                "terrain_texture_filtering",
+                terrain_texture_filtering,
+                TerrainTextureFilteringArg::Anisotropic
+            );
+            args.fabulous_texture_filtering = !stored.is_explicit("terrain_texture_filtering");
+        }
+        GraphicsPresetArg::Custom => unreachable!("handled above"),
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -1321,6 +1587,91 @@ fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
     } else {
         Err(format!(
             "render distance must be between {VANILLA_MIN_RENDER_DISTANCE_CHUNKS} and {VANILLA_MAX_RENDER_DISTANCE_CHUNKS} chunks"
+        ))
+    }
+}
+
+fn parse_client_entity_distance_scaling(value: &str) -> std::result::Result<f64, String> {
+    let scaling = value
+        .parse::<f64>()
+        .map_err(|_| format!("entity distance scaling must be a number: {value}"))?;
+    if scaling.is_finite() && (0.5..=5.0).contains(&scaling) {
+        Ok(scaling)
+    } else {
+        Err("entity distance scaling must be between 0.5 and 5.0".to_owned())
+    }
+}
+
+fn parse_stored_graphics_preset(value: &str) -> std::result::Result<GraphicsPresetArg, String> {
+    match value.trim_matches('"') {
+        "fast" => Ok(GraphicsPresetArg::Fast),
+        "fancy" => Ok(GraphicsPresetArg::Fancy),
+        "fabulous" => Ok(GraphicsPresetArg::Fabulous),
+        "custom" => Ok(GraphicsPresetArg::Custom),
+        other => Err(format!(
+            "graphics preset must be fast, fancy, fabulous or custom, got {other}"
+        )),
+    }
+}
+
+fn parse_stored_prioritize_chunk_updates(
+    value: &str,
+) -> std::result::Result<PrioritizeChunkUpdatesArg, String> {
+    let id = value
+        .trim_matches('"')
+        .parse::<i64>()
+        .map_err(|_| format!("chunk update priority must be an integer id, got {value}"))?;
+    Ok(match id.rem_euclid(3) {
+        0 => PrioritizeChunkUpdatesArg::None,
+        1 => PrioritizeChunkUpdatesArg::PlayerAffected,
+        _ => PrioritizeChunkUpdatesArg::Nearby,
+    })
+}
+
+fn parse_stored_particle_status(
+    value: &str,
+) -> std::result::Result<ClientParticleStatusArg, String> {
+    let id = value
+        .trim_matches('"')
+        .parse::<i64>()
+        .map_err(|_| format!("particle status must be an integer id, got {value}"))?;
+    Ok(match id.rem_euclid(3) {
+        0 => ClientParticleStatusArg::All,
+        1 => ClientParticleStatusArg::Decreased,
+        _ => ClientParticleStatusArg::Minimal,
+    })
+}
+
+fn parse_biome_blend_radius(value: &str) -> std::result::Result<u32, String> {
+    parse_bounded_u32(value, 0, 7, "biome blend radius")
+}
+
+fn parse_client_simulation_distance(value: &str) -> std::result::Result<u32, String> {
+    parse_bounded_u32(value, 5, 32, "client simulation distance")
+}
+
+fn parse_client_mipmap_levels(value: &str) -> std::result::Result<u32, String> {
+    parse_bounded_u32(value, 0, 4, "mipmap levels")
+}
+
+fn parse_client_weather_radius(value: &str) -> std::result::Result<u32, String> {
+    parse_bounded_u32(value, 3, 10, "weather radius")
+}
+
+fn parse_bounded_u32(
+    value: &str,
+    minimum: u32,
+    maximum: u32,
+    label: &str,
+) -> std::result::Result<u32, String> {
+    let parsed = value
+        .parse::<u32>()
+        .map_err(|_| format!("{label} must be an integer: {value}"))?;
+    if (minimum..=maximum).contains(&parsed) {
+        Ok(parsed)
+    } else {
+        Err(format!(
+            "{label} must be between {minimum} and {maximum}, got {parsed}"
         ))
     }
 }
@@ -2556,6 +2907,113 @@ mod tests {
         assert_eq!(args.client_locale, "zh_cn");
         // `fov` is stored scaled; 1.0 reads back as the 110-degree maximum.
         assert_eq!(args.client_fov, 110);
+    }
+
+    fn graphics_options_snapshot(args: &Args) -> String {
+        format!(
+            "{:?}|{}|{}|{:?}|{}|{}|{:?}|{:?}|{}|{}|{}|{}|{}|{}|{}|{}|{:?}|{}",
+            args.graphics_preset,
+            args.biome_blend_radius,
+            args.render_distance_chunks,
+            args.prioritize_chunk_updates,
+            args.client_simulation_distance_chunks,
+            args.client_smooth_lighting,
+            args.render_clouds,
+            args.client_particles,
+            args.client_mipmap_levels,
+            args.entity_shadows,
+            args.client_entity_distance_scaling,
+            args.menu_background_blurriness,
+            args.cloud_range_chunks,
+            args.cutout_leaves,
+            args.improved_transparency,
+            args.client_weather_radius,
+            args.terrain_texture_filtering,
+            args.client_max_anisotropy_bit,
+        )
+    }
+
+    #[test]
+    fn stored_graphics_presets_overwrite_every_owned_value_after_load() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+
+        options.set_raw_for_test("graphicsPreset", "\"fast\"");
+        let mut fast = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(&mut fast, StoredOptions::without_command_line(&options));
+        assert_eq!(
+            graphics_options_snapshot(&fast),
+            "Fast|1|8|None|6|false|Fast|Decreased|2|false|0.75|2|32|false|false|5|None|1"
+        );
+        assert!(!fast.fabulous_texture_filtering);
+
+        options.set_raw_for_test("graphicsPreset", "\"fancy\"");
+        let mut fancy = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(&mut fancy, StoredOptions::without_command_line(&options));
+        assert_eq!(
+            graphics_options_snapshot(&fancy),
+            "Fancy|2|16|PlayerAffected|12|true|Fancy|All|4|true|1|5|64|true|false|10|Rgss|1"
+        );
+        assert!(!fancy.fabulous_texture_filtering);
+
+        options.set_raw_for_test("graphicsPreset", "\"fabulous\"");
+        let mut fabulous = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(&mut fabulous, StoredOptions::without_command_line(&options));
+        assert_eq!(
+            graphics_options_snapshot(&fabulous),
+            format!(
+                "Fabulous|2|32|PlayerAffected|12|true|Fancy|All|4|true|1.25|5|128|true|{}|10|Anisotropic|2",
+                !cfg!(target_os = "macos")
+            )
+        );
+        assert!(fabulous.fabulous_texture_filtering);
+    }
+
+    #[test]
+    fn custom_graphics_preset_preserves_the_individually_stored_values() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("graphicsPreset", "\"custom\"");
+        options.set_raw_for_test("renderDistance", "20");
+        options.set_raw_for_test("particles", "2");
+        options.set_raw_for_test("textureFiltering", "2");
+        let mut args = Args::parse_from(["bbb-native"]);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert_eq!(args.graphics_preset, GraphicsPresetArg::Custom);
+        assert_eq!(args.render_distance_chunks, 20);
+        assert_eq!(args.client_particles, ClientParticleStatusArg::Minimal);
+        assert_eq!(
+            args.terrain_texture_filtering,
+            TerrainTextureFilteringArg::Anisotropic
+        );
+        assert!(!args.fabulous_texture_filtering);
+    }
+
+    #[test]
+    fn typed_graphics_values_override_a_typed_fabulous_preset() {
+        let options = ClientOptions::defaults(ClientOptionHost::default());
+        let matches = Args::command().get_matches_from([
+            "bbb-native",
+            "--graphics-preset",
+            "fabulous",
+            "--render-distance",
+            "20",
+            "--terrain-texture-filtering",
+            "none",
+        ]);
+        let mut args = Args::from_arg_matches(&matches).unwrap();
+
+        bind_stored_client_options(&mut args, StoredOptions::new(&options, &matches));
+
+        assert_eq!(args.graphics_preset, GraphicsPresetArg::Fabulous);
+        assert_eq!(args.render_distance_chunks, 20);
+        assert_eq!(
+            args.terrain_texture_filtering,
+            TerrainTextureFilteringArg::None
+        );
+        assert_eq!(args.cloud_range_chunks, 128);
+        assert_eq!(args.client_entity_distance_scaling, 1.25);
+        assert!(!args.fabulous_texture_filtering);
     }
 
     #[test]

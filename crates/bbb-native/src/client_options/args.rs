@@ -49,6 +49,10 @@ impl<'a> StoredOptions<'a> {
         }
     }
 
+    pub(crate) fn is_explicit(&self, arg_id: &str) -> bool {
+        (self.explicit)(arg_id)
+    }
+
     /// Overwrite `target` from `key` unless the user typed `arg_id`.
     ///
     /// `expected` is the encoding `save` writes for that key; binding a key
