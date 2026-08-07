@@ -712,7 +712,9 @@ impl PackEntry {
     ) -> Result<Self> {
         let metadata_required = matches!(
             pack.source,
-            ClientPackSource::Startup { .. } | ClientPackSource::Server { .. }
+            ClientPackSource::Startup { .. }
+                | ClientPackSource::OptionsRepository { .. }
+                | ClientPackSource::Server { .. }
         );
         let metadata = if matches!(pack.source, ClientPackSource::Unmanaged) {
             read_pack_resource_metadata(&pack.root, &data_budget)

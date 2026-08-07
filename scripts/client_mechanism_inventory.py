@@ -407,6 +407,7 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "getFullscreenVideoModeString",
             "updateFontOptions",
             "applyGraphicsPreset",
+            "loadSelectedResourcePacks",
         ),
     ),
     (
@@ -416,7 +417,6 @@ OPTIONS_METHOD_ROUTES = _method_routes(
         (
             "dataFix",
             "isSoundDeviceDefault",
-            "loadSelectedResourcePacks",
         ),
     ),
     (
@@ -4262,6 +4262,22 @@ OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
             ),
         ),
         ("applyGraphicsPreset",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-pack/src/selected_packs.rs#pub fn from_options_repository",
+                "crates/bbb-native/src/startup.rs#fn stored_text_list",
+                "crates/bbb-native/src/startup.rs#pub(crate) fn load_pack_roots_with_options",
+                "crates/bbb-native/src/client_options.rs#apply_resource_pack_reconciliation",
+            ),
+            (
+                "crates/bbb-pack/src/selected_packs.rs#options_repository_reconciles_missing_compatibility_legacy_ids_and_order",
+                "crates/bbb-native/src/startup.rs#stored_resource_pack_lists_reconcile_the_game_directory_repository",
+                "crates/bbb-native/src/client_options.rs#a_later_hotkey_save_uses_the_reconciled_resource_pack_lists",
+            ),
+        ),
+        ("loadSelectedResourcePacks",),
     ),
 )
 
@@ -8119,6 +8135,7 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/entity_scene.rs",
         "crates/bbb-native/src/runtime/render_extract.rs",
         "crates/bbb-renderer/src/renderer.rs",
+        "crates/bbb-pack/src/selected_packs.rs",
     ),
     "persistence-options-unconsumed": ("docs/unsupported-features.md",),
     "persistence-server-list": ("crates/bbb-native/src/server_list.rs",),

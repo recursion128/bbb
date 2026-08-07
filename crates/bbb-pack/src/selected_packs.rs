@@ -1,13 +1,17 @@
 use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    io::Read,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 use anyhow::{bail, Context, Result};
+use sha1::{Digest, Sha1};
 
 use crate::{
-    read_client_resource_pack_metadata, ClientPackMetadata, PackResourceStack, PackRoots,
-    ServerPackFormatRange,
+    materialize_server_pack_archive, read_client_resource_pack_metadata, ClientPackMetadata,
+    PackResourceStack, PackRoots, ServerPackArchiveLimits, ServerPackFormatRange,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +50,7 @@ pub struct ClientPackSelection {
 pub enum ClientPackSource {
     Vanilla,
     Startup { argument_index: usize },
+    OptionsRepository { file_name: String },
     Server { pack_id: String, push_sequence: u64 },
     Unmanaged,
 }
@@ -92,6 +97,34 @@ impl SelectedClientPack {
         Ok(Self {
             id: format!("startup/{argument_index}"),
             source: ClientPackSource::Startup { argument_index },
+            root,
+            supported_formats,
+            compatibility: ClientPackCompatibility::for_supported_formats(supported_formats),
+            selection: ClientPackSelection {
+                required: false,
+                default_position: ClientPackPosition::Top,
+                fixed_position: false,
+            },
+            metadata: Some(metadata),
+            indexed_vanilla_assets: None,
+        })
+    }
+
+    fn options_repository(file_name: String, root: PathBuf) -> Result<Self> {
+        validate_pack_root(&root)?;
+        let metadata = read_client_resource_pack_metadata(&root)?;
+        Self::options_repository_with_metadata(file_name, root, metadata)
+    }
+
+    fn options_repository_with_metadata(
+        file_name: String,
+        root: PathBuf,
+        metadata: ClientPackMetadata,
+    ) -> Result<Self> {
+        let supported_formats = metadata.supported_formats;
+        Ok(Self {
+            id: format!("file/{file_name}"),
+            source: ClientPackSource::OptionsRepository { file_name },
             root,
             supported_formats,
             compatibility: ClientPackCompatibility::for_supported_formats(supported_formats),
@@ -161,6 +194,19 @@ impl SelectedClientPack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectedClientPackStack {
     packs: Vec<SelectedClientPack>,
+}
+
+/// The in-memory mutations made by Vanilla `Options.loadSelectedResourcePacks`.
+/// The selected stack uses canonical repository ids, while the persisted list
+/// deliberately keeps a legacy id without `file/` when that fallback resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientPackOptionsReconciliation {
+    pub selected_packs: SelectedClientPackStack,
+    pub resource_packs: Vec<String>,
+    pub incompatible_resource_packs: Vec<String>,
+    pub removed_missing: Vec<String>,
+    pub removed_incompatible: Vec<String>,
+    pub became_compatible: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -238,6 +284,123 @@ impl SelectedClientPackStack {
         Self::new(packs)
     }
 
+    /// Discover selected file packs from the Vanilla `resourcepacks` repository
+    /// and replay `Options.loadSelectedResourcePacks` against the two stored
+    /// lists. Invalid repository entries are unavailable, matching
+    /// `Pack.readMetaAndCreate` returning null. Selected ZIPs are materialized
+    /// through the same bounded, atomic path used by downloaded server packs;
+    /// their repository id remains `file/<archive-name>`.
+    pub fn from_options_repository(
+        roots: &PackRoots,
+        repository: &Path,
+        resource_packs: &[String],
+        incompatible_resource_packs: &[String],
+    ) -> Result<ClientPackOptionsReconciliation> {
+        fs::create_dir_all(repository)
+            .with_context(|| format!("create resource pack repository {}", repository.display()))?;
+        let requested_file_names = resource_packs
+            .iter()
+            .filter(|id| id.as_str() != "vanilla")
+            .map(|id| id.strip_prefix("file/").unwrap_or(id))
+            .collect::<BTreeSet<_>>();
+        let archive_cache = repository
+            .parent()
+            .unwrap_or(repository)
+            .join(".bbb")
+            .join("resource-pack-cache");
+        let mut available = BTreeMap::new();
+        for entry in fs::read_dir(repository)
+            .with_context(|| format!("list resource pack repository {}", repository.display()))?
+        {
+            let Ok(entry) = entry else {
+                continue;
+            };
+            let path = entry.path();
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            let Some(file_name) = entry.file_name().to_str().map(str::to_owned) else {
+                continue;
+            };
+            if !requested_file_names.contains(file_name.as_str()) {
+                continue;
+            }
+            let pack = if file_type.is_dir() {
+                SelectedClientPack::options_repository(file_name, path)
+            } else if file_type.is_file() && file_name.ends_with(".zip") {
+                materialize_options_repository_archive(&path, &archive_cache).and_then(
+                    |(root, metadata)| {
+                        SelectedClientPack::options_repository_with_metadata(
+                            file_name, root, metadata,
+                        )
+                    },
+                )
+            } else {
+                continue;
+            };
+            let Ok(pack) = pack else {
+                continue;
+            };
+            available.insert(pack.id.clone(), pack);
+        }
+
+        let mut packs = vec![SelectedClientPack::vanilla(roots)];
+        let mut selected_ids = BTreeSet::new();
+        selected_ids.insert("vanilla".to_owned());
+        let mut retained = Vec::new();
+        let mut incompatible = incompatible_resource_packs.to_vec();
+        let mut removed_missing = Vec::new();
+        let mut removed_incompatible = Vec::new();
+        let mut became_compatible = Vec::new();
+
+        for stored_id in resource_packs {
+            let pack = if stored_id == "vanilla" {
+                None
+            } else {
+                available.get(stored_id).or_else(|| {
+                    (!stored_id.starts_with("file/"))
+                        .then(|| available.get(&format!("file/{stored_id}")))
+                        .flatten()
+                })
+            };
+            if stored_id != "vanilla" && pack.is_none() {
+                removed_missing.push(stored_id.clone());
+                continue;
+            }
+
+            let compatibility = pack
+                .map(|pack| pack.compatibility)
+                .unwrap_or(ClientPackCompatibility::Compatible);
+            let accepted_incompatible = incompatible.iter().any(|id| id == stored_id);
+            if compatibility != ClientPackCompatibility::Compatible && !accepted_incompatible {
+                removed_incompatible.push(stored_id.clone());
+                continue;
+            }
+            if compatibility == ClientPackCompatibility::Compatible && accepted_incompatible {
+                if let Some(index) = incompatible.iter().position(|id| id == stored_id) {
+                    incompatible.remove(index);
+                }
+                became_compatible.push(stored_id.clone());
+            }
+
+            retained.push(stored_id.clone());
+            if let Some(pack) = pack {
+                if selected_ids.insert(pack.id.clone()) {
+                    packs.push(pack.clone());
+                }
+            }
+        }
+
+        Ok(ClientPackOptionsReconciliation {
+            selected_packs: Self::new(packs)?,
+            resource_packs: retained,
+            incompatible_resource_packs: incompatible,
+            removed_missing,
+            removed_incompatible,
+            became_compatible,
+        })
+    }
+
     pub fn with_server_packs(
         &self,
         server_packs_in_push_order: impl IntoIterator<Item = SelectedClientPack>,
@@ -305,7 +468,9 @@ impl SelectedClientPackStack {
             }
             if matches!(
                 pack.source,
-                ClientPackSource::Startup { .. } | ClientPackSource::Server { .. }
+                ClientPackSource::Startup { .. }
+                    | ClientPackSource::OptionsRepository { .. }
+                    | ClientPackSource::Server { .. }
             ) {
                 let metadata = pack.metadata.as_ref().with_context(|| {
                     format!("selected client pack {} is missing metadata", pack.id)
@@ -316,6 +481,54 @@ impl SelectedClientPackStack {
             }
         }
         Ok(Self { packs })
+    }
+}
+
+fn materialize_options_repository_archive(
+    archive: &Path,
+    cache_root: &Path,
+) -> Result<(PathBuf, ClientPackMetadata)> {
+    let limits = ServerPackArchiveLimits::default();
+    let archive_bytes = fs::metadata(archive)
+        .with_context(|| format!("read options resource pack archive {}", archive.display()))?
+        .len();
+    if archive_bytes > limits.max_archive_bytes {
+        bail!(
+            "options resource pack archive is {archive_bytes} bytes, exceeding the {} byte limit",
+            limits.max_archive_bytes
+        );
+    }
+    let mut file = fs::File::open(archive)
+        .with_context(|| format!("open options resource pack archive {}", archive.display()))?;
+    let mut sha1 = Sha1::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .with_context(|| format!("hash options resource pack archive {}", archive.display()))?;
+        if read == 0 {
+            break;
+        }
+        sha1.update(&buffer[..read]);
+    }
+    let output = cache_root.join(format!("{:x}", sha1.finalize()));
+    if output.is_dir() {
+        let metadata = read_client_resource_pack_metadata(&output)?;
+        return Ok((output, metadata));
+    }
+    fs::create_dir_all(cache_root).with_context(|| {
+        format!(
+            "create options resource pack cache {}",
+            cache_root.display()
+        )
+    })?;
+    match materialize_server_pack_archive(archive, &output, limits) {
+        Ok(materialized) => Ok((materialized.root, materialized.metadata)),
+        Err(_error) if output.is_dir() => {
+            let metadata = read_client_resource_pack_metadata(&output)?;
+            Ok((output, metadata))
+        }
+        Err(error) => Err(error),
     }
 }
 
@@ -330,7 +543,12 @@ fn validate_pack_root(root: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use crate::ResourceLocation;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::{
+        fs::File,
+        io::Write,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
     #[test]
     fn prepared_resource_generation_is_send_and_sync() {
@@ -572,6 +790,114 @@ mod tests {
     }
 
     #[test]
+    fn options_repository_reconciles_missing_compatibility_legacy_ids_and_order() {
+        let root = unique_temp_dir("options-repository");
+        std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
+        let repository = root.join("resourcepacks");
+        write_metadata(&repository.join("legacy"), 84);
+        write_metadata(&repository.join("approved-old"), 63);
+        write_metadata(&repository.join("rejected-old"), 63);
+        write_metadata(&repository.join("recovered"), 84);
+        write_metadata(&repository.join("current"), 84);
+        write_pack_zip(&repository.join("archive.zip"));
+        std::fs::create_dir_all(repository.join("malformed")).unwrap();
+        std::fs::write(repository.join("malformed/pack.mcmeta"), b"not-json").unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
+
+        let reconciliation = SelectedClientPackStack::from_options_repository(
+            &roots,
+            &repository,
+            &[
+                "missing".to_owned(),
+                "legacy".to_owned(),
+                "file/approved-old".to_owned(),
+                "file/rejected-old".to_owned(),
+                "file/recovered".to_owned(),
+                "file/current".to_owned(),
+                "file/current".to_owned(),
+                "file/archive.zip".to_owned(),
+                "../outside".to_owned(),
+            ],
+            &[
+                "file/approved-old".to_owned(),
+                "file/recovered".to_owned(),
+                "stale".to_owned(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            reconciliation.resource_packs,
+            vec![
+                "legacy",
+                "file/approved-old",
+                "file/recovered",
+                "file/current",
+                "file/current",
+                "file/archive.zip",
+            ]
+        );
+        assert_eq!(
+            reconciliation.incompatible_resource_packs,
+            vec!["file/approved-old", "stale"]
+        );
+        assert_eq!(
+            reconciliation.removed_missing,
+            vec!["missing", "../outside"]
+        );
+        assert_eq!(
+            reconciliation.removed_incompatible,
+            vec!["file/rejected-old"]
+        );
+        assert_eq!(reconciliation.became_compatible, vec!["file/recovered"]);
+        assert_eq!(
+            reconciliation
+                .selected_packs
+                .packs()
+                .iter()
+                .map(|pack| pack.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "vanilla",
+                "file/legacy",
+                "file/approved-old",
+                "file/recovered",
+                "file/current",
+                "file/archive.zip",
+            ]
+        );
+        assert!(matches!(
+            &reconciliation.selected_packs.packs()[1].source,
+            ClientPackSource::OptionsRepository { file_name } if file_name == "legacy"
+        ));
+        assert_eq!(
+            reconciliation.selected_packs.packs()[2].compatibility,
+            ClientPackCompatibility::TooOld
+        );
+        let archive = reconciliation.selected_packs.packs().last().unwrap();
+        assert_ne!(archive.root, repository.join("archive.zip"));
+        assert!(archive.root.join("pack.mcmeta").is_file());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn absent_options_repository_is_created_with_only_required_vanilla_selected() {
+        let root = unique_temp_dir("options-repository-create");
+        std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
+        let repository = root.join("resourcepacks");
+
+        let reconciliation =
+            SelectedClientPackStack::from_options_repository(&roots, &repository, &[], &[])
+                .unwrap();
+
+        assert!(repository.is_dir());
+        assert_eq!(reconciliation.selected_packs.packs().len(), 1);
+        assert_eq!(reconciliation.selected_packs.packs()[0].id, "vanilla");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn explicit_incompatible_startup_pack_is_retained_and_diagnosed() {
         let root = unique_temp_dir("startup-incompatible");
         std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
@@ -752,6 +1078,23 @@ mod tests {
             format!(r#"{{"pack":{{"description":"test","pack_format":{pack_format}}}}}"#)
         };
         std::fs::write(root.join("pack.mcmeta"), metadata).unwrap();
+    }
+
+    fn write_pack_zip(path: &Path) {
+        let file = File::create(path).unwrap();
+        let mut archive = ZipWriter::new(file);
+        archive
+            .start_file(
+                "pack.mcmeta",
+                SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+            )
+            .unwrap();
+        archive
+            .write_all(
+                br#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+            )
+            .unwrap();
+        archive.finish().unwrap();
     }
 
     fn current_metadata() -> ClientPackMetadata {

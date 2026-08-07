@@ -279,6 +279,22 @@ impl ClientOptionsFile {
         &self.options
     }
 
+    /// Keep the in-memory `Options` lists synchronized with the startup
+    /// repository decision. Vanilla does not save here; a later hotkey save
+    /// rewrites the already-reconciled lists along with every other option.
+    pub(crate) fn apply_resource_pack_reconciliation(
+        &mut self,
+        reconciliation: &bbb_pack::ClientPackOptionsReconciliation,
+    ) {
+        let resource_packs = serde_json::to_string(&reconciliation.resource_packs)
+            .expect("a list of strings is always valid JSON");
+        let incompatible = serde_json::to_string(&reconciliation.incompatible_resource_packs)
+            .expect("a list of strings is always valid JSON");
+        self.options.set_raw("resourcePacks", &resource_packs);
+        self.options
+            .set_raw("incompatibleResourcePacks", &incompatible);
+    }
+
     /// Apply the lines a hotkey changed, then rewrite the file. Nothing is
     /// written when every value already reads that way, because Vanilla only
     /// reaches `save` from a branch that actually flipped the field.
@@ -705,6 +721,53 @@ mod tests {
         let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).expect("reload");
         assert_eq!(reloaded, loaded);
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_later_hotkey_save_uses_the_reconciled_resource_pack_lists() {
+        let path = unique_options_path("resource-pack-reconciliation");
+        fs::write(
+            &path,
+            "resourcePacks:[\"missing\",\"selected\"]\n\
+             incompatibleResourcePacks:[\"selected\",\"stale\"]\n\
+             advancedItemTooltips:false\n",
+        )
+        .unwrap();
+        let root = path.with_extension("packs");
+        let repository = root.join("resourcepacks");
+        let selected = repository.join("selected");
+        fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
+        fs::create_dir_all(&selected).unwrap();
+        fs::write(
+            selected.join("pack.mcmeta"),
+            r#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
+        )
+        .unwrap();
+        let roots = bbb_pack::PackRoots::from_root(&root).unwrap();
+        let reconciliation = bbb_pack::SelectedClientPackStack::from_options_repository(
+            &roots,
+            &repository,
+            &["missing".to_owned(), "selected".to_owned()],
+            &["selected".to_owned(), "stale".to_owned()],
+        )
+        .unwrap();
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        file.apply_resource_pack_reconciliation(&reconciliation);
+        file.apply(&[ClientOptionWrite {
+            key: "advancedItemTooltips",
+            value: ClientOptionValue::Boolean(true),
+        }])
+        .unwrap();
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(reloaded.raw("resourcePacks"), Some(r#"["selected"]"#));
+        assert_eq!(
+            reloaded.raw("incompatibleResourcePacks"),
+            Some(r#"["stale"]"#)
+        );
+        let _ = fs::remove_file(path);
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

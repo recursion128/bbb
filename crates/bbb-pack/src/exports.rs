@@ -64,8 +64,9 @@ pub use crate::resources::{
 };
 pub use crate::roots::{PackRoots, MC_VERSION};
 pub use crate::selected_packs::{
-    ClientPackCompatibility, ClientPackPosition, ClientPackSelection, ClientPackSource,
-    ClientResourceGeneration, SelectedClientPack, SelectedClientPackStack,
+    ClientPackCompatibility, ClientPackOptionsReconciliation, ClientPackPosition,
+    ClientPackSelection, ClientPackSource, ClientResourceGeneration, SelectedClientPack,
+    SelectedClientPackStack,
 };
 pub use crate::server_pack::{
     materialize_server_pack_archive, read_client_resource_pack_format_range,

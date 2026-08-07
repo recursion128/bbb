@@ -94,6 +94,14 @@ pub(crate) struct Args {
     pub(crate) server_list_name: Option<String>,
     #[arg(long = "resource-pack-dir", value_name = "PATH")]
     pub(crate) resource_pack_dirs: Vec<PathBuf>,
+    /// `Options.resourcePacks`, consumed only when no explicit CLI pack roots
+    /// replace the Vanilla `<gameDir>/resourcepacks` repository.
+    #[arg(skip)]
+    pub(crate) stored_resource_packs: Vec<String>,
+    /// `Options.incompatibleResourcePacks`, paired with the stored selection
+    /// during repository reconciliation.
+    #[arg(skip)]
+    pub(crate) stored_incompatible_resource_packs: Vec<String>,
     #[arg(
         long = "server-resource-pack-policy",
         value_enum,
@@ -724,7 +732,23 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
     args.client_key_bindings = KeyBindings::from_options(&options);
     crate::client_options::key_bindings::install_bound_key_display_keys(&options);
     args.narrator_voice_volume = narrator_voice_volume(&options);
+    args.stored_resource_packs = stored_text_list(&options, "resourcePacks");
+    args.stored_incompatible_resource_packs =
+        stored_text_list(&options, "incompatibleResourcePacks");
     bind_stored_client_options(args, StoredOptions::new(&options, matches));
+}
+
+fn stored_text_list(options: &ClientOptions, key: &'static str) -> Vec<String> {
+    let Some(raw) = options.raw(key) else {
+        return Vec::new();
+    };
+    match serde_json::from_str::<Option<Vec<String>>>(raw) {
+        Ok(values) => values.unwrap_or_default(),
+        Err(error) => {
+            tracing::warn!(key, raw, %error, "ignoring invalid options.txt text list");
+            Vec::new()
+        }
+    }
 }
 
 /// `GameNarrator.narrateMessage` speaks at
@@ -1341,18 +1365,64 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
 }
 
 pub(crate) fn load_pack_roots(args: &Args) -> Result<Option<PackRoots>> {
+    Ok(load_pack_roots_with_options(args)?.roots)
+}
+
+pub(crate) struct LoadedPackRoots {
+    pub(crate) roots: Option<PackRoots>,
+    pub(crate) options_reconciliation: Option<bbb_pack::ClientPackOptionsReconciliation>,
+}
+
+pub(crate) fn load_pack_roots_with_options(args: &Args) -> Result<LoadedPackRoots> {
     let Some(vanilla_root) = args.vanilla_root.as_ref() else {
         tracing::warn!("--vanilla-root was not supplied; Vanilla resources are unavailable");
-        return Ok(None);
+        return Ok(LoadedPackRoots {
+            roots: None,
+            options_reconciliation: None,
+        });
     };
     match PackRoots::from_root(vanilla_root) {
-        Ok(roots) => Ok(Some(apply_resource_pack_dirs(
-            roots,
-            args.resource_pack_dirs.iter().cloned(),
-        )?)),
+        Ok(roots) if !args.resource_pack_dirs.is_empty() => Ok(LoadedPackRoots {
+            roots: Some(apply_resource_pack_dirs(
+                roots,
+                args.resource_pack_dirs.iter().cloned(),
+            )?),
+            options_reconciliation: None,
+        }),
+        Ok(roots) => {
+            let reconciliation = bbb_pack::SelectedClientPackStack::from_options_repository(
+                &roots,
+                &args.game_dir.join("resourcepacks"),
+                &args.stored_resource_packs,
+                &args.stored_incompatible_resource_packs,
+            )?;
+            for id in &reconciliation.removed_missing {
+                tracing::warn!(pack_id = id, "removed missing resource pack from options");
+            }
+            for id in &reconciliation.removed_incompatible {
+                tracing::warn!(
+                    pack_id = id,
+                    "removed newly incompatible resource pack from options"
+                );
+            }
+            for id in &reconciliation.became_compatible {
+                tracing::info!(
+                    pack_id = id,
+                    "removed resource pack from incompatibility list"
+                );
+            }
+            let selected = reconciliation.selected_packs.clone();
+            Ok(LoadedPackRoots {
+                roots: Some(roots.with_selected_client_packs(selected)?),
+                options_reconciliation: Some(reconciliation),
+            })
+        }
         Err(err) => {
             tracing::warn!(?err, "vanilla 26.1 pack roots unavailable");
-            Ok(None)
+            Ok(LoadedPackRoots {
+                roots: None,
+                options_reconciliation: None,
+            })
         }
     }
 }
@@ -2880,6 +2950,72 @@ mod tests {
             vec!["vanilla", "startup/0", "startup/1"]
         );
         std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn stored_resource_pack_lists_reconcile_the_game_directory_repository() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let temp = std::env::temp_dir().join(format!(
+            "bbb-startup-options-resource-packs-{}-{nonce}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(temp.join("vanilla/sources/26.1/assets/minecraft")).unwrap();
+        let selected = temp.join("game/resourcepacks/selected");
+        let rejected = temp.join("game/resourcepacks/rejected");
+        for (pack, format) in [(&selected, 84), (&rejected, 63)] {
+            std::fs::create_dir_all(pack).unwrap();
+            let metadata = if format > 64 {
+                format!(
+                    r#"{{"pack":{{"description":"test","min_format":[{format},0],"max_format":[{format},0]}}}}"#
+                )
+            } else {
+                format!(r#"{{"pack":{{"description":"test","pack_format":{format}}}}}"#)
+            };
+            std::fs::write(pack.join("pack.mcmeta"), metadata).unwrap();
+        }
+        let mut args = Args::parse_from(["bbb-native"]);
+        args.vanilla_root = Some(temp.join("vanilla"));
+        args.game_dir = temp.join("game");
+        args.stored_resource_packs = vec!["selected".to_owned(), "file/rejected".to_owned()];
+
+        let loaded = load_pack_roots_with_options(&args).unwrap();
+
+        assert_eq!(
+            loaded
+                .roots
+                .as_ref()
+                .unwrap()
+                .selected_client_packs()
+                .unwrap()
+                .packs()
+                .iter()
+                .map(|pack| pack.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["vanilla", "file/selected"]
+        );
+        let reconciliation = loaded.options_reconciliation.unwrap();
+        assert_eq!(reconciliation.resource_packs, vec!["selected"]);
+        assert_eq!(reconciliation.removed_incompatible, vec!["file/rejected"]);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn stored_text_lists_decode_json_strings_and_fail_closed() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("resourcePacks", r#"["one","file/two"]"#);
+        options.set_raw_for_test("incompatibleResourcePacks", "null");
+
+        assert_eq!(
+            stored_text_list(&options, "resourcePacks"),
+            vec!["one", "file/two"]
+        );
+        assert!(stored_text_list(&options, "incompatibleResourcePacks").is_empty());
+
+        options.set_raw_for_test("resourcePacks", r#"["one",7]"#);
+        assert!(stored_text_list(&options, "resourcePacks").is_empty());
     }
 
     #[test]

@@ -159,7 +159,7 @@ use sky_assets::load_sky_textures;
 use sound_subtitle_runtime::SoundSubtitleRuntime;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, effective_framerate_limit,
-    init_tracing, load_known_packs_manager, load_pack_roots, parse_args,
+    init_tracing, load_known_packs_manager, load_pack_roots_with_options, parse_args,
     run_build_info_if_requested, run_probe_if_requested, run_status_if_requested, spawn_frame_tick,
     start_control_api, start_network_if_requested,
 };
@@ -631,7 +631,9 @@ fn run_client(args: startup::Args) -> Result<()> {
         return Ok(());
     }
 
-    let mut pack_roots = load_pack_roots(&args)?;
+    let loaded_pack_roots = load_pack_roots_with_options(&args)?;
+    let mut pack_roots = loaded_pack_roots.roots;
+    let resource_pack_options_reconciliation = loaded_pack_roots.options_reconciliation;
     let base_pack_roots = pack_roots.clone();
     let known_packs_manager = load_known_packs_manager(pack_roots.as_ref());
     let simulation_mailbox = SimulationMailbox::default();
@@ -1284,7 +1286,10 @@ fn run_client(args: startup::Args) -> Result<()> {
             platform_is_windows: crate::platform::HOST_IS_WINDOWS,
         },
     ) {
-        Ok(options) => {
+        Ok(mut options) => {
+            if let Some(reconciliation) = resource_pack_options_reconciliation.as_ref() {
+                options.apply_resource_pack_reconciliation(reconciliation);
+            }
             fatal_failures
                 .borrow_mut()
                 .attach_client_options(options.options().dump_for_report());

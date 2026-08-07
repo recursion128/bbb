@@ -407,6 +407,9 @@ pub(crate) fn client_resource_pack_diagnostics(
                     bbb_pack::ClientPackSource::Startup { argument_index } => {
                         format!("startup:{argument_index}")
                     }
+                    bbb_pack::ClientPackSource::OptionsRepository { file_name } => {
+                        format!("options:file/{file_name}")
+                    }
                     bbb_pack::ClientPackSource::Server {
                         pack_id,
                         push_sequence,

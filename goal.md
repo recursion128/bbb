@@ -498,7 +498,7 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。`persistence-options-unconsumed` 剩余三个 Vanilla `Options` owner
+状态：`active`。`persistence-options-unconsumed` 剩余两个 Vanilla `Options` owner
 已重新确认为无游戏内配置 UI 也可从启动路径到达；当前工程 slice 必须逐 owner
 实现真实消费或重路由到已有实现证据，不能以 options 行可 round-trip 代替行为。
 census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已

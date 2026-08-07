@@ -82,12 +82,14 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `identity-profile-key-lifecycle`, `identity-skin-presentation`,
 `security-secure-chat-reporting`, `persistence-options-unconsumed`
 
-- Implement the three startup-reachable `Options` consumer owners still
+- Implement the two startup-reachable `Options` consumer owners still
   missing from the native options path. `Options.dataFix` migrates older
-  `options.txt` versions before any field is decoded;
-  `isSoundDeviceDefault` selects the stored audio device; and
-  `loadSelectedResourcePacks` reconciles the stored selected list against the
-  repository. Owner: `bbb-native` + `bbb-audio` + `bbb-pack`. Vanilla anchors:
+  `options.txt` versions before any field is decoded, and
+  `isSoundDeviceDefault` selects the stored audio device. The repository
+  reconciliation owner is now routed to `persistence-options-apply`: when no
+  explicit `--resource-pack-dir` overrides it, `<gameDir>/resourcepacks` is
+  reconciled against both stored lists before the immutable resource
+  generation is prepared. Owner: `bbb-native` + `bbb-audio`. Vanilla anchors:
   `Options.java:928,1190,1691,1759,1770,1825`, `Minecraft.java:522,551`, and
   `SoundEngine.java:106,198`.
 
