@@ -2,6 +2,7 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -75,7 +76,7 @@ class FailureClassificationTests(unittest.TestCase):
 class CrossCheckCliTests(unittest.TestCase):
     def run_cross_check(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(
-            ["python3", str(REPO_ROOT / "scripts" / "cross_check.py"), *args],
+            [sys.executable, str(REPO_ROOT / "scripts" / "cross_check.py"), *args],
             check=False,
             text=True,
             stdout=subprocess.PIPE,

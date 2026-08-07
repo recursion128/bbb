@@ -3,7 +3,7 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo_root/scripts/gate-stamp-lib.sh"
-python_runner="$repo_root/scripts/vanilla-source-tools.sh"
+python_runner="$repo_root/scripts/python"
 helper="$repo_root/scripts/platform_acceptance.py"
 manifest="$repo_root/scripts/fixtures/platform-acceptance/linux-x86_64-wayland-vulkan.json"
 lifecycle_manifest="$repo_root/scripts/fixtures/lifecycle-soak/manifest-26.1.json"

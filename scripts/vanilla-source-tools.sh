@@ -1,12 +1,11 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-project="$repo_root/scripts/vanilla-source-tools"
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
-if [[ $# -eq 0 ]]; then
+if [ "$#" -eq 0 ]; then
   echo "usage: scripts/vanilla-source-tools.sh <python-command-or-script> [args...]" >&2
   exit 2
 fi
 
-exec uv run --offline --frozen --project "$project" --python 3.12 -- "$@"
+exec "$repo_root/scripts/python" "$@"

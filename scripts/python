@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: scripts/python <python-command-or-script> [args...]" >&2
+  exit 2
+fi
+if ! command -v uv >/dev/null 2>&1; then
+  echo "bbb Python tooling requires uv 0.11.16; install it, then run scripts/bootstrap" >&2
+  exit 2
+fi
+if [ ! -x "$repo_root/.venv/bin/python" ]; then
+  echo "bbb Python environment is not prepared; run scripts/bootstrap" >&2
+  exit 2
+fi
+
+export PYTHONPATH="$repo_root/scripts"
+
+exec uv run --offline --locked --exact --no-python-downloads \
+  --project "$repo_root" -- "$@"

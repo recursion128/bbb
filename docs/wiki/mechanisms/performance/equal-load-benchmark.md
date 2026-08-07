@@ -133,7 +133,7 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 实测同一次采集里 Weston、Xwayland 与官方客户端三个进程被干净分离。
 
 采集在 runner 完成两项标准授权后以**非特权**身份运行（`perf record`，见
-`scripts/gpu_duration_capture.py preflight`）：tracefs 对 benchmark 组可读以便 perf
+`scripts/python python scripts/gpu_duration_capture.py preflight`）：tracefs 对 benchmark 组可读以便 perf
 解析 tracepoint id，以及 `kernel.perf_event_paranoid=-1` 以便打开它们。
 
 发布该指标的判据是采集自身的 association ratio（完成整条链的客户端提交占比），低于

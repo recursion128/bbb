@@ -78,4 +78,8 @@
   计数、已删除的 Windows projection），archive 自身的散文压回路由行。账本 active=0、五份 ledger
   无 open row、路线全部 `closed`/`maintenance`，四个 stamp 齐平 HEAD，进入声明范围的目标维护态。
 
+- **2026-08-07（工作流 v8）**：Python 工具链提升为根级 uv project，固定 uv 0.11.16 与
+  uv-managed CPython 3.12.13；`scripts/bootstrap` 统一准备 Python/Rust/Vanilla，正式 Python
+  入口全部走 offline locked runner，系统 Python 与分裂的 source-tools 环境退出前置集合。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

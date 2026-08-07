@@ -78,7 +78,7 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
 
     def seat_input(self) -> dict:
         return {
-            "injector": "python3 scripts/seat_inject.py",
+            "injector": "scripts/python python scripts/seat_inject.py",
             "startup_focus_source": "compositor",
             "from_slot": 0,
             "to_slot": 4,

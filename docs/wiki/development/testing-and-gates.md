@@ -25,6 +25,10 @@ commit 取 diff，批次里较早那个 commit 需要的步骤会被静默跳过
 `cargo check --target aarch64-apple-darwin` 覆盖 Linux 主机编译不到的 macOS 分支，
 边界与 crate 分区见 [macOS 与 Linux 开发](macos-and-linux.md)。
 
+所有 Python 步骤由根 `.python-version`、`pyproject.toml`、`uv.lock` 和
+`scripts/python` 共同固定；门禁只做 offline locked sync，不下载解释器或依赖。新机器
+必须先运行 `scripts/bootstrap`，让环境准备与门禁验证保持两个可归因阶段。
+
 playable gate 需要真实 live session 时才运行并更新 `.git/bbb/last-playable-live`。
 纯 docs/workflow slice 不改变可玩行为，可验证旧 stamp 是最终 HEAD 祖先；如果修改产品
 行为，这个豁免立即失效。

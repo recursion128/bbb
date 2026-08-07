@@ -3,7 +3,7 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo_root/scripts/gate-stamp-lib.sh"
-python_runner="$repo_root/scripts/vanilla-source-tools.sh"
+python_runner="$repo_root/scripts/python"
 helper="$repo_root/scripts/playable_gate.py"
 fixture="$repo_root/scripts/fixtures/playable-gate/session-26.1.json"
 

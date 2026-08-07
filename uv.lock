@@ -1,9 +1,9 @@
 version = 1
 revision = 3
-requires-python = "==3.12.*"
+requires-python = "==3.12.13"
 
 [[package]]
-name = "bbb-vanilla-source-tools"
+name = "bbb-development-tools"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [

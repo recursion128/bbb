@@ -516,7 +516,7 @@ run_gate() {
     case "$cross_check_status" in
       run:*)
         run_gate_step cross-check "second-platform cross-check" \
-          python3 scripts/cross_check.py
+          scripts/python python scripts/cross_check.py
         ;;
       *)
         gate_step_index=$((gate_step_index + 1))
@@ -809,7 +809,7 @@ case "$cmd" in
     run_gate
     ;;
   cross-check)
-    exec python3 "$script_dir/cross_check.py" "$@"
+    exec "$script_dir/python" python "$script_dir/cross_check.py" "$@"
     ;;
   gate-scripts-tests-status)
     gate_scripts_tests_status

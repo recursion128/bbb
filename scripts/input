@@ -1,7 +1,5 @@
-#!/usr/bin/env python3.12
-"""Stable host-input entry point."""
+#!/bin/sh
+set -eu
 
-from bbb_tools.input.cli import main
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec "$repo_root/scripts/python" python -m bbb_tools.input.cli "$@"

@@ -1,7 +1,7 @@
 [project]
-name = "bbb-vanilla-source-tools"
+name = "bbb-development-tools"
 version = "0.0.0"
-requires-python = ">=3.12,<3.13"
+requires-python = "==3.12.13"
 dependencies = [
     "pytest==9.1.1",
     "ruff==0.16.1",
@@ -11,11 +11,14 @@ dependencies = [
 
 [tool.uv]
 package = false
+python-downloads = "manual"
+python-preference = "only-managed"
+required-version = "==0.11.16"
 
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers", "-ra", "-p", "no:cacheprovider"]
-pythonpath = [".."]
-testpaths = ["../tests"]
+pythonpath = ["scripts"]
+testpaths = ["scripts/tests"]
 markers = [
     "integration: local multi-process or local-server integration tests",
     "linux: Linux-only behavior",

@@ -7,6 +7,8 @@ libraries、assets 与反编译源码永远只存在于本地 cache。最终工�
 
 ```text
 scripts/
+  bootstrap                     # 新工作树 Python/Rust/Vanilla 初始化
+  python                        # 根 uv 环境的离线锁定 runner
   vanilla                       # 稳定 CLI，只有 prepare 可联网
   dev                           # doctor/lint/test/generate
   process                       # POSIX process-group supervisor
@@ -27,7 +29,12 @@ root 或调用它对应的 resolver，不得从 `$HOME` 拼路径。
 
 ## 命令与网络边界
 
+新工作树通常不单独调用下列 prepare，而是运行 `scripts/bootstrap`：它先安装根
+`.python-version` 指定的 uv-managed Python、同步 `uv.lock` 与 Cargo.lock，再进入
+Vanilla prepare。`--skip-vanilla` 只准备工具链；`--offline` 要求所有层的 cache 已存在。
+
 ```sh
+scripts/bootstrap
 scripts/vanilla prepare 26.1
 scripts/vanilla prepare 26.1 --offline
 scripts/vanilla verify 26.1
@@ -35,8 +42,9 @@ scripts/vanilla path 26.1 --kind sources
 scripts/vanilla clean 26.1
 ```
 
-只有 `prepare` 可以导入下载模块并访问网络。普通 build、gate、pytest、generator 与
-benchmark 在 cache 缺失时失败，并给出完整的 `scripts/vanilla prepare 26.1` 命令。
+初始化阶段只有 `scripts/bootstrap` 的 uv/Cargo 同步及其调用的 `prepare` 可以访问网络。
+普通 build、gate、pytest、generator 与 benchmark 在 cache 缺失时失败，并给出完整的
+`scripts/bootstrap` 或 `scripts/vanilla prepare 26.1` 命令。
 `prepare --emit-lock-candidate <file>` 是在线发现动作；审查 candidate 后才用
 `scripts/vanilla lock apply 26.1 --candidate <file>` 更新提交锁。普通 prepare 不读取
 “latest”，也不改锁。

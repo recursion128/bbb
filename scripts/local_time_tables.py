@@ -6,7 +6,7 @@ ships (scripts/local-time-icu4j/ has the dumper and its invocation); this
 script only reshapes them into a deterministic Rust module so the client
 carries no Java dependency. Regenerate with:
 
-    python3 scripts/local_time_tables.py --write
+    scripts/python python scripts/local_time_tables.py --write
 
 `scripts/tests/test_local_time_tables.py` fails when the checked-in module
 drifts from the TSVs.

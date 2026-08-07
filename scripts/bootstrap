@@ -1,0 +1,110 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+required_uv=0.11.16
+offline=0
+prepare_vanilla=1
+
+usage() {
+  cat <<'EOF'
+usage: scripts/bootstrap [--offline] [--skip-vanilla]
+
+Prepare the pinned uv-managed Python, locked Python and Rust dependencies, and
+the managed Vanilla 26.1 workspace. Use --skip-vanilla when only the developer
+toolchains are needed; --offline requires every artifact to be cached already.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --offline)
+      offline=1
+      ;;
+    --skip-vanilla)
+      prepare_vanilla=0
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "unknown bootstrap option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "bootstrap requires uv $required_uv; install that version and rerun" >&2
+  exit 2
+fi
+installed_uv=$(uv --no-config --version | awk '{print $2}')
+if [ "$installed_uv" != "$required_uv" ]; then
+  echo "bootstrap requires uv $required_uv; found $installed_uv" >&2
+  echo "standalone uv installs can switch with: uv --no-config self update $required_uv" >&2
+  exit 2
+fi
+
+for tool in cargo rustc rustup git rg; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "bootstrap requires $tool on PATH" >&2
+    exit 2
+  fi
+done
+
+uv_network=
+cargo_network=
+vanilla_network=
+if [ "$offline" -eq 1 ]; then
+  uv_network=--offline
+  cargo_network=--offline
+  vanilla_network=--offline
+fi
+
+echo "== pinned Python =="
+uv --project "$repo_root" python install $uv_network
+
+echo "== locked Python dependencies =="
+uv --project "$repo_root" sync --locked $uv_network
+
+echo "== portable host capabilities =="
+"$repo_root/scripts/dev" doctor --profile portable
+
+echo "== locked Rust dependencies =="
+cross_target=aarch64-apple-darwin
+if ! rustup target list --installed | grep -qx "$cross_target"; then
+  if [ "$offline" -eq 1 ]; then
+    echo "offline bootstrap requires the cached Rust target $cross_target" >&2
+    echo "install it online with: rustup target add $cross_target" >&2
+    exit 2
+  fi
+  rustup target add "$cross_target"
+fi
+host_target=$(rustc -vV | awk '/^host:/ { print $2 }')
+cargo fetch --manifest-path "$repo_root/Cargo.toml" --locked \
+  --target "$host_target" $cargo_network
+if [ "$host_target" != "$cross_target" ]; then
+  cargo fetch --manifest-path "$repo_root/Cargo.toml" --locked \
+    --target "$cross_target" $cargo_network
+fi
+
+if [ "$prepare_vanilla" -eq 1 ]; then
+  if "$repo_root/scripts/vanilla" path 26.1 --kind state >/dev/null 2>&1; then
+    echo "== managed Vanilla 26.1 workspace =="
+    "$repo_root/scripts/vanilla" verify 26.1
+  else
+    if ! command -v java >/dev/null 2>&1; then
+      echo "Vanilla 26.1 preparation requires Java 25 on PATH" >&2
+      echo "install Java 25, or rerun with --skip-vanilla for toolchains only" >&2
+      exit 2
+    fi
+    echo "== managed Vanilla 26.1 workspace =="
+    "$repo_root/scripts/vanilla" prepare 26.1 $vanilla_network
+    "$repo_root/scripts/vanilla" verify 26.1
+  fi
+fi
+
+echo "bootstrap: ready; run scripts/cargo-dev.sh gate"

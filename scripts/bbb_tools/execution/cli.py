@@ -61,3 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ProcessFailure as error:
         print(f"process supervision failed: {error}", file=sys.stderr)
         return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -177,7 +177,8 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
 ### 每轮步骤
 
 1. **收尾**：确认工作树干净；已验证未提交的 slice 先提交。
-2. **audit**：运行 `scripts/audit-p0.sh` 与 `scripts/coverage-status.py`；exit 0
+2. **audit**：运行 `scripts/audit-p0.sh` 与
+   `scripts/python python scripts/coverage-status.py`；exit 0
    且 `.git/bbb/` 的 last-gated 与 last-playable-* stamp（gate/playable-gate
    通过时自动写入）无回退迹象 ⇒ 无新 P0。milestone 关闭后 live playable stamp
    不得落后于该 milestone。audit exit 1 时人工归类新增命中，有明确非 P0 依据的

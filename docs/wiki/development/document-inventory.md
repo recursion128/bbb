@@ -47,4 +47,3 @@ destination” 表示内容的唯一长期归属，不表示另有一份副本�
 | `docs/wiki/parity/README.md` | 机制覆盖审计入口说明 | 是 | 同路径 | 保留 canonical | Wiki | 审计导航 | 不拥有调度状态 |
 | `docs/wiki/parity/vanilla-26.1-matrix.md` | 26.1 mechanism-level 覆盖矩阵 | 是 | 同路径 | 保留 canonical | Wiki、docs lint | 审计索引 | open 状态链接 ledger/goal |
 | `goal.md` | 当前路线、active contract 与门禁排程 | 是 | 同路径 | 保留特殊权威 | AGENTS、ledger、Wiki | 当前流程/状态 | 不保存完成史 |
-| `scripts/vanilla-source-tools/README.md` | 相邻 source-tool 使用说明 | 是 | 同路径 | 保留 tool-local | source-tool wrapper | 工具流程 | 不复制 Wiki 架构 |

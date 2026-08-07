@@ -11,6 +11,16 @@
 `RUST_MIN_STACK`。deny-warnings 已在 workspace lints 中，禁止临时切换
 `RUSTFLAGS='-D warnings'` 导致共享 cache 全量失效。
 
+Python 开发工具由仓库根的 `.python-version`、`pyproject.toml` 与 `uv.lock` 共同
+锁定；`.venv/` 是 ignored 的工作树本地 cache。`scripts/bootstrap` 是唯一允许下载
+Python 解释器和 Python/Rust 依赖的初始化入口；Rust 只预取本机 target 与既有
+`aarch64-apple-darwin` cross-check target，不把非目标 Windows 依赖混入 cache 合同。
+它默认也准备锁定的 Vanilla 26.1 workspace。日常命令统一经过 `scripts/python`，
+使用 exact uv-managed interpreter、
+`--offline --locked --exact`，因此不会在 lint、测试、生成器或门禁中隐式联网、换
+解释器、改锁或保留未声明包。`scripts/vanilla-source-tools.sh` 只作为旧生成物中命令
+注记的兼容入口，不拥有第二套环境。
+
 ## 缓存与清理
 
 稳定 target 以 slice/domain 复用，不在每轮删除。`scripts/cargo-dev.sh prune` 默认 dry

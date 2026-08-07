@@ -27,10 +27,16 @@ window icon 走 X11 路径），只是不声明 X11 发布行。
 | 工具 | 用途 | macOS 获取方式 |
 | --- | --- | --- |
 | `cargo` | 构建与测试；工具链版本由 `rust-toolchain.toml` 钉死 | `rustup` |
+| `rustup` | 安装锁定 Rust 工具链与 macOS cross-check target | 官方 rustup installer |
 | `git` | 版本控制与门禁 stamp | Xcode Command Line Tools |
-| `python3` 3.12 | `scripts/` package、Vanilla tooling 与门禁 | `brew install python@3.12` |
 | `rg` | docs lint 的模式检索 | `brew install ripgrep` |
-| `uv` | `scripts/vanilla-source-tools.sh` 的离线 Python 环境 | `brew install uv` |
+| `uv` 0.11.16 | 安装锁定 Python、同步根环境并运行全部 Python 工具 | 安装官方 0.11.16 release |
+| `java` 25 | 首次准备 Vanilla 26.1 workspace | 安装 JDK 25 并加入 `PATH` |
+
+仓库不再要求系统 Python。首次 clone 后运行 `scripts/bootstrap`；它按根
+`.python-version` 安装 uv-managed CPython 3.12.13，按 `uv.lock` 同步 `.venv`，拉取
+锁定 Rust 依赖并准备 Vanilla workspace。日常入口只离线读取这些 cache；确实只需要
+工具链时可先用 `scripts/bootstrap --skip-vanilla`，已有完整 cache 时可加 `--offline`。
 
 `scripts/tests/test_dev_chain_portability.py` 守住这张表：它拒绝开发链路脚本里的
 GNU-only 写法（`readlink -f`、`sha256sum`、`stat -c`、`sed -i`、`grep -P`、`nproc` 等）、
@@ -41,12 +47,13 @@ macOS 上——所以由这条测试代替 macOS 主机发现它们。
 ## 两个平台都跑的
 
 - `scripts/cargo-dev.sh fast-test` / `test -p <crate> <filter>`：日常 focused 测试。
+- `scripts/bootstrap`：新工作树的一次性解释器、依赖与 Vanilla workspace 初始化。
 - `scripts/dev doctor --profile portable`：能力探测，不用 `uname` 猜行为。
 - `scripts/dev lint python` / `scripts/dev test python --suite unit|integration|vanilla|all`。
 - `scripts/cargo-dev.sh gate`：完整门禁，10 步，写 `.git/bbb/last-gated`。
 - `scripts/cargo-dev.sh cross-check`：第二平台类型检查，见下节。
 - `scripts/docs-lint.sh`：文档与账本 lint。
-- `scripts/vanilla prepare|verify|path|clean 26.1`：同一 Python 3.12 标准库实现。
+- `scripts/vanilla prepare|verify|path|clean 26.1`：同一锁定 Python 环境中的标准库实现。
 
 target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 
@@ -59,7 +66,7 @@ target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 - `scripts/platform-acceptance-gate.sh`：发布行验收。
 - `scripts/input --backend linux-release`：发布 seat 的稳定入口；底层持久 uinput
   设备与 compositor adapter 是 Linux release 专用。
-- `scripts/gpu_duration_capture.py preflight|capture`：需要 tracefs 与 perf；
+- `scripts/python python scripts/gpu_duration_capture.py preflight|capture`：需要 tracefs 与 perf；
   `summarize` 只读既有 capture，与主机无关，不受限制。
 
 `scripts/playable-gate.sh` 与 `scripts/lifecycle-soak-gate.sh` 不按主机拒绝：

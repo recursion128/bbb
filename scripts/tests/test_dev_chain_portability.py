@@ -11,6 +11,8 @@ to be Linux-only, but they must say so instead of failing on a missing device.
 
 from pathlib import Path
 import re
+import subprocess
+import tomllib
 import unittest
 
 
@@ -20,10 +22,12 @@ SCRIPTS = REPO_ROOT / "scripts"
 # Scripts a macOS developer runs: the build/test loop, the full gate and its
 # helpers, plus the generators kept next to them.
 DEV_CHAIN_SHELL_SCRIPTS = (
+    "bootstrap",
     "cargo-dev.sh",
     "docs-lint.sh",
     "gate-stamp-lib.sh",
     "install-hooks.sh",
+    "python",
     "vanilla-source-tools.sh",
     "worker-worktree.sh",
     "generate-block-registry-catalog.sh",
@@ -225,7 +229,7 @@ class DevChainToolTests(unittest.TestCase):
     A macOS developer installs these by hand, so the list has to stay true.
     """
 
-    EXPECTED_TOOLS = ("cargo", "git", "python3", "rg", "uv")
+    EXPECTED_TOOLS = ("cargo", "git", "java", "rg", "rustup", "uv")
 
     def test_the_documented_tool_list_matches_this_one(self) -> None:
         page = (
@@ -250,6 +254,78 @@ class DevChainToolTests(unittest.TestCase):
                     if re.search(pattern, line):
                         offenders.append(f"{name}:{number}: uses {tool}")
         self.assertEqual(offenders, [])
+
+
+class PythonToolchainContractTests(unittest.TestCase):
+    PINNED_PYTHON = "3.12.13"
+    PINNED_UV = "0.11.16"
+
+    def test_root_project_pins_the_interpreter_uv_and_dependencies(self) -> None:
+        self.assertEqual(
+            (REPO_ROOT / ".python-version").read_text(encoding="utf-8").strip(),
+            self.PINNED_PYTHON,
+        )
+        project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        self.assertEqual(project["project"]["requires-python"], f"=={self.PINNED_PYTHON}")
+        self.assertEqual(project["tool"]["uv"]["required-version"], f"=={self.PINNED_UV}")
+        self.assertEqual(project["tool"]["uv"]["python-preference"], "only-managed")
+        self.assertEqual(project["tool"]["uv"]["python-downloads"], "manual")
+        lock = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
+        self.assertIn(f'requires-python = "=={self.PINNED_PYTHON}"', lock)
+        self.assertFalse((SCRIPTS / "vanilla-source-tools" / "uv.lock").exists())
+
+    def test_daily_runner_is_offline_locked_exact_and_never_downloads_python(self) -> None:
+        runner = (SCRIPTS / "python").read_text(encoding="utf-8")
+        for flag in ("--offline", "--locked", "--exact", "--no-python-downloads"):
+            with self.subTest(flag=flag):
+                self.assertIn(flag, runner)
+        self.assertIn('if [ ! -x "$repo_root/.venv/bin/python" ]', runner)
+
+    def test_stable_python_entrypoints_share_the_runner(self) -> None:
+        for name in ("dev", "input", "process", "vanilla", "vanilla-source-tools.sh"):
+            source = (SCRIPTS / name).read_text(encoding="utf-8")
+            with self.subTest(entrypoint=name):
+                self.assertIn("scripts/python", source)
+
+    def test_bootstrap_owns_every_networked_toolchain_prepare(self) -> None:
+        bootstrap = (SCRIPTS / "bootstrap").read_text(encoding="utf-8")
+        self.assertIn(f"required_uv={self.PINNED_UV}", bootstrap)
+        for command in (
+            'python install $uv_network',
+            'sync --locked $uv_network',
+            'cargo fetch --manifest-path "$repo_root/Cargo.toml" --locked',
+            'rustup target add "$cross_target"',
+            '"$repo_root/scripts/vanilla" prepare 26.1',
+            '"$repo_root/scripts/vanilla" verify 26.1',
+        ):
+            with self.subTest(command=command):
+                self.assertIn(command, bootstrap)
+
+    def test_the_prepared_runner_uses_the_exact_managed_python(self) -> None:
+        result = subprocess.run(
+            [
+                str(SCRIPTS / "python"),
+                "python",
+                "-c",
+                "import platform; print(platform.python_version())",
+            ],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.stdout.strip(), self.PINNED_PYTHON)
+
+    def test_bootstrap_help_needs_no_prepared_environment(self) -> None:
+        result = subprocess.run(
+            [str(SCRIPTS / "bootstrap"), "--help"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertIn("--offline", result.stdout)
+        self.assertIn("--skip-vanilla", result.stdout)
 
 
 if __name__ == "__main__":

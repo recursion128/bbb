@@ -239,7 +239,7 @@ fi
 client_inventory_generator="$repo_root/scripts/generate-client-mechanism-inventory.py"
 client_inventory_output="$repo_root/docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
 if [ -n "$vanilla_root" ] && [ -f "$client_inventory_generator" ]; then
-  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+  if ! "$repo_root/scripts/python" \
     "$client_inventory_generator" \
     --vanilla-root "$vanilla_root" \
     --output "$client_inventory_output" \
@@ -253,7 +253,7 @@ fi
 menu_screen_generator="$repo_root/scripts/generate-menu-screen-catalog.py"
 menu_screen_output="$repo_root/crates/bbb-native/src/input/inventory/menu_screens_26_1.rs"
 if [ -n "$vanilla_root" ] && [ -f "$menu_screen_generator" ]; then
-  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+  if ! "$repo_root/scripts/python" \
     "$menu_screen_generator" \
     --vanilla-root "$vanilla_root" \
     --output "$menu_screen_output" \
@@ -268,7 +268,7 @@ key_mapping_generator="$repo_root/scripts/generate-key-mapping-catalog.py"
 key_mapping_output="$repo_root/docs/evidence/vanilla-26.1/key-mapping-catalog.json"
 key_mapping_rust_output="$repo_root/crates/bbb-native/src/client_options/key_mappings_26_1.rs"
 if [ -n "$vanilla_root" ] && [ -f "$key_mapping_generator" ]; then
-  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+  if ! "$repo_root/scripts/python" \
     "$key_mapping_generator" \
     --vanilla-root "$vanilla_root" \
     --output "$key_mapping_output" \
@@ -283,7 +283,7 @@ fi
 particle_coverage_generator="$repo_root/scripts/generate-particle-provider-coverage.py"
 particle_coverage_output="$repo_root/docs/evidence/vanilla-26.1/particle-provider-coverage.json"
 if [ -n "$vanilla_root" ] && [ -f "$particle_coverage_generator" ]; then
-  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+  if ! "$repo_root/scripts/python" \
     "$particle_coverage_generator" \
     --vanilla-root "$vanilla_root" \
     --output "$particle_coverage_output" \
@@ -294,7 +294,8 @@ else
   echo "docs lint: particle provider coverage exact-output check skipped (Vanilla tree or repo generator absent)"
 fi
 
-if ! python3 "$script_dir/docs_wiki_lint.py" --repo-root "$repo_root"; then
+if ! "$script_dir/python" python "$script_dir/docs_wiki_lint.py" \
+  --repo-root "$repo_root"; then
   failed=1
 fi
 

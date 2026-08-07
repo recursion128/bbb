@@ -13,7 +13,7 @@ from bbb_tools.host.capabilities import missing_for_profile, probe_host
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 REPO = SCRIPTS.parent
-PYTHON_RUNNER = SCRIPTS / "vanilla-source-tools.sh"
+PYTHON_RUNNER = SCRIPTS / "python"
 
 
 def _run(command: Sequence[str]) -> int:
@@ -47,7 +47,7 @@ def _test_python(selection: str) -> int:
             "-m",
             "pytest",
             "-c",
-            str(SCRIPTS / "vanilla-source-tools" / "pyproject.toml"),
+            str(REPO / "pyproject.toml"),
             "-m",
             marker,
             str(SCRIPTS / "tests"),
@@ -62,12 +62,8 @@ def _lint_python() -> int:
             "ruff",
             "check",
             "--config",
-            str(SCRIPTS / "vanilla-source-tools" / "pyproject.toml"),
+            str(REPO / "pyproject.toml"),
             str(SCRIPTS / "bbb_tools"),
-            str(SCRIPTS / "vanilla"),
-            str(SCRIPTS / "dev"),
-            str(SCRIPTS / "process"),
-            str(SCRIPTS / "input"),
         ]
     )
 
@@ -129,3 +125,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "generate":
         return _generate_check(args.name)
     raise AssertionError(args.command)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
