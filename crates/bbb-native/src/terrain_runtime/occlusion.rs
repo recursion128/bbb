@@ -44,7 +44,12 @@ impl BuildHasher for TerrainCoordinateBuildHasher {
 
 impl Hasher for TerrainCoordinateHasher {
     fn finish(&self) -> u64 {
-        self.0
+        let mut hash = self.0;
+        hash ^= hash >> 33;
+        hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        hash ^= hash >> 33;
+        hash = hash.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        hash ^ (hash >> 33)
     }
 
     fn write(&mut self, bytes: &[u8]) {
@@ -52,6 +57,15 @@ impl Hasher for TerrainCoordinateHasher {
             self.0 ^= u64::from(*byte);
             self.0 = self.0.wrapping_mul(0x1000_0000_01b3);
         }
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        self.0 ^= value;
+        self.0 = self.0.wrapping_mul(0x1000_0000_01b3);
+    }
+
+    fn write_i32(&mut self, value: i32) {
+        self.write_u64(u64::from(value as u32));
     }
 }
 
