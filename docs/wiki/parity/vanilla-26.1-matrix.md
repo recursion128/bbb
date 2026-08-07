@@ -152,8 +152,8 @@
 | `items-versioned-property-surface` | items | 26.1 item-model property bootstraps | generated item-model catalogs | no unregistered target-version property | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `rendering-nondeterministic-golden-exclusions` | rendering/tests | official render pipeline/driver | semantic/pixel focused evidence | no cross-driver full-frame golden hash | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `diagnostics-client-only-inspection-exclusions` | diagnostics | F3/F3+I client-visible owners | protocol-backed local diagnostics | no server-private/integrated/options-only state | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
-| `coverage-external-client-census` | workflow | selected Vanilla external-client owner corpus | generated inventory/matrix/ledger lint | owner mapping、evidence、bilateral routes、stale checks | `partial` | `scripts/client_mechanism_inventory.py`、`scripts/docs_wiki_lint.py` | Vanilla owner corpus 或 census schema 变化时重开；[ledger](../../unsupported-features.md) |
-| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `partial` | `scripts/docs_wiki_lint.py`、`scripts/tests/test_docs_lint.py` | 目标版本或 canonical owner 变化时重开；[ledger](../../unsupported-features.md) |
+| `coverage-external-client-census` | workflow | selected Vanilla external-client owner corpus | generated inventory/matrix/ledger lint | owner mapping、evidence、bilateral routes、stale checks | `equivalent` | `scripts/client_mechanism_inventory.py`、`scripts/docs_wiki_lint.py`、`scripts/parity_acceptance.py`、`scripts/tests/test_parity_acceptance.py`；current full-gate `43f6d1e30` | Vanilla owner corpus、census 或 acceptance schema 变化时重开 |
+| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `equivalent` | `scripts/docs_wiki_lint.py`、`scripts/tests/test_docs_lint.py`、`scripts/parity_acceptance.py`；current full-gate `43f6d1e30` | 目标版本、canonical owner 或 acceptance schema 变化时重开 |
 
 ## 审计摘要
 
@@ -161,7 +161,7 @@
 资源、渲染、性能和范围排除的长期机制行，共 147 行。`equivalent` 只用于已有 generated
 coverage、决策级 focused evidence 或真实 acceptance 的行。
 
-当前分布：40 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、81 行 `partial`、
+当前分布：42 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、79 行 `partial`、
 1 行 `deferred-external`（`platform-macos-release`）。`partial` 包含真实 host-device
 audio receipt，以及首轮 machine report 发现的陈旧 live/lifecycle/visual/ABBA receipt
 和缺少精确 focused/source evidence 的行；全部双向路由到账本，不能因旧声明保留
