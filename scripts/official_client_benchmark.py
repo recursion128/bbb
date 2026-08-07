@@ -697,6 +697,77 @@ def load_json_object(path: Path, label: str) -> dict[str, Any]:
     return value
 
 
+def validate_bbb_binary_provenance(
+    provenance: Mapping[str, Any],
+    *,
+    expected_capture_commit: str | None,
+    expected_capture_sha256: str,
+) -> dict[str, Any]:
+    """Validate that a later evidence commit rebuilds the captured BBB binary.
+
+    Formal captures remain attributable to the exact commit that produced them.
+    Evidence-only tooling or documentation may advance afterwards, but only an
+    independently rebuilt byte-identical binary may bind those captures to the
+    later evidence commit.  Both identities stay explicit in the receipt.
+    """
+    if provenance.get("schema") != BENCHMARK_SCHEMA:
+        raise BenchmarkFailure("BBB binary provenance schema mismatch")
+    capture_commit = provenance.get("capture_commit")
+    evidence_commit = provenance.get("evidence_commit")
+    for label, commit in (
+        ("capture", capture_commit),
+        ("evidence", evidence_commit),
+    ):
+        if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+            raise BenchmarkFailure(f"BBB {label} commit is not an exact Git commit")
+    if expected_capture_commit is not None and capture_commit != expected_capture_commit:
+        raise BenchmarkFailure("BBB provenance capture commit mismatch")
+
+    binaries: dict[str, dict[str, Any]] = {}
+    for label in ("capture", "evidence"):
+        entry = provenance.get(f"{label}_binary")
+        if not isinstance(entry, Mapping):
+            raise BenchmarkFailure(f"BBB provenance lacks the {label} binary")
+        path_value = entry.get("path")
+        declared_sha256 = entry.get("sha256")
+        if not isinstance(path_value, str) or not Path(path_value).is_absolute():
+            raise BenchmarkFailure(f"BBB {label} binary path is not absolute")
+        if not isinstance(declared_sha256, str) or re.fullmatch(
+            r"[0-9a-f]{64}", declared_sha256
+        ) is None:
+            raise BenchmarkFailure(f"BBB {label} binary SHA-256 is invalid")
+        path = Path(path_value)
+        if not path.is_file():
+            raise BenchmarkFailure(f"BBB {label} binary is unavailable: {path}")
+        actual_sha256 = file_digest(path, "sha256")
+        if actual_sha256 != declared_sha256:
+            raise BenchmarkFailure(
+                f"BBB {label} binary SHA-256 mismatch: "
+                f"expected {declared_sha256}, got {actual_sha256}"
+            )
+        binaries[label] = {
+            "path": str(path),
+            "sha256": actual_sha256,
+            "bytes": path.stat().st_size,
+        }
+    if binaries["capture"]["sha256"] != expected_capture_sha256:
+        raise BenchmarkFailure("BBB captured binary does not match the capture receipt")
+    if binaries["capture"]["sha256"] != binaries["evidence"]["sha256"]:
+        raise BenchmarkFailure("BBB evidence commit binary is not byte-identical to capture")
+    return {
+        "capture_commit": capture_commit,
+        "evidence_commit": evidence_commit,
+        "binary_sha256": binaries["capture"]["sha256"],
+        "binary_identical": True,
+        "capture_binary": binaries["capture"],
+        "evidence_binary": binaries["evidence"],
+        "scope": (
+            "captures belong to capture_commit; evidence_commit is accepted only "
+            "because its independently rebuilt bbb-native binary is byte-identical"
+        ),
+    }
+
+
 def _rule_matches(
     rule: Mapping[str, Any],
     *,
@@ -3424,6 +3495,7 @@ def summarize_workload_evidence(
     bbb: Mapping[str, Any],
     vanilla_calibration: Mapping[str, Any],
     bbb_calibration: Mapping[str, Any],
+    bbb_provenance: Mapping[str, Any],
     vanilla_debug: Mapping[str, Any] | None = None,
     visual_review_status: str,
     visual_review_note: str,
@@ -3449,6 +3521,20 @@ def summarize_workload_evidence(
         raise BenchmarkFailure(
             "Vanilla parity anchors must disable the debug profile so HUD workload matches bbb"
         )
+
+    launch_manifest = load_json_object(
+        Path(str(bbb.get("launch_manifest"))), "bbb workload launch manifest"
+    )
+    capture_binary = launch_manifest.get("binary")
+    if not isinstance(capture_binary, Mapping) or not isinstance(
+        capture_binary.get("sha256"), str
+    ):
+        raise BenchmarkFailure("bbb workload launch manifest lacks binary identity")
+    validated_provenance = validate_bbb_binary_provenance(
+        bbb_provenance,
+        expected_capture_commit=None,
+        expected_capture_sha256=str(capture_binary["sha256"]),
+    )
 
     contract_keys = (
         "replay_hash",
@@ -3633,6 +3719,10 @@ def summarize_workload_evidence(
     )
     return {
         "schema": BENCHMARK_SCHEMA,
+        "bbb_commit": validated_provenance["evidence_commit"],
+        "bbb_capture_commit": validated_provenance["capture_commit"],
+        "bbb_binary_sha256": validated_provenance["binary_sha256"],
+        "bbb_provenance": validated_provenance,
         "status": "matched" if visual_gate_passed else "mismatched",
         "formal_timing_sample": False,
         "workload_evidence_hash": evidence_hash,
@@ -4087,6 +4177,19 @@ def summarize_renderdoc_evidence(manifest: Mapping[str, Any]) -> dict[str, Any]:
     captures = manifest.get("captures")
     if not isinstance(captures, list):
         raise BenchmarkFailure("RenderDoc evidence manifest lacks captures")
+    capture_binary = manifest.get("bbb_binary")
+    if not isinstance(capture_binary, Mapping) or not isinstance(
+        capture_binary.get("sha256"), str
+    ):
+        raise BenchmarkFailure("RenderDoc evidence manifest lacks BBB binary identity")
+    provenance_value = manifest.get("bbb_provenance")
+    if not isinstance(provenance_value, Mapping):
+        raise BenchmarkFailure("RenderDoc evidence manifest lacks BBB provenance")
+    provenance = validate_bbb_binary_provenance(
+        provenance_value,
+        expected_capture_commit=str(manifest.get("bbb_commit")),
+        expected_capture_sha256=str(capture_binary["sha256"]),
+    )
     segments = (
         "static_orbit",
         "preloaded_flight",
@@ -4170,6 +4273,10 @@ def summarize_renderdoc_evidence(manifest: Mapping[str, Any]) -> dict[str, Any]:
     )
     return {
         "schema": BENCHMARK_SCHEMA,
+        "bbb_commit": provenance["evidence_commit"],
+        "bbb_capture_commit": provenance["capture_commit"],
+        "bbb_binary_sha256": provenance["binary_sha256"],
+        "bbb_provenance": provenance,
         "status": "validated",
         "formal_timing_sample": False,
         "capture_overhead_excluded_from_metrics": True,
@@ -4280,6 +4387,18 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
     if min(clients.count("vanilla"), clients.count("bbb")) < 3:
         raise BenchmarkFailure("formal comparison lacks three runs per client")
 
+    provenance_value = manifest.get("bbb_provenance")
+    if not isinstance(provenance_value, Mapping):
+        raise BenchmarkFailure("formal comparison manifest lacks BBB provenance")
+    expected_binary = manifest.get("bbb_binary_sha256")
+    if not isinstance(expected_binary, str):
+        raise BenchmarkFailure("formal comparison manifest lacks BBB binary identity")
+    provenance = validate_bbb_binary_provenance(
+        provenance_value,
+        expected_capture_commit=str(manifest.get("bbb_commit")),
+        expected_capture_sha256=expected_binary,
+    )
+
     workload_path = Path(str(manifest.get("workload_evidence")))
     renderdoc_path = Path(str(manifest.get("renderdoc_evidence")))
     workload = load_json_object(workload_path, "workload evidence")
@@ -4288,6 +4407,9 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
         raise BenchmarkFailure("visible workload evidence is not matched")
     if renderdoc.get("status") != "validated":
         raise BenchmarkFailure("common draw evidence is not validated")
+    for label, evidence in (("workload", workload), ("RenderDoc", renderdoc)):
+        if evidence.get("bbb_provenance") != provenance:
+            raise BenchmarkFailure(f"{label} BBB binary provenance mismatch")
 
     contracts: dict[str, Any] = {}
     contract_keys = (
@@ -4315,7 +4437,6 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
         renderdoc=renderdoc,
     )
 
-    expected_binary = manifest.get("bbb_binary_sha256")
     metric_names = (
         "frame_ms",
         "gpu_load",
@@ -4575,6 +4696,10 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
         }
     return {
         "schema": BENCHMARK_SCHEMA,
+        "bbb_commit": provenance["evidence_commit"],
+        "bbb_capture_commit": provenance["capture_commit"],
+        "bbb_binary_sha256": provenance["binary_sha256"],
+        "bbb_provenance": provenance,
         "formal_comparison_complete": True,
         "metrics_publishable": True,
         "contracts": contracts,
@@ -6191,6 +6316,9 @@ def _command_summarize_workload(args: argparse.Namespace) -> None:
     bbb_calibration = load_json_object(
         Path(args.bbb_calibration), "bbb visual calibration"
     )
+    bbb_provenance = load_json_object(
+        Path(args.bbb_provenance), "BBB binary provenance"
+    )
     vanilla_debug = (
         load_json_object(Path(args.vanilla_debug_smoke), "vanilla debug smoke")
         if args.vanilla_debug_smoke is not None
@@ -6201,6 +6329,7 @@ def _command_summarize_workload(args: argparse.Namespace) -> None:
         bbb=bbb,
         vanilla_calibration=vanilla_calibration,
         bbb_calibration=bbb_calibration,
+        bbb_provenance=bbb_provenance,
         vanilla_debug=vanilla_debug,
         visual_review_status=args.visual_review_status,
         visual_review_note=args.visual_review_note,
@@ -6385,6 +6514,7 @@ def build_parser() -> argparse.ArgumentParser:
     workload.add_argument("--bbb-smoke", required=True)
     workload.add_argument("--vanilla-calibration", required=True)
     workload.add_argument("--bbb-calibration", required=True)
+    workload.add_argument("--bbb-provenance", required=True)
     workload.add_argument(
         "--visual-review-status",
         choices=("match", "mismatch"),

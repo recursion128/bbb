@@ -2,6 +2,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from parity_acceptance import (
     AcceptanceError,
     artifact_scenario_ids,
     build_report,
+    external_artifact,
     parse_matrix,
     validate_report,
 )
@@ -242,6 +244,95 @@ mod tests {
                 "static_orbit",
             ],
         )
+
+    def test_external_visual_receipt_requires_ancestor_byte_identical_binary(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = root / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            tracked = repo / "tracked"
+            tracked.write_text("capture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "capture"], cwd=repo, check=True)
+            capture_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            tracked.write_text("evidence\n", encoding="utf-8")
+            subprocess.run(["git", "commit", "-qam", "evidence"], cwd=repo, check=True)
+            evidence_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+
+            capture_binary = root / "bbb-capture"
+            evidence_binary = root / "bbb-evidence"
+            capture_binary.write_bytes(b"same-binary")
+            evidence_binary.write_bytes(b"same-binary")
+            digest = hashlib.sha256(b"same-binary").hexdigest()
+            summary = root / "workload.json"
+            summary.write_text(
+                json.dumps(
+                    {
+                        "status": "matched",
+                        "bbb_commit": evidence_commit,
+                        "bbb_provenance": {
+                            "capture_commit": capture_commit,
+                            "evidence_commit": evidence_commit,
+                            "binary_sha256": digest,
+                            "binary_identical": True,
+                            "capture_binary": {
+                                "path": str(capture_binary),
+                                "sha256": digest,
+                            },
+                            "evidence_binary": {
+                                "path": str(evidence_binary),
+                                "sha256": digest,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            artifact = external_artifact(
+                repo=repo,
+                kind="workload",
+                artifact_id="visual-workload",
+                path=summary,
+                evidence_commit=evidence_commit,
+            )
+            self.assertTrue(artifact["valid"])
+            self.assertEqual(
+                artifact["bbb_provenance"]["capture_commit"], capture_commit
+            )
+
+            evidence_binary.write_bytes(b"changed")
+            stale = external_artifact(
+                repo=repo,
+                kind="workload",
+                artifact_id="visual-workload",
+                path=summary,
+                evidence_commit=evidence_commit,
+            )
+            self.assertFalse(stale["valid"])
+            self.assertIn(
+                "BBB evidence binary SHA-256 is stale", stale["invalid_reasons"]
+            )
 
     def test_unknown_or_one_way_artifact_mapping_fails_lint(self):
         with tempfile.TemporaryDirectory() as temporary:

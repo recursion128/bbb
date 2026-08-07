@@ -28,6 +28,28 @@ def sha1(payload: bytes) -> str:
     return hashlib.sha1(payload).hexdigest()
 
 
+def write_bbb_provenance(root: Path) -> tuple[dict[str, object], dict[str, object]]:
+    capture = root / "bbb-capture"
+    evidence = root / "bbb-evidence"
+    capture.write_bytes(b"byte-identical-bbb")
+    evidence.write_bytes(capture.read_bytes())
+    digest = benchmark.file_digest(capture, "sha256")
+    capture_commit = "1" * 40
+    evidence_commit = "2" * 40
+    provenance = {
+        "schema": 1,
+        "capture_commit": capture_commit,
+        "evidence_commit": evidence_commit,
+        "capture_binary": {"path": str(capture), "sha256": digest},
+        "evidence_binary": {"path": str(evidence), "sha256": digest},
+    }
+    return provenance, {
+        "capture_commit": capture_commit,
+        "evidence_commit": evidence_commit,
+        "binary_sha256": digest,
+    }
+
+
 class DistributionTests(unittest.TestCase):
     def write_distribution(self, root: Path) -> tuple[Path, Path, dict[str, object]]:
         downloads = root / "downloads" / "26.1"
@@ -218,6 +240,20 @@ class NativeExtractionTests(unittest.TestCase):
 
 
 class LaunchPlanTests(unittest.TestCase):
+    def test_bbb_provenance_rejects_nonidentical_evidence_binary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            provenance, identity = write_bbb_provenance(root)
+            Path(provenance["evidence_binary"]["path"]).write_bytes(b"different")
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "SHA-256 mismatch"
+            ):
+                benchmark.validate_bbb_binary_provenance(
+                    provenance,
+                    expected_capture_commit=identity["capture_commit"],
+                    expected_capture_sha256=identity["binary_sha256"],
+                )
+
     def audit(self) -> object:
         verified = benchmark.VerifiedFile("/tmp/client.jar", "a" * 40, 1)
         return benchmark.DistributionAudit(
@@ -412,10 +448,26 @@ class LaunchPlanTests(unittest.TestCase):
             self.assertEqual(parsed["event_categories"]["present"], 1)
             self.assertNotIn("glDrawBuffer", parsed["draw_calls_by_api"])
 
+            provenance, identity = write_bbb_provenance(root)
+
             summary = benchmark.summarize_renderdoc_evidence(
-                {"schema": 1, "captures": captures}
+                {
+                    "schema": 1,
+                    "bbb_commit": identity["capture_commit"],
+                    "bbb_binary": {
+                        "path": provenance["capture_binary"]["path"],
+                        "sha256": identity["binary_sha256"],
+                    },
+                    "bbb_provenance": provenance,
+                    "captures": captures,
+                }
             )
             self.assertEqual(summary["status"], "validated")
+            self.assertEqual(summary["bbb_commit"], identity["evidence_commit"])
+            self.assertEqual(
+                summary["bbb_capture_commit"], identity["capture_commit"]
+            )
+            self.assertTrue(summary["bbb_provenance"]["binary_identical"])
             self.assertFalse(summary["formal_timing_sample"])
             self.assertEqual(len(summary["captures"]), 6)
             self.assertEqual(summary["captures"][1]["driver"], "Vulkan")
@@ -1339,6 +1391,19 @@ class CaptureTests(unittest.TestCase):
         visual_directory = tempfile.TemporaryDirectory()
         self.addCleanup(visual_directory.cleanup)
         visual_root = Path(visual_directory.name)
+        provenance, identity = write_bbb_provenance(visual_root)
+        launch_manifest = visual_root / "bbb-launch.json"
+        launch_manifest.write_text(
+            json.dumps(
+                {
+                    "binary": {
+                        "path": provenance["capture_binary"]["path"],
+                        "sha256": identity["binary_sha256"],
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
         screenshot_path = visual_root / "anchor.png"
         benchmark.write_png_rgb(
             screenshot_path,
@@ -1414,6 +1479,7 @@ class CaptureTests(unittest.TestCase):
         bbb = {
             **common,
             "client": "bbb",
+            "launch_manifest": str(launch_manifest),
             "anchor_observations": [
                 {"capture_segment": segment, "renderer": renderer}
                 for segment in segments
@@ -1446,6 +1512,7 @@ class CaptureTests(unittest.TestCase):
             bbb=bbb,
             vanilla_calibration=calibration("vanilla"),
             bbb_calibration=calibration("bbb"),
+            bbb_provenance=provenance,
             vanilla_debug=vanilla_debug,
             visual_review_status="match",
             visual_review_note="fixture landmarks match",
@@ -1453,6 +1520,7 @@ class CaptureTests(unittest.TestCase):
         )
         self.assertEqual(summary["status"], "matched")
         self.assertFalse(summary["formal_timing_sample"])
+        self.assertEqual(summary["bbb_commit"], identity["evidence_commit"])
         self.assertEqual(len(summary["screenshot_pairs"]), 3)
         self.assertIsNotNone(summary["vanilla_debug_evidence"])
         self.assertEqual(
@@ -1471,6 +1539,7 @@ class CaptureTests(unittest.TestCase):
                 bbb=bad_bbb,
                 vanilla_calibration=calibration("vanilla"),
                 bbb_calibration=calibration("bbb"),
+                bbb_provenance=provenance,
                 visual_review_status="match",
                 visual_review_note="fixture landmarks match",
                 visual_artifact_dir=visual_root / "bad-diffs",

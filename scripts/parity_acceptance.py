@@ -450,6 +450,82 @@ def artifact_commit(kind: str, value: object, path: Path) -> str | None:
     return None
 
 
+def artifact_binary_provenance(
+    repo: Path, value: dict[str, object]
+) -> tuple[dict[str, object] | None, list[str]]:
+    """Validate the capture/evidence commit bridge carried by visual receipts."""
+    provenance = value.get("bbb_provenance")
+    if not isinstance(provenance, dict):
+        return None, ["artifact lacks machine-readable BBB binary provenance"]
+    capture_commit = provenance.get("capture_commit")
+    evidence_commit = provenance.get("evidence_commit")
+    binary_sha256 = provenance.get("binary_sha256")
+    reasons: list[str] = []
+    for label, commit in (
+        ("capture", capture_commit),
+        ("evidence", evidence_commit),
+    ):
+        if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+            reasons.append(f"BBB {label} commit is not exact")
+    if provenance.get("binary_identical") is not True:
+        reasons.append("BBB capture/evidence binaries are not declared byte-identical")
+    if not isinstance(binary_sha256, str) or re.fullmatch(
+        r"[0-9a-f]{64}", binary_sha256
+    ) is None:
+        reasons.append("BBB binary provenance has no valid SHA-256")
+
+    normalized_binaries: dict[str, dict[str, object]] = {}
+    for label in ("capture", "evidence"):
+        binary = provenance.get(f"{label}_binary")
+        if not isinstance(binary, dict):
+            reasons.append(f"BBB provenance lacks {label} binary")
+            continue
+        path_value = binary.get("path")
+        declared = binary.get("sha256")
+        if not isinstance(path_value, str) or not Path(path_value).is_absolute():
+            reasons.append(f"BBB {label} binary path is not absolute")
+            continue
+        path = Path(path_value)
+        if not path.is_file():
+            reasons.append(f"BBB {label} binary is absent: {path}")
+            continue
+        actual = sha256_file(path)
+        if declared != actual:
+            reasons.append(f"BBB {label} binary SHA-256 is stale")
+        if binary_sha256 != actual:
+            reasons.append(f"BBB {label} binary differs from captured binary identity")
+        normalized_binaries[label] = {
+            "path": str(path),
+            "sha256": actual,
+            "bytes": path.stat().st_size,
+        }
+    if (
+        isinstance(capture_commit, str)
+        and isinstance(evidence_commit, str)
+        and capture_commit != evidence_commit
+    ):
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", capture_commit, evidence_commit],
+            cwd=repo,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if ancestor.returncode != 0:
+            reasons.append(
+                "BBB capture commit is not an ancestor of the evidence commit"
+            )
+    normalized: dict[str, object] = {
+        "capture_commit": capture_commit,
+        "evidence_commit": evidence_commit,
+        "binary_sha256": binary_sha256,
+        "binary_identical": provenance.get("binary_identical"),
+        "capture_binary": normalized_binaries.get("capture"),
+        "evidence_binary": normalized_binaries.get("evidence"),
+    }
+    return normalized, reasons
+
+
 def artifact_scenario_ids(kind: str, value: dict[str, object]) -> list[str]:
     """Extract stable experiment names without interpreting their outcome."""
     candidates: object = None
@@ -468,7 +544,12 @@ def artifact_scenario_ids(kind: str, value: dict[str, object]) -> list[str]:
 
 
 def external_artifact(
-    *, kind: str, artifact_id: str, path: Path | None, evidence_commit: str
+    *,
+    repo: Path,
+    kind: str,
+    artifact_id: str,
+    path: Path | None,
+    evidence_commit: str,
 ) -> dict[str, object]:
     if path is None:
         return {
@@ -522,6 +603,10 @@ def external_artifact(
         }
     commit = artifact_commit(kind, value, path)
     reasons: list[str] = []
+    provenance = None
+    if kind in {"performance", "workload", "draw"}:
+        provenance, provenance_reasons = artifact_binary_provenance(repo, value)
+        reasons.extend(provenance_reasons)
     status = value.get("status") if isinstance(value, dict) else None
     if kind == "performance" and value.get("formal_comparison_complete") is not True:
         reasons.append("formal comparison is incomplete")
@@ -535,7 +620,9 @@ def external_artifact(
         reasons.append("formal host-device audio receipt is invalid")
     if commit is None:
         reasons.append("artifact does not identify the BBB commit")
-    elif not evidence_commit.startswith(commit) and commit != evidence_commit:
+    if isinstance(provenance, dict) and provenance.get("evidence_commit") != commit:
+        reasons.append("artifact BBB commit differs from binary provenance")
+    if commit is not None and not evidence_commit.startswith(commit) and commit != evidence_commit:
         reasons.append(
             f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
         )
@@ -546,6 +633,7 @@ def external_artifact(
         "invalid_reasons": reasons,
         "kind": kind,
         "path": str(path),
+        "bbb_provenance": provenance,
         "scenario_ids": artifact_scenario_ids(kind, value),
         "sha256": sha256_file(path),
         "valid": not reasons,
@@ -655,36 +743,42 @@ def build_report(
         "feature-ledger": repo_artifact(repo, "feature-ledger", LEDGER_PATH.as_posix()),
         "full-gate": gate_receipt(repo, gate_log, evidence_commit),
         "performance-abba": external_artifact(
+            repo=repo,
             kind="performance",
             artifact_id="performance-abba",
             path=performance_summary,
             evidence_commit=evidence_commit,
         ),
         "visual-workload": external_artifact(
+            repo=repo,
             kind="workload",
             artifact_id="visual-workload",
             path=workload_summary,
             evidence_commit=evidence_commit,
         ),
         "draw-evidence": external_artifact(
+            repo=repo,
             kind="draw",
             artifact_id="draw-evidence",
             path=draw_summary,
             evidence_commit=evidence_commit,
         ),
         "linux-platform": external_artifact(
+            repo=repo,
             kind="platform",
             artifact_id="linux-platform",
             path=platform_report,
             evidence_commit=evidence_commit,
         ),
         "lifecycle-soak": external_artifact(
+            repo=repo,
             kind="lifecycle",
             artifact_id="lifecycle-soak",
             path=lifecycle_report,
             evidence_commit=evidence_commit,
         ),
         "audio-host-device": external_artifact(
+            repo=repo,
             kind="audio",
             artifact_id="audio-host-device",
             path=audio_report,
@@ -1289,6 +1383,55 @@ def validate_report(
                     issues.append(f"external artifact is absent: {artifact_id}")
                 elif not isinstance(digest, str) or sha256_file(path) != digest:
                     issues.append(f"external artifact hash is stale: {artifact_id}")
+            provenance = artifact.get("bbb_provenance")
+            if isinstance(provenance, dict):
+                for label in ("capture", "evidence"):
+                    binary = provenance.get(f"{label}_binary")
+                    if not isinstance(binary, dict):
+                        issues.append(
+                            f"external artifact {artifact_id} lacks {label} binary provenance"
+                        )
+                        continue
+                    binary_path_value = binary.get("path")
+                    if not isinstance(binary_path_value, str):
+                        issues.append(
+                            f"external artifact {artifact_id} has no {label} binary path"
+                        )
+                        continue
+                    binary_path = Path(binary_path_value)
+                    if not binary_path.is_file():
+                        issues.append(
+                            f"external artifact {artifact_id} {label} binary is absent"
+                        )
+                    elif sha256_file(binary_path) != binary.get("sha256"):
+                        issues.append(
+                            f"external artifact {artifact_id} {label} binary hash is stale"
+                        )
+            if isinstance(path_value, str) and artifact.get("kind") != "gate":
+                artifact_path = Path(path_value)
+                if not artifact_path.is_absolute():
+                    artifact_path = repo / artifact_path
+                refreshed = external_artifact(
+                    repo=repo,
+                    kind=str(artifact.get("kind")),
+                    artifact_id=str(artifact_id),
+                    path=artifact_path,
+                    evidence_commit=evidence_commit,
+                )
+                for key in (
+                    "bbb_commit",
+                    "bbb_provenance",
+                    "exists",
+                    "invalid_reasons",
+                    "kind",
+                    "scenario_ids",
+                    "sha256",
+                    "valid",
+                ):
+                    if artifact.get(key) != refreshed.get(key):
+                        issues.append(
+                            f"stale external artifact projection for {artifact_id}: {key}"
+                        )
     for scenario_id, scenario in scenario_map.items():
         if scenario.get("mechanism_ids") != sorted(reverse_scenarios.get(str(scenario_id), set())):
             issues.append(f"stale reverse Mechanism-ID mapping for scenario {scenario_id}")
