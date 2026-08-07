@@ -271,6 +271,15 @@
 # unavailable or unopenable stored preferred output falls back to the system
 # default and is surfaced through counters/control receipts. It cannot replace
 # packet, world, resource-generation, renderer, or required audio-event state.
+# The verified OpenAL owner preserves Vanilla Library's ordered preferred ->
+# system-default -> null device recovery, polling device-tracker fallback when
+# SOFT callbacks are unavailable, and HRTF attribute fallback. The function and
+# focused-test names make those exact decisions auditable; none hides a missing
+# packet/world/resource/renderer owner or silently drops an audio event.
+^crates/bbb-audio/src/openal[.]rs$	polling fallback|open_device_or_fallback|context_attributes_match_vanilla_supported_hrtf_fallback
+# This local value projects whether the exact OpenAL device-open plan selected a
+# later candidate; it feeds the already-audited preferred-device receipt.
+^crates/bbb-audio/src/runtime[.]rs$	let fallback = preferred|Ok[(][(]backend, current_device, fallback[)][)]
 ^crates/bbb-audio/src/device[.]rs$	adapter fallback|preferred_fallbacks
 ^crates/bbb-audio/src/runtime[.]rs$	preferred_fallback
 ^crates/bbb-native/src/audio_runtime[.]rs$	preferred_device_fallbacks
