@@ -1158,6 +1158,13 @@ class CaptureTests(unittest.TestCase):
                 20.0,
             )
 
+    def test_benchmark_surface_titles_match_the_declared_client_windows(self):
+        self.assertEqual(benchmark.VANILLA_WINDOW_TITLE, "Minecraft 26.1")
+        self.assertEqual(
+            benchmark.BBB_WINDOW_TITLE,
+            "Minecraft* 26.1 - Multiplayer",
+        )
+
     def test_formal_summary_rejects_non_abba_order_before_metrics(self):
         runs = [
             {"client": client}

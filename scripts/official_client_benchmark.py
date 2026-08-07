@@ -44,6 +44,8 @@ BENCHMARK_SCHEMA = 1
 REPLAY_SCHEMA = 1
 MINECRAFT_VERSION = "26.1"
 BENCHMARK_USERNAME = "bbb-benchmark"
+VANILLA_WINDOW_TITLE = f"Minecraft {MINECRAFT_VERSION}"
+BBB_WINDOW_TITLE = f"Minecraft* {MINECRAFT_VERSION} - Multiplayer"
 OFFLINE_ACCESS_TOKEN = "offline"
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
@@ -4833,7 +4835,7 @@ def run_official_smoke(
                     weston_debug_path=weston_debug_path,
                     wayland_display=wayland_display,
                     output_path=artifact_dir / "weston-timeline.jsonl",
-                    surface_title="Minecraft 26.1",
+                    surface_title=VANILLA_WINDOW_TITLE,
                 )
                 result["weston_timeline_start"] = timeline_session.start()
             if mangohud_root is not None:
@@ -5511,7 +5513,7 @@ def run_bbb_smoke(
                     weston_debug_path=weston_debug_path,
                     wayland_display=wayland_display,
                     output_path=artifact_dir / "weston-timeline.jsonl",
-                    surface_title="bbb",
+                    surface_title=BBB_WINDOW_TITLE,
                 )
                 result["weston_timeline_start"] = timeline_session.start()
             if mangohud_root is not None:
