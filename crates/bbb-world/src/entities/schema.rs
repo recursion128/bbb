@@ -980,8 +980,9 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
     entity_type_id: i32,
     java_name: &str,
 ) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
-    let accessors =
+    let index =
         vanilla_entity_metadata_accessor_index().get(usize::try_from(entity_type_id).ok()?)?;
+    let accessors = index.by_name_length.get(java_name.len())?;
     accessors
         .binary_search_by(|entry| entry.java_name.cmp(java_name))
         .ok()
@@ -1001,9 +1002,10 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type_and_data_id(
 ) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
     vanilla_entity_metadata_accessor_index()
         .get(usize::try_from(entity_type_id).ok()?)?
-        .iter()
+        .by_data_id
+        .get(usize::from(data_id))
         .copied()
-        .find(|entry| entry.data_id == data_id)
+        .flatten()
 }
 
 fn vanilla_entity_type_metadata_entry(
@@ -1032,10 +1034,15 @@ fn vanilla_entity_metadata_accessors_on_class(
     &VANILLA_ENTITY_METADATA_ACCESSORS_26_1[first..first + count]
 }
 
-fn vanilla_entity_metadata_accessor_index(
-) -> &'static [Box<[&'static VanillaEntityMetadataAccessorCatalogEntry]>] {
-    static INDEX: OnceLock<Vec<Box<[&'static VanillaEntityMetadataAccessorCatalogEntry]>>> =
-        OnceLock::new();
+struct VanillaEntityMetadataAccessorIndex {
+    #[cfg(test)]
+    all: Box<[&'static VanillaEntityMetadataAccessorCatalogEntry]>,
+    by_name_length: Box<[Box<[&'static VanillaEntityMetadataAccessorCatalogEntry]>]>,
+    by_data_id: Box<[Option<&'static VanillaEntityMetadataAccessorCatalogEntry>]>,
+}
+
+fn vanilla_entity_metadata_accessor_index() -> &'static [VanillaEntityMetadataAccessorIndex] {
+    static INDEX: OnceLock<Vec<VanillaEntityMetadataAccessorIndex>> = OnceLock::new();
     INDEX.get_or_init(|| {
         VANILLA_ENTITY_TYPE_METADATA_26_1
             .iter()
@@ -1055,8 +1062,45 @@ fn vanilla_entity_metadata_accessor_index(
                     java_class = vanilla_entity_metadata_class(class_name)
                         .and_then(|class| class.superclass);
                 }
-                resolved.sort_unstable_by_key(|entry| entry.java_name);
-                resolved.into_boxed_slice()
+
+                let max_name_length = resolved
+                    .iter()
+                    .map(|entry| entry.java_name.len())
+                    .max()
+                    .unwrap_or_default();
+                let mut by_name_length = (0..=max_name_length)
+                    .map(|_| Vec::new())
+                    .collect::<Vec<_>>();
+                for accessor in &resolved {
+                    by_name_length[accessor.java_name.len()].push(*accessor);
+                }
+                let by_name_length = by_name_length
+                    .into_iter()
+                    .map(|mut accessors| {
+                        accessors.sort_unstable_by_key(|entry| entry.java_name);
+                        accessors.into_boxed_slice()
+                    })
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice();
+
+                let max_data_id = resolved
+                    .iter()
+                    .map(|entry| usize::from(entry.data_id))
+                    .max()
+                    .unwrap_or_default();
+                let mut by_data_id = vec![None; max_data_id + 1];
+                for accessor in &resolved {
+                    let slot = &mut by_data_id[usize::from(accessor.data_id)];
+                    assert!(slot.is_none(), "generated metadata data ids must be unique");
+                    *slot = Some(*accessor);
+                }
+
+                VanillaEntityMetadataAccessorIndex {
+                    #[cfg(test)]
+                    all: resolved.into_boxed_slice(),
+                    by_name_length,
+                    by_data_id: by_data_id.into_boxed_slice(),
+                }
             })
             .collect()
     })
@@ -5245,7 +5289,7 @@ mod tests {
             .expect("generated base Entity accessors must resolve");
         for entity_type in VANILLA_ENTITY_TYPE_METADATA_26_1 {
             let inherited =
-                &vanilla_entity_metadata_accessor_index()[entity_type.entity_type_id as usize];
+                &vanilla_entity_metadata_accessor_index()[entity_type.entity_type_id as usize].all;
             let mut data_ids = HashSet::new();
             for accessor in inherited {
                 assert!(
