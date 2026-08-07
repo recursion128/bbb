@@ -27,7 +27,7 @@
 | `resources-indexed-panorama` | resources/ui | `GuiRenderer.CubeMap`、`Panorama`、`Screen.extractBackground` | `bbb-pack::PanoramaCatalog`→native generation→renderer cube/overlay owner | disconnected-screen panorama/overlay before blur/menu background | `partial` | [消费矩阵](../mechanisms/resources/offline-asset-trust.md)、`crates/bbb-renderer/src/offscreen.rs`、`scripts/lifecycle_soak.py` | cube identity、screen-background order 或 GPU generation 合同变化时重开；[ledger](../../unsupported-features.md) |
 | `resources-indexed-built-in-packs` | resources/ui | `ClientPackSource`、pack-selection UI | indexed provider；无 built-in pack selection surface | programmer-art/high-contrast ZIP | `not-needed` | [消费矩阵](../mechanisms/resources/offline-asset-trust.md) | [ledger](../../unsupported-features.md) |
 | `resources-indexed-realms` | resources/ui | `LanguageManager`、`AddRealmPopupScreen` | indexed provider；无 Realms surface | Realms language/carousel assets | `not-needed` | [消费矩阵](../mechanisms/resources/offline-asset-trust.md) | [ledger](../../unsupported-features.md) |
-| `protocol-packet-tables` | protocol | `GameProtocols` 与各 phase packet tables | generated protocol catalog | phase/direction/id/class/resource id | `partial` | `docs/evidence/vanilla-26.1/packet-coverage.json` | packet tables 变化时重开；[ledger](../../unsupported-features.md) |
+| `protocol-packet-tables` | protocol | `GameProtocols` 与各 phase packet tables | generated protocol catalog | phase/direction/id/class/resource id | `equivalent` | `docs/evidence/vanilla-26.1/packet-coverage.json` 的 256 个逐 owner entry（1,202 个 complete、78 个结构性 not-applicable cell）；`crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order`；`scripts/vanilla-source-tools.sh scripts/generate-packet-catalog.py --check` 与 `scripts/cargo-dev.sh test -p bbb-protocol packet_coverage`（184 passed）；current `e195d60d0` Linux packet/session receipt | 五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开 |
 | `protocol-listener-contracts` | protocol | 七个 client packet-listener interfaces | protocol/net/world dispatch | handler surface 与 phase contract | `partial` | `docs/evidence/vanilla-26.1/packet-coverage.json` | listener interface 变化时重开；[ledger](../../unsupported-features.md) |
 | `protocol-login-handler-decisions` | protocol | `ClientHandshakePacketListenerImpl` | `bbb-net` login state machine | compression/cookie/custom-query/finish/disconnect；encryption 请求按 offline-only scope 以可归因错误拒绝（见 ledger） | `partial` | `docs/evidence/vanilla-26.1/packet-coverage.json`、`crates/bbb-net/src/event_stream/login.rs` | login handler 变化时重开；[ledger](../../unsupported-features.md) |
 | `protocol-configuration-handler-decisions` | protocol | `ClientConfigurationPacketListenerImpl` | net configuration state machine | registry/tags/known-pack/finish ordering | `partial` | `docs/evidence/vanilla-26.1/packet-coverage.json`、`crates/bbb-net/src/event_stream/configuration.rs` | configuration handler 变化时重开；[ledger](../../unsupported-features.md) |
@@ -161,7 +161,7 @@
 资源、渲染、性能和范围排除的长期机制行，共 147 行。`equivalent` 只用于已有 generated
 coverage、决策级 focused evidence 或真实 acceptance 的行。
 
-当前分布：54 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、67 行 `partial`、
+当前分布：55 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、66 行 `partial`、
 1 行 `deferred-external`（`platform-macos-release`）。`partial` 包含真实 host-device
 audio receipt 与缺少精确 focused/source evidence 的行；全部双向路由到账本，不能因旧声明保留
 `equivalent`。无 `active` 或 `unverified` 行；开放状态只由账本排程。

@@ -268,7 +268,6 @@
         "protocol-framing-no-world-state",
         "protocol-listener-contracts",
         "protocol-login-handler-decisions",
-        "protocol-packet-tables",
         "protocol-play-handler-decisions",
         "protocol-serverbound-call-sites",
         "registries-unsynchronized-fixed-identities",
@@ -324,7 +323,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "1fe1aec99b05ae888e02553c09050a0e68998b71541a7d366d4d8de5d0600bc6",
+      "sha256": "c1a3f4af01323163ed543958142b7b41f607320a766f6a5e5c8dd077513a4f3b",
       "valid": true
     },
     {
@@ -431,7 +430,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-07T23:35:07Z\te195d60d0b0a2dd907b97d8a3d860060bb0a0df6\tclean\ttotal:23s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:5s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:1s,cross-check:skip,test:12s",
-      "sha256": "62f5110bd281d267320c07a6cac3701153c0f54a51213130faacc51d2d83245e",
+      "sha256": "febbd525f5018e02f68c952838f6b1b67944d3cbe9dad80b5a43757def0c9b71",
       "valid": true
     },
     {
@@ -680,7 +679,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "1f319e48e4e4516b0f0b13f844704c580fbe0c9ac42026d66803f2ab7fa7786a",
+      "sha256": "d2ef9dd6f6dff30e150aab7f7513671c4471df3e47dab74670ccfd5d559901cb",
       "valid": true
     },
     {
@@ -7502,7 +7501,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "1fe1aec99b05ae888e02553c09050a0e68998b71541a7d366d4d8de5d0600bc6",
+      "sha256": "c1a3f4af01323163ed543958142b7b41f607320a766f6a5e5c8dd077513a4f3b",
       "valid": true
     },
     {
@@ -7693,6 +7692,20 @@
       "valid": true
     },
     {
+      "artifact_id": "repo:scripts/cargo-dev.sh",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "protocol-packet-tables"
+      ],
+      "path": "scripts/cargo-dev.sh",
+      "scenario_ids": [],
+      "sha256": "339264f62f6194232d184091f6f707615d91d3233251edb203ca967df1dc2ff4",
+      "valid": true
+    },
+    {
       "artifact_id": "repo:scripts/client_mechanism_inventory.py",
       "bbb_commit": null,
       "exists": true,
@@ -7748,6 +7761,20 @@
       "path": "scripts/generate-client-options-catalog.py",
       "scenario_ids": [],
       "sha256": "140526d8407a57fe2a814fc72f0cb47bc09308f509a0f7fa6d0605c7a49a2e56",
+      "valid": true
+    },
+    {
+      "artifact_id": "repo:scripts/generate-packet-catalog.py",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "protocol-packet-tables"
+      ],
+      "path": "scripts/generate-packet-catalog.py",
+      "scenario_ids": [],
+      "sha256": "100672813c5c05d992168fc4bfaa67790b57816d90a899a5f98e8c8ee9884f41",
       "valid": true
     },
     {
@@ -7976,6 +8003,20 @@
       "valid": true
     },
     {
+      "artifact_id": "repo:scripts/vanilla-source-tools.sh",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "protocol-packet-tables"
+      ],
+      "path": "scripts/vanilla-source-tools.sh",
+      "scenario_ids": [],
+      "sha256": "797492c87c9eb4fccfb46cb970599179079821ed52cd961c21adf17821cb9a96",
+      "valid": true
+    },
+    {
       "artifact_id": "visual-workload",
       "bbb_commit": "e195d60d0b0a2dd907b97d8a3d860060bb0a0df6",
       "bbb_provenance": {
@@ -8032,7 +8073,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "1f319e48e4e4516b0f0b13f844704c580fbe0c9ac42026d66803f2ab7fa7786a"
+      "sha256": "d2ef9dd6f6dff30e150aab7f7513671c4471df3e47dab74670ccfd5d559901cb"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8040,7 +8081,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "1fe1aec99b05ae888e02553c09050a0e68998b71541a7d366d4d8de5d0600bc6"
+      "sha256": "c1a3f4af01323163ed543958142b7b41f607320a766f6a5e5c8dd077513a4f3b"
     }
   ],
   "mechanisms": [
@@ -10400,7 +10441,6 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -10631,15 +10671,22 @@
         "repo:crates/bbb-world/src/toasts.rs",
         "repo:crates/bbb-world/src/tutorial.rs",
         "repo:docs/evidence/vanilla-26.1/packet-coverage.json",
+        "repo:scripts/cargo-dev.sh",
+        "repo:scripts/generate-packet-catalog.py",
         "repo:scripts/tests/test_block_registry_catalog_extractor.py",
         "repo:scripts/tests/test_entity_catalog.py",
         "repo:scripts/tests/test_entity_coverage_ledger.py",
-        "repo:scripts/tests/test_item_catalog.py"
+        "repo:scripts/tests/test_item_catalog.py",
+        "repo:scripts/vanilla-source-tools.sh"
       ],
       "bbb": {
         "evidence_commit": "e195d60d0b0a2dd907b97d8a3d860060bb0a0df6",
         "evidence_references": [
-          "docs/evidence/vanilla-26.1/packet-coverage.json"
+          "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
+          "docs/evidence/vanilla-26.1/packet-coverage.json",
+          "scripts/cargo-dev.sh",
+          "scripts/generate-packet-catalog.py",
+          "scripts/vanilla-source-tools.sh"
         ],
         "owner": "generated protocol catalog"
       },
@@ -10891,7 +10938,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -11137,14 +11184,12 @@
         "domain": "protocol",
         "line": 30,
         "required_state_projection": "phase/direction/id/class/resource id",
-        "route_reopen_condition": "packet tables 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "protocol-packet-tables",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 256,
@@ -37886,7 +37931,6 @@
       "protocol-configuration-handler-decisions",
       "protocol-listener-contracts",
       "protocol-login-handler-decisions",
-      "protocol-packet-tables",
       "protocol-play-handler-decisions",
       "protocol-serverbound-call-sites",
       "rendering-client-biome-tint",
@@ -37927,11 +37971,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 54,
+      "equivalent": 55,
       "not-needed": 25,
-      "partial": 67
+      "partial": 66
     },
-    "valid_count": 80
+    "valid_count": 81
   },
   "vanilla_version": "26.1"
 }
