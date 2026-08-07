@@ -3,7 +3,7 @@ use bbb_world::{ClientEnvironmentAttributes, WorldStore};
 
 use super::{
     argb_color, argb_srgb_lerp, argb_to_rgba8, rgb_u8_to_argb,
-    sampled_environment_attributes_at_camera,
+    sampled_camera_fog_and_sky_attributes_at_camera,
 };
 
 /// Render-thread mirror of Vanilla's `Camera.attributeProbe`.
@@ -29,7 +29,7 @@ impl CameraEnvironmentSampleCache {
         camera_pose: Option<CameraPose>,
     ) -> ClientEnvironmentAttributes {
         self.sample_with((level_generation, client_tick_index), partial_tick, || {
-            sampled_environment_attributes_at_camera(world, camera_pose)
+            sampled_camera_fog_and_sky_attributes_at_camera(world, camera_pose)
         })
     }
 

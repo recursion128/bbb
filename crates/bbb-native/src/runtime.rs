@@ -19907,7 +19907,7 @@ fn camera_environment_colors(
     camera_pose: Option<CameraPose>,
     camera_fluid: CameraFluid,
 ) -> CameraEnvironmentColors {
-    let attributes = sampled_environment_attributes_at_camera(world, camera_pose);
+    let attributes = sampled_camera_fog_and_sky_attributes_at_camera(world, camera_pose);
     camera_environment_colors_from_attributes(&attributes, camera_pose, camera_fluid)
 }
 
@@ -19977,13 +19977,34 @@ fn camera_environment_colors_for_default_projection(
     camera_environment_colors(world, camera_pose, camera_fluid)
 }
 
-fn sampled_environment_attributes_at_camera(
+fn sampled_camera_fog_and_sky_attributes_at_camera(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
 ) -> ClientEnvironmentAttributes {
     let sampled = camera_pose.map(camera_eye_position).map_or_else(
         || world.sampled_client_environment_attributes(),
         |eye| world.sampled_client_camera_environment_attributes_at(eye.map(f64::from)),
+    );
+    sampled.unwrap_or_else(|_| {
+        world
+            .level_info()
+            .map(WorldLevelInfo::environment_attributes)
+            .unwrap_or_default()
+    })
+}
+
+fn sampled_full_environment_attributes_at_camera(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> ClientEnvironmentAttributes {
+    let sampled = camera_pose.map(camera_eye_position).map_or_else(
+        || world.sampled_client_environment_attributes(),
+        |eye| {
+            world.sampled_client_environment_attributes_at(
+                eye.map(f64::from),
+                EnvironmentBiomeSampling::Gaussian,
+            )
+        },
     );
     sampled.unwrap_or_else(|_| {
         world

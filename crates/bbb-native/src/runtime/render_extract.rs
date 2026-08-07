@@ -1078,7 +1078,7 @@ pub(crate) fn lightmap_environment_attributes_for_world(world: &WorldStore) -> L
     };
 
     let sampled_attributes =
-        sampled_environment_attributes_at_camera(world, camera_pose_from_world(world));
+        sampled_full_environment_attributes_at_camera(world, camera_pose_from_world(world));
     let mut environment = dimension_lightmap_environment(level, sampled_attributes);
     let is_overworld =
         vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld;
@@ -1448,7 +1448,8 @@ pub(crate) fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironmen
         .level_info()
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
-    let attributes = sampled_environment_attributes_at_camera(world, camera_pose_from_world(world));
+    let attributes =
+        sampled_full_environment_attributes_at_camera(world, camera_pose_from_world(world));
     let uses_builtin_dimension_fallback = world
         .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
         .is_none();
