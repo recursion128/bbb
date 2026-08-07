@@ -415,7 +415,7 @@ def _pid_list(value: str | None):
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="action", required=True)
 
     preflight_parser = subparsers.add_parser("preflight")
     preflight_parser.add_argument("--trace-root", type=Path, default=None)
@@ -434,16 +434,16 @@ def main(argv=None) -> int:
     # `summarize` only reads a capture file, so it stays host-neutral; the two
     # commands that touch tracefs and perf say where they run instead of
     # failing on an absent kernel interface.
-    if args.command in {"preflight", "capture"} and sys.platform != "linux":
+    if args.action in {"preflight", "capture"} and sys.platform != "linux":
         print(
-            f"gpu duration {args.command} needs Linux tracefs and perf; "
+            f"gpu duration {args.action} needs Linux tracefs and perf; "
             f"this host is {sys.platform}. Summarize an existing capture instead",
             file=sys.stderr,
         )
         return 2
-    if args.command == "preflight":
+    if args.action == "preflight":
         report = preflight(args.trace_root)
-    elif args.command == "capture":
+    elif args.action == "capture":
         command = list(args.command)
         if command and command[0] == "--":
             command = command[1:]

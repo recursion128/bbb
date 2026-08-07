@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import io
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -110,6 +114,26 @@ class GpuDurationCaptureTests(unittest.TestCase):
         self.assertFalse(report["unprivileged_capture_ready"])
         for blocker in report["blockers"]:
             self.assertTrue(blocker["provision"].startswith("sudo "))
+
+    def test_capture_cli_keeps_subcommand_separate_from_wrapped_command(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "capture"
+            expected = {
+                "command_returncode": 0,
+                "script_returncode": 0,
+                "perf_data": str(output / "gpu-duration.perf.data"),
+                "script": str(output / "gpu-duration.script.txt"),
+            }
+            stdout = io.StringIO()
+            with mock.patch.object(capture, "capture", return_value=expected) as run:
+                with mock.patch("sys.stdout", stdout):
+                    exit_code = capture.main(
+                        ["capture", "--output", str(output), "--", "true"]
+                    )
+
+        self.assertEqual(exit_code, 0)
+        run.assert_called_once_with(output, ["true"])
+        self.assertEqual(json.loads(stdout.getvalue()), expected)
 
 
 if __name__ == "__main__":
