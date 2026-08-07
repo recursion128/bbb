@@ -518,6 +518,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
         self.assertEqual(argv[argv.index("--client-vsync") + 1], "false")
         self.assertEqual(argv[argv.index("--client-framerate-limit") + 1], "260")
+        self.assertEqual(argv[argv.index("--client-gui-scale") + 1], "1")
         self.assertEqual(argv[argv.index("--pause-on-lost-focus") + 1], "false")
         self.assertEqual(argv[argv.index("--terrain-texture-filtering") + 1], "rgss")
         settings = benchmark.equal_load_settings()

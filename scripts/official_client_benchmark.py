@@ -1222,6 +1222,8 @@ def build_bbb_launch_argv(
         "false",
         "--client-framerate-limit",
         "260",
+        "--client-gui-scale",
+        "1",
         "--pause-on-lost-focus",
         "false",
         "--cutout-leaves",
