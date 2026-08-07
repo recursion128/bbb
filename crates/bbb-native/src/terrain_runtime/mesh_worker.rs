@@ -283,26 +283,7 @@ fn run_worker(shared: Arc<TerrainMeshWorkerShared>, result_tx: SyncSender<Terrai
                 .pop_next()
                 .expect("a signaled terrain mesh queue has work")
         };
-        let started = Instant::now();
-        let section_ys = job
-            .sections
-            .iter()
-            .map(|&(section_y, _)| section_y)
-            .collect::<Vec<_>>();
-        let layers = build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera(
-            &job.target,
-            job.neighborhood.iter().map(Arc::as_ref),
-            &job.atlas,
-            job.camera_position,
-            &section_ys,
-        );
-        let result = TerrainMeshResult {
-            key: job.key,
-            camera_position: job.camera_position,
-            build_nanos: started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64,
-            sections: job.sections,
-            layers,
-        };
+        let result = build_terrain_mesh_job(job);
         match result_tx.try_send(result) {
             Ok(()) => {}
             Err(TrySendError::Full(_)) => {
@@ -310,6 +291,29 @@ fn run_worker(shared: Arc<TerrainMeshWorkerShared>, result_tx: SyncSender<Terrai
             }
             Err(TrySendError::Disconnected(_)) => return,
         }
+    }
+}
+
+pub(super) fn build_terrain_mesh_job(job: TerrainMeshJob) -> TerrainMeshResult {
+    let started = Instant::now();
+    let section_ys = job
+        .sections
+        .iter()
+        .map(|&(section_y, _)| section_y)
+        .collect::<Vec<_>>();
+    let layers = build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera(
+        &job.target,
+        job.neighborhood.iter().map(Arc::as_ref),
+        &job.atlas,
+        job.camera_position,
+        &section_ys,
+    );
+    TerrainMeshResult {
+        key: job.key,
+        camera_position: job.camera_position,
+        build_nanos: started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64,
+        sections: job.sections,
+        layers,
     }
 }
 

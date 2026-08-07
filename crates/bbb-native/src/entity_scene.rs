@@ -420,6 +420,7 @@ pub(crate) struct EntityRenderVisibilityContext<'a> {
     pub(crate) camera_fov_degrees: f32,
     pub(crate) base_camera_fov_degrees: f32,
     pub(crate) render_distance_chunks: u32,
+    pub(crate) entity_distance_scaling: f64,
     pub(crate) terrain_upload: &'a TerrainUploadState,
     pub(crate) entity_shadows: bool,
     pub(crate) shadow_sky_darken: u8,
@@ -754,13 +755,14 @@ fn entity_render_candidate_is_visible(
         world.local_player_id(),
         candidates,
         candidate_index,
-    ) && !entity_renderer_should_render(
+    ) && !entity_renderer_should_render_with_scaling(
         candidate,
         candidates,
         candidate_index,
         camera_pose,
         frustum,
         visibility.render_distance_chunks,
+        visibility.entity_distance_scaling,
     ) {
         return false;
     }
@@ -800,6 +802,7 @@ fn attached_camera_hides_entity(
     camera_entity_id == Some(candidate_entity_id) && !camera_detached && !camera_sleeping
 }
 
+#[cfg(test)]
 fn entity_renderer_should_render(
     candidate: EntityRenderCandidateState,
     candidates: &[EntityRenderCandidateState],
@@ -807,6 +810,26 @@ fn entity_renderer_should_render(
     camera_pose: CameraPose,
     frustum: CameraFrustum,
     render_distance_chunks: u32,
+) -> bool {
+    entity_renderer_should_render_with_scaling(
+        candidate,
+        candidates,
+        candidate_index,
+        camera_pose,
+        frustum,
+        render_distance_chunks,
+        1.0,
+    )
+}
+
+fn entity_renderer_should_render_with_scaling(
+    candidate: EntityRenderCandidateState,
+    candidates: &[EntityRenderCandidateState],
+    candidate_index: &HashMap<i32, usize>,
+    camera_pose: CameraPose,
+    frustum: CameraFrustum,
+    render_distance_chunks: u32,
+    entity_distance_scaling: f64,
 ) -> bool {
     let culling_kind = vanilla_entity_renderer_culling_kind(candidate.entity_type_id);
     if candidate.entity_type_id == VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
@@ -818,7 +841,12 @@ fn entity_renderer_should_render(
     {
         return false;
     }
-    if entity_passes_vanilla_render_distance(candidate, camera_pose, render_distance_chunks) {
+    if entity_passes_vanilla_render_distance(
+        candidate,
+        camera_pose,
+        render_distance_chunks,
+        entity_distance_scaling,
+    ) {
         if culling_kind == VanillaEntityRendererCullingKind::Display
             && candidate
                 .display_culling
@@ -977,8 +1005,13 @@ fn entity_passes_vanilla_render_distance(
     candidate: EntityRenderCandidateState,
     camera_pose: CameraPose,
     render_distance_chunks: u32,
+    entity_distance_scaling: f64,
 ) -> bool {
-    let view_scale = (f64::from(render_distance_chunks) / 8.0).clamp(1.0, 2.5);
+    // `LevelRenderer.setupRender` writes the shared `Entity.viewScale` from
+    // effective render distance and `Options.entityDistanceScaling` before
+    // `Entity.shouldRenderAtSqrDistance` consumes it.
+    let view_scale = (f64::from(render_distance_chunks) / 8.0).clamp(1.0, 2.5)
+        * entity_distance_scaling.clamp(0.5, 5.0);
     let camera = [
         f64::from(camera_pose.position[0]),
         f64::from(camera_pose.position[1] + camera_pose.eye_height),

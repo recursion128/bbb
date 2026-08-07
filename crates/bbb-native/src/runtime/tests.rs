@@ -9668,6 +9668,33 @@ fn weather_render_state_projects_overworld_rain_columns_from_world_weather() {
 }
 
 #[test]
+fn weather_render_state_uses_the_selected_graphics_radius() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    set_world_day_time(&mut world, 96);
+    set_world_weather(&mut world, 1.0, 0.0);
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    let terrain_textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            biome_profile_with_weather(42, 0.8, true),
+        ]));
+
+    let state = weather_render_state_for_world_with_radius(
+        &world,
+        &terrain_textures,
+        camera_pose_from_world(&world),
+        0.25,
+        5,
+    );
+
+    assert_eq!(state.frame.radius, 5);
+    assert_eq!(
+        state.rain_columns.len() + state.snow_columns.len(),
+        (5_u32 * 2 + 1).pow(2) as usize
+    );
+}
+
+#[test]
 fn weather_render_state_uses_motion_blocking_heightmap_for_column_bounds() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     world.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
@@ -9737,6 +9764,22 @@ fn weather_tick_samples_vanilla_rain_positions_and_particle_status_counts() {
         .tick_running(&mut minimal_world, [7.5, 4.0, 7.5])
         .particles
         .is_empty());
+}
+
+#[test]
+fn weather_tick_uses_the_selected_graphics_radius_for_sampling() {
+    let mut world = weather_effect_test_world(0);
+    let mut runtime = crate::weather_effect_runtime::WeatherEffectRuntime::new_with_radius(
+        bbb_protocol::packets::ClientParticleStatus::All,
+        5,
+    );
+
+    let effects = runtime.tick_running(&mut world, [7.5, 4.0, 7.5]);
+
+    assert_eq!(effects.particles.len(), 27);
+    assert!(effects.particles.iter().all(|spawn| {
+        (2.0..13.0).contains(&spawn.position[0]) && (2.0..13.0).contains(&spawn.position[2])
+    }));
 }
 
 #[test]

@@ -491,7 +491,7 @@ impl WorldStore {
             IgnitionMutation::One {
                 pos,
                 block_state_id,
-            } => self.predict_local_block_state(pos, block_state_id, sequence),
+            } => self.predict_local_player_block_state(pos, block_state_id, sequence),
             IgnitionMutation::Portal {
                 shape,
                 block_state_id,

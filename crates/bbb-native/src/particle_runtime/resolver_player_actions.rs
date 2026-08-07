@@ -23,10 +23,20 @@ pub(crate) fn candle_wick_offsets(candles: u8, on_cake: bool) -> &'static [[f64;
     }
 }
 
+#[cfg(test)]
 pub(crate) fn local_destroy_hit_particle_state(
     world: &WorldStore,
     pos: WorldBlockPos,
     face: ProtocolDirection,
+) -> Option<LocalDestroyHitParticleState> {
+    local_destroy_hit_particle_state_with_biome_blend_radius(world, pos, face, 2)
+}
+
+pub(crate) fn local_destroy_hit_particle_state_with_biome_blend_radius(
+    world: &WorldStore,
+    pos: WorldBlockPos,
+    face: ProtocolDirection,
+    biome_blend_radius: u32,
 ) -> Option<LocalDestroyHitParticleState> {
     let probe = world.probe_block(pos)?;
     let block_name = probe.block_name.as_deref()?;
@@ -50,7 +60,7 @@ pub(crate) fn local_destroy_hit_particle_state(
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
         });
-        build_biome_blend(center, |sample| {
+        build_biome_blend(center, biome_blend_radius, |sample| {
             biome_sampler.biome_id_at(sample.x, sample.y, sample.z)
         })
     });

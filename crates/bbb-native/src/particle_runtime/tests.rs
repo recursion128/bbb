@@ -337,6 +337,7 @@ fn local_destroy_hit_particle_uses_captured_biome_blend() {
             y: pos.y,
             z: pos.z,
         },
+        2,
         |sample| Some(if sample.x < 0 { 7 } else { 11 }),
     ));
 

@@ -339,6 +339,11 @@ impl TerrainRenderChunkSnapshot {
 pub struct TerrainSectionMeshRevision {
     pub section_y: i32,
     pub revision: u64,
+    /// Latest dirty revision carrying Vanilla's player-changed flag
+    /// (`Block.UPDATE_IMMEDIATE`, bit 8). The renderer compares this with its
+    /// compiled revision because later non-player invalidations preserve an
+    /// already-dirty section's `dirtyFromPlayer` bit until compilation.
+    pub player_changed_revision: u64,
 }
 
 /// Small publication-shared render invalidation owner for one chunk column.
@@ -351,6 +356,7 @@ pub(crate) struct TerrainChunkRenderRevisions {
     snapshot_context_revision: u64,
     full_mesh_revision: u64,
     section_mesh_revisions: Vec<u64>,
+    player_changed_revisions: Vec<u64>,
 }
 
 impl TerrainChunkRenderRevisions {
@@ -389,6 +395,29 @@ impl TerrainChunkRenderRevisions {
         self.section_mesh_revisions[section_index] = revision;
     }
 
+    pub(crate) fn mark_section_from_player(
+        &mut self,
+        min_section_y: i32,
+        section_count: usize,
+        section_y: i32,
+        revision: u64,
+    ) {
+        self.mark_section(min_section_y, section_count, section_y, revision);
+        let Some(section_offset) = section_y.checked_sub(min_section_y) else {
+            return;
+        };
+        let Ok(section_index) = usize::try_from(section_offset) else {
+            return;
+        };
+        if section_index >= section_count {
+            return;
+        }
+        if self.player_changed_revisions.len() < section_count {
+            self.player_changed_revisions.resize(section_count, 0);
+        }
+        self.player_changed_revisions[section_index] = revision;
+    }
+
     pub(crate) fn mesh_revision(&self) -> u64 {
         self.section_mesh_revisions
             .iter()
@@ -402,6 +431,13 @@ impl TerrainChunkRenderRevisions {
             .copied()
             .unwrap_or(0)
             .max(self.full_mesh_revision)
+    }
+
+    pub(crate) fn section_player_changed_revision(&self, section_index: usize) -> u64 {
+        self.player_changed_revisions
+            .get(section_index)
+            .copied()
+            .unwrap_or(0)
     }
 }
 

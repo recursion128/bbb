@@ -102,7 +102,7 @@ impl ParticleCommandResolver {
             } => {
                 let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
                 let blend = if is_foliage_tinted_block(block_resource_id) {
-                    particle_biome_blend_at(block_pos, biome_sampler)
+                    particle_biome_blend_at(block_pos, self.biome_blend_radius, biome_sampler)
                 } else {
                     None
                 };

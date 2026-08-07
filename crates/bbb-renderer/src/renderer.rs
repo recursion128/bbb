@@ -446,6 +446,25 @@ pub enum TerrainTextureFiltering {
     Anisotropic,
 }
 
+/// `GraphicsPreset.FABULOUS` asks `GraphicsWorkarounds.isAmd()` after the GPU
+/// device exists: AMD renderer strings select RGSS, all others select
+/// anisotropic filtering. An explicit texture-filtering option bypasses this
+/// preset-only resolution.
+fn resolve_fabulous_terrain_texture_filtering(
+    requested: TerrainTextureFiltering,
+    fabulous_auto: bool,
+    adapter_renderer: &str,
+) -> TerrainTextureFiltering {
+    if !fabulous_auto {
+        return requested;
+    }
+    if adapter_renderer.contains("AMD") {
+        TerrainTextureFiltering::Rgss
+    } else {
+        TerrainTextureFiltering::Anisotropic
+    }
+}
+
 /// Vanilla `Options.effectiveMaxAnisotropy` is `min(1 << maxAnisotropyBit,
 /// device max)`; `LevelRenderer` passes it to the chunk-layer sampler only
 /// under `TextureFilteringMethod.ANISOTROPIC`, else 1. wgpu has no queryable
@@ -1599,6 +1618,21 @@ impl Renderer {
         vsync_enabled: bool,
         terrain_texture_filtering: TerrainTextureFiltering,
     ) -> Result<Self> {
+        Self::new_with_vsync_and_terrain_filtering_for_fabulous(
+            window,
+            vsync_enabled,
+            terrain_texture_filtering,
+            false,
+        )
+        .await
+    }
+
+    pub async fn new_with_vsync_and_terrain_filtering_for_fabulous(
+        window: &Window,
+        vsync_enabled: bool,
+        terrain_texture_filtering: TerrainTextureFiltering,
+        fabulous_auto: bool,
+    ) -> Result<Self> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
@@ -1621,6 +1655,11 @@ impl Renderer {
             adapter_backend = %adapter_info.backend.to_str(),
             adapter_device_type = ?adapter_info.device_type,
             "renderer platform adapter selected"
+        );
+        let terrain_texture_filtering = resolve_fabulous_terrain_texture_filtering(
+            terrain_texture_filtering,
+            fabulous_auto,
+            &adapter_info.name,
         );
 
         let required_features = optional_gpu_timing_features(adapter.features());
@@ -4125,6 +4164,10 @@ impl Renderer {
         self.terrain_max_anisotropy_bit = max_anisotropy_bit;
     }
 
+    pub fn terrain_texture_filtering(&self) -> TerrainTextureFiltering {
+        self.terrain_texture_filtering
+    }
+
     pub fn upload_terrain_texture_atlas_mips(
         &mut self,
         width: u32,
@@ -5003,11 +5046,12 @@ fn sanitize_shader_game_time_ticks(ticks: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        choose_format, choose_present_mode, translucency_point_of_view,
-        translucent_section_draw_order, translucent_section_draw_order_from_visible,
-        translucent_section_is_nearby, LevelFrameRoute, Renderer, RendererCameraFrame,
-        RendererResizePrepareStage, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
-        TerrainSectionRenderState, TerrainTranslucentSortState,
+        choose_format, choose_present_mode, resolve_fabulous_terrain_texture_filtering,
+        translucency_point_of_view, translucent_section_draw_order,
+        translucent_section_draw_order_from_visible, translucent_section_is_nearby,
+        LevelFrameRoute, Renderer, RendererCameraFrame, RendererResizePrepareStage,
+        TerrainChunkMeshOwner, TerrainSectionMeshOwner, TerrainSectionRenderState,
+        TerrainTextureFiltering, TerrainTranslucentSortState,
         MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE,
     };
     use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
@@ -5046,6 +5090,34 @@ mod tests {
         assert_eq!(
             LevelFrameRoute::for_options(true, true),
             LevelFrameRoute::Regular
+        );
+    }
+
+    #[test]
+    fn fabulous_filtering_uses_the_selected_adapter_renderer_like_vanilla() {
+        assert_eq!(
+            resolve_fabulous_terrain_texture_filtering(
+                TerrainTextureFiltering::Anisotropic,
+                true,
+                "AMD Radeon RX 7900 XTX",
+            ),
+            TerrainTextureFiltering::Rgss
+        );
+        assert_eq!(
+            resolve_fabulous_terrain_texture_filtering(
+                TerrainTextureFiltering::Anisotropic,
+                true,
+                "NVIDIA GeForce RTX 4090",
+            ),
+            TerrainTextureFiltering::Anisotropic
+        );
+        assert_eq!(
+            resolve_fabulous_terrain_texture_filtering(
+                TerrainTextureFiltering::None,
+                false,
+                "AMD Radeon RX 7900 XTX",
+            ),
+            TerrainTextureFiltering::None
         );
     }
 

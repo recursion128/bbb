@@ -610,11 +610,19 @@ impl From<TerrainTextureFilteringArg> for TerrainTextureFiltering {
 /// 1, 0, 4)` and `SpriteLoader` passes bit 0 unless `textureFiltering ==
 /// ANISOTROPIC`; the atlas packer multiplies its base padding by `1 <<
 /// mipLevel`, so the base is the anisotropy factor alone.
-pub(crate) fn terrain_atlas_base_padding(
+#[cfg(test)]
+fn terrain_atlas_base_padding(
     filtering: TerrainTextureFilteringArg,
     max_anisotropy_bit: u32,
 ) -> u32 {
-    if filtering != TerrainTextureFilteringArg::Anisotropic {
+    terrain_atlas_base_padding_for_filtering(filtering.into(), max_anisotropy_bit)
+}
+
+pub(crate) fn terrain_atlas_base_padding_for_filtering(
+    filtering: TerrainTextureFiltering,
+    max_anisotropy_bit: u32,
+) -> u32 {
+    if filtering != TerrainTextureFiltering::Anisotropic {
         return 1;
     }
     1 << max_anisotropy_bit.saturating_sub(1).min(4)

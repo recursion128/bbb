@@ -82,21 +82,14 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `identity-profile-key-lifecycle`, `identity-skin-presentation`,
 `security-secure-chat-reporting`, `persistence-options-unconsumed`
 
-- Implement the six startup-reachable `Options` consumer owners currently
+- Implement the three startup-reachable `Options` consumer owners still
   missing from the native options path. `Options.dataFix` migrates older
   `options.txt` versions before any field is decoded;
-  `applyGraphicsPreset` overwrites the preset-owned rendering values after the
-  file load; `getFullscreenVideoModeString` reads/writes and applies the
-  preferred native mode; `isSoundDeviceDefault` selects the stored audio
-  device; `loadSelectedResourcePacks` reconciles the stored selected list
-  against the repository; and `updateFontOptions` applies the `UNIFORM` /
-  `JAPANESE_VARIANTS` provider filters. The fullscreen path already has a
-  native consumer and must be re-routed to its implementation evidence; the
-  other five require their actual startup behavior and decision-level focused
-  tests. Owner: `bbb-native` + `bbb-audio` + `bbb-pack` + `bbb-item-model`.
-  Vanilla anchors: `Options.java:928,971,1190,1595,1691,1759,1770,1825`,
-  `Minecraft.java:517,522,551`, `SoundEngine.java:106,198`, and
-  `FontManager.java:182-229`.
+  `isSoundDeviceDefault` selects the stored audio device; and
+  `loadSelectedResourcePacks` reconciles the stored selected list against the
+  repository. Owner: `bbb-native` + `bbb-audio` + `bbb-pack`. Vanilla anchors:
+  `Options.java:928,1190,1691,1759,1770,1825`, `Minecraft.java:522,551`, and
+  `SoundEngine.java:106,198`.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.

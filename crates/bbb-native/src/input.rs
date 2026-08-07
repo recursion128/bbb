@@ -286,7 +286,8 @@ use minecart_command_block::MinecartCommandBlockEditorInputState;
 #[cfg(test)]
 pub(crate) use mouse::handle_mouse_input_at_partial_tick;
 pub(crate) use mouse::{
-    advance_destroying_block_at_partial_tick, advance_local_using_item_ticks_with_effects,
+    advance_destroying_block_at_partial_tick_with_biome_blend_radius,
+    advance_local_using_item_ticks_with_effects,
     advance_using_item_at_partial_tick_with_effects_and_presentation,
     flush_local_interaction_sound_actions,
     handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,

@@ -511,6 +511,27 @@ fn visibility_first_culling_applies_distance_frustum_and_leash_union() {
 }
 
 #[test]
+fn entity_distance_scaling_multiplies_the_shared_vanilla_view_scale() {
+    let camera = CameraPose {
+        position: [0.0; 3],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 0.0,
+    };
+    let candidate = render_candidate(9, VANILLA_ENTITY_TYPE_ZOMBIE_ID, [0.0, 0.0, 80.0]);
+
+    assert!(!entity_passes_vanilla_render_distance(
+        candidate, camera, 8, 0.75,
+    ));
+    assert!(entity_passes_vanilla_render_distance(
+        candidate, camera, 8, 1.0,
+    ));
+    assert!(entity_passes_vanilla_render_distance(
+        candidate, camera, 8, 1.25,
+    ));
+}
+
+#[test]
 fn specialized_culling_uses_exact_guardian_crystal_and_shulker_fallbacks() {
     let camera = CameraPose {
         position: [0.0; 3],

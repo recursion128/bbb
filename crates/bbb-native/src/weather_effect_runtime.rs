@@ -16,7 +16,8 @@ use crate::{
 };
 
 const RAIN_PARTICLES_PER_BLOCK: f32 = 0.225;
-const WEATHER_RADIUS: i32 = 10;
+#[cfg(test)]
+const DEFAULT_WEATHER_RADIUS: u32 = 10;
 const RAIN_HEIGHT_RANGE: i32 = 10;
 const WEATHER_RANDOM_SEED_MULTIPLIER: i64 = 312_987_231;
 const RAIN_SOUND_CHANCE_BOUND: i32 = 3;
@@ -37,6 +38,7 @@ pub(crate) struct WeatherEffectRuntime {
     ticks: i32,
     rain_sound_time: i32,
     particle_status: ClientParticleStatus,
+    weather_radius: i32,
 }
 
 #[derive(Debug, Default)]
@@ -46,11 +48,20 @@ pub(crate) struct WeatherTickEffects {
 }
 
 impl WeatherEffectRuntime {
+    #[cfg(test)]
     pub(crate) fn new(particle_status: ClientParticleStatus) -> Self {
+        Self::new_with_radius(particle_status, DEFAULT_WEATHER_RADIUS)
+    }
+
+    pub(crate) fn new_with_radius(
+        particle_status: ClientParticleStatus,
+        weather_radius: u32,
+    ) -> Self {
         Self {
             ticks: 0,
             rain_sound_time: 0,
             particle_status,
+            weather_radius: weather_radius.clamp(3, 10) as i32,
         }
     }
 
@@ -116,7 +127,7 @@ impl WeatherEffectRuntime {
             return WeatherTickEffects::default();
         };
         let sea_level = level.sea_level;
-        let diameter = WEATHER_RADIUS * 2 + 1;
+        let diameter = self.weather_radius * 2 + 1;
         let area = diameter * diameter;
         let mut particle_count =
             (RAIN_PARTICLES_PER_BLOCK * area as f32 * rain_level * rain_level) as i32;
@@ -129,8 +140,8 @@ impl WeatherEffectRuntime {
         let mut rain_particle_pos = None;
 
         for _ in 0..particle_count {
-            let x = camera_pos.x + random.next_int_bound(diameter) - WEATHER_RADIUS;
-            let z = camera_pos.z + random.next_int_bound(diameter) - WEATHER_RADIUS;
+            let x = camera_pos.x + random.next_int_bound(diameter) - self.weather_radius;
+            let z = camera_pos.z + random.next_int_bound(diameter) - self.weather_radius;
             let Some(height) = world.sample_motion_blocking_height(x, z) else {
                 continue;
             };

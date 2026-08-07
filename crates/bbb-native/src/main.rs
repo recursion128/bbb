@@ -980,10 +980,11 @@ fn run_client(args: startup::Args) -> Result<()> {
     spawn_frame_tick(&event_loop);
 
     let mut renderer = pollster::block_on(
-        bbb_renderer::Renderer::new_with_vsync_and_terrain_filtering(
+        bbb_renderer::Renderer::new_with_vsync_and_terrain_filtering_for_fabulous(
             &window,
             args.client_vsync,
             args.terrain_texture_filtering.into(),
+            args.fabulous_texture_filtering,
         ),
     )?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
@@ -1016,15 +1017,18 @@ fn run_client(args: startup::Args) -> Result<()> {
             }
         }
     }
+    let terrain_atlas_base_padding = startup::terrain_atlas_base_padding_for_filtering(
+        renderer.terrain_texture_filtering(),
+        args.client_max_anisotropy_bit,
+    );
     let mut terrain_textures = load_terrain_textures(
         &mut renderer,
         pack_roots.as_ref(),
         args.cutout_leaves,
         args.client_smooth_lighting,
-        startup::terrain_atlas_base_padding(
-            args.terrain_texture_filtering,
-            args.client_max_anisotropy_bit,
-        ),
+        args.biome_blend_radius,
+        args.client_mipmap_levels,
+        terrain_atlas_base_padding,
     );
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
@@ -1239,7 +1243,10 @@ fn run_client(args: startup::Args) -> Result<()> {
         level_event_sound_random,
         environment_audio: environment_audio_runtime::EnvironmentAudioRuntime::default(),
         environment_animate: environment_animate_runtime::EnvironmentAnimateRuntime::default(),
-        weather_effects: weather_effect_runtime::WeatherEffectRuntime::new(client_particle_status),
+        weather_effects: weather_effect_runtime::WeatherEffectRuntime::new_with_radius(
+            client_particle_status,
+            args.client_weather_radius,
+        ),
         music: MusicRuntime::default(),
         win_screen_resources,
         particle_runtime,
@@ -1634,6 +1641,19 @@ fn run_client(args: startup::Args) -> Result<()> {
                             debug_sky_light_section_cache: &mut debug_sky_light_section_cache,
                             remote_debug_selection_cache: &mut remote_debug_selection_cache,
                             render_distance_chunks: args.render_distance_chunks,
+                            prioritize_chunk_updates: match args.prioritize_chunk_updates {
+                                startup::PrioritizeChunkUpdatesArg::None => {
+                                    terrain_runtime::TerrainPrioritizeChunkUpdates::None
+                                }
+                                startup::PrioritizeChunkUpdatesArg::PlayerAffected => {
+                                    terrain_runtime::TerrainPrioritizeChunkUpdates::PlayerAffected
+                                }
+                                startup::PrioritizeChunkUpdatesArg::Nearby => {
+                                    terrain_runtime::TerrainPrioritizeChunkUpdates::Nearby
+                                }
+                            },
+                            entity_distance_scaling: args.client_entity_distance_scaling,
+                            weather_radius: args.client_weather_radius,
                             cloud_range_chunks: args.cloud_range_chunks,
                             client_framerate_limit: args.client_framerate_limit,
                             client_vsync: args.client_vsync,

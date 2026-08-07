@@ -1163,6 +1163,9 @@ impl WorldStore {
             revision: revisions
                 .map(|revisions| revisions.section_revision(section_index))
                 .unwrap_or(0),
+            player_changed_revision: revisions
+                .map(|revisions| revisions.section_player_changed_revision(section_index))
+                .unwrap_or(0),
         })
     }
 
@@ -1172,7 +1175,7 @@ impl WorldStore {
             return false;
         };
         let predicted_block_state_id = self.local_destroy_legacy_block_state_id(&block);
-        self.predict_local_block_state(pos, predicted_block_state_id, sequence)
+        self.predict_local_player_block_state(pos, predicted_block_state_id, sequence)
     }
 
     pub fn predict_local_block_state(
@@ -1181,7 +1184,24 @@ impl WorldStore {
         predicted_block_state_id: i32,
         sequence: i32,
     ) -> bool {
-        self.predict_local_block_states(&[(pos, predicted_block_state_id)], sequence)
+        self.predict_local_block_states_with_player_flag(
+            &[(pos, predicted_block_state_id)],
+            sequence,
+            false,
+        )
+    }
+
+    pub fn predict_local_player_block_state(
+        &mut self,
+        pos: BlockPos,
+        predicted_block_state_id: i32,
+        sequence: i32,
+    ) -> bool {
+        self.predict_local_block_states_with_player_flag(
+            &[(pos, predicted_block_state_id)],
+            sequence,
+            true,
+        )
     }
 
     /// Applies one interaction's prospective block writes as a single local
@@ -1192,6 +1212,23 @@ impl WorldStore {
         &mut self,
         updates: &[(BlockPos, i32)],
         sequence: i32,
+    ) -> bool {
+        self.predict_local_block_states_with_player_flag(updates, sequence, false)
+    }
+
+    pub fn predict_local_player_block_states(
+        &mut self,
+        updates: &[(BlockPos, i32)],
+        sequence: i32,
+    ) -> bool {
+        self.predict_local_block_states_with_player_flag(updates, sequence, true)
+    }
+
+    fn predict_local_block_states_with_player_flag(
+        &mut self,
+        updates: &[(BlockPos, i32)],
+        sequence: i32,
+        player_changed: bool,
     ) -> bool {
         let mut prepared = Vec::with_capacity(updates.len());
         for (index, &(pos, predicted_block_state_id)) in updates.iter().enumerate() {
@@ -1219,9 +1256,17 @@ impl WorldStore {
                 applied += 1;
                 continue;
             }
-            if !self.set_block_state_id(pos, predicted_block_state_id) {
+            if !self.set_block_state_id_with_player_flag(
+                pos,
+                predicted_block_state_id,
+                player_changed,
+            ) {
                 for &(rollback_pos, rollback_state_id, _) in prepared[..applied].iter().rev() {
-                    let _ = self.set_block_state_id(rollback_pos, rollback_state_id);
+                    let _ = self.set_block_state_id_with_player_flag(
+                        rollback_pos,
+                        rollback_state_id,
+                        player_changed,
+                    );
                 }
                 self.counters.local_block_predictions_failed += 1;
                 return false;
@@ -1287,6 +1332,15 @@ impl WorldStore {
     }
 
     pub(crate) fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
+        self.set_block_state_id_with_player_flag(pos, block_state_id, false)
+    }
+
+    fn set_block_state_id_with_player_flag(
+        &mut self,
+        pos: BlockPos,
+        block_state_id: i32,
+        player_changed: bool,
+    ) -> bool {
         if self.registries.block_state(block_state_id).is_none()
             || !self.dimension.contains_y(pos.y)
         {
@@ -1391,7 +1445,7 @@ impl WorldStore {
         if reset_trial_spawner_cache {
             self.trial_spawner_blocks.retain(|state| state.pos != pos);
         }
-        self.mark_terrain_block_changed(pos);
+        self.mark_terrain_block_changed(pos, player_changed);
         self.reconcile_command_block_editor_after_block_change(pos);
         self.reconcile_structure_block_editor_after_block_change(pos);
         self.reconcile_jigsaw_block_editor_after_block_change(pos);
@@ -1481,7 +1535,7 @@ impl WorldStore {
         }
     }
 
-    fn mark_terrain_block_changed(&mut self, pos: BlockPos) {
+    fn mark_terrain_block_changed(&mut self, pos: BlockPos, player_changed: bool) {
         let chunk = ChunkPos {
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
@@ -1519,7 +1573,16 @@ impl WorldStore {
                             z: chunk.z + dz,
                         })
                         .or_default();
-                    revisions.mark_section(min_section_y, section_count, section_y, revision);
+                    if player_changed {
+                        revisions.mark_section_from_player(
+                            min_section_y,
+                            section_count,
+                            section_y,
+                            revision,
+                        );
+                    } else {
+                        revisions.mark_section(min_section_y, section_count, section_y, revision);
+                    }
                 }
             }
         }

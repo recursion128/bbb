@@ -93,6 +93,7 @@ impl ParticleCommandResolver {
                         y: center.y,
                         z: center.z,
                     },
+                    self.biome_blend_radius,
                     biome_sampler,
                 )
             });

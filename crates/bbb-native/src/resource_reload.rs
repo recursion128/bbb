@@ -262,6 +262,8 @@ fn apply_native_resource_reload(
 
     let cutout_leaves = terrain_textures.cutout_leaves();
     let smooth_lighting = terrain_textures.smooth_lighting();
+    let biome_blend_radius = terrain_textures.biome_blend_radius();
+    let max_mipmap_levels = terrain_textures.max_mipmap_levels();
     let atlas_base_padding = terrain_textures.atlas_base_padding();
     let shader_resources = prepared.post_effects.renderer_projection();
     let (next_terrain_textures, win_screen_resources) = renderer
@@ -272,6 +274,8 @@ fn apply_native_resource_reload(
                 &prepared.roots,
                 cutout_leaves,
                 smooth_lighting,
+                biome_blend_radius,
+                max_mipmap_levels,
                 atlas_base_padding,
             )
             .context("upload terrain resources during resource reload")?;

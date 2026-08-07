@@ -32,7 +32,7 @@ use crate::crosshair::{
     CrosshairTarget,
 };
 use crate::item_models::FirstPersonHandPresentation;
-use crate::particle_runtime::local_destroy_hit_particle_state;
+use crate::particle_runtime::local_destroy_hit_particle_state_with_biome_blend_radius;
 
 use super::{
     commands::{
@@ -802,6 +802,7 @@ fn local_player_eye(player_pose: LocalPlayerPoseState) -> bbb_protocol::packets:
     }
 }
 
+#[cfg(test)]
 pub(crate) fn advance_destroying_block_at_partial_tick(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -810,6 +811,28 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     audio_events: Option<&mut dyn AudioEventSink>,
     entity_partial_tick: f32,
     destroy_ticks: u32,
+) {
+    advance_destroying_block_at_partial_tick_with_biome_blend_radius(
+        input,
+        world,
+        counters,
+        net_commands,
+        audio_events,
+        entity_partial_tick,
+        destroy_ticks,
+        2,
+    );
+}
+
+pub(crate) fn advance_destroying_block_at_partial_tick_with_biome_blend_radius(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: Option<&mut dyn AudioEventSink>,
+    entity_partial_tick: f32,
+    destroy_ticks: u32,
+    biome_blend_radius: u32,
 ) {
     let mut audio_events = audio_events;
     if !input.destroy_block_held && world.local_player().interaction.destroying_block.is_some() {
@@ -861,7 +884,12 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
         };
         if continue_destroy_block_tick(input, counters, world, net_commands, &mut audio_events, hit)
         {
-            if let Some(state) = local_destroy_hit_particle_state(world, hit.pos, hit.face) {
+            if let Some(state) = local_destroy_hit_particle_state_with_biome_blend_radius(
+                world,
+                hit.pos,
+                hit.face,
+                biome_blend_radius,
+            ) {
                 input.queue_local_destroy_hit_particles(state);
             }
             queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);

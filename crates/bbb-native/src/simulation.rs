@@ -43,7 +43,7 @@ use crate::{
         HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime,
         LevelEventSoundRandomState, LightmapTickState,
     },
-    terrain_runtime::{TerrainTextureState, TerrainUploadState},
+    terrain_runtime::{TerrainPrioritizeChunkUpdates, TerrainTextureState, TerrainUploadState},
 };
 use commands::SimulationMailbox;
 use input_commands::SimulationInputRuntime;
@@ -123,6 +123,9 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) debug_sky_light_section_cache: &'a mut DebugSkyLightSectionCache,
     pub(crate) remote_debug_selection_cache: &'a mut RemoteDebugSelectionCache,
     pub(crate) render_distance_chunks: u32,
+    pub(crate) prioritize_chunk_updates: TerrainPrioritizeChunkUpdates,
+    pub(crate) entity_distance_scaling: f64,
+    pub(crate) weather_radius: u32,
     pub(crate) cloud_range_chunks: u32,
     pub(crate) client_framerate_limit: u32,
     pub(crate) client_vsync: bool,

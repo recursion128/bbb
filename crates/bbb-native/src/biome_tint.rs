@@ -119,27 +119,42 @@ pub(crate) fn block_wants_biome_blend(block_name: &str, has_water_fluid: bool) -
 
 /// Vanilla `Options.biomeBlendRadius` default (`Options.java`: `IntRange(0, 7)`
 /// default `2`), producing a `5x5 = 25`-column blend window.
+#[cfg(test)]
 pub(crate) const BIOME_BLEND_RADIUS: i32 = 2;
+#[cfg(test)]
 pub(crate) const BIOME_BLEND_DIAMETER: i32 = BIOME_BLEND_RADIUS * 2 + 1;
+#[cfg(test)]
 pub(crate) const BIOME_BLEND_SAMPLES: usize =
     (BIOME_BLEND_DIAMETER * BIOME_BLEND_DIAMETER) as usize;
+const MAX_BIOME_BLEND_RADIUS: i32 = 7;
+const MAX_BIOME_BLEND_DIAMETER: i32 = MAX_BIOME_BLEND_RADIUS * 2 + 1;
+const MAX_BIOME_BLEND_SAMPLES: usize =
+    (MAX_BIOME_BLEND_DIAMETER * MAX_BIOME_BLEND_DIAMETER) as usize;
 
 pub(crate) fn build_biome_blend(
     center: BlockRenderPosition,
+    radius: u32,
     mut sample: impl FnMut(BlockRenderPosition) -> Option<i32>,
 ) -> BiomeBlend {
-    let mut samples = [None; BIOME_BLEND_SAMPLES];
-    for row in 0..BIOME_BLEND_DIAMETER {
-        for col in 0..BIOME_BLEND_DIAMETER {
-            let index = (row * BIOME_BLEND_DIAMETER + col) as usize;
+    let radius = (radius as i32).clamp(0, MAX_BIOME_BLEND_RADIUS);
+    let diameter = radius * 2 + 1;
+    let mut samples = [None; MAX_BIOME_BLEND_SAMPLES];
+    for row in 0..diameter {
+        for col in 0..diameter {
+            let index = (row * diameter + col) as usize;
             samples[index] = sample(BlockRenderPosition {
-                x: center.x - BIOME_BLEND_RADIUS + col,
+                x: center.x - radius + col,
                 y: center.y,
-                z: center.z - BIOME_BLEND_RADIUS + row,
+                z: center.z - radius + row,
             });
         }
     }
-    BiomeBlend::new(center, samples)
+    BiomeBlend {
+        center,
+        radius,
+        sample_count: (diameter * diameter) as usize,
+        samples,
+    }
 }
 
 /// The biome-id window used to average biome tint colours across the
@@ -153,19 +168,29 @@ pub(crate) fn build_biome_blend(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct BiomeBlend {
     center: BlockRenderPosition,
-    samples: [Option<i32>; BIOME_BLEND_SAMPLES],
+    radius: i32,
+    sample_count: usize,
+    samples: [Option<i32>; MAX_BIOME_BLEND_SAMPLES],
 }
 
 impl BiomeBlend {
+    #[cfg(test)]
     pub(crate) fn new(
         center: BlockRenderPosition,
         samples: [Option<i32>; BIOME_BLEND_SAMPLES],
     ) -> Self {
-        Self { center, samples }
+        let mut retained = [None; MAX_BIOME_BLEND_SAMPLES];
+        retained[..BIOME_BLEND_SAMPLES].copy_from_slice(&samples);
+        Self {
+            center,
+            radius: BIOME_BLEND_RADIUS,
+            sample_count: BIOME_BLEND_SAMPLES,
+            samples: retained,
+        }
     }
 
     pub(crate) fn center_biome_id(&self) -> Option<i32> {
-        self.samples[BIOME_BLEND_SAMPLES / 2]
+        self.samples[self.sample_count / 2]
     }
 
     /// Iterates the window as `(biome_id, sample_position)` pairs. Each
@@ -173,27 +198,63 @@ impl BiomeBlend {
     /// modifier needs because vanilla applies it per sample inside
     /// `Biome::getGrassColor(x, z)` before the colours are averaged.
     pub(crate) fn samples(&self) -> impl Iterator<Item = (Option<i32>, BlockRenderPosition)> + '_ {
-        let base_x = self.center.x - BIOME_BLEND_RADIUS;
-        let base_z = self.center.z - BIOME_BLEND_RADIUS;
+        let diameter = self.radius * 2 + 1;
+        let base_x = self.center.x - self.radius;
+        let base_z = self.center.z - self.radius;
         let y = self.center.y;
-        self.samples.iter().enumerate().map(move |(index, biome)| {
-            let col = (index as i32) % BIOME_BLEND_DIAMETER;
-            let row = (index as i32) / BIOME_BLEND_DIAMETER;
-            (
-                *biome,
-                BlockRenderPosition {
-                    x: base_x + col,
-                    y,
-                    z: base_z + row,
-                },
-            )
-        })
+        self.samples[..self.sample_count]
+            .iter()
+            .enumerate()
+            .map(move |(index, biome)| {
+                let col = (index as i32) % diameter;
+                let row = (index as i32) / diameter;
+                (
+                    *biome,
+                    BlockRenderPosition {
+                        x: base_x + col,
+                        y,
+                        z: base_z + row,
+                    },
+                )
+            })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn configured_biome_blend_radius_controls_window_geometry() {
+        let center = BlockRenderPosition {
+            x: 10,
+            y: 64,
+            z: 20,
+        };
+        let radius_zero = build_biome_blend(center, 0, |pos| Some(pos.x + pos.z));
+        assert_eq!(radius_zero.center_biome_id(), Some(30));
+        assert_eq!(radius_zero.samples().count(), 1);
+
+        let radius_one = build_biome_blend(center, 1, |pos| Some(pos.x + pos.z));
+        let samples = radius_one.samples().collect::<Vec<_>>();
+        assert_eq!(samples.len(), 9);
+        assert_eq!(
+            samples.first().unwrap().1,
+            BlockRenderPosition { x: 9, y: 64, z: 19 }
+        );
+        assert_eq!(
+            samples.last().unwrap().1,
+            BlockRenderPosition {
+                x: 11,
+                y: 64,
+                z: 21
+            }
+        );
+        assert_eq!(radius_one.center_biome_id(), Some(30));
+
+        let radius_seven = build_biome_blend(center, 7, |_| None);
+        assert_eq!(radius_seven.samples().count(), 225);
+    }
 
     #[test]
     fn pack_modifier_adapter_matches_world_climate_frozen_branch() {

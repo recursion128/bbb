@@ -1580,7 +1580,11 @@ impl WorldStore {
         else {
             return false;
         };
-        self.predict_local_block_state(context.pos, predicted_block_state_id, context.sequence)
+        self.predict_local_player_block_state(
+            context.pos,
+            predicted_block_state_id,
+            context.sequence,
+        )
     }
 
     fn local_block_is_air(&self, pos: BlockPos) -> Option<bool> {

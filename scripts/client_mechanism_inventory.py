@@ -406,6 +406,7 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "dumpOptionsForReport",
             "getFullscreenVideoModeString",
             "updateFontOptions",
+            "applyGraphicsPreset",
         ),
     ),
     (
@@ -415,7 +416,6 @@ OPTIONS_METHOD_ROUTES = _method_routes(
         (
             "dataFix",
             "isSoundDeviceDefault",
-            "applyGraphicsPreset",
             "loadSelectedResourcePacks",
         ),
     ),
@@ -1511,8 +1511,12 @@ LEVEL_RENDERER_SECTION_OWNER_EVIDENCE = _owner_evidence(
     ),
     (
         OwnerEvidence(
-            ("crates/bbb-native/src/terrain_runtime.rs#queue_terrain_chunk_mesh",),
-            ("crates/bbb-native/src/terrain_runtime.rs#production_compile_order_keeps_vanilla_default_none_policy",),
+            (
+                "crates/bbb-world/src/terrain.rs#pub(crate) fn mark_section_from_player",
+                "crates/bbb-world/src/chunks/store.rs#fn mark_terrain_block_changed",
+                "crates/bbb-native/src/terrain_runtime.rs#queue_terrain_chunk_mesh",
+            ),
+            ("crates/bbb-native/src/terrain_runtime.rs#prioritize_chunk_updates_matches_vanilla_sync_decision",),
         ),
         ("compileSections",),
     ),
@@ -4235,6 +4239,29 @@ OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
             ),
         ),
         ("updateFontOptions",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#fn apply_graphics_preset",
+                "crates/bbb-world/src/terrain.rs#pub(crate) fn mark_section_from_player",
+                "crates/bbb-native/src/terrain_runtime.rs#fn section_rebuilds_synchronously",
+                "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
+                "crates/bbb-native/src/entity_scene.rs#fn entity_renderer_should_render_with_scaling",
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn weather_render_state_for_world_with_radius",
+                "crates/bbb-renderer/src/renderer.rs#fn resolve_fabulous_terrain_texture_filtering",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#stored_graphics_presets_overwrite_every_owned_value_after_load",
+                "crates/bbb-native/src/terrain_runtime.rs#prioritize_chunk_updates_matches_vanilla_sync_decision",
+                "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
+                "crates/bbb-native/src/biome_tint.rs#configured_biome_blend_radius_controls_window_geometry",
+                "crates/bbb-native/src/entity_scene/tests.rs#entity_distance_scaling_multiplies_the_shared_vanilla_view_scale",
+                "crates/bbb-native/src/runtime/tests.rs#weather_tick_uses_the_selected_graphics_radius_for_sampling",
+                "crates/bbb-renderer/src/renderer.rs#fabulous_filtering_uses_the_selected_adapter_renderer_like_vanilla",
+            ),
+        ),
+        ("applyGraphicsPreset",),
     ),
 )
 
@@ -7851,7 +7878,8 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/simulation.rs#failed_resource_pack_recovery_terminates_the_session_once",
     ),
     "resources-runtime-mipmap-update": (
-        "crates/bbb-native/src/terrain_runtime/textures.rs#VANILLA_DEFAULT_MIPMAP_LEVELS",
+        "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
+        "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
         "docs/unsupported-features.md",
     ),
     "resources-server-pack-lifecycle": ("crates/bbb-pack/src/server_pack.rs",),
@@ -8083,7 +8111,15 @@ MECHANISM_EVIDENCE = {
     "ui-accessibility-surface": ("crates/bbb-native/src/narrator_runtime.rs",),
     "persistence-options-file": ("crates/bbb-native/src/client_options.rs",),
     "persistence-options-derived": ("crates/bbb-native/src/client_options.rs",),
-    "persistence-options-apply": ("crates/bbb-native/src/client_options.rs",),
+    "persistence-options-apply": (
+        "crates/bbb-native/src/client_options.rs",
+        "crates/bbb-native/src/startup.rs",
+        "crates/bbb-native/src/terrain_runtime.rs",
+        "crates/bbb-native/src/terrain_runtime/textures.rs",
+        "crates/bbb-native/src/entity_scene.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-renderer/src/renderer.rs",
+    ),
     "persistence-options-unconsumed": ("docs/unsupported-features.md",),
     "persistence-server-list": ("crates/bbb-native/src/server_list.rs",),
     "identity-profile-key-lifecycle": ("docs/unsupported-features.md",),

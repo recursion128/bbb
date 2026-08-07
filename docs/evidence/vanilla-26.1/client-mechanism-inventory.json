@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "43b2693c65d8eda6368075c43d4bbc0cb350050a7642b49e015487399b5ccd07"
+      "sha256": "d05c4d5bcebdec6452d3ede54a9475328faeb0aa457caaad20a204e9bff0a5a6"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -257,10 +257,16 @@
     },
     "persistence-options-apply": {
       "bbb_evidence": [
-        "crates/bbb-native/src/client_options.rs"
+        "crates/bbb-native/src/client_options.rs",
+        "crates/bbb-native/src/startup.rs",
+        "crates/bbb-native/src/terrain_runtime.rs",
+        "crates/bbb-native/src/terrain_runtime/textures.rs",
+        "crates/bbb-native/src/entity_scene.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-renderer/src/renderer.rs"
       ],
-      "owner_count": 5,
-      "owner_evidence_count": 5
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "persistence-options-derived": {
       "bbb_evidence": [
@@ -280,7 +286,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 4
+      "owner_count": 3
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -643,7 +649,8 @@
     },
     "resources-runtime-mipmap-update": {
       "bbb_evidence": [
-        "crates/bbb-native/src/terrain_runtime/textures.rs#VANILLA_DEFAULT_MIPMAP_LEVELS",
+        "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
+        "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
         "docs/unsupported-features.md"
       ],
       "owner_count": 1
@@ -13061,10 +13068,30 @@
       "vanilla_owner": "net.minecraft.client.Options#ambientOcclusion()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#fn apply_graphics_preset",
+          "crates/bbb-world/src/terrain.rs#pub(crate) fn mark_section_from_player",
+          "crates/bbb-native/src/terrain_runtime.rs#fn section_rebuilds_synchronously",
+          "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
+          "crates/bbb-native/src/entity_scene.rs#fn entity_renderer_should_render_with_scaling",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn weather_render_state_for_world_with_radius",
+          "crates/bbb-renderer/src/renderer.rs#fn resolve_fabulous_terrain_texture_filtering"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#stored_graphics_presets_overwrite_every_owned_value_after_load",
+          "crates/bbb-native/src/terrain_runtime.rs#prioritize_chunk_updates_matches_vanilla_sync_decision",
+          "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
+          "crates/bbb-native/src/biome_tint.rs#configured_biome_blend_radius_controls_window_geometry",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_distance_scaling_multiplies_the_shared_vanilla_view_scale",
+          "crates/bbb-native/src/runtime/tests.rs#weather_tick_uses_the_selected_graphics_radius_for_sampling",
+          "crates/bbb-renderer/src/renderer.rs#fabulous_filtering_uses_the_selected_adapter_renderer_like_vanilla"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-unconsumed",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#applyGraphicsPreset(final GraphicsPreset value)",
       "role": "decision",
       "scope": "external-client",
@@ -31065,10 +31092,12 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-world/src/terrain.rs#pub(crate) fn mark_section_from_player",
+          "crates/bbb-world/src/chunks/store.rs#fn mark_terrain_block_changed",
           "crates/bbb-native/src/terrain_runtime.rs#queue_terrain_chunk_mesh"
         ],
         "tests": [
-          "crates/bbb-native/src/terrain_runtime.rs#production_compile_order_keeps_vanilla_default_none_policy"
+          "crates/bbb-native/src/terrain_runtime.rs#prioritize_chunk_updates_matches_vanilla_sync_decision"
         ]
       },
       "category": "render-section",

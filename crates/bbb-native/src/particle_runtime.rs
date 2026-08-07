@@ -759,6 +759,7 @@ struct ParticleCommandResolver {
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
     particle_status: ClientParticleStatus,
+    biome_blend_radius: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -778,6 +779,7 @@ fn block_pos_containing(position: Vec3d) -> WorldBlockPos {
 
 fn particle_biome_blend_at(
     block_pos: WorldBlockPos,
+    biome_blend_radius: u32,
     biome_sampler: Option<&dyn ParticleBiomeSampler>,
 ) -> Option<BiomeBlend> {
     let sampler = biome_sampler?;
@@ -787,6 +789,7 @@ fn particle_biome_blend_at(
             y: block_pos.y,
             z: block_pos.z,
         },
+        biome_blend_radius,
         |sample| {
             sampler.biome_id_at(WorldBlockPos {
                 x: sample.x,
@@ -1602,7 +1605,11 @@ use atlas::*;
 use block_provider_acceptance::*;
 use explosion::*;
 use ids::*;
-pub(crate) use resolver_player_actions::{candle_wick_offsets, local_destroy_hit_particle_state};
+#[cfg(test)]
+pub(crate) use resolver_player_actions::local_destroy_hit_particle_state;
+pub(crate) use resolver_player_actions::{
+    candle_wick_offsets, local_destroy_hit_particle_state_with_biome_blend_radius,
+};
 
 #[cfg(test)]
 mod tests;

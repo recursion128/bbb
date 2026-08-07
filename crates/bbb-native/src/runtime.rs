@@ -149,7 +149,8 @@ use crate::{
     entity_variant_textures::NativeEntityVariantTextureRuntime,
     game_test_highlights::game_test_highlight_gizmos,
     input::{
-        advance_creative_inventory_commands, advance_destroying_block_at_partial_tick,
+        advance_creative_inventory_commands,
+        advance_destroying_block_at_partial_tick_with_biome_blend_radius,
         advance_local_using_item_ticks_with_effects, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick_with_effects_and_presentation,
         death_screen::DeathScreenRuntime,
@@ -322,6 +323,7 @@ const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
 const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
+#[cfg(test)]
 const VANILLA_WEATHER_RENDER_RADIUS: u32 = 10;
 const VANILLA_WEATHER_SNOW_TEMPERATURE_THRESHOLD: f32 = 0.15;
 const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
@@ -3093,7 +3095,7 @@ pub(crate) fn advance_simulation(
     let audio_events_for_destroy = audio_events
         .as_mut()
         .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
-    advance_destroying_block_at_partial_tick(
+    advance_destroying_block_at_partial_tick_with_biome_blend_radius(
         input,
         world,
         net_counters,
@@ -3101,6 +3103,7 @@ pub(crate) fn advance_simulation(
         audio_events_for_destroy,
         entity_partial_tick,
         advanced_ticks,
+        terrain_textures.biome_blend_radius(),
     );
     submit_local_player_action_particles(particle_batches, world, input, particle_runtime.as_mut());
     advance_using_item_at_partial_tick_with_effects_and_presentation(
@@ -3331,6 +3334,9 @@ pub(crate) fn update_renderer_from_publication(
         debug_sky_light_section_cache,
         remote_debug_selection_cache,
         render_distance_chunks,
+        prioritize_chunk_updates,
+        entity_distance_scaling,
+        weather_radius,
         cloud_range_chunks,
         client_framerate_limit,
         client_vsync,
@@ -4354,6 +4360,7 @@ pub(crate) fn update_renderer_from_publication(
                 camera_fov_degrees: camera_fov.culling_degrees,
                 base_camera_fov_degrees: camera_fov_ticks.base_degrees(),
                 render_distance_chunks,
+                entity_distance_scaling,
                 terrain_upload,
                 entity_shadows,
                 shadow_sky_darken: entity_shadow_sky_darken(world),
@@ -4753,8 +4760,13 @@ pub(crate) fn update_renderer_from_publication(
     let cloud_frame = cloud_frame_for_world(world, camera_pose, entity_partial_tick);
     // Vanilla `LevelRenderer.extractLevel` calls `WeatherEffectRenderer.extractRenderState` with
     // level ticks, `deltaPartialTick`, and camera position during render extraction.
-    let weather_render_state =
-        weather_render_state_for_world(world, terrain_textures, camera_pose, entity_partial_tick);
+    let weather_render_state = weather_render_state_for_world_with_radius(
+        world,
+        terrain_textures,
+        camera_pose,
+        entity_partial_tick,
+        weather_radius,
+    );
     // Vanilla `LevelRenderer` extraction runs `worldBorderRenderer.extract` in
     // the "border" profiler section right after the weather/sky extraction
     // (LevelRenderer.java:573-585), after `ClientLevel.tick` has advanced the
@@ -5141,6 +5153,7 @@ pub(crate) fn update_renderer_from_publication(
         terrain_upload,
         terrain_textures,
         terrain_visibility_context,
+        prioritize_chunk_updates,
     );
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);

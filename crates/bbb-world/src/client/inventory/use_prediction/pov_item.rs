@@ -241,7 +241,7 @@ impl WorldStore {
             }
         }
 
-        if !self.predict_local_block_state(target_pos, placement_state_id, sequence)
+        if !self.predict_local_player_block_state(target_pos, placement_state_id, sequence)
             || !self.consume_local_item_in_hand(hand, 1)
         {
             return unresolved_override();

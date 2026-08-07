@@ -22,7 +22,8 @@ mod mesh_worker;
 mod occlusion;
 mod textures;
 use mesh_worker::{
-    TerrainMeshJob, TerrainMeshJobKey, TerrainMeshResult, TerrainMeshSubmit, TerrainMeshWorker,
+    build_terrain_mesh_job, TerrainMeshJob, TerrainMeshJobKey, TerrainMeshResult,
+    TerrainMeshSubmit, TerrainMeshWorker,
 };
 use occlusion::{
     ChunkSectionDebugGizmos, ResidentSection, SectionPosition, TerrainCoordinateMap,
@@ -42,6 +43,13 @@ const MAX_TERRAIN_CACHE_WORK_PER_FRAME: usize = 1;
 const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_SECTION_FADE_DURATION: Duration = Duration::from_millis(750);
 const VANILLA_SECTION_CONSUMER_VISIBILITY: f32 = 0.3;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TerrainPrioritizeChunkUpdates {
+    None,
+    PlayerAffected,
+    Nearby,
+}
 
 #[derive(Debug, Clone, Copy)]
 struct TerrainSectionResidency {
@@ -202,6 +210,23 @@ enum TerrainCacheWork {
     Idle,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TerrainMeshQueueOutcome {
+    SynchronouslyCompiled { renderer_dirty: bool },
+    Async,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DirtyTerrainSection {
+    section_y: i32,
+    revision: u64,
+    dirty_from_player: bool,
+}
+
+fn section_is_dirty_from_player(player_changed_revision: u64, compiled_revision: u64) -> bool {
+    player_changed_revision > compiled_revision
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct TerrainUploadState {
     observed_level_generation: u64,
@@ -210,6 +235,10 @@ pub(crate) struct TerrainUploadState {
     loaded_chunks: HashSet<ChunkPos>,
     snapshots: HashMap<ChunkPos, CachedTerrainSnapshot>,
     meshes: HashMap<ChunkPos, CachedTerrainMesh>,
+    /// Last revision compiled for each section in this level generation. This
+    /// survives resource-driven mesh-cache clears so a consumed
+    /// `dirtyFromPlayer` edge cannot become player-dirty again.
+    compiled_section_revisions: TerrainCoordinateMap<SectionPosition, u64>,
     next_resident_revision: u64,
     mesh_generation: u64,
     pending_mesh_jobs: HashMap<ChunkPos, TerrainMeshJobKey>,
@@ -622,19 +651,51 @@ mod section_fade_tests {
     }
 
     #[test]
-    fn production_compile_order_keeps_vanilla_default_none_policy() {
-        let source = include_str!("terrain_runtime.rs");
-        let owner = ["fn queue_terrain_", "chunk_mesh("].concat();
-        let queue_start = source.find(&owner).expect("terrain queue owner");
-        let next_owner = ["\nfn drain_terrain_", "mesh_results("].concat();
-        let queue_end = source[queue_start..]
-            .find(&next_owner)
-            .map(|offset| queue_start + offset)
-            .expect("terrain queue owner end");
-        let queue = &source[queue_start..queue_end];
-        assert!(queue.contains("priority: (chunk_distance_key(pos, center), pos.x, pos.z)"));
-        assert!(!queue.contains("local_block_predictions"));
-        assert!(!include_str!("terrain_runtime/mesh_worker.rs").contains("priority: (u8,"));
+    fn prioritize_chunk_updates_matches_vanilla_sync_decision() {
+        let pos = ChunkPos { x: 0, z: 0 };
+        let server_dirty = DirtyTerrainSection {
+            section_y: 0,
+            revision: 2,
+            dirty_from_player: false,
+        };
+        let player_dirty = DirtyTerrainSection {
+            dirty_from_player: true,
+            ..server_dirty
+        };
+
+        assert!(!section_rebuilds_synchronously(
+            TerrainPrioritizeChunkUpdates::None,
+            pos,
+            player_dirty,
+            [8.0, 8.0, 8.0],
+        ));
+        assert!(!section_rebuilds_synchronously(
+            TerrainPrioritizeChunkUpdates::PlayerAffected,
+            pos,
+            server_dirty,
+            [8.0, 8.0, 8.0],
+        ));
+        assert!(section_rebuilds_synchronously(
+            TerrainPrioritizeChunkUpdates::PlayerAffected,
+            pos,
+            player_dirty,
+            [128.0, 8.0, 8.0],
+        ));
+        assert!(section_rebuilds_synchronously(
+            TerrainPrioritizeChunkUpdates::Nearby,
+            pos,
+            server_dirty,
+            [35.0, 8.0, 8.0],
+        ));
+        assert!(!section_rebuilds_synchronously(
+            TerrainPrioritizeChunkUpdates::Nearby,
+            pos,
+            server_dirty,
+            [36.0, 8.0, 8.0],
+        ));
+        assert!(section_is_dirty_from_player(7, 6));
+        assert!(!section_is_dirty_from_player(7, 7));
+        assert!(!section_is_dirty_from_player(7, 9));
     }
 }
 
@@ -679,6 +740,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload: &mut TerrainUploadState,
     textures: &TerrainTextureState,
     visibility: TerrainVisibilityContext,
+    prioritize_chunk_updates: TerrainPrioritizeChunkUpdates,
 ) {
     let mesh_worker_counters_before = upload
         .mesh_worker
@@ -733,6 +795,12 @@ pub(crate) fn maybe_upload_decoded_terrain(
             .flat_map(chunk_neighborhood)
             .filter(|pos| loaded_chunks.contains(pos))
             .collect();
+        upload.compiled_section_revisions.retain(|position, _| {
+            loaded_chunks.contains(&ChunkPos {
+                x: position.x,
+                z: position.z,
+            })
+        });
 
         if upload.reload_all_chunks_requested {
             renderer_dirty |= !upload.meshes.is_empty();
@@ -780,16 +848,36 @@ pub(crate) fn maybe_upload_decoded_terrain(
         upload.observed_world_revision = world.terrain_revision();
     }
 
-    for _ in 0..MAX_TERRAIN_CACHE_WORK_PER_FRAME {
+    let mut bounded_cache_work = 0;
+    while bounded_cache_work < MAX_TERRAIN_CACHE_WORK_PER_FRAME {
         match next_terrain_cache_work(world, upload, &upload.loaded_chunks) {
             TerrainCacheWork::RefreshSnapshot(pos) => {
                 refresh_terrain_snapshot(world, upload, textures, pos);
+                bounded_cache_work += 1;
             }
             TerrainCacheWork::QueueMesh(pos) => {
                 let queue_full_before = upload.mesh_worker_counters.queue_full;
-                renderer_dirty |= queue_terrain_chunk_mesh(world, upload, textures, pos);
-                if upload.mesh_worker_counters.queue_full != queue_full_before {
-                    break;
+                match queue_terrain_chunk_mesh(
+                    world,
+                    upload,
+                    textures,
+                    pos,
+                    prioritize_chunk_updates,
+                ) {
+                    TerrainMeshQueueOutcome::SynchronouslyCompiled {
+                        renderer_dirty: changed,
+                    } => {
+                        renderer_dirty |= changed;
+                        // Vanilla compiles every qualifying visible section in
+                        // this pass. Synchronous jobs therefore do not consume
+                        // BBB's separate one-clone/one-async-submit hitch bound.
+                    }
+                    TerrainMeshQueueOutcome::Async => {
+                        bounded_cache_work += 1;
+                        if upload.mesh_worker_counters.queue_full != queue_full_before {
+                            break;
+                        }
+                    }
                 }
             }
             TerrainCacheWork::Idle => break,
@@ -840,6 +928,7 @@ fn synchronize_terrain_level_generation(
     upload.loaded_chunks.clear();
     upload.snapshots.clear();
     upload.meshes.clear();
+    upload.compiled_section_revisions.clear();
     upload.reload_all_chunks_requested = false;
     upload.section_residency.clear();
     upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
@@ -859,6 +948,7 @@ fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revis
     upload.loaded_chunks.clear();
     upload.snapshots.clear();
     upload.meshes.clear();
+    upload.compiled_section_revisions.clear();
     upload.reload_all_chunks_requested = false;
     upload.section_residency.clear();
     upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
@@ -953,25 +1043,64 @@ fn terrain_section_mesh_revisions(world: &WorldStore, pos: ChunkPos) -> Vec<(i32
         .collect()
 }
 
-fn dirty_terrain_sections(
+fn dirty_terrain_section_states(
     world: &WorldStore,
     upload: &TerrainUploadState,
     pos: ChunkPos,
-) -> Vec<(i32, u64)> {
-    let current = terrain_section_mesh_revisions(world, pos);
+) -> Vec<DirtyTerrainSection> {
     let cached = upload.meshes.get(&pos);
-    current
-        .into_iter()
-        .filter(|&(section_y, revision)| {
+    world
+        .terrain_chunk_section_mesh_revisions(pos)
+        .filter(|section| {
             !cached.is_some_and(|cached| {
                 cached
                     .section_mesh_revisions
                     .iter()
                     .any(|&(cached_y, cached_revision)| {
-                        cached_y == section_y && cached_revision == revision
+                        cached_y == section.section_y && cached_revision == section.revision
                     })
             })
         })
+        .map(|section| {
+            let compiled_revision = cached
+                .and_then(|cached| {
+                    cached
+                        .section_mesh_revisions
+                        .iter()
+                        .find(|(section_y, _)| *section_y == section.section_y)
+                })
+                .map(|(_, revision)| *revision)
+                .or_else(|| {
+                    upload
+                        .compiled_section_revisions
+                        .get(&SectionPosition {
+                            x: pos.x,
+                            y: section.section_y,
+                            z: pos.z,
+                        })
+                        .copied()
+                })
+                .unwrap_or(0);
+            DirtyTerrainSection {
+                section_y: section.section_y,
+                revision: section.revision,
+                dirty_from_player: section_is_dirty_from_player(
+                    section.player_changed_revision,
+                    compiled_revision,
+                ),
+            }
+        })
+        .collect()
+}
+
+fn dirty_terrain_sections(
+    world: &WorldStore,
+    upload: &TerrainUploadState,
+    pos: ChunkPos,
+) -> Vec<(i32, u64)> {
+    dirty_terrain_section_states(world, upload, pos)
+        .into_iter()
+        .map(|section| (section.section_y, section.revision))
         .collect()
 }
 
@@ -1048,15 +1177,63 @@ fn terrain_mesh_job_key(
     }
 }
 
+fn terrain_section_is_nearby(pos: ChunkPos, section_y: i32, camera_position: [f32; 3]) -> bool {
+    let center = [
+        pos.x.saturating_mul(16).saturating_add(8),
+        section_y.saturating_mul(16).saturating_add(8),
+        pos.z.saturating_mul(16).saturating_add(8),
+    ];
+    let camera_block = camera_position.map(|coordinate| coordinate.floor() as i32);
+    center
+        .into_iter()
+        .zip(camera_block)
+        .map(|(coordinate, camera)| (i128::from(coordinate) - i128::from(camera)).pow(2))
+        .sum::<i128>()
+        < 768
+}
+
+fn section_rebuilds_synchronously(
+    policy: TerrainPrioritizeChunkUpdates,
+    pos: ChunkPos,
+    section: DirtyTerrainSection,
+    camera_position: [f32; 3],
+) -> bool {
+    match policy {
+        TerrainPrioritizeChunkUpdates::None => false,
+        TerrainPrioritizeChunkUpdates::PlayerAffected => section.dirty_from_player,
+        TerrainPrioritizeChunkUpdates::Nearby => {
+            section.dirty_from_player
+                || terrain_section_is_nearby(pos, section.section_y, camera_position)
+        }
+    }
+}
+
 fn queue_terrain_chunk_mesh(
     world: &WorldStore,
     upload: &mut TerrainUploadState,
     textures: &TerrainTextureState,
     pos: ChunkPos,
-) -> bool {
+    policy: TerrainPrioritizeChunkUpdates,
+) -> TerrainMeshQueueOutcome {
     let key = terrain_mesh_job_key(world, upload, pos);
-    let sections = dirty_terrain_sections(world, upload, pos);
-    debug_assert_eq!(key.section_count, sections.len());
+    let dirty_sections = dirty_terrain_section_states(world, upload, pos);
+    debug_assert_eq!(key.section_count, dirty_sections.len());
+    let camera_position = terrain_camera_position(world);
+    let synchronous_sections = dirty_sections
+        .iter()
+        .copied()
+        .filter(|section| section_rebuilds_synchronously(policy, pos, *section, camera_position))
+        .map(|section| (section.section_y, section.revision))
+        .collect::<Vec<_>>();
+    let rebuild_synchronously = !synchronous_sections.is_empty();
+    let sections = if rebuild_synchronously {
+        synchronous_sections
+    } else {
+        dirty_sections
+            .into_iter()
+            .map(|section| (section.section_y, section.revision))
+            .collect()
+    };
     let target = upload
         .snapshots
         .get(&pos)
@@ -1076,6 +1253,16 @@ fn queue_terrain_chunk_mesh(
                 Some(TerrainSectionVisibility::all_visible(
                     section_y, false, false,
                 )),
+            );
+        }
+        for &(section_y, revision) in &section_mesh_revisions {
+            upload.compiled_section_revisions.insert(
+                SectionPosition {
+                    x: pos.x,
+                    y: section_y,
+                    z: pos.z,
+                },
+                revision,
             );
         }
         synchronize_chunk_section_residency(
@@ -1102,7 +1289,9 @@ fn queue_terrain_chunk_mesh(
                 },
             },
         );
-        return true;
+        return TerrainMeshQueueOutcome::SynchronouslyCompiled {
+            renderer_dirty: true,
+        };
     };
     let neighborhood = chunk_neighborhood(pos)
         .filter(|neighbor| *neighbor != pos)
@@ -1121,17 +1310,22 @@ fn queue_terrain_chunk_mesh(
     let center = terrain_upload_center(world);
     let job = TerrainMeshJob {
         key,
-        // BBB has no mutable `prioritizeChunkUpdates` surface; Vanilla 26.1's
-        // default is `NONE`, so visible near-to-far distance remains the sole
-        // compile ordering input. Local prediction state must not silently
-        // select PLAYER_AFFECTED behavior.
+        // Vanilla's synchronous decision is resolved before a job reaches the
+        // async dispatcher. Remaining async work retains BBB's deterministic
+        // near-to-far queue ordering.
         priority: (chunk_distance_key(pos, center), pos.x, pos.z),
         target,
         neighborhood,
         atlas,
-        camera_position: terrain_camera_position(world),
+        camera_position,
         sections,
     };
+    if rebuild_synchronously {
+        let result = build_terrain_mesh_job(job);
+        return TerrainMeshQueueOutcome::SynchronouslyCompiled {
+            renderer_dirty: accept_terrain_mesh_result(world, upload, result),
+        };
+    }
     let worker = upload
         .mesh_worker
         .get_or_insert_with(TerrainMeshWorker::spawn);
@@ -1165,7 +1359,7 @@ fn queue_terrain_chunk_mesh(
         }
     }
     update_mesh_worker_queue_depth(upload);
-    false
+    TerrainMeshQueueOutcome::Async
 }
 
 fn drain_terrain_mesh_results(world: &WorldStore, upload: &mut TerrainUploadState) -> bool {
@@ -1232,7 +1426,6 @@ fn accept_terrain_mesh_result(
     upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
     let resident_revision = upload.next_resident_revision;
     let current_sections = terrain_section_mesh_revisions(world, result.key.pos);
-    let residency_sections = current_sections.clone();
     let previous_section_ys = upload
         .meshes
         .get(&result.key.pos)
@@ -1257,6 +1450,16 @@ fn accept_terrain_mesh_result(
         .iter()
         .map(|&(section_y, _)| section_y)
         .collect::<HashSet<_>>();
+    for &(section_y, revision) in &result.sections {
+        upload.compiled_section_revisions.insert(
+            SectionPosition {
+                x: result.key.pos.x,
+                y: section_y,
+                z: result.key.pos.z,
+            },
+            revision,
+        );
+    }
     let cached = upload
         .meshes
         .entry(result.key.pos)
@@ -1269,8 +1472,30 @@ fn accept_terrain_mesh_result(
         });
     merge_terrain_section_layers(&mut cached.layers, result.layers, &dirty_section_ys);
     cached.layers.source_sections = current_sections.len();
-    cached.revision = result.key.mesh_revision;
-    cached.section_mesh_revisions = current_sections;
+    cached.section_mesh_revisions.retain(|(section_y, _)| {
+        current_sections
+            .iter()
+            .any(|(current_y, _)| current_y == section_y)
+    });
+    for &(section_y, revision) in &result.sections {
+        if let Some((_, cached_revision)) = cached
+            .section_mesh_revisions
+            .iter_mut()
+            .find(|(cached_y, _)| *cached_y == section_y)
+        {
+            *cached_revision = revision;
+        } else {
+            cached.section_mesh_revisions.push((section_y, revision));
+        }
+    }
+    cached
+        .section_mesh_revisions
+        .sort_unstable_by_key(|(section_y, _)| *section_y);
+    cached.revision = if cached.section_mesh_revisions == current_sections {
+        result.key.mesh_revision
+    } else {
+        0
+    };
     cached.resident_revisions.retain(|(section_y, _)| {
         cached
             .section_mesh_revisions
@@ -1296,6 +1521,7 @@ fn accept_terrain_mesh_result(
         .resident_revisions
         .sort_unstable_by_key(|(section_y, _)| *section_y);
     cached.camera_position = result.camera_position;
+    let residency_sections = cached.section_mesh_revisions.clone();
     let newly_non_empty_ys = cached
         .layers
         .visibility
@@ -1966,7 +2192,9 @@ fn convert_terrain_snapshot(
                 .as_deref()
                 .map(|name| block_wants_biome_blend(name, has_water_fluid))
                 .unwrap_or(has_water_fluid);
-            let blend = wants_blend.then(|| build_chunk_biome_blend(biome_sampler, position));
+            let blend = wants_blend.then(|| {
+                build_chunk_biome_blend(biome_sampler, position, textures.biome_blend_radius())
+            });
             let mut render_data = textures.block_render_data(
                 state.block_name.as_deref(),
                 &state.block_properties,
@@ -2042,8 +2270,11 @@ fn convert_terrain_snapshot(
 fn build_chunk_biome_blend(
     sampler: &bbb_world::ChunkBiomeSampler,
     center: BlockRenderPosition,
+    radius: u32,
 ) -> BiomeBlend {
-    build_biome_blend(center, |pos| sampler.biome_id_at(pos.x, pos.y, pos.z))
+    build_biome_blend(center, radius, |pos| {
+        sampler.biome_id_at(pos.x, pos.y, pos.z)
+    })
 }
 
 fn renderer_skip_rendering(

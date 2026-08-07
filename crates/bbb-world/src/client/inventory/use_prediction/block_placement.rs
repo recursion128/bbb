@@ -269,7 +269,7 @@ impl WorldStore {
             };
             predicted_states.push((relative(target_pos, ProtocolDirection::Up), upper_state_id));
         }
-        if !self.predict_local_block_states(&predicted_states, context.sequence) {
+        if !self.predict_local_player_block_states(&predicted_states, context.sequence) {
             return unsupported();
         }
         // The cloned non-empty hand stack above freezes the same precondition

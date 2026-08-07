@@ -1861,6 +1861,11 @@ fn local_destroy_prediction_defers_server_block_update_until_ack() {
     assert_eq!(store.local_block_predictions().len(), 1);
     assert_eq!(store.counters().local_block_predictions_created, 1);
     assert_eq!(store.counters().local_block_predictions_tracked, 1);
+    let predicted_section = store
+        .terrain_chunk_section_mesh_revisions(ChunkPos { x: 2, z: -3 })
+        .next()
+        .expect("predicted section revision");
+    assert!(predicted_section.player_changed_revision > 0);
 
     assert!(store.apply_block_update(ProtocolBlockUpdate {
         pos: ProtocolBlockPos {
@@ -1887,6 +1892,15 @@ fn local_destroy_prediction_defers_server_block_update_until_ack() {
         1
     );
     assert_eq!(store.counters().local_block_predictions_tracked, 0);
+    let reconciled_section = store
+        .terrain_chunk_section_mesh_revisions(ChunkPos { x: 2, z: -3 })
+        .next()
+        .expect("reconciled section revision");
+    assert!(reconciled_section.revision > predicted_section.revision);
+    assert_eq!(
+        reconciled_section.player_changed_revision, predicted_section.player_changed_revision,
+        "Vanilla preserves dirtyFromPlayer across a later non-player invalidation until compile"
+    );
 }
 
 #[test]

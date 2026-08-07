@@ -1527,11 +1527,28 @@ pub(crate) fn cloud_frame_for_world(
         .unwrap_or_else(|| CloudFrame::at_camera_position([0.0, 0.0, 0.0], game_time, partial_tick))
 }
 
+#[cfg(test)]
 pub(crate) fn weather_render_state_for_world(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
     partial_tick: f32,
+) -> WeatherRenderState {
+    weather_render_state_for_world_with_radius(
+        world,
+        terrain_textures,
+        camera_pose,
+        partial_tick,
+        VANILLA_WEATHER_RENDER_RADIUS,
+    )
+}
+
+pub(crate) fn weather_render_state_for_world_with_radius(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    partial_tick: f32,
+    weather_radius: u32,
 ) -> WeatherRenderState {
     let Some(camera_pose) = camera_pose else {
         return WeatherRenderState::default();
@@ -1550,18 +1567,15 @@ pub(crate) fn weather_render_state_for_world(
         );
     }
     let rain_level = world.weather().rain_level.clamp(0.0, 1.0);
-    let frame = WeatherFrame::at_camera_position(
-        camera_position,
-        VANILLA_WEATHER_RENDER_RADIUS,
-        rain_level,
-    );
+    let frame =
+        WeatherFrame::at_camera_position(camera_position, weather_radius.clamp(3, 10), rain_level);
     if rain_level <= 0.0 {
         return WeatherRenderState::with_lightning(frame, Vec::new(), Vec::new(), lightning_bolts);
     }
     let camera_block_x = camera_position[0].floor() as i32;
     let camera_block_y = camera_position[1].floor() as i32;
     let camera_block_z = camera_position[2].floor() as i32;
-    let radius = VANILLA_WEATHER_RENDER_RADIUS as i32;
+    let radius = weather_radius.clamp(3, 10) as i32;
     let sea_level = world
         .level_info()
         .map(|level| level.sea_level)

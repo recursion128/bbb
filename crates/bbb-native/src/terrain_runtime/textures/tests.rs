@@ -1,6 +1,26 @@
 use super::*;
 
 #[test]
+fn terrain_generation_retains_the_selected_mipmap_limit_for_reload() {
+    let disabled = TerrainTextureState::default().with_max_mipmap_levels(0);
+    let fast = TerrainTextureState::default().with_max_mipmap_levels(2);
+    let clamped = TerrainTextureState::default().with_max_mipmap_levels(99);
+
+    assert_eq!(disabled.max_mipmap_levels(), 0);
+    assert_eq!(fast.max_mipmap_levels(), 2);
+    assert_eq!(clamped.max_mipmap_levels(), 4);
+}
+
+#[test]
+fn terrain_generation_retains_the_selected_biome_blend_radius_for_reload() {
+    let fast = TerrainTextureState::default().with_biome_blend_radius(1);
+    let maximum = TerrainTextureState::default().with_biome_blend_radius(99);
+
+    assert_eq!(fast.biome_blend_radius(), 1);
+    assert_eq!(maximum.biome_blend_radius(), 7);
+}
+
+#[test]
 fn fluid_height_units_follow_vanilla_legacy_level_amounts() {
     assert_eq!(fluid_height_units(0), 14);
     assert_eq!(fluid_height_units(1), 12);
@@ -420,7 +440,7 @@ fn local_vanilla_block_material_flags_distinguish_stone_and_glass() {
         .expect("load local Vanilla block models");
     let atlas = bbb_pack::AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, 1)
         .expect("create Vanilla block atlas packer")
-        .stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)
+        .stitch_mips_with_max_level(&images, 4)
         .expect("stitch local Vanilla block atlas");
     let textures = TerrainTextureState::from_layout(&atlas.layout, Some(models), None, None);
 

@@ -17,6 +17,7 @@ impl ParticleCommandResolver {
             random: LegacyRandom::new(default_particle_seed()),
             particle_level_random: LegacyRandom::new(default_particle_seed()),
             particle_status,
+            biome_blend_radius: 2,
         }
     }
 
@@ -47,6 +48,7 @@ impl ParticleCommandResolver {
             })
             .collect();
         self.terrain_particle_tint_catalog = textures.particle_tint_catalog();
+        self.biome_blend_radius = textures.biome_blend_radius();
     }
 
     pub(super) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
@@ -74,6 +76,7 @@ impl ParticleCommandResolver {
             random: LegacyRandom::new(seed),
             particle_level_random: LegacyRandom::new(seed),
             particle_status,
+            biome_blend_radius: 2,
         }
     }
 
@@ -985,6 +988,7 @@ impl ParticleCommandResolver {
                                 y: center.y,
                                 z: center.z,
                             },
+                            self.biome_blend_radius,
                             biome_sampler,
                         )
                     });
@@ -1011,6 +1015,7 @@ impl ParticleCommandResolver {
                                 y: center.y,
                                 z: center.z,
                             },
+                            self.biome_blend_radius,
                             biome_sampler,
                         )
                     });

@@ -23,7 +23,6 @@ use crate::biome_tint::{
     is_foliage_tinted_block, is_grass_tinted_block, terrain_tint_from_rgb, BiomeBlend,
 };
 
-const VANILLA_DEFAULT_MIPMAP_LEVELS: u32 = 4;
 // Vanilla 26.1's `Stitcher` resolves the consumed blocks atlas to 2048x2048
 // for the mip-4 vanilla pack (confirmed by the official client's atlas log).
 // Keeping the same width is observable in `terrain.fsh`: RGSS derives its LOD
@@ -47,6 +46,10 @@ pub(crate) struct TerrainTextureState {
     /// Vanilla `Options.ao` (smooth lighting): `ModelBlockRenderer` is built
     /// with the option and gates every model's ambient occlusion on it.
     smooth_lighting: bool,
+    biome_blend_radius: u32,
+    /// Vanilla `Options.mipmapLevels`, retained with the generation so a
+    /// server-pack reload rebuilds the atlas with the same startup choice.
+    max_mipmap_levels: u32,
     /// Vanilla `Stitcher` pads sprites by `1 << mipLevel << clamp(bit - 1, 0,
     /// 4)`; the packer multiplies this base by `1 << mipLevel`, so the base is
     /// `1 << clamp(bit - 1, 0, 4)` under `ANISOTROPIC` filtering and 1
@@ -91,6 +94,8 @@ impl Default for TerrainTextureState {
             fallback_index: 0,
             cutout_leaves: true,
             smooth_lighting: true,
+            biome_blend_radius: 2,
+            max_mipmap_levels: 4,
             atlas_base_padding: 1,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
@@ -250,6 +255,8 @@ impl TerrainTextureState {
             fallback_index,
             cutout_leaves: true,
             smooth_lighting: true,
+            biome_blend_radius: 2,
+            max_mipmap_levels: 4,
             atlas_base_padding: 1,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
@@ -271,6 +278,24 @@ impl TerrainTextureState {
 
     pub(crate) fn smooth_lighting(&self) -> bool {
         self.smooth_lighting
+    }
+
+    pub(crate) fn with_biome_blend_radius(mut self, biome_blend_radius: u32) -> Self {
+        self.biome_blend_radius = biome_blend_radius.min(7);
+        self
+    }
+
+    pub(crate) fn biome_blend_radius(&self) -> u32 {
+        self.biome_blend_radius
+    }
+
+    pub(crate) fn with_max_mipmap_levels(mut self, max_mipmap_levels: u32) -> Self {
+        self.max_mipmap_levels = max_mipmap_levels.min(4);
+        self
+    }
+
+    pub(crate) fn max_mipmap_levels(&self) -> u32 {
+        self.max_mipmap_levels
     }
 
     pub(crate) fn with_atlas_base_padding(mut self, atlas_base_padding: u32) -> Self {
@@ -1901,6 +1926,8 @@ pub(crate) fn load_terrain_textures(
     roots: Option<&PackRoots>,
     cutout_leaves: bool,
     smooth_lighting: bool,
+    biome_blend_radius: u32,
+    max_mipmap_levels: u32,
     atlas_base_padding: u32,
 ) -> TerrainTextureState {
     let Some(roots) = roots else {
@@ -1909,6 +1936,8 @@ pub(crate) fn load_terrain_textures(
         return TerrainTextureState::default()
             .with_cutout_leaves(cutout_leaves)
             .with_smooth_lighting(smooth_lighting)
+            .with_biome_blend_radius(biome_blend_radius)
+            .with_max_mipmap_levels(max_mipmap_levels)
             .with_atlas_base_padding(atlas_base_padding);
     };
     match try_load_terrain_textures(
@@ -1916,6 +1945,8 @@ pub(crate) fn load_terrain_textures(
         roots,
         cutout_leaves,
         smooth_lighting,
+        biome_blend_radius,
+        max_mipmap_levels,
         atlas_base_padding,
     ) {
         Ok(textures) => textures,
@@ -1925,6 +1956,8 @@ pub(crate) fn load_terrain_textures(
             TerrainTextureState::default()
                 .with_cutout_leaves(cutout_leaves)
                 .with_smooth_lighting(smooth_lighting)
+                .with_biome_blend_radius(biome_blend_radius)
+                .with_max_mipmap_levels(max_mipmap_levels)
                 .with_atlas_base_padding(atlas_base_padding)
         }
     }
@@ -1935,6 +1968,8 @@ pub(crate) fn try_load_terrain_textures(
     roots: &PackRoots,
     cutout_leaves: bool,
     smooth_lighting: bool,
+    biome_blend_radius: u32,
+    max_mipmap_levels: u32,
     atlas_base_padding: u32,
 ) -> Result<TerrainTextureState> {
     let images = roots.load_block_texture_images()?;
@@ -1954,7 +1989,7 @@ pub(crate) fn try_load_terrain_textures(
         }
     };
     let packer = AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, atlas_base_padding)?;
-    let atlas = packer.stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)?;
+    let atlas = packer.stitch_mips_with_max_level(&images, max_mipmap_levels.min(4))?;
     let animation_plan = atlas
         .layout
         .prepare_gpu_animation_plan(&images, atlas.mip_level())?;
@@ -1989,7 +2024,9 @@ pub(crate) fn try_load_terrain_textures(
         biome_colors,
     )
     .with_cutout_leaves(cutout_leaves)
-    .with_smooth_lighting(smooth_lighting);
+    .with_smooth_lighting(smooth_lighting)
+    .with_biome_blend_radius(biome_blend_radius)
+    .with_max_mipmap_levels(max_mipmap_levels);
     Ok(textures)
 }
 

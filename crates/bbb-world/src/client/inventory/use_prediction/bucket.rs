@@ -105,7 +105,8 @@ impl WorldStore {
         // state, its inherited `canSurvive` returns true, and
         // `PowderSnowBlock.getCollisionShape` is empty for the placement
         // context. No entity-obstruction query remains on this exact path.
-        if !self.predict_local_block_state(target_pos, placement_state_id, context.sequence) {
+        if !self.predict_local_player_block_state(target_pos, placement_state_id, context.sequence)
+        {
             return unresolved_owner();
         }
 
@@ -301,7 +302,7 @@ impl WorldStore {
         let Some(sequence) = sequence else {
             return unsupported();
         };
-        if !self.predict_local_block_state(pos, predicted_state_id, sequence) {
+        if !self.predict_local_player_block_state(pos, predicted_state_id, sequence) {
             return unsupported();
         }
         let Some(dropped) = self.replace_local_item_with_filled_result(
@@ -493,7 +494,7 @@ impl WorldStore {
         let Some(source_state_id) = self.bucket_source_state_id(fluid) else {
             return BucketEmptyAttempt::Unsupported;
         };
-        if !self.predict_local_block_state(pos, source_state_id, sequence) {
+        if !self.predict_local_player_block_state(pos, source_state_id, sequence) {
             return BucketEmptyAttempt::Unsupported;
         }
         BucketEmptyAttempt::Success(BucketEmptyOutcome::Sound {
