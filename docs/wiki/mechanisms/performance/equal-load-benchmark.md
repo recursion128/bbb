@@ -82,15 +82,18 @@ commit `eb6c96cbd` 各保留一份 release binary，二者 SHA-256 均为
 不会把后续文档/证据提交冒充原 capture。这些路径只标识本机证据，清理或换机后必须重跑，
 不能从 Wiki 反向重建 raw capture。`538121f8f` 的运行时代码变化后，这份正式摘要不再是
 current-binary 性能证据；它只保留历史结果，矩阵在新 ABBA/GPU-duration 完成前保持
-`partial`。
+`partial`；下方 current `50eb16be6` receipt 才关闭该条件。
 
 post-`538121f8f` 的 current-binary 一致性前置门禁已在 capture commit `bd7bcc87b` 重采：
 三场景双侧重复噪声标定、冻结 ROI、637 resident/selected chunks、15,288
 resident/selected sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。
-workload summary 位于 `/tmp/bbb-parity-bd7bcc87b/visual/workload-summary.json`，SHA-256 为
-`d820fed1bba8c00cb298ac9ac1249d9cfcd2821e9d102151b3516620ac1f8922`；draw summary 位于
-`/tmp/bbb-parity-bd7bcc87b/renderdoc/summary.json`，SHA-256 为
-`6e361f54ba94d358001f6cb2ffe0053668fcc946966cfcc02059e60d5b66f868`。BBB release binary
+byte-identical provenance 将其绑定到 current evidence commit `50eb16be6`；workload summary
+位于 `/tmp/bbb-parity-50eb16be6/visual/workload-summary.json`，SHA-256 为
+`d10144632eb85379c0c56a0d628abf793dbd36764d34aea08e89c5d3ad7d3f85`；draw summary 位于
+`/tmp/bbb-parity-50eb16be6/renderdoc/summary.json`，SHA-256 为
+`1072372a7ba97a87ad5503aac07adc5c9019879e4283aeb025d581834179f532`。正式性能摘要位于
+`/tmp/bbb-parity-50eb16be6/formal-summary.json`，SHA-256 为
+`33a41b143b8f1824f36f86818a3d5eb8ed7c88804525db298c16dd152fa4744b`；BBB release binary
 SHA-256 为 `53b60bb071052ba9dd7f56b88107a6e7dd271187c9b2458dae2f4eb4f095b27c`。
 
 | Contract/evidence | SHA-256 |
@@ -101,24 +104,24 @@ SHA-256 为 `53b60bb071052ba9dd7f56b88107a6e7dd271187c9b2458dae2f4eb4f095b27c`�
 | settings | `5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd` |
 | scene | `6f77811b5deafacea3c7666414cc1705c396a987b015e2a5f1f4832e872f73bc` |
 | server camera log | `f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a` |
-| visual/workload gate | `80aa85f677426bac771ea654bafd927f83a4827ba4df545792ca4beb99b3154f` |
+| visual/workload gate | `d10144632eb85379c0c56a0d628abf793dbd36764d34aea08e89c5d3ad7d3f85` |
 | workload contract evidence | `7f5608ba90d5e72d1462728244cc8ae3bb39c22e3501f97f2bc9c88e07c57136` |
-| RenderDoc anchor summary | `48862de8f27a2ee60caa91911109c66b52fe3b17ffb10668ccd147af7cbe86c9` |
-| RenderDoc evidence | `29722afd7bfc8dfe376d0b6d874164171cf09d94510bbaa9228e42f7096538dc` |
+| RenderDoc anchor summary | `1072372a7ba97a87ad5503aac07adc5c9019879e4283aeb025d581834179f532` |
+| RenderDoc evidence | `4ca6c6f9fe5c4c406228326a9ceefcedc0854c1117153caa5ff81b27537a279f` |
 
 MangoHud application-frame 结果如下；1% low 来自尾部分布，不能从 p99 直接推导：
 
 | 场景/客户端 | Samples | p50 ms | p95 ms | p99 ms | 1% low FPS |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| overall Vanilla | 56,621 | 3.442 | 5.073 | 5.865 | 162.17 |
-| overall BBB | 70,231 | 2.820 | 4.301 | 4.775 | 173.14 |
-| static Vanilla / BBB | 17,178 / 22,249 | 3.921 / 2.974 | 4.202 / 3.282 | 4.380 / 3.404 | 208.60 / 243.36 |
-| flight Vanilla / BBB | 21,894 / 26,709 | 3.041 / 2.494 | 3.510 / 2.791 | 3.823 / 2.918 | 247.32 / 219.11 |
-| boundary Vanilla / BBB | 17,549 / 21,273 | 3.490 / 2.843 | 5.721 / 4.694 | 6.190 / 4.992 | 156.29 / 160.11 |
+| overall Vanilla | 56,322 | 3.450 | 5.071 | 5.870 | 161.64 |
+| overall BBB | 70,180 | 2.822 | 4.305 | 4.772 | 170.79 |
+| static Vanilla / BBB | 16,891 / 22,247 | 3.959 / 2.972 | 4.212 / 3.285 | 4.343 / 3.411 | 212.25 / 233.09 |
+| flight Vanilla / BBB | 21,884 / 26,688 | 3.044 / 2.497 | 3.506 / 2.798 | 3.801 / 2.922 | 248.16 / 216.84 |
+| boundary Vanilla / BBB | 17,547 / 21,245 | 3.489 / 2.846 | 5.741 / 4.701 | 6.151 / 5.002 | 154.80 / 157.53 |
 
 `perf stat` 的总体进程均值为 Vanilla/BBB task-clock
-`1.083/1.050 ms/frame`、cycles `4,464,586/4,516,956`、instructions
-`6,821,659/6,663,827`；这两种工具口径不能相减为 CPU 或 GPU 时间。MangoHud 0.8.4
+`1.087/1.054 ms/frame`、cycles `4,489,096/4,530,153`、instructions
+`6,810,436/6,642,359`；这两种工具口径不能相减为 CPU 或 GPU 时间。MangoHud 0.8.4
 archive SHA-256 是
 `aa0b2a009552f5e7c50baabf361267a79ea5e5c0fea440786f3b202d51f57753`；RenderDoc
 1.45 commit 是 `2fc0bc04cb95499635f63986a55bc6f67849dd9f`，archive SHA-256 是
@@ -134,8 +137,8 @@ required 集合；主线程单帧最多复制 8 个区块快照形成突发。�
 revision 为失效边界复用前两类结果，并把快照抽取限制为每帧 1 个；最终目标仍为 637 个
 区块、15,288 个 section，三个正式 capture start 都是 cache ready、pending jobs 为 0。
 
-本轮正式两轮 ABBA 中，BBB 相对 Vanilla 的 task-clock 为 `-3.09%`，instructions 为
-`-2.31%`；cycles 为 `+1.17%`，按 presented frame 如实报告但不冒充时间。BBB 的
+本轮正式两轮 ABBA 中，BBB 相对 Vanilla 的 task-clock 为 `-3.04%`，instructions 为
+`-2.47%`；cycles 为 `+0.91%`，按 presented frame 如实报告但不冒充时间。BBB 的
 application-frame p50/p95/p99 均更低，双方均无 `>=33.333 ms` hitch。由此当前数据不再
 支持继续以“重复 CPU 工作导致 BBB 劣于 Vanilla”为前提优化；后续只有新 profile 或
 一致性修复造成回退时才重开性能 slice。
@@ -175,20 +178,21 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 事件；早期把它记为“内核缺少所需 tracepoint”的判断源于名称，而非能力缺失。
 
 本轮重新采集的 Vanilla/BBB association ratio 为 `0.9999917/1.0`；graphics-ring client
-jobs 分别为 `83,007/36,397`。GPU execution p50 为 `1.545/2.736 ms`，p95 为
-`3.277/3.108 ms`，p99 为 `4.300/4.483 ms`。GPU trace 对 Weston surface-commit p50
-的影响为 `+0.012%/-0.006%`，MangoHud 为 `-0.056%/-0.047%`，均在 1% 门槛内。
+jobs 分别为 `83,098/36,194`。GPU execution p50 为 `1.542/2.740 ms`，p95 为
+`3.273/3.102 ms`，p99 为 `4.320/4.482 ms`。GPU trace 对 Weston surface-commit p50
+的影响为 `-0.012%/+0.020%`，MangoHud 为 `-0.040%/-0.025%`，均在 1% 门槛内。
 
 ## 当前差异
 
-current-binary 的视觉/workload/draw 前置门禁已经通过；正式两轮 ABBA、MangoHud/perf、
-GPU-duration association 与 overhead 仍待重采，因此本机制保持 active。frame interval、
-进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，任何一个都不能由另一个
-推导或相减得出；draw count 因 API batching 不同，同样不能作为等负载或性能倍数。
+current-binary 的视觉/workload/draw、正式两轮 ABBA、MangoHud/perf、GPU-duration
+association 与 overhead 已全部通过；本 receipt 文档在 full-gate 前仍保持 matrix/ledger
+active。frame interval、进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
+任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，同样不能作为
+等负载或性能倍数。
 
 ## 账本/goal 路由
 
-等负载比较与 GPU duration 的 current-binary 重采路由到唯一账本。非 Linux 发布行等相邻平台状态只取
+等负载比较与 GPU duration 在本 receipt full-gated 后关闭 active 账本项。非 Linux 发布行等相邻平台状态只取
 [`unsupported-features.md`](../../../unsupported-features.md)。
 
 ## 精确重开条件
