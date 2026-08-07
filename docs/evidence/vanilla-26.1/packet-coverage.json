@@ -7696,7 +7696,7 @@
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
             "crates/bbb-native/src/terrain_runtime/textures.rs#synchronize_biome_registry",
             "crates/bbb-native/src/particle_runtime.rs#synchronize_terrain_textures",
-            "crates/bbb-native/src/runtime.rs#sampled_environment_attributes_at_camera",
+            "crates/bbb-native/src/runtime.rs#sampled_camera_fog_and_sky_attributes_at_camera",
             "crates/bbb-native/src/music_runtime.rs#selected_background_music",
             "crates/bbb-native/src/runtime.rs#environment_audio.advance_for_ticks",
             "crates/bbb-native/src/runtime.rs#environment_animate.advance_for_ticks",
