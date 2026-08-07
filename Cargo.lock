@@ -335,6 +335,7 @@ dependencies = [
  "chrono-tz",
  "clap",
  "glam 0.29.3",
+ "hexf-parse",
  "image",
  "isocountry",
  "pollster",

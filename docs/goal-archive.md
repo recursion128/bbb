@@ -86,4 +86,7 @@
   MangoHud/GPU trace 开销与双 API GPU duration；消除稳定 visibility 投影、地形选择集合重建
   和单帧过量快照复制，BBB 每帧 instructions/task-clock 较优化前下降 30.32%/15.43%。
 
+- **2026-08-07（Options DataFix 工程）**：启动 raw map 在 current decode 前执行 source-derived
+  `DataFixTypes.OPTIONS` 全链；17 个 registration、14 个 fix hash、112 个 LWJGL2 键码与 1/1 owner evidence 进入 generated gate。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

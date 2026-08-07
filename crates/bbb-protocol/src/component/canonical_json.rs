@@ -128,7 +128,8 @@ pub fn java_float_to_string(value: f32) -> String {
     java_float_string(value)
 }
 
-pub(crate) fn java_double_to_string(value: f64) -> String {
+/// Formats a Java `double` exactly like `Double.toString`.
+pub fn java_double_to_string(value: f64) -> String {
     java_double_string(value)
 }
 

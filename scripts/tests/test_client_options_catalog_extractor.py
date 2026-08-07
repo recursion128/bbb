@@ -167,6 +167,12 @@ class ClientOptionsCatalogGeneratorTests(unittest.TestCase):
             rendered,
             "regenerate with scripts/generate-client-options-catalog.py",
         )
+        datafix = generator.client_options_datafix_catalog(source_root)
+        self.assertEqual(
+            generator.DEFAULT_DATAFIX_RUST_OUTPUT.read_text(encoding="utf-8"),
+            generator.render_rust_datafix(datafix),
+            "regenerate with scripts/generate-client-options-catalog.py",
+        )
 
     def test_catalog_covers_every_options_txt_line(self) -> None:
         document = json.loads(
@@ -233,6 +239,84 @@ class ClientOptionsCatalogGeneratorTests(unittest.TestCase):
             ],
             ["renderClouds"],
         )
+
+    def test_datafix_catalog_covers_every_registered_options_fix(self) -> None:
+        document = json.loads(
+            generator.DEFAULT_OUTPUT.read_text(encoding="utf-8")
+        )["data_fix"]
+        fixes = document["fixes"]
+
+        self.assertEqual(document["invalid_or_missing_version"], 0)
+        self.assertEqual(len(document["source_files"]), 17)
+        self.assertEqual(len(fixes), 17)
+        self.assertEqual([fix["order"] for fix in fixes], list(range(17)))
+        self.assertEqual(
+            [fix["version"] for fix in fixes],
+            [
+                505,
+                816,
+                1344,
+                1446,
+                1936,
+                2556,
+                2558,
+                3201,
+                3214,
+                3319,
+                3943,
+                4651,
+                4651,
+                4651,
+                4651,
+                4651,
+                4661,
+            ],
+        )
+        self.assertEqual(
+            Counter(fix["kind"] for fix in fixes),
+            Counter(
+                {
+                    "graphics-mode-split": 4,
+                    "force-vbo": 1,
+                    "lower-case-language": 1,
+                    "key-lwjgl3": 1,
+                    "key-translation": 1,
+                    "add-text-background": 1,
+                    "fancy-graphics-to-mode": 1,
+                    "rename-field": 1,
+                    "programmer-art": 1,
+                    "ambient-occlusion": 1,
+                    "accessibility-onboard": 1,
+                    "menu-blurriness": 1,
+                    "graphics-preset-custom": 1,
+                    "music-toast": 1,
+                }
+            ),
+        )
+        self.assertEqual(
+            next(fix for fix in fixes if fix["kind"] == "rename-field")[
+                "arguments"
+            ],
+            ["key_key.swapHands", "key_key.swapOffhand"],
+        )
+        self.assertEqual(
+            [
+                fix["arguments"]
+                for fix in fixes
+                if fix["kind"] == "graphics-mode-split"
+            ],
+            [
+                ["cutoutLeaves", "false", "true", "true"],
+                ["weatherRadius", "5", "10", "10"],
+                ["vignette", "false", "true", "true"],
+                ["improvedTransparency", "false", "false", "true"],
+            ],
+        )
+        lwjgl = document["legacy_lwjgl_keys"]
+        self.assertEqual(len(lwjgl), 112)
+        self.assertEqual(len({entry["code"] for entry in lwjgl}), 112)
+        self.assertIn({"code": 17, "name": "key.w"}, lwjgl)
+        self.assertIn({"code": 211, "name": "key.delete"}, lwjgl)
 
 
 if __name__ == "__main__":

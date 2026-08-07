@@ -498,10 +498,7 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。`persistence-options-unconsumed` 剩余一个 Vanilla `Options.dataFix` owner
-已重新确认为无游戏内配置 UI 也可从启动路径到达；当前工程 slice 必须逐 owner
-实现真实消费或重路由到已有实现证据，不能以 options 行可 round-trip 代替行为。
-`audio-sound-manager-engine` 仍为 `partial`：inventory 的 144 个 audio owner 已全部有 decision-level implementation/test
+状态：`active`。`audio-sound-manager-engine` 仍为 `partial`：inventory 的 144 个 audio owner 已全部有 decision-level implementation/test
 evidence，9 个 pause/manual-loop owner 另有 reopen condition；审计修复了 11 个 stored `soundCategory_*` 仅 round-trip、
 播放仍用默认值的真实缺口，并以已验证官方 OpenAL native 关闭 `Library` HRTF/device source count 和 `Channel`
 source/distance/static/四缓冲 streaming 实现差异；只余正式真实设备 differential receipt 留在账本。

@@ -83,13 +83,6 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `security-secure-chat-reporting`, `persistence-options-unconsumed`,
 `audio-sound-manager-engine`
 
-- Implement the remaining startup-reachable `Options.dataFix` owner before
-  any `options.txt` field is decoded. It must migrate each older supported
-  options version through the Vanilla 26.1 options DataFixer schema rather
-  than merely accepting the current catalog keys. Owner: `bbb-native`.
-  Vanilla anchors: `Options.java:1190,1691,1770,1825` and the verified
-  `DataFixTypes.OPTIONS` schema/fix registrations.
-
 - Produce the formal Vanilla↔BBB default/ALSA host-device differential receipt
   for `audio-sound-manager-engine`, exercising both HRTF requests, device-derived
   pool capacity, static/streaming source state, buffer lifecycle, listener state,

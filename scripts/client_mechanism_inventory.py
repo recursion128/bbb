@@ -4050,6 +4050,35 @@ OPTIONS_FILE_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+OPTIONS_DATAFIX_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options.rs#ClientOptions::load",
+                "crates/bbb-native/src/client_options/datafix.rs#update_to_current_version",
+                "crates/bbb-native/src/client_options/datafix.rs#apply_fix",
+                "crates/bbb-native/src/client_options/datafix_26_1.rs#CLIENT_OPTIONS_DATA_FIXES",
+                "scripts/client_options_datafix_extractor.py#client_options_datafix_catalog",
+                "scripts/generate-client-options-catalog.py#render_rust_datafix",
+            ),
+            (
+                "crates/bbb-native/src/client_options/datafix.rs"
+                "#complete_version_zero_chain_applies_in_registration_order",
+                "crates/bbb-native/src/client_options/datafix.rs"
+                "#each_schema_boundary_is_exclusive_of_its_own_fixes",
+                "crates/bbb-native/src/client_options.rs"
+                "#old_options_are_data_fixed_before_current_fields_are_decoded",
+                "crates/bbb-native/src/client_options.rs"
+                "#a_throwing_legacy_key_fix_retains_all_defaults_like_options_load",
+                "scripts/tests/test_client_options_catalog_extractor.py"
+                "#test_datafix_catalog_covers_every_registered_options_fix",
+            ),
+        ),
+        ("dataFix",),
+    ),
+)
+
+
 OPTIONS_DERIVED_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -8246,6 +8275,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
     "persistence-server-list": SERVER_LIST_OWNER_EVIDENCE,
     "persistence-options-file": OPTIONS_FILE_OWNER_EVIDENCE,
+    "persistence-options-unconsumed": OPTIONS_DATAFIX_OWNER_EVIDENCE,
     "persistence-options-derived": OPTIONS_DERIVED_OWNER_EVIDENCE,
     "persistence-options-apply": OPTIONS_APPLY_OWNER_EVIDENCE,
     "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
@@ -8926,7 +8956,11 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-renderer/src/renderer.rs",
         "crates/bbb-pack/src/selected_packs.rs",
     ),
-    "persistence-options-unconsumed": ("docs/unsupported-features.md",),
+    "persistence-options-unconsumed": (
+        "crates/bbb-native/src/client_options/datafix.rs",
+        "crates/bbb-native/src/client_options/datafix_26_1.rs",
+        "docs/evidence/vanilla-26.1/client-options-catalog.json",
+    ),
     "persistence-server-list": ("crates/bbb-native/src/server_list.rs",),
     "identity-profile-key-lifecycle": ("docs/unsupported-features.md",),
     "identity-skin-presentation": ("crates/bbb-item-model/src/skin_runtime.rs",),

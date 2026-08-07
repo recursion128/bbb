@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "3b667bc4ae9b67dbd03162ce203be1c05c54c77b789085773d161ec0eac197e0"
+      "sha256": "90855edf376e69cd246b7fdff49e02db60f39c1c1820e10e0483bf1a1ed8f0dd"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -290,9 +290,12 @@
     },
     "persistence-options-unconsumed": {
       "bbb_evidence": [
-        "docs/unsupported-features.md"
+        "crates/bbb-native/src/client_options/datafix.rs",
+        "crates/bbb-native/src/client_options/datafix_26_1.rs",
+        "docs/evidence/vanilla-26.1/client-options-catalog.json"
       ],
-      "owner_count": 1
+      "owner_count": 1,
+      "owner_evidence_count": 1
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -15150,6 +15153,23 @@
       "vanilla_owner": "net.minecraft.client.Options#darknessEffectScale()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#ClientOptions::load",
+          "crates/bbb-native/src/client_options/datafix.rs#update_to_current_version",
+          "crates/bbb-native/src/client_options/datafix.rs#apply_fix",
+          "crates/bbb-native/src/client_options/datafix_26_1.rs#CLIENT_OPTIONS_DATA_FIXES",
+          "scripts/client_options_datafix_extractor.py#client_options_datafix_catalog",
+          "scripts/generate-client-options-catalog.py#render_rust_datafix"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/datafix.rs#complete_version_zero_chain_applies_in_registration_order",
+          "crates/bbb-native/src/client_options/datafix.rs#each_schema_boundary_is_exclusive_of_its_own_fixes",
+          "crates/bbb-native/src/client_options.rs#old_options_are_data_fixed_before_current_fields_are_decoded",
+          "crates/bbb-native/src/client_options.rs#a_throwing_legacy_key_fix_retains_all_defaults_like_options_load",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_datafix_catalog_covers_every_registered_options_fix"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -50105,6 +50125,7 @@
       "world-client-map-data",
       "persistence-server-list",
       "persistence-options-file",
+      "persistence-options-unconsumed",
       "persistence-options-derived",
       "persistence-options-apply",
       "world-client-level-events",

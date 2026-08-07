@@ -13,6 +13,8 @@
 
 pub(crate) mod args;
 mod catalog_26_1;
+mod datafix;
+mod datafix_26_1;
 pub(crate) mod derived;
 pub(crate) mod key_bindings;
 mod key_mappings_26_1;
@@ -53,8 +55,9 @@ pub(crate) fn locale_is_japanese(locale: Option<&str>) -> bool {
 pub(crate) struct ClientOptions {
     values: BTreeMap<&'static str, String>,
     /// Lines under `key_`, `soundCategory_` and `modelPart_`, carried through
-    /// verbatim so a shared game directory keeps the bytes Vanilla wrote.
-    /// The `key_` half is read back through `key_bindings`. The special
+    /// verbatim after any version-required data fix, so a shared game directory
+    /// keeps the current bytes Vanilla wrote. The `key_` half is read back
+    /// through `key_bindings`. The special
     /// `fullscreenResolution` startup line is deliberately not here: it is
     /// stored in [`Self::fullscreen_resolution`] so the per-element groups
     /// never accidentally persist report-only fields.
@@ -95,11 +98,19 @@ impl ClientOptions {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(options),
             Err(error) => return Err(error.into()),
         };
+        let mut raw_options = BTreeMap::new();
         for line in raw.lines() {
             let Some((key, value)) = line.split_once(':') else {
                 continue;
             };
-            options.set_raw(key, value);
+            raw_options.insert(key.to_owned(), value.to_owned());
+        }
+        if let Err(error) = datafix::update_to_current_version(&mut raw_options) {
+            tracing::warn!(%error, "failed to migrate options.txt; retaining defaults");
+            return Ok(options);
+        }
+        for (key, value) in raw_options {
+            options.set_raw(&key, &value);
         }
         Ok(options)
     }
@@ -682,6 +693,61 @@ mod tests {
     }
 
     #[test]
+    fn old_options_are_data_fixed_before_current_fields_are_decoded() {
+        let path = unique_options_path("datafix-before-decode");
+        fs::write(
+            &path,
+            "version:4650\n\
+             graphicsMode:2\n\
+             cutoutLeaves:false\n\
+             weatherRadius:1\n\
+             vignette:false\n\
+             improvedTransparency:false\n\
+             graphicsPreset:fabulous\n\
+             showNowPlayingToast:false\n",
+        )
+        .unwrap();
+
+        let options = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+
+        // All five v4651 fixes overwrite the already-present current fields
+        // from the old graphicsMode before `set_raw` reaches their codecs.
+        assert_eq!(options.raw("cutoutLeaves"), Some("true"));
+        assert_eq!(options.raw("weatherRadius"), Some("10"));
+        assert_eq!(options.raw("vignette"), Some("true"));
+        assert_eq!(options.raw("improvedTransparency"), Some("true"));
+        assert_eq!(options.raw("graphicsPreset"), Some("custom"));
+        // The next schema registration renames and converts the old boolean.
+        assert_eq!(options.raw("musicToast"), Some("never"));
+        assert_eq!(options.raw("showNowPlayingToast"), None);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn a_throwing_legacy_key_fix_retains_all_defaults_like_options_load() {
+        let path = unique_options_path("datafix-failure-defaults");
+        fs::write(
+            &path,
+            "version:0\n\
+             lang:zh_cn\n\
+             renderDistance:20\n\
+             key_key.forward:key.keyboard.w\n",
+        )
+        .unwrap();
+
+        let options = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+
+        // Options.load catches the unchecked OptionsKeyLwjgl3Fix parse error
+        // outside the entire migration/decode block, so no earlier raw line is
+        // applied either.
+        assert_eq!(
+            options,
+            ClientOptions::defaults(ClientOptionHost::default())
+        );
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
     fn a_missing_file_leaves_the_defaults_in_place() {
         let options =
             ClientOptions::load(&unique_options_path("absent"), ClientOptionHost::default())
@@ -698,10 +764,14 @@ mod tests {
         let path = unique_options_path("round-trip");
         fs::write(
             &path,
-            "lang:zh_cn\n\
-             someModOption:7\n\
-             key_key.attack:key.mouse.left\n\
-             soundCategory_master:0.5\n",
+            format!(
+                "version:{}\n\
+                 lang:zh_cn\n\
+                 someModOption:7\n\
+                 key_key.attack:key.mouse.left\n\
+                 soundCategory_master:0.5\n",
+                bbb_protocol::MC_DATA_VERSION
+            ),
         )
         .expect("write options");
 

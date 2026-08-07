@@ -836,7 +836,11 @@ cache。
 `bbb-native::client_options` 是 `options.txt` 的唯一 owner，key/编码/默认值全部由
 `scripts/generate-client-options-catalog.py` 从 `Options.java` 派生。读取按 Vanilla 语义：只在
 第一个 `:` 切分、坏行跳过、缺文件用默认、未知 key 不回写；写入是直接截断重写（**没有**临时文件或
-备份——那是 `ServerList` 才有的）。CLI 参数是 override，只有用户真的在命令行打了才压过文件值。
+备份——那是 `ServerList` 才有的）。完整 raw map 会先按文件 `version`（缺失/非法为 0）执行
+source-derived 的 17 个 `DataFixTypes.OPTIONS` registration，再进入任何 current codec 或 startup
+binding；registration/order、14 个 fix source hash 与 LWJGL2 112 键码同样由该 generator 锁定，
+fix 抛错时整组保留 defaults，匹配 `Options.load` 的外层 catch。CLI 参数是 override，只有用户真的
+在命令行打了才压过文件值。
 运行期唯一会改文件的是 Vanilla 同样会存盘的两个调试热键（F3+H `advancedItemTooltips`、F3+P
 `pauseOnLostFocus`），存盘之后按 `Options.save` 的收尾无条件补发一次 `ClientInformation`。
 

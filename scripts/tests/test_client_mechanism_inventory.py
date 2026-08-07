@@ -1549,6 +1549,26 @@ class LocalPlayer {
                 if owner["mechanism_id"].startswith("persistence-options-")
             )
         )
+        self.assertEqual(
+            value["mechanisms"]["persistence-options-unconsumed"][
+                "owner_evidence_count"
+            ],
+            1,
+        )
+        datafix = next(
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "persistence-options-unconsumed"
+        )
+        self.assertIn(
+            "crates/bbb-native/src/client_options/datafix.rs#update_to_current_version",
+            datafix["bbb_evidence"]["implementation"],
+        )
+        self.assertIn(
+            "crates/bbb-native/src/client_options.rs"
+            "#old_options_are_data_fixed_before_current_fields_are_decoded",
+            datafix["bbb_evidence"]["tests"],
+        )
 
         server_list = [
             owner

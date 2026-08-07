@@ -35,6 +35,7 @@ chrono = { workspace = true }
 chrono-tz = { workspace = true }
 clap = { workspace = true }
 glam = { workspace = true }
+hexf-parse = { workspace = true }
 isocountry = { workspace = true }
 pollster = { workspace = true }
 reqwest = { workspace = true }

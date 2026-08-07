@@ -1002,5 +1002,693 @@
     "syncChunkWrites",
     "useNativeTransport",
     "resourcePacks"
-  ]
+  ],
+  "data_fix": {
+    "owner": "net.minecraft.client.Options#dataFix(final CompoundTag tag)",
+    "registration_source": "net/minecraft/util/datafix/DataFixers.java#addFixers",
+    "type": "DataFixTypes.OPTIONS",
+    "invalid_or_missing_version": 0,
+    "application_rule": "apply each registration in order when input version is lower than the fix schema version",
+    "source_files": [
+      {
+        "path": "net/minecraft/client/Options.java",
+        "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
+      },
+      {
+        "path": "net/minecraft/util/datafix/DataFixTypes.java",
+        "sha256": "250dd482723e4c2ab42c874f1d829423039c0d1b9e87eed9785af66be42bcecb"
+      },
+      {
+        "path": "net/minecraft/util/datafix/DataFixers.java",
+        "sha256": "0a5eba7e5fa2aef042d2cf4b0aae78f7cc1cae6c2e85332b85ff16cbb12c523c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsAccessibilityOnboardFix.java",
+        "sha256": "78201093ca05d43b15beae3f43174fb713e02be6b2d28ed34de23c467c85c2cc"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsAddTextBackgroundFix.java",
+        "sha256": "476594f2659e171f1ee8c9d742dc8f1abdbd78b97a959b832c87107b6ecad60c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsAmbientOcclusionFix.java",
+        "sha256": "9037e4e52ff923fce99d8af054ed1ec71c66f882baa543bbbd6bbca1ff8279ac"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsFancyGraphicsToGraphicsModeFix.java",
+        "sha256": "cd5ee3e15bd5b15332d01ca7636c07951df1cfb5005e2471056ea3c0e187a2f8"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsForceVBOFix.java",
+        "sha256": "02c6692681f0e7e11ff5785799d226c38753f0e55161b33ea327da2a79a3469c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java",
+        "sha256": "5c11c73876c3cc78a9917b1120cf2f188fb6dd6a125b6da7ce153be55ea1ee82"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java",
+        "sha256": "8b7ceb3a6df541883a8a67c26aa3e17508a88901591b61a031d2662caef8a99c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsLowerCaseLanguageFix.java",
+        "sha256": "d3f923bbf9efc6dd67e993ce331eab1f3e3ce0a37b4c2c27ec62d9129b68f906"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsMenuBlurrinessFix.java",
+        "sha256": "29243321ef67e439c2d923d2897deea4670c53ec3fc583b58d1ff11e6a85a636"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsMusicToastFix.java",
+        "sha256": "2c835a11aab792da92dbec4ff3cfc4dd3e6d73f79cd1401cf555b35f7a5affab"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsProgrammerArtFix.java",
+        "sha256": "1c5fd58a022a30b1f47968318eb9cbda98211b8c410099693a37e7f72e48a05e"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsRenameFieldFix.java",
+        "sha256": "a6c7ac0072dc05393d022701d00c9a1c2b2f50d4061263bd5d00aceb8e3b20ef"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsSetGraphicsPresetToCustomFix.java",
+        "sha256": "8b198596460244a78b4265f4acf1696f2c96a72d3ab06e53e1ab92559418df70"
+      }
+    ],
+    "fixes": [
+      {
+        "order": 0,
+        "version": 505,
+        "kind": "force-vbo",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsForceVBOFix.java",
+        "source_sha256": "02c6692681f0e7e11ff5785799d226c38753f0e55161b33ea327da2a79a3469c"
+      },
+      {
+        "order": 1,
+        "version": 816,
+        "kind": "lower-case-language",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsLowerCaseLanguageFix.java",
+        "source_sha256": "d3f923bbf9efc6dd67e993ce331eab1f3e3ce0a37b4c2c27ec62d9129b68f906"
+      },
+      {
+        "order": 2,
+        "version": 1344,
+        "kind": "key-lwjgl3",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java",
+        "source_sha256": "5c11c73876c3cc78a9917b1120cf2f188fb6dd6a125b6da7ce153be55ea1ee82"
+      },
+      {
+        "order": 3,
+        "version": 1446,
+        "kind": "key-translation",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java",
+        "source_sha256": "8b7ceb3a6df541883a8a67c26aa3e17508a88901591b61a031d2662caef8a99c"
+      },
+      {
+        "order": 4,
+        "version": 1936,
+        "kind": "add-text-background",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsAddTextBackgroundFix.java",
+        "source_sha256": "476594f2659e171f1ee8c9d742dc8f1abdbd78b97a959b832c87107b6ecad60c"
+      },
+      {
+        "order": 5,
+        "version": 2556,
+        "kind": "fancy-graphics-to-mode",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsFancyGraphicsToGraphicsModeFix.java",
+        "source_sha256": "cd5ee3e15bd5b15332d01ca7636c07951df1cfb5005e2471056ea3c0e187a2f8"
+      },
+      {
+        "order": 6,
+        "version": 2558,
+        "kind": "rename-field",
+        "arguments": [
+          "key_key.swapHands",
+          "key_key.swapOffhand"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsRenameFieldFix.java",
+        "source_sha256": "a6c7ac0072dc05393d022701d00c9a1c2b2f50d4061263bd5d00aceb8e3b20ef"
+      },
+      {
+        "order": 7,
+        "version": 3201,
+        "kind": "programmer-art",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsProgrammerArtFix.java",
+        "source_sha256": "1c5fd58a022a30b1f47968318eb9cbda98211b8c410099693a37e7f72e48a05e"
+      },
+      {
+        "order": 8,
+        "version": 3214,
+        "kind": "ambient-occlusion",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsAmbientOcclusionFix.java",
+        "source_sha256": "9037e4e52ff923fce99d8af054ed1ec71c66f882baa543bbbd6bbca1ff8279ac"
+      },
+      {
+        "order": 9,
+        "version": 3319,
+        "kind": "accessibility-onboard",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsAccessibilityOnboardFix.java",
+        "source_sha256": "78201093ca05d43b15beae3f43174fb713e02be6b2d28ed34de23c467c85c2cc"
+      },
+      {
+        "order": 10,
+        "version": 3943,
+        "kind": "menu-blurriness",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsMenuBlurrinessFix.java",
+        "source_sha256": "29243321ef67e439c2d923d2897deea4670c53ec3fc583b58d1ff11e6a85a636"
+      },
+      {
+        "order": 11,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "cutoutLeaves",
+          "false",
+          "true",
+          "true"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 12,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "weatherRadius",
+          "5",
+          "10",
+          "10"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 13,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "vignette",
+          "false",
+          "true",
+          "true"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 14,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "improvedTransparency",
+          "false",
+          "false",
+          "true"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 15,
+        "version": 4651,
+        "kind": "graphics-preset-custom",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsSetGraphicsPresetToCustomFix.java",
+        "source_sha256": "8b198596460244a78b4265f4acf1696f2c96a72d3ab06e53e1ab92559418df70"
+      },
+      {
+        "order": 16,
+        "version": 4661,
+        "kind": "music-toast",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsMusicToastFix.java",
+        "source_sha256": "2c835a11aab792da92dbec4ff3cfc4dd3e6d73f79cd1401cf555b35f7a5affab"
+      }
+    ],
+    "legacy_lwjgl_keys": [
+      {
+        "code": 0,
+        "name": "key.unknown"
+      },
+      {
+        "code": 11,
+        "name": "key.0"
+      },
+      {
+        "code": 2,
+        "name": "key.1"
+      },
+      {
+        "code": 3,
+        "name": "key.2"
+      },
+      {
+        "code": 4,
+        "name": "key.3"
+      },
+      {
+        "code": 5,
+        "name": "key.4"
+      },
+      {
+        "code": 6,
+        "name": "key.5"
+      },
+      {
+        "code": 7,
+        "name": "key.6"
+      },
+      {
+        "code": 8,
+        "name": "key.7"
+      },
+      {
+        "code": 9,
+        "name": "key.8"
+      },
+      {
+        "code": 10,
+        "name": "key.9"
+      },
+      {
+        "code": 30,
+        "name": "key.a"
+      },
+      {
+        "code": 40,
+        "name": "key.apostrophe"
+      },
+      {
+        "code": 48,
+        "name": "key.b"
+      },
+      {
+        "code": 43,
+        "name": "key.backslash"
+      },
+      {
+        "code": 14,
+        "name": "key.backspace"
+      },
+      {
+        "code": 46,
+        "name": "key.c"
+      },
+      {
+        "code": 58,
+        "name": "key.caps.lock"
+      },
+      {
+        "code": 51,
+        "name": "key.comma"
+      },
+      {
+        "code": 32,
+        "name": "key.d"
+      },
+      {
+        "code": 211,
+        "name": "key.delete"
+      },
+      {
+        "code": 208,
+        "name": "key.down"
+      },
+      {
+        "code": 18,
+        "name": "key.e"
+      },
+      {
+        "code": 207,
+        "name": "key.end"
+      },
+      {
+        "code": 28,
+        "name": "key.enter"
+      },
+      {
+        "code": 13,
+        "name": "key.equal"
+      },
+      {
+        "code": 1,
+        "name": "key.escape"
+      },
+      {
+        "code": 33,
+        "name": "key.f"
+      },
+      {
+        "code": 59,
+        "name": "key.f1"
+      },
+      {
+        "code": 68,
+        "name": "key.f10"
+      },
+      {
+        "code": 87,
+        "name": "key.f11"
+      },
+      {
+        "code": 88,
+        "name": "key.f12"
+      },
+      {
+        "code": 100,
+        "name": "key.f13"
+      },
+      {
+        "code": 101,
+        "name": "key.f14"
+      },
+      {
+        "code": 102,
+        "name": "key.f15"
+      },
+      {
+        "code": 103,
+        "name": "key.f16"
+      },
+      {
+        "code": 104,
+        "name": "key.f17"
+      },
+      {
+        "code": 105,
+        "name": "key.f18"
+      },
+      {
+        "code": 113,
+        "name": "key.f19"
+      },
+      {
+        "code": 60,
+        "name": "key.f2"
+      },
+      {
+        "code": 61,
+        "name": "key.f3"
+      },
+      {
+        "code": 62,
+        "name": "key.f4"
+      },
+      {
+        "code": 63,
+        "name": "key.f5"
+      },
+      {
+        "code": 64,
+        "name": "key.f6"
+      },
+      {
+        "code": 65,
+        "name": "key.f7"
+      },
+      {
+        "code": 66,
+        "name": "key.f8"
+      },
+      {
+        "code": 67,
+        "name": "key.f9"
+      },
+      {
+        "code": 34,
+        "name": "key.g"
+      },
+      {
+        "code": 41,
+        "name": "key.grave.accent"
+      },
+      {
+        "code": 35,
+        "name": "key.h"
+      },
+      {
+        "code": 199,
+        "name": "key.home"
+      },
+      {
+        "code": 23,
+        "name": "key.i"
+      },
+      {
+        "code": 210,
+        "name": "key.insert"
+      },
+      {
+        "code": 36,
+        "name": "key.j"
+      },
+      {
+        "code": 37,
+        "name": "key.k"
+      },
+      {
+        "code": 82,
+        "name": "key.keypad.0"
+      },
+      {
+        "code": 79,
+        "name": "key.keypad.1"
+      },
+      {
+        "code": 80,
+        "name": "key.keypad.2"
+      },
+      {
+        "code": 81,
+        "name": "key.keypad.3"
+      },
+      {
+        "code": 75,
+        "name": "key.keypad.4"
+      },
+      {
+        "code": 76,
+        "name": "key.keypad.5"
+      },
+      {
+        "code": 77,
+        "name": "key.keypad.6"
+      },
+      {
+        "code": 71,
+        "name": "key.keypad.7"
+      },
+      {
+        "code": 72,
+        "name": "key.keypad.8"
+      },
+      {
+        "code": 73,
+        "name": "key.keypad.9"
+      },
+      {
+        "code": 78,
+        "name": "key.keypad.add"
+      },
+      {
+        "code": 83,
+        "name": "key.keypad.decimal"
+      },
+      {
+        "code": 181,
+        "name": "key.keypad.divide"
+      },
+      {
+        "code": 156,
+        "name": "key.keypad.enter"
+      },
+      {
+        "code": 141,
+        "name": "key.keypad.equal"
+      },
+      {
+        "code": 55,
+        "name": "key.keypad.multiply"
+      },
+      {
+        "code": 74,
+        "name": "key.keypad.subtract"
+      },
+      {
+        "code": 38,
+        "name": "key.l"
+      },
+      {
+        "code": 203,
+        "name": "key.left"
+      },
+      {
+        "code": 56,
+        "name": "key.left.alt"
+      },
+      {
+        "code": 26,
+        "name": "key.left.bracket"
+      },
+      {
+        "code": 29,
+        "name": "key.left.control"
+      },
+      {
+        "code": 42,
+        "name": "key.left.shift"
+      },
+      {
+        "code": 219,
+        "name": "key.left.win"
+      },
+      {
+        "code": 50,
+        "name": "key.m"
+      },
+      {
+        "code": 12,
+        "name": "key.minus"
+      },
+      {
+        "code": 49,
+        "name": "key.n"
+      },
+      {
+        "code": 69,
+        "name": "key.num.lock"
+      },
+      {
+        "code": 24,
+        "name": "key.o"
+      },
+      {
+        "code": 25,
+        "name": "key.p"
+      },
+      {
+        "code": 209,
+        "name": "key.page.down"
+      },
+      {
+        "code": 201,
+        "name": "key.page.up"
+      },
+      {
+        "code": 197,
+        "name": "key.pause"
+      },
+      {
+        "code": 52,
+        "name": "key.period"
+      },
+      {
+        "code": 183,
+        "name": "key.print.screen"
+      },
+      {
+        "code": 16,
+        "name": "key.q"
+      },
+      {
+        "code": 19,
+        "name": "key.r"
+      },
+      {
+        "code": 205,
+        "name": "key.right"
+      },
+      {
+        "code": 184,
+        "name": "key.right.alt"
+      },
+      {
+        "code": 27,
+        "name": "key.right.bracket"
+      },
+      {
+        "code": 157,
+        "name": "key.right.control"
+      },
+      {
+        "code": 54,
+        "name": "key.right.shift"
+      },
+      {
+        "code": 220,
+        "name": "key.right.win"
+      },
+      {
+        "code": 31,
+        "name": "key.s"
+      },
+      {
+        "code": 70,
+        "name": "key.scroll.lock"
+      },
+      {
+        "code": 39,
+        "name": "key.semicolon"
+      },
+      {
+        "code": 53,
+        "name": "key.slash"
+      },
+      {
+        "code": 57,
+        "name": "key.space"
+      },
+      {
+        "code": 20,
+        "name": "key.t"
+      },
+      {
+        "code": 15,
+        "name": "key.tab"
+      },
+      {
+        "code": 22,
+        "name": "key.u"
+      },
+      {
+        "code": 200,
+        "name": "key.up"
+      },
+      {
+        "code": 47,
+        "name": "key.v"
+      },
+      {
+        "code": 17,
+        "name": "key.w"
+      },
+      {
+        "code": 45,
+        "name": "key.x"
+      },
+      {
+        "code": 21,
+        "name": "key.y"
+      },
+      {
+        "code": 44,
+        "name": "key.z"
+      }
+    ]
+  }
 }
