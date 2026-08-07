@@ -2952,6 +2952,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) entity_flame_surfaces: Vec<EntityFlameSurface>,
     pub(crate) entity_shadow_surfaces: Vec<EntityShadowSurface>,
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
+    pub(crate) terrain_sections_revision: u64,
     pub(crate) terrain_sections: &'a [bbb_renderer::TerrainSectionRenderState],
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
@@ -3488,7 +3489,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_entity_shadow_surfaces(frame.entity_shadow_surfaces);
     let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
     entity_render_extraction.recycle_instances(recycled_instances);
-    renderer.set_terrain_section_states(frame.terrain_sections);
+    renderer.set_terrain_section_states(frame.terrain_sections_revision, frame.terrain_sections);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
     renderer.set_camera_view_bob_effect(frame.camera_view_bob_effect);
     renderer.set_camera_spinning_effect(frame.camera_spinning_effect);

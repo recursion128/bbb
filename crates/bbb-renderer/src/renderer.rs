@@ -622,6 +622,7 @@ pub struct Renderer {
     terrain_section_revisions: HashMap<TerrainSectionMeshOwner, u64>,
     terrain_section_visibility: HashMap<TerrainSectionMeshOwner, f32>,
     terrain_visible_section_order: Vec<TerrainSectionMeshOwner>,
+    terrain_section_states_revision: Option<u64>,
     // Cross-section back-to-front draw order (far→near) of indices into
     // `terrain_translucent`. Vanilla preserves the LevelRenderer visible-section
     // traversal and reverses that draw list for TRANSLUCENT
@@ -2488,6 +2489,7 @@ impl Renderer {
             terrain_section_revisions: HashMap::new(),
             terrain_section_visibility: HashMap::new(),
             terrain_visible_section_order: Vec::new(),
+            terrain_section_states_revision: None,
             terrain_translucent_order: Vec::new(),
             last_translucent_sort_block_position: None,
             translucency_resort_iteration_index: 0,
@@ -3554,6 +3556,7 @@ impl Renderer {
         self.terrain_section_revisions.clear();
         self.terrain_section_visibility.clear();
         self.terrain_visible_section_order.clear();
+        self.terrain_section_states_revision = None;
         self.terrain_opaque.clear();
         self.terrain_cutout.clear();
         self.terrain_translucent.clear();
@@ -3589,7 +3592,14 @@ impl Renderer {
     /// Atomically replaces the native section-lifecycle projection. Membership,
     /// near-to-far order and fade visibility travel in one value so the terrain
     /// shader cannot drift from entity/block-entity visibility decisions.
-    pub fn set_terrain_section_states(&mut self, sections: &[TerrainSectionRenderState]) {
+    pub fn set_terrain_section_states(
+        &mut self,
+        revision: u64,
+        sections: &[TerrainSectionRenderState],
+    ) {
+        if self.terrain_section_states_revision == Some(revision) {
+            return;
+        }
         let mut visible = HashMap::with_capacity(sections.len());
         let mut order = Vec::with_capacity(sections.len());
         for section in sections {
@@ -3602,6 +3612,7 @@ impl Renderer {
             visible.insert(section.owner, visibility);
             order.push(section.owner);
         }
+        self.terrain_section_states_revision = Some(revision);
         if self.terrain_visible_section_order == order && self.terrain_section_visibility == visible
         {
             return;
@@ -5324,10 +5335,13 @@ mod tests {
             0,
             "new residency waits for the native membership/fade projection"
         );
-        renderer.set_terrain_section_states(&[TerrainSectionRenderState {
-            owner: east_section,
-            visibility: 0.4,
-        }]);
+        renderer.set_terrain_section_states(
+            1,
+            &[TerrainSectionRenderState {
+                owner: east_section,
+                visibility: 0.4,
+            }],
+        );
 
         renderer.update_terrain_section_mesh_layer_refs(
             2,
@@ -5419,13 +5433,16 @@ mod tests {
                 (north, &[(4, 1)][..], &layers, [0.0; 3]),
             ],
         );
-        renderer.set_terrain_section_states(&[TerrainSectionRenderState {
-            owner: TerrainSectionMeshOwner {
-                chunk: east,
-                section_y: 4,
-            },
-            visibility: 1.0,
-        }]);
+        renderer.set_terrain_section_states(
+            1,
+            &[TerrainSectionRenderState {
+                owner: TerrainSectionMeshOwner {
+                    chunk: east,
+                    section_y: 4,
+                },
+                visibility: 1.0,
+            }],
+        );
 
         assert_eq!(renderer.counters().uploaded_sections, 3);
         assert_eq!(renderer.counters().visible_sections, 1);
@@ -5549,23 +5566,31 @@ mod tests {
             1,
             [(chunk, &[(0, 1)][..], &layers, [0.0; 3])],
         );
-        renderer.set_terrain_section_states(&[TerrainSectionRenderState {
-            owner,
-            visibility: 1.0,
-        }]);
+        renderer.set_terrain_section_states(
+            1,
+            &[TerrainSectionRenderState {
+                owner,
+                visibility: 1.0,
+            }],
+        );
+        renderer.set_terrain_section_states(1, &[]);
+        assert!(renderer.terrain_section_visibility.contains_key(&owner));
         let visible = renderer
             .render_offscreen_frame()
             .expect("visible terrain frame");
 
-        renderer.set_terrain_section_states(&[TerrainSectionRenderState {
-            owner,
-            visibility: 0.0,
-        }]);
+        renderer.set_terrain_section_states(
+            2,
+            &[TerrainSectionRenderState {
+                owner,
+                visibility: 0.0,
+            }],
+        );
         let faded = renderer
             .render_offscreen_frame()
             .expect("zero-visibility terrain frame");
 
-        renderer.set_terrain_section_states(&[]);
+        renderer.set_terrain_section_states(3, &[]);
         let hidden = renderer
             .render_offscreen_frame()
             .expect("culled terrain frame");
@@ -5681,13 +5706,16 @@ mod tests {
             1,
             [(owner, &[(0, 1)][..], &layers, [0.5, 0.5, -4.0])],
         );
-        renderer.set_terrain_section_states(&[TerrainSectionRenderState {
-            owner: TerrainSectionMeshOwner {
-                chunk: owner,
-                section_y: 0,
-            },
-            visibility: 1.0,
-        }]);
+        renderer.set_terrain_section_states(
+            1,
+            &[TerrainSectionRenderState {
+                owner: TerrainSectionMeshOwner {
+                    chunk: owner,
+                    section_y: 0,
+                },
+                visibility: 1.0,
+            }],
+        );
         let vertex_upload_bytes = renderer.counters().terrain_vertex_upload_bytes;
 
         renderer.set_camera_pose(Some(CameraPose {
@@ -5748,6 +5776,7 @@ mod tests {
             [(chunk, &revisions[..], &layers, [0.5, 32.5, -4.0])],
         );
         renderer.set_terrain_section_states(
+            1,
             &(0..5)
                 .map(|section_y| TerrainSectionRenderState {
                     owner: TerrainSectionMeshOwner { chunk, section_y },

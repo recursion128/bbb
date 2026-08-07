@@ -59,6 +59,8 @@ impl TerrainSectionResidency {
 struct TerrainSectionFrameProjection {
     states: Vec<TerrainSectionRenderState>,
     by_position: TerrainCoordinateMap<SectionPosition, f32>,
+    revision: u64,
+    has_fading_sections: bool,
 }
 
 impl TerrainSectionFrameProjection {
@@ -69,13 +71,16 @@ impl TerrainSectionFrameProjection {
         residency: &TerrainCoordinateMap<SectionPosition, TerrainSectionResidency>,
         now: Instant,
     ) {
+        self.revision = self.revision.wrapping_add(1);
         self.states.clear();
         self.by_position.clear();
+        self.has_fading_sections = false;
         for position in positions {
             let Some(section) = residency.get(&position) else {
                 continue;
             };
             let visibility = section.visibility(now).clamp(0.0, 1.0);
+            self.has_fading_sections |= visibility < 1.0;
             self.states.push(TerrainSectionRenderState {
                 owner: TerrainSectionMeshOwner {
                     chunk: TerrainChunkMeshOwner {
@@ -106,6 +111,7 @@ impl TerrainSectionFrameProjection {
         });
         let mut changed = self.states.len() != previous_len;
         self.by_position.clear();
+        self.has_fading_sections = false;
         for state in &mut self.states {
             let position = SectionPosition {
                 x: state.owner.chunk.chunk_x,
@@ -116,11 +122,19 @@ impl TerrainSectionFrameProjection {
                 continue;
             };
             let visibility = section.visibility(now).clamp(0.0, 1.0);
+            self.has_fading_sections |= visibility < 1.0;
             changed |= visibility.to_bits() != state.visibility.to_bits();
             state.visibility = visibility;
             self.by_position.insert(position, visibility);
         }
+        if changed {
+            self.revision = self.revision.wrapping_add(1);
+        }
         changed
+    }
+
+    fn has_fading_sections(&self) -> bool {
+        self.has_fading_sections
     }
 
     fn consumer_visible(&self, position: SectionPosition) -> bool {
@@ -254,6 +268,9 @@ impl TerrainUploadState {
     pub(crate) fn refresh_frame_visibility(&mut self, context: TerrainVisibilityContext) -> bool {
         let key = terrain_frustum_visibility_key(self, context);
         if self.frustum_visibility_key == Some(key) {
+            if !self.renderer_sections.has_fading_sections() {
+                return false;
+            }
             return self
                 .renderer_sections
                 .refresh(&self.section_residency, Instant::now());
@@ -264,6 +281,10 @@ impl TerrainUploadState {
 
     pub(crate) fn renderer_sections(&self) -> &[TerrainSectionRenderState] {
         &self.renderer_sections.states
+    }
+
+    pub(crate) fn renderer_sections_revision(&self) -> u64 {
+        self.renderer_sections.revision
     }
 
     pub(crate) fn chunk_section_debug_gizmos(
@@ -505,16 +526,21 @@ mod section_fade_tests {
         );
         let mut projection = TerrainSectionFrameProjection::default();
         projection.replace(9, [position], &residency, now + Duration::from_millis(224));
+        assert_eq!(projection.revision, 1);
+        assert!(projection.has_fading_sections());
         assert!(!projection.consumer_visible(position));
         assert_eq!(projection.states[0].owner.chunk.level_generation, 9);
 
         assert!(projection.refresh(&residency, now + Duration::from_millis(225)));
+        assert_eq!(projection.revision, 2);
         assert!(projection.consumer_visible(position));
         assert_eq!(projection.states[0].visibility, 0.3);
         assert!(!projection.refresh(&residency, now + Duration::from_millis(225)));
+        assert_eq!(projection.revision, 2);
 
         residency.clear();
         assert!(projection.refresh(&residency, now + Duration::from_millis(226)));
+        assert_eq!(projection.revision, 3);
         assert!(projection.states.is_empty());
         assert!(!projection.consumer_visible(position));
     }

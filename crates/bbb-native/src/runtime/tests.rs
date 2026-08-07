@@ -3984,6 +3984,9 @@ fn camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers() {
 #[test]
 fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
     let runtime = include_str!("../runtime.rs");
+    assert!(
+        runtime.contains("terrain_sections_revision: terrain_upload.renderer_sections_revision(),")
+    );
     assert!(runtime.contains("terrain_sections: terrain_upload.renderer_sections(),"));
     let refresh = runtime
         .find("terrain_upload.refresh_frame_visibility(terrain_visibility_context);")
@@ -4009,7 +4012,9 @@ fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
         .find("pub(crate) terrain_sections: &'a [bbb_renderer::TerrainSectionRenderState]")
         .expect("renderer frame carries terrain visibility");
     let setter = frame_source
-        .find("renderer.set_terrain_section_states(frame.terrain_sections);")
+        .find(
+            "renderer.set_terrain_section_states(frame.terrain_sections_revision, frame.terrain_sections);",
+        )
         .expect("renderer frame applies terrain visibility");
     assert!(
         field < setter,
