@@ -73,6 +73,15 @@ def _macos_accessibility_trusted() -> bool:
         return False
 
 
+def _vulkan_loader_available() -> bool:
+    return (
+        find_library("vulkan") is not None
+        or shutil.which("vulkaninfo") is not None
+        or Path("/usr/lib/libvulkan.so.1").exists()
+        or Path("/usr/lib64/libvulkan.so.1").exists()
+    )
+
+
 def probe_host() -> HostCapabilities:
     linux = sys.platform.startswith("linux")
     macos = sys.platform == "darwin"
@@ -93,11 +102,7 @@ def probe_host() -> HostCapabilities:
         ),
         graphical_session=bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")),
         wayland=linux and bool(os.environ.get("WAYLAND_DISPLAY")),
-        vulkan_loader=(
-            shutil.which("vulkaninfo") is not None
-            or Path("/usr/lib/libvulkan.so.1").exists()
-            or Path("/usr/lib64/libvulkan.so.1").exists()
-        ),
+        vulkan_loader=_vulkan_loader_available(),
         linux_uinput=linux and os.access("/dev/uinput", os.W_OK),
         linux_seat_tools=linux
         and all(

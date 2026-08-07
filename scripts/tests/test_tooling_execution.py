@@ -5,12 +5,18 @@ import signal
 import sys
 import time
 import unittest
+from unittest.mock import patch
 
 import pytest
 
+from bbb_tools.host import capabilities as host_capabilities
 from bbb_tools.execution.deadline import Deadline
 from bbb_tools.execution.process import ManagedProcess, ProcessFailure
-from bbb_tools.host.capabilities import HostCapabilities, missing_for_profile
+from bbb_tools.host.capabilities import (
+    HostCapabilities,
+    _vulkan_loader_available,
+    missing_for_profile,
+)
 from bbb_tools.input.contract import InputBackend
 
 
@@ -30,6 +36,10 @@ class RecordingInput(InputBackend):
 
 
 class ToolingExecutionTests(unittest.TestCase):
+    def test_vulkan_loader_probe_uses_the_platform_linker_inventory(self) -> None:
+        with patch.object(host_capabilities, "find_library", return_value="libvulkan.so.1"):
+            self.assertTrue(_vulkan_loader_available())
+
     def test_deadline_uses_bounded_monotonic_remaining_time(self) -> None:
         deadline = Deadline.after(0.02)
         self.assertGreater(deadline.remaining(), 0)
