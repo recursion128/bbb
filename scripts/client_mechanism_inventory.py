@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Iterable
 
 from packet_catalog_extractor import packet_resource_ids, registered_packets
@@ -59,9 +60,18 @@ class MethodRoute:
 
 
 @dataclass(frozen=True)
+class OwnerScopeRuling:
+    conclusion: str
+    vanilla_basis: tuple[str, ...]
+    current_scope_reason: str
+    reopen_condition: str
+
+
+@dataclass(frozen=True)
 class OwnerEvidence:
     implementation: tuple[str, ...]
     tests: tuple[str, ...]
+    scope_ruling: OwnerScopeRuling | None = None
 
 
 def _method_routes(
@@ -5729,11 +5739,11 @@ UI_ACCESSIBILITY_SURFACE_OWNER_EVIDENCE = _owner_evidence(
         OwnerEvidence(
             (
                 "crates/bbb-native/src/narrator_runtime.rs#fn narrator_command_arguments",
-                "crates/bbb-native/src/startup.rs#fn narrator_voice_volume",
+                "crates/bbb-native/src/startup.rs#fn stored_audio_volume_settings",
             ),
             (
                 "crates/bbb-native/src/narrator_runtime.rs#command_arguments_substitute_the_final_voice_volume_placeholder",
-                "crates/bbb-native/src/startup.rs#narrator_voice_volume_multiplies_voice_and_master_with_safe_defaults",
+                "crates/bbb-native/src/startup.rs#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
             ),
         ),
         ("narrateMessage",),
@@ -7455,7 +7465,454 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+AUDIO_INTEGRATED_PAUSE_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/Minecraft.java:1156",
+        "net/minecraft/client/Minecraft.java:1292-1298",
+        "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484",
+    ),
+    current_scope_reason=(
+        "Vanilla only enters the paused sound branch for an unpublished integrated "
+        "server; BBB is an external client and never owns or pauses that server. "
+        "Closing an external-client screen therefore has no paused audio channels to resume."
+    ),
+    reopen_condition="BBB gains an in-process integrated server or another audio-pause owner.",
+)
+
+AUDIO_MANUAL_LOOP_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/sounds/SoundEngine.java:262-269,318-327",
+        "net/minecraft/client/resources/sounds/AbstractSoundInstance.java:69-75",
+        "net/minecraft/client/resources/sounds/AbstractTickableSoundInstance.java:15-25",
+        "net/minecraft/client/resources/sounds/BeeSoundInstance.java:17-27",
+        "net/minecraft/client/resources/sounds/BeeAggressiveSoundInstance.java:5-13",
+        "net/minecraft/client/resources/sounds/BiomeAmbientSoundsHandler.java:112-122",
+        "net/minecraft/client/resources/sounds/ElytraOnPlayerSoundInstance.java:11-21",
+        "net/minecraft/client/resources/sounds/GuardianAttackSoundInstance.java:13-23",
+        "net/minecraft/client/resources/sounds/MinecartSoundInstance.java:16-26",
+        "net/minecraft/client/resources/sounds/RidingEntitySoundInstance.java:30-40",
+        "net/minecraft/client/resources/sounds/SimpleSoundInstance.java:20-119",
+        "net/minecraft/client/resources/sounds/SnifferSoundInstance.java:11-21",
+        "net/minecraft/client/resources/sounds/UnderwaterAmbientSoundInstances.java:10-42",
+        "net/minecraft/client/multiplayer/ClientLevel.java:625-634",
+        "net/minecraft/client/multiplayer/MultiPlayerGameMode.java:248-270",
+    ),
+    current_scope_reason=(
+        "The official 26.1 client requires looping with a positive SoundInstance delay "
+        "to enter manual requeue; every client-created looping instance uses delay zero, "
+        "while the public SimpleSoundInstance call sites are non-looping."
+    ),
+    reopen_condition=(
+        "A supported official-client sound instance or BBB-owned sound surface combines "
+        "looping with a positive replay delay."
+    ),
+)
+
+AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/music_runtime.rs#fn situational_music",
+                "crates/bbb-native/src/music_runtime.rs#fn music_volume",
+            ),
+            (
+                "crates/bbb-native/src/music_runtime.rs"
+                "#background_selection_prefers_underwater_then_creative_then_default",
+                "crates/bbb-native/src/music_runtime.rs"
+                "#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+            ),
+        ),
+        ("getMusicVolume", "getSituationalMusic"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn load(",
+                "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+                "crates/bbb-native/src/main.rs#NativeAudioRuntime::load(",
+            ),
+            (
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#native_audio_catalog_loader_errors_before_kira_when_catalog_is_empty",
+                "crates/bbb-pack/src/sounds.rs"
+                "#required_sound_catalog_loads_minimal_valid_catalog",
+                "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+            ),
+        ),
+        ("SoundEngine", "SoundManager"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#playback_events: VecDeque<AudioPlaybackEvent>",
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn drain_subtitle_events",
+                "crates/bbb-native/src/main.rs#if args.client_show_subtitles {",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener",
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#audio_runtime_maps_playback_root_event_to_current_subtitle_key",
+                "crates/bbb-native/src/sound_subtitle_runtime.rs"
+                "#sound_subtitle_projection_uses_strict_range_and_listener_directions",
+            ),
+        ),
+        ("addEventListener", "addListener", "removeEventListener", "removeListener"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#fn channel_playback_rate",
+                "crates/bbb-native/src/audio_runtime/resolver.rs#playback_rate:",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs#playback_rate_clamps_to_vanilla_pitch_range",
+                "crates/bbb-native/src/audio_runtime/resolver.rs"
+                "#event_reference_modifiers_wrap_resolved_file_sound",
+            ),
+        ),
+        ("calculatePitch",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/command.rs#pub fn final_source_volume",
+                "crates/bbb-native/src/startup.rs#fn stored_audio_volume_settings",
+                "crates/bbb-native/src/audio_runtime.rs#volume_settings: AudioVolumeSettings",
+                "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn with_jukebox_registry",
+            ),
+            (
+                "crates/bbb-audio/src/command.rs"
+                "#final_source_volume_matches_vanilla_master_and_category_mix",
+                "crates/bbb-native/src/startup.rs"
+                "#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
+                "crates/bbb-native/src/audio_runtime/resolver.rs"
+                "#category_volume_settings_affect_channel_gain_not_instance_gain",
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#every_native_audio_resolution_uses_the_startup_volume_settings",
+            ),
+        ),
+        ("calculateVolume",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+                "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+                "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+                "crates/bbb-native/src/main.rs#Event::LoopExiting",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+                "crates/bbb-native/src/runtime/tests.rs"
+                "#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+                "crates/bbb-native/src/network_runtime.rs"
+                "#production_shutdown_has_one_owner_and_frozen_order",
+            ),
+        ),
+        ("destroy", "emergencyShutdown", "stopAll"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+                "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation",
+            ),
+            (
+                "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#device_observation_projects_cached_receipt_fields",
+            ),
+        ),
+        ("getAvailableSoundDevices",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+                "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+                "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line",
+            ),
+            (
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#audio_channel_diagnostics_preserve_failures_and_project_shared_capacity",
+                "crates/bbb-native/src/runtime/tests.rs"
+                "#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info",
+            ),
+        ),
+        ("getChannelDebugString", "getSoundCacheDebugStats"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#listener_position:",
+                "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+                "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs"
+                "#audio_scene_command_tracks_listener_and_entity_positions",
+                "crates/bbb-audio/src/runtime.rs"
+                "#listener_orientation_matches_kira_forward_at_minecraft_north",
+            ),
+        ),
+        ("getListenerTransform", "updateSource"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#fn latest_active_music_event_id",
+                "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#backend_music_identity_ignores_stopped_and_naturally_completed_handles",
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#tickable_sound_owner_requires_start_after_event_switch_or_reload",
+            ),
+        ),
+        ("isActive",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#pub fn reset_resource_generation",
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn commit_reload",
+                "crates/bbb-native/src/resource_reload.rs#audio.commit_reload(reload);",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#generation_reset_cancels_pending_preload_and_rejects_old_requests",
+                "crates/bbb-native/src/resource_reload.rs"
+                "#renderer_resource_owners_commit_inside_one_reload_barrier",
+            ),
+        ),
+        ("loadLibrary", "reload"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs"
+                "#native_pause_screens_never_freeze_external_client_or_running_level_ticks",
+            ),
+            AUDIO_INTEGRATED_PAUSE_SCOPE,
+        ),
+        ("pauseAllExcept", "resume", "tickMusicWhenPaused"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn play_positioned_sound",
+                "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound",
+                "crates/bbb-audio/src/runtime.rs#fn play_local_sound_with_role",
+            ),
+            (
+                "crates/bbb-native/src/audio_runtime/resolver.rs"
+                "#resolves_direct_positioned_sound_through_event_reference",
+                "crates/bbb-native/src/audio_runtime/resolver.rs"
+                "#resolves_direct_local_sound_without_spatial_position",
+                "crates/bbb-audio/src/runtime.rs#non_music_zero_volume_sounds_do_not_start",
+                "crates/bbb-audio/src/runtime.rs"
+                "#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener",
+            ),
+        ),
+        ("play",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#fn vanilla_distance_delay_ticks",
+                "crates/bbb-audio/src/runtime.rs#fn advance_delayed_positioned_sounds",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#distance_delay_ticks_match_vanilla_threshold_and_flooring",
+                "crates/bbb-audio/src/runtime.rs"
+                "#delayed_positioned_sounds_release_after_remaining_ticks",
+            ),
+        ),
+        ("playDelayed",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:",
+                "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound",
+            ),
+            (
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#tickable_sound_owner_requires_start_after_event_switch_or_reload",
+                "crates/bbb-native/src/audio_runtime/resolver.rs"
+                "#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position",
+            ),
+        ),
+        ("queueTickingSound",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#fn set_music_gain",
+                "crates/bbb-audio/src/runtime.rs#fn set_music_gain",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#music_gain_clamps_and_only_scales_music_category_handles",
+                "crates/bbb-native/src/music_runtime.rs"
+                "#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+            ),
+        ),
+        ("refreshCategoryVolume", "updateCategoryVolume"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+                "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+                "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests",
+            ),
+            (
+                "crates/bbb-pack/src/sounds.rs"
+                "#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+                "crates/bbb-audio/src/preload.rs"
+                "#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+                "crates/bbb-audio/src/runtime.rs"
+                "#preload_completion_installs_current_generation_without_a_playback_decode_miss",
+            ),
+        ),
+        ("requestPreload",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/runtime.rs#if looping { data.loop_region(..) } else { data }",
+                "crates/bbb-native/src/environment_audio_runtime.rs#fn advance_loop_sounds",
+            ),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#ambient_loop_sync_updates_retained_stops_omitted_and_starts_new",
+                "crates/bbb-native/src/environment_audio_runtime.rs"
+                "#environment_audio_cross_fades_loops_over_40_ticks_and_reuses_a_fading_holder",
+            ),
+        ),
+        ("shouldLoopAutomatically",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-audio/src/runtime.rs#if looping { data.loop_region(..) } else { data }",),
+            (
+                "crates/bbb-audio/src/runtime.rs"
+                "#ambient_loop_sync_updates_retained_stops_omitted_and_starts_new",
+            ),
+            AUDIO_MANUAL_LOOP_SCOPE,
+        ),
+        ("requiresManualLooping", "shouldLoopManually"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-audio/src/device.rs#pub fn audio_device_reload_reason",
+                "crates/bbb-audio/src/runtime.rs#pub fn poll_audio_device",
+            ),
+            (
+                "crates/bbb-audio/src/device.rs#reload_decision_preserves_vanilla_branch_order",
+                "crates/bbb-audio/src/device.rs"
+                "#a_changed_irrelevant_device_does_not_reload_the_current_output",
+            ),
+        ),
+        ("shouldChangeDevice",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn stop_sound",
+                "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+                "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+            ),
+            (
+                "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+                "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+                "crates/bbb-audio/src/runtime.rs"
+                "#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+            ),
+        ),
+        ("stop",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#audio_events.tick_entity_sound_positions(",
+                "crates/bbb-native/src/audio_runtime.rs#fn tick_entity_sound_positions",
+                "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound",
+            ),
+            (
+                "crates/bbb-native/src/music_runtime.rs"
+                "#music_effects_enter_fifo_before_entity_sound_position_tick",
+                "crates/bbb-native/src/environment_audio_runtime.rs"
+                "#environment_audio_ticks_after_player_movement_and_before_music",
+                "crates/bbb-native/src/audio_runtime/resolver.rs"
+                "#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position",
+            ),
+        ),
+        ("tick", "tickInGameSound"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn available_sound_ids",
+                "crates/bbb-world/src/commands.rs#pub fn set_available_command_sounds",
+            ),
+            (
+                "crates/bbb-pack/src/sounds.rs"
+                "#indexed_vanilla_26_1_sounds_catalog_loads_representative_events",
+                "crates/bbb-world/src/commands.rs"
+                "#resource_sound_completion_view_is_publication_shared_and_generation_isolated",
+            ),
+        ),
+        ("getAvailableSounds", "getSoundEvent"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-pack/src/sounds.rs#fn merge_selected_resource_stack",
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+                "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+            ),
+            (
+                "crates/bbb-pack/src/sounds.rs"
+                "#sound_catalog_merges_resource_stack_definitions_in_pack_order",
+                "crates/bbb-pack/src/sounds.rs"
+                "#sound_catalog_replace_clears_lower_priority_sounds",
+                "crates/bbb-native/src/resource_reload.rs"
+                "#renderer_resource_owners_commit_inside_one_reload_barrier",
+            ),
+        ),
+        ("apply", "prepare", "handleRegistration", "listResources"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-pack/src/sounds.rs#fn sound_ogg_resource",
+                "crates/bbb-pack/src/sounds.rs#fn sound_resource_location",
+            ),
+            (
+                "crates/bbb-pack/src/sounds.rs"
+                "#sound_catalog_skips_invalid_resource_stack_definitions",
+                "crates/bbb-pack/src/sounds.rs"
+                "#sound_catalog_skips_missing_file_sounds_from_resource_stack",
+                "crates/bbb-pack/src/sounds.rs#rejects_invalid_sound_entry_values",
+            ),
+        ),
+        ("validateSoundResource",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
+    "audio-sound-manager-engine": AUDIO_SOUND_MANAGER_OWNER_EVIDENCE,
     "security-secure-chat-reporting": SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE,
     "rendering-frame-order": RENDERING_FRAME_ORDER_OWNER_EVIDENCE,
     "rendering-extract-surface": RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE,
@@ -8234,6 +8691,26 @@ class InventoryBuilder:
                 "implementation": list(evidence.implementation),
                 "tests": list(evidence.tests),
             }
+            if evidence.scope_ruling is not None:
+                for anchor in evidence.scope_ruling.vanilla_basis:
+                    basis_path, separator, basis_lines = anchor.partition(":")
+                    if (
+                        not separator
+                        or re.fullmatch(
+                            r"\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*", basis_lines
+                        )
+                        is None
+                    ):
+                        raise ClientMechanismInventoryError(
+                            f"invalid Vanilla scope-ruling anchor: {anchor}"
+                        )
+                    self.source(basis_path)
+                owner["bbb_evidence"]["scope_ruling"] = {
+                    "conclusion": evidence.scope_ruling.conclusion,
+                    "vanilla_basis": list(evidence.scope_ruling.vanilla_basis),
+                    "current_scope_reason": evidence.scope_ruling.current_scope_reason,
+                    "reopen_condition": evidence.scope_ruling.reopen_condition,
+                }
         self.owners.append(owner)
 
     @staticmethod

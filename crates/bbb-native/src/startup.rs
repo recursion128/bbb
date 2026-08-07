@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, thread, time::Duration};
 
 use anyhow::{ensure, Context, Result};
+use bbb_audio::AudioVolumeSettings;
 use bbb_control::ControlState;
 use bbb_net::{ConnectionOptions, ServerResourcePackPolicy};
 use bbb_pack::{KnownPacksManager, PackRoots};
@@ -192,6 +193,11 @@ pub(crate) struct Args {
     /// wins over `Options.soundDevice` because there is no in-game options UI.
     #[arg(long = "client-sound-device", value_name = "NAME", default_value = "")]
     pub(crate) client_sound_device: String,
+    /// All `soundCategory_*` values are startup-only configuration in this
+    /// external client. They still feed every native sound resolution just as
+    /// `Options.getFinalSoundSourceVolume` does in Vanilla.
+    #[arg(skip)]
+    pub(crate) client_audio_volumes: AudioVolumeSettings,
     #[arg(long = "high-contrast-block-outline")]
     pub(crate) high_contrast_block_outline: bool,
     #[arg(
@@ -736,7 +742,10 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
     };
     args.client_key_bindings = KeyBindings::from_options(&options);
     crate::client_options::key_bindings::install_bound_key_display_keys(&options);
-    args.narrator_voice_volume = narrator_voice_volume(&options);
+    args.client_audio_volumes = stored_audio_volume_settings(&options);
+    args.narrator_voice_volume = args
+        .client_audio_volumes
+        .final_source_volume(&bbb_audio::AudioCategory::Voice);
     args.stored_resource_packs = stored_text_list(&options, "resourcePacks");
     args.stored_incompatible_resource_packs =
         stored_text_list(&options, "incompatibleResourcePacks");
@@ -768,7 +777,7 @@ fn parse_stored_sound_device(value: &str) -> std::result::Result<String, String>
 /// `getFinalSoundSourceVolume(SoundSource.VOICE)` — the stored voice volume
 /// times the stored master volume, each defaulting to 1.0 and clamped to the
 /// accepted 0..=1 range; an unparsable line keeps its default.
-fn narrator_voice_volume(options: &ClientOptions) -> f32 {
+fn stored_audio_volume_settings(options: &ClientOptions) -> AudioVolumeSettings {
     let source_volume = |key: &str| {
         options
             .dynamic_raw(key)
@@ -777,7 +786,19 @@ fn narrator_voice_volume(options: &ClientOptions) -> f32 {
             .map(|volume| volume.clamp(0.0, 1.0))
             .unwrap_or(1.0)
     };
-    source_volume("soundCategory_voice") * source_volume("soundCategory_master")
+    AudioVolumeSettings {
+        master: source_volume("soundCategory_master"),
+        music: source_volume("soundCategory_music"),
+        records: source_volume("soundCategory_record"),
+        weather: source_volume("soundCategory_weather"),
+        blocks: source_volume("soundCategory_block"),
+        hostile: source_volume("soundCategory_hostile"),
+        neutral: source_volume("soundCategory_neutral"),
+        players: source_volume("soundCategory_player"),
+        ambient: source_volume("soundCategory_ambient"),
+        voice: source_volume("soundCategory_voice"),
+        ui: source_volume("soundCategory_ui"),
+    }
 }
 
 /// Every startup argument that mirrors an `options.txt` key. The stored line is
@@ -3075,20 +3096,52 @@ mod tests {
     }
 
     #[test]
-    fn narrator_voice_volume_multiplies_voice_and_master_with_safe_defaults() {
+    fn stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults() {
         let mut options = ClientOptions::defaults(ClientOptionHost::default());
-        assert_eq!(narrator_voice_volume(&options), 1.0);
+        assert_eq!(
+            stored_audio_volume_settings(&options),
+            AudioVolumeSettings::default()
+        );
 
         options.set_dynamic_raw_for_test("soundCategory_voice", "0.5");
         options.set_dynamic_raw_for_test("soundCategory_master", "0.5");
-        assert_eq!(narrator_voice_volume(&options), 0.25);
+        options.set_dynamic_raw_for_test("soundCategory_music", "0.25");
+        options.set_dynamic_raw_for_test("soundCategory_record", "0.75");
+        options.set_dynamic_raw_for_test("soundCategory_weather", "0.1");
+        options.set_dynamic_raw_for_test("soundCategory_block", "0.2");
+        options.set_dynamic_raw_for_test("soundCategory_hostile", "0.3");
+        options.set_dynamic_raw_for_test("soundCategory_neutral", "0.4");
+        options.set_dynamic_raw_for_test("soundCategory_player", "0.6");
+        options.set_dynamic_raw_for_test("soundCategory_ambient", "0.7");
+        options.set_dynamic_raw_for_test("soundCategory_ui", "0.8");
+        assert_eq!(
+            stored_audio_volume_settings(&options),
+            AudioVolumeSettings {
+                master: 0.5,
+                music: 0.25,
+                records: 0.75,
+                weather: 0.1,
+                blocks: 0.2,
+                hostile: 0.3,
+                neutral: 0.4,
+                players: 0.6,
+                ambient: 0.7,
+                voice: 0.5,
+                ui: 0.8,
+            }
+        );
 
         options.set_dynamic_raw_for_test("soundCategory_master", "nonsense");
-        assert_eq!(narrator_voice_volume(&options), 0.5);
+        assert_eq!(stored_audio_volume_settings(&options).master, 1.0);
 
         options.set_dynamic_raw_for_test("soundCategory_voice", "7.5");
         options.set_dynamic_raw_for_test("soundCategory_master", "0.5");
-        assert_eq!(narrator_voice_volume(&options), 0.5);
+        let settings = stored_audio_volume_settings(&options);
+        assert_eq!(settings.voice, 1.0);
+        assert_eq!(
+            settings.final_source_volume(&bbb_audio::AudioCategory::Voice),
+            0.5
+        );
     }
 
     #[test]

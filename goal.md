@@ -501,16 +501,16 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 状态：`active`。`persistence-options-unconsumed` 剩余一个 Vanilla `Options.dataFix` owner
 已重新确认为无游戏内配置 UI 也可从启动路径到达；当前工程 slice 必须逐 owner
 实现真实消费或重路由到已有实现证据，不能以 options 行可 round-trip 代替行为。
-`audio-sound-manager-engine` 因本轮逐 owner 复核诚实降为 `partial`：设备选择/reload
-已有实现与 focused evidence，`preload:true` 也已由 generation-aware 后台 worker 在
-load/reload 阶段消费；当前 generated inventory 的 67 个 owner 仍需 decision-level evidence
-或基于 Vanilla caller 的 current-scope
-裁决；该项与 dataFix 共同由账本排程，不能用机制级通用路径保留虚假 `equivalent`。
+`audio-sound-manager-engine` 仍为 `partial`：generated inventory 的 67 个 owner 已全部挂
+decision evidence，7 个不可达 pause/manual-loop owner 另有 Vanilla caller、范围理由和 reopen
+condition；审计同时修复了 11 个 stored `soundCategory_*` 仅 round-trip、播放仍用默认值的
+真实缺口，并把余下 HRTF、device-derived pool/admission 与 active/delete-time 差异留在账本。
 
-当前 audio 工程合同：pack 生成 Vanilla `preloadIfRequired`/`SoundBufferLibrary` 去重完整缓冲计划；单一可取消、latest-wins、终态 join 的 audio 后台 owner 解码；native 仅在 load/reload 提交并非阻塞收割，generation 错配不安装，control receipt 归因请求/完成/失败/陈旧结果。
-随后给 generated inventory 的每个 owner 挂 decision evidence 或带 Vanilla caller 的 current-scope 裁决；非目标是 integrated-server pause、混音器重写、游戏内 options UI 和同步 decode。
-阶段为 pack 计划→audio worker/cache→native generation/receipt→逐 owner evidence；focused tests 依次覆盖计划、取消/代际/安装、load/reload 消费和 inventory exact-output/docs lint。
-并发里程碑与 owner-evidence 里程碑各提交且 full gate；失败只在干净阶段提交处停。
+下一 audio 工程合同必须先用同机 Vanilla receipt 冻结 OpenAL 总/静态/流式 capacity、HRTF
+支持与短声音 tick/delete-time，再冻结 Kira/native admission API、诊断字段和 fallback。
+实现不得以共享固定容量冒充两个 pool，不得把普通 stereo pan 命名为 HRTF，也不得因 backend 提前回收而改变 `isActive`/音乐 replacement 时序。
+focused tests 覆盖容量公式与饱和拒绝、stream/static 隔离、HRTF 支持/不支持分支、20-tick 最短保留和 reload/reset；正式结论仍需真实设备 receipt。
+owner-evidence 里程碑提交并 full gate 后才进入下一 audio 实现阶段；失败只在干净阶段提交处停。
 census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻

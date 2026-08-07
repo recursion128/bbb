@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "69f932ddedd89cb1cd20ae54e28049bd0fa38f8a7f3b04a7f706e07b376c3f28"
+      "sha256": "293a00966e186b2ed19f6d932bce154eb65114449d3ddcbaa33a77683a54c5eb"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -34,7 +34,8 @@
         "crates/bbb-audio/src/runtime.rs",
         "crates/bbb-native/src/audio_runtime.rs"
       ],
-      "owner_count": 67
+      "owner_count": 67,
+      "owner_evidence_count": 67
     },
     "diagnostics-client-level-report": {
       "bbb_evidence": [
@@ -8003,11 +8004,11 @@
       "bbb_evidence": {
         "implementation": [
           "crates/bbb-native/src/narrator_runtime.rs#fn narrator_command_arguments",
-          "crates/bbb-native/src/startup.rs#fn narrator_voice_volume"
+          "crates/bbb-native/src/startup.rs#fn stored_audio_volume_settings"
         ],
         "tests": [
           "crates/bbb-native/src/narrator_runtime.rs#command_arguments_substitute_the_final_voice_volume_placeholder",
-          "crates/bbb-native/src/startup.rs#narrator_voice_volume_multiplies_voice_and_master_with_safe_defaults"
+          "crates/bbb-native/src/startup.rs#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults"
         ]
       },
       "category": "accessibility",
@@ -10715,6 +10716,16 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#getMusicManager()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#fn situational_music",
+          "crates/bbb-native/src/music_runtime.rs#fn music_volume"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules"
+        ]
+      },
       "category": "audio",
       "domain": "audio",
       "kind": "method",
@@ -10925,6 +10936,16 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#getSingleplayerServer()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#fn situational_music",
+          "crates/bbb-native/src/music_runtime.rs#fn music_volume"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules"
+        ]
+      },
       "category": "audio",
       "domain": "audio",
       "kind": "method",
@@ -33756,6 +33777,18 @@
       "vanilla_owner": "net.minecraft.client.server.IntegratedServer#useNativeTransport()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn load(",
+          "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+          "crates/bbb-native/src/main.rs#NativeAudioRuntime::load("
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#native_audio_catalog_loader_errors_before_kira_when_catalog_is_empty",
+          "crates/bbb-pack/src/sounds.rs#required_sound_catalog_loads_minimal_valid_catalog",
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "constructor",
@@ -33770,6 +33803,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#SoundEngine(final SoundManager soundManager,final Options options,final ResourceProvider resourceProvider)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#playback_events: VecDeque<AudioPlaybackEvent>",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn drain_subtitle_events",
+          "crates/bbb-native/src/main.rs#if args.client_show_subtitles {"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener",
+          "crates/bbb-native/src/audio_runtime.rs#audio_runtime_maps_playback_root_event_to_current_subtitle_key",
+          "crates/bbb-native/src/sound_subtitle_runtime.rs#sound_subtitle_projection_uses_strict_range_and_listener_directions"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33784,6 +33829,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#addEventListener(final SoundEventListener listener)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#fn channel_playback_rate",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#playback_rate:"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#playback_rate_clamps_to_vanilla_pitch_range",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#event_reference_modifiers_wrap_resolved_file_sound"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33798,6 +33853,20 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#calculatePitch(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/command.rs#pub fn final_source_volume",
+          "crates/bbb-native/src/startup.rs#fn stored_audio_volume_settings",
+          "crates/bbb-native/src/audio_runtime.rs#volume_settings: AudioVolumeSettings",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn with_jukebox_registry"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/command.rs#final_source_volume_matches_vanilla_master_and_category_mix",
+          "crates/bbb-native/src/startup.rs#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#category_volume_settings_affect_channel_gain_not_instance_gain",
+          "crates/bbb-native/src/audio_runtime.rs#every_native_audio_resolution_uses_the_startup_volume_settings"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33812,6 +33881,20 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#calculateVolume(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/command.rs#pub fn final_source_volume",
+          "crates/bbb-native/src/startup.rs#fn stored_audio_volume_settings",
+          "crates/bbb-native/src/audio_runtime.rs#volume_settings: AudioVolumeSettings",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn with_jukebox_registry"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/command.rs#final_source_volume_matches_vanilla_master_and_category_mix",
+          "crates/bbb-native/src/startup.rs#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#category_volume_settings_affect_channel_gain_not_instance_gain",
+          "crates/bbb-native/src/audio_runtime.rs#every_native_audio_resolution_uses_the_startup_volume_settings"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33826,6 +33909,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#calculateVolume(final float volume,final SoundSource source)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33840,6 +33936,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#destroy()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33854,6 +33963,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#emergencyShutdown()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33868,6 +33987,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#getAvailableSoundDevices()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_preserve_failures_and_project_shared_capacity",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33882,6 +34012,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#getChannelDebugString()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33896,6 +34037,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#getListenerTransform()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_preserve_failures_and_project_shared_capacity",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33910,6 +34062,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#getSoundCacheDebugStats(final SoundBufferLibrary.DebugOutput output)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#fn latest_active_music_event_id",
+          "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#backend_music_identity_ignores_stopped_and_naturally_completed_handles",
+          "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33924,6 +34086,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#isActive(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#pub fn reset_resource_generation",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn commit_reload",
+          "crates/bbb-native/src/resource_reload.rs#audio.commit_reload(reload);"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#generation_reset_cancels_pending_preload_and_rejects_old_requests",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33938,6 +34111,24 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#loadLibrary()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33952,6 +34143,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#pauseAllExcept(final SoundSource ... ignoredSources)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn play_positioned_sound",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound",
+          "crates/bbb-audio/src/runtime.rs#fn play_local_sound_with_role"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_direct_positioned_sound_through_event_reference",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_direct_local_sound_without_spatial_position",
+          "crates/bbb-audio/src/runtime.rs#non_music_zero_volume_sounds_do_not_start",
+          "crates/bbb-audio/src/runtime.rs#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33966,6 +34170,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#play(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#fn vanilla_distance_delay_ticks",
+          "crates/bbb-audio/src/runtime.rs#fn advance_delayed_positioned_sounds"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#distance_delay_ticks_match_vanilla_threshold_and_flooring",
+          "crates/bbb-audio/src/runtime.rs#delayed_positioned_sounds_release_after_remaining_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33980,6 +34194,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#playDelayed(final SoundInstance instance,final int delay)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:",
+          "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -33994,6 +34218,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#queueTickingSound(final TickableSoundInstance tickableSoundInstance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn set_music_gain",
+          "crates/bbb-audio/src/runtime.rs#fn set_music_gain"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#music_gain_clamps_and_only_scales_music_category_handles",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34008,6 +34242,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#refreshCategoryVolume(final SoundSource source)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#pub fn reset_resource_generation",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn commit_reload",
+          "crates/bbb-native/src/resource_reload.rs#audio.commit_reload(reload);"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#generation_reset_cancels_pending_preload_and_rejects_old_requests",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34022,6 +34267,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#reload()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#playback_events: VecDeque<AudioPlaybackEvent>",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn drain_subtitle_events",
+          "crates/bbb-native/src/main.rs#if args.client_show_subtitles {"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener",
+          "crates/bbb-native/src/audio_runtime.rs#audio_runtime_maps_playback_root_event_to_current_subtitle_key",
+          "crates/bbb-native/src/sound_subtitle_runtime.rs#sound_subtitle_projection_uses_strict_range_and_listener_directions"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34036,6 +34293,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#removeEventListener(final SoundEventListener listener)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34050,6 +34319,36 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#requestPreload(final Sound sound)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#if looping { data.loop_region(..) } else { data }"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The official 26.1 client requires looping with a positive SoundInstance delay to enter manual requeue; every client-created looping instance uses delay zero, while the public SimpleSoundInstance call sites are non-looping.",
+          "reopen_condition": "A supported official-client sound instance or BBB-owned sound surface combines looping with a positive replay delay.",
+          "vanilla_basis": [
+            "net/minecraft/client/sounds/SoundEngine.java:262-269,318-327",
+            "net/minecraft/client/resources/sounds/AbstractSoundInstance.java:69-75",
+            "net/minecraft/client/resources/sounds/AbstractTickableSoundInstance.java:15-25",
+            "net/minecraft/client/resources/sounds/BeeSoundInstance.java:17-27",
+            "net/minecraft/client/resources/sounds/BeeAggressiveSoundInstance.java:5-13",
+            "net/minecraft/client/resources/sounds/BiomeAmbientSoundsHandler.java:112-122",
+            "net/minecraft/client/resources/sounds/ElytraOnPlayerSoundInstance.java:11-21",
+            "net/minecraft/client/resources/sounds/GuardianAttackSoundInstance.java:13-23",
+            "net/minecraft/client/resources/sounds/MinecartSoundInstance.java:16-26",
+            "net/minecraft/client/resources/sounds/RidingEntitySoundInstance.java:30-40",
+            "net/minecraft/client/resources/sounds/SimpleSoundInstance.java:20-119",
+            "net/minecraft/client/resources/sounds/SnifferSoundInstance.java:11-21",
+            "net/minecraft/client/resources/sounds/UnderwaterAmbientSoundInstances.java:10-42",
+            "net/minecraft/client/multiplayer/ClientLevel.java:625-634",
+            "net/minecraft/client/multiplayer/MultiPlayerGameMode.java:248-270"
+          ]
+        },
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#ambient_loop_sync_updates_retained_stops_omitted_and_starts_new"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34064,6 +34363,24 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#requiresManualLooping(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34078,6 +34395,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#resume()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub fn audio_device_reload_reason",
+          "crates/bbb-audio/src/runtime.rs#pub fn poll_audio_device"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#reload_decision_preserves_vanilla_branch_order",
+          "crates/bbb-audio/src/device.rs#a_changed_irrelevant_device_does_not_reload_the_current_output"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34092,6 +34419,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#shouldChangeDevice()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#if looping { data.loop_region(..) } else { data }",
+          "crates/bbb-native/src/environment_audio_runtime.rs#fn advance_loop_sounds"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#ambient_loop_sync_updates_retained_stops_omitted_and_starts_new",
+          "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_cross_fades_loops_over_40_ticks_and_reuses_a_fading_holder"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34106,6 +34443,36 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#shouldLoopAutomatically(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#if looping { data.loop_region(..) } else { data }"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The official 26.1 client requires looping with a positive SoundInstance delay to enter manual requeue; every client-created looping instance uses delay zero, while the public SimpleSoundInstance call sites are non-looping.",
+          "reopen_condition": "A supported official-client sound instance or BBB-owned sound surface combines looping with a positive replay delay.",
+          "vanilla_basis": [
+            "net/minecraft/client/sounds/SoundEngine.java:262-269,318-327",
+            "net/minecraft/client/resources/sounds/AbstractSoundInstance.java:69-75",
+            "net/minecraft/client/resources/sounds/AbstractTickableSoundInstance.java:15-25",
+            "net/minecraft/client/resources/sounds/BeeSoundInstance.java:17-27",
+            "net/minecraft/client/resources/sounds/BeeAggressiveSoundInstance.java:5-13",
+            "net/minecraft/client/resources/sounds/BiomeAmbientSoundsHandler.java:112-122",
+            "net/minecraft/client/resources/sounds/ElytraOnPlayerSoundInstance.java:11-21",
+            "net/minecraft/client/resources/sounds/GuardianAttackSoundInstance.java:13-23",
+            "net/minecraft/client/resources/sounds/MinecartSoundInstance.java:16-26",
+            "net/minecraft/client/resources/sounds/RidingEntitySoundInstance.java:30-40",
+            "net/minecraft/client/resources/sounds/SimpleSoundInstance.java:20-119",
+            "net/minecraft/client/resources/sounds/SnifferSoundInstance.java:11-21",
+            "net/minecraft/client/resources/sounds/UnderwaterAmbientSoundInstances.java:10-42",
+            "net/minecraft/client/multiplayer/ClientLevel.java:625-634",
+            "net/minecraft/client/multiplayer/MultiPlayerGameMode.java:248-270"
+          ]
+        },
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#ambient_loop_sync_updates_retained_stops_omitted_and_starts_new"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34120,6 +34487,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#shouldLoopManually(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn stop_sound",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+          "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34134,6 +34513,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#stop(final @Nullable Identifier sound,final @Nullable SoundSource source)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn stop_sound",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+          "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34148,6 +34539,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#stop(final SoundInstance soundInstance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34162,6 +34566,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#stopAll()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#audio_events.tick_entity_sound_positions(",
+          "crates/bbb-native/src/audio_runtime.rs#fn tick_entity_sound_positions",
+          "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
+          "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_ticks_after_player_movement_and_before_music",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34176,6 +34592,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#tick(final boolean paused)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#audio_events.tick_entity_sound_positions(",
+          "crates/bbb-native/src/audio_runtime.rs#fn tick_entity_sound_positions",
+          "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
+          "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_ticks_after_player_movement_and_before_music",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34190,6 +34618,24 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#tickInGameSound()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34204,6 +34650,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#tickMusicWhenPaused()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn set_music_gain",
+          "crates/bbb-audio/src/runtime.rs#fn set_music_gain"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#music_gain_clamps_and_only_scales_music_category_handles",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34218,6 +34674,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#updateCategoryVolume(final SoundSource source,final float gain)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34232,6 +34699,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundEngine#updateSource(final Camera camera)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn load(",
+          "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
+          "crates/bbb-native/src/main.rs#NativeAudioRuntime::load("
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#native_audio_catalog_loader_errors_before_kira_when_catalog_is_empty",
+          "crates/bbb-pack/src/sounds.rs#required_sound_catalog_loads_minimal_valid_catalog",
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "constructor",
@@ -34246,6 +34725,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#SoundManager(final Options options)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#playback_events: VecDeque<AudioPlaybackEvent>",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn drain_subtitle_events",
+          "crates/bbb-native/src/main.rs#if args.client_show_subtitles {"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener",
+          "crates/bbb-native/src/audio_runtime.rs#audio_runtime_maps_playback_root_event_to_current_subtitle_key",
+          "crates/bbb-native/src/sound_subtitle_runtime.rs#sound_subtitle_projection_uses_strict_range_and_listener_directions"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34260,6 +34751,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#addListener(final SoundEventListener listener)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#fn merge_selected_resource_stack",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_merges_resource_stack_definitions_in_pack_order",
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_replace_clears_lower_priority_sounds",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34274,6 +34777,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#apply(final SoundManager.Preparations preparations,final ResourceManager manager,final ProfilerFiller profiler)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34288,6 +34804,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#destroy()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34302,6 +34831,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#emergencyShutdown()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34316,6 +34855,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#getAvailableSoundDevices()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn available_sound_ids",
+          "crates/bbb-world/src/commands.rs#pub fn set_available_command_sounds"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#indexed_vanilla_26_1_sounds_catalog_loads_representative_events",
+          "crates/bbb-world/src/commands.rs#resource_sound_completion_view_is_publication_shared_and_generation_isolated"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34330,6 +34879,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#getAvailableSounds()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_preserve_failures_and_project_shared_capacity",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34344,6 +34904,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#getChannelDebugString()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34358,6 +34929,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#getListenerTransform()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_preserve_failures_and_project_shared_capacity",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34372,6 +34954,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#getSoundCacheDebugStats(final SoundBufferLibrary.DebugOutput output)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn available_sound_ids",
+          "crates/bbb-world/src/commands.rs#pub fn set_available_command_sounds"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#indexed_vanilla_26_1_sounds_catalog_loads_representative_events",
+          "crates/bbb-world/src/commands.rs#resource_sound_completion_view_is_publication_shared_and_generation_isolated"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34386,6 +34978,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#getSoundEvent(final Identifier location)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#fn latest_active_music_event_id",
+          "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#backend_music_identity_ignores_stopped_and_naturally_completed_handles",
+          "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34400,6 +35002,24 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#isActive(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34414,6 +35034,19 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#pauseAllExcept(final SoundSource ... ignoredSources)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn play_positioned_sound",
+          "crates/bbb-audio/src/runtime.rs#fn play_spatial_sound",
+          "crates/bbb-audio/src/runtime.rs#fn play_local_sound_with_role"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_direct_positioned_sound_through_event_reference",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_direct_local_sound_without_spatial_position",
+          "crates/bbb-audio/src/runtime.rs#non_music_zero_volume_sounds_do_not_start",
+          "crates/bbb-audio/src/runtime.rs#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34428,6 +35061,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#play(final SoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#fn vanilla_distance_delay_ticks",
+          "crates/bbb-audio/src/runtime.rs#fn advance_delayed_positioned_sounds"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#distance_delay_ticks_match_vanilla_threshold_and_flooring",
+          "crates/bbb-audio/src/runtime.rs#delayed_positioned_sounds_release_after_remaining_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34442,6 +35085,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#playDelayed(final SoundInstance instance,final int delay)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#fn merge_selected_resource_stack",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_merges_resource_stack_definitions_in_pack_order",
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_replace_clears_lower_priority_sounds",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34456,6 +35111,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#prepare(final ResourceManager manager,final ProfilerFiller profiler)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:",
+          "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime.rs#tickable_sound_owner_requires_start_after_event_switch_or_reload",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34470,6 +35135,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#queueTickingSound(final TickableSoundInstance instance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn set_music_gain",
+          "crates/bbb-audio/src/runtime.rs#fn set_music_gain"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#music_gain_clamps_and_only_scales_music_category_handles",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34484,6 +35159,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#refreshCategoryVolume(final SoundSource category)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#pub fn reset_resource_generation",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn commit_reload",
+          "crates/bbb-native/src/resource_reload.rs#audio.commit_reload(reload);"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#generation_reset_cancels_pending_preload_and_rejects_old_requests",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34498,6 +35184,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#reload()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#playback_events: VecDeque<AudioPlaybackEvent>",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn drain_subtitle_events",
+          "crates/bbb-native/src/main.rs#if args.client_show_subtitles {"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener",
+          "crates/bbb-native/src/audio_runtime.rs#audio_runtime_maps_playback_root_event_to_current_subtitle_key",
+          "crates/bbb-native/src/sound_subtitle_runtime.rs#sound_subtitle_projection_uses_strict_range_and_listener_directions"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34512,6 +35210,24 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#removeListener(final SoundEventListener listener)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34526,6 +35242,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#resume()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn stop_sound",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+          "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34540,6 +35268,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#stop()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn stop_sound",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+          "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34554,6 +35294,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#stop(final @Nullable Identifier sound,final @Nullable SoundSource source)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#pub fn stop_sound",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds"
+        ],
+        "tests": [
+          "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+          "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34568,6 +35320,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#stop(final SoundInstance soundInstance)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#audio_events.tick_entity_sound_positions(",
+          "crates/bbb-native/src/audio_runtime.rs#fn tick_entity_sound_positions",
+          "crates/bbb-audio/src/runtime.rs#fn update_tickable_entity_sound"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
+          "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_ticks_after_player_movement_and_before_music",
+          "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34582,6 +35346,16 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#tick(final boolean paused)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn set_music_gain",
+          "crates/bbb-audio/src/runtime.rs#fn set_music_gain"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#music_gain_clamps_and_only_scales_music_category_handles",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34596,6 +35370,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#updateCategoryVolume(final SoundSource source,final float gain)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34610,6 +35395,17 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#updateSource(final Camera camera)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#fn sound_ogg_resource",
+          "crates/bbb-pack/src/sounds.rs#fn sound_resource_location"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_skips_invalid_resource_stack_definitions",
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_skips_missing_file_sounds_from_resource_stack",
+          "crates/bbb-pack/src/sounds.rs#rejects_invalid_sound_entry_values"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34624,6 +35420,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager#validateSoundResource(final Sound sound,final Identifier eventLocation,final ResourceProvider resourceProvider)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#fn merge_selected_resource_stack",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_merges_resource_stack_definitions_in_pack_order",
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_replace_clears_lower_priority_sounds",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34638,6 +35446,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager.Preparations#apply(final Map <Identifier, WeighedSoundEvents> registry,final Map <Identifier, Resource> soundCache,final SoundEngine engine)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#fn merge_selected_resource_stack",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_merges_resource_stack_definitions_in_pack_order",
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_replace_clears_lower_priority_sounds",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -34652,6 +35472,18 @@
       "vanilla_owner": "net.minecraft.client.sounds.SoundManager.Preparations#handleRegistration(final Identifier eventLocation,final SoundEventRegistration soundEventRegistration)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#fn merge_selected_resource_stack",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_merges_resource_stack_definitions_in_pack_order",
+          "crates/bbb-pack/src/sounds.rs#sound_catalog_replace_clears_lower_priority_sounds",
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "audio",
       "kind": "method",
@@ -47072,6 +47904,7 @@
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
+      "audio-sound-manager-engine",
       "security-secure-chat-reporting",
       "rendering-frame-order",
       "rendering-extract-surface",
@@ -48465,6 +49298,54 @@
     {
       "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
       "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/AbstractSoundInstance.java",
+      "sha256": "de77877ff74595b8af36acd8fa2cf3376d2d1ffb581222199461ec5284da85e1"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/AbstractTickableSoundInstance.java",
+      "sha256": "aa39e10ca9b51ffb4a87e59a5284f002d23c4e970d013cbb1d2406b7d1c1cb5b"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/BeeAggressiveSoundInstance.java",
+      "sha256": "0113c56e7070f83fc34349ccdebe7a0992e278c370b0f52d434569ac30dc2f09"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/BeeSoundInstance.java",
+      "sha256": "8578f8781c535be7141be222b5adb8a3f94eb02ad0276ecfff8fd98980d4af9e"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/BiomeAmbientSoundsHandler.java",
+      "sha256": "896dcd893301099c15eb6b05f38107170e1cc5c038a9208de606dbe5b131706e"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/ElytraOnPlayerSoundInstance.java",
+      "sha256": "4e054ef53a6a2a8943ddd37d0e68b9992ca4704bb2ad258d222187580420e9be"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/GuardianAttackSoundInstance.java",
+      "sha256": "bfb42156be4d92d526f101d602d62c73d5dec6c6a07288d720c45fd1a04e17b7"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/MinecartSoundInstance.java",
+      "sha256": "24b899c01be4693f06811a28db6807548680eac901bfb995275e47ffddff5ed9"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/RidingEntitySoundInstance.java",
+      "sha256": "3c14353973f39580e92e5bd08358ebccc145693365676e8b96499b90a8705576"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/SimpleSoundInstance.java",
+      "sha256": "ffa3dbb5d972f2e66ff9a2aaa25d51f055bd52cb88a972a3cab7810d43bd1b95"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/SnifferSoundInstance.java",
+      "sha256": "952d0cc52fcf0a9983d69717261f430f4c8ec37a30513dca68c3ddcf0a031a92"
+    },
+    {
+      "path": "net/minecraft/client/resources/sounds/UnderwaterAmbientSoundInstances.java",
+      "sha256": "614199404f9759a54b5e11ae15bde758939f2fa46be0f3637163e49390009a32"
     },
     {
       "path": "net/minecraft/client/server/IntegratedServer.java",

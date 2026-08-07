@@ -600,10 +600,13 @@ class WikiLint:
                 self.fail(f"invalid source locator for Vanilla owner {owner_id}")
             owner_evidence = item.get("bbb_evidence")
             if mechanism_id in owner_evidence_mechanisms:
-                if not isinstance(owner_evidence, dict) or set(owner_evidence) != {
+                evidence_keys = set(owner_evidence) if isinstance(owner_evidence, dict) else set()
+                if not isinstance(owner_evidence, dict) or not {
                     "implementation",
                     "tests",
-                }:
+                }.issubset(evidence_keys) or not evidence_keys.issubset(
+                    {"implementation", "tests", "scope_ruling"}
+                ):
                     self.fail(
                         f"inventory owner {owner_id} lacks implementation/test BBB evidence"
                     )
@@ -617,6 +620,53 @@ class WikiLint:
                         owner_evidence.get("tests"),
                         f"inventory owner {owner_id} tests",
                     )
+                    scope_ruling = owner_evidence.get("scope_ruling")
+                    if scope_ruling is not None:
+                        if not isinstance(scope_ruling, dict) or set(scope_ruling) != {
+                            "conclusion",
+                            "vanilla_basis",
+                            "current_scope_reason",
+                            "reopen_condition",
+                        }:
+                            self.fail(f"malformed scope ruling for inventory owner {owner_id}")
+                        elif scope_ruling.get("conclusion") != "not-reachable-in-current-scope":
+                            self.fail(f"invalid scope conclusion for inventory owner {owner_id}")
+                        else:
+                            vanilla_basis = scope_ruling.get("vanilla_basis")
+                            if (
+                                not isinstance(vanilla_basis, list)
+                                or not vanilla_basis
+                                or any(
+                                    not isinstance(anchor, str) or not anchor
+                                    for anchor in vanilla_basis
+                                )
+                            ):
+                                self.fail(
+                                    f"scope ruling lacks Vanilla basis for inventory owner {owner_id}"
+                                )
+                            else:
+                                for anchor in vanilla_basis:
+                                    basis_path, separator, basis_lines = anchor.partition(":")
+                                    if (
+                                        not separator
+                                        or basis_path not in declared_sources
+                                        or re.fullmatch(
+                                            r"\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*",
+                                            basis_lines,
+                                        )
+                                        is None
+                                    ):
+                                        self.fail(
+                                            f"unhashed Vanilla scope-ruling anchor for inventory owner {owner_id}: {anchor!r}"
+                                        )
+                            for field in ("current_scope_reason", "reopen_condition"):
+                                if (
+                                    not isinstance(scope_ruling.get(field), str)
+                                    or not scope_ruling[field]
+                                ):
+                                    self.fail(
+                                        f"scope ruling lacks {field} for inventory owner {owner_id}"
+                                    )
             elif owner_evidence is not None:
                 self.fail(
                     f"inventory owner {owner_id} has evidence outside the declared owner evidence contract"

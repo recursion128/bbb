@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result};
 use bbb_audio::{
     AudioChannelObservation, AudioCommand, AudioDeviceObservation, AudioPlaybackEvent,
-    AudioPreloadObservation, AudioPreloadRequest, KiraAudioRuntime,
+    AudioPreloadObservation, AudioPreloadRequest, AudioVolumeSettings, KiraAudioRuntime,
     TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
@@ -60,6 +60,7 @@ pub(crate) struct NativeAudioRuntime {
     catalog: SoundCatalog,
     registry: SoundEventRegistry,
     jukebox_registry: JukeboxSongRegistry,
+    volume_settings: AudioVolumeSettings,
     playback: KiraAudioRuntime,
     counters: AudioCounters,
     // Backend-only playback identity. Canonical ownership remains in the
@@ -81,7 +82,11 @@ pub(crate) struct NativeAudioReload {
 }
 
 impl NativeAudioRuntime {
-    pub(crate) fn load(roots: &PackRoots, preferred_device: &str) -> Result<Self> {
+    pub(crate) fn load(
+        roots: &PackRoots,
+        preferred_device: &str,
+        volume_settings: AudioVolumeSettings,
+    ) -> Result<Self> {
         let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
         let jukebox_registry = JukeboxSongRegistry::vanilla_26_1();
@@ -104,6 +109,7 @@ impl NativeAudioRuntime {
             catalog,
             registry,
             jukebox_registry,
+            volume_settings,
             playback,
             counters,
             active_tickable_sounds: BTreeSet::new(),
@@ -298,7 +304,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             resolver.play_local_sound(state)
         };
@@ -311,7 +317,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             resolver.play_positioned_sound(state)
         };
@@ -324,7 +330,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             resolver.play_entity_sound_at(state, position)
         };
@@ -342,7 +348,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             resolver.play_jukebox_song(state)
         };
@@ -355,7 +361,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             resolver.stop_jukebox_song(state)
         };
@@ -368,7 +374,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             resolver.stop_sound(state)
         };
@@ -387,7 +393,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             loops
                 .iter()
@@ -420,7 +426,7 @@ impl AudioEventSink for NativeAudioRuntime {
                 &self.catalog,
                 &self.registry,
                 &self.jukebox_registry,
-                bbb_audio::AudioVolumeSettings::default(),
+                self.volume_settings,
             );
             tickable_sounds
                 .iter()
@@ -440,7 +446,7 @@ impl AudioEventSink for NativeAudioRuntime {
                                 &self.catalog,
                                 &self.registry,
                                 &self.jukebox_registry,
-                                bbb_audio::AudioVolumeSettings::default(),
+                                self.volume_settings,
                             );
                             resolver.play_entity_sound_at(
                                 &state.event,
@@ -494,6 +500,21 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn every_native_audio_resolution_uses_the_startup_volume_settings() {
+        let production = include_str!("audio_runtime.rs")
+            .split_once("#[cfg(test)]")
+            .expect("audio runtime production/test boundary")
+            .0;
+
+        assert!(!production.contains("AudioVolumeSettings::default()"));
+        assert_eq!(
+            production.matches("self.volume_settings,").count(),
+            9,
+            "every local, positioned, entity, jukebox, stop, ambient and tickable resolver must use the stored startup settings",
+        );
+    }
 
     #[test]
     fn tickable_sound_owner_requires_start_after_event_switch_or_reload() {

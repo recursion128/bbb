@@ -738,7 +738,11 @@ fn run_client(args: startup::Args) -> Result<()> {
         )
     } else {
         match pack_roots.as_ref() {
-            Some(roots) => match NativeAudioRuntime::load(roots, &args.client_sound_device) {
+            Some(roots) => match NativeAudioRuntime::load(
+                roots,
+                &args.client_sound_device,
+                args.client_audio_volumes,
+            ) {
                 Ok(runtime) => {
                     let status = runtime.counters();
                     (Some(runtime), status)

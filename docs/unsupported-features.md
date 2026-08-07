@@ -90,18 +90,19 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   Vanilla anchors: `Options.java:1190,1691,1770,1825` and the verified
   `DataFixTypes.OPTIONS` schema/fix registrations.
 
-- Close the reopened `audio-sound-manager-engine` owner census. Stored device
-  selection/reload is implemented, and `Sound.preload` now reaches a
-  deterministic complete-buffer plan plus one cancellable latest-wins decode
-  worker during startup/reload; current-generation results install without an
-  application-frame decode and expose control receipts. Attach decision-level
-  evidence or an authoritative current-scope ruling to all 67 owners currently
-  generated for this row (`Options.isSoundDeviceDefault` is separately owned by
-  `persistence-options-apply`); external-client-unreachable integrated
-  pause branches must be proved from Vanilla callers, not silently counted as
-  implemented. Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
-  `Sound.java:68-70`, `SoundManager.java:264-310`, and
-  `SoundEngine.java:75,101-109,455-457,471-484`.
+- Close the remaining `audio-sound-manager-engine` backend differences. The
+  generated inventory now gives all 67 owners decision-level implementation
+  and focused-test evidence; its seven unreachable integrated-pause/manual-loop
+  owners additionally carry machine-readable Vanilla caller basis, current-scope
+  reason and reopen condition. Stored device/reload, generation-aware preload
+  and all eleven stored `soundCategory_*` startup gains are consumed. The row
+  remains `partial`: consume `directionalAudio` with Vanilla's supported-HRTF
+  fallback, replace Kira's shared fixed capacity/accounting with Vanilla's
+  device-derived static/streaming pool admission, and prove the stopped-handle
+  minimum delete-time/`isActive` behavior under short replacement sounds. Owner:
+  `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
+  `Library.java:64-114,124-155`, `SoundEngine.java:101-109,227-327,516-530`, and
+  `Sound.java:68-70`; reopen owner census if any source hash or method set moves.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.

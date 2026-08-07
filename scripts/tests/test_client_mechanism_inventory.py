@@ -78,6 +78,53 @@ public class Owner {
             ("crates/bbb-item-model/src/skin_runtime.rs",),
         )
 
+    def test_audio_owner_census_has_complete_evidence_and_explicit_scope_rulings(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "audio-sound-manager-engine"
+        ]
+
+        self.assertEqual(len(owners), 67)
+        self.assertEqual(
+            value["mechanisms"]["audio-sound-manager-engine"][
+                "owner_evidence_count"
+            ],
+            67,
+        )
+        self.assertTrue(
+            all(
+                owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        rulings = [
+            owner["bbb_evidence"]["scope_ruling"]
+            for owner in owners
+            if "scope_ruling" in owner["bbb_evidence"]
+        ]
+        self.assertEqual(len(rulings), 7)
+        hashed_sources = {source["path"] for source in value["source_files"]}
+        self.assertTrue(
+            all(
+                ruling["conclusion"] == "not-reachable-in-current-scope"
+                and ruling["vanilla_basis"]
+                and all(
+                    anchor.partition(":")[0] in hashed_sources
+                    for anchor in ruling["vanilla_basis"]
+                )
+                and ruling["current_scope_reason"]
+                and ruling["reopen_condition"]
+                for ruling in rulings
+            )
+        )
+
     def test_minecraft_method_partition_is_total_and_homogeneous(self) -> None:
         generated = (
             inventory.REPO_ROOT
