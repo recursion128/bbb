@@ -72,7 +72,7 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、percentile、1%
 low、hitch、per-frame normalization、invalid reason 与 cleanup。
 
-当前 host 的已发布摘要记录 4 次有效 capture/客户端和两轮 ABBA，八次 run 均为零
+历史 host 摘要记录 4 次有效 capture/客户端和两轮 ABBA，八次 run 均为零
 position correction、零 `>=33.333 ms` segment hitch。正式摘要位于外部路径
 `/tmp/bbb-parity-af536f334/formal-summary-eb6c96cbd.json`，SHA-256 为
 `fe8c3fc297578a0f5c6c7ed19a10ae696d325030a881ea75595ca7abee3f6330`；原始目录是
@@ -80,7 +80,18 @@ position correction、零 `>=33.333 ms` segment hitch。正式摘要位于外部
 commit `eb6c96cbd` 各保留一份 release binary，二者 SHA-256 均为
 `852edae8f51cd7e6c0f65d2b0568e678ceeacfe38936cc67bbe1900e885e72a1`；因此 summary
 不会把后续文档/证据提交冒充原 capture。这些路径只标识本机证据，清理或换机后必须重跑，
-不能从 Wiki 反向重建 raw capture。
+不能从 Wiki 反向重建 raw capture。`538121f8f` 的运行时代码变化后，这份正式摘要不再是
+current-binary 性能证据；它只保留历史结果，矩阵在新 ABBA/GPU-duration 完成前保持
+`partial`。
+
+post-`538121f8f` 的 current-binary 一致性前置门禁已在 capture commit `bd7bcc87b` 重采：
+三场景双侧重复噪声标定、冻结 ROI、637 resident/selected chunks、15,288
+resident/selected sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。
+workload summary 位于 `/tmp/bbb-parity-bd7bcc87b/visual/workload-summary.json`，SHA-256 为
+`d820fed1bba8c00cb298ac9ac1249d9cfcd2821e9d102151b3516620ac1f8922`；draw summary 位于
+`/tmp/bbb-parity-bd7bcc87b/renderdoc/summary.json`，SHA-256 为
+`6e361f54ba94d358001f6cb2ffe0053668fcc946966cfcc02059e60d5b66f868`。BBB release binary
+SHA-256 为 `53b60bb071052ba9dd7f56b88107a6e7dd271187c9b2458dae2f4eb4f095b27c`。
 
 | Contract/evidence | SHA-256 |
 | --- | --- |
@@ -170,13 +181,14 @@ jobs 分别为 `83,007/36,397`。GPU execution p50 为 `1.545/2.736 ms`，p95 �
 
 ## 当前差异
 
-本机制无 active gap。frame interval、进程 CPU 均值与 GPU execution duration 是三个各自
-独立测得的量，任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，
-同样不能作为等负载或性能倍数。
+current-binary 的视觉/workload/draw 前置门禁已经通过；正式两轮 ABBA、MangoHud/perf、
+GPU-duration association 与 overhead 仍待重采，因此本机制保持 active。frame interval、
+进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，任何一个都不能由另一个
+推导或相减得出；draw count 因 API batching 不同，同样不能作为等负载或性能倍数。
 
 ## 账本/goal 路由
 
-等负载比较与 GPU duration 均无 active 账本项。非 Linux 发布行等相邻平台状态只取
+等负载比较与 GPU duration 的 current-binary 重采路由到唯一账本。非 Linux 发布行等相邻平台状态只取
 [`unsupported-features.md`](../../../unsupported-features.md)。
 
 ## 精确重开条件
