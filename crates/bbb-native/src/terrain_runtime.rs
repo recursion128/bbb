@@ -202,6 +202,7 @@ pub(crate) struct TerrainUploadState {
     observed_level_generation: u64,
     observed_world_revision: u64,
     selected_chunks: Vec<ChunkPos>,
+    loaded_chunks: HashSet<ChunkPos>,
     snapshots: HashMap<ChunkPos, CachedTerrainSnapshot>,
     meshes: HashMap<ChunkPos, CachedTerrainMesh>,
     next_resident_revision: u64,
@@ -706,64 +707,70 @@ pub(crate) fn maybe_upload_decoded_terrain(
         return;
     }
 
-    let center = terrain_upload_center(world);
-    let selected_chunks = selected_terrain_chunks(world, center);
-    let selected: HashSet<_> = selected_chunks.iter().copied().collect();
-    let loaded: HashSet<_> = world.chunk_positions().into_iter().collect();
-    let required_snapshots: HashSet<_> = selected_chunks
-        .iter()
-        .copied()
-        .flat_map(chunk_neighborhood)
-        .filter(|pos| loaded.contains(pos))
-        .collect();
-
     renderer_dirty |= level_changed;
     let renderer_full_sync = level_generation_changed || upload.reload_all_chunks_requested;
-    if upload.reload_all_chunks_requested {
-        renderer_dirty |= !upload.meshes.is_empty();
-        cancel_queued_terrain_mesh_jobs(upload);
-        upload.mesh_generation = upload.mesh_generation.saturating_add(1);
-        upload.mesh_atlas = None;
-        upload.snapshots.clear();
-        upload.meshes.clear();
-        upload.section_residency.clear();
-        upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
-        upload.occlusion_rebuild_key = None;
-        upload.pending_occlusion_rebuild_key = None;
-        clear_terrain_occlusion_inputs(upload);
-        upload.renderer_sections = TerrainSectionFrameProjection::default();
-        upload.cache_ready = false;
-        upload.reload_all_chunks_requested = false;
+    let selection_needs_refresh =
+        terrain_cache_selection_needs_refresh(world, upload, level_changed);
+    if selection_needs_refresh {
+        let center = terrain_upload_center(world);
+        let selected_chunks = selected_terrain_chunks(world, center);
+        let selected: HashSet<_> = selected_chunks.iter().copied().collect();
+        let loaded_chunks: HashSet<_> = world.chunk_positions().into_iter().collect();
+        let required_snapshots: HashSet<_> = selected_chunks
+            .iter()
+            .copied()
+            .flat_map(chunk_neighborhood)
+            .filter(|pos| loaded_chunks.contains(pos))
+            .collect();
+
+        if upload.reload_all_chunks_requested {
+            renderer_dirty |= !upload.meshes.is_empty();
+            cancel_queued_terrain_mesh_jobs(upload);
+            upload.mesh_generation = upload.mesh_generation.saturating_add(1);
+            upload.mesh_atlas = None;
+            upload.snapshots.clear();
+            upload.meshes.clear();
+            upload.section_residency.clear();
+            upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+            upload.occlusion_rebuild_key = None;
+            upload.pending_occlusion_rebuild_key = None;
+            clear_terrain_occlusion_inputs(upload);
+            upload.renderer_sections = TerrainSectionFrameProjection::default();
+            upload.cache_ready = false;
+            upload.reload_all_chunks_requested = false;
+        }
+        upload
+            .snapshots
+            .retain(|pos, _| required_snapshots.contains(pos));
+        let removed_sections = upload
+            .meshes
+            .iter()
+            .filter(|(pos, _)| !selected.contains(pos))
+            .flat_map(|(pos, cached)| {
+                cached
+                    .resident_revisions
+                    .iter()
+                    .map(move |&(section_y, _)| SectionPosition {
+                        x: pos.x,
+                        y: section_y,
+                        z: pos.z,
+                    })
+            })
+            .collect::<Vec<_>>();
+        for position in removed_sections {
+            upload.occlusion_section_updates.insert(position, None);
+            upload.section_residency.remove(&position);
+        }
+        let resident_before = upload.meshes.len();
+        upload.meshes.retain(|pos, _| selected.contains(pos));
+        renderer_dirty |= upload.meshes.len() != resident_before;
+        upload.selected_chunks = selected_chunks;
+        upload.loaded_chunks = loaded_chunks;
+        upload.observed_world_revision = world.terrain_revision();
     }
-    upload
-        .snapshots
-        .retain(|pos, _| required_snapshots.contains(pos));
-    let removed_sections = upload
-        .meshes
-        .iter()
-        .filter(|(pos, _)| !selected.contains(pos))
-        .flat_map(|(pos, cached)| {
-            cached
-                .resident_revisions
-                .iter()
-                .map(move |&(section_y, _)| SectionPosition {
-                    x: pos.x,
-                    y: section_y,
-                    z: pos.z,
-                })
-        })
-        .collect::<Vec<_>>();
-    for position in removed_sections {
-        upload.occlusion_section_updates.insert(position, None);
-        upload.section_residency.remove(&position);
-    }
-    let resident_before = upload.meshes.len();
-    upload.meshes.retain(|pos, _| selected.contains(pos));
-    renderer_dirty |= upload.meshes.len() != resident_before;
-    upload.selected_chunks = selected_chunks;
 
     for _ in 0..MAX_TERRAIN_CACHE_WORK_PER_FRAME {
-        match next_terrain_cache_work(world, upload, &loaded) {
+        match next_terrain_cache_work(world, upload, &upload.loaded_chunks) {
             TerrainCacheWork::RefreshSnapshot(pos) => {
                 refresh_terrain_snapshot(world, upload, textures, pos);
             }
@@ -783,7 +790,6 @@ pub(crate) fn maybe_upload_decoded_terrain(
     }
     refresh_terrain_visibility(world, upload, visibility);
     publish_mesh_worker_counters(world, renderer, upload);
-    upload.observed_world_revision = world.terrain_revision();
 }
 
 fn terrain_cache_selection_is_stable(
@@ -795,6 +801,17 @@ fn terrain_cache_selection_is_stable(
         && !upload.reload_all_chunks_requested
         && upload.cache_ready
         && upload.observed_world_revision == world.terrain_revision()
+}
+
+fn terrain_cache_selection_needs_refresh(
+    world: &WorldStore,
+    upload: &TerrainUploadState,
+    level_changed: bool,
+) -> bool {
+    level_changed
+        || upload.reload_all_chunks_requested
+        || upload.observed_world_revision != world.terrain_revision()
+        || upload.selected_chunks.is_empty()
 }
 
 fn synchronize_terrain_level_generation(
@@ -809,6 +826,7 @@ fn synchronize_terrain_level_generation(
     upload.mesh_generation = upload.mesh_generation.saturating_add(1);
     upload.observed_level_generation = level_generation;
     upload.selected_chunks.clear();
+    upload.loaded_chunks.clear();
     upload.snapshots.clear();
     upload.meshes.clear();
     upload.reload_all_chunks_requested = false;
@@ -827,6 +845,7 @@ fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revis
     cancel_queued_terrain_mesh_jobs(upload);
     upload.observed_world_revision = world_revision;
     upload.selected_chunks.clear();
+    upload.loaded_chunks.clear();
     upload.snapshots.clear();
     upload.meshes.clear();
     upload.reload_all_chunks_requested = false;
@@ -2381,19 +2400,35 @@ mod tests {
     #[test]
     fn ready_unchanged_terrain_reuses_resident_selection() {
         let world = WorldStore::new();
+        let selected = ChunkPos { x: 2, z: -3 };
         let mut upload = TerrainUploadState {
             observed_world_revision: world.terrain_revision(),
+            selected_chunks: vec![selected],
             cache_ready: true,
             ..Default::default()
         };
 
         assert!(terrain_cache_selection_is_stable(&world, &upload, false));
+        assert!(!terrain_cache_selection_needs_refresh(
+            &world, &upload, false
+        ));
         assert!(!terrain_cache_selection_is_stable(&world, &upload, true));
+        assert!(terrain_cache_selection_needs_refresh(&world, &upload, true));
         upload.reload_all_chunks_requested = true;
         assert!(!terrain_cache_selection_is_stable(&world, &upload, false));
+        assert!(terrain_cache_selection_needs_refresh(
+            &world, &upload, false
+        ));
         upload.reload_all_chunks_requested = false;
         upload.cache_ready = false;
         assert!(!terrain_cache_selection_is_stable(&world, &upload, false));
+        assert!(!terrain_cache_selection_needs_refresh(
+            &world, &upload, false
+        ));
+        upload.selected_chunks.clear();
+        assert!(terrain_cache_selection_needs_refresh(
+            &world, &upload, false
+        ));
     }
 
     #[test]
