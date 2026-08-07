@@ -1561,7 +1561,15 @@ pub(crate) fn held_item_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
 ) -> HeldItemModels {
-    held_item_models_with_variant_textures(instances, world, item_runtime, terrain_textures, None)
+    let registry_keys = ItemRegistryKeySet::from_world(world);
+    held_item_models_with_variant_textures(
+        instances,
+        world,
+        item_runtime,
+        terrain_textures,
+        None,
+        &registry_keys,
+    )
 }
 
 pub(crate) fn held_item_models_with_variant_textures(
@@ -1570,6 +1578,7 @@ pub(crate) fn held_item_models_with_variant_textures(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     variant_textures: Option<&NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
 ) -> HeldItemModels {
     let mut block_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
@@ -1593,10 +1602,10 @@ pub(crate) fn held_item_models_with_variant_textures(
             residency,
         };
     };
-    let enchantment_keys = world_enchantment_keys(world);
-    let damage_type_keys = world_damage_type_keys(world);
-    let trim_material_keys = world_trim_material_keys(world);
-    let attribute_keys = world_attribute_keys(world);
+    let enchantment_keys = registry_keys.enchantments.as_deref();
+    let damage_type_keys = registry_keys.damage_types.as_deref();
+    let trim_material_keys = registry_keys.trim_materials.as_deref();
+    let attribute_keys = registry_keys.attributes.as_deref();
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
 
     for instance in instances {

@@ -205,7 +205,8 @@ use crate::{
         world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
         world_painting_variant_tooltip_context, world_trim_material_keys,
         world_trim_material_tooltip_context, world_trim_pattern_keys,
-        world_trim_pattern_tooltip_context, FirstPersonHandPresentation, MovingPistonVisibility,
+        world_trim_pattern_tooltip_context, FirstPersonHandPresentation, ItemRegistryKeySet,
+        MovingPistonVisibility,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
@@ -4133,11 +4134,11 @@ pub(crate) fn update_renderer_from_publication(
         .unwrap_or(0.0)
         + f64::from(entity_partial_tick);
     let item_registry_keys = non_entity_render_extraction.item_registry_keys(world);
-    let trim_material_keys = item_registry_keys.trim_materials;
-    let trim_pattern_keys = item_registry_keys.trim_patterns;
-    let enchantment_keys = item_registry_keys.enchantments;
-    let damage_type_keys = item_registry_keys.damage_types;
-    let attribute_keys = item_registry_keys.attributes;
+    let trim_material_keys = item_registry_keys.trim_materials.as_deref();
+    let trim_pattern_keys = item_registry_keys.trim_patterns.as_deref();
+    let enchantment_keys = item_registry_keys.enchantments.as_deref();
+    let damage_type_keys = item_registry_keys.damage_types.as_deref();
+    let attribute_keys = item_registry_keys.attributes.as_deref();
     let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick)
         .map(|mut pose| {
             pose.eye_height = camera_eye_height_ticks.frame_eye_height(entity_partial_tick);
@@ -4417,6 +4418,7 @@ pub(crate) fn update_renderer_from_publication(
         item_runtime,
         terrain_textures,
         Some(entity_variant_textures),
+        &item_registry_keys,
     );
     let item_mid_duration = item_mid_started_at.elapsed();
     let block_entity_started_at = Instant::now();
@@ -4570,12 +4572,14 @@ pub(crate) fn update_renderer_from_publication(
                 continue;
             }
             if let Some(entity_world) = submission.entity_world.as_ref() {
+                let entity_registry_keys = ItemRegistryKeySet::from_world(entity_world);
                 held_item_models.append(held_item_models_with_variant_textures(
                     std::slice::from_ref(&submission.instance),
                     entity_world,
                     item_runtime,
                     terrain_textures,
                     Some(entity_variant_textures),
+                    &entity_registry_keys,
                 ));
             }
             entity_instances.push(submission.instance);
@@ -4612,6 +4616,7 @@ pub(crate) fn update_renderer_from_publication(
         item_runtime,
         terrain_textures,
         Some(entity_variant_textures),
+        &item_registry_keys,
         map_texture_cache,
         first_person_camera_pose,
         entity_partial_tick,

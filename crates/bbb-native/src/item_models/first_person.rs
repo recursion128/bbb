@@ -81,12 +81,14 @@ pub(crate) fn first_person_item_models(
     let mut map_textures = MapTextureExtractionCache::default();
     map_textures.begin_frame();
     let hand_presentation = FirstPersonHandPresentation::fully_raised_for_test(world);
+    let registry_keys = ItemRegistryKeySet::from_world(world);
     first_person_item_models_with_map_cache(
         world,
         &hand_presentation,
         item_runtime,
         terrain_textures,
         None,
+        &registry_keys,
         &mut map_textures,
         camera_pose,
         partial_ticks,
@@ -100,6 +102,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
     map_texture_cache: &mut MapTextureExtractionCache,
     camera_pose: Option<CameraPose>,
     partial_ticks: f32,
@@ -115,6 +118,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
         item_runtime,
         terrain_textures,
         variant_textures,
+        registry_keys,
         map_texture_cache,
         camera_pose,
         partial_ticks,
@@ -125,6 +129,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
         item_runtime,
         terrain_textures,
         variant_textures,
+        registry_keys,
         camera_pose,
         partial_ticks,
         aspect_ratio,
@@ -160,6 +165,7 @@ fn append_first_person_hand_item_models(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
     map_texture_cache: &mut MapTextureExtractionCache,
     camera_pose: CameraPose,
     partial_ticks: f32,
@@ -217,10 +223,10 @@ fn append_first_person_hand_item_models(
         return;
     }
 
-    let enchantment_keys = world_enchantment_keys(world);
-    let damage_type_keys = world_damage_type_keys(world);
-    let trim_material_keys = world_trim_material_keys(world);
-    let attribute_keys = world_attribute_keys(world);
+    let enchantment_keys = registry_keys.enchantments.as_deref();
+    let damage_type_keys = registry_keys.damage_types.as_deref();
+    let trim_material_keys = registry_keys.trim_materials.as_deref();
+    let attribute_keys = registry_keys.attributes.as_deref();
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
     let mut map_textures = BTreeMap::new();
     let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
@@ -516,6 +522,7 @@ fn append_item_activation_item_model(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
     camera_pose: CameraPose,
     partial_ticks: f32,
     aspect_ratio: f32,
@@ -535,10 +542,10 @@ fn append_item_activation_item_model(
             partial_ticks,
             aspect_ratio,
         );
-    let enchantment_keys = world_enchantment_keys(world);
-    let damage_type_keys = world_damage_type_keys(world);
-    let trim_material_keys = world_trim_material_keys(world);
-    let attribute_keys = world_attribute_keys(world);
+    let enchantment_keys = registry_keys.enchantments.as_deref();
+    let damage_type_keys = registry_keys.damage_types.as_deref();
+    let trim_material_keys = registry_keys.trim_materials.as_deref();
+    let attribute_keys = registry_keys.attributes.as_deref();
     // Vanilla `updateForTopItem(itemState, item, FIXED, level, null, 0)`
     // resolves the model with no owning entity or hand.
     bake_item_stack_at_transform_with_light_and_overlay(

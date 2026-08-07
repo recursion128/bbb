@@ -3090,15 +3090,6 @@ impl DebugRenderExtractionBuffers {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct ItemRegistryKeySet {
-    pub(crate) trim_materials: Option<Arc<[String]>>,
-    pub(crate) trim_patterns: Option<Arc<[String]>>,
-    pub(crate) enchantments: Option<Arc<[String]>>,
-    pub(crate) damage_types: Option<Arc<[String]>>,
-    pub(crate) attributes: Option<Arc<[String]>>,
-}
-
 #[derive(Debug, Default)]
 struct CachedItemRegistryKeys {
     revision: Option<bbb_world::RegistryAccessRevision>,
@@ -3281,13 +3272,7 @@ impl NonEntityRenderExtractionScratch {
 
         self.item_registry_keys = CachedItemRegistryKeys {
             revision: Some(revision),
-            keys: ItemRegistryKeySet {
-                trim_materials: world_trim_material_keys(world).map(Arc::from),
-                trim_patterns: world_trim_pattern_keys(world).map(Arc::from),
-                enchantments: world_enchantment_keys(world).map(Arc::from),
-                damage_types: world_damage_type_keys(world).map(Arc::from),
-                attributes: world_attribute_keys(world).map(Arc::from),
-            },
+            keys: ItemRegistryKeySet::from_world(world),
         };
         self.observation.cache_misses = self.observation.cache_misses.saturating_add(5);
         self.item_registry_keys.keys.clone()

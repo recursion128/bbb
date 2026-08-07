@@ -2258,12 +2258,14 @@ fn first_person_item_models_render_two_handed_filled_map_surface() {
     lowered_presentation.item_used(InteractionHand::MainHand);
     let mut map_texture_cache = MapTextureExtractionCache::default();
     map_texture_cache.begin_frame();
+    let registry_keys = ItemRegistryKeySet::from_world(&world);
     let lowered = first_person_item_models_with_map_cache(
         &world,
         &lowered_presentation,
         Some(&item_runtime),
         &TerrainTextureState::default(),
         None,
+        &registry_keys,
         &mut map_texture_cache,
         Some(pose),
         1.0,

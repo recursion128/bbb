@@ -95,6 +95,30 @@ pub(crate) use special::{
     project_special_item_model, special_item_leaf_matrix, special_item_pack_texture_descriptors,
 };
 
+/// Immutable holder-order keys shared by every item-model consumer in one
+/// registry generation. The render extraction cache owns lifetime/revision;
+/// held and first-person paths only borrow these Arc-backed slices.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ItemRegistryKeySet {
+    pub(crate) trim_materials: Option<Arc<[String]>>,
+    pub(crate) trim_patterns: Option<Arc<[String]>>,
+    pub(crate) enchantments: Option<Arc<[String]>>,
+    pub(crate) damage_types: Option<Arc<[String]>>,
+    pub(crate) attributes: Option<Arc<[String]>>,
+}
+
+impl ItemRegistryKeySet {
+    pub(crate) fn from_world(world: &WorldStore) -> Self {
+        Self {
+            trim_materials: world_trim_material_keys(world).map(Arc::from),
+            trim_patterns: world_trim_pattern_keys(world).map(Arc::from),
+            enchantments: world_enchantment_keys(world).map(Arc::from),
+            damage_types: world_damage_type_keys(world).map(Arc::from),
+            attributes: world_attribute_keys(world).map(Arc::from),
+        }
+    }
+}
+
 /// Item-model registry keys indexed by network holder id. The checked world
 /// registry API owns wire-order identity; these wrappers only materialize the
 /// owned slices required by the item-model runtime.
