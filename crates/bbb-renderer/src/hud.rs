@@ -261,6 +261,7 @@ mod chat_layout_tests {
             display_sequence: 1,
             added_tick: 10,
             runs: vec![HudComponentTextRun::plain("hello")],
+            cached_geometry: None,
             tag: None,
             interactions: Vec::new(),
             end_of_entry: true,
@@ -274,6 +275,28 @@ mod chat_layout_tests {
         assert_eq!(hud_chat_line_alpha(&context, &line), 0.0);
         context.focused = true;
         assert_eq!(hud_chat_line_alpha(&context, &line), 1.0);
+    }
+
+    #[test]
+    fn stable_chat_geometry_caches_plain_runs_and_bypasses_obfuscated_runs() {
+        let fonts = HudFontGlyphBook::from(glyphs_for("hello"));
+        let plain = [HudComponentTextRun::plain("hello")];
+        let cached = hud_chat_line_geometry(&plain, &fonts).expect("plain cache");
+        assert_eq!(cached.shadow.glyph_quads.len(), 5);
+        assert_eq!(cached.main.glyph_quads.len(), 5);
+
+        let obfuscated = [HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text: "hello".to_string(),
+                style: HudTextStyle {
+                    obfuscated: true,
+                    ..HudTextStyle::default()
+                },
+                color: None,
+            },
+            font: None,
+        }];
+        assert!(hud_chat_line_geometry(&obfuscated, &fonts).is_none());
     }
 
     #[test]
@@ -771,6 +794,7 @@ pub(super) struct HudChatLine {
     display_sequence: u64,
     added_tick: u64,
     runs: Vec<HudComponentTextRun>,
+    cached_geometry: Option<HudChatLineGeometry>,
     tag: Option<HudChatTag>,
     interactions: Vec<HudChatLineInteraction>,
     end_of_entry: bool,
@@ -17061,22 +17085,36 @@ fn push_hud_chat<'a>(
                 ],
             );
         }
-        push_hud_component_screen_text_draw(
-            vertices,
-            commands,
-            white_pixel,
-            font_atlas,
-            fonts,
-            frame_index,
-            surface_size,
-            &HudComponentScreenTextDraw {
-                runs: &line.runs,
-                origin: (4.0, bottom.saturating_sub(MESSAGE_BASELINE_OFFSET) as f32),
-                scale: 1.0,
-                tint: [1.0, 1.0, 1.0, alpha * TEXT_OPACITY],
-                backdrop_opacity: 0.0,
-            },
-        );
+        let origin = (4.0, bottom.saturating_sub(MESSAGE_BASELINE_OFFSET) as f32);
+        if let Some(geometry) = &line.cached_geometry {
+            push_hud_cached_chat_line(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                geometry,
+                origin,
+                alpha * TEXT_OPACITY,
+            );
+        } else {
+            push_hud_component_screen_text_draw(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                fonts,
+                frame_index,
+                surface_size,
+                &HudComponentScreenTextDraw {
+                    runs: &line.runs,
+                    origin,
+                    scale: 1.0,
+                    tint: [1.0, 1.0, 1.0, alpha * TEXT_OPACITY],
+                    backdrop_opacity: 0.0,
+                },
+            );
+        }
         if line.end_of_entry
             && line
                 .tag
@@ -19932,6 +19970,43 @@ struct HudStyledTextPassGeometry {
     effect_rects: Vec<(HudEffectRect, [f32; 4])>,
 }
 
+/// Stable font-space geometry for one wrapped chat line. Chat delivery and
+/// font-resource changes already rebuild `hud_chat_lines`, while ordinary
+/// render frames only change the line origin and fade alpha. Obfuscated text
+/// intentionally bypasses this cache because vanilla chooses a fresh glyph
+/// substitution from the render-frame seed.
+#[derive(Debug, Clone, PartialEq)]
+struct HudChatLineGeometry {
+    shadow: HudStyledTextPassGeometry,
+    main: HudStyledTextPassGeometry,
+}
+
+fn hud_chat_line_geometry(
+    runs: &[HudComponentTextRun],
+    fonts: &HudFontGlyphBook,
+) -> Option<HudChatLineGeometry> {
+    if runs.iter().any(|run| run.visual.style.obfuscated) {
+        return None;
+    }
+    let geometry = |shadow_offset, is_shadow| {
+        hud_component_text_pass_geometry(
+            runs,
+            fonts,
+            0,
+            (0.0, 0.0),
+            shadow_offset,
+            is_shadow,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        )
+    };
+    Some(HudChatLineGeometry {
+        shadow: geometry(1.0, true),
+        main: geometry(0.0, false),
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct HudResolvedTextRun<'a> {
     visual: &'a HudStyledTextRun,
@@ -20191,6 +20266,78 @@ fn push_hud_styled_text_pass<'a>(
                 max: [1.0, 1.0],
             },
             *tint,
+        ));
+        let end = vertices.len() as u32;
+        push_hud_sprite_batch(commands, white_pixel, start, end);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_cached_chat_line<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    geometry: &HudChatLineGeometry,
+    origin: (f32, f32),
+    alpha: f32,
+) {
+    for pass in [&geometry.shadow, &geometry.main] {
+        push_hud_translated_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            pass,
+            origin,
+            alpha,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_translated_text_pass<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    geometry: &HudStyledTextPassGeometry,
+    origin: (f32, f32),
+    alpha: f32,
+) {
+    let translated_tint = |mut tint: [f32; 4]| {
+        tint[3] *= alpha;
+        tint
+    };
+    for (quad, tint) in &geometry.glyph_quads {
+        let start = vertices.len() as u32;
+        vertices.extend_from_slice(&hud_styled_quad_vertices(
+            surface_size,
+            quad.corners.map(|[x, y]| [x + origin.0, y + origin.1]),
+            quad.uv,
+            translated_tint(*tint),
+        ));
+        let end = vertices.len() as u32;
+        push_hud_sprite_batch(commands, font_atlas, start, end);
+    }
+    for (rect, tint) in &geometry.effect_rects {
+        let start = vertices.len() as u32;
+        vertices.extend_from_slice(&hud_styled_quad_vertices(
+            surface_size,
+            [
+                [rect.x0 + origin.0, rect.y0 + origin.1],
+                [rect.x0 + origin.0, rect.y1 + origin.1],
+                [rect.x1 + origin.0, rect.y1 + origin.1],
+                [rect.x1 + origin.0, rect.y0 + origin.1],
+            ],
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            translated_tint(*tint),
         ));
         let end = vertices.len() as u32;
         push_hud_sprite_batch(commands, white_pixel, start, end);
@@ -20579,6 +20726,7 @@ fn hud_wrap_chat_messages(
             lines.push(HudChatLine {
                 display_sequence: message.display_sequence,
                 added_tick: message.added_tick,
+                cached_geometry: hud_chat_line_geometry(&wrapped.runs, fonts),
                 runs: wrapped.runs,
                 tag: message.tag.clone(),
                 interactions: wrapped.interactions,
