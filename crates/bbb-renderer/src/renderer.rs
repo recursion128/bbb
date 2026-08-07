@@ -1,11 +1,5 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError},
-        Arc,
-    },
-    thread,
     time::{Duration, Instant},
 };
 
@@ -638,7 +632,6 @@ pub struct Renderer {
     last_translucent_sort_block_position: Option<[i32; 3]>,
     translucency_resort_iteration_index: usize,
     translucency_resort_drain_index: usize,
-    translucent_sort_worker: TerrainTranslucentSortWorker,
     pub(super) terrain_source_sections: usize,
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) entity_model_bounds: Option<TerrainBounds>,
@@ -1195,96 +1188,10 @@ fn remove_resident_terrain_section(
 
 #[derive(Debug, Clone)]
 struct TerrainTranslucentSortState {
-    id: u64,
-    centroids: Arc<[[f32; 3]]>,
-    local_indices: Arc<[[u32; 6]]>,
+    centroids: Vec<[f32; 3]>,
+    local_indices: Vec<[u32; 6]>,
     last_point_of_view: Option<[i8; 3]>,
     pending_camera: Option<([f32; 3], [i8; 3])>,
-    in_flight_camera: Option<([f32; 3], [i8; 3])>,
-}
-
-static NEXT_TRANSLUCENT_SORT_ID: AtomicU64 = AtomicU64::new(1);
-
-struct TerrainTranslucentSortTask {
-    id: u64,
-    centroids: Arc<[[f32; 3]]>,
-    local_indices: Arc<[[u32; 6]]>,
-    camera_position: [f32; 3],
-    point_of_view: [i8; 3],
-}
-
-struct TerrainTranslucentSortResult {
-    id: u64,
-    point_of_view: [i8; 3],
-    indices: Vec<u32>,
-}
-
-struct TerrainTranslucentSortWorker {
-    task_sender: SyncSender<TerrainTranslucentSortTask>,
-    result_receiver: Receiver<TerrainTranslucentSortResult>,
-    busy: bool,
-}
-
-impl TerrainTranslucentSortWorker {
-    fn new() -> Self {
-        // One in-flight task is enough: pending section requests remain renderer
-        // owned and coalesce to the latest camera until this worker is available.
-        let (task_sender, task_receiver) = mpsc::sync_channel::<TerrainTranslucentSortTask>(1);
-        let (result_sender, result_receiver) = mpsc::channel();
-        thread::Builder::new()
-            .name("bbb-translucent-sort".to_owned())
-            .spawn(move || {
-                while let Ok(task) = task_receiver.recv() {
-                    let indices = sorted_translucent_indices(
-                        &task.centroids,
-                        &task.local_indices,
-                        task.camera_position,
-                    );
-                    if result_sender
-                        .send(TerrainTranslucentSortResult {
-                            id: task.id,
-                            point_of_view: task.point_of_view,
-                            indices,
-                        })
-                        .is_err()
-                    {
-                        break;
-                    }
-                }
-            })
-            .expect("failed to start translucent terrain sort worker");
-        Self {
-            task_sender,
-            result_receiver,
-            busy: false,
-        }
-    }
-
-    fn try_dispatch(
-        &mut self,
-        task: TerrainTranslucentSortTask,
-    ) -> Result<(), TerrainTranslucentSortTask> {
-        if self.busy {
-            return Err(task);
-        }
-        match self.task_sender.try_send(task) {
-            Ok(()) => {
-                self.busy = true;
-                Ok(())
-            }
-            Err(TrySendError::Full(task) | TrySendError::Disconnected(task)) => Err(task),
-        }
-    }
-
-    fn try_take_result(&mut self) -> Option<TerrainTranslucentSortResult> {
-        match self.result_receiver.try_recv() {
-            Ok(result) => {
-                self.busy = false;
-                Some(result)
-            }
-            Err(TryRecvError::Empty | TryRecvError::Disconnected) => None,
-        }
-    }
 }
 
 impl TerrainTranslucentSortState {
@@ -1323,12 +1230,10 @@ impl TerrainTranslucentSortState {
         }
         let local_indices = local_indices.into_iter().collect::<Option<Vec<_>>>()?;
         Some(Self {
-            id: NEXT_TRANSLUCENT_SORT_ID.fetch_add(1, Ordering::Relaxed),
-            centroids: centroids.into(),
-            local_indices: local_indices.into(),
+            centroids,
+            local_indices,
             last_point_of_view,
             pending_camera: None,
-            in_flight_camera: None,
         })
     }
 
@@ -1346,11 +1251,7 @@ impl TerrainTranslucentSortState {
             self.pending_camera = Some((camera_position, point_of_view));
             return;
         }
-        let effective_point_of_view = self
-            .in_flight_camera
-            .map(|(_, point_of_view)| point_of_view)
-            .or(self.last_point_of_view);
-        let point_of_view_changed = effective_point_of_view != Some(point_of_view);
+        let point_of_view_changed = self.last_point_of_view != Some(point_of_view);
         let axis_aligned = point_of_view.into_iter().any(|coordinate| coordinate == 0);
         if !point_of_view_changed && !(block_position_changed && (axis_aligned || nearby)) {
             return;
@@ -1358,33 +1259,10 @@ impl TerrainTranslucentSortState {
         self.pending_camera = Some((camera_position, point_of_view));
     }
 
-    #[cfg(test)]
     fn take_scheduled_indices(&mut self) -> Option<Vec<u32>> {
         let (camera_position, point_of_view) = self.pending_camera.take()?;
         self.last_point_of_view = Some(point_of_view);
         Some(self.sorted_indices(camera_position))
-    }
-
-    fn take_scheduled_task(&mut self) -> Option<TerrainTranslucentSortTask> {
-        let (camera_position, point_of_view) = self.pending_camera.take()?;
-        self.in_flight_camera = Some((camera_position, point_of_view));
-        Some(TerrainTranslucentSortTask {
-            id: self.id,
-            centroids: Arc::clone(&self.centroids),
-            local_indices: Arc::clone(&self.local_indices),
-            camera_position,
-            point_of_view,
-        })
-    }
-
-    fn restore_task(&mut self, task: TerrainTranslucentSortTask) {
-        self.in_flight_camera = None;
-        self.pending_camera = Some((task.camera_position, task.point_of_view));
-    }
-
-    fn complete_task(&mut self, point_of_view: [i8; 3]) {
-        self.in_flight_camera = None;
-        self.last_point_of_view = Some(point_of_view);
     }
 
     #[cfg(test)]
@@ -1404,51 +1282,45 @@ impl TerrainTranslucentSortState {
         self.take_scheduled_indices()
     }
 
-    #[cfg(test)]
     fn sorted_indices(&self, camera_position: [f32; 3]) -> Vec<u32> {
-        sorted_translucent_indices(&self.centroids, &self.local_indices, camera_position)
-    }
-}
-
-fn sorted_translucent_indices(
-    centroids: &[[f32; 3]],
-    local_indices: &[[u32; 6]],
-    camera_position: [f32; 3],
-) -> Vec<u32> {
-    let mut quad_distances: Vec<_> = centroids
-        .iter()
-        .enumerate()
-        .map(|(quad_index, centroid)| {
-            let dx = centroid[0] - camera_position[0];
-            let dy = centroid[1] - camera_position[1];
-            let dz = centroid[2] - camera_position[2];
-            (quad_index, dx * dx + dy * dy + dz * dz)
-        })
-        .collect();
-    quad_distances.sort_by(
-        |(left_index, left_distance), (right_index, right_distance)| {
-            right_distance
-                .total_cmp(left_distance)
-                .then_with(|| left_index.cmp(right_index))
-        },
-    );
-
-    let mut indices = Vec::with_capacity(quad_distances.len() * 6);
-    for (quad_index, _) in quad_distances {
-        let base = (quad_index * 4) as u32;
-        indices.extend(
-            local_indices[quad_index]
-                .into_iter()
-                .map(|index| base + index),
+        let mut quad_distances: Vec<_> = self
+            .centroids
+            .iter()
+            .enumerate()
+            .map(|(quad_index, centroid)| {
+                let dx = centroid[0] - camera_position[0];
+                let dy = centroid[1] - camera_position[1];
+                let dz = centroid[2] - camera_position[2];
+                (quad_index, dx * dx + dy * dy + dz * dz)
+            })
+            .collect();
+        quad_distances.sort_by(
+            |(left_index, left_distance), (right_index, right_distance)| {
+                right_distance
+                    .total_cmp(left_distance)
+                    .then_with(|| left_index.cmp(right_index))
+            },
         );
+
+        let mut indices = Vec::with_capacity(quad_distances.len() * 6);
+        for (quad_index, _) in quad_distances {
+            let base = (quad_index * 4) as u32;
+            indices.extend(
+                self.local_indices[quad_index]
+                    .into_iter()
+                    .map(|index| base + index),
+            );
+        }
+        indices
     }
-    indices
 }
 
 // Vanilla performs translucent index sorting in SectionRenderDispatcher workers.
-// Apply at most the single worker result made available since the last camera
-// update; pending renderer-owned requests stay bounded and coalesce above.
-const MAX_TRANSLUCENT_RESORT_COMPLETIONS_PER_CAMERA_UPDATE: usize = 1;
+// BBB currently owns the cached CPU geometry in the renderer, so drain only a
+// small number synchronously per camera update instead of sorting every nearby
+// section on the render thread at a block boundary. Pending requests coalesce to
+// the newest camera above, matching the worker task's late camera read.
+const MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE: usize = 1;
 
 fn camera_block_position(camera_position: [f32; 3]) -> [i32; 3] {
     camera_position.map(|coordinate| coordinate.floor() as i32)
@@ -2620,7 +2492,6 @@ impl Renderer {
             last_translucent_sort_block_position: None,
             translucency_resort_iteration_index: 0,
             translucency_resort_drain_index: 0,
-            translucent_sort_worker: TerrainTranslucentSortWorker::new(),
             terrain_source_sections: 0,
             terrain_bounds: None,
             entity_model_bounds: None,
@@ -4386,30 +4257,6 @@ impl Renderer {
         self.counters.terrain_translucent_resort_owners = 0;
         self.counters.terrain_translucent_resort_index_bytes = 0;
 
-        for _ in 0..MAX_TRANSLUCENT_RESORT_COMPLETIONS_PER_CAMERA_UPDATE {
-            let Some(result) = self.translucent_sort_worker.try_take_result() else {
-                break;
-            };
-            let Some(mesh) = self.terrain_translucent.iter_mut().find(|mesh| {
-                mesh.translucent_sort
-                    .as_ref()
-                    .is_some_and(|sort| sort.id == result.id)
-            }) else {
-                continue;
-            };
-            let Some(sort) = &mut mesh.translucent_sort else {
-                continue;
-            };
-            sort.complete_task(result.point_of_view);
-            let index_bytes = bytemuck::cast_slice(&result.indices);
-            self.queue.write_buffer(&mesh.index_buffer, 0, index_bytes);
-            self.counters.terrain_translucent_resort_owners += 1;
-            self.counters.terrain_translucent_resort_index_bytes = self
-                .counters
-                .terrain_translucent_resort_index_bytes
-                .saturating_add(index_bytes.len() as u64);
-        }
-
         let Some(camera_position) = self.camera_sort_position() else {
             return;
         };
@@ -4473,25 +4320,28 @@ impl Renderer {
 
         let mesh_count = self.terrain_translucent.len();
         let mut visited = 0;
-        while visited < mesh_count && !self.translucent_sort_worker.busy {
+        let mut completed = 0;
+        while visited < mesh_count && completed < MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE {
             let index = self.translucency_resort_drain_index % mesh_count;
             self.translucency_resort_drain_index =
                 self.translucency_resort_drain_index.saturating_add(1);
             visited += 1;
             let mesh = &mut self.terrain_translucent[index];
-            let Some(task) = mesh
+            let Some(indices) = mesh
                 .translucent_sort
                 .as_mut()
-                .and_then(TerrainTranslucentSortState::take_scheduled_task)
+                .and_then(TerrainTranslucentSortState::take_scheduled_indices)
             else {
                 continue;
             };
-            if let Err(task) = self.translucent_sort_worker.try_dispatch(task) {
-                mesh.translucent_sort
-                    .as_mut()
-                    .expect("sort state disappeared while restoring a worker task")
-                    .restore_task(task);
-            }
+            let index_bytes = bytemuck::cast_slice(&indices);
+            self.queue.write_buffer(&mesh.index_buffer, 0, index_bytes);
+            self.counters.terrain_translucent_resort_owners += 1;
+            self.counters.terrain_translucent_resort_index_bytes = self
+                .counters
+                .terrain_translucent_resort_index_bytes
+                .saturating_add(index_bytes.len() as u64);
+            completed += 1;
         }
         self.last_translucent_sort_block_position = Some(camera_block);
     }
@@ -4863,40 +4713,14 @@ mod tests {
         translucent_section_draw_order, translucent_section_draw_order_from_visible,
         translucent_section_is_nearby, LevelFrameRoute, Renderer, RendererResizePrepareStage,
         TerrainChunkMeshOwner, TerrainSectionMeshOwner, TerrainSectionRenderState,
-        TerrainTranslucentSortState, MAX_TRANSLUCENT_RESORT_COMPLETIONS_PER_CAMERA_UPDATE,
+        TerrainTranslucentSortState, MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE,
     };
     use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
     use crate::terrain::{
         TerrainMesh, TerrainSectionMesh, TerrainSectionMeshLayers, TerrainVertex,
     };
     use glam::Vec3;
-    use std::time::{Duration, Instant};
     use winit::dpi::PhysicalSize;
-
-    fn drain_translucent_sort_worker(renderer: &mut Renderer) -> usize {
-        let deadline = Instant::now() + Duration::from_secs(2);
-        let mut completed = 0;
-        loop {
-            renderer.resort_translucent_terrain_for_camera();
-            let resorts = renderer.counters().terrain_translucent_resort_owners;
-            assert!(resorts <= MAX_TRANSLUCENT_RESORT_COMPLETIONS_PER_CAMERA_UPDATE);
-            completed += resorts;
-            let settled = !renderer.translucent_sort_worker.busy
-                && renderer.terrain_translucent.iter().all(|mesh| {
-                    mesh.translucent_sort.as_ref().is_none_or(|sort| {
-                        sort.pending_camera.is_none() && sort.in_flight_camera.is_none()
-                    })
-                });
-            if settled {
-                return completed;
-            }
-            assert!(
-                Instant::now() < deadline,
-                "translucent sort worker did not settle"
-            );
-            std::thread::yield_now();
-        }
-    }
 
     fn resize_target_sizes(renderer: &Renderer) -> Vec<wgpu::Extent3d> {
         vec![
@@ -5864,7 +5688,6 @@ mod tests {
             },
             visibility: 1.0,
         }]);
-        drain_translucent_sort_worker(&mut renderer);
         let vertex_upload_bytes = renderer.counters().terrain_vertex_upload_bytes;
 
         renderer.set_camera_pose(Some(CameraPose {
@@ -5874,9 +5697,7 @@ mod tests {
             eye_height: 0.0,
         }));
 
-        let completed = drain_translucent_sort_worker(&mut renderer);
-
-        assert_eq!(completed, 1);
+        assert_eq!(renderer.counters().terrain_translucent_resort_owners, 1);
         assert_eq!(
             renderer.counters().terrain_translucent_resort_index_bytes,
             12 * size_of::<u32>() as u64
@@ -5934,21 +5755,25 @@ mod tests {
                 })
                 .collect::<Vec<_>>(),
         );
-        drain_translucent_sort_worker(&mut renderer);
 
-        renderer.set_camera_pose(Some(CameraPose {
-            position: [0.5, 32.5, 4.0],
-            y_rot: 0.0,
-            x_rot: 0.0,
-            eye_height: 0.0,
-        }));
-        let completed = drain_translucent_sort_worker(&mut renderer);
+        let mut completed = 0;
+        for x in [0.5, 0.6, 0.7, 0.8, 0.9] {
+            renderer.set_camera_pose(Some(CameraPose {
+                position: [x, 32.5, 4.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 0.0,
+            }));
+            let resorts = renderer.counters().terrain_translucent_resort_owners;
+            assert!(resorts <= MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE);
+            completed += resorts;
+        }
 
         assert_eq!(completed, 5);
         assert!(renderer.terrain_translucent.iter().all(|mesh| mesh
             .translucent_sort
             .as_ref()
-            .is_some_and(|sort| sort.pending_camera.is_none() && sort.in_flight_camera.is_none())));
+            .is_some_and(|sort| sort.pending_camera.is_none())));
     }
 
     #[test]
