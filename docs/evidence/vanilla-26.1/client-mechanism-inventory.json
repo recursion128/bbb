@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "93784f9fd94c059885d84dec684029cfb2c74a54367e3e793048169a1adfceee"
+      "sha256": "b688c469cd162e08c4274c423fd6907ef53e284d3ca8f0c4266e3866dde9982c"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -259,8 +259,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/client_options.rs"
       ],
-      "owner_count": 3,
-      "owner_evidence_count": 3
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "persistence-options-derived": {
       "bbb_evidence": [
@@ -280,7 +280,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 6
+      "owner_count": 5
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -13882,10 +13882,24 @@
       "vanilla_owner": "net.minecraft.client.Options#getFinalSoundSourceVolume(final SoundSource source)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#FULLSCREEN_RESOLUTION_KEY",
+          "crates/bbb-native/src/startup.rs#parse_client_fullscreen_resolution",
+          "crates/bbb-native/src/main.rs#fn set_window_fullscreen",
+          "crates/bbb-native/src/window_surface.rs#find_exact_video_mode"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#the_fullscreen_resolution_line_is_retained_across_load_and_save",
+          "crates/bbb-native/src/startup.rs#a_typed_fullscreen_resolution_wins_over_the_stored_line",
+          "crates/bbb-native/src/window_surface.rs#video_mode_facts_exact_match_includes_refresh_and_total_bits",
+          "crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-unconsumed",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#getFullscreenVideoModeString()",
       "role": "decision",
       "scope": "external-client",

@@ -400,7 +400,12 @@ OPTIONS_METHOD_ROUTES = _method_routes(
     ),
     (
         MethodRoute("persistence", "persistence", "persistence-options-apply"),
-        ("buildPlayerInformation", "broadcastOptions", "dumpOptionsForReport"),
+        (
+            "buildPlayerInformation",
+            "broadcastOptions",
+            "dumpOptionsForReport",
+            "getFullscreenVideoModeString",
+        ),
     ),
     (
         # The stored value round-trips, but the subsystem that would read it does
@@ -408,7 +413,6 @@ OPTIONS_METHOD_ROUTES = _method_routes(
         MethodRoute("persistence", "persistence", "persistence-options-unconsumed"),
         (
             "dataFix",
-            "getFullscreenVideoModeString",
             "isSoundDeviceDefault",
             "applyGraphicsPreset",
             "loadSelectedResourcePacks",
@@ -4184,6 +4188,27 @@ OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
             ),
         ),
         ("dumpOptionsForReport",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options.rs#FULLSCREEN_RESOLUTION_KEY",
+                "crates/bbb-native/src/startup.rs#parse_client_fullscreen_resolution",
+                "crates/bbb-native/src/main.rs#fn set_window_fullscreen",
+                "crates/bbb-native/src/window_surface.rs#find_exact_video_mode",
+            ),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#the_fullscreen_resolution_line_is_retained_across_load_and_save",
+                "crates/bbb-native/src/startup.rs"
+                "#a_typed_fullscreen_resolution_wins_over_the_stored_line",
+                "crates/bbb-native/src/window_surface.rs"
+                "#video_mode_facts_exact_match_includes_refresh_and_total_bits",
+                "crates/bbb-native/src/main.rs"
+                "#fullscreen_transitions_share_one_deterministic_mode_policy",
+            ),
+        ),
+        ("getFullscreenVideoModeString",),
     ),
 )
 
