@@ -114,6 +114,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) entity_render_extraction: &'a mut crate::entity_scene::EntityRenderExtractionScratch,
     pub(crate) non_entity_render_extraction:
         &'a mut crate::runtime::NonEntityRenderExtractionScratch,
+    pub(crate) camera_environment_samples: &'a mut crate::runtime::CameraEnvironmentSampleCache,
     pub(crate) item_runtime: Option<&'a NativeItemRuntime>,
     pub(crate) hud_render_runtime: &'a mut HudRenderRuntime,
     pub(crate) hud_debug_fps_sampler: &'a mut HudDebugFpsSampler,

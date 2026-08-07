@@ -1092,6 +1092,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut entity_render_extraction = EntityRenderExtractionScratch::default();
     let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();
+    let mut camera_environment_samples = runtime::CameraEnvironmentSampleCache::default();
     // `Options.broadcastOptions` resends this after every save, so keep the
     // configured player information around for the session.
     let startup_client_information = startup::client_information_from_args(&args)?;
@@ -1603,6 +1604,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             entity_variant_textures: &mut entity_variant_textures,
                             entity_render_extraction: &mut entity_render_extraction,
                             non_entity_render_extraction: &mut non_entity_render_extraction,
+                            camera_environment_samples: &mut camera_environment_samples,
                             item_runtime: item_runtime.as_ref(),
                             hud_render_runtime: &mut hud_render_runtime,
                             hud_debug_fps_sampler: &mut hud_debug_fps_sampler,

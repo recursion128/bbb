@@ -98,6 +98,10 @@ use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
+mod camera_environment_probe;
+
+pub(crate) use camera_environment_probe::CameraEnvironmentSampleCache;
+
 use crate::{
     audio_runtime::AudioEventSink,
     banner_scene::banner_model_instances_from_world_at_partial_tick,
@@ -3318,6 +3322,7 @@ pub(crate) fn update_renderer_from_publication(
         entity_variant_textures,
         entity_render_extraction,
         non_entity_render_extraction,
+        camera_environment_samples,
         item_runtime,
         hud_render_runtime,
         hud_debug_fps_sampler,
@@ -4223,7 +4228,15 @@ pub(crate) fn update_renderer_from_publication(
             camera_fov_ticks.base_degrees(),
         )
     });
-    let camera_environment_colors = camera_environment_colors(world, camera_pose, camera_fluid);
+    let camera_environment_colors = camera_environment_colors_from_cached_sample(
+        camera_environment_samples,
+        world,
+        world.client_level_generation(),
+        publication.client_tick_index,
+        entity_partial_tick,
+        camera_pose,
+        camera_fluid,
+    );
     let clear_color = clear_color_for_world_with_environment_colors_and_water_vision(
         world,
         camera_environment_colors,
@@ -19888,12 +19901,40 @@ fn argb_scale_rgb(color: i32, red: f32, green: f32, blue: f32) -> i32 {
     )
 }
 
+#[cfg(test)]
 fn camera_environment_colors(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
     camera_fluid: CameraFluid,
 ) -> CameraEnvironmentColors {
     let attributes = sampled_environment_attributes_at_camera(world, camera_pose);
+    camera_environment_colors_from_attributes(&attributes, camera_pose, camera_fluid)
+}
+
+fn camera_environment_colors_from_cached_sample(
+    samples: &mut CameraEnvironmentSampleCache,
+    world: &WorldStore,
+    level_generation: u64,
+    client_tick_index: u64,
+    partial_tick: f32,
+    camera_pose: Option<CameraPose>,
+    camera_fluid: CameraFluid,
+) -> CameraEnvironmentColors {
+    let attributes = samples.sample(
+        world,
+        level_generation,
+        client_tick_index,
+        partial_tick,
+        camera_pose,
+    );
+    camera_environment_colors_from_attributes(&attributes, camera_pose, camera_fluid)
+}
+
+fn camera_environment_colors_from_attributes(
+    attributes: &ClientEnvironmentAttributes,
+    camera_pose: Option<CameraPose>,
+    camera_fluid: CameraFluid,
+) -> CameraEnvironmentColors {
     CameraEnvironmentColors {
         sky_color: attributes.sky_color,
         fog_color: attributes.fog_color,

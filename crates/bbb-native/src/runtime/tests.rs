@@ -3983,7 +3983,7 @@ fn camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers() {
         .find("let camera_fluid = camera_pose.map_or(CameraFluid::None")
         .expect("render extraction should sample Camera.getFluidInCamera once");
     let fog = runtime
-        .find("camera_environment_colors(world, camera_pose, camera_fluid);")
+        .find("let camera_environment_colors = camera_environment_colors_from_cached_sample(")
         .expect("fog colors should consume the sample");
     let fov = runtime
         .find("camera_fov_ticks.frame(camera_hurt_effect, camera_fluid, entity_partial_tick)")
