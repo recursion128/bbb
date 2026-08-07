@@ -7481,7 +7481,7 @@
             "crates/bbb-native/src/runtime/tests.rs#fog_environment_clamps_atmospheric_distance_for_boss_world_fog",
             "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_divides_end_flash_sky_factor_for_boss_world_fog",
             "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_projects_boss_overlay_world_darkening",
-            "crates/bbb-audio/src/runtime.rs#backend_music_identity_ignores_stopped_and_naturally_completed_handles",
+            "crates/bbb-audio/src/runtime.rs#backend_music_identity_retains_stopped_instance_until_delete_tick",
             "crates/bbb-native/src/music_runtime.rs#end_boss_music_stops_other_music_then_starts_once_with_world_seed",
             "crates/bbb-native/src/music_runtime.rs#end_boss_music_restarts_after_backend_reports_natural_completion",
             "crates/bbb-native/src/music_runtime.rs#clearing_boss_flag_uses_selected_background_replacement_policy",

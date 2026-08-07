@@ -7,8 +7,8 @@ use anyhow::{anyhow, Result};
 use kira::{
     listener::ListenerHandle,
     sound::{static_sound::StaticSoundHandle, streaming::StreamingSoundHandle, PlaybackState},
-    track::{SpatialTrackBuilder, SpatialTrackHandle},
-    AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Tween,
+    track::{MainTrackBuilder, SpatialTrackBuilder, SpatialTrackHandle},
+    AudioManager, AudioManagerSettings, Capacities, Decibels, DefaultBackend, Tween,
 };
 
 #[cfg(feature = "device")]
@@ -33,6 +33,14 @@ const MIN_SPATIAL_DISTANCE: f32 = 1.0;
 const DISTANCE_DELAY_THRESHOLD_SQR: f64 = 100.0;
 const DISTANCE_DELAY_TICKS_PER_BLOCK: f64 = 0.5;
 const MAX_PLAYBACK_EVENTS: usize = 1024;
+const MINIMUM_SOURCE_LIFETIME_TICKS: u64 = 20;
+// Kira exposes mixer-slot limits rather than OpenAL's ALC_MONO_SOURCES. Keep
+// the pre-existing aggregate of 256 slots as an explicitly backend-logical
+// source contract until an OpenAL capability owner replaces this origin. The
+// physical Kira paths are each widened to that aggregate so only the Vanilla
+// static/streaming admission pools below decide which class is saturated.
+const KIRA_LOGICAL_MONO_SOURCES: usize = 256;
+const KIRA_CHANNEL_CAPACITY_ORIGIN: &str = "kira-logical-main-plus-spatial";
 #[cfg(feature = "device")]
 const DEVICE_TICK_INTERVAL: Duration = Duration::from_millis(50);
 
@@ -44,7 +52,9 @@ pub struct KiraAudioRuntime {
     playing: Vec<KiraPlayingSound>,
     music_gain: f32,
     residency: AudioResidency,
-    channel_capacity: usize,
+    channel_limits: AudioChannelLimits,
+    channel_admission_rejections: u64,
+    tick_count: u64,
     playback_events: VecDeque<AudioPlaybackEvent>,
     listener_orientation: [f32; 4],
     preload_worker: AudioPreloadWorker,
@@ -80,9 +90,18 @@ pub struct AudioPlaybackEvent {
 pub struct AudioChannelObservation {
     pub static_used: usize,
     pub streaming_used: usize,
-    /// Kira's main-track sound slots plus the spatial-track slots used by
-    /// bbb. Static and streaming handles share this admission upper bound.
-    pub shared_capacity: usize,
+    pub static_capacity: usize,
+    pub streaming_capacity: usize,
+    pub admission_rejections: u64,
+    /// This is deliberately attributable while Kira lacks an OpenAL
+    /// ALC_MONO_SOURCES/HRTF capability owner.
+    pub capacity_origin: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct AudioChannelLimits {
+    static_capacity: usize,
+    streaming_capacity: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +120,7 @@ struct KiraPlayingSound {
     tickable: bool,
     ambient_loop: bool,
     base_channel_gain: f32,
+    minimum_delete_tick: u64,
 }
 
 enum KiraSoundHandle {
@@ -114,7 +134,7 @@ impl KiraAudioRuntime {
     }
 
     pub fn new_with_resource_generation(resource_generation: u64) -> Result<Self> {
-        let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
+        let manager = AudioManager::<DefaultBackend>::new(kira_audio_manager_settings())
             .map_err(|_| anyhow!("initialize Kira audio manager"))?;
         Self::from_manager(manager, resource_generation, None)
     }
@@ -150,10 +170,6 @@ impl KiraAudioRuntime {
         #[cfg(feature = "device")] device: Option<KiraAudioDeviceRuntime>,
         #[cfg(not(feature = "device"))] _device: Option<()>,
     ) -> Result<Self> {
-        let channel_capacity = manager
-            .main_track()
-            .sound_capacity()
-            .saturating_add(manager.sub_track_capacity());
         let listener = manager
             .add_listener([0.0, 0.0, 0.0], identity_quaternion())
             .map_err(|_| anyhow!("initialize Kira audio listener"))?;
@@ -167,7 +183,9 @@ impl KiraAudioRuntime {
             playing: Vec::new(),
             music_gain: 1.0,
             residency: AudioResidency::new(resource_generation),
-            channel_capacity,
+            channel_limits: AudioChannelLimits::from_mono_sources(KIRA_LOGICAL_MONO_SOURCES),
+            channel_admission_rejections: 0,
+            tick_count: 0,
             playback_events: VecDeque::new(),
             listener_orientation: identity_quaternion(),
             preload_worker,
@@ -308,12 +326,15 @@ impl KiraAudioRuntime {
         let (static_used, streaming_used) = active_channel_counts(
             self.playing
                 .iter()
-                .map(|sound| (sound.handle.is_streaming(), sound.is_active())),
+                .map(|sound| (sound.handle.is_streaming(), sound.handle.is_active())),
         );
         AudioChannelObservation {
             static_used,
             streaming_used,
-            shared_capacity: self.channel_capacity,
+            static_capacity: self.channel_limits.static_capacity,
+            streaming_capacity: self.channel_limits.streaming_capacity,
+            admission_rejections: self.channel_admission_rejections,
+            capacity_origin: KIRA_CHANNEL_CAPACITY_ORIGIN,
         }
     }
 
@@ -459,10 +480,6 @@ impl KiraAudioRuntime {
                 self.listener_orientation,
             )
             .map_err(|_| anyhow!("initialize replacement Kira audio listener"))?;
-        let channel_capacity = manager
-            .main_track()
-            .sound_capacity()
-            .saturating_add(manager.sub_track_capacity());
         for sound in &mut self.playing {
             sound.handle.stop();
         }
@@ -474,22 +491,19 @@ impl KiraAudioRuntime {
         self.residency.reset_generation(resource_generation);
         self.manager = manager;
         self.listener = listener;
-        self.channel_capacity = channel_capacity;
+        self.channel_limits = AudioChannelLimits::from_mono_sources(KIRA_LOGICAL_MONO_SOURCES);
         Ok(())
     }
 
-    /// Returns the most recently started music-category event that the audio
-    /// backend still considers active. Stopped handles remain observable in
-    /// `playing` until the next mutating command, so this query filters their
-    /// live Kira state without requiring simulation to touch backend owners.
+    /// Returns the most recently started music-category instance retained by
+    /// the Vanilla-compatible lifetime owner. A stopped backend handle remains
+    /// active to simulation until its minimum delete tick is processed.
     pub fn active_music_event_id(&self) -> Option<&str> {
-        latest_active_music_event_id(self.playing.iter().map(|sound| {
-            (
-                sound.event_id.as_str(),
-                &sound.category,
-                sound.handle.state() != PlaybackState::Stopped,
-            )
-        }))
+        latest_retained_music_event_id(
+            self.playing
+                .iter()
+                .map(|sound| (sound.event_id.as_str(), &sound.category)),
+        )
     }
 
     pub fn drain_playback_events(&mut self) -> impl Iterator<Item = AudioPlaybackEvent> + '_ {
@@ -598,6 +612,9 @@ impl KiraAudioRuntime {
         if !sound_should_start(channel_gain, &category) {
             return Ok(());
         }
+        if !self.try_admit_channel(sound.stream) {
+            return Ok(());
+        }
         let effective_gain = effective_channel_gain(&category, channel_gain, self.music_gain);
         let volume = channel_decibels_from_gain(effective_gain);
         let playback_rate = channel_playback_rate(playback_rate);
@@ -628,6 +645,9 @@ impl KiraAudioRuntime {
             tickable: false,
             ambient_loop,
             base_channel_gain: channel_gain,
+            minimum_delete_tick: self
+                .tick_count
+                .saturating_add(MINIMUM_SOURCE_LIFETIME_TICKS),
         });
         Ok(())
     }
@@ -680,6 +700,9 @@ impl KiraAudioRuntime {
             spatial_playback_event(sound, position, gain, linear_attenuation),
         );
         if !tickable && !sound_should_start(channel_gain, &category) {
+            return Ok(());
+        }
+        if !self.try_admit_channel(sound.stream) {
             return Ok(());
         }
         let mut track = if linear_attenuation {
@@ -735,6 +758,9 @@ impl KiraAudioRuntime {
             tickable,
             ambient_loop: false,
             base_channel_gain: channel_gain,
+            minimum_delete_tick: self
+                .tick_count
+                .saturating_add(MINIMUM_SOURCE_LIFETIME_TICKS),
         });
         Ok(())
     }
@@ -769,27 +795,26 @@ impl KiraAudioRuntime {
 
     fn stop_sounds(&mut self, command: &StopSoundCommand) {
         stop_delayed_positioned_sounds(&mut self.delayed_positioned, command);
-        let mut retained = Vec::with_capacity(self.playing.len());
-        for mut sound in self.playing.drain(..) {
-            if sound_matches_stop(&sound, command) {
+        if stop_command_is_stop_all(command) {
+            for sound in &mut self.playing {
                 sound.handle.stop();
-            } else {
-                retained.push(sound);
+            }
+            self.playing.clear();
+            return;
+        }
+        for sound in &mut self.playing {
+            if sound_matches_stop(sound, command) {
+                sound.handle.stop();
             }
         }
-        self.playing = retained;
     }
 
     fn stop_jukebox_song(&mut self, command: &StopJukeboxSongCommand) {
-        let mut retained = Vec::with_capacity(self.playing.len());
-        for mut sound in self.playing.drain(..) {
+        for sound in &mut self.playing {
             if sound.jukebox_pos == Some(command.jukebox_pos) {
                 sound.handle.stop();
-            } else {
-                retained.push(sound);
             }
         }
-        self.playing = retained;
     }
 
     fn set_music_gain(&mut self, gain: f32) {
@@ -849,6 +874,7 @@ impl KiraAudioRuntime {
         &mut self,
         command: &TickEntitySoundPositionsCommand,
     ) -> Result<()> {
+        self.tick_count = self.tick_count.saturating_add(1);
         if let Some(listener) = command.listener {
             self.listener_position = listener.position;
             self.listener_orientation = listener_orientation(listener);
@@ -907,7 +933,45 @@ impl KiraAudioRuntime {
     }
 
     fn retain_active_sounds(&mut self) {
-        self.playing.retain(KiraPlayingSound::is_active);
+        let tick_count = self.tick_count;
+        self.playing
+            .retain(|sound| sound.is_retained_at(tick_count));
+    }
+
+    fn try_admit_channel(&mut self, streaming: bool) -> bool {
+        let (static_used, streaming_used) = active_channel_counts(
+            self.playing
+                .iter()
+                .map(|sound| (sound.handle.is_streaming(), sound.handle.is_active())),
+        );
+        if self
+            .channel_limits
+            .admits(streaming, static_used, streaming_used)
+        {
+            true
+        } else {
+            self.channel_admission_rejections = self.channel_admission_rejections.saturating_add(1);
+            false
+        }
+    }
+}
+
+fn kira_capacities() -> Capacities {
+    Capacities {
+        sub_track_capacity: KIRA_LOGICAL_MONO_SOURCES,
+        ..Capacities::default()
+    }
+}
+
+fn kira_main_track_builder() -> MainTrackBuilder {
+    MainTrackBuilder::default().sound_capacity(KIRA_LOGICAL_MONO_SOURCES)
+}
+
+fn kira_audio_manager_settings() -> AudioManagerSettings<DefaultBackend> {
+    AudioManagerSettings {
+        capacities: kira_capacities(),
+        main_track_builder: kira_main_track_builder(),
+        ..AudioManagerSettings::default()
     }
 }
 
@@ -935,6 +999,8 @@ fn start_device_audio_manager(
 #[cfg(feature = "device")]
 fn audio_manager_for_device(device: Option<cpal::Device>) -> Result<AudioManager<DefaultBackend>> {
     let settings = AudioManagerSettings {
+        capacities: kira_capacities(),
+        main_track_builder: kira_main_track_builder(),
         backend_settings: CpalBackendSettings {
             device,
             config: None,
@@ -965,6 +1031,10 @@ impl KiraSoundHandle {
         matches!(self, Self::Streaming(_))
     }
 
+    fn is_active(&self) -> bool {
+        self.state() != PlaybackState::Stopped
+    }
+
     fn set_volume(&mut self, gain: f32) {
         let volume = channel_decibels_from_gain(gain);
         match self {
@@ -983,21 +1053,29 @@ impl KiraSoundHandle {
 }
 
 impl KiraPlayingSound {
-    fn is_active(&self) -> bool {
-        self.handle.state() != PlaybackState::Stopped
+    fn is_retained_at(&self, tick_count: u64) -> bool {
+        self.handle.is_active() || stopped_sound_is_retained(tick_count, self.minimum_delete_tick)
     }
+}
+
+fn stopped_sound_is_retained(tick_count: u64, minimum_delete_tick: u64) -> bool {
+    tick_count < minimum_delete_tick
 }
 
 fn sound_matches_stop(sound: &KiraPlayingSound, command: &StopSoundCommand) -> bool {
     stop_filter_matches(&sound.event_id, &sound.category, command)
 }
 
-fn latest_active_music_event_id<'a>(
-    sounds: impl DoubleEndedIterator<Item = (&'a str, &'a AudioCategory, bool)>,
+fn stop_command_is_stop_all(command: &StopSoundCommand) -> bool {
+    command.category.is_none() && command.name.is_none()
+}
+
+fn latest_retained_music_event_id<'a>(
+    sounds: impl DoubleEndedIterator<Item = (&'a str, &'a AudioCategory)>,
 ) -> Option<&'a str> {
-    sounds.rev().find_map(|(event_id, category, active)| {
-        (active && category == &AudioCategory::Music).then_some(event_id)
-    })
+    sounds
+        .rev()
+        .find_map(|(event_id, category)| (category == &AudioCategory::Music).then_some(event_id))
 }
 
 fn active_channel_counts(sounds: impl IntoIterator<Item = (bool, bool)>) -> (usize, usize) {
@@ -1013,11 +1091,35 @@ fn active_channel_counts(sounds: impl IntoIterator<Item = (bool, bool)>) -> (usi
     )
 }
 
+impl AudioChannelLimits {
+    /// Vanilla 26.1 `Library.init`: streaming=floor(sqrt(total)).clamp(2, 8),
+    /// static=(total-streaming).clamp(8, 255).
+    fn from_mono_sources(mono_sources: usize) -> Self {
+        let streaming_capacity = (mono_sources as f32).sqrt() as usize;
+        let streaming_capacity = streaming_capacity.clamp(2, 8);
+        let static_capacity = mono_sources
+            .saturating_sub(streaming_capacity)
+            .clamp(8, 255);
+        Self {
+            static_capacity,
+            streaming_capacity,
+        }
+    }
+
+    fn admits(self, streaming: bool, static_used: usize, streaming_used: usize) -> bool {
+        if streaming {
+            streaming_used < self.streaming_capacity
+        } else {
+            static_used < self.static_capacity
+        }
+    }
+}
+
 fn stop_delayed_positioned_sounds(
     delayed: &mut Vec<KiraDelayedPositionedSound>,
     command: &StopSoundCommand,
 ) {
-    if command.category.is_none() && command.name.is_none() {
+    if stop_command_is_stop_all(command) {
         delayed.clear();
     }
 }
@@ -1323,6 +1425,155 @@ mod tests {
     }
 
     #[test]
+    fn channel_limits_match_vanilla_formula_and_isolate_pools() {
+        assert_eq!(
+            AudioChannelLimits::from_mono_sources(255),
+            AudioChannelLimits {
+                static_capacity: 247,
+                streaming_capacity: 8,
+            }
+        );
+        assert_eq!(
+            AudioChannelLimits::from_mono_sources(30),
+            AudioChannelLimits {
+                static_capacity: 25,
+                streaming_capacity: 5,
+            }
+        );
+        assert_eq!(
+            AudioChannelLimits::from_mono_sources(2),
+            AudioChannelLimits {
+                static_capacity: 8,
+                streaming_capacity: 2,
+            }
+        );
+
+        let limits = AudioChannelLimits::from_mono_sources(KIRA_LOGICAL_MONO_SOURCES);
+        assert_eq!(limits.static_capacity, 248);
+        assert_eq!(limits.streaming_capacity, 8);
+        assert!(!limits.admits(false, 248, 0));
+        assert!(limits.admits(true, 248, 0));
+        assert!(!limits.admits(true, 0, 8));
+        assert!(limits.admits(false, 0, 8));
+    }
+
+    #[test]
+    #[cfg(not(feature = "device"))]
+    fn kira_capacity_has_headroom_for_both_logical_pools() {
+        let mut manager =
+            AudioManager::<DefaultBackend>::new(kira_audio_manager_settings()).unwrap();
+
+        assert_eq!(manager.main_track().sound_capacity(), 256);
+        assert_eq!(manager.sub_track_capacity(), 256);
+    }
+
+    #[test]
+    fn stopped_sound_lifetime_matches_vanilla_twenty_tick_boundary() {
+        let minimum_delete_tick = MINIMUM_SOURCE_LIFETIME_TICKS;
+
+        assert!(stopped_sound_is_retained(0, minimum_delete_tick));
+        assert!(stopped_sound_is_retained(19, minimum_delete_tick));
+        assert!(!stopped_sound_is_retained(20, minimum_delete_tick));
+        assert!(!stopped_sound_is_retained(21, minimum_delete_tick));
+    }
+
+    #[test]
+    #[cfg(not(feature = "device"))]
+    fn stopped_backend_handle_remains_projected_until_twentieth_tick() {
+        use std::sync::Arc;
+
+        use kira::{
+            sound::static_sound::{StaticSoundData, StaticSoundSettings},
+            Frame,
+        };
+
+        let mut runtime = KiraAudioRuntime::new().unwrap();
+        let data = StaticSoundData {
+            sample_rate: 1,
+            frames: Arc::from(vec![Frame::ZERO; 128]),
+            settings: StaticSoundSettings::default(),
+            slice: None,
+        };
+        let handle = runtime.manager.play(data.clone()).unwrap();
+        runtime.manager.backend_mut().on_start_processing();
+        runtime.manager.backend_mut().process();
+        runtime.playing.push(KiraPlayingSound {
+            event_id: "minecraft:music.test".to_owned(),
+            category: AudioCategory::Music,
+            entity_id: None,
+            jukebox_pos: None,
+            handle: KiraSoundHandle::Static(handle),
+            track: None,
+            tickable: false,
+            ambient_loop: false,
+            base_channel_gain: 1.0,
+            minimum_delete_tick: MINIMUM_SOURCE_LIFETIME_TICKS,
+        });
+        runtime.stop_sounds(&StopSoundCommand {
+            category: None,
+            name: Some("minecraft:music.test".to_owned()),
+        });
+        runtime.manager.backend_mut().on_start_processing();
+        runtime.manager.backend_mut().process();
+        assert!(!runtime.playing[0].handle.is_active());
+
+        let empty_tick = TickEntitySoundPositionsCommand {
+            listener: None,
+            entities: Vec::new(),
+            tickable_sounds: Vec::new(),
+        };
+        for expected_tick in 1..MINIMUM_SOURCE_LIFETIME_TICKS {
+            runtime.tick_entity_sound_positions(&empty_tick).unwrap();
+            assert_eq!(runtime.tick_count, expected_tick);
+            assert_eq!(
+                runtime.active_music_event_id(),
+                Some("minecraft:music.test")
+            );
+        }
+        runtime.tick_entity_sound_positions(&empty_tick).unwrap();
+        assert_eq!(runtime.tick_count, MINIMUM_SOURCE_LIFETIME_TICKS);
+        assert_eq!(runtime.active_music_event_id(), None);
+        assert!(runtime.playing.is_empty());
+
+        let stop_all_handle = runtime.manager.play(data).unwrap();
+        runtime.manager.backend_mut().on_start_processing();
+        runtime.manager.backend_mut().process();
+        runtime.playing.push(KiraPlayingSound {
+            event_id: "minecraft:music.stop_all".to_owned(),
+            category: AudioCategory::Music,
+            entity_id: None,
+            jukebox_pos: None,
+            handle: KiraSoundHandle::Static(stop_all_handle),
+            track: None,
+            tickable: false,
+            ambient_loop: false,
+            base_channel_gain: 1.0,
+            minimum_delete_tick: runtime
+                .tick_count
+                .saturating_add(MINIMUM_SOURCE_LIFETIME_TICKS),
+        });
+        runtime.stop_sounds(&StopSoundCommand {
+            category: None,
+            name: None,
+        });
+        assert!(runtime.playing.is_empty());
+    }
+
+    #[test]
+    #[cfg(not(feature = "device"))]
+    fn resource_generation_reset_preserves_engine_clock_and_diagnostics() {
+        let mut runtime = KiraAudioRuntime::new_with_resource_generation(4).unwrap();
+        runtime.tick_count = 17;
+        runtime.channel_admission_rejections = 3;
+
+        runtime.reset_resource_generation(5);
+
+        assert_eq!(runtime.tick_count, 17);
+        assert_eq!(runtime.channel_admission_rejections, 3);
+        assert_eq!(runtime.residency.active_generation(), 5);
+    }
+
+    #[test]
     fn playback_rate_clamps_to_vanilla_pitch_range() {
         assert_eq!(channel_playback_rate(0.25), 0.5);
         assert_eq!(channel_playback_rate(1.25), 1.25);
@@ -1499,14 +1750,14 @@ mod tests {
         stop_delayed_positioned_sounds(&mut delayed, &stop_blocks);
 
         assert_eq!(delayed.len(), 2);
+        assert!(!stop_command_is_stop_all(&stop_blocks));
 
-        stop_delayed_positioned_sounds(
-            &mut delayed,
-            &StopSoundCommand {
-                category: None,
-                name: None,
-            },
-        );
+        let stop_all = StopSoundCommand {
+            category: None,
+            name: None,
+        };
+        assert!(stop_command_is_stop_all(&stop_all));
+        stop_delayed_positioned_sounds(&mut delayed, &stop_all);
         assert!(delayed.is_empty());
     }
 
@@ -1597,34 +1848,32 @@ mod tests {
     }
 
     #[test]
-    fn backend_music_identity_ignores_stopped_and_naturally_completed_handles() {
+    fn backend_music_identity_retains_stopped_instance_until_delete_tick() {
         let music = AudioCategory::Music;
         let blocks = AudioCategory::Blocks;
-        let active = [
-            ("minecraft:music.game", &music, true),
-            ("minecraft:block.note_block.harp", &blocks, true),
-            ("minecraft:music.dragon", &music, true),
+        let retained = [
+            ("minecraft:music.game", &music),
+            ("minecraft:block.note_block.harp", &blocks),
+            ("minecraft:music.dragon", &music),
         ];
         assert_eq!(
-            latest_active_music_event_id(active.into_iter()),
+            latest_retained_music_event_id(retained.into_iter()),
             Some("minecraft:music.dragon")
         );
 
-        // Explicit stop and natural completion both surface as Kira's
-        // `PlaybackState::Stopped`; the previous live music becomes visible.
-        let dragon_stopped = [
-            ("minecraft:music.game", &music, true),
-            ("minecraft:music.dragon", &music, false),
+        // `playing` retains an explicitly stopped or naturally completed
+        // instance through tick 19, so the newest retained music identity
+        // still wins until tick 20 removes it.
+        let dragon_stopped_but_retained = [
+            ("minecraft:music.game", &music),
+            ("minecraft:music.dragon", &music),
         ];
         assert_eq!(
-            latest_active_music_event_id(dragon_stopped.into_iter()),
-            Some("minecraft:music.game")
+            latest_retained_music_event_id(dragon_stopped_but_retained.into_iter()),
+            Some("minecraft:music.dragon")
         );
-        let all_completed = [("minecraft:music.dragon", &music, false)];
-        assert_eq!(
-            latest_active_music_event_id(all_completed.into_iter()),
-            None
-        );
+        let removed_at_delete_tick = std::iter::empty::<(&str, &AudioCategory)>();
+        assert_eq!(latest_retained_music_event_id(removed_at_delete_tick), None);
     }
 
     #[test]

@@ -7632,13 +7632,19 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
             (
+                "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+                "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
                 "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
                 "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
                 "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line",
             ),
             (
+                "crates/bbb-audio/src/runtime.rs"
+                "#channel_limits_match_vanilla_formula_and_isolate_pools",
+                "crates/bbb-audio/src/runtime.rs"
+                "#kira_capacity_has_headroom_for_both_logical_pools",
                 "crates/bbb-native/src/audio_runtime.rs"
-                "#audio_channel_diagnostics_preserve_failures_and_project_shared_capacity",
+                "#audio_channel_diagnostics_project_independent_pool_receipt",
                 "crates/bbb-native/src/runtime/tests.rs"
                 "#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info",
             ),
@@ -7664,12 +7670,15 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
             (
-                "crates/bbb-audio/src/runtime.rs#fn latest_active_music_event_id",
+                "crates/bbb-audio/src/runtime.rs#fn stopped_sound_is_retained",
+                "crates/bbb-audio/src/runtime.rs#fn latest_retained_music_event_id",
                 "crates/bbb-native/src/audio_runtime.rs#active_tickable_sounds:",
             ),
             (
                 "crates/bbb-audio/src/runtime.rs"
-                "#backend_music_identity_ignores_stopped_and_naturally_completed_handles",
+                "#stopped_backend_handle_remains_projected_until_twentieth_tick",
+                "crates/bbb-audio/src/runtime.rs"
+                "#backend_music_identity_retains_stopped_instance_until_delete_tick",
                 "crates/bbb-native/src/audio_runtime.rs"
                 "#tickable_sound_owner_requires_start_after_event_switch_or_reload",
             ),
@@ -7686,6 +7695,8 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
             (
                 "crates/bbb-audio/src/runtime.rs"
                 "#generation_reset_cancels_pending_preload_and_rejects_old_requests",
+                "crates/bbb-audio/src/runtime.rs"
+                "#resource_generation_reset_preserves_engine_clock_and_diagnostics",
                 "crates/bbb-native/src/resource_reload.rs"
                 "#renderer_resource_owners_commit_inside_one_reload_barrier",
             ),
@@ -7853,6 +7864,8 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
                 "#music_effects_enter_fifo_before_entity_sound_position_tick",
                 "crates/bbb-native/src/environment_audio_runtime.rs"
                 "#environment_audio_ticks_after_player_movement_and_before_music",
+                "crates/bbb-audio/src/runtime.rs"
+                "#stopped_backend_handle_remains_projected_until_twentieth_tick",
                 "crates/bbb-native/src/audio_runtime/resolver.rs"
                 "#resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position",
             ),

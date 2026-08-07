@@ -366,9 +366,11 @@ fn audio_counters_reads_runtime_projection() {
             disabled_reason: Some("initialize Kira audio runtime".to_string()),
             active_music_event_id: Some("minecraft:music.dragon".to_string()),
             sound_static_channels_used: 3,
-            sound_static_channels_capacity: 256,
+            sound_static_channels_capacity: 248,
             sound_streaming_channels_used: 1,
-            sound_streaming_channels_capacity: 256,
+            sound_streaming_channels_capacity: 8,
+            sound_channel_admission_rejections: 2,
+            sound_channel_capacity_origin: Some("kira-logical-main-plus-spatial".to_string()),
             sound_mood_percent: 42,
             resolve_failures: 2,
             submit_failures: 1,
@@ -393,9 +395,14 @@ fn audio_counters_reads_runtime_projection() {
     assert_eq!(audio["disabled_reason"], "initialize Kira audio runtime");
     assert_eq!(audio["active_music_event_id"], "minecraft:music.dragon");
     assert_eq!(audio["sound_static_channels_used"], 3);
-    assert_eq!(audio["sound_static_channels_capacity"], 256);
+    assert_eq!(audio["sound_static_channels_capacity"], 248);
     assert_eq!(audio["sound_streaming_channels_used"], 1);
-    assert_eq!(audio["sound_streaming_channels_capacity"], 256);
+    assert_eq!(audio["sound_streaming_channels_capacity"], 8);
+    assert_eq!(audio["sound_channel_admission_rejections"], 2);
+    assert_eq!(
+        audio["sound_channel_capacity_origin"],
+        "kira-logical-main-plus-spatial"
+    );
     assert_eq!(audio["sound_mood_percent"], 42);
     assert_eq!(audio["resolve_failures"], 2);
     assert_eq!(audio["submit_failures"], 1);

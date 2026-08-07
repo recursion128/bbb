@@ -97,9 +97,12 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   reason and reopen condition. Stored device/reload, generation-aware preload
   and all eleven stored `soundCategory_*` startup gains are consumed. The row
   remains `partial`: consume `directionalAudio` with Vanilla's supported-HRTF
-  fallback, replace Kira's shared fixed capacity/accounting with Vanilla's
-  device-derived static/streaming pool admission, and prove the stopped-handle
-  minimum delete-time/`isActive` behavior under short replacement sounds. Owner:
+  fallback and replace the attributable Kira-logical source-count origin with
+  the real device-derived count. BBB currently applies Vanilla's formula to
+  independent static/streaming admission pools (248/8 for its logical 256
+  origin), exposes saturation/origin receipts, and retains stopped handles
+  through tick 19 before deletion at tick 20; these are not evidence for HRTF
+  or real-device capacity. Owner:
   `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Library.java:64-114,124-155`, `SoundEngine.java:101-109,227-327,516-530`, and
   `Sound.java:68-70`; reopen owner census if any source hash or method set moves.

@@ -504,13 +504,13 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 `audio-sound-manager-engine` 仍为 `partial`：generated inventory 的 67 个 owner 已全部挂
 decision evidence，7 个不可达 pause/manual-loop owner 另有 Vanilla caller、范围理由和 reopen
 condition；审计同时修复了 11 个 stored `soundCategory_*` 仅 round-trip、播放仍用默认值的
-真实缺口，并把余下 HRTF、device-derived pool/admission 与 active/delete-time 差异留在账本。
+真实缺口；余下 HRTF、device-derived source-count origin 与正式真实设备 receipt 留在账本。
 
 audio 工程以 `scripts/capture-vanilla-audio-receipt.py` 的官方可执行 receipt 冻结 OpenAL
 总/静态/流式 capacity、HRTF 与短声音 tick/delete-time；null 输出只解锁实现，不形成正式结论，
-当前 host-device 路径因 UID 无 `/dev/snd` 权限保持精确 blocker。Kira/native admission 不得以共享固定
-容量冒充两个 pool，不得把普通 stereo pan 命名为 HRTF，也不得因 backend 提前回收改变 `isActive`/
-音乐 replacement 时序；focused tests 覆盖公式、隔离、HRTF 双分支、20-tick 保留和 reload/reset。
+当前 host-device 路径因 UID 无 `/dev/snd` 权限保持精确 blocker。Kira/native 现以可归因的 logical-256
+origin 派生 248/8 独立池并记录拒绝，停止实例保留至 tick 20 清理；不得把这两项称为 device-derived，
+不得把普通 stereo pan 命名为 HRTF。focused tests 覆盖公式/隔离、backend handle 生命周期和 reload/reset。
 census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻

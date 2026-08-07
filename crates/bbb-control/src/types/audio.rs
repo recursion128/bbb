@@ -5,8 +5,8 @@ pub struct AudioCounters {
     pub enabled: bool,
     #[serde(default)]
     pub disabled_reason: Option<String>,
-    /// Render-owned Kira playback identity projected back to simulation.
-    /// `None` includes explicit stop and natural completion.
+    /// Render-owned playback identity projected back to simulation. Stopped
+    /// instances remain visible through Vanilla's minimum delete lifetime.
     #[serde(default)]
     pub active_music_event_id: Option<String>,
     #[serde(default)]
@@ -49,16 +49,20 @@ pub struct AudioCounters {
     pub last_sound_preload_error: Option<String>,
     #[serde(default)]
     pub sound_static_channels_used: usize,
-    /// Kira static and streaming handles share this runtime admission upper
-    /// bound; the duplicate fields preserve Vanilla's two-pool debug shape
-    /// without claiming two independent bbb pools.
+    /// Static admission limit derived with Vanilla's pool formula. The
+    /// companion origin identifies whether the source count is device-backed.
     #[serde(default)]
     pub sound_static_channels_capacity: usize,
     #[serde(default)]
     pub sound_streaming_channels_used: usize,
-    /// See `sound_static_channels_capacity`.
+    /// Independent streaming admission limit derived from the same source
+    /// count; saturating either pool must not block the other.
     #[serde(default)]
     pub sound_streaming_channels_capacity: usize,
+    #[serde(default)]
+    pub sound_channel_admission_rejections: u64,
+    #[serde(default)]
+    pub sound_channel_capacity_origin: Option<String>,
     #[serde(default)]
     pub sound_mood_percent: u8,
     #[serde(default)]
@@ -124,6 +128,8 @@ mod tests {
         assert_eq!(counters.sound_preload_completed, 0);
         assert_eq!(counters.sound_preload_pending, 0);
         assert_eq!(counters.last_sound_preload_error, None);
+        assert_eq!(counters.sound_channel_admission_rejections, 0);
+        assert_eq!(counters.sound_channel_capacity_origin, None);
         assert_eq!(counters.active_music_event_id, None);
         assert_eq!(counters.preferred_device, None);
         assert_eq!(counters.available_device_count, 0);

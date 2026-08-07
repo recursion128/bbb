@@ -231,9 +231,11 @@ fn project_audio_channel_observation(
     channels: AudioChannelObservation,
 ) {
     counters.sound_static_channels_used = channels.static_used;
-    counters.sound_static_channels_capacity = channels.shared_capacity;
+    counters.sound_static_channels_capacity = channels.static_capacity;
     counters.sound_streaming_channels_used = channels.streaming_used;
-    counters.sound_streaming_channels_capacity = channels.shared_capacity;
+    counters.sound_streaming_channels_capacity = channels.streaming_capacity;
+    counters.sound_channel_admission_rejections = channels.admission_rejections;
+    counters.sound_channel_capacity_origin = Some(channels.capacity_origin.to_owned());
 }
 
 fn project_audio_device_observation(counters: &mut AudioCounters, device: AudioDeviceObservation) {
@@ -540,7 +542,7 @@ mod tests {
     }
 
     #[test]
-    fn audio_channel_diagnostics_preserve_failures_and_project_shared_capacity() {
+    fn audio_channel_diagnostics_project_independent_pool_receipt() {
         let mut counters = AudioCounters {
             enabled: true,
             resolve_failures: 3,
@@ -552,14 +554,22 @@ mod tests {
             AudioChannelObservation {
                 static_used: 5,
                 streaming_used: 2,
-                shared_capacity: 256,
+                static_capacity: 248,
+                streaming_capacity: 8,
+                admission_rejections: 4,
+                capacity_origin: "kira-logical-main-plus-spatial",
             },
         );
 
         assert_eq!(counters.sound_static_channels_used, 5);
         assert_eq!(counters.sound_streaming_channels_used, 2);
-        assert_eq!(counters.sound_static_channels_capacity, 256);
-        assert_eq!(counters.sound_streaming_channels_capacity, 256);
+        assert_eq!(counters.sound_static_channels_capacity, 248);
+        assert_eq!(counters.sound_streaming_channels_capacity, 8);
+        assert_eq!(counters.sound_channel_admission_rejections, 4);
+        assert_eq!(
+            counters.sound_channel_capacity_origin.as_deref(),
+            Some("kira-logical-main-plus-spatial")
+        );
         assert_eq!(counters.resolve_failures, 3);
     }
 
