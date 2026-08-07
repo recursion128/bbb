@@ -1825,10 +1825,6 @@ fn selected_resident_sections(
         .collect()
 }
 
-fn has_resident_section(upload: &TerrainUploadState, position: SectionPosition) -> bool {
-    has_resident_section_in_meshes(&upload.meshes, position)
-}
-
 fn has_resident_section_in_meshes(
     meshes: &HashMap<ChunkPos, CachedTerrainMesh>,
     position: SectionPosition,
@@ -2580,16 +2576,16 @@ mod tests {
                 SectionPosition { x: -1, y: 3, z: 2 },
             ]
         );
-        assert!(has_resident_section(
-            &upload,
+        assert!(has_resident_section_in_meshes(
+            &upload.meshes,
             SectionPosition { x: -1, y: 3, z: 2 }
         ));
-        assert!(!has_resident_section(
-            &upload,
+        assert!(!has_resident_section_in_meshes(
+            &upload.meshes,
             SectionPosition { x: -1, y: 4, z: 2 }
         ));
-        assert!(!has_resident_section(
-            &upload,
+        assert!(!has_resident_section_in_meshes(
+            &upload.meshes,
             SectionPosition { x: 3, y: 3, z: 2 }
         ));
     }
