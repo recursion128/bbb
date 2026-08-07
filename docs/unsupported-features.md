@@ -50,18 +50,19 @@ Matrix route: `coverage-external-client-census`
 
 Owner: `scripts` + the matrix-declared BBB owners
 
-Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-client-runtime`, `lifecycle-session-replacement`, `lifecycle-client-task-handoff`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-default-pack-stack`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-packet-tables`, `protocol-listener-contracts`, `protocol-login-handler-decisions`, `protocol-configuration-handler-decisions`, `protocol-play-handler-decisions`, `protocol-client-state-flow`, `protocol-serverbound-call-sites`
+Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-session-replacement`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-default-pack-stack`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-packet-tables`, `protocol-listener-contracts`, `protocol-login-handler-decisions`, `protocol-configuration-handler-decisions`, `protocol-play-handler-decisions`, `protocol-client-state-flow`, `protocol-serverbound-call-sites`
 Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
-Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`, `platform-window-lifecycle`, `platform-window-display-mode`, `platform-window-surface-state`, `platform-window-chrome`, `platform-linux-seat-matrix`
-Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-screen-lifecycle`, `ui-accessibility-surface`, `ui-clipboard-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`
+Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`, `rendering-block-entity-registration`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-block-model-pipeline`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-camera-fluid-fog`, `performance-official-equal-load`, `performance-gpu-execution-duration`
+Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`
 
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
-  artifact/scenario mappings validate without a false `equivalent`: refresh the
-  Linux live/lifecycle receipts currently stamped at `f4b0cf1bb`, and add exact
-  decision-test/source-owner evidence for every remaining matrix-only record.
-  The report must preserve the invalid host-audio receipt until real ALSA device
-  access exists; the user-waived macOS `deferred-external` row is not a closure
-  blocker but retains its source basis and reopen condition.
+  artifact/scenario mappings validate without a false `equivalent`: recapture
+  all three visual replays, draw evidence, GPU timings and two-round ABBA against
+  the post-`538121f8f` binary, and add exact decision-test/source-owner evidence
+  for every remaining matrix-only record. The report must preserve the invalid
+  host-audio receipt until real ALSA device access exists; the user-waived macOS
+  `deferred-external` row is not a closure blocker but retains its source basis
+  and reopen condition.
 
 ## Render-step and HUD presentation closure
 
