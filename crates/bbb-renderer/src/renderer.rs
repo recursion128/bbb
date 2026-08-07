@@ -3830,6 +3830,7 @@ impl Renderer {
             }
         }
 
+        self.rebuild_translucent_section_order();
         self.resort_translucent_terrain_for_camera();
         self.update_camera();
         self.refresh_terrain_counters();
@@ -3939,6 +3940,7 @@ impl Renderer {
         }
 
         if translucent_changed {
+            self.rebuild_translucent_section_order();
             self.resort_translucent_terrain_for_camera();
         }
         self.refresh_terrain_counters();
@@ -4326,10 +4328,14 @@ impl Renderer {
     }
 
     fn resort_translucent_terrain_for_camera(&mut self) {
-        // Rebuild after camera/mesh changes. A committed native visibility
-        // traversal wins; only the provisional pre-visibility order tracks camera
-        // distance.
-        self.rebuild_translucent_section_order();
+        // A committed native visibility traversal already owns Vanilla's
+        // section draw order and does not change with sub-frame camera motion.
+        // Only the provisional pre-visibility fallback is distance-sorted here;
+        // mesh/visibility mutation paths rebuild the authoritative order at the
+        // mutation site.
+        if self.terrain_section_revisions.is_empty() {
+            self.rebuild_translucent_section_order();
+        }
         self.counters.terrain_translucent_resort_owners = 0;
         self.counters.terrain_translucent_resort_index_bytes = 0;
 
@@ -5782,6 +5788,8 @@ mod tests {
             }],
         );
         let vertex_upload_bytes = renderer.counters().terrain_vertex_upload_bytes;
+        renderer.terrain_translucent_order.reserve(64);
+        let section_order_capacity = renderer.terrain_translucent_order.capacity();
 
         renderer.set_camera_pose(Some(CameraPose {
             position: [0.5, 0.5, 4.0],
@@ -5798,6 +5806,11 @@ mod tests {
         assert_eq!(
             renderer.counters().terrain_vertex_upload_bytes,
             vertex_upload_bytes
+        );
+        assert_eq!(
+            renderer.terrain_translucent_order.capacity(),
+            section_order_capacity,
+            "camera motion must not rebuild native's authoritative visible-section order"
         );
         assert_eq!(renderer.counters().terrain_changed_owners, 1);
         assert_eq!(renderer.counters().terrain_full_replacements, 0);
