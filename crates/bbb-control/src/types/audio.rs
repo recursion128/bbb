@@ -30,6 +30,24 @@ pub struct AudioCounters {
     #[serde(default)]
     pub sound_streaming_starts: u64,
     #[serde(default)]
+    pub sound_preload_generation: u64,
+    #[serde(default)]
+    pub sound_preload_requested: usize,
+    #[serde(default)]
+    pub sound_preload_completed: usize,
+    #[serde(default)]
+    pub sound_preload_failures: usize,
+    #[serde(default)]
+    pub sound_preload_pending: usize,
+    #[serde(default)]
+    pub sound_preload_worker_jobs: u64,
+    #[serde(default)]
+    pub sound_preload_cancelled_jobs: u64,
+    #[serde(default)]
+    pub sound_preload_stale_results: u64,
+    #[serde(default)]
+    pub last_sound_preload_error: Option<String>,
+    #[serde(default)]
     pub sound_static_channels_used: usize,
     /// Kira static and streaming handles share this runtime admission upper
     /// bound; the duplicate fields preserve Vanilla's two-pool debug shape
@@ -102,6 +120,10 @@ mod tests {
         assert_eq!(counters.sound_cache_evictions, 0);
         assert_eq!(counters.sound_admission_rejections, 0);
         assert_eq!(counters.sound_streaming_starts, 0);
+        assert_eq!(counters.sound_preload_requested, 0);
+        assert_eq!(counters.sound_preload_completed, 0);
+        assert_eq!(counters.sound_preload_pending, 0);
+        assert_eq!(counters.last_sound_preload_error, None);
         assert_eq!(counters.active_music_event_id, None);
         assert_eq!(counters.preferred_device, None);
         assert_eq!(counters.available_device_count, 0);

@@ -56,8 +56,11 @@ catalog 和 sound catalog/audio decoder 只拥有各自派生状态，不重新�
 - font：definition JSON、bitmap 和 unihex ZIP 都由 `PackResourceStack` 提供；reference/filter
   展开之后仍是 first-provider-wins。不存在 index-specific font resolver。
 - audio：各 namespace 的 `sounds.json` 按 resource-stack 低到高合并，`replace`、file/event
-  reference、stream/preload、attenuation 保持既有语义。选中的 file entry 才验证 indexed
-  OGG 并交给 bounded decoder；catalog 构建不 eager decode 4564 个声音，也不要求音频设备。
+  reference、stream/preload、attenuation 保持既有语义。普通 file entry 仍只在选中时验证
+  indexed OGG 并交给 bounded decoder；`preload:true` 则按 Vanilla reload/apply 的完整缓冲
+  队列去重，由单一 latest-wins 后台 worker 提前解码，再按 resource generation 非阻塞安装。
+  catalog 构建本身不 eager decode 4564 个声音，也不要求音频设备；preload 请求/完成/失败、
+  pending、取消和陈旧结果均进入 control receipt。
 - panorama：`bbb-pack::PanoramaCatalog` 是六面与 overlay 的唯一 immutable CPU owner；它按
   Vanilla `_1,_3,_5,_4,_0,_2` layer 顺序从同一 stack 查询，并保持 selected/server priority、
   filter、lazy integrity、PNG budget 与同尺寸约束。native 只在 resource transaction 中编排

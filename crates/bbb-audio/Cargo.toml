@@ -21,3 +21,6 @@ kira = { workspace = true, optional = true }
 serde = { workspace = true }
 symphonia = { workspace = true, optional = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+base64 = { workspace = true }

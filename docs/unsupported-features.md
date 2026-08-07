@@ -90,14 +90,14 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   Vanilla anchors: `Options.java:1190,1691,1770,1825` and the verified
   `DataFixTypes.OPTIONS` schema/fix registrations.
 
-- Close the reopened `audio-sound-manager-engine` owner census. The stored
-  device selection/reload path is implemented, but Vanilla `Sound.preload`
-  reaches `SoundEngine.requestPreload` and asynchronously decodes the queued
-  static buffers during `loadLibrary`; BBB currently carries `preload:true`
-  into `ResolvedSound` without a reload-time consumer. Implement that cache
-  warming without moving decode onto the application frame, then attach
-  decision-level evidence or an authoritative current-scope ruling to all 68
-  `SoundManager`/`SoundEngine` owners; external-client-unreachable integrated
+- Close the reopened `audio-sound-manager-engine` owner census. Stored device
+  selection/reload is implemented, and `Sound.preload` now reaches a
+  deterministic complete-buffer plan plus one cancellable latest-wins decode
+  worker during startup/reload; current-generation results install without an
+  application-frame decode and expose control receipts. Attach decision-level
+  evidence or an authoritative current-scope ruling to all 67 owners currently
+  generated for this row (`Options.isSoundDeviceDefault` is separately owned by
+  `persistence-options-apply`); external-client-unreachable integrated
   pause branches must be proved from Vanilla callers, not silently counted as
   implemented. Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Sound.java:68-70`, `SoundManager.java:264-310`, and

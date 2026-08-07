@@ -266,3 +266,12 @@
 # fallback path (glfwGetKeyName has no winit equivalent). Doc comment about
 # vanilla semantics, not a bbb fallback branch.
 ^crates/bbb-native/src/client_options/key_bindings[.]rs$	vanilla's non-printable fallback path
+
+# Audio-device fallback is the exact Vanilla/OpenAL recovery contract: an
+# unavailable or unopenable stored preferred output falls back to the system
+# default and is surfaced through counters/control receipts. It cannot replace
+# packet, world, resource-generation, renderer, or required audio-event state.
+^crates/bbb-audio/src/device[.]rs$	adapter fallback|preferred_fallbacks
+^crates/bbb-audio/src/runtime[.]rs$	preferred_fallback
+^crates/bbb-native/src/audio_runtime[.]rs$	preferred_device_fallbacks
+^crates/bbb-control/src/types/audio[.]rs$	preferred_device_fallbacks

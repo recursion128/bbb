@@ -26,7 +26,7 @@ use symphonia::core::{
 };
 use thiserror::Error;
 
-use crate::ResolvedSound;
+use crate::{preload::AudioPreloadRequest, ResolvedSound};
 
 pub(crate) const MAX_AUDIO_COMPRESSED_BYTES: u64 = 64 * 1024 * 1024;
 pub(crate) const MAX_AUDIO_SAMPLE_RATE: u32 = 192_000;
@@ -98,7 +98,6 @@ impl AudioResidency {
         self.observation
     }
 
-    #[cfg(feature = "device")]
     pub(crate) fn active_generation(&self) -> u64 {
         self.active_generation
     }
@@ -110,11 +109,84 @@ impl AudioResidency {
         self.observation.static_decoded_bytes = 0;
     }
 
+    pub(crate) fn preload_static_sound(
+        &mut self,
+        request: &AudioPreloadRequest,
+        cancelled: impl Fn() -> bool,
+    ) -> Result<PreloadDecodeOutcome> {
+        if request.resource_generation != self.active_generation {
+            return self.reject(AudioDecodeError::Limit(format!(
+                "sound preload resource generation {} does not match active generation {}",
+                request.resource_generation, self.active_generation
+            )));
+        }
+        let key = AudioResourceKey {
+            generation: request.resource_generation,
+            path: request.ogg_path.clone(),
+        };
+        if self.static_cache.contains_key(&key) {
+            return Ok(PreloadDecodeOutcome::Decoded);
+        }
+
+        let mut decoder = match BoundedAudioDecoder::open(&request.ogg_path, true) {
+            Ok(decoder) => decoder,
+            Err(error) => return self.reject(error),
+        };
+        let admitted_bytes = decoder.admitted_static_bytes();
+        self.ensure_preload_capacity(admitted_bytes)?;
+        let Some(data) = decoder.decode_static_until(cancelled)? else {
+            return Ok(PreloadDecodeOutcome::Cancelled);
+        };
+        let decoded_bytes = frame_bytes(data.frames.len())?;
+        self.insert_static_owner(key, data, decoded_bytes)?;
+        Ok(PreloadDecodeOutcome::Decoded)
+    }
+
+    pub(crate) fn install_preloaded(
+        &mut self,
+        mut prepared: AudioResidency,
+    ) -> Result<PreloadInstallOutcome> {
+        if prepared.active_generation != self.active_generation {
+            return Err(AudioDecodeError::Limit(format!(
+                "prepared sound generation {} does not match active generation {}",
+                prepared.active_generation, self.active_generation
+            ))
+            .into());
+        }
+        self.observation.audio_admission_rejections = self
+            .observation
+            .audio_admission_rejections
+            .saturating_add(prepared.observation.audio_admission_rejections);
+
+        let mut entries = prepared.static_cache.drain().collect::<Vec<_>>();
+        entries.sort_by(|(left, _), (right, _)| left.path.cmp(&right.path));
+        let mut outcome = PreloadInstallOutcome::default();
+        for (key, entry) in entries {
+            if self.static_cache.contains_key(&key) {
+                outcome.already_resident = outcome.already_resident.saturating_add(1);
+                continue;
+            }
+            if let Err(error) = self.ensure_static_capacity(entry.decoded_bytes) {
+                outcome.failures = outcome.failures.saturating_add(1);
+                outcome.last_error = Some(error.to_string());
+                continue;
+            }
+            if let Err(error) = self.insert_static_owner(key, entry.data, entry.decoded_bytes) {
+                outcome.failures = outcome.failures.saturating_add(1);
+                outcome.last_error = Some(error.to_string());
+                continue;
+            }
+            outcome.installed = outcome.installed.saturating_add(1);
+        }
+        Ok(outcome)
+    }
+
     pub(crate) fn static_sound(&mut self, sound: &ResolvedSound) -> Result<StaticSoundData> {
         let key = self.key_for_sound(sound)?;
-        self.use_sequence = self.use_sequence.wrapping_add(1);
+        let next_use_sequence = self.use_sequence.wrapping_add(1);
         if let Some(entry) = self.static_cache.get_mut(&key) {
-            entry.last_used = self.use_sequence;
+            self.use_sequence = next_use_sequence;
+            entry.last_used = next_use_sequence;
             self.observation.static_cache_hits =
                 self.observation.static_cache_hits.saturating_add(1);
             return Ok(entry.data.clone());
@@ -133,24 +205,7 @@ impl AudioResidency {
             Err(error) => return self.reject(error),
         };
         let decoded_bytes = frame_bytes(data.frames.len())?;
-        self.observation.static_decoded_bytes = self
-            .observation
-            .static_decoded_bytes
-            .checked_add(decoded_bytes)
-            .ok_or_else(|| AudioDecodeError::Limit("static cache byte count overflow".into()))?;
-        self.observation.peak_static_decoded_bytes = self
-            .observation
-            .peak_static_decoded_bytes
-            .max(self.observation.static_decoded_bytes);
-        self.static_cache.insert(
-            key,
-            StaticCacheEntry {
-                data: data.clone(),
-                decoded_bytes,
-                last_used: self.use_sequence,
-            },
-        );
-        self.observation.static_buffers = self.static_cache.len();
+        self.insert_static_owner(key, data.clone(), decoded_bytes)?;
         Ok(data)
     }
 
@@ -214,6 +269,49 @@ impl AudioResidency {
         Ok(())
     }
 
+    fn ensure_preload_capacity(&mut self, required: u64) -> Result<()> {
+        let exceeds_count = self.static_cache.len() >= MAX_STATIC_SOUND_CACHE_BUFFERS;
+        let exceeds_bytes = self
+            .observation
+            .static_decoded_bytes
+            .checked_add(required)
+            .is_none_or(|bytes| bytes > MAX_STATIC_SOUND_CACHE_BYTES);
+        if exceeds_count || exceeds_bytes {
+            return self.reject(AudioDecodeError::Limit(format!(
+                "preloaded static audio cannot exceed the {MAX_STATIC_SOUND_CACHE_BUFFERS} owner / {MAX_STATIC_SOUND_CACHE_BYTES} byte cache limits"
+            )));
+        }
+        Ok(())
+    }
+
+    fn insert_static_owner(
+        &mut self,
+        key: AudioResourceKey,
+        data: StaticSoundData,
+        decoded_bytes: u64,
+    ) -> Result<()> {
+        self.use_sequence = self.use_sequence.wrapping_add(1);
+        self.observation.static_decoded_bytes = self
+            .observation
+            .static_decoded_bytes
+            .checked_add(decoded_bytes)
+            .ok_or_else(|| AudioDecodeError::Limit("static cache byte count overflow".into()))?;
+        self.observation.peak_static_decoded_bytes = self
+            .observation
+            .peak_static_decoded_bytes
+            .max(self.observation.static_decoded_bytes);
+        self.static_cache.insert(
+            key,
+            StaticCacheEntry {
+                data,
+                decoded_bytes,
+                last_used: self.use_sequence,
+            },
+        );
+        self.observation.static_buffers = self.static_cache.len();
+        Ok(())
+    }
+
     fn reject<T>(&mut self, error: AudioDecodeError) -> Result<T> {
         self.observation.audio_admission_rejections = self
             .observation
@@ -221,6 +319,20 @@ impl AudioResidency {
             .saturating_add(1);
         Err(error.into())
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PreloadDecodeOutcome {
+    Decoded,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct PreloadInstallOutcome {
+    pub(crate) installed: usize,
+    pub(crate) already_resident: usize,
+    pub(crate) failures: usize,
+    pub(crate) last_error: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -292,6 +404,15 @@ impl BoundedAudioDecoder {
     }
 
     fn decode_static(&mut self) -> Result<StaticSoundData, AudioDecodeError> {
+        self.decode_static_until(|| false)?.ok_or_else(|| {
+            AudioDecodeError::Limit("unconditional static decode was cancelled".into())
+        })
+    }
+
+    fn decode_static_until(
+        &mut self,
+        cancelled: impl Fn() -> bool,
+    ) -> Result<Option<StaticSoundData>, AudioDecodeError> {
         let mut frames = Vec::new();
         frames
             .try_reserve_exact(self.admitted_frames)
@@ -301,6 +422,9 @@ impl BoundedAudioDecoder {
                 ))
             })?;
         loop {
+            if cancelled() {
+                return Ok(None);
+            }
             let packet = match self.next_track_packet() {
                 Ok(packet) => packet,
                 Err(AudioDecodeError::Symphonia(symphonia::core::errors::Error::IoError(
@@ -320,12 +444,12 @@ impl BoundedAudioDecoder {
                 .ok_or_else(|| AudioDecodeError::Limit("decoded audio frame overflow".into()))?;
             frames.append(&mut decoded);
         }
-        Ok(StaticSoundData {
+        Ok(Some(StaticSoundData {
             sample_rate: self.sample_rate,
             frames: frames.into(),
             settings: StaticSoundSettings::default(),
             slice: None,
-        })
+        }))
     }
 
     fn next_track_packet(&mut self) -> Result<symphonia::core::formats::Packet, AudioDecodeError> {

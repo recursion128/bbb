@@ -210,6 +210,35 @@ impl SoundCatalog {
         self.resource_generation
     }
 
+    /// Return the unique complete buffers that Vanilla queues through
+    /// `Sound.preloadIfRequired` while applying `sounds.json`.
+    ///
+    /// `SoundManager.Preparations.apply` visits every registered event, so an
+    /// event reference does not expand the final set beyond the direct file
+    /// entries already present in the catalog. `SoundBufferLibrary` keys its
+    /// futures by the file resource id; the map below preserves that exact
+    /// deduplication while keeping the plan deterministic.
+    pub fn preload_files(&self) -> Vec<SoundPreload> {
+        let mut files = BTreeMap::new();
+        for event in self.events.values() {
+            for sound in &event.sounds {
+                if sound.kind != SoundEntryKind::File || !sound.preload {
+                    continue;
+                }
+                let Some(ogg_path) = sound.ogg_path.as_ref() else {
+                    continue;
+                };
+                files
+                    .entry(sound.name.clone())
+                    .or_insert_with(|| SoundPreload {
+                        sound_name: sound.name.clone(),
+                        ogg_path: ogg_path.clone(),
+                    });
+            }
+        }
+        files.into_values().collect()
+    }
+
     pub(crate) fn set_resource_generation(&mut self, generation: u64) {
         self.resource_generation = generation;
     }
@@ -267,6 +296,12 @@ pub struct SoundEventDefinition {
     pub replace: bool,
     pub subtitle: Option<String>,
     pub sounds: Vec<SoundEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SoundPreload {
+    pub sound_name: String,
+    pub ogg_path: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -680,6 +715,47 @@ mod tests {
         assert!(catalog.event("minecraft:entity.cat.purr").unwrap().replace);
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids() {
+        let assets_dir = PathBuf::from("assets/minecraft");
+        let catalog = SoundCatalog::from_json_bytes(
+            "minecraft",
+            &assets_dir,
+            br#"{
+              "direct": {
+                "sounds": [
+                  {"name":"shared/preloaded","preload":true},
+                  {"name":"music/streamed","stream":true,"preload":true},
+                  {"name":"lazy/not_preloaded","preload":false}
+                ]
+              },
+              "duplicate": {
+                "sounds": [
+                  {"name":"shared/preloaded","preload":true},
+                  {"name":"direct","type":"event","preload":true}
+                ]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let preloads = catalog.preload_files();
+
+        assert_eq!(
+            preloads,
+            vec![
+                SoundPreload {
+                    sound_name: "minecraft:music/streamed".to_string(),
+                    ogg_path: assets_dir.join("sounds/music/streamed.ogg"),
+                },
+                SoundPreload {
+                    sound_name: "minecraft:shared/preloaded".to_string(),
+                    ogg_path: assets_dir.join("sounds/shared/preloaded.ogg"),
+                },
+            ]
+        );
     }
 
     #[test]

@@ -15,6 +15,7 @@ use kira::{
 use kira::backend::cpal::CpalBackendSettings;
 
 use crate::{
+    preload::{AudioPreloadObservation, AudioPreloadRequest, AudioPreloadWorker},
     residency::{AudioDecodeError, AudioResidency},
     AudioCategory, AudioCommand, AudioListenerState, AudioResidencyObservation,
     EntitySoundPosition, PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand,
@@ -46,6 +47,9 @@ pub struct KiraAudioRuntime {
     channel_capacity: usize,
     playback_events: VecDeque<AudioPlaybackEvent>,
     listener_orientation: [f32; 4],
+    preload_worker: AudioPreloadWorker,
+    preload_observation: AudioPreloadObservation,
+    preload_token: Option<u64>,
     #[cfg(feature = "device")]
     device: Option<KiraAudioDeviceRuntime>,
 }
@@ -153,6 +157,8 @@ impl KiraAudioRuntime {
         let listener = manager
             .add_listener([0.0, 0.0, 0.0], identity_quaternion())
             .map_err(|_| anyhow!("initialize Kira audio listener"))?;
+        let preload_worker = AudioPreloadWorker::spawn()
+            .map_err(|error| anyhow!("initialize audio preload worker: {error}"))?;
         Ok(Self {
             manager,
             listener,
@@ -164,6 +170,12 @@ impl KiraAudioRuntime {
             channel_capacity,
             playback_events: VecDeque::new(),
             listener_orientation: identity_quaternion(),
+            preload_worker,
+            preload_observation: AudioPreloadObservation {
+                resource_generation,
+                ..AudioPreloadObservation::default()
+            },
+            preload_token: None,
             #[cfg(feature = "device")]
             device,
         })
@@ -171,6 +183,125 @@ impl KiraAudioRuntime {
 
     pub fn residency_observation(&self) -> AudioResidencyObservation {
         self.residency.observation()
+    }
+
+    pub fn preload_observation(&self) -> AudioPreloadObservation {
+        self.preload_observation.clone()
+    }
+
+    /// Queue the current generation's `preload:true` complete buffers on the
+    /// single latest-wins decode owner. The caller only publishes immutable
+    /// paths; file open and decode remain off the application frame.
+    pub fn request_preload(&mut self, mut requests: Vec<AudioPreloadRequest>) {
+        let generation = self.residency.active_generation();
+        let mut failures = 0_usize;
+        let mut last_error = None;
+        requests.retain(|request| {
+            if request.resource_generation == generation {
+                true
+            } else {
+                failures = failures.saturating_add(1);
+                last_error = Some(format!(
+                    "sound preload generation {} does not match active generation {generation}",
+                    request.resource_generation
+                ));
+                false
+            }
+        });
+        requests.sort_by(|left, right| {
+            left.sound_name
+                .cmp(&right.sound_name)
+                .then_with(|| left.ogg_path.cmp(&right.ogg_path))
+        });
+        requests.dedup_by(|left, right| left.sound_name == right.sound_name);
+
+        let cancelled = usize::from(self.preload_observation.pending > 0);
+        let worker_jobs = self.preload_observation.worker_jobs;
+        let cancelled_jobs = self
+            .preload_observation
+            .cancelled_jobs
+            .saturating_add(cancelled as u64);
+        let stale_results = self.preload_observation.stale_results;
+        self.preload_worker.cancel();
+        self.preload_token = None;
+        let requested = requests.len().saturating_add(failures);
+        self.preload_observation = AudioPreloadObservation {
+            resource_generation: generation,
+            requested,
+            completed: 0,
+            failures,
+            pending: requests.len(),
+            worker_jobs,
+            cancelled_jobs,
+            stale_results,
+            last_error,
+        };
+        if requests.is_empty() {
+            return;
+        }
+        let token = self.preload_worker.submit(generation, requests);
+        self.preload_token = Some(token);
+        self.preload_observation.worker_jobs =
+            self.preload_observation.worker_jobs.saturating_add(1);
+    }
+
+    /// Non-blockingly install a completed batch if it still belongs to the
+    /// active resource generation. Returns true only when the receipt changed.
+    pub fn poll_audio_preload(&mut self) -> bool {
+        let Some(batch) = self.preload_worker.take_result() else {
+            return false;
+        };
+        if self.preload_token != Some(batch.token)
+            || batch.resource_generation != self.residency.active_generation()
+        {
+            self.preload_observation.stale_results =
+                self.preload_observation.stale_results.saturating_add(1);
+            return true;
+        }
+        self.preload_token = None;
+        self.preload_observation.pending = 0;
+        self.preload_observation.requested = self.preload_observation.requested.max(
+            batch
+                .requested
+                .saturating_add(self.preload_observation.failures),
+        );
+        self.preload_observation.failures = self
+            .preload_observation
+            .failures
+            .saturating_add(batch.failures);
+        self.preload_observation.last_error = batch
+            .last_error
+            .or_else(|| self.preload_observation.last_error.take());
+        match self.residency.install_preloaded(batch.residency) {
+            Ok(installed) => {
+                self.preload_observation.completed = installed
+                    .installed
+                    .saturating_add(installed.already_resident);
+                self.preload_observation.failures = self
+                    .preload_observation
+                    .failures
+                    .saturating_add(installed.failures);
+                if installed.last_error.is_some() {
+                    self.preload_observation.last_error = installed.last_error;
+                }
+                debug_assert_eq!(
+                    batch.decoded,
+                    self.preload_observation
+                        .completed
+                        .saturating_add(installed.failures)
+                );
+            }
+            Err(error) => {
+                self.preload_observation.stale_results =
+                    self.preload_observation.stale_results.saturating_add(1);
+                self.preload_observation.failures = self
+                    .preload_observation
+                    .failures
+                    .saturating_add(batch.decoded);
+                self.preload_observation.last_error = Some(error.to_string());
+            }
+        }
+        true
     }
 
     pub fn channel_observation(&self) -> AudioChannelObservation {
@@ -339,6 +470,7 @@ impl KiraAudioRuntime {
         self.delayed_positioned.clear();
         self.playback_events.clear();
         let resource_generation = self.residency.active_generation();
+        self.cancel_audio_preload(resource_generation);
         self.residency.reset_generation(resource_generation);
         self.manager = manager;
         self.listener = listener;
@@ -371,7 +503,23 @@ impl KiraAudioRuntime {
             sound.handle.stop();
         }
         self.playing.clear();
+        self.cancel_audio_preload(resource_generation);
         self.residency.reset_generation(resource_generation);
+    }
+
+    fn cancel_audio_preload(&mut self, resource_generation: u64) {
+        if self.preload_observation.pending > 0 {
+            self.preload_observation.cancelled_jobs =
+                self.preload_observation.cancelled_jobs.saturating_add(1);
+        }
+        self.preload_worker.cancel();
+        self.preload_token = None;
+        self.preload_observation.resource_generation = resource_generation;
+        self.preload_observation.requested = 0;
+        self.preload_observation.completed = 0;
+        self.preload_observation.failures = 0;
+        self.preload_observation.pending = 0;
+        self.preload_observation.last_error = None;
     }
 
     pub fn handle_command(&mut self, command: &AudioCommand) -> Result<()> {
@@ -1132,6 +1280,12 @@ fn quat_mul(lhs: [f32; 4], rhs: [f32; 4]) -> [f32; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "device"))]
+    use std::{
+        path::PathBuf,
+        thread,
+        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    };
 
     #[test]
     fn channel_volume_clamps_above_identity_without_changing_attenuation() {
@@ -1567,6 +1721,78 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "device"))]
+    #[test]
+    fn preload_completion_installs_current_generation_without_a_playback_decode_miss() {
+        let path = unique_preload_path("runtime-install");
+        crate::preload::write_test_ogg(&path);
+        let mut runtime = KiraAudioRuntime::new_with_resource_generation(11).unwrap();
+        runtime.request_preload(vec![AudioPreloadRequest {
+            sound_name: "minecraft:test/preloaded".to_string(),
+            ogg_path: path.clone(),
+            resource_generation: 11,
+        }]);
+
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !runtime.poll_audio_preload() {
+            assert!(Instant::now() < deadline, "audio preload timed out");
+            thread::yield_now();
+        }
+
+        let observation = runtime.preload_observation();
+        assert_eq!(observation.resource_generation, 11);
+        assert_eq!(observation.requested, 1);
+        assert_eq!(observation.completed, 1);
+        assert_eq!(observation.failures, 0);
+        assert_eq!(observation.pending, 0);
+        let sound = ResolvedSound {
+            event_id: "minecraft:test.event".to_string(),
+            sound_name: "minecraft:test/preloaded".to_string(),
+            ogg_path: path.clone(),
+            resource_generation: 11,
+            stream: false,
+            preload: true,
+            attenuation_distance: 16,
+            entry_volume: 1.0,
+            entry_pitch: 1.0,
+        };
+        runtime.residency.static_sound(&sound).unwrap();
+        let residency = runtime.residency_observation();
+        assert_eq!(residency.static_buffers, 1);
+        assert_eq!(residency.static_cache_hits, 1);
+        assert_eq!(residency.static_cache_misses, 0);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[cfg(not(feature = "device"))]
+    #[test]
+    fn generation_reset_cancels_pending_preload_and_rejects_old_requests() {
+        let mut runtime = KiraAudioRuntime::new_with_resource_generation(3).unwrap();
+        runtime.request_preload(vec![AudioPreloadRequest {
+            sound_name: "minecraft:test/missing".to_string(),
+            ogg_path: PathBuf::from("missing-generation-three.ogg"),
+            resource_generation: 3,
+        }]);
+
+        runtime.reset_resource_generation(4);
+        runtime.request_preload(vec![AudioPreloadRequest {
+            sound_name: "minecraft:test/stale".to_string(),
+            ogg_path: PathBuf::from("missing-generation-three.ogg"),
+            resource_generation: 3,
+        }]);
+
+        let observation = runtime.preload_observation();
+        assert_eq!(observation.resource_generation, 4);
+        assert_eq!(observation.requested, 1);
+        assert_eq!(observation.failures, 1);
+        assert_eq!(observation.pending, 0);
+        assert_eq!(observation.cancelled_jobs, 1);
+        assert!(observation
+            .last_error
+            .unwrap()
+            .contains("active generation 4"));
+    }
+
     fn test_resolved_sound(event_id: &str) -> ResolvedSound {
         ResolvedSound {
             event_id: event_id.to_string(),
@@ -1582,5 +1808,14 @@ mod tests {
             entry_volume: 1.0,
             entry_pitch: 1.0,
         }
+    }
+
+    #[cfg(not(feature = "device"))]
+    fn unique_preload_path(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("bbb-audio-runtime-{label}-{nanos}.ogg"))
     }
 }

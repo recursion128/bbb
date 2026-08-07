@@ -1,5 +1,8 @@
 mod command;
 
+#[cfg(feature = "kira")]
+mod preload;
+
 #[cfg(feature = "device")]
 mod device;
 
@@ -21,6 +24,8 @@ pub use device::{
     audio_device_reload_reason, is_sound_device_default, AudioDeviceObservation, AudioDevicePoll,
     AudioDeviceReloadReason, AudioDeviceSnapshot,
 };
+#[cfg(feature = "kira")]
+pub use preload::{AudioPreloadObservation, AudioPreloadRequest};
 #[cfg(feature = "kira")]
 pub use residency::{probe_bounded_audio_file, AudioFileProbe, AudioResidencyObservation};
 #[cfg(feature = "kira")]

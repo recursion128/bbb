@@ -9,7 +9,8 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result};
 use bbb_audio::{
     AudioChannelObservation, AudioCommand, AudioDeviceObservation, AudioPlaybackEvent,
-    KiraAudioRuntime, TickEntitySoundPositionsCommand,
+    AudioPreloadObservation, AudioPreloadRequest, KiraAudioRuntime,
+    TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
 use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
@@ -76,6 +77,7 @@ pub(crate) struct SoundSubtitleEvent {
 
 pub(crate) struct NativeAudioReload {
     catalog: SoundCatalog,
+    preloads: Vec<AudioPreloadRequest>,
 }
 
 impl NativeAudioRuntime {
@@ -83,11 +85,12 @@ impl NativeAudioRuntime {
         let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
         let jukebox_registry = JukeboxSongRegistry::vanilla_26_1();
-        let playback = KiraAudioRuntime::new_with_device_preference(
+        let mut playback = KiraAudioRuntime::new_with_device_preference(
             preferred_device,
             catalog.resource_generation(),
         )
         .context("initialize Kira audio runtime")?;
+        playback.request_preload(audio_preload_requests(&catalog));
         let mut counters = AudioCounters {
             enabled: true,
             catalog_events: catalog.len(),
@@ -119,6 +122,7 @@ impl NativeAudioRuntime {
         counters.sound_cache_evictions = observation.static_cache_evictions;
         counters.sound_admission_rejections = observation.audio_admission_rejections;
         counters.sound_streaming_starts = observation.streaming_starts;
+        project_audio_preload_observation(&mut counters, self.playback.preload_observation());
         project_audio_channel_observation(&mut counters, self.playback.channel_observation());
         counters
     }
@@ -144,6 +148,7 @@ impl NativeAudioRuntime {
         if let Some(error) = poll.error {
             tracing::warn!(%error, "audio device poll or reload failed");
         }
+        self.playback.poll_audio_preload();
     }
 
     pub(crate) fn available_sound_ids(&self) -> Vec<String> {
@@ -158,14 +163,15 @@ impl NativeAudioRuntime {
     }
 
     pub(crate) fn prepare_reload(roots: &PackRoots) -> Result<NativeAudioReload> {
-        Ok(NativeAudioReload {
-            catalog: load_required_native_sound_catalog(roots)?,
-        })
+        let catalog = load_required_native_sound_catalog(roots)?;
+        let preloads = audio_preload_requests(&catalog);
+        Ok(NativeAudioReload { catalog, preloads })
     }
 
     pub(crate) fn commit_reload(&mut self, reload: NativeAudioReload) {
         self.playback
             .reset_resource_generation(reload.catalog.resource_generation());
+        self.playback.request_preload(reload.preloads);
         self.counters.catalog_events = reload.catalog.len();
         self.catalog = reload.catalog;
         self.active_tickable_sounds.clear();
@@ -235,6 +241,34 @@ fn project_audio_device_observation(counters: &mut AudioCounters, device: AudioD
     counters.preferred_device_fallbacks = device.preferred_fallbacks;
     counters.last_device_reload_reason = device.last_reload_reason;
     counters.last_device_error = device.last_error;
+}
+
+fn project_audio_preload_observation(
+    counters: &mut AudioCounters,
+    preload: AudioPreloadObservation,
+) {
+    counters.sound_preload_generation = preload.resource_generation;
+    counters.sound_preload_requested = preload.requested;
+    counters.sound_preload_completed = preload.completed;
+    counters.sound_preload_failures = preload.failures;
+    counters.sound_preload_pending = preload.pending;
+    counters.sound_preload_worker_jobs = preload.worker_jobs;
+    counters.sound_preload_cancelled_jobs = preload.cancelled_jobs;
+    counters.sound_preload_stale_results = preload.stale_results;
+    counters.last_sound_preload_error = preload.last_error;
+}
+
+fn audio_preload_requests(catalog: &SoundCatalog) -> Vec<AudioPreloadRequest> {
+    let resource_generation = catalog.resource_generation();
+    catalog
+        .preload_files()
+        .into_iter()
+        .map(|preload| AudioPreloadRequest {
+            sound_name: preload.sound_name,
+            ogg_path: preload.ogg_path,
+            resource_generation,
+        })
+        .collect()
 }
 
 fn load_required_native_sound_catalog(roots: &PackRoots) -> Result<SoundCatalog> {
@@ -529,6 +563,65 @@ mod tests {
         assert_eq!(counters.available_device_count, 1);
         assert_eq!(counters.device_reloads, 2);
         assert_eq!(counters.device_query_failures, 1);
+    }
+
+    #[test]
+    fn preload_plan_stamps_catalog_generation_and_receipt_is_machine_readable() {
+        let mut catalog = SoundCatalog::default();
+        catalog.events.insert(
+            "minecraft:test".to_string(),
+            bbb_pack::SoundEventDefinition {
+                id: "minecraft:test".to_string(),
+                replace: false,
+                subtitle: None,
+                sounds: vec![bbb_pack::SoundEntry {
+                    name: "minecraft:test/preloaded".to_string(),
+                    kind: bbb_pack::SoundEntryKind::File,
+                    volume: 1.0,
+                    pitch: 1.0,
+                    weight: 1,
+                    stream: false,
+                    preload: true,
+                    attenuation_distance: 16,
+                    ogg_path: Some(PathBuf::from("assets/minecraft/sounds/test/preloaded.ogg")),
+                    ogg_integrity: None,
+                }],
+            },
+        );
+
+        assert_eq!(
+            audio_preload_requests(&catalog),
+            vec![AudioPreloadRequest {
+                sound_name: "minecraft:test/preloaded".to_string(),
+                ogg_path: PathBuf::from("assets/minecraft/sounds/test/preloaded.ogg"),
+                resource_generation: 0,
+            }]
+        );
+
+        let mut counters = AudioCounters::default();
+        project_audio_preload_observation(
+            &mut counters,
+            AudioPreloadObservation {
+                resource_generation: 47,
+                requested: 3,
+                completed: 2,
+                failures: 1,
+                pending: 0,
+                worker_jobs: 4,
+                cancelled_jobs: 1,
+                stale_results: 0,
+                last_error: Some("preload minecraft:test/bad".to_string()),
+            },
+        );
+        assert_eq!(counters.sound_preload_generation, 47);
+        assert_eq!(counters.sound_preload_requested, 3);
+        assert_eq!(counters.sound_preload_completed, 2);
+        assert_eq!(counters.sound_preload_failures, 1);
+        assert_eq!(counters.sound_preload_worker_jobs, 4);
+        assert_eq!(
+            counters.last_sound_preload_error.as_deref(),
+            Some("preload minecraft:test/bad")
+        );
     }
 
     #[test]

@@ -75,7 +75,9 @@ pub use crate::server_pack::{
 };
 pub use crate::shader_sources::ShaderSourceCatalog;
 pub use crate::sound_event_registry::SoundEventRegistry;
-pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
+pub use crate::sounds::{
+    SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition, SoundPreload,
+};
 pub use crate::sprites::{
     SpriteGuiMetadata, SpriteGuiScaling, SpriteImage, SpriteMipmapStrategy, SpriteNineSliceBorder,
     SpriteSource, SpriteTextureMetadata, SpriteTransparency,
