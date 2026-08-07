@@ -4184,6 +4184,83 @@ def summarize_renderdoc_evidence(manifest: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_gpu_duration_summary(
+    summary: Mapping[str, Any],
+    *,
+    client_pid: int,
+    minimum_association_ratio: float,
+) -> dict[str, Any]:
+    if summary.get("schema") != BENCHMARK_SCHEMA:
+        raise BenchmarkFailure("GPU duration summary schema mismatch")
+    if summary.get("metric") != "per-client GPU execution duration":
+        raise BenchmarkFailure("GPU duration summary metric mismatch")
+    if summary.get("chain") != list(GPU_DURATION_CHAIN_EVENTS):
+        raise BenchmarkFailure("GPU duration summary chain mismatch")
+    if summary.get("graphics_only") is not True:
+        raise BenchmarkFailure("GPU duration summary is not graphics-only")
+    try:
+        association_ratio = float(summary["association_ratio"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise BenchmarkFailure(
+            "GPU duration summary lacks an association ratio"
+        ) from error
+    if (
+        not math.isfinite(association_ratio)
+        or not 0.0 <= minimum_association_ratio <= 1.0
+        or association_ratio < minimum_association_ratio
+    ):
+        raise BenchmarkFailure(
+            "GPU duration association ratio "
+            f"{association_ratio:.6f} is below "
+            f"{minimum_association_ratio:.6f}"
+        )
+    clients = summary.get("clients")
+    if not isinstance(clients, list) or len(clients) != 1:
+        raise BenchmarkFailure(
+            "GPU duration summary must contain exactly one client"
+        )
+    client = clients[0]
+    if not isinstance(client, Mapping) or client.get("pid") != client_pid:
+        raise BenchmarkFailure("GPU duration client PID mismatch")
+    execution = client.get("gpu_execution")
+    queue_wait = client.get("queue_wait")
+    if not isinstance(execution, Mapping) or not isinstance(queue_wait, Mapping):
+        raise BenchmarkFailure("GPU duration summary lacks duration statistics")
+    try:
+        execution_count = int(execution["count"])
+        queue_count = int(queue_wait["count"])
+        job_count = int(summary["job_count"])
+        submitted_jobs = int(summary["submitted_jobs"])
+        associated_jobs = int(summary["associated_jobs"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise BenchmarkFailure("GPU duration summary has invalid counts") from error
+    if (
+        execution_count <= 0
+        or execution_count != queue_count
+        or execution_count != job_count
+        or job_count > associated_jobs
+        or not 0 <= associated_jobs <= submitted_jobs
+        or submitted_jobs < job_count
+        or not math.isclose(
+            association_ratio,
+            associated_jobs / submitted_jobs,
+            rel_tol=1e-9,
+            abs_tol=1e-12,
+        )
+    ):
+        raise BenchmarkFailure("GPU duration summary job counts mismatch")
+    return {
+        "association_ratio": association_ratio,
+        "submitted_jobs": submitted_jobs,
+        "associated_jobs": associated_jobs,
+        "job_count": job_count,
+        "comm": client.get("comm"),
+        "rings": client.get("rings"),
+        "gpu_execution": dict(execution),
+        "queue_wait": dict(queue_wait),
+    }
+
+
 def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
     if manifest.get("schema") != BENCHMARK_SCHEMA:
         raise BenchmarkFailure("formal comparison manifest schema mismatch")
@@ -4387,6 +4464,93 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "scope": baseline["scope"],
         }
 
+    gpu_duration_manifest = manifest.get("gpu_duration_evidence")
+    if not isinstance(gpu_duration_manifest, Mapping):
+        raise BenchmarkFailure("formal manifest lacks GPU duration evidence")
+    gpu_overhead_threshold = float(
+        gpu_duration_manifest.get("threshold_percent", 1.0)
+    )
+    minimum_association_ratio = float(
+        gpu_duration_manifest.get("minimum_association_ratio", 0.99)
+    )
+    gpu_duration_clients: dict[str, Any] = {}
+    for client in ("vanilla", "bbb"):
+        entry = gpu_duration_manifest.get(client)
+        if not isinstance(entry, Mapping):
+            raise BenchmarkFailure(f"missing {client} GPU duration evidence")
+        baseline_path = Path(str(entry.get("baseline_smoke")))
+        instrumented_path = Path(str(entry.get("instrumented_smoke")))
+        summary_path = Path(str(entry.get("summary")))
+        baseline_smoke = load_json_object(
+            baseline_path, f"{client} GPU overhead baseline"
+        )
+        instrumented_smoke = load_json_object(
+            instrumented_path, f"{client} GPU duration run"
+        )
+        for label, smoke in (
+            ("baseline", baseline_smoke),
+            ("instrumented", instrumented_smoke),
+        ):
+            if smoke.get("status") != "passed" or smoke.get("client") != client:
+                raise BenchmarkFailure(
+                    f"{client} GPU {label} smoke identity mismatch"
+                )
+            if any(smoke.get(key) != value for key, value in contracts.items()):
+                raise BenchmarkFailure(
+                    f"{client} GPU {label} smoke contract mismatch"
+                )
+            if smoke.get("server_camera_log", {}).get("sha256") != camera_hash:
+                raise BenchmarkFailure(
+                    f"{client} GPU {label} camera log mismatch"
+                )
+            if client == "bbb":
+                launch = load_json_object(
+                    Path(str(smoke.get("launch_manifest"))),
+                    f"{client} GPU {label} launch manifest",
+                )
+                if launch.get("binary", {}).get("sha256") != expected_binary:
+                    raise BenchmarkFailure(
+                        f"{client} GPU {label} bbb binary mismatch"
+                    )
+        baseline_timeline = baseline_smoke.get("weston_timeline")
+        instrumented_timeline = instrumented_smoke.get("weston_timeline")
+        if not isinstance(baseline_timeline, Mapping) or not isinstance(
+            instrumented_timeline, Mapping
+        ):
+            raise BenchmarkFailure(f"{client} GPU overhead timeline is incomplete")
+        baseline_ms = float(
+            baseline_timeline["commit_interval"]["p50_ms"]
+        )
+        instrumented_ms = float(
+            instrumented_timeline["commit_interval"]["p50_ms"]
+        )
+        impact = (instrumented_ms - baseline_ms) * 100.0 / baseline_ms
+        if impact > gpu_overhead_threshold:
+            raise BenchmarkFailure(
+                f"{client} GPU trace median overhead {impact:.3f}% exceeds "
+                f"{gpu_overhead_threshold:.3f}%"
+            )
+        duration_summary = load_json_object(
+            summary_path, f"{client} GPU duration summary"
+        )
+        validated_duration = validate_gpu_duration_summary(
+            duration_summary,
+            client_pid=int(instrumented_smoke["client_pid"]),
+            minimum_association_ratio=minimum_association_ratio,
+        )
+        gpu_duration_clients[client] = {
+            **validated_duration,
+            "summary": str(summary_path),
+            "summary_sha256": file_digest(summary_path, "sha256"),
+            "overhead": {
+                "baseline_p50_ms": baseline_ms,
+                "instrumented_p50_ms": instrumented_ms,
+                "impact_percent": impact,
+                "threshold_percent": gpu_overhead_threshold,
+                "scope": baseline_timeline["scope"],
+            },
+        }
+
     performance: dict[str, Any] = {}
     for client in ("vanilla", "bbb"):
         performance[client] = {
@@ -4424,12 +4588,14 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "per captured frame and are not CPU-frame percentiles"
         ),
         "gpu_duration": {
-            "claim_allowed": False,
-            "blocker": (
-                "this kernel exposes dma_fence:dma_fence_signaled instead of "
-                "the requested fence:fence_signaled, and no validated "
-                "client-context-to-headless-Xwayland-vblank association was "
-                "established across radeonsi and RADV"
+            "claim_allowed": True,
+            "minimum_association_ratio": minimum_association_ratio,
+            "clients": gpu_duration_clients,
+            "scope": (
+                "per-client graphics-ring GPU execution duration joined from "
+                "amdgpu submission through scheduler dispatch to finished "
+                "dma_fence signal; queue wait is reported separately and "
+                "compositor submissions are excluded by client PID"
             ),
         },
         "artifacts": {

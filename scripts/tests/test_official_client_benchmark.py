@@ -1226,6 +1226,52 @@ class CaptureTests(unittest.TestCase):
             self.assertFalse(parsed["gpu_duration_claim_allowed"])
             self.assertTrue(all(parsed["associated_events"].values()))
 
+    def test_gpu_duration_summary_requires_associated_client_jobs(self):
+        duration = {
+            "schema": 1,
+            "metric": "per-client GPU execution duration",
+            "chain": list(benchmark.GPU_DURATION_CHAIN_EVENTS),
+            "graphics_only": True,
+            "association_ratio": 0.995,
+            "submitted_jobs": 200,
+            "associated_jobs": 199,
+            "job_count": 80,
+            "clients": [
+                {
+                    "pid": 42,
+                    "comm": "bbb-native",
+                    "rings": ["gfx_0.0.0"],
+                    "gpu_execution": {"count": 80, "p50_us": 1200.0},
+                    "queue_wait": {"count": 80, "p50_us": 500.0},
+                }
+            ],
+        }
+        validated = benchmark.validate_gpu_duration_summary(
+            duration,
+            client_pid=42,
+            minimum_association_ratio=0.99,
+        )
+        self.assertEqual(validated["job_count"], 80)
+        self.assertEqual(validated["gpu_execution"]["p50_us"], 1200.0)
+
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "association ratio"
+        ):
+            benchmark.validate_gpu_duration_summary(
+                {**duration, "association_ratio": 0.98},
+                client_pid=42,
+                minimum_association_ratio=0.99,
+            )
+
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "client PID mismatch"
+        ):
+            benchmark.validate_gpu_duration_summary(
+                duration,
+                client_pid=43,
+                minimum_association_ratio=0.99,
+            )
+
     def test_invalid_run_reasons_cover_load_and_capture_contract(self):
         expected = {
             "replay_hash": "r",

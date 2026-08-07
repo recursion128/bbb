@@ -82,4 +82,8 @@
   uv-managed CPython 3.12.13；`scripts/bootstrap` 统一准备 Python/Rust/Vanilla，正式 Python
   入口全部走 offline locked runner，系统 Python 与分裂的 source-tools 环境退出前置集合。
 
+- **2026-08-07（等负载 CPU 复测）**：用当前 release 重跑视觉 11/11 ROI、两轮正式 ABBA、
+  MangoHud/GPU trace 开销与双 API GPU duration；消除稳定 visibility 投影、地形选择集合重建
+  和单帧过量快照复制，BBB 每帧 instructions/task-clock 较优化前下降 30.32%/15.43%。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
