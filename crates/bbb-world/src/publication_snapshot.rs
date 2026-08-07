@@ -162,6 +162,27 @@ mod tests {
         }
     }
 
+    #[test]
+    fn publication_snapshot_shares_recipes_until_the_next_recipe_mutation() {
+        let mut world = WorldStore::new();
+        world
+            .recipes
+            .property_sets
+            .insert("minecraft:test".to_string(), vec![1, 2]);
+        let snapshot = world.publication_snapshot();
+        assert!(world.recipes.ptr_eq(&snapshot.recipes));
+
+        world
+            .recipes
+            .property_sets
+            .get_mut("minecraft:test")
+            .expect("property set")
+            .push(3);
+        assert!(!world.recipes.ptr_eq(&snapshot.recipes));
+        assert_eq!(snapshot.recipes.property_sets["minecraft:test"], [1, 2]);
+        assert_eq!(world.recipes.property_sets["minecraft:test"], [1, 2, 3]);
+    }
+
     fn test_chunk(pos: ChunkPos, light: u8) -> ChunkColumn {
         ChunkColumn {
             pos,

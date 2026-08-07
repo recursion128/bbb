@@ -291,7 +291,7 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) recipe_book: crate::ClientRecipeBookState,
     #[serde(default)]
-    pub(crate) recipes: ClientRecipesState,
+    pub(crate) recipes: PublicationShared<ClientRecipesState>,
     #[serde(default)]
     pub(crate) advancements: ClientAdvancementsState,
     #[serde(default)]

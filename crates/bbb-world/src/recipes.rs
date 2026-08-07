@@ -46,7 +46,7 @@ impl WorldStore {
     }
 
     pub(crate) fn reset_recipes_for_new_listener(&mut self) {
-        self.recipes = ClientRecipesState::default();
+        self.recipes = ClientRecipesState::default().into();
         self.update_recipe_counters();
     }
 
