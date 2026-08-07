@@ -3503,23 +3503,30 @@ impl EntityStore {
             });
         }
         drop(query);
-        let candidate_ids = candidates
+        let passenger_ids = candidates
             .iter()
+            .filter(|candidate| candidate.vehicle_id.is_some())
             .map(|candidate| candidate.entity_id)
             .collect::<Vec<_>>();
+        if passenger_ids.is_empty() {
+            return;
+        }
         let render_positions = self.render_positions_at_partial_tick(
-            &candidate_ids,
+            &passenger_ids,
             partial_ticks,
             game_time,
             minecart_improvements_enabled,
         );
         let current_positions = self.render_positions_at_partial_tick(
-            &candidate_ids,
+            &passenger_ids,
             1.0,
             game_time,
             minecart_improvements_enabled,
         );
         for candidate in candidates.iter_mut() {
+            if candidate.vehicle_id.is_none() {
+                continue;
+            }
             candidate.position = render_positions
                 .get(&candidate.entity_id)
                 .copied()
