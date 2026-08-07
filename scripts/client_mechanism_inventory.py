@@ -1870,7 +1870,7 @@ LEVEL_RENDERER_LIGHT_OWNER_EVIDENCE = _owner_evidence(
             (
                 "crates/bbb-render-types/src/light_coords.rs#state_override_order_matches_level_renderer",
                 "crates/bbb-world/src/chunks/tests.rs#samples_block_light_at_world_position_and_reports_unloaded",
-                "crates/bbb-renderer/src/terrain/mesh/tests.rs#cubic_face_offset_samples_neighbor_brightness_with_current_state",
+                "crates/bbb-renderer/src/terrain/mesh/tests.rs#ambient_cubic_face_offset_samples_neighbor_brightness_and_state",
                 "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers",
             ),
         ),

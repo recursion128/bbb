@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "17fa4f6eee12bf8b9b5cd855580979b8283749fbb8f0acb9f2cdc92dda5dddf3"
+      "sha256": "93784f9fd94c059885d84dec684029cfb2c74a54367e3e793048169a1adfceee"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -31485,7 +31485,7 @@
         "tests": [
           "crates/bbb-render-types/src/light_coords.rs#state_override_order_matches_level_renderer",
           "crates/bbb-world/src/chunks/tests.rs#samples_block_light_at_world_position_and_reports_unloaded",
-          "crates/bbb-renderer/src/terrain/mesh/tests.rs#cubic_face_offset_samples_neighbor_brightness_with_current_state",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#ambient_cubic_face_offset_samples_neighbor_brightness_and_state",
           "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers"
         ]
       },
@@ -31512,7 +31512,7 @@
         "tests": [
           "crates/bbb-render-types/src/light_coords.rs#state_override_order_matches_level_renderer",
           "crates/bbb-world/src/chunks/tests.rs#samples_block_light_at_world_position_and_reports_unloaded",
-          "crates/bbb-renderer/src/terrain/mesh/tests.rs#cubic_face_offset_samples_neighbor_brightness_with_current_state",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#ambient_cubic_face_offset_samples_neighbor_brightness_and_state",
           "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers"
         ]
       },
