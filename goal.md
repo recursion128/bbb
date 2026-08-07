@@ -501,13 +501,13 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 状态：`active`。`persistence-options-unconsumed` 剩余一个 Vanilla `Options.dataFix` owner
 已重新确认为无游戏内配置 UI 也可从启动路径到达；当前工程 slice 必须逐 owner
 实现真实消费或重路由到已有实现证据，不能以 options 行可 round-trip 代替行为。
-`audio-sound-manager-engine` 仍为 `partial`：generated inventory 的 67 个 owner 已全部挂
-decision evidence，7 个不可达 pause/manual-loop owner 另有 Vanilla caller、范围理由和 reopen
+`audio-sound-manager-engine` 仍为 `partial`：inventory 的 144 个 audio owner 中，120 个已有 decision evidence，
+24 个 `Library`/`Channel` owner 以 machine-readable open gap 路由账本，9 个 pause/manual-loop owner 另有 reopen
 condition；审计同时修复了 11 个 stored `soundCategory_*` 仅 round-trip、播放仍用默认值的
 真实缺口；余下 HRTF、device-derived source-count origin 与正式真实设备 receipt 留在账本。
 
-audio 工程以 `scripts/capture-vanilla-audio-receipt.py` 的官方可执行 receipt 冻结 OpenAL
-总/静态/流式 capacity、HRTF 与短声音 tick/delete-time；null 输出只解锁实现，不形成正式结论，
+audio 工程以 `scripts/capture-vanilla-audio-receipt.py` 冻结 OpenAL capacity、HRTF、短声音 lifecycle，
+并关闭 `Library` context 与 `Channel` source/distance/buffer queue open gaps；null 输出只解锁实现，不形成正式结论，
 当前 host-device 路径因 UID 无 `/dev/snd` 权限保持精确 blocker。Kira/native 现以可归因的 logical-256
 origin 派生 248/8 独立池并记录拒绝，停止实例保留至 tick 20 清理；不得把这两项称为 device-derived，
 不得把普通 stereo pan 命名为 HRTF。focused tests 覆盖公式/隔离、backend handle 生命周期和 reload/reset。

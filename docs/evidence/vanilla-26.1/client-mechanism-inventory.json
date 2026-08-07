@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "d99cdff0d18492c8afabfdd33cdde1f7065a647f6a44c483e634b6e1cf418880"
+      "sha256": "07b8812d0b9eae2a69ae1491bba1d9b3f7c102963f087e8b91e3c9ba8679a937"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -34,8 +34,9 @@
         "crates/bbb-audio/src/runtime.rs",
         "crates/bbb-native/src/audio_runtime.rs"
       ],
-      "owner_count": 67,
-      "owner_evidence_count": 67
+      "owner_count": 144,
+      "owner_evidence_count": 144,
+      "owner_gap_count": 24
     },
     "diagnostics-client-level-report": {
       "bbb_evidence": [
@@ -4916,6 +4917,1429 @@
         "path": "net/minecraft/network/protocol/status/ClientStatusPacketListener.java"
       },
       "vanilla_owner": "net.minecraft.network.protocol.status.ClientStatusPacketListener#protocol()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#Channel(final int src)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 29,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#Channel(final int src)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#attachBufferStream(final AudioStream stream)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 123,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#attachBufferStream(final AudioStream stream)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#attachStaticBuffer(final SoundBuffer buffer)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 119,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#attachStaticBuffer(final SoundBuffer buffer)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#calculateBufferSize(final AudioFormat format,final int seconds)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 130,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#calculateBufferSize(final AudioFormat format,final int seconds)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#create()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 23,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#create()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#destroy()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 33,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#destroy()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#disableAttenuation()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 104,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#disableAttenuation()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#getState()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 57,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#getState()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#linearAttenuation(final float maxDistance)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 108,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#linearAttenuation(final float maxDistance)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#pause()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 61,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#pause()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#play()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 53,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#play()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#playing()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 80,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#playing()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#pumpBuffers(final int size)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 134,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#pumpBuffers(final int size)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#removeProcessedBuffers()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 158,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#removeProcessedBuffers()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#setLooping(final boolean looping)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 96,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#setLooping(final boolean looping)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#setPitch(final float pitch)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 92,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#setPitch(final float pitch)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#setRelative(final boolean relative)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 115,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#setRelative(final boolean relative)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#setSelfPosition(final Vec3 newPosition)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 88,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#setSelfPosition(final Vec3 newPosition)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#setVolume(final float volume)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 100,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#setVolume(final float volume)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#stop()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 73,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#stop()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#stopped()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 84,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#stopped()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/pause_screen.rs#native_pause_freezes_client_ticks"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla only enters the paused sound branch for an unpublished integrated server; BBB is an external client and never owns or pauses that server. Closing an external-client screen therefore has no paused audio channels to resume.",
+          "reopen_condition": "BBB gains an in-process integrated server or another audio-pause owner.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:1156",
+            "net/minecraft/client/Minecraft.java:1292-1298",
+            "net/minecraft/client/sounds/SoundEngine.java:227-231,303-317,471-484"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#unpause()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 67,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#unpause()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, static buffer attachment, and four-buffer streaming pump with focused tests and a real-device receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact OpenAL source, per-source distance-model, buffer attachment, or four-buffer one-second streaming queue decisions."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Channel#updateStream()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 151,
+        "path": "com/mojang/blaze3d/audio/Channel.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Channel#updateStream()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#acquireChannel(final Library.Pool pool)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 206,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#acquireChannel(final Library.Pool pool)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#cleanup()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 193,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#cleanup()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, derives independent pool limits from ALC_MONO_SOURCES, and publishes a reproducible real-device differential receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#createAttributes(final MemoryStack stack,final boolean enableHrtf)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 106,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#createAttributes(final MemoryStack stack,final boolean enableHrtf)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#createDeviceTracker()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 231,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#createDeviceTracker()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#currentDeviceName()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 150,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#currentDeviceName()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, derives independent pool limits from ALC_MONO_SOURCES, and publishes a reproducible real-device differential receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#getChannelCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 119,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#getChannelCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#getChannelDebugString()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 216,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#getChannelDebugString()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#getListener()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 202,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#getListener()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, derives independent pool limits from ALC_MONO_SOURCES, and publishes a reproducible real-device differential receipt.",
+          "ledger": "docs/unsupported-features.md#audio-sound-manager-engine",
+          "reason": "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
+        }
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#init(final @Nullable String preferredDevice,final DeviceList currentDevices,final boolean useHrtf)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 61,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#init(final @Nullable String preferredDevice,final DeviceList currentDevices,final boolean useHrtf)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#isCurrentDeviceDisconnected()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 227,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#isCurrentDeviceDisconnected()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#openDeviceOrFallback(final @Nullable String preferredDevice,final @Nullable String systemDefaultDevice)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 167,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#openDeviceOrFallback(final @Nullable String preferredDevice,final @Nullable String systemDefaultDevice)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#queryDeviceName(final long deviceId)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 154,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#queryDeviceName(final long deviceId)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#releaseChannel(final Channel channel)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 210,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#releaseChannel(final Channel channel)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/device.rs#pub struct AudioDeviceObservation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_device_observation"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/device.rs#only_the_empty_name_selects_the_default_device",
+          "crates/bbb-native/src/audio_runtime.rs#device_observation_projects_cached_receipt_fields"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library#tryOpenDevice(final @Nullable String name)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 188,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library#tryOpenDevice(final @Nullable String name)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.ChannelPool#acquire()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 243,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.ChannelPool#acquire()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.ChannelPool#cleanup()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 247,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.ChannelPool#cleanup()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.ChannelPool#getMaxCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 249,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.ChannelPool#getMaxCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.ChannelPool#getUsedCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 251,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.ChannelPool#getUsedCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.ChannelPool#release(Channel channel)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 245,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.ChannelPool#release(Channel channel)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.CountingChannelPool#CountingChannelPool(final int limit)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 258,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.CountingChannelPool#CountingChannelPool(final int limit)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.CountingChannelPool#acquire()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 262,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.CountingChannelPool#acquire()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/audio_runtime.rs#fn stop_all_sounds",
+          "crates/bbb-audio/src/runtime.rs#fn stop_sounds",
+          "crates/bbb-audio/src/preload.rs#impl Drop for AudioPreloadWorker",
+          "crates/bbb-native/src/main.rs#Event::LoopExiting"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.CountingChannelPool#cleanup()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 290,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.CountingChannelPool#cleanup()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.CountingChannelPool#getMaxCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 296,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.CountingChannelPool#getMaxCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.CountingChannelPool#getUsedCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 301,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.CountingChannelPool#getUsedCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Library.CountingChannelPool#release(final Channel channel)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 280,
+        "path": "com/mojang/blaze3d/audio/Library.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Library.CountingChannelPool#release(final Channel channel)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Listener#getTransform()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 22,
+        "path": "com/mojang/blaze3d/audio/Listener.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Listener#getTransform()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Listener#reset()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 18,
+        "path": "com/mojang/blaze3d/audio/Listener.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Listener#reset()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#listener_position:",
+          "crates/bbb-audio/src/runtime.rs#fn listener_orientation",
+          "crates/bbb-native/src/simulation/effects.rs#fn tick_entity_sound_positions"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+          "crates/bbb-audio/src/runtime.rs#listener_orientation_matches_kira_forward_at_minecraft_north"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.Listener#setTransform(final ListenerTransform transform)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 9,
+        "path": "com/mojang/blaze3d/audio/Listener.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.Listener#setTransform(final ListenerTransform transform)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#SoundBuffer(final ByteBuffer data,final AudioFormat format)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 16,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#SoundBuffer(final ByteBuffer data,final AudioFormat format)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#discardAlBuffer()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 48,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#discardAlBuffer()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#format()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 65,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#format()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#getAlBuffer()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 22,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#getAlBuffer()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#isValid()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 73,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#isValid()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#releaseAlBuffer()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 59,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#releaseAlBuffer()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:com.mojang.blaze3d.audio.SoundBuffer#size()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 69,
+        "path": "com/mojang/blaze3d/audio/SoundBuffer.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.audio.SoundBuffer#size()"
     },
     {
       "bbb_evidence": {
@@ -33779,6 +35203,527 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess#ChannelAccess(final Library library,final Executor executor)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 20,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess#ChannelAccess(final Library library,final Executor executor)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess#clear()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 59,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess#clear()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess#createHandle(final Library.Pool pool)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 25,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess#createHandle(final Library.Pool pool)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess#executeOnChannels(final Consumer <Stream <Channel>> action)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 40,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess#executeOnChannels(final Consumer <Stream <Channel>> action)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess#scheduleTick()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 44,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess#scheduleTick()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#ChannelHandle(final Channel channel)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 72,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess.ChannelHandle#ChannelHandle(final Channel channel)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#execute(final Consumer <Channel> action)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 76,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess.ChannelHandle#execute(final Consumer <Channel> action)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#isStopped()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 68,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess.ChannelHandle#isStopped()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#impl AudioChannelLimits",
+          "crates/bbb-audio/src/runtime.rs#fn try_admit_channel",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_channel_observation",
+          "crates/bbb-native/src/audio_runtime.rs#fn project_audio_preload_observation",
+          "crates/bbb-native/src/runtime.rs#fn hud_debug_sound_cache_line"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#channel_limits_match_vanilla_formula_and_isolate_pools",
+          "crates/bbb-audio/src/runtime.rs#kira_capacity_has_headroom_for_both_logical_pools",
+          "crates/bbb-native/src/audio_runtime.rs#audio_channel_diagnostics_project_independent_pool_receipt",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#release()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 84,
+        "path": "net/minecraft/client/sounds/ChannelAccess.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.ChannelAccess.ChannelHandle#release()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary#SoundBufferLibrary(final ResourceProvider resourceProvider)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 22,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary#SoundBufferLibrary(final ResourceProvider resourceProvider)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary#clear()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 51,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary#clear()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary#enumerate(final SoundBufferLibrary.DebugOutput debugOutput)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 60,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary#enumerate(final SoundBufferLibrary.DebugOutput debugOutput)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary#getCompleteBuffer(final Identifier location)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 26,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary#getCompleteBuffer(final Identifier location)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary#getStream(final Identifier location,final boolean looping)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 40,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary#getStream(final Identifier location,final boolean looping)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary#preload(final Collection <Sound> sounds)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 56,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary#preload(final Collection <Sound> sounds)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput#accountBuffer(Identifier id,int size,AudioFormat format)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 70,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput#accountBuffer(Identifier id,int size,AudioFormat format)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput.Counter#accountBuffer(final Identifier id,final int size,final AudioFormat format)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 76,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput.Counter#accountBuffer(final Identifier id,final int size,final AudioFormat format)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput.Counter#totalCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 82,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput.Counter#totalCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
+          "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
+          "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/sounds.rs#preload_plan_matches_vanilla_complete_buffer_queue_and_deduplicates_resource_ids",
+          "crates/bbb-audio/src/preload.rs#latest_job_cancels_or_supersedes_older_generation_without_publishing_it",
+          "crates/bbb-audio/src/runtime.rs#preload_completion_installs_current_generation_without_a_playback_decode_miss"
+        ]
+      },
+      "category": "audio-backend",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput.Counter#totalSize()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 86,
+        "path": "net/minecraft/client/sounds/SoundBufferLibrary.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.SoundBufferLibrary.DebugOutput.Counter#totalSize()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn load(",
           "crates/bbb-audio/src/runtime.rs#pub fn new_with_device_preference",
           "crates/bbb-native/src/main.rs#NativeAudioRuntime::load("
@@ -48014,6 +49959,22 @@
   },
   "source_files": [
     {
+      "path": "com/mojang/blaze3d/audio/Channel.java",
+      "sha256": "dd4245839f01d4feb07bef79aec69e4efa8fda0ed9aef89826b9e132598f2b22"
+    },
+    {
+      "path": "com/mojang/blaze3d/audio/Library.java",
+      "sha256": "7571e27e78f6098bb52deb04c382ec457f2c4e2efb874f60a4815b56041791fe"
+    },
+    {
+      "path": "com/mojang/blaze3d/audio/Listener.java",
+      "sha256": "4d265193471b8efeb6a5de17c68beeca54a4468c9da37c59803b6369dd4294e7"
+    },
+    {
+      "path": "com/mojang/blaze3d/audio/SoundBuffer.java",
+      "sha256": "c6af22f14211e1c58832f5a3fb1968ff55303fdb611eb14bdcbda352f48111e5"
+    },
+    {
       "path": "com/mojang/blaze3d/platform/ClipboardManager.java",
       "sha256": "6bebf3d1f14ebd1cb94fc289f947e6a95221292e1bfa483f8fe7fbcc8872328f"
     },
@@ -49378,6 +51339,14 @@
       "sha256": "e9cd2ecc9db733ea539c58571d532d80858e05d2a3550fdaa6f59a6e8385ba9c"
     },
     {
+      "path": "net/minecraft/client/sounds/ChannelAccess.java",
+      "sha256": "66e976a748084cdc3c0d80b037139447b1841a7748775ad270f708ca68bd2b88"
+    },
+    {
+      "path": "net/minecraft/client/sounds/SoundBufferLibrary.java",
+      "sha256": "eaf1420a122084168266b01d675c03e80b68bd78a5f3d13648c1578c2295a193"
+    },
+    {
       "path": "net/minecraft/client/sounds/SoundEngine.java",
       "sha256": "3247a8dda1ed5293c2def5d114443801a4fc19a7e51ca5ae2bdc7b70dad5184d"
     },
@@ -49499,6 +51468,7 @@
       "accessibility": 19,
       "ambient-animation": 9,
       "audio": 2,
+      "audio-backend": 77,
       "biome-tint": 6,
       "block-breaking": 6,
       "block-entity-render-tracking": 1,
@@ -49571,7 +51541,7 @@
     },
     "by_domain": {
       "accessibility": 21,
-      "audio": 81,
+      "audio": 158,
       "diagnostics": 42,
       "effects": 18,
       "entities": 402,
@@ -49599,12 +51569,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1282,
+      "decision": 1359,
       "out-of-scope": 225,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 2927,
-    "owner_count": 2927,
+    "mapped_owner_count": 3004,
+    "owner_count": 3004,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

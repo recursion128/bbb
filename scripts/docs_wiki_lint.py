@@ -519,6 +519,7 @@ class WikiLint:
         owner_domains: Counter[str] = Counter()
         owner_roles: Counter[str] = Counter()
         owner_evidence_counts: Counter[str] = Counter()
+        owner_gap_counts: Counter[str] = Counter()
         declared_sources: set[str] = set()
         for item in source_files:
             if not isinstance(item, dict):
@@ -601,16 +602,22 @@ class WikiLint:
             owner_evidence = item.get("bbb_evidence")
             if mechanism_id in owner_evidence_mechanisms:
                 evidence_keys = set(owner_evidence) if isinstance(owner_evidence, dict) else set()
-                if not isinstance(owner_evidence, dict) or not {
-                    "implementation",
-                    "tests",
-                }.issubset(evidence_keys) or not evidence_keys.issubset(
-                    {"implementation", "tests", "scope_ruling"}
-                ):
-                    self.fail(
-                        f"inventory owner {owner_id} lacks implementation/test BBB evidence"
+                completed_evidence = (
+                    isinstance(owner_evidence, dict)
+                    and {"implementation", "tests"}.issubset(evidence_keys)
+                    and evidence_keys.issubset(
+                        {"implementation", "tests", "scope_ruling"}
                     )
-                else:
+                )
+                open_gap_evidence = (
+                    isinstance(owner_evidence, dict)
+                    and evidence_keys == {"open_gap"}
+                )
+                if not completed_evidence and not open_gap_evidence:
+                    self.fail(
+                        f"inventory owner {owner_id} lacks implementation/test or open-gap BBB evidence"
+                    )
+                elif completed_evidence:
                     owner_evidence_counts[mechanism_id] += 1
                     check_evidence_paths(
                         owner_evidence.get("implementation"),
@@ -667,6 +674,43 @@ class WikiLint:
                                     self.fail(
                                         f"scope ruling lacks {field} for inventory owner {owner_id}"
                                     )
+                else:
+                    owner_evidence_counts[mechanism_id] += 1
+                    owner_gap_counts[mechanism_id] += 1
+                    open_gap = owner_evidence.get("open_gap")
+                    if not isinstance(open_gap, dict) or set(open_gap) != {
+                        "ledger",
+                        "reason",
+                        "close_condition",
+                    }:
+                        self.fail(f"malformed open gap for inventory owner {owner_id}")
+                    else:
+                        ledger_ref = open_gap.get("ledger")
+                        ledger_path = ""
+                        ledger_symbol = ""
+                        separator = ""
+                        if isinstance(ledger_ref, str):
+                            ledger_path, separator, ledger_symbol = ledger_ref.partition("#")
+                        if (
+                            not separator
+                            or not ledger_symbol
+                            or Path(ledger_path).is_absolute()
+                            or ".." in Path(ledger_path).parts
+                            or not (self.repo / ledger_path).is_file()
+                            or ledger_symbol
+                            not in (self.repo / ledger_path).read_text(encoding="utf-8")
+                        ):
+                            self.fail(
+                                f"stale open-gap ledger route for inventory owner {owner_id}: {ledger_ref!r}"
+                            )
+                        for field in ("reason", "close_condition"):
+                            if (
+                                not isinstance(open_gap.get(field), str)
+                                or not open_gap[field]
+                            ):
+                                self.fail(
+                                    f"open gap lacks {field} for inventory owner {owner_id}"
+                                )
             elif owner_evidence is not None:
                 self.fail(
                     f"inventory owner {owner_id} has evidence outside the declared owner evidence contract"
@@ -697,6 +741,17 @@ class WikiLint:
                     self.fail(
                         f"incomplete per-owner BBB evidence for inventory mechanism {mechanism_id}"
                     )
+                expected_gap_count = owner_gap_counts[mechanism_id]
+                if expected_gap_count:
+                    if mechanism.get("owner_gap_count") != expected_gap_count:
+                        self.fail(f"stale owner gap count for inventory mechanism {mechanism_id}")
+                    row = rows.get(mechanism_id)
+                    if not isinstance(row, dict) or row.get("status") not in OPEN_STATUSES:
+                        self.fail(
+                            f"inventory mechanism {mechanism_id} has open owner gaps but is not open in the parity matrix"
+                        )
+                elif "owner_gap_count" in mechanism:
+                    self.fail(f"stale owner gap count for inventory mechanism {mechanism_id}")
             elif "owner_evidence_count" in mechanism:
                 self.fail(
                     f"inventory mechanism {mechanism_id} has an undeclared owner evidence count"
@@ -765,6 +820,11 @@ class WikiLint:
             for mechanism_id, row in rows.items():
                 if row["status"] in ROUTED_STATUSES and mechanism_id not in routed_ids:
                     self.fail(f"parity row {mechanism_id} has no bilateral ledger route")
+            for mechanism_id in sorted(owner_gap_counts):
+                if owner_gap_counts[mechanism_id] and mechanism_id not in routed_ids:
+                    self.fail(
+                        f"inventory open gaps for {mechanism_id} have no bilateral ledger route"
+                    )
 
             top = ""
             section = ""

@@ -22,7 +22,7 @@
 | `resources-language-manager` | resources/language | `LanguageManager`、`ClientLanguage` | `bbb-pack::LanguageCatalog` | en_us→selected、metadata/bidi、override/filter | `equivalent` | `crates/bbb-pack/src/language.rs`、[zh_cn acceptance](../mechanisms/resources/offline-asset-trust.md) | locale merge/metadata owner 变化时重开 |
 | `ui-font-manager` | text | `FontManager`、`FontSet`、providers | item-model/render-types/native font | provider order、glyph metrics/atlas、reload | `equivalent` | `crates/bbb-item-model/src/font.rs`、[字体机制页](../mechanisms/ui/font-and-text.md) | font provider/consumer 合同变化时重开 |
 | `ui-font-provider-pipeline` | text | `FontManager`、`FontSet`、`UnihexProvider` | item-model/render-types/native | provider graph、CJK atlas/metrics | `equivalent` | [字体机制页](../mechanisms/ui/font-and-text.md) | font codec/atlas owner 变化时重开 |
-| `audio-sound-manager-engine` | audio/resources | `SoundManager`、`SoundEngine` 及 Minecraft music 67 owner | pack sound catalog/native/audio | 67 owner 已各自挂 implementation/focused tests，integrated-pause 与 manual-loop 7 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition；sounds.json/reference、preload 后台 generation、stored device/reload 和 11 个 `soundCategory_*` 启动混音值均可达；官方可执行 null receipt 已冻结 pool/HRTF/lifecycle 决策但明确 non-formal；BBB 已有独立 static/streaming admission、公式/饱和/origin receipt 及停止后 tick 0..19 保留、tick 20 删除，`directionalAudio` HRTF、device-derived source-count origin 与真实设备 receipt 仍开放 | `partial` | generated owner evidence、`scripts/capture-vanilla-audio-receipt.py`、pool/lifecycle/preload/device/volume focused tests 与 control receipts；[ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
+| `audio-sound-manager-engine` | audio/resources | `SoundManager`、`SoundEngine`、`Library`、`Channel`、`Listener`、`SoundBuffer`、`ChannelAccess`、`SoundBufferLibrary` 及 Minecraft music 144 owner | pack sound catalog/native/audio | 144 owner 均有逐 owner 结论：120 个挂 implementation/focused tests（其中 integrated-pause/manual-loop 9 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition），`Library` context/HRTF/source-count 3 owner 与 `Channel` OpenAL source/distance/buffer queue 21 owner 以 machine-readable `open_gap` 双向路由 ledger；sounds.json/reference、preload 后台 generation、stored device/reload 和 11 个 `soundCategory_*` 启动混音值均可达；官方可执行 null receipt 已冻结 pool/HRTF/lifecycle 决策但明确 non-formal；BBB 已有独立 static/streaming admission、公式/饱和/origin receipt 及停止后 tick 0..19 保留、tick 20 删除，`directionalAudio` HRTF、device-derived source-count origin、精确 OpenAL channel/buffer 行为与真实设备 receipt 仍开放 | `partial` | generated owner evidence/open gaps、`scripts/capture-vanilla-audio-receipt.py`、pool/lifecycle/preload/device/volume focused tests 与 control receipts；[ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `resources-window-icons` | resources/platform | `Minecraft`→`Window.setIcon`→`IconSet` | `bbb-pack::WindowIconCatalog`→`bbb-native::window_icon` | release/snapshot root resources、bounded all-or-nothing prepare、platform startup apply/fallback | `equivalent` | `crates/bbb-pack/src/window_icons.rs`、`crates/bbb-native/src/window_icon.rs`、[消费矩阵](../mechanisms/resources/offline-asset-trust.md) | IconSet/root-provider/platform-target 语义变化时重开 |
 | `resources-indexed-panorama` | resources/ui | `GuiRenderer.CubeMap`、`Panorama`、`Screen.extractBackground` | `bbb-pack::PanoramaCatalog`→native generation→renderer cube/overlay owner | disconnected-screen panorama/overlay before blur/menu background | `equivalent` | [消费矩阵](../mechanisms/resources/offline-asset-trust.md)、`crates/bbb-renderer/src/offscreen.rs`、`scripts/lifecycle_soak.py` | cube identity、screen-background order 或 GPU generation 合同变化时重开 |
 | `resources-indexed-built-in-packs` | resources/ui | `ClientPackSource`、pack-selection UI | indexed provider；无 built-in pack selection surface | programmer-art/high-contrast ZIP | `not-needed` | [消费矩阵](../mechanisms/resources/offline-asset-trust.md) | [ledger](../../unsupported-features.md) |
@@ -157,12 +157,12 @@
 
 ## 审计摘要
 
-生成 inventory 将 2,927 个 owner 映射到 114 个 source-derived mechanism；矩阵另保留
+生成 inventory 将 3,004 个 owner 映射到 114 个 source-derived mechanism；矩阵另保留
 资源、渲染、性能和范围排除的长期机制行，共 147 行。`equivalent` 只用于已有 generated
 coverage、决策级 focused evidence 或真实 acceptance 的行。
 
 当前分布：119 行 `equivalent`、25 行 `not-needed`、1 行 `missing`
 （`persistence-options-unconsumed`，`Options.dataFix` 尚无迁移 owner）、1 行 `partial`
-（`audio-sound-manager-engine`，67-owner census 已闭合但 backend pool/HRTF/active lifecycle 差异开放）、
+（`audio-sound-manager-engine`，144-owner census 已覆盖到底层 OpenAL owner，24 个 backend owner 以结构化 open gap 开放）、
 1 行 `deferred-external`（`platform-macos-release`）。无 `active` 或 `unverified` 行；
 开放状态的实现工作只由账本排程，矩阵不能单独改变调度。

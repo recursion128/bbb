@@ -91,18 +91,22 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   `DataFixTypes.OPTIONS` schema/fix registrations.
 
 - Close the remaining `audio-sound-manager-engine` backend differences. The
-  generated inventory now gives all 67 owners decision-level implementation
-  and focused-test evidence; its seven unreachable integrated-pause/manual-loop
-  owners additionally carry machine-readable Vanilla caller basis, current-scope
-  reason and reopen condition. Stored device/reload, generation-aware preload
+  generated inventory now covers 144 owners through Vanilla's `Library`,
+  `Channel`, `Listener`, `SoundBuffer`, `ChannelAccess`, and
+  `SoundBufferLibrary` backend boundary. Of those, 120 carry decision-level
+  implementation and focused-test evidence; 24 `Library` context/HRTF/source-count
+  and `Channel` OpenAL source/distance/buffer-queue owners carry machine-readable
+  `open_gap` records routed back to this item. Its nine unreachable
+  integrated-pause/manual-loop owners additionally carry machine-readable
+  Vanilla caller basis, current-scope reason and reopen condition. Stored device/reload, generation-aware preload
   and all eleven stored `soundCategory_*` startup gains are consumed. The row
   remains `partial`: consume `directionalAudio` with Vanilla's supported-HRTF
   fallback and replace the attributable Kira-logical source-count origin with
   the real device-derived count. BBB currently applies Vanilla's formula to
   independent static/streaming admission pools (248/8 for its logical 256
   origin), exposes saturation/origin receipts, and retains stopped handles
-  through tick 19 before deletion at tick 20; these are not evidence for HRTF
-  or real-device capacity. Owner:
+  through tick 19 before deletion at tick 20; these are not evidence for HRTF,
+  exact OpenAL per-source distance/buffer behavior, or real-device capacity. Owner:
   `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Library.java:64-114,124-155`, `SoundEngine.java:101-109,227-327,516-530`, and
   `Sound.java:68-70`; reopen owner census if any source hash or method set moves.

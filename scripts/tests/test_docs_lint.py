@@ -774,7 +774,36 @@ Matrix route: `fixture-valid`
             result = self.run_lint(repo)
 
         self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn("lacks implementation/test BBB evidence", result.stdout)
+        self.assertIn("lacks implementation/test or open-gap BBB evidence", result.stdout)
+
+    def test_equivalent_inventory_mechanism_with_open_owner_gap_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["selection_contract"]["owner_evidence_mechanisms"] = [
+                "fixture-valid"
+            ]
+            value["mechanisms"]["fixture-valid"]["owner_evidence_count"] = 1
+            value["mechanisms"]["fixture-valid"]["owner_gap_count"] = 1
+            value["owners"][0]["bbb_evidence"] = {
+                "open_gap": {
+                    "ledger": "docs/unsupported-features.md#fixture-deferred",
+                    "reason": "The fixture behavior is not implemented.",
+                    "close_condition": "Implement and verify the fixture behavior.",
+                }
+            }
+            path.write_text(
+                json.dumps(value, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(
+            "has open owner gaps but is not open in the parity matrix",
+            result.stdout,
+        )
 
     def test_stale_per_owner_evidence_symbol_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -90,17 +90,24 @@ public class Owner {
             if owner["mechanism_id"] == "audio-sound-manager-engine"
         ]
 
-        self.assertEqual(len(owners), 67)
+        self.assertEqual(len(owners), 144)
         self.assertEqual(
             value["mechanisms"]["audio-sound-manager-engine"][
                 "owner_evidence_count"
             ],
-            67,
+            144,
+        )
+        self.assertEqual(
+            value["mechanisms"]["audio-sound-manager-engine"]["owner_gap_count"],
+            24,
         )
         self.assertTrue(
             all(
-                owner["bbb_evidence"]["implementation"]
-                and owner["bbb_evidence"]["tests"]
+                (
+                    owner["bbb_evidence"].get("implementation")
+                    and owner["bbb_evidence"].get("tests")
+                )
+                or owner["bbb_evidence"].get("open_gap")
                 for owner in owners
             )
         )
@@ -109,8 +116,18 @@ public class Owner {
             for owner in owners
             if "scope_ruling" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(rulings), 7)
+        self.assertEqual(len(rulings), 9)
         hashed_sources = {source["path"] for source in value["source_files"]}
+        self.assertTrue(
+            {
+                "com/mojang/blaze3d/audio/Library.java",
+                "com/mojang/blaze3d/audio/Channel.java",
+                "com/mojang/blaze3d/audio/Listener.java",
+                "com/mojang/blaze3d/audio/SoundBuffer.java",
+                "net/minecraft/client/sounds/ChannelAccess.java",
+                "net/minecraft/client/sounds/SoundBufferLibrary.java",
+            }.issubset(hashed_sources)
+        )
         self.assertTrue(
             all(
                 ruling["conclusion"] == "not-reachable-in-current-scope"

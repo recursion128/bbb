@@ -74,6 +74,13 @@ class OwnerEvidence:
     scope_ruling: OwnerScopeRuling | None = None
 
 
+@dataclass(frozen=True)
+class OwnerOpenGap:
+    ledger: str
+    reason: str
+    close_condition: str
+
+
 def _method_routes(
     *groups: tuple[MethodRoute, tuple[str, ...]],
 ) -> dict[str, MethodRoute]:
@@ -1350,9 +1357,9 @@ LEVEL_RENDERER_METHOD_ROUTES = _method_routes(
 
 
 def _owner_evidence(
-    *groups: tuple[OwnerEvidence, tuple[str, ...]],
-) -> dict[str, OwnerEvidence]:
-    evidence: dict[str, OwnerEvidence] = {}
+    *groups: tuple[OwnerEvidence | OwnerOpenGap, tuple[str, ...]],
+) -> dict[str, OwnerEvidence | OwnerOpenGap]:
+    evidence: dict[str, OwnerEvidence | OwnerOpenGap] = {}
     for owner_evidence, method_names in groups:
         for method_name in method_names:
             if method_name in evidence:
@@ -7924,6 +7931,171 @@ AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+AUDIO_OPENAL_CONTEXT_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#audio-sound-manager-engine",
+    reason=(
+        "BBB's current Kira/CPAL device path does not own Vanilla's OpenAL context "
+        "attributes, supported-HRTF fallback, or ALC_MONO_SOURCES query."
+    ),
+    close_condition=(
+        "A device-backed BBB owner consumes directionalAudio through ALC_SOFT_HRTF, "
+        "derives independent pool limits from ALC_MONO_SOURCES, and publishes a "
+        "reproducible real-device differential receipt."
+    ),
+)
+
+AUDIO_OPENAL_CHANNEL_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#audio-sound-manager-engine",
+    reason=(
+        "Kira's mixer and stereo spatial track do not prove Vanilla Channel's exact "
+        "OpenAL source, per-source distance-model, buffer attachment, or four-buffer "
+        "one-second streaming queue decisions."
+    ),
+    close_condition=(
+        "BBB owns the equivalent OpenAL source lifecycle, linear/no-attenuation state, "
+        "static buffer attachment, and four-buffer streaming pump with focused tests "
+        "and a real-device receipt."
+    ),
+)
+
+AUDIO_LIBRARY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        AUDIO_OPENAL_CONTEXT_GAP,
+        ("init", "createAttributes", "getChannelCount"),
+    ),
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["getAvailableSoundDevices"],
+        (
+            "currentDeviceName",
+            "queryDeviceName",
+            "openDeviceOrFallback",
+            "tryOpenDevice",
+            "isCurrentDeviceDisconnected",
+            "createDeviceTracker",
+        ),
+    ),
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["destroy"],
+        ("cleanup",),
+    ),
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["updateSource"],
+        ("getListener",),
+    ),
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["getChannelDebugString"],
+        (
+            "acquireChannel",
+            "releaseChannel",
+            "getChannelDebugString",
+            "acquire",
+            "release",
+            "getMaxCount",
+            "getUsedCount",
+            "CountingChannelPool",
+        ),
+    ),
+)
+
+AUDIO_CHANNEL_OWNER_EVIDENCE = _owner_evidence(
+    (
+        AUDIO_OPENAL_CHANNEL_GAP,
+        (
+            "create",
+            "Channel",
+            "destroy",
+            "play",
+            "getState",
+            "stop",
+            "playing",
+            "stopped",
+            "setSelfPosition",
+            "setPitch",
+            "setLooping",
+            "setVolume",
+            "disableAttenuation",
+            "linearAttenuation",
+            "setRelative",
+            "attachStaticBuffer",
+            "attachBufferStream",
+            "calculateBufferSize",
+            "pumpBuffers",
+            "updateStream",
+            "removeProcessedBuffers",
+        ),
+    ),
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["resume"],
+        ("pause", "unpause"),
+    ),
+)
+
+AUDIO_LISTENER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["updateSource"],
+        ("setTransform", "reset", "getTransform"),
+    ),
+)
+
+AUDIO_SOUND_BUFFER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["requestPreload"],
+        (
+            "SoundBuffer",
+            "getAlBuffer",
+            "discardAlBuffer",
+            "releaseAlBuffer",
+            "format",
+            "size",
+            "isValid",
+        ),
+    ),
+)
+
+AUDIO_CHANNEL_ACCESS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["getChannelDebugString"],
+        (
+            "ChannelAccess",
+            "createHandle",
+            "executeOnChannels",
+            "scheduleTick",
+            "clear",
+            "isStopped",
+            "ChannelHandle",
+            "execute",
+            "release",
+        ),
+    ),
+)
+
+AUDIO_SOUND_BUFFER_LIBRARY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        AUDIO_SOUND_MANAGER_OWNER_EVIDENCE["requestPreload"],
+        (
+            "SoundBufferLibrary",
+            "getCompleteBuffer",
+            "getStream",
+            "clear",
+            "preload",
+            "enumerate",
+            "accountBuffer",
+            "totalCount",
+            "totalSize",
+        ),
+    ),
+)
+
+AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
+    "com/mojang/blaze3d/audio/Library.java": AUDIO_LIBRARY_OWNER_EVIDENCE,
+    "com/mojang/blaze3d/audio/Channel.java": AUDIO_CHANNEL_OWNER_EVIDENCE,
+    "com/mojang/blaze3d/audio/Listener.java": AUDIO_LISTENER_OWNER_EVIDENCE,
+    "com/mojang/blaze3d/audio/SoundBuffer.java": AUDIO_SOUND_BUFFER_OWNER_EVIDENCE,
+    "net/minecraft/client/sounds/ChannelAccess.java": AUDIO_CHANNEL_ACCESS_OWNER_EVIDENCE,
+    "net/minecraft/client/sounds/SoundBufferLibrary.java": AUDIO_SOUND_BUFFER_LIBRARY_OWNER_EVIDENCE,
+}
+
+
 METHOD_OWNER_EVIDENCE = {
     "audio-sound-manager-engine": AUDIO_SOUND_MANAGER_OWNER_EVIDENCE,
     "security-secure-chat-reporting": SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE,
@@ -8283,6 +8455,12 @@ METHOD_SURFACES = (
     MethodSurface("resource-consumer", "text", "ui-font-manager", "net/minecraft/client/gui/font/FontManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundEngine.java"),
+    MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "com/mojang/blaze3d/audio/Library.java"),
+    MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "com/mojang/blaze3d/audio/Channel.java"),
+    MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "com/mojang/blaze3d/audio/Listener.java"),
+    MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "com/mojang/blaze3d/audio/SoundBuffer.java"),
+    MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/ChannelAccess.java"),
+    MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundBufferLibrary.java"),
     MethodSurface("input", "input", "input-keyboard-routing", "net/minecraft/client/KeyboardHandler.java"),
     MethodSurface("input", "input", "input-mouse-routing", "net/minecraft/client/MouseHandler.java"),
     MethodSurface("input", "input", "input-key-mapping", "net/minecraft/client/KeyMapping.java"),
@@ -8685,7 +8863,7 @@ class InventoryBuilder:
         kind: str,
         scope: str = "external-client",
         role: str | None = None,
-        evidence: OwnerEvidence | None = None,
+        evidence: OwnerEvidence | OwnerOpenGap | None = None,
     ) -> None:
         owner = {
             "category": category,
@@ -8699,7 +8877,15 @@ class InventoryBuilder:
         }
         if role is not None:
             owner["role"] = role
-        if evidence is not None:
+        if isinstance(evidence, OwnerOpenGap):
+            owner["bbb_evidence"] = {
+                "open_gap": {
+                    "ledger": evidence.ledger,
+                    "reason": evidence.reason,
+                    "close_condition": evidence.close_condition,
+                }
+            }
+        elif evidence is not None:
             owner["bbb_evidence"] = {
                 "implementation": list(evidence.implementation),
                 "tests": list(evidence.tests),
@@ -8740,7 +8926,12 @@ class InventoryBuilder:
             signature = self.method_signature(method)
             evidence = None
             if route.mechanism_id in OWNER_EVIDENCE_MECHANISMS:
-                evidence = METHOD_OWNER_EVIDENCE[route.mechanism_id].get(method.name)
+                source_evidence = AUDIO_OWNER_EVIDENCE_BY_SOURCE.get(spec.source_path)
+                evidence = (
+                    source_evidence.get(method.name)
+                    if source_evidence is not None
+                    else METHOD_OWNER_EVIDENCE[route.mechanism_id].get(method.name)
+                )
                 if evidence is None:
                     raise ClientMechanismInventoryError(
                         f"method owner lacks BBB implementation/test evidence: {signature}"
@@ -9165,6 +9356,12 @@ class InventoryBuilder:
             for item in self.owners
             if isinstance(item.get("bbb_evidence"), dict)
         )
+        owner_gap_by_mechanism = Counter(
+            str(item["mechanism_id"])
+            for item in self.owners
+            if isinstance(item.get("bbb_evidence"), dict)
+            and "open_gap" in item["bbb_evidence"]
+        )
         incomplete_owner_evidence = sorted(
             mechanism_id
             for mechanism_id in OWNER_EVIDENCE_MECHANISMS
@@ -9196,6 +9393,11 @@ class InventoryBuilder:
                     **(
                         {"owner_evidence_count": owner_evidence_by_mechanism[mechanism_id]}
                         if mechanism_id in OWNER_EVIDENCE_MECHANISMS
+                        else {}
+                    ),
+                    **(
+                        {"owner_gap_count": owner_gap_by_mechanism[mechanism_id]}
+                        if owner_gap_by_mechanism[mechanism_id]
                         else {}
                     ),
                 }
