@@ -18,6 +18,11 @@ metadata、generation 与 consumer 数据流；不下载、复制、materialize 
 jar/default resources。它只暴露 `minecraft`、`realms` namespace；`icons/**` 与
 `pack.mcmeta` 由 `VanillaPackResources.getRootResource` 访问。
 
+这一生产调用链由 inventory 机械普查为 21 个决策 owner：`ClientPackSource` 3 个、
+`VanillaPackResourcesBuilder` 10 个、`VanillaPackResources` 8 个。逐机制 closure 状态只由
+canonical matrix 与 machine-readable acceptance report 判定；本页的消费矩阵不维护第二份
+`equivalent`/`partial` 状态。
+
 `MultiPackResourceManager` 按 vanilla→startup/selected→server 的低到高 pack priority
 建立 fallback manager。single resource 从高到低取第一个可见项，遇到高层 filter 即停止；
 resource stack 先按高到低收集再反转为低到高。single `.mcmeta` 取不低于内容 provider 的
@@ -73,20 +78,20 @@ catalog 和 sound catalog/audio decoder 只拥有各自派生状态，不重新�
 index 30 的 4749 个 object 全部可由 provider 枚举；“物理存在”“provider 可达”“consumer
 已实现”“当前产品 surface 需要”分别判定，不能互相替代。
 
-| 家族 | object 数 | Vanilla owner | provider 可达 | BBB consumer / 当前 surface | 状态与精确重开条件 |
+| 家族 | object 数 | Vanilla owner | provider 可达 | BBB consumer / 当前 surface | 范围与精确重开条件 |
 | --- | ---: | --- | --- | --- | --- |
-| font definition/unihex | 5 | `FontManager`, `FontSet`, `UnihexProvider` | 是，`minecraft` | 共享 font atlas；HUD/screen/world text 需要 | `equivalent` |
-| Minecraft locale JSON | 141 | `LanguageManager`, `ClientLanguage` | 是，按 selected locale 读取 | `LanguageCatalog`/`NativeItemRuntime`；CLI locale 需要 | `equivalent` |
-| `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | `equivalent` |
-| root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | `equivalent` |
-| window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | vanilla-only catalog→native startup platform apply | `equivalent` |
-| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama`, `Screen.extractBackground` | 是，`minecraft` | `PanoramaCatalog`→native generation→断线状态页 cube/overlay GPU consumer | `equivalent` |
-| built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | `not-needed`；增加内置 pack id 选择或对应 UI/CLI 时重开 |
-| Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | `not-needed`；Realms service/screen 进入范围时重开 |
+| font definition/unihex | 5 | `FontManager`, `FontSet`, `UnihexProvider` | 是，`minecraft` | 共享 font atlas；HUD/screen/world text 需要 | 当前范围消费；closure 见 matrix/acceptance |
+| Minecraft locale JSON | 141 | `LanguageManager`, `ClientLanguage` | 是，按 selected locale 读取 | `LanguageCatalog`/`NativeItemRuntime`；CLI locale 需要 | 当前范围消费；closure 见 matrix/acceptance |
+| `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | 当前范围消费；closure 见 matrix/acceptance |
+| root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | 当前范围消费；closure 见 matrix/acceptance |
+| window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | vanilla-only catalog→native startup platform apply | 当前范围消费；closure 见 matrix/acceptance |
+| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama`, `Screen.extractBackground` | 是，`minecraft` | `PanoramaCatalog`→native generation→断线状态页 cube/overlay GPU consumer | 当前范围消费；closure 见 matrix/acceptance |
+| built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | scope ruling 见 matrix/ledger；增加内置 pack id 选择或对应 UI/CLI 时重开 |
+| Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | scope ruling 见 matrix/ledger；Realms service/screen 进入范围时重开 |
 
-按 object 计数为：`equivalent=4731`、`partial=0`、`not-needed=18`、
-`deferred-external=0`，合计 4749。not-needed 判断只关闭对应 presentation consumer；这些
-字节仍保持 provider 可达，不会因此被 eager 读取。
+按 object 家族划分合计 4749；其中 4731 个属于当前范围 consumer，18 个只对应 matrix/ledger
+已裁决的 built-in-pack 或 Realms presentation。该计数只描述 provider 数据面，不产生机制
+closure 状态；范围外 presentation 也不会让这些字节失去 provider 可达性或被 eager 读取。
 
 ## 生命周期和 fallback
 
@@ -205,13 +210,13 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
-| version/index metadata 校验 | launcher/index metadata | `VanillaAssetIndex::discover` | `equivalent` | metadata/id/hash/size fixtures |
-| composite vanilla 顺序 | external indexed→jar/default | `PackResourceStack` vanilla entry | `equivalent` | source/index precedence tests |
-| pack/filter/metadata 顺序 | fallback resource manager | selected stack/generation | `equivalent` | single/stack/filter/mcmeta tests |
-| namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | `equivalent` | list/root/path-safety tests |
-| lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | `equivalent` | missing/size/SHA/lazy/accounting tests |
-| locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | `equivalent` | zh_cn/CJK/OGG real acceptance |
-| window icon consumer | `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | `equivalent` | root path/order/budget/platform/source-guard tests；index 30 acceptance |
+| version/index metadata 校验 | launcher/index metadata | `VanillaAssetIndex::discover` | focused covered；formal receipt pending | metadata/id/hash/size fixtures |
+| composite vanilla 顺序 | external indexed→jar/default | `PackResourceStack` vanilla entry | focused covered；formal receipt pending | source collision/source fallback/list union tests |
+| pack/filter/metadata 顺序 | fallback resource manager | selected stack/generation | focused covered；formal receipt pending | single/stack/filter/mcmeta tests |
+| namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | focused covered；formal receipt pending | list/root/path-safety tests |
+| lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | focused covered；formal receipt pending | missing/size/SHA/lazy/accounting tests |
+| locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | focused covered；formal receipt pending | zh_cn/CJK/OGG diagnostic acceptance |
+| window icon consumer | `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | focused covered；formal receipt pending | root path/order/budget/platform/source-guard tests；旧 index 30 receipt 仅作诊断证据 |
 
 ## 结构性不变量
 
@@ -236,7 +241,8 @@ Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=
 
 ## 当前差异
 
-统一 provider、font、language、sound 与 root window-icon consumer 当前闭合。icon 的
+统一 provider、font、language、sound 与 root window-icon consumer 的实现级 focused evidence
+已覆盖，但在 code-freeze resource/platform sweep 前仍保持 matrix `partial`。icon 的
 唯一 CPU owner 是 `bbb-pack::WindowIconCatalog`：standard family 在提交前完整解析五张 PNG，
 macOS family 有界读取并校验 ICNS；`bbb-native::window_icon` 只做 backend 选择和一次 startup
 apply。Wayland/未知 backend 零读取跳过，X11 使用窄 RGBA projection，macOS 使用

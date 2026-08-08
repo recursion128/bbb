@@ -1359,6 +1359,22 @@ LEVEL_RENDERER_METHOD_ROUTES = _method_routes(
 )
 
 
+CLIENT_PACK_SOURCE_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute(
+            "resource-provider",
+            "resources",
+            "resources-indexed-vanilla-provider",
+        ),
+        (
+            "ClientPackSource",
+            "createVanillaPackSource",
+            "createVanillaPack",
+        ),
+    ),
+)
+
+
 def _owner_evidence(
     *groups: tuple[OwnerEvidence | OwnerOpenGap, tuple[str, ...]],
 ) -> dict[str, OwnerEvidence | OwnerOpenGap]:
@@ -9509,6 +9525,92 @@ OFFLINE_ASSET_TRUST_OWNER_CENSUS_TEST = (
     "#test_offline_asset_trust_owner_census_is_exact_and_has_per_owner_evidence"
 )
 
+INDEXED_VANILLA_PROVIDER_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+)
+
+INDEXED_VANILLA_PROVIDER_IMPLEMENTATION = (
+    "crates/bbb-pack/src/roots.rs#pub fn from_root",
+    "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+    "crates/bbb-pack/src/resources.rs#fn resource_file",
+    "crates/bbb-pack/src/resources.rs#fn root_resource",
+    "crates/bbb-pack/src/resources.rs#fn list_resources",
+)
+
+INDEXED_VANILLA_PROVIDER_TESTS = (
+    "crates/bbb-pack/src/roots.rs"
+    "#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+    "crates/bbb-pack/src/selected_packs.rs"
+    "#startup_stack_records_identity_policy_and_compatibility",
+    "crates/bbb-pack/src/resources.rs"
+    "#single_resource_and_list_resources_use_highest_precedence_metadata",
+    "crates/bbb-pack/src/resources.rs"
+    "#resource_location_matches_vanilla_identifier_validation",
+    INDEXED_VANILLA_PROVIDER_OWNER_CENSUS_TEST,
+)
+
+INDEXED_VANILLA_PROVIDER_OWNER_EVIDENCE = OwnerEvidence(
+    INDEXED_VANILLA_PROVIDER_IMPLEMENTATION,
+    INDEXED_VANILLA_PROVIDER_TESTS,
+)
+
+CLIENT_PACK_SOURCE_PROVIDER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        INDEXED_VANILLA_PROVIDER_OWNER_EVIDENCE,
+        ("ClientPackSource", "createVanillaPackSource", "createVanillaPack"),
+    ),
+)
+
+VANILLA_PACK_BUILDER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        INDEXED_VANILLA_PROVIDER_OWNER_EVIDENCE,
+        (
+            "validateDirPath",
+            "pushRootPath",
+            "pushPathForType",
+            "pushJarResources",
+            "pushAssetPath",
+            "setMetadata",
+            "exposeNamespace",
+            "build",
+            "copyAndReverse",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (INDEXED_VANILLA_PROVIDER_OWNER_CENSUS_TEST,),
+            OwnerScopeRuling(
+                "not-reachable-in-current-scope",
+                (
+                    "net/minecraft/server/packs/VanillaPackResourcesBuilder.java:31",
+                    "net/minecraft/server/packs/VanillaPackResourcesBuilder.java:121-123",
+                ),
+                "Vanilla 26.1 production keeps developmentConfig as the empty consumer, so the call contributes no additional provider path.",
+                "Reopen if the official production client assigns developmentConfig or BBB adds a development-resource launch mode.",
+            ),
+        ),
+        ("applyDevelopmentConfig",),
+    ),
+)
+
+VANILLA_PACK_RESOURCES_OWNER_EVIDENCE = _owner_evidence(
+    (
+        INDEXED_VANILLA_PROVIDER_OWNER_EVIDENCE,
+        (
+            "VanillaPackResources",
+            "getRootResource",
+            "listResources",
+            "getResources",
+            "getResource",
+            "getNamespaces",
+            "getMetadataSection",
+            "asProvider",
+        ),
+    ),
+)
+
 GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE = {
     "getExternalAssetSource": OwnerEvidence(
         (
@@ -9556,7 +9658,10 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
     "net/minecraft/client/main/GameConfig.java": GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
+    "net/minecraft/client/resources/ClientPackSource.java": CLIENT_PACK_SOURCE_PROVIDER_OWNER_EVIDENCE,
     "net/minecraft/client/resources/IndexedAssetSource.java": INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
+    "net/minecraft/server/packs/VanillaPackResourcesBuilder.java": VANILLA_PACK_BUILDER_OWNER_EVIDENCE,
+    "net/minecraft/server/packs/VanillaPackResources.java": VANILLA_PACK_RESOURCES_OWNER_EVIDENCE,
     "net/minecraft/client/MusicToastDisplayState.java": MUSIC_TOAST_DISPLAY_OWNER_EVIDENCE,
     "net/minecraft/client/resources/language/LanguageManager.java": LANGUAGE_MANAGER_OWNER_EVIDENCE,
     "net/minecraft/client/resources/language/ClientLanguage.java": CLIENT_LANGUAGE_OWNER_EVIDENCE,
@@ -9568,6 +9673,11 @@ METHOD_OWNER_EVIDENCE = {
     "resources-offline-asset-trust": {
         **GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
         **INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
+    },
+    "resources-indexed-vanilla-provider": {
+        **CLIENT_PACK_SOURCE_PROVIDER_OWNER_EVIDENCE,
+        **VANILLA_PACK_BUILDER_OWNER_EVIDENCE,
+        **VANILLA_PACK_RESOURCES_OWNER_EVIDENCE,
     },
     "resources-language-manager": {
         **LANGUAGE_MANAGER_OWNER_EVIDENCE,
@@ -10227,6 +10337,40 @@ METHOD_SURFACES = (
     ),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/client/resources/ClientPackSource.java"),
     MethodSurface("resources", "resources", "resources-offline-asset-trust", "net/minecraft/client/resources/IndexedAssetSource.java"),
+    MethodSurface(
+        "resource-provider",
+        "resources",
+        "resources-indexed-vanilla-provider",
+        "net/minecraft/server/packs/VanillaPackResourcesBuilder.java",
+        selected_methods=(
+            "validateDirPath",
+            "pushRootPath",
+            "pushPathForType",
+            "pushJarResources",
+            "applyDevelopmentConfig",
+            "pushAssetPath",
+            "setMetadata",
+            "exposeNamespace",
+            "build",
+            "copyAndReverse",
+        ),
+    ),
+    MethodSurface(
+        "resource-provider",
+        "resources",
+        "resources-indexed-vanilla-provider",
+        "net/minecraft/server/packs/VanillaPackResources.java",
+        selected_methods=(
+            "VanillaPackResources",
+            "getRootResource",
+            "listResources",
+            "getResources",
+            "getResource",
+            "getNamespaces",
+            "getMetadataSection",
+            "asProvider",
+        ),
+    ),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/server/packs/resources/FallbackResourceManager.java"),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/server/packs/resources/MultiPackResourceManager.java"),
     MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/client/resources/server/DownloadedPackSource.java"),
@@ -10475,6 +10619,11 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-pack/src/asset_index.rs",
         "crates/bbb-pack/src/roots.rs#pub fn from_root",
         "crates/bbb-pack/src/resources.rs#impl ResourceIntegrity",
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md",
+    ),
+    "resources-indexed-vanilla-provider": (
+        *INDEXED_VANILLA_PROVIDER_IMPLEMENTATION,
+        *INDEXED_VANILLA_PROVIDER_TESTS,
         "docs/wiki/mechanisms/resources/offline-asset-trust.md",
     ),
     "resources-reload-listeners": ("crates/bbb-native/src/resource_reload.rs",),
@@ -10988,6 +11137,10 @@ class InventoryBuilder:
         if spec.source_path == "net/minecraft/client/player/LocalPlayer.java":
             exact_routes = LOCAL_PLAYER_METHOD_ROUTES
             owner_name = "LocalPlayer"
+        elif spec.source_path == "net/minecraft/client/resources/ClientPackSource.java":
+            route = CLIENT_PACK_SOURCE_METHOD_ROUTES.get(method.name)
+            if route is not None:
+                return route
         elif (
             spec.source_path
             == "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"

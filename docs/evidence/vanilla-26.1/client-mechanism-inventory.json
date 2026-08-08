@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "54562795a170e65ab0bb68620456bc06062e658daeec013caa4cbb91a07ded31"
+      "sha256": "866d08ff625522f86e7a797062a3c0d6190d565714b5773326ceb71902d28640"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -666,7 +666,24 @@
         "crates/bbb-pack/src/resources.rs",
         "docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
-      "owner_count": 45
+      "owner_count": 42
+    },
+    "resources-indexed-vanilla-provider": {
+      "bbb_evidence": [
+        "crates/bbb-pack/src/roots.rs#pub fn from_root",
+        "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+        "crates/bbb-pack/src/resources.rs#fn resource_file",
+        "crates/bbb-pack/src/resources.rs#fn root_resource",
+        "crates/bbb-pack/src/resources.rs#fn list_resources",
+        "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+        "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+        "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+        "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+        "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence",
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md"
+      ],
+      "owner_count": 21,
+      "owner_evidence_count": 21
     },
     "resources-language-manager": {
       "bbb_evidence": [
@@ -38832,10 +38849,26 @@
       "vanilla_owner": "net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
     },
     {
-      "category": "resources",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
       "domain": "resources",
       "kind": "constructor",
-      "mechanism_id": "resources-default-pack-stack",
+      "mechanism_id": "resources-indexed-vanilla-provider",
       "owner_id": "method:net.minecraft.client.resources.ClientPackSource#ClientPackSource(final Path externalAssetSource,final DirectoryValidator validator)",
       "role": "decision",
       "scope": "external-client",
@@ -38874,10 +38907,26 @@
       "vanilla_owner": "net.minecraft.client.resources.ClientPackSource#createBuiltinPack(final String id,final Pack.ResourcesSupplier resources,final Component name)"
     },
     {
-      "category": "resources",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
       "domain": "resources",
       "kind": "method",
-      "mechanism_id": "resources-default-pack-stack",
+      "mechanism_id": "resources-indexed-vanilla-provider",
       "owner_id": "method:net.minecraft.client.resources.ClientPackSource#createVanillaPack(final PackResources resources)",
       "role": "decision",
       "scope": "external-client",
@@ -38888,10 +38937,26 @@
       "vanilla_owner": "net.minecraft.client.resources.ClientPackSource#createVanillaPack(final PackResources resources)"
     },
     {
-      "category": "resources",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
       "domain": "resources",
       "kind": "method",
-      "mechanism_id": "resources-default-pack-stack",
+      "mechanism_id": "resources-indexed-vanilla-provider",
       "owner_id": "method:net.minecraft.client.resources.ClientPackSource#createVanillaPackSource(final Path externalAssetRoot)",
       "role": "decision",
       "scope": "external-client",
@@ -44423,6 +44488,547 @@
         "path": "net/minecraft/server/packs/DownloadQueue.java"
       },
       "vanilla_owner": "net.minecraft.server.packs.DownloadQueue.BatchResult#BatchResult()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#VanillaPackResources(final PackLocationInfo location,final ResourceMetadata metadata,final Set <String> namespaces,final List <Path> rootPaths,final Map <PackType, List <Path>> pathsForType)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 32,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#VanillaPackResources(final PackLocationInfo location,final ResourceMetadata metadata,final Set <String> namespaces,final List <Path> rootPaths,final Map <PackType, List <Path>> pathsForType)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#asProvider()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 153,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#asProvider()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#getMetadataSection(final MetadataSectionType <T> metadataSerializer)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 126,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#getMetadataSection(final MetadataSectionType <T> metadataSerializer)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#getNamespaces(final PackType type)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 121,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#getNamespaces(final PackType type)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#getResource(final PackType type,final Identifier location)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 102,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#getResource(final PackType type,final Identifier location)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#getResources(final PackResources.ResourceOutput result,final String namespace,final Path root,final List <String> directory)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 97,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#getResources(final PackResources.ResourceOutput result,final String namespace,final Path root,final List <String> directory)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#getRootResource(final String ... path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 46,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#getRootResource(final String ... path)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResources#listResources(final PackType type,final String namespace,final String directory,final PackResources.ResourceOutput output)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 72,
+        "path": "net/minecraft/server/packs/VanillaPackResources.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResources#listResources(final PackType type,final String namespace,final String directory,final PackResources.ResourceOutput output)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla 26.1 production keeps developmentConfig as the empty consumer, so the call contributes no additional provider path.",
+          "reopen_condition": "Reopen if the official production client assigns developmentConfig or BBB adds a development-resource launch mode.",
+          "vanilla_basis": [
+            "net/minecraft/server/packs/VanillaPackResourcesBuilder.java:31",
+            "net/minecraft/server/packs/VanillaPackResourcesBuilder.java:121-123"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#applyDevelopmentConfig()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 121,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#applyDevelopmentConfig()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#build(final PackLocationInfo location)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 152,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#build(final PackLocationInfo location)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#copyAndReverse(final Collection <Path> input)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 162,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#copyAndReverse(final Collection <Path> input)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#exposeNamespace(final String ... namespaces)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 147,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#exposeNamespace(final String ... namespaces)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#pushAssetPath(final PackType packType,final Path path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 136,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#pushAssetPath(final PackType packType,final Path path)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#pushJarResources()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 87,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#pushJarResources()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#pushPathForType(final PackType packType,final Path path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 81,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#pushPathForType(final PackType packType,final Path path)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#pushRootPath(final Path path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 75,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#pushRootPath(final Path path)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#setMetadata(final ResourceMetadata metadata)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 142,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#setMetadata(final ResourceMetadata metadata)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
+          "crates/bbb-pack/src/resources.rs#fn resource_file",
+          "crates/bbb-pack/src/resources.rs#fn root_resource",
+          "crates/bbb-pack/src/resources.rs#fn list_resources"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#startup_stack_records_identity_policy_and_compatibility",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/resources.rs#resource_location_matches_vanilla_identifier_validation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-provider",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-vanilla-provider",
+      "owner_id": "method:net.minecraft.server.packs.VanillaPackResourcesBuilder#validateDirPath(final Path path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 65,
+        "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.VanillaPackResourcesBuilder#validateDirPath(final Path path)"
     },
     {
       "category": "resources",
@@ -57264,6 +57870,7 @@
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
       "resources-offline-asset-trust",
+      "resources-indexed-vanilla-provider",
       "resources-language-manager",
       "ui-bidirectional-shaping",
       "resources-server-pack-lifecycle",
@@ -58995,6 +59602,14 @@
       "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
     },
     {
+      "path": "net/minecraft/server/packs/VanillaPackResources.java",
+      "sha256": "2664a246440d5703f00efd6aa52042769bf22ad3cb96ec5659c98a3371f11444"
+    },
+    {
+      "path": "net/minecraft/server/packs/VanillaPackResourcesBuilder.java",
+      "sha256": "9766325f5ca145df121e89be25b869a35f4bc3fd48b987f029e408fe6fec566a"
+    },
+    {
       "path": "net/minecraft/server/packs/resources/FallbackResourceManager.java",
       "sha256": "b4fbc95f05584e2a8ae29bab0c553eab57d54ab743b86cafdc8dcc2be39bfb5c"
     },
@@ -59074,7 +59689,8 @@
       "render-section": 29,
       "render-step": 238,
       "resource-consumer": 129,
-      "resources": 125,
+      "resource-provider": 21,
+      "resources": 122,
       "respawn-data": 9,
       "screen-open": 9,
       "security": 30,
@@ -59108,7 +59724,7 @@
       "realms": 100,
       "registries": 123,
       "rendering": 332,
-      "resources": 145,
+      "resources": 163,
       "security": 30,
       "singleplayer": 52,
       "startup": 19,
@@ -59119,12 +59735,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1584,
+      "decision": 1602,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3231,
-    "owner_count": 3231,
+    "mapped_owner_count": 3249,
+    "owner_count": 3249,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

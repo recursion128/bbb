@@ -512,6 +512,13 @@ mod tests {
         std::fs::create_dir_all(source.parent().unwrap()).unwrap();
         std::fs::write(&source, b"source stub").unwrap();
         std::fs::write(source.with_extension("zip.mcmeta"), b"source metadata").unwrap();
+        let source_only = root.join("sources/26.1/assets/minecraft/font/source-only.zip");
+        std::fs::write(&source_only, b"source fallback").unwrap();
+        std::fs::write(
+            root.join("sources/26.1/source-only.mcmeta"),
+            br#"{"source":true}"#,
+        )
+        .unwrap();
 
         let indexed = b"indexed complete archive";
         let indexed_metadata = br#"{"texture":{"blur":true}}"#;
@@ -522,6 +529,7 @@ mod tests {
                 ("minecraft/font/test.zip.mcmeta", indexed_metadata, true),
                 ("minecraft/sounds/unrelated-missing.ogg", b"missing", false),
                 ("realms/lang/en_us.json", br#"{"realm":"Realm"}"#, true),
+                ("private/font/hidden.zip", b"hidden namespace", true),
                 ("icons/icon_16x16.png", b"icon", true),
                 ("pack.mcmeta", br#"{"language":{}}"#, true),
             ],
@@ -548,17 +556,48 @@ mod tests {
             .validate_resource_metadata(&resource, "indexed test metadata")
             .unwrap();
         let listed = stack.list_resources("font", ".zip").unwrap();
-        assert_eq!(listed.len(), 1);
-        assert_eq!(listed[0].location, location);
+        assert_eq!(
+            listed
+                .iter()
+                .map(|resource| resource.location.id())
+                .collect::<Vec<_>>(),
+            ["minecraft:font/source-only.zip", "minecraft:font/test.zip"]
+        );
+        let source_fallback = stack
+            .get_resource(&ResourceLocation::parse("minecraft:font/source-only.zip").unwrap())
+            .unwrap();
+        assert_eq!(
+            stack
+                .read_text_resource(&source_fallback, "source fallback")
+                .unwrap(),
+            "source fallback"
+        );
+        assert!(stack
+            .get_resource(&ResourceLocation::parse("private:font/hidden.zip").unwrap())
+            .is_none());
+        assert!(!listed
+            .iter()
+            .any(|resource| resource.location.namespace() == "private"));
         let root_resources = stack.root_resource_stack("pack.mcmeta").unwrap();
         assert_eq!(root_resources.len(), 1);
         let root_metadata: serde_json::Value = stack
             .read_json_root_resource(&root_resources[0], "Vanilla root metadata")
             .unwrap();
         assert_eq!(root_metadata, serde_json::json!({"language": {}}));
+        let source_root = stack.root_resource_stack("source-only.mcmeta").unwrap();
+        assert_eq!(source_root.len(), 1);
+        assert_eq!(
+            stack
+                .read_json_root_resource::<serde_json::Value>(
+                    &source_root[0],
+                    "source root fallback",
+                )
+                .unwrap(),
+            serde_json::json!({"source": true})
+        );
         let observation = stack.vanilla_asset_index_observation().unwrap();
         assert_eq!(observation.index_id, "30");
-        assert_eq!(observation.object_count, 6);
+        assert_eq!(observation.object_count, 7);
         assert_eq!(observation.exposed_resource_count, 4);
         assert_eq!(observation.root_resource_count, 2);
         assert_eq!(roots.vanilla_asset_index_observation(), Some(observation));

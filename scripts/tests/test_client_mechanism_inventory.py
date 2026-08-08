@@ -306,6 +306,99 @@ public class Owner {
             "c3ff408940d49574e71210993ac3359277d19d1935ed0c34d74dc17f509dfb01",
         )
 
+    def test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence(
+        self,
+    ) -> None:
+        mechanism_id = "resources-indexed-vanilla-provider"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == mechanism_id
+        ]
+        expected_methods = {
+            "net/minecraft/client/resources/ClientPackSource.java": {
+                "ClientPackSource",
+                "createVanillaPackSource",
+                "createVanillaPack",
+            },
+            "net/minecraft/server/packs/VanillaPackResourcesBuilder.java": {
+                "validateDirPath",
+                "pushRootPath",
+                "pushPathForType",
+                "pushJarResources",
+                "applyDevelopmentConfig",
+                "pushAssetPath",
+                "setMetadata",
+                "exposeNamespace",
+                "build",
+                "copyAndReverse",
+            },
+            "net/minecraft/server/packs/VanillaPackResources.java": {
+                "VanillaPackResources",
+                "getRootResource",
+                "listResources",
+                "getResources",
+                "getResource",
+                "getNamespaces",
+                "getMetadataSection",
+                "asProvider",
+            },
+        }
+
+        self.assertEqual(len(owners), 21)
+        for path, methods in expected_methods.items():
+            self.assertEqual(
+                {
+                    owner["vanilla_owner"].split("#", 1)[1].split("(", 1)[0]
+                    for owner in owners
+                    if owner["source"]["path"] == path
+                },
+                methods,
+            )
+        mechanism = value["mechanisms"][mechanism_id]
+        self.assertEqual(mechanism["owner_count"], 21)
+        self.assertEqual(mechanism["owner_evidence_count"], 21)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 0)
+        self.assertTrue(
+            all(
+                owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        scope_rulings = [
+            owner["bbb_evidence"]["scope_ruling"]
+            for owner in owners
+            if "scope_ruling" in owner["bbb_evidence"]
+        ]
+        self.assertEqual(len(scope_rulings), 1)
+        self.assertEqual(
+            scope_rulings[0]["conclusion"], "not-reachable-in-current-scope"
+        )
+        self.assertTrue(scope_rulings[0]["reopen_condition"])
+        source_hashes = {
+            source["path"]: source["sha256"] for source in value["source_files"]
+        }
+        self.assertEqual(
+            source_hashes["net/minecraft/client/resources/ClientPackSource.java"],
+            "f4fcc1b6752cf1646dcfd63bf2407d0a57309636ec7646657d42ae2843efe841",
+        )
+        self.assertEqual(
+            source_hashes[
+                "net/minecraft/server/packs/VanillaPackResourcesBuilder.java"
+            ],
+            "9766325f5ca145df121e89be25b869a35f4bc3fd48b987f029e408fe6fec566a",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/server/packs/VanillaPackResources.java"],
+            "2664a246440d5703f00efd6aa52042769bf22ad3cb96ec5659c98a3371f11444",
+        )
+
     def test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT
