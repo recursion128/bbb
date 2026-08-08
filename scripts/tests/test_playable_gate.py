@@ -986,6 +986,8 @@ class PlayableGateLifecycleTests(unittest.TestCase):
                 "fullscreen": False,
                 "floating": False,
                 "output_scale": 1.0,
+                "pointer_accel_profile": "flat",
+                "pointer_identifiers": ["4660:22136:bbb-seat-virtual"],
             },
             "renderer_surface": [1280, 720],
             "recipe_button_surface_center": [666, 347],

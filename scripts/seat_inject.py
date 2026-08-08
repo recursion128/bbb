@@ -516,7 +516,13 @@ class UinputDriver:
         self._require_current_key_table()
         window = self._wlroots.probe()
         self._require_no_key_repeat()
-        return {**window, "driver": self.name, "device_socket": self.socket_path}
+        pointer = self._flat_pointer_profile_receipt(configure=True)
+        return {
+            **window,
+            **pointer,
+            "driver": self.name,
+            "device_socket": self.socket_path,
+        }
 
     def _require_current_key_table(self) -> None:
         """Refuse a daemon whose key table predates this injector.
@@ -563,6 +569,71 @@ class UinputDriver:
                 "`input type:keyboard repeat_rate 0` on the gate's compositor"
             )
 
+    def _flat_pointer_profile_receipt(self, configure: bool) -> dict[str, object]:
+        """Make relative uinput deltas map to reproducible logical pixels.
+
+        Libinput's default adaptive acceleration scales the same evdev delta by
+        its delivery speed.  That is correct for ordinary mouse use but makes
+        an exact GUI hit target non-reproducible: a requested 666px move was
+        observed as roughly twice that distance on the release host.  The
+        platform gate owns this virtual device, so configure its compositor
+        profile to flat and then independently read it back before claiming an
+        exact pointer receipt.
+        """
+
+        device_name = seat_device.DEVICE_NAME.decode("ascii")
+
+        def read_devices() -> list[dict]:
+            raw = _run(["swaymsg", "-t", "get_inputs", "-r"])
+            try:
+                devices = json.loads(raw)
+            except json.JSONDecodeError as error:
+                raise InjectError(f"could not read the compositor inputs: {error}") from error
+            if not isinstance(devices, list):
+                raise InjectError("the compositor input inventory was not a list")
+            return [
+                device
+                for device in devices
+                if device.get("type") == "pointer" and device.get("name") == device_name
+            ]
+
+        devices = read_devices()
+        if not devices:
+            raise InjectError(
+                f"the compositor has no {device_name!r} pointer from the held-open seat"
+            )
+        identifiers = sorted(
+            {
+                identifier
+                for device in devices
+                if isinstance((identifier := device.get("identifier")), str)
+                and identifier
+            }
+        )
+        if not identifiers:
+            raise InjectError(f"the compositor did not identify its {device_name!r} pointer")
+
+        if configure and any(
+            (device.get("libinput") or {}).get("accel_profile") != "flat"
+            for device in devices
+        ):
+            for identifier in identifiers:
+                _run(["swaymsg", "input", identifier, "accel_profile", "flat"])
+            devices = read_devices()
+
+        profiles = {
+            (device.get("libinput") or {}).get("accel_profile") for device in devices
+        }
+        if profiles != {"flat"}:
+            raise InjectError(
+                f"the {device_name!r} pointer needs flat acceleration for exact GUI "
+                f"coordinates, got {sorted(str(profile) for profile in profiles)}"
+            )
+        return {
+            "pointer_accel_profile": "flat",
+            "pointer_identifiers": identifiers,
+        }
+
     def focus(self) -> dict[str, object]:
         return {**self._wlroots.focus(), "driver": self.name}
 
@@ -593,7 +664,11 @@ class UinputDriver:
         self._wlroots.output_scale(scale)
 
     def window(self) -> dict[str, object]:
-        return {**self._wlroots.window(), "driver": self.name}
+        return {
+            **self._wlroots.window(),
+            **self._flat_pointer_profile_receipt(configure=False),
+            "driver": self.name,
+        }
 
     def window_geometry(self, width: int, height: int) -> None:
         self._wlroots.window_geometry(width, height)

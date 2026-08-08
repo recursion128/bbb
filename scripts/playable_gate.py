@@ -426,6 +426,22 @@ def _validate_language_transition(
         raise GateFailure(
             "language transition must run before the display-scale scenario"
         )
+    if compositor.get("pointer_accel_profile") != "flat":
+        raise GateFailure(
+            "language transition pointer receipt did not freeze libinput acceleration"
+        )
+    pointer_identifiers = compositor.get("pointer_identifiers")
+    if (
+        not isinstance(pointer_identifiers, list)
+        or not pointer_identifiers
+        or any(
+            not isinstance(identifier, str) or not identifier
+            for identifier in pointer_identifiers
+        )
+    ):
+        raise GateFailure(
+            "language transition pointer receipt did not identify its uinput device"
+        )
 
     surface = transition.get("renderer_surface")
     if (

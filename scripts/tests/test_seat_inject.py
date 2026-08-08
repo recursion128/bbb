@@ -152,6 +152,68 @@ class SeatKeyRepeatTests(unittest.TestCase):
             driver._require_no_key_repeat()
 
 
+class SeatPointerProfileTests(unittest.TestCase):
+    """Exact GUI targets require raw uinput deltas to remain logical pixels."""
+
+    @staticmethod
+    def inputs(profile: str) -> str:
+        return json.dumps(
+            [
+                {
+                    "identifier": "4660:22136:bbb-seat-virtual",
+                    "name": "bbb-seat-virtual",
+                    "type": "pointer",
+                    "libinput": {"accel_profile": profile},
+                }
+            ]
+        )
+
+    def test_probe_configures_and_reads_back_a_flat_pointer_profile(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        calls = []
+        responses = iter(
+            [
+                self.inputs("adaptive"),
+                '[{"success":true}]',
+                self.inputs("flat"),
+            ]
+        )
+
+        def run(command):
+            calls.append(command)
+            return next(responses)
+
+        with mock.patch.object(seat_inject, "_run", side_effect=run):
+            receipt = driver._flat_pointer_profile_receipt(configure=True)
+
+        self.assertEqual(receipt["pointer_accel_profile"], "flat")
+        self.assertEqual(
+            receipt["pointer_identifiers"], ["4660:22136:bbb-seat-virtual"]
+        )
+        self.assertIn(
+            [
+                "swaymsg",
+                "input",
+                "4660:22136:bbb-seat-virtual",
+                "accel_profile",
+                "flat",
+            ],
+            calls,
+        )
+
+    def test_window_receipt_refuses_profile_drift(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        with mock.patch.object(seat_inject, "_run", return_value=self.inputs("adaptive")):
+            with self.assertRaisesRegex(seat_inject.InjectError, "needs flat acceleration"):
+                driver._flat_pointer_profile_receipt(configure=False)
+
+    def test_missing_gate_pointer_is_an_attributable_error(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        with mock.patch.object(seat_inject, "_run", return_value="[]"):
+            with self.assertRaisesRegex(seat_inject.InjectError, "no 'bbb-seat-virtual'"):
+                driver._flat_pointer_profile_receipt(configure=True)
+
+
 class SeatStaleDaemonTests(unittest.TestCase):
     """The seat device outlives edits to its own source, so a key added since
     it started is simply absent -- discovered, without this check, only when the
