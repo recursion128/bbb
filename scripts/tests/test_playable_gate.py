@@ -851,7 +851,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 16)
+        self.assertEqual(evidence["schema"], 17)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -992,8 +992,10 @@ class PlayableGateLifecycleTests(unittest.TestCase):
                 "pointer_identifiers": ["4660:22136:bbb-seat-virtual"],
             },
             "renderer_surface": [1280, 720],
-            "recipe_button_surface_center": [666, 347],
-            "pointer_global_target": [666, 347],
+            "renderer_gui_surface": [427, 240],
+            "recipe_button_gui_center": [239, 107],
+            "recipe_button_physical_target": [717, 322],
+            "pointer_global_target": [717, 322],
             "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
             "search_focus_input": "input.key:chat",
             "search_text_input": "input.text:excitedze",
@@ -1035,6 +1037,15 @@ class PlayableGateLifecycleTests(unittest.TestCase):
             playable_gate.GateFailure, "exactly one ClientInformation"
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_gui_pointer_target_inverts_non_integral_vanilla_projection(self):
+        x = playable_gate._gui_coordinate_to_physical_target(239, 427, 1280)
+        y = playable_gate._gui_coordinate_to_physical_target(107, 240, 720)
+        self.assertEqual((x, y), (717, 322))
+        self.assertGreaterEqual(x * 427 / 1280, 239)
+        self.assertLess(x * 427 / 1280, 240)
+        self.assertGreaterEqual(y * 240 / 720, 107)
+        self.assertLess(y * 240 / 720, 108)
 
     def test_reconfiguration_registry_drift_fails(self):
         evidence = copy.deepcopy(self.fixture)

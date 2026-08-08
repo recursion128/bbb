@@ -6,6 +6,10 @@ pub struct RendererCounters {
     pub width: u32,
     pub height: u32,
     #[serde(default)]
+    pub gui_width: u32,
+    #[serde(default)]
+    pub gui_height: u32,
+    #[serde(default)]
     pub surface_resizes: u64,
     #[serde(default)]
     pub surface_zero_size_skips: u64,

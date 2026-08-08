@@ -183,6 +183,10 @@ fn disconnected_screen_title_tracks_vanilla_listener_phase() {
 #[test]
 fn renderer_surface_recovery_counters_cross_the_control_projection() {
     let source = bbb_renderer::RendererCounters {
+        width: 1280,
+        height: 720,
+        gui_width: 427,
+        gui_height: 240,
         surface_resizes: 2,
         surface_zero_size_skips: 1,
         surface_lost: 3,
@@ -205,6 +209,8 @@ fn renderer_surface_recovery_counters_cross_the_control_projection() {
         ..Default::default()
     };
     let projected = control_renderer_counters(source);
+    assert_eq!([projected.width, projected.height], [1280, 720]);
+    assert_eq!([projected.gui_width, projected.gui_height], [427, 240]);
     assert_eq!(projected.surface_resizes, 2);
     assert_eq!(projected.surface_zero_size_skips, 1);
     assert_eq!(projected.surface_lost, 3);

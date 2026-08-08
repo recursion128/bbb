@@ -165,9 +165,9 @@ def validate_evidence(
 ) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 16:
+    if evidence.get("schema") != 17:
         raise GateFailure(
-            f"playable evidence schema must be 16, got {evidence.get('schema')!r}"
+            f"playable evidence schema must be 17, got {evidence.get('schema')!r}"
         )
 
     version = evidence.get("vanilla_version")
@@ -475,7 +475,48 @@ def _validate_language_transition(
         raise GateFailure(
             "language transition compositor and renderer surfaces did not match at scale 1"
         )
-    target = transition.get("recipe_button_surface_center")
+    gui_surface = transition.get("renderer_gui_surface")
+    if (
+        not isinstance(gui_surface, list)
+        or len(gui_surface) != 2
+        or any(
+            not isinstance(value, int) or isinstance(value, bool) or value <= 0
+            for value in gui_surface
+        )
+        or gui_surface[0] > surface[0]
+        or gui_surface[1] > surface[1]
+    ):
+        raise GateFailure(
+            "language_transition.renderer_gui_surface must be a positive "
+            "[width, height] no larger than the physical surface"
+        )
+    gui_target = transition.get("recipe_button_gui_center")
+    if (
+        not isinstance(gui_target, list)
+        or len(gui_target) != 2
+        or any(
+            not isinstance(value, int) or isinstance(value, bool)
+            for value in gui_target
+        )
+        or not 0 <= gui_target[0] < gui_surface[0]
+        or not 0 <= gui_target[1] < gui_surface[1]
+    ):
+        raise GateFailure(
+            "language transition recipe button target was outside the GUI surface"
+        )
+    expected_gui_target = [
+        (gui_surface[0] - LOCAL_INVENTORY_GUI_WIDTH) // 2
+        + LOCAL_INVENTORY_RECIPE_BUTTON_X
+        + RECIPE_BUTTON_WIDTH // 2,
+        (gui_surface[1] - LOCAL_INVENTORY_GUI_HEIGHT) // 2
+        + LOCAL_INVENTORY_RECIPE_BUTTON_Y
+        + RECIPE_BUTTON_HEIGHT // 2,
+    ]
+    if gui_target != expected_gui_target:
+        raise GateFailure(
+            "language transition recipe button target did not match the Vanilla GUI layout"
+        )
+    target = transition.get("recipe_button_physical_target")
     if (
         not isinstance(target, list)
         or len(target) != 2
@@ -486,7 +527,15 @@ def _validate_language_transition(
         or not 0 <= target[1] < surface[1]
     ):
         raise GateFailure(
-            "language transition recipe button target was outside the surface"
+            "language transition physical pointer target was outside the surface"
+        )
+    expected_target = [
+        _gui_coordinate_to_physical_target(gui_target[0], gui_surface[0], surface[0]),
+        _gui_coordinate_to_physical_target(gui_target[1], gui_surface[1], surface[1]),
+    ]
+    if target != expected_target:
+        raise GateFailure(
+            "language transition physical pointer target did not invert the GUI projection"
         )
     expected_pointer = [
         compositor["logical_x"] + target[0],
@@ -3168,6 +3217,22 @@ def _renderer_surface_size(address: tuple[str, int]) -> tuple[int, int]:
     return (int(counters.get("width", 0)), int(counters.get("height", 0)))
 
 
+def _gui_coordinate_to_physical_target(
+    coordinate: int, gui_extent: int, physical_extent: int
+) -> int:
+    """Invert Vanilla's physical-to-GUI cursor ratio into one GUI pixel.
+
+    The target is the centre of the requested logical pixel interval rather
+    than its lower edge. This remains deterministic when ceiling division
+    makes the GUI-to-framebuffer ratio non-integral (1280 / 427, for example).
+    """
+
+    if gui_extent <= 0 or physical_extent <= 0 or not 0 <= coordinate < gui_extent:
+        raise GateFailure("cannot project an invalid GUI coordinate to the surface")
+    target = ((2 * coordinate + 1) * physical_extent) // (2 * gui_extent)
+    return min(target, physical_extent - 1)
+
+
 def _await_surface_size(
     address: tuple[str, int], deadline: float, description: str, accept: Any
 ) -> tuple[int, int]:
@@ -3987,27 +4052,46 @@ def drive_recipe_book_language_transition(
         surface_height = _positive_int(
             renderer.get("height"), "renderer.counters.height"
         )
+        gui_width = _positive_int(
+            renderer.get("gui_width"), "renderer.counters.gui_width"
+        )
+        gui_height = _positive_int(
+            renderer.get("gui_height"), "renderer.counters.gui_height"
+        )
         if [surface_width, surface_height] != [logical_width, logical_height]:
             raise GateFailure(
                 "recipe-book pointer receipt requires matching compositor and "
                 "renderer surfaces before display transitions"
             )
 
-        button_x = (
-            (surface_width - LOCAL_INVENTORY_GUI_WIDTH) // 2
+        if gui_width > surface_width or gui_height > surface_height:
+            raise GateFailure(
+                "recipe-book GUI surface must not exceed the physical renderer surface"
+            )
+        button_gui_x = (
+            (gui_width - LOCAL_INVENTORY_GUI_WIDTH) // 2
             + LOCAL_INVENTORY_RECIPE_BUTTON_X
             + RECIPE_BUTTON_WIDTH // 2
         )
-        button_y = (
-            (surface_height - LOCAL_INVENTORY_GUI_HEIGHT) // 2
+        button_gui_y = (
+            (gui_height - LOCAL_INVENTORY_GUI_HEIGHT) // 2
             + LOCAL_INVENTORY_RECIPE_BUTTON_Y
             + RECIPE_BUTTON_HEIGHT // 2
         )
-        if not 0 <= button_x < surface_width or not 0 <= button_y < surface_height:
+        if not 0 <= button_gui_x < gui_width or not 0 <= button_gui_y < gui_height:
             raise GateFailure(
-                "computed recipe-book button centre is outside the surface"
+                "computed recipe-book button centre is outside the GUI surface"
             )
-        pointer_target = [logical_x + button_x, logical_y + button_y]
+        button_physical_x = _gui_coordinate_to_physical_target(
+            button_gui_x, gui_width, surface_width
+        )
+        button_physical_y = _gui_coordinate_to_physical_target(
+            button_gui_y, gui_height, surface_height
+        )
+        pointer_target = [
+            logical_x + button_physical_x,
+            logical_y + button_physical_y,
+        ]
         # Relative pointer devices have no queryable global position.  Clamp
         # against the single gate output's top-left edge, then advance to the
         # window-relative Vanilla button centre resolved above.
@@ -4112,7 +4196,9 @@ def drive_recipe_book_language_transition(
         "recipe_book_settings_commands_delta": settings_delta,
         "compositor_window": compositor,
         "renderer_surface": [surface_width, surface_height],
-        "recipe_button_surface_center": [button_x, button_y],
+        "renderer_gui_surface": [gui_width, gui_height],
+        "recipe_button_gui_center": [button_gui_x, button_gui_y],
+        "recipe_button_physical_target": [button_physical_x, button_physical_y],
         "pointer_global_target": pointer_target,
         "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
         "search_focus_input": "input.key:chat",
@@ -5150,7 +5236,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 16,
+        "schema": 17,
         "mode": "live",
         "vanilla_version": "26.1",
         "client_locale": args.client_locale,

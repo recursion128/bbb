@@ -35,6 +35,8 @@ pub struct RendererCounters {
     pub frame_index: u64,
     pub width: u32,
     pub height: u32,
+    pub gui_width: u32,
+    pub gui_height: u32,
     pub surface_resizes: u64,
     pub surface_zero_size_skips: u64,
     pub surface_lost: u64,

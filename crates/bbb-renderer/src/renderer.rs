@@ -2423,6 +2423,8 @@ impl Renderer {
             counters: RendererCounters {
                 width: size.width,
                 height: size.height,
+                gui_width: size.width,
+                gui_height: size.height,
                 ..RendererCounters::default()
             },
             #[cfg(feature = "lifecycle-soak")]
@@ -4321,6 +4323,8 @@ impl Renderer {
             return;
         }
         self.gui_surface_size = size;
+        self.counters.gui_width = size.width;
+        self.counters.gui_height = size.height;
         self.update_camera();
     }
 
@@ -5247,11 +5251,15 @@ mod tests {
         // publication (scale 1).
         assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(1920, 1080));
         assert_eq!(renderer.surface_size(), PhysicalSize::new(1920, 1080));
+        assert_eq!(renderer.counters().gui_width, 1920);
+        assert_eq!(renderer.counters().gui_height, 1080);
 
         // 1920x1080 at auto scale 4 publishes 480x270 to the renderer.
         renderer.set_gui_surface_size(PhysicalSize::new(480, 270));
         assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(480, 270));
         assert_eq!(renderer.surface_size(), PhysicalSize::new(1920, 1080));
+        assert_eq!(renderer.counters().gui_width, 480);
+        assert_eq!(renderer.counters().gui_height, 270);
 
         // A zero-size resize only marks minimized; both last usable sizes are
         // retained until a nonzero resize replaces the physical surface.
@@ -5262,6 +5270,9 @@ mod tests {
         renderer.resize(PhysicalSize::new(1280, 720)).unwrap();
         assert_eq!(renderer.surface_size(), PhysicalSize::new(1280, 720));
         assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(480, 270));
+        let counters = renderer.counters();
+        assert_eq!([counters.width, counters.height], [1280, 720]);
+        assert_eq!([counters.gui_width, counters.gui_height], [480, 270]);
     }
 
     #[test]

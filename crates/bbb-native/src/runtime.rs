@@ -20105,6 +20105,8 @@ pub(crate) fn control_renderer_counters(
         frame_index: counters.frame_index,
         width: counters.width,
         height: counters.height,
+        gui_width: counters.gui_width,
+        gui_height: counters.gui_height,
         surface_resizes: counters.surface_resizes,
         surface_zero_size_skips: counters.surface_zero_size_skips,
         surface_lost: counters.surface_lost,
