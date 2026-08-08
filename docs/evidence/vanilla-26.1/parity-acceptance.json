@@ -271,7 +271,6 @@
         "protocol-client-state-flow",
         "protocol-framing-no-world-state",
         "protocol-login-handler-decisions",
-        "protocol-serverbound-call-sites",
         "registries-unsynchronized-fixed-identities",
         "rendering-client-biome-tint",
         "rendering-client-block-entity-tracking",
@@ -325,7 +324,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "17fa6b2a0ffdca879f0609daa8a512834a762ab8bb5c9153e670ed229d5aba06",
+      "sha256": "6db92d402f64e10490dabbb252f53d13b0b099fcfe0b20cc41942d9f2d619106",
       "valid": true
     },
     {
@@ -681,7 +680,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "75bb58f5701634bf0e622af4cfb5d1accfb66adffd505396370d7d8f4e05433c",
+      "sha256": "a15aeb3a72dd38e52c941ab83d478999475c3af77aade997b9a38d4f4ffb50f6",
       "valid": true
     },
     {
@@ -7522,7 +7521,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "17fa6b2a0ffdca879f0609daa8a512834a762ab8bb5c9153e670ed229d5aba06",
+      "sha256": "6db92d402f64e10490dabbb252f53d13b0b099fcfe0b20cc41942d9f2d619106",
       "valid": true
     },
     {
@@ -7736,7 +7735,8 @@
         "protocol-configuration-handler-decisions",
         "protocol-listener-contracts",
         "protocol-packet-tables",
-        "protocol-play-handler-decisions"
+        "protocol-play-handler-decisions",
+        "protocol-serverbound-call-sites"
       ],
       "path": "scripts/cargo-dev.sh",
       "scenario_ids": [],
@@ -8120,7 +8120,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "75bb58f5701634bf0e622af4cfb5d1accfb66adffd505396370d7d8f4e05433c"
+      "sha256": "a15aeb3a72dd38e52c941ab83d478999475c3af77aade997b9a38d4f4ffb50f6"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8128,7 +8128,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "17fa6b2a0ffdca879f0609daa8a512834a762ab8bb5c9153e670ed229d5aba06"
+      "sha256": "6db92d402f64e10490dabbb252f53d13b0b099fcfe0b20cc41942d9f2d619106"
     }
   ],
   "mechanisms": [
@@ -15109,7 +15109,6 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -15340,6 +15339,7 @@
         "repo:crates/bbb-world/src/toasts.rs",
         "repo:crates/bbb-world/src/tutorial.rs",
         "repo:docs/evidence/vanilla-26.1/packet-coverage.json",
+        "repo:scripts/cargo-dev.sh",
         "repo:scripts/tests/test_block_registry_catalog_extractor.py",
         "repo:scripts/tests/test_entity_catalog.py",
         "repo:scripts/tests/test_entity_coverage_ledger.py",
@@ -15348,8 +15348,13 @@
       "bbb": {
         "evidence_commit": "bfcc657cf93001265e748fcf53223f723ad0f57c",
         "evidence_references": [
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
+          "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
+          "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state",
           "crates/bbb-net/src/event_stream.rs",
-          "docs/evidence/vanilla-26.1/packet-coverage.json"
+          "crates/bbb-world/src/client/inventory/use_prediction.rs#block_use_prediction_preserves_vanilla_dispatch_order",
+          "docs/evidence/vanilla-26.1/packet-coverage.json",
+          "scripts/cargo-dev.sh"
         ],
         "owner": "native input/net command surface"
       },
@@ -15601,7 +15606,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -15847,14 +15852,12 @@
         "domain": "protocol/input",
         "line": 36,
         "required_state_projection": "action/ack/command invocation and state guards",
-        "route_reopen_condition": "serverbound call site/table 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "任一 call-site source hash、owner set、serverbound table、action/prediction/ack ordering 或 CLI/offline scope 变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "protocol-serverbound-call-sites",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 67,
@@ -37989,7 +37992,6 @@
       "player-local-vehicle-control",
       "protocol-client-state-flow",
       "protocol-login-handler-decisions",
-      "protocol-serverbound-call-sites",
       "rendering-client-biome-tint",
       "rendering-client-block-entity-tracking",
       "rendering-client-level-dirty-handoff",
@@ -38028,11 +38030,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 58,
+      "equivalent": 59,
       "not-needed": 25,
-      "partial": 63
+      "partial": 62
     },
-    "valid_count": 84
+    "valid_count": 85
   },
   "vanilla_version": "26.1"
 }
