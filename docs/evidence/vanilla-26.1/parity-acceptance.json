@@ -264,7 +264,6 @@
         "items-server-owned-effects",
         "items-versioned-property-surface",
         "lifecycle-client-runtime",
-        "lifecycle-client-task-handoff",
         "movement-remote-type-exceptions",
         "persistence-options-derived",
         "persistence-server-list",
@@ -363,7 +362,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "18aa4f4ae761151a79e07053dc334309f16c0a122cc2173164de40fb6befcf8e",
+      "sha256": "5cdd2f0dfa29b8ea11d33da33cd48f2a89e5832bb92792e45498172f231e57a7",
       "valid": true
     },
     {
@@ -734,7 +733,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "062ebe03b68881e6da9e5cfde53e9ede16bb26c8f42e8699d88e88a3d932cff8",
+      "sha256": "e87aae7f5266bb5d3c61f7879c05b70f895414f1a8f82cb2d1e08409f31c27f9",
       "valid": true
     },
     {
@@ -7666,7 +7665,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "18aa4f4ae761151a79e07053dc334309f16c0a122cc2173164de40fb6befcf8e",
+      "sha256": "5cdd2f0dfa29b8ea11d33da33cd48f2a89e5832bb92792e45498172f231e57a7",
       "valid": true
     },
     {
@@ -8275,7 +8274,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "062ebe03b68881e6da9e5cfde53e9ede16bb26c8f42e8699d88e88a3d932cff8"
+      "sha256": "e87aae7f5266bb5d3c61f7879c05b70f895414f1a8f82cb2d1e08409f31c27f9"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8283,7 +8282,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "18aa4f4ae761151a79e07053dc334309f16c0a122cc2173164de40fb6befcf8e"
+      "sha256": "5cdd2f0dfa29b8ea11d33da33cd48f2a89e5832bb92792e45498172f231e57a7"
     }
   ],
   "mechanisms": [
@@ -8715,7 +8714,6 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -8727,9 +8725,12 @@
         "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
+          "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
+          "crates/bbb-native/src/simulation/commands.rs#concurrent_producers_share_one_contiguous_sequence",
           "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input",
           "crates/bbb-native/src/simulation/commands.rs#production_producers_cannot_restore_ignored_mailbox_results",
           "crates/bbb-native/src/simulation/commands.rs#simulation_output_telemetry_is_independent_latest_value_without_feedback_wake",
+          "crates/bbb-native/src/simulation/thread.rs#blocked_render_consumer_does_not_stall_deadlines_or_external_network_wake",
           "crates/bbb-native/src/simulation/thread.rs#producer_wake_without_work_emits_no_output_and_preserves_deadline",
           "crates/bbb-native/src/simulation/thread.rs#run_scheduled"
         ],
@@ -8763,12 +8764,24 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native close_unblocks_a_saturated_producer_and_rejects_control",
           "ignored": false,
           "reference": "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native commands_from_winit_and_control_share_one_monotonic_sequence",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native concurrent_producers_share_one_contiguous_sequence",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/simulation/commands.rs#concurrent_producers_share_one_contiguous_sequence",
           "result": "passed-via-full-gate"
         },
         {
@@ -8790,6 +8803,12 @@
           "result": "passed-via-full-gate"
         },
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-native blocked_render_consumer_does_not_stall_deadlines_or_external_network_wake",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/simulation/thread.rs#blocked_render_consumer_does_not_stall_deadlines_or_external_network_wake",
+          "result": "passed-via-full-gate"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-native producer_wake_without_work_emits_no_output_and_preserves_deadline",
           "ignored": false,
           "reference": "crates/bbb-native/src/simulation/thread.rs#producer_wake_without_work_emits_no_output_and_preserves_deadline",
@@ -8800,14 +8819,12 @@
         "domain": "lifecycle/tasks",
         "line": 14,
         "required_state_projection": "ordered handoff、wake、close、stale task rejection",
-        "route_reopen_condition": "task producer、mailbox partition、output transport telemetry 或 close contract 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "Vanilla task scheduling、task producer、mailbox sequence/partition/barrier、output transport telemetry、wake generation 或 close contract 变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "lifecycle-client-task-handoff",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
@@ -39653,7 +39670,6 @@
       "interaction-prediction-sequence",
       "interaction-primary-action-routing",
       "lifecycle-client-runtime",
-      "lifecycle-client-task-handoff",
       "persistence-options-derived",
       "persistence-server-list",
       "platform-window-chrome",
@@ -39733,11 +39749,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 18,
+      "equivalent": 19,
       "not-needed": 25,
-      "partial": 103
+      "partial": 102
     },
-    "valid_count": 44
+    "valid_count": 45
   },
   "vanilla_version": "26.1"
 }

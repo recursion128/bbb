@@ -54,9 +54,9 @@ Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle
 Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`, `player-local-world-edit-ui`
 Matrix routes: `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `lifecycle-client-runtime`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
-Matrix routes: `lifecycle-client-task-handoff`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
+Matrix routes: `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
-- Close the 103 records that remain `partial` in the current parity acceptance
+- Close the 102 records that remain `partial` in the current parity acceptance
   report. All 147 records and reverse artifact/scenario mappings validate against
   gated evidence commit `553d02405` with zero false `equivalent`, zero missing
   focused-decision evidence, and current Vanilla owner source hashes; the
@@ -65,8 +65,8 @@ Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycl
   fallback. Current visual/draw/performance receipts are rebound from capture
   `fa73aed19` by identical `elf-load-image-v1`; remaining closure requires exact-commit
   real ALSA host-device receipt plus per-mechanism matrix review. Exact-commit
-  lifecycle and Linux platform receipts are now present; the platform seat and
-  session-replacement rows have completed independent owner/focused-evidence review.
+  lifecycle and Linux platform receipts are now present; the platform seat,
+  session-replacement and task-handoff rows completed independent owner/focused review.
   Preserve invalid receipts until replaced; the user-waived
   macOS `deferred-external` row is not a closure blocker but retains its source
   basis and reopen condition.
