@@ -63,7 +63,7 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 - view/simulation/entity distance、graphics/cloud/particle/mipmap/HUD/FOV/resolution 相同。
 - 不得降低 BBB resident cap、实体数、透明面或粒子获得优势。
 - draw call 数只证明非空内容；API batching 不同，不能要求数量相等或用作性能倍数。
-- 至少三次有效 capture/客户端；正式流程采用完整 ABBA 并保留 machine-readable raw。
+- 每客户端至少四次有效 capture；正式流程采用两轮完整 ABBA 并保留 machine-readable raw。
 - 每项性能优化都重跑关键视觉锚点和 workload gate。
 
 ## 聚焦测试（focused tests）和真实证据
@@ -72,56 +72,55 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、percentile、1%
 low、hitch、per-frame normalization、invalid reason 与 cleanup。
 
-历史 receipt 只保留回归背景，不再冒充 current-binary 证据。configuration finish ordering
-修复后的 capture commit 是 `6c16fda010ac5b5ec42396db00e24cdb5b22ceac`；其冻结 release
-binary SHA-256 为 `93547b9b279edf1987f95ce8fb47921b46ea4d093ae971656de5820a6bfc2c0f`。
-证据 commit `0bfd97ae0d7818e97fa8a097b61b22188f6fbbdf` 的独立 rebuild SHA-256 为
-`2af84597c83cb5a0787308e565a4041202ba88600c3c63bab07d93a9b7a6630c`；两者原始字节不同，
-差异只落在未加载 symbol/section string table 与 GNU build-id。`elf-load-image-v1` 独立解析
-并锁定 ELF entry、全部 program headers、四个 `PT_LOAD` 段和非 build-id notes，得到相同
-执行映像 identity `50a5881a70129e7abaa84225fdd882f2eeaf19f78e9fc8b6bc597b44bbad97a5`。
-bridge 位于 `/tmp/bbb-parity-0bfd97ae0/provenance/6c16-to-0bfd.json`，SHA-256 为
-`b8123a02b4c7c23dceec16c3444d4d9d054143079bd92121f1e4f1c5307c2e83`；当前 evidence
-commit 已通过 full gate；本页的 current receipt 通过 checkpoint full gate 后，矩阵据此
-关闭而不声称原始 ELF byte-identical。
+历史 receipt 只保留回归背景，不再冒充 current-binary 证据。本轮 capture commit 是
+`fa73aed19ad54b9f501c1a0ab55db52a5aebe132`；它已在采集前 full-gated，冻结 release
+binary SHA-256 为 `6d7ce00a65368a97535ac9024dfbc22a4bca2fbc48978e92ff68491416e5b071`。
+机器报告同时保留 capture binary 和本页 checkpoint 后的独立 evidence rebuild；只有原始
+字节 SHA-256 相同或 `elf-load-image-v1` 对 ELF entry、program headers、`PT_LOAD` 与非
+build-id notes 给出相同执行映像 identity，才允许把 capture 绑定到后继 evidence commit。
 
 current-binary 一致性前置门禁已按 Vanilla→Vanilla→BBB→BBB 顺序重采：三场景双侧重复
-噪声标定后冻结既有 ROI 阈值，637 resident/selected chunks、15,288 resident/selected
-sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。经 bridge 重建的
-workload summary 位于 `/tmp/bbb-parity-0bfd97ae0/visual/workload-summary.json`，SHA-256
-为 `f48e81f3ce9f7a42cde3f55e97bf8b9ee4f3a20a418c6367f2bb8f61b92790f8`；draw summary
-位于 `/tmp/bbb-parity-0bfd97ae0/renderdoc/summary.json`，SHA-256 为
-`dc734dbc1f1290df20c4d9f5eef7c6133a320d8565883e88a53a6dfb976217b2`。正式性能摘要位于
-`/tmp/bbb-parity-0bfd97ae0/formal-summary.json`，SHA-256 为
-`cf591d2605b65478ee0239deb6ae489015cc8c9056cb23b6adf4d764d745ed01`。
+噪声标定后冻结既有 ROI 阈值，637 resident/selected chunks、15,288 resident/selected/
+uploaded sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。workload
+summary 位于 `/tmp/bbb-parity-fa73aed19/visual/workload-summary.json`，SHA-256 为
+`d10fc4dd6f0dead8dffd522e7796dbab4be78821da9b47db7a35b2f4b7c77c75`；draw summary 位于
+`/tmp/bbb-parity-fa73aed19/renderdoc/summary.json`，SHA-256 为
+`61631db9f530fdfe618fb1cb267cb1d8813fe377cfb18050da30295b00d9e992`。正式性能摘要位于
+`/tmp/bbb-parity-fa73aed19/formal-summary.json`，SHA-256 为
+`5536b018f0f63c4ff48de05d7ae2f6b4e77d247458e51064ece909958acab9de`。
+
+失败证据未删除：第一次把 Vanilla 三锚点串进同一 RenderDoc 进程时，第二次 control request
+在 `pthread_setaffinity_np` 崩溃，原始目录保留于 `renderdoc/vanilla-x11`，随后按每锚点独立
+进程 fix-forward；第一次 GPU summary 因空 client PID 过滤器错误包含 compositor，也以
+`*-gpu-summary-invalid-all-pids.json` 保留，正式 summary 只接受 smoke 记录的精确 client PID。
 
 | Contract/evidence | SHA-256 |
 | --- | --- |
 | replay | `5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388` |
-| source world | `59bc552530d1c13ce3d618be5669e5d99d052e01d53e99a879a44008c7ba4bca` |
+| world snapshot | `6ab2ef99bd6c816b68e54608142206f38aa6f3644f087c477d2367ce50173fd1` |
 | resources | `8aa8d02d6806ef9396564b83b7b64f73014ea654d8059a1b8ae6b09f3f67df0c` |
 | settings | `5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd` |
-| scene | `6f77811b5deafacea3c7666414cc1705c396a987b015e2a5f1f4832e872f73bc` |
+| scene | `d3fdd2005e6a03d6531aa82b2044472ac8c74dbc28f276b8e2bfd5ca9d63aad2` |
 | server camera log | `f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a` |
-| visual/workload gate | `f48e81f3ce9f7a42cde3f55e97bf8b9ee4f3a20a418c6367f2bb8f61b92790f8` |
-| RenderDoc anchor summary | `dc734dbc1f1290df20c4d9f5eef7c6133a320d8565883e88a53a6dfb976217b2` |
-| formal ABBA summary | `cf591d2605b65478ee0239deb6ae489015cc8c9056cb23b6adf4d764d745ed01` |
-| lifecycle soak | `3cf9085c4259595ba84966fe08a19be33da10d62bc72a2d7da513d0ef4199c73` |
-| Linux platform acceptance | `e4e72ddf3cabd507d45483304bf800d3a0ee60e3bfa2668dd54859df4dbedb89` |
+| Vanilla self-calibration | `dd71bbcde87b7a7ce12ee7b4878e389e64e1eab10e1e6f56c3dedd8a2b3b62ef` |
+| BBB self-calibration | `d900d77c9ab60e37b999667c152cc51a9856bc505d5b1ca599d1b91e3c520097` |
+| visual/workload gate | `d10fc4dd6f0dead8dffd522e7796dbab4be78821da9b47db7a35b2f4b7c77c75` |
+| RenderDoc anchor summary | `61631db9f530fdfe618fb1cb267cb1d8813fe377cfb18050da30295b00d9e992` |
+| formal ABBA summary | `5536b018f0f63c4ff48de05d7ae2f6b4e77d247458e51064ece909958acab9de` |
 
 MangoHud application-frame 结果如下；1% low 来自尾部分布，不能从 p99 直接推导：
 
 | 场景/客户端 | Samples | p50 ms | p95 ms | p99 ms | 1% low FPS |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| overall Vanilla | 56,496 | 3.440 | 5.067 | 5.859 | 162.51 |
-| overall BBB | 70,245 | 2.820 | 4.294 | 4.764 | 174.10 |
-| static Vanilla / BBB | 17,053 / 22,252 | 3.919 / 2.971 | 4.216 / 3.284 | 4.400 / 3.399 | 207.41 / 248.53 |
-| flight Vanilla / BBB | 21,888 / 26,718 | 3.041 / 2.496 | 3.527 / 2.792 | 3.858 / 2.917 | 244.14 / 220.41 |
-| boundary Vanilla / BBB | 17,555 / 21,275 | 3.488 / 2.844 | 5.725 / 4.691 | 6.167 / 4.986 | 156.09 / 160.57 |
+| overall Vanilla | 56,416 | 3.461 | 5.113 | 5.889 | 161.16 |
+| overall BBB | 70,717 | 2.820 | 4.306 | 4.783 | 171.12 |
+| static Vanilla / BBB | 16,981 / 22,265 | 3.939 / 2.970 | 4.201 / 3.287 | 4.374 / 3.417 | 184.59 / 224.64 |
+| flight Vanilla / BBB | 21,832 / 26,942 | 3.047 / 2.498 | 3.548 / 2.803 | 3.881 / 3.023 | 238.88 / 205.42 |
+| boundary Vanilla / BBB | 17,603 / 21,510 | 3.493 / 2.846 | 5.738 / 4.697 | 6.101 / 4.969 | 159.12 / 160.27 |
 
 `perf stat` 的总体进程均值为 Vanilla/BBB task-clock
-`1.091/1.056 ms/frame`、cycles `4,529,822/4,544,526`、instructions
-`6,899,320/6,662,667`；这两种工具口径不能相减为 CPU 或 GPU 时间。MangoHud 0.8.4
+`1.067/1.043 ms/frame`、cycles `4,365,768/4,479,094`、instructions
+`6,722,340/6,649,638`；这两种工具口径不能相减为 CPU 或 GPU 时间。MangoHud 0.8.4
 archive SHA-256 是
 `aa0b2a009552f5e7c50baabf361267a79ea5e5c0fea440786f3b202d51f57753`；RenderDoc
 1.45 commit 是 `2fc0bc04cb95499635f63986a55bc6f67849dd9f`，archive SHA-256 是
@@ -137,8 +136,8 @@ required 集合；主线程单帧最多复制 8 个区块快照形成突发。�
 revision 为失效边界复用前两类结果，并把快照抽取限制为每帧 1 个；最终目标仍为 637 个
 区块、15,288 个 section，三个正式 capture start 都是 cache ready、pending jobs 为 0。
 
-本轮正式两轮 ABBA 中，BBB 相对 Vanilla 的 task-clock 为 `-3.14%`，instructions 为
-`-3.43%`；cycles 为 `+0.32%`，按 presented frame 如实报告但不冒充时间。BBB 的
+本轮正式两轮 ABBA 中，BBB 相对 Vanilla 的 task-clock 为 `-2.24%`，instructions 为
+`-1.08%`；cycles 为 `+2.60%`，按 presented frame 如实报告但不冒充时间。BBB 的
 application-frame p50/p95/p99 均更低，双方均无 `>=33.333 ms` hitch。由此当前数据不再
 支持继续以“重复 CPU 工作导致 BBB 劣于 Vanilla”为前提优化；后续只有新 profile 或
 一致性修复造成回退时才重开性能 slice。
@@ -178,24 +177,25 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 事件；早期把它记为“内核缺少所需 tracepoint”的判断源于名称，而非能力缺失。
 
 本轮重新采集的 Vanilla/BBB association ratio 均为 `1.0`；graphics-ring client jobs
-分别为 `83,063/36,362`。GPU execution p50 为 `1.542/2.735 ms`，p95 为
-`3.273/3.104 ms`，p99 为 `4.335/4.495 ms`。GPU trace 对 Weston surface-commit p50
-的影响为 `+0.023%/+0.004%`，MangoHud 为 `-0.013%/-0.055%`，均在 1% 门槛内。
+分别为 `82,928/36,040`。GPU execution p50 为 `1.549/2.758 ms`，p95 为
+`3.277/3.123 ms`，p99 为 `4.334/4.491 ms`。GPU trace 对 Weston surface-commit p50
+的影响为 `-0.024%/+0.021%`，MangoHud 为 `-0.062%/-0.033%`，均在 1% 门槛内。
 
 ## 当前差异
 
-capture commit `6c16fda0` 的视觉/workload/draw、正式两轮 ABBA、MangoHud/perf、
-GPU-duration association 与 overhead 已全部通过，并由 full-gated `0bfd97ae0` 的
-`elf-load-image-v1` bridge 和 exact-HEAD Linux/lifecycle receipt 收口；本页更新通过
-checkpoint full gate 后关闭矩阵。frame interval、
+capture commit `fa73aed19` 的视觉/workload/draw、正式两轮 ABBA、MangoHud/perf、
+GPU-duration association 与 overhead 已全部通过。它只关闭两个性能机制，不代替仍开放的
+Linux seat、lifecycle 或真实 ALSA host-device receipt；本页 checkpoint full gate 和独立
+release identity bridge 通过后才关闭对应矩阵行。frame interval、
 进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
 任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，同样不能作为
 等负载或性能倍数。
 
 ## 账本/goal 路由
 
-等负载比较与 GPU duration 在本页通过 checkpoint full gate 后关闭账本项。非 Linux 发布行等相邻平台状态只取
-[`unsupported-features.md`](../../../unsupported-features.md)。
+等负载比较与 GPU duration 在本页通过 checkpoint full gate、provenance bridge 和
+machine-readable acceptance 绑定后关闭账本项。平台、lifecycle 与 audio 状态只取
+[`unsupported-features.md`](../../../unsupported-features.md)，不得由本 receipt 推导。
 
 ## 精确重开条件
 
