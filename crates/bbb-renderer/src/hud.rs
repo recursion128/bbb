@@ -22196,10 +22196,12 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
     let message = if multiline {
         let message = sanitize_hud_multiline_text(toast.message, 256);
         (!message.is_empty()).then_some(message)?
+    } else if toast.message.is_empty() {
+        String::new()
     } else {
         sanitize_hud_text_line(toast.message)?
     };
-    (!title.is_empty() && !message.is_empty()).then_some(HudSystemToast {
+    (!title.is_empty()).then_some(HudSystemToast {
         title,
         message,
         multiline,
@@ -24043,6 +24045,16 @@ mod tests {
             visible_portion: f32::NAN,
         })
         .is_none());
+        assert_eq!(
+            sanitize_hud_system_toast(HudSystemToast {
+                title: "Resource reload failed".to_string(),
+                message: String::new(),
+                multiline: false,
+                visible_portion: 1.0,
+            })
+            .map(|toast| toast.message),
+            Some(String::new())
+        );
     }
 
     #[test]

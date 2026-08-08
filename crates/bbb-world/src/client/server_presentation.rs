@@ -29,6 +29,8 @@ pub struct ServerPresentationState {
     pub last_transfer: Option<TransferTargetState>,
     #[serde(default)]
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
+    #[serde(default)]
+    pub resource_pack_download: Option<ResourcePackDownloadState>,
     #[serde(skip)]
     next_resource_pack_push_sequence: u64,
     #[serde(default)]
@@ -110,6 +112,26 @@ pub struct ResourcePackState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourcePackResponseState {
     pub action: ProtocolResourcePackResponseAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePackDownloadState {
+    pub batch_sequence: u64,
+    pub update_sequence: u64,
+    pub current_pack: u32,
+    pub total_packs: u32,
+    pub downloaded_bytes: u64,
+    pub total_bytes: Option<u64>,
+    pub failed_packs: u32,
+    pub phase: ResourcePackDownloadPhase,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourcePackDownloadPhase {
+    Downloading,
+    Succeeded,
+    Failed,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -318,6 +340,14 @@ impl WorldStore {
         true
     }
 
+    pub fn set_resource_pack_download_state(&mut self, state: Option<ResourcePackDownloadState>) {
+        self.presentation.resource_pack_download = state;
+    }
+
+    pub fn resource_pack_download_state(&self) -> Option<&ResourcePackDownloadState> {
+        self.presentation.resource_pack_download.as_ref()
+    }
+
     pub fn apply_resource_pack_pop(&mut self, packet: ProtocolResourcePackPop) -> usize {
         self.counters.resource_pack_pop_packets += 1;
         let removed = match packet.id {
@@ -345,6 +375,7 @@ impl WorldStore {
 
     pub fn reset_resource_pack_session(&mut self) {
         self.presentation.resource_packs.clear();
+        self.presentation.resource_pack_download = None;
         self.update_resource_pack_count();
     }
 
@@ -1044,10 +1075,21 @@ mod tests {
             false,
             None,
         ));
+        store.set_resource_pack_download_state(Some(ResourcePackDownloadState {
+            batch_sequence: 1,
+            update_sequence: 2,
+            current_pack: 1,
+            total_packs: 1,
+            downloaded_bytes: 512,
+            total_bytes: Some(1_024),
+            failed_packs: 0,
+            phase: ResourcePackDownloadPhase::Downloading,
+        }));
 
         store.reset_resource_pack_session();
 
         assert!(store.resource_packs().is_empty());
+        assert!(store.resource_pack_download_state().is_none());
         assert_eq!(store.counters().resource_packs_tracked, 0);
         assert_eq!(store.counters().resource_pack_pop_packets, 0);
     }

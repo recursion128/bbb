@@ -90,9 +90,10 @@ use bbb_world::{
     ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState,
     MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
     MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
-    RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, VanillaEnchantmentIdentity,
-    WorldLevelInfo, WorldLevelLoadReason, WorldSkybox, WorldStore, WorldWeatherState,
+    RavagerStunParticleState, ResourcePackDownloadPhase, SignBlockForm, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    VanillaEnchantmentIdentity, WorldLevelInfo, WorldLevelLoadReason, WorldSkybox, WorldStore,
+    WorldWeatherState,
 };
 use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
@@ -686,6 +687,8 @@ pub(crate) struct ClientAnimationTickState {
 pub(crate) struct HudRenderRuntime {
     narrator_toggle_toast: SystemToastAnimationState,
     insecure_chat_toast: SystemToastAnimationState,
+    server_pack_download_toast: SystemToastAnimationState,
+    server_pack_download_batch: Option<u64>,
     resource_pack_load_failure_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
     periodic_notification_toast: SystemToastAnimationState,
@@ -1243,6 +1246,23 @@ struct SystemToastAnimationFrame {
 
 impl SystemToastAnimationState {
     fn update(&mut self, warning_count: usize, now: Instant) -> Option<SystemToastAnimationFrame> {
+        self.update_with_forced_hide(warning_count, false, now)
+    }
+
+    fn update_forced_hidden(
+        &mut self,
+        warning_count: usize,
+        now: Instant,
+    ) -> Option<SystemToastAnimationFrame> {
+        self.update_with_forced_hide(warning_count, true, now)
+    }
+
+    fn update_with_forced_hide(
+        &mut self,
+        warning_count: usize,
+        force_hide: bool,
+        now: Instant,
+    ) -> Option<SystemToastAnimationFrame> {
         if warning_count < self.seen_warning_count {
             *self = Self::default();
         }
@@ -1291,8 +1311,8 @@ impl SystemToastAnimationState {
             self.last_changed_fully_visible_ms = fully_visible_for_ms;
             self.changed = false;
         }
-        let wanted_showing =
-            fully_visible_for_ms.saturating_sub(self.last_changed_fully_visible_ms) < 10_000;
+        let wanted_showing = !force_hide
+            && fully_visible_for_ms.saturating_sub(self.last_changed_fully_visible_ms) < 10_000;
         if wanted_showing != self.showing {
             let reverse_ms = ((1.0 - self.visible_portion) * 600.0) as u64;
             self.animation_started_at = Some(now - Duration::from_millis(reverse_ms));
@@ -7815,6 +7835,68 @@ fn hud_system_toast(
                 false,
             )
         }
+    } else if let Some((frame, download)) =
+        world.resource_pack_download_state().and_then(|download| {
+            if state.server_pack_download_batch != Some(download.batch_sequence) {
+                state.server_pack_download_batch = Some(download.batch_sequence);
+                state.server_pack_download_toast = SystemToastAnimationState::default();
+            }
+            let warning_count = usize::try_from(download.update_sequence).unwrap_or(usize::MAX);
+            let frame = if download.phase == ResourcePackDownloadPhase::Succeeded {
+                state
+                    .server_pack_download_toast
+                    .update_forced_hidden(warning_count, now)
+            } else {
+                state.server_pack_download_toast.update(warning_count, now)
+            }?;
+            Some((frame, download))
+        })
+    {
+        let current_pack = download.current_pack.to_string();
+        let total_packs = download.total_packs.to_string();
+        if download.phase == ResourcePackDownloadPhase::Failed {
+            let failed_packs = download.failed_packs.to_string();
+            (
+                frame,
+                localized_gui_text_with_args(
+                    item_runtime,
+                    "download.pack.failed",
+                    "%s out of %s pack(s) failed to download",
+                    &[&failed_packs, &total_packs],
+                ),
+                String::new(),
+                false,
+            )
+        } else {
+            let progress = match download.total_bytes.filter(|total| *total > 0) {
+                Some(total_bytes) => {
+                    let percent = download.downloaded_bytes.saturating_mul(100) / total_bytes;
+                    localized_gui_text_with_args(
+                        item_runtime,
+                        "download.pack.progress.percent",
+                        "Progress: %s%%",
+                        &[&percent.to_string()],
+                    )
+                }
+                None => localized_gui_text_with_args(
+                    item_runtime,
+                    "download.pack.progress.bytes",
+                    "Progress: %s (total size unknown)",
+                    &[&server_pack_bytes_human_readable(download.downloaded_bytes)],
+                ),
+            };
+            (
+                frame,
+                localized_gui_text_with_args(
+                    item_runtime,
+                    "download.pack.title",
+                    "Downloading resource pack %s/%s",
+                    &[&current_pack, &total_packs],
+                ),
+                progress,
+                false,
+            )
+        }
     } else if let Some(frame) = state
         .insecure_chat_toast
         .update(world.insecure_chat_warning_count(), now)
@@ -7907,6 +7989,20 @@ fn hud_system_toast(
             pitch: 1.0,
             seed: 0,
         }),
+    )
+}
+
+fn server_pack_bytes_human_readable(bytes: u64) -> String {
+    if bytes < 1_024 {
+        return format!("{bytes} B");
+    }
+    let exponent = ((bytes as f64).ln() / 1_024_f64.ln()).floor() as usize;
+    let prefixes = ['K', 'M', 'G', 'T', 'P', 'E'];
+    let bounded_exponent = exponent.clamp(1, prefixes.len());
+    format!(
+        "{:.1} {}B",
+        bytes as f64 / 1_024_f64.powi(bounded_exponent as i32),
+        prefixes[bounded_exponent - 1]
     )
 }
 

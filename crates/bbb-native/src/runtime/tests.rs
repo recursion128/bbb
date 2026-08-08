@@ -13667,6 +13667,96 @@ fn completed_resource_pack_recovery_projects_pack_load_failure_system_toast() {
 }
 
 #[test]
+fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide() {
+    let start = std::time::Instant::now();
+    let mut world = WorldStore::new();
+    let mut state = HudRenderRuntime::default();
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 7,
+        update_sequence: 1,
+        current_pack: 1,
+        total_packs: 2,
+        downloaded_bytes: 512,
+        total_bytes: Some(1_024),
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+    }));
+
+    let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
+    assert_eq!(
+        toast,
+        Some(HudSystemToast {
+            title: "Downloading resource pack 1/2".to_string(),
+            message: "Progress: 50%".to_string(),
+            multiline: false,
+            visible_portion: 0.0,
+        })
+    );
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.in".to_string())
+    );
+
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 7,
+        update_sequence: 2,
+        current_pack: 2,
+        total_packs: 2,
+        downloaded_bytes: 0,
+        total_bytes: None,
+        failed_packs: 1,
+        phase: bbb_world::ResourcePackDownloadPhase::Failed,
+    }));
+    let (toast, _) = hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600));
+    assert_eq!(
+        toast.unwrap().title,
+        "1 out of 2 pack(s) failed to download"
+    );
+
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 8,
+        update_sequence: 3,
+        current_pack: 1,
+        total_packs: 1,
+        downloaded_bytes: 2_048,
+        total_bytes: None,
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+    }));
+    let (toast, _) = hud_system_toast(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(1_000),
+    );
+    assert_eq!(
+        toast.unwrap().message,
+        "Progress: 2.0 KB (total size unknown)"
+    );
+
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 8,
+        update_sequence: 4,
+        current_pack: 1,
+        total_packs: 1,
+        downloaded_bytes: 2_048,
+        total_bytes: None,
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Succeeded,
+    }));
+    let (_, sound) = hud_system_toast(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(1_600),
+    );
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.out".to_string())
+    );
+}
+
+#[test]
 fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Challenge);

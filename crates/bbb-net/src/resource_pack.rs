@@ -60,6 +60,16 @@ pub struct ServerPackDownload {
     pub cache_hit: bool,
 }
 
+/// Progress callbacks emitted in the same order as Vanilla's
+/// `HttpUtil.DownloadProgressListener` contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerPackDownloadProgress {
+    RequestStarted,
+    DownloadStarted { total_bytes: Option<u64> },
+    DownloadedBytes { bytes: u64 },
+    RequestFinished { success: bool },
+}
+
 /// Downloads one server pack without blocking the connection/event-stream task.
 ///
 /// The blocking HTTP reader enforces the byte limit while streaming and publishes a complete
@@ -68,12 +78,32 @@ pub struct ServerPackDownload {
 pub async fn download_server_pack(
     request: ServerPackDownloadRequest,
 ) -> Result<ServerPackDownload> {
-    tokio::task::spawn_blocking(move || download_server_pack_blocking(request))
-        .await
-        .context("join server pack download worker")?
+    download_server_pack_with_progress(request, |_| {}).await
 }
 
-fn download_server_pack_blocking(request: ServerPackDownloadRequest) -> Result<ServerPackDownload> {
+pub async fn download_server_pack_with_progress<F>(
+    request: ServerPackDownloadRequest,
+    mut progress: F,
+) -> Result<ServerPackDownload>
+where
+    F: FnMut(ServerPackDownloadProgress) + Send + 'static,
+{
+    tokio::task::spawn_blocking(move || {
+        progress(ServerPackDownloadProgress::RequestStarted);
+        let result = download_server_pack_blocking(request, &mut progress);
+        progress(ServerPackDownloadProgress::RequestFinished {
+            success: result.is_ok(),
+        });
+        result
+    })
+    .await
+    .context("join server pack download worker")?
+}
+
+fn download_server_pack_blocking(
+    request: ServerPackDownloadRequest,
+    progress: &mut impl FnMut(ServerPackDownloadProgress),
+) -> Result<ServerPackDownload> {
     if request.max_bytes == 0 {
         bail!("server pack download byte limit must be positive");
     }
@@ -126,12 +156,15 @@ fn download_server_pack_blocking(request: ServerPackDownloadRequest) -> Result<S
         .context("request server pack")?
         .error_for_status()
         .context("server pack HTTP status")?;
-    if let Some(content_length) = response
+    let content_length = response
         .headers()
         .get(CONTENT_LENGTH)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse::<u64>().ok())
-    {
+        .and_then(|value| value.parse::<u64>().ok());
+    progress(ServerPackDownloadProgress::DownloadStarted {
+        total_bytes: content_length,
+    });
+    if let Some(content_length) = content_length {
         if content_length > request.max_bytes {
             bail!(
                 "server pack Content-Length is {content_length} bytes, exceeding the {} byte limit",
@@ -163,6 +196,7 @@ fn download_server_pack_blocking(request: ServerPackDownloadRequest) -> Result<S
         output
             .write_all(&buffer[..read])
             .context("write server pack download cache")?;
+        progress(ServerPackDownloadProgress::DownloadedBytes { bytes });
     }
     output.flush().context("flush server pack download cache")?;
     drop(output);
@@ -386,6 +420,7 @@ mod tests {
     use std::{
         io::{Read, Write},
         net::TcpListener,
+        sync::{Arc, Mutex},
         thread,
         time::{SystemTime, UNIX_EPOCH},
     };
@@ -460,6 +495,61 @@ mod tests {
         let cached = download_server_pack(request).await.unwrap();
         assert!(cached.cache_hit);
         assert_eq!(cached.archive_path, downloaded.archive_path);
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn server_pack_download_reports_vanilla_progress_order_for_network_and_cache() {
+        let body = b"server-pack-progress".to_vec();
+        let expected_sha1 = sha1_hex(&body);
+        let cache_dir = unique_temp_dir("progress");
+        let (url, server) = serve_once(body.clone(), true);
+        let request = ServerPackDownloadRequest::new(
+            url,
+            Some(expected_sha1),
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+        );
+        let progress = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&progress);
+        let downloaded = download_server_pack_with_progress(request.clone(), move |event| {
+            captured.lock().unwrap().push(event);
+        })
+        .await
+        .unwrap();
+        server.join().unwrap();
+
+        assert_eq!(
+            *progress.lock().unwrap(),
+            vec![
+                ServerPackDownloadProgress::RequestStarted,
+                ServerPackDownloadProgress::DownloadStarted {
+                    total_bytes: Some(body.len() as u64),
+                },
+                ServerPackDownloadProgress::DownloadedBytes {
+                    bytes: body.len() as u64,
+                },
+                ServerPackDownloadProgress::RequestFinished { success: true },
+            ]
+        );
+
+        let cached_progress = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&cached_progress);
+        let cached = download_server_pack_with_progress(request, move |event| {
+            captured.lock().unwrap().push(event);
+        })
+        .await
+        .unwrap();
+        assert!(cached.cache_hit);
+        assert_eq!(cached.archive_path, downloaded.archive_path);
+        assert_eq!(
+            *cached_progress.lock().unwrap(),
+            vec![
+                ServerPackDownloadProgress::RequestStarted,
+                ServerPackDownloadProgress::RequestFinished { success: true },
+            ]
+        );
         std::fs::remove_dir_all(cache_dir).unwrap();
     }
 
