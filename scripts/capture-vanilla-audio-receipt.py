@@ -42,6 +42,30 @@ class AudioReceiptFailure(RuntimeError):
     """The official owner could not produce a valid audio observation."""
 
 
+def repo_commit_identity(repo: Path, *, require_clean: bool) -> str:
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if head.returncode != 0 or re.fullmatch(r"[0-9a-f]{40}", head.stdout.strip()) is None:
+        raise AudioReceiptFailure("audio receipt requires an exact repository commit")
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if status.returncode != 0:
+        raise AudioReceiptFailure("audio receipt could not inspect repository state")
+    if require_clean and status.stdout.strip():
+        raise AudioReceiptFailure("formal audio receipt requires a clean worktree")
+    return head.stdout.strip()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     add_vanilla_runtime(parser)
@@ -249,6 +273,7 @@ def run_probe(
 
 
 def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
+    bbb_commit = repo_commit_identity(REPO_ROOT, require_clean=args.driver != "null")
     artifact_dir = args.artifact_dir.resolve()
     if artifact_dir.exists() and any(artifact_dir.iterdir()):
         raise AudioReceiptFailure(
@@ -320,6 +345,7 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
         )
     receipt = {
         "schema": 1,
+        "bbb_commit": bbb_commit,
         "mechanism_ids": ["audio-sound-manager-engine"],
         "minecraft_version": "26.1",
         "driver": args.driver,

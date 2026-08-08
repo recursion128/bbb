@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -50,6 +51,41 @@ def observation(requested: bool, *, supported: bool = True) -> dict[str, object]
 
 
 class VanillaAudioReceiptTests(unittest.TestCase):
+    def test_formal_receipt_commit_identity_requires_clean_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            tracked = repo / "tracked"
+            tracked.write_text("clean\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "fixture"], cwd=repo, check=True)
+            head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            self.assertEqual(
+                receipt.repo_commit_identity(repo, require_clean=True), head
+            )
+            tracked.write_text("dirty\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                receipt.AudioReceiptFailure, "requires a clean worktree"
+            ):
+                receipt.repo_commit_identity(repo, require_clean=True)
+            self.assertEqual(
+                receipt.repo_commit_identity(repo, require_clean=False), head
+            )
+
     def test_validates_owner_pool_hrtf_and_lifecycle_contract(self) -> None:
         contract = receipt.validate_probe_pair(observation(False), observation(True))
         self.assertEqual(

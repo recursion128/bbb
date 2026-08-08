@@ -50,6 +50,69 @@ def write_bbb_provenance(root: Path) -> tuple[dict[str, object], dict[str, objec
     }
 
 
+class ConsistencyReceiptTests(unittest.TestCase):
+    def test_receipt_must_be_passing_clean_and_commit_sealed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            path = repo / "docs/evidence/vanilla-26.1/parity-acceptance.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                json.dumps(
+                    {
+                        "bbb_evidence_commit": "1" * 40,
+                        "schema_version": 3,
+                        "workflow": {
+                            "consistency_gate_passed": True,
+                            "semantic_contract_sha256": "2" * 64,
+                            "stage": "evidence-sweep",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "receipt"], cwd=repo, check=True)
+            head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            gate_dir = repo / ".git/bbb"
+            gate_dir.mkdir(parents=True)
+            gate_line = (
+                f"2026-08-07T00:00:00Z\t{head}\tclean\ttotal:1s,test:1s"
+            )
+            (gate_dir / "last-gated").write_text(f"{head}\n", encoding="utf-8")
+            (gate_dir / "gate-log.tsv").write_text(
+                f"{gate_line}\n", encoding="utf-8"
+            )
+
+            identity = benchmark.consistency_receipt_identity(path, repo_root=repo)
+            self.assertEqual(identity["report_commit"], head)
+            self.assertEqual(identity["bbb_evidence_commit"], "1" * 40)
+            self.assertEqual(identity["semantic_contract_sha256"], "2" * 64)
+            self.assertEqual(
+                identity["full_gate_receipt_sha256"],
+                hashlib.sha256(f"{gate_line}\n".encode()).hexdigest(),
+            )
+            (repo / "dirty").write_text("dirty\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "clean receipt commit"
+            ):
+                benchmark.consistency_receipt_identity(path, repo_root=repo)
+
+
 class DistributionTests(unittest.TestCase):
     def write_distribution(self, root: Path) -> tuple[Path, Path, dict[str, object]]:
         downloads = root / "downloads" / "26.1"
@@ -1337,6 +1400,35 @@ class CaptureTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(
                 benchmark.BenchmarkFailure, "not repeated ABBA"
+            ):
+                benchmark.summarize_formal_comparison(
+                    {
+                        "schema": 1,
+                        "runs": [f"/tmp/run-{index}.json" for index in range(8)],
+                    }
+                )
+
+    def test_formal_summary_requires_receipt_captured_before_every_run(self):
+        runs = [
+            {"client": client}
+            for client in (
+                "vanilla",
+                "bbb",
+                "bbb",
+                "vanilla",
+                "vanilla",
+                "bbb",
+                "bbb",
+                "vanilla",
+            )
+        ]
+        with mock.patch.object(
+            benchmark,
+            "load_json_object",
+            side_effect=runs,
+        ):
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "lacks a consistency receipt"
             ):
                 benchmark.summarize_formal_comparison(
                     {

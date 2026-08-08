@@ -43,3 +43,9 @@ Vanilla JAR、libraries、assets 与反编译源码使用独立的平台 cache�
 checkpoint 执行，不靠频繁清空 cache 获得表面一致。需要重新评估 sccache、linker、
 profile 或 cache 策略时，用上一节的同机 cold/warm 合同生成外部原始产物，并把采用后的
 长期规则更新在本页；旧测量由 Git history 保留，不在受维护文档中复制快照表。
+
+full gate 不构建正式 release，也不启动 platform live、visual capture、RenderDoc 或 ABBA。
+这些昂贵步骤只在 clean gated code freeze 后按 domain sweep 集中执行；后续改动先运行
+`scripts/python python scripts/parity_acceptance.py plan --base-commit <freeze>`，只重建/重采命中的 validation class。
+最终 strict check 仍核对当前 release 的文件或 `elf-load-image-v1`、全部 capture contract 与
+clean gated HEAD，故开发阶段复用不会放宽交付身份。

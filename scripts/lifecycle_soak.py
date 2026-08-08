@@ -51,6 +51,17 @@ EXPECTED_FAULT_RECEIPTS = {
 EXPECTED_INDEX_30_PANORAMA_RESIDENT_BYTES = 25_165_828
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as error:
+        raise SoakFailure(f"cannot hash lifecycle client binary {path}: {error}") from error
+    return digest.hexdigest()
+
+
 def _object(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise SoakFailure(f"{path} must be an object")
@@ -427,11 +438,15 @@ def run_soak(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, An
     if _git(repo_root, "status", "--porcelain"):
         raise SoakFailure("lifecycle soak requires a clean worktree")
     manifest_digest = hashlib.sha256(args.manifest.read_bytes()).hexdigest()
+    client_binary = args.client_bin.resolve()
+    client_binary_sha256 = file_sha256(client_binary)
     started_at = time.monotonic()
     report: dict[str, Any] = {
         "schema": 1,
         "status": "running",
         "head": head,
+        "client_binary": str(client_binary),
+        "client_binary_sha256": client_binary_sha256,
         "manifest": str(args.manifest.resolve()),
         "manifest_sha256": manifest_digest,
         "seed": manifest["seed"],

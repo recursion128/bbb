@@ -4,6 +4,9 @@
 [`client-mechanism-inventory.json`](../../evidence/vanilla-26.1/client-mechanism-inventory.json)
 承载；所有未关闭状态和范围排除均双向路由到唯一
 [`unsupported-features.md`](../../unsupported-features.md) 账本。
+实现提交保持 `partial`，直到当前 focused contract、owner/source hash 与正式 domain receipt
+全部有效；full gate 不会自动触发 live、视觉、RenderDoc 或 ABBA。共享 receipt 可覆盖多个
+Mechanism ID，但 artifact 与机制必须双向映射，失效范围由 acceptance report 的依赖闭包派生。
 
 | Mechanism ID | 领域 | Vanilla owner/class | BBB owner/module | Required state/projection | 状态 | Focused test/evidence | Route / reopen condition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -153,7 +156,7 @@
 | `rendering-nondeterministic-golden-exclusions` | rendering/tests | official render pipeline/driver | semantic/pixel focused evidence | no cross-driver full-frame golden hash | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `diagnostics-client-only-inspection-exclusions` | diagnostics | F3/F3+I client-visible owners | protocol-backed local diagnostics | no server-private/integrated/options-only state | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `coverage-external-client-census` | workflow | selected Vanilla external-client owner corpus | generated inventory/matrix/ledger lint | owner mapping、evidence、bilateral routes、stale checks | `partial` | `scripts/client_mechanism_inventory.py`、`scripts/docs_wiki_lint.py`、`scripts/parity_acceptance.py`、`scripts/bbb_tools/executable_identity.py`、`scripts/tests/test_parity_acceptance.py`；current full-gate `bfcc657cf` | Vanilla owner corpus、census、executable identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md) |
-| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `partial` | inventory 新增 `ClientLanguage` 全方法和 `RecipeBookComponent` 两个精确 owner，selected-method census/source hash/per-owner evidence 均 fail-closed；其余 schema v2 双向与 immutable gate receipt 规则保持 | 新 inventory/generator 通过 exact-output tests、full gate 并重绑 acceptance evidence commit 后恢复 `equivalent`；目标版本、canonical owner、blocker artifact、ledger route/source-hash scoping、receipt framing/identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md) |
+| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `partial` | inventory 的 selected-method census/source hash/per-owner evidence fail-closed；acceptance schema v3 派生 owner/test/capture hash、开放原因、stage order、scoped invalidation 与 exact-HEAD strict check | 新 inventory/generator 通过 exact-output tests、full gate 与 code-freeze domain sweep 后恢复 `equivalent`；目标版本、canonical owner、blocker artifact、dependency closure、receipt identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md) |
 
 ## 审计摘要
 
@@ -161,7 +164,7 @@
 资源、渲染、性能和范围排除的长期机制行，共 147 行。`equivalent` 只用于已有 generated
 coverage、决策级 focused evidence 或真实 acceptance 的行。
 
-当前分布：8 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、113 行 `partial`、
-1 行 `deferred-external`（`platform-macos-release`）。`partial` 包含真实 host-device
-audio receipt 与缺少精确 focused/source evidence 的行；全部双向路由到账本，不能因旧声明保留
-`equivalent`。无 `active` 或 `unverified` 行；开放状态只由账本排程。
+当前精确分布只由同目录的 machine-readable acceptance report 从本表派生，避免在正文维护
+第二份易过期计数。当前没有恢复任何 `equivalent`；实现、focused 或历史 receipt 只能作为
+中间证据，code freeze 后通过相应 domain sweep 才逐机制关闭。`partial` 全部双向路由到账本；
+`platform-macos-release` 的 user-waived external defer 不阻塞声明范围结论，但仍保留依据与重开条件。

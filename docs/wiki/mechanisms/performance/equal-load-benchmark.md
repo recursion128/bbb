@@ -30,8 +30,11 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
 3. warm-up 后按 marker capture 三场景：`static_orbit`、`preloaded_flight`、
    `chunk_boundary_crossing`。
 4. 同 tick 检查 pose、camera、settings、chunk/section/entity/particle 与 material ROI。
-5. 只有视觉/workload gate 通过，才按 Java → BBB → BBB → Java 的 ABBA 轮次采样。
-6. parser 拒绝 hash/correction/resource/resolution/content/throttle/hook 异常，再聚合 raw。
+5. 视觉/workload/draw 通过后生成 `evidence-sweep` acceptance，提交仅报告的 sealing commit
+   并 full gate；每次 timing smoke 都用 `--consistency-receipt` 指向
+   `docs/evidence/vanilla-26.1/parity-acceptance.json`，冻结该 commit/hash。
+6. 只有每个 run 都携带同一 pre-capture receipt，才按 Java → BBB → BBB → Java 的 ABBA 轮次采样。
+7. parser 拒绝 hash/correction/resource/resolution/content/throttle/hook/receipt 异常，再聚合 raw。
 
 ## 生命周期和 fallback
 
@@ -64,7 +67,12 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 - 不得降低 BBB resident cap、实体数、透明面或粒子获得优势。
 - draw call 数只证明非空内容；API batching 不同，不能要求数量相等或用作性能倍数。
 - 每客户端至少四次有效 capture；正式流程采用两轮完整 ABBA 并保留 machine-readable raw。
-- 每项性能优化都重跑关键视觉锚点和 workload gate。
+- implementation/checkpoint full gate 不自动启动 release、视觉、RenderDoc 或 ABBA；代码冻结后
+  才集中采正式 evidence。
+- code freeze 后 owner/path、focused contract、capture schema/settings/input 或 binary/load image
+  变化时，只失效 acceptance planner 指出的机制和 validation class；最终仍在 clean gated HEAD
+  运行 strict acceptance，不把 scoped reuse 当成交付证据。
+- 每项性能优化都重跑 planner 判定受影响的视觉锚点和 workload gate。
 
 ## 聚焦测试（focused tests）和真实证据
 
@@ -72,7 +80,7 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、percentile、1%
 low、hitch、per-frame normalization、invalid reason 与 cleanup。
 
-历史 receipt 只保留回归背景，不再冒充 current-binary 证据。本轮 capture commit 是
+以下 receipt 只保留回归背景和工具链输入，不冒充当前 matrix 的关闭证据。本轮 capture commit 是
 `fa73aed19ad54b9f501c1a0ab55db52a5aebe132`；它已在采集前 full-gated，冻结 release
 binary SHA-256 为 `6d7ce00a65368a97535ac9024dfbc22a4bca2fbc48978e92ff68491416e5b071`。
 机器报告同时保留 capture binary 和本页 checkpoint 后的独立 evidence rebuild；只有原始
@@ -184,17 +192,18 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 ## 当前差异
 
 capture commit `fa73aed19` 的视觉/workload/draw、正式两轮 ABBA、MangoHud/perf、
-GPU-duration association 与 overhead 已全部通过。它只关闭两个性能机制，不代替仍开放的
-Linux seat、lifecycle 或真实 ALSA host-device receipt；本页 checkpoint full gate 和独立
-release identity bridge 通过后才关闭对应矩阵行。frame interval、
+GPU-duration association 与 overhead 曾全部通过，但当前 acceptance 把两条性能机制保持
+`partial`：它们必须等 protocol/state/resource/rendering domain gate 在新的 code freeze 上通过，
+再用最终 release 集中重跑两轮 ABBA。历史 receipt 可用于定位与阈值合同回归，不能越过阶段顺序
+或冒充 final exact-HEAD。frame interval、
 进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
 任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，同样不能作为
 等负载或性能倍数。
 
 ## 账本/goal 路由
 
-等负载比较与 GPU duration 在本页通过 checkpoint full gate、provenance bridge 和
-machine-readable acceptance 绑定后关闭账本项。平台、lifecycle 与 audio 状态只取
+等负载比较与 GPU duration 只在 code-freeze domain sweep、最终两轮 ABBA、provenance bridge 和
+machine-readable strict acceptance 全部通过后关闭账本项。平台、lifecycle 与 audio 状态只取
 [`unsupported-features.md`](../../../unsupported-features.md)，不得由本 receipt 推导。
 
 ## 精确重开条件

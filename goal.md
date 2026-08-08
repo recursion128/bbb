@@ -498,29 +498,29 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。machine-readable parity acceptance 首轮审计已把陈旧 live/lifecycle/visual/ABBA receipt 和缺精确
-focused/source evidence 的虚假 `equivalent` 降为 `partial` 并路由到账本；只有当前 HEAD 的 147-row 双向报告全绿才能恢复。
-`audio-sound-manager-engine` 也仍为 `partial`：144 个 owner 已有 decision implementation/test evidence，OpenAL HRTF/device
-capacity/static/streaming/lifecycle 已实现，只余正式真实设备 differential receipt；9 个不可达 pause/manual-loop owner 保留 reopen condition。
+状态：`active`。matrix 当前所有实现机制都保持 `partial`，直到 schema-v3 acceptance 在
+code freeze 后逐机制验证 focused contract、Vanilla/BBB owner hash 与 formal receipt；不得用
+旧截图、测试数量、历史 ABBA 或 full gate 单独恢复 `equivalent`。
 
-audio 工程以 `scripts/capture-vanilla-audio-receipt.py` 冻结 OpenAL capacity、HRTF、短声音 lifecycle；生产 runtime
-从 26.1 manifest 校验/提取官方 OpenAL native，直接拥有 context/source/buffer/listener，消费 `directionalAudio`，以
-`ALC_MONO_SOURCES` 派生独立池并记录拒绝，停止实例保留至 tick 20 清理。Vanilla/BBB null 输出 receipt 只解锁实现，
-不形成正式结论；2026-08-07 default-driver 重采集仍因 UID 1000 不在 audio gid 29 且 `/dev/snd/*` 为
-`root:audio crw-rw----` 保持精确 blocker。focused tests 覆盖公式/隔离、ABI source 属性、static/四缓冲 streaming、native channel/instance shell 双层生命周期和 reload/reset。
-census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口已
-关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
-安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻
-`equivalent`；online 模式经用户裁决为非目标，加密登录/签名会话/Services 凭据面已整体移除
-并按账本 `not-needed`）。2026-08-05 用户重开的
-两项输入面已落地关闭：`SmoothDouble` 平滑镜头转向与 IME preedit 焦点移交（见
-archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
-锚点、可见 workload 与共同 draw evidence；configuration finish ordering 修复后的
-visual/workload/OpenGL+Vulkan draw、两轮 ABBA 与 GPU-duration 已在 capture commit
-`fa73aed19` 重采通过，并以 `elf-load-image-v1` 执行映像 identity 绑定到 full-gated evidence
-commit `5f6e3336c` 后关闭两个 performance matrix 行；full-gated `553d02405` 又完成 5× lifecycle soak 及 Linux Wayland/Vulkan/真实 `wl_seat` 验收并关闭 platform seat/session replacement/task handoff/client-runtime 行；full-gated `9696953d3` 的 current-HEAD live receipt 关闭 server-pack lifecycle 行；full-gated `7c738fadc` 已把 acceptance ledger source hashes 收紧为 per-Mechanism 精确 section 映射并重绑定正式 receipt，audio 工程只余真实 ALSA receipt 仍开放。per-client GPU execution
-duration 的 amdgpu 提交链已具备（radeonsi/RADV 共用路径、compositor 按进程排除），
-current association/overhead receipt 有效；
+实现阶段仍一次关闭一个有界 slice；每提交只跑 affected focused/integration、fmt、lint、
+diff review/check，并在既有 checkpoint 批次 full gate。planner 从 owner/path
+依赖闭包生成 changed-path→Mechanism ID→validation class；无关改动可复用未受影响中间 receipt，
+中央 owner、测试、capture schema/settings/input 或 binary/load identity 变化只失效对应域。
+实现完成但未正式 sweep 的行保持 `partial`，开放原因只由 acceptance report 派生。
+
+已知中央差异清完后形成 clean、full-gated code freeze，再串行运行 protocol/world/lifecycle、
+resources/platform、rendering 三类 domain evidence sweep。共享 artifact 可以覆盖多个 Mechanism ID，
+但必须双向列出 ID；失败证据保留，失败只重跑该域。正式两轮 ABBA 只能在 camera/world/workload、
+冻结 ROI、结构与 draw gate 全过后集中执行。最终 `check --require-artifacts --require-complete
+--require-final-head` 重新核对 clean gated HEAD，开发期 scoped reuse 不降低交付标准。
+每个 ABBA raw run 必须先绑定已提交且 full-gated 的 `evidence-sweep` acceptance receipt；
+summary/lint 复核其 commit/blob hash，禁止采集后补写前置状态。
+receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态，但冻结的 owner、required projection、
+route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
+任何 code/tool/fixture 差异都必须回到对应 domain sweep。
+
+`audio-sound-manager-engine` 的 null output 仍仅为 diagnostic；真实 ALSA host-device receipt 因
+UID 1000 不在 audio gid 29 且 `/dev/snd/*` 为 `root:audio crw-rw----` 保持精确 blocker。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
 步逐 crate 实测第二平台类型检查，但通过的 cross-check 是构建证据、不是发布验收。

@@ -45,6 +45,7 @@ from bbb_tools.executable_identity import (
 )
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK_SCHEMA = 1
 REPLAY_SCHEMA = 1
 MINECRAFT_VERSION = "26.1"
@@ -700,6 +701,95 @@ def load_json_object(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise BenchmarkFailure(f"{label} must contain a JSON object: {path}")
     return value
+
+
+def consistency_receipt_identity(
+    path: Path, *, repo_root: Path = REPO_ROOT
+) -> dict[str, Any]:
+    path = path.resolve()
+    repo_root = repo_root.resolve()
+    if not path.is_relative_to(repo_root):
+        raise BenchmarkFailure("consistency receipt must be tracked inside the repository")
+    report = load_json_object(path, "parity consistency receipt")
+    workflow = report.get("workflow")
+    if report.get("schema_version") != 3 or not isinstance(workflow, Mapping):
+        raise BenchmarkFailure("parity consistency receipt schema is invalid")
+    if (
+        workflow.get("stage") != "evidence-sweep"
+        or workflow.get("consistency_gate_passed") is not True
+    ):
+        raise BenchmarkFailure(
+            "formal performance requires a passing evidence-sweep receipt"
+        )
+    evidence_commit = report.get("bbb_evidence_commit")
+    semantic_contract_sha256 = workflow.get("semantic_contract_sha256")
+    if not isinstance(evidence_commit, str) or re.fullmatch(
+        r"[0-9a-f]{40}", evidence_commit
+    ) is None:
+        raise BenchmarkFailure("consistency receipt lacks an exact BBB commit")
+    if not isinstance(semantic_contract_sha256, str) or re.fullmatch(
+        r"[0-9a-f]{64}", semantic_contract_sha256
+    ) is None:
+        raise BenchmarkFailure("consistency receipt lacks a semantic-contract hash")
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    ).stdout.strip()
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo_root,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    ).stdout.strip()
+    if status:
+        raise BenchmarkFailure("formal performance requires a clean receipt commit")
+    relative = path.relative_to(repo_root).as_posix()
+    tracked = subprocess.run(
+        ["git", "show", f"{head}:{relative}"],
+        cwd=repo_root,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    digest = file_digest(path, "sha256")
+    if tracked.returncode != 0 or hashlib.sha256(tracked.stdout).hexdigest() != digest:
+        raise BenchmarkFailure("consistency receipt is not sealed by current HEAD")
+    git_dir = Path(
+        subprocess.run(
+            ["git", "rev-parse", "--absolute-git-dir"],
+            cwd=repo_root,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+        ).stdout.strip()
+    )
+    last_gated = git_dir / "bbb/last-gated"
+    gate_log = git_dir / "bbb/gate-log.tsv"
+    if not last_gated.is_file() or last_gated.read_text(encoding="utf-8").strip() != head:
+        raise BenchmarkFailure("consistency receipt commit is not full-gated")
+    gate_line = None
+    if gate_log.is_file():
+        for line in gate_log.read_text(encoding="utf-8").splitlines():
+            cells = line.split("\t")
+            if len(cells) >= 4 and cells[1] == head and cells[2] == "clean":
+                gate_line = line
+    if gate_line is None:
+        raise BenchmarkFailure("consistency receipt commit lacks a clean gate receipt")
+    return {
+        "bbb_evidence_commit": evidence_commit,
+        "full_gate_receipt_sha256": hashlib.sha256(
+            f"{gate_line}\n".encode("utf-8")
+        ).hexdigest(),
+        "path": relative,
+        "report_commit": head,
+        "semantic_contract_sha256": semantic_contract_sha256,
+        "sha256": digest,
+        "stage": "evidence-sweep",
+    }
 
 
 def validate_bbb_binary_provenance(
@@ -4434,6 +4524,15 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
     if min(clients.count("vanilla"), clients.count("bbb")) < 3:
         raise BenchmarkFailure("formal comparison lacks three runs per client")
 
+    consistency_path = manifest.get("consistency_receipt")
+    if not isinstance(consistency_path, str):
+        raise BenchmarkFailure("formal comparison lacks a consistency receipt")
+    consistency_identity = consistency_receipt_identity(Path(consistency_path))
+    if any(run.get("consistency_receipt") != consistency_identity for run in runs):
+        raise BenchmarkFailure(
+            "formal run was captured before the declared consistency receipt"
+        )
+
     provenance_value = manifest.get("bbb_provenance")
     if not isinstance(provenance_value, Mapping):
         raise BenchmarkFailure("formal comparison manifest lacks BBB provenance")
@@ -4575,6 +4674,7 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
             {
                 "sequence": index,
                 "client": client,
+                "consistency_receipt": run["consistency_receipt"],
                 "smoke": str(path_value),
                 "smoke_sha256": file_digest(Path(str(path_value)), "sha256"),
                 "raw": str(raw_path),
@@ -4748,6 +4848,7 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "bbb_binary_sha256": provenance["binary_sha256"],
         "bbb_provenance": provenance,
         "formal_comparison_complete": True,
+        "prerequisites": {"consistency_receipt": consistency_identity},
         "metrics_publishable": True,
         "contracts": contracts,
         "server_camera_log_sha256": camera_hash,
@@ -4904,6 +5005,7 @@ def run_official_smoke(
     renderdoccmd: Path | None,
     renderdoc_control: Path | None,
     renderdoc_segments: frozenset[str] | None = None,
+    consistency_receipt: Path | None = None,
 ) -> dict[str, Any]:
     if weston_renderer not in ("gl", "pixman"):
         raise BenchmarkFailure(f"unsupported Weston renderer: {weston_renderer}")
@@ -4926,6 +5028,11 @@ def run_official_smoke(
             f"official smoke artifact directory must be empty: {artifact_dir}"
         )
     artifact_dir.mkdir(parents=True, exist_ok=True)
+    consistency_identity = (
+        consistency_receipt_identity(consistency_receipt)
+        if consistency_receipt is not None
+        else None
+    )
     source_manifest = load_json_object(
         world_manifest_path, "world snapshot manifest"
     )
@@ -5021,6 +5128,7 @@ def run_official_smoke(
     result: dict[str, Any] = {
         "schema": BENCHMARK_SCHEMA,
         "client": "vanilla",
+        "consistency_receipt": consistency_identity,
         "status": "started",
         "replay_hash": digest,
         "world_hash": source_manifest["world_hash"],
@@ -5566,6 +5674,7 @@ def run_bbb_smoke(
     renderdoc_control: Path | None,
     extra_library_path: Path | None,
     renderdoc_segments: frozenset[str] | None = None,
+    consistency_receipt: Path | None = None,
 ) -> dict[str, Any]:
     if weston_renderer not in ("gl", "pixman"):
         raise BenchmarkFailure(f"unsupported Weston renderer: {weston_renderer}")
@@ -5586,6 +5695,11 @@ def run_bbb_smoke(
     if artifact_dir.exists() and any(artifact_dir.iterdir()):
         raise BenchmarkFailure(f"bbb smoke artifact directory must be empty: {artifact_dir}")
     artifact_dir.mkdir(parents=True, exist_ok=True)
+    consistency_identity = (
+        consistency_receipt_identity(consistency_receipt)
+        if consistency_receipt is not None
+        else None
+    )
     source_manifest = load_json_object(
         world_manifest_path, "world snapshot manifest"
     )
@@ -5654,6 +5768,7 @@ def run_bbb_smoke(
     result: dict[str, Any] = {
         "schema": BENCHMARK_SCHEMA,
         "client": "bbb",
+        "consistency_receipt": consistency_identity,
         "status": "started",
         "replay_hash": digest,
         "world_hash": source_manifest["world_hash"],
@@ -6269,6 +6384,9 @@ def _command_run_official_smoke(args: argparse.Namespace) -> None:
         renderdoc_segments=(
             frozenset(args.renderdoc_segment) if args.renderdoc_segment else None
         ),
+        consistency_receipt=(
+            Path(args.consistency_receipt) if args.consistency_receipt else None
+        ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
@@ -6310,6 +6428,9 @@ def _command_run_bbb_smoke(args: argparse.Namespace) -> None:
         ),
         renderdoc_segments=(
             frozenset(args.renderdoc_segment) if args.renderdoc_segment else None
+        ),
+        consistency_receipt=(
+            Path(args.consistency_receipt) if args.consistency_receipt else None
         ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
@@ -6480,6 +6601,7 @@ def build_parser() -> argparse.ArgumentParser:
     smoke.add_argument("--weston")
     smoke.add_argument("--renderdoccmd")
     smoke.add_argument("--renderdoc-control")
+    smoke.add_argument("--consistency-receipt")
     smoke.add_argument(
         "--renderdoc-segment",
         action="append",
@@ -6519,6 +6641,7 @@ def build_parser() -> argparse.ArgumentParser:
     bbb_smoke.add_argument("--weston")
     bbb_smoke.add_argument("--renderdoccmd")
     bbb_smoke.add_argument("--renderdoc-control")
+    bbb_smoke.add_argument("--consistency-receipt")
     bbb_smoke.add_argument(
         "--renderdoc-segment",
         action="append",

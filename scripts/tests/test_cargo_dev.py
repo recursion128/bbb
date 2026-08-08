@@ -350,6 +350,20 @@ class CargoDevGateScriptsTestsStatusTests(unittest.TestCase):
             script,
         )
 
+    def test_full_gate_does_not_launch_formal_capture_sweeps(self) -> None:
+        script = CARGO_DEV.read_text(encoding="utf-8")
+        run_gate = script.split("run_gate() {", 1)[1].split(
+            "\nrun_batch_gate() {", 1
+        )[0]
+        for forbidden in (
+            "official_client_benchmark.py",
+            "platform-acceptance-gate.sh",
+            "lifecycle-soak-gate.sh",
+            "renderdoccmd",
+        ):
+            self.assertNotIn(forbidden, run_gate)
+        self.assertIn('run_gate_step docs-lint "docs-lint" scripts/docs-lint.sh', run_gate)
+
 
 class CargoDevGateStampTests(unittest.TestCase):
     def run_git(self, repo: Path, *args: str) -> str:

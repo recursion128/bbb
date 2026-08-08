@@ -76,6 +76,14 @@ shell 不再依赖 GNU `setsid` 或 `timeout`。fixture/unit 层用 pytest marke
 `integration`、`vanilla`、`live` 与 `linux_release`；普通 `scripts/dev test python`
 默认不运行后两类真实环境场景。
 
+Parity evidence 与 full gate 分层：实现提交保持 matrix `partial`，checkpoint gate 只证明
+整仓无回退；clean gated code freeze 后才按 protocol/state、resource/platform、rendering
+domain sweep 收集 formal receipts，最后运行两轮 ABBA。`scripts/python python
+scripts/parity_acceptance.py plan` 用当前
+owner/test/capture hash 规划局部失效；diagnostic smoke 一律带非 formal classification。
+交付命令额外使用 `--require-final-head`，要求当前 HEAD clean、last-gated 对齐、artifact 双向
+Mechanism ID 与全部正式 identity 有效。
+
 三条经实跑得出的硬性前提，缺一条 receipts 就取不到：① **设备必须常驻**——capability
 只在设备存在期间广播，客户端也只在其间绑定 `wl_keyboard`/`wl_pointer` 并收到焦点，
 每次调用才建设备的工具会在客户端绑定完之前就消失；② **必须走 `uinput` 而非

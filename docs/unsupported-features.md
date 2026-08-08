@@ -59,25 +59,25 @@ Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycl
 Matrix routes: `docs-chinese-mechanism-wiki`, `lifecycle-client-runtime`, `lifecycle-client-task-handoff`, `lifecycle-session-replacement`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `persistence-options-file`, `persistence-options-unconsumed`, `platform-linux-seat-matrix`, `player-local-inventory-actions`, `resources-server-pack-lifecycle`
 Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`, `player-local-vitals-status`, `registries-built-in-catalogs`, `registries-synchronized-data`, `rendering-client-particle-routing`, `rendering-particle-provider-registration`
 - Close the 121 records that remain `partial` in the current parity acceptance
-  report. The current staging report contains all 147 records and reverse
-  artifact/scenario mappings, uses gated evidence commit `38bc40741`, and keeps
-  every owner touched after that commit open rather than retaining a false
-  `equivalent`; focused-decision evidence and current Vanilla owner source hashes
-  remain fail-closed. The
-  bidirectional-text owner is specifically bound to `Language`, `ClientLanguage`,
-  `FormattedBidiReorder`, and `SubStringSource` instead of a prose-derived source
-  fallback. Current visual/draw/performance receipts are rebound from capture
-  `fa73aed19` by identical `elf-load-image-v1`; acceptance schema v2 binds the
-  selected clean full-gate line as an immutable `gate-receipt-line-v1` artifact;
-  per-Mechanism ledger source-hash scoping is recomputed and validated against the
-  exact routed section instead of accepting unrelated ledger-wide source hashes.
-  Remaining closure requires an
-  exact-commit real ALSA host-device receipt plus per-mechanism matrix review. Exact-commit
-  lifecycle and Linux platform receipts are now present; the platform seat,
-  session-replacement, task-handoff and client-runtime rows completed independent owner/focused review.
-  Preserve invalid receipts until replaced; the user-waived
-  macOS `deferred-external` row is not a closure blocker but retains its source
-  basis and reopen condition. The language census now derives all 7
+  report. Schema v3 keeps all 147 matrix-derived records and reverse artifact/scenario
+  mappings, derives `implementation-gap` / `focused-evidence-pending` /
+  `formal-receipt-pending` / `external-blocker`, and hashes each mechanism's BBB
+  owner/path closure, focused-test contract, Vanilla source and capture identity.
+  `scripts/python python scripts/parity_acceptance.py plan` maps changed paths to affected Mechanism IDs and
+  validation classes, so implementation batches reuse only unaffected intermediate
+  evidence; full gate remains a repository regression gate and never launches formal
+  platform/visual/RenderDoc/ABBA collection. After a clean gated code freeze, run
+  protocol/world/lifecycle, resource/platform, then rendering domain sweeps; only an
+  owner or input change invalidates that domain. Formal ABBA is last. Final closure
+  still requires every dependency and formal artifact to validate on clean, gated
+  HEAD with `--require-final-head`; closure-only `docs/**`/`goal.md` sealing is allowed
+  only while the evidence-sweep semantic-contract hash remains identical. Scoped
+  development reuse cannot weaken delivery.
+  Preserve invalid receipts until replaced. The user-waived macOS
+  `deferred-external` row is not a closure blocker but retains its source basis and
+  reopen condition. The bidirectional-text owner remains bound to exact Vanilla
+  classes rather than prose fallback. Remaining external closure includes the exact
+  real ALSA host-device receipt. The language census now derives all 7
   `LanguageManager`, all 7 `ClientLanguage`, and the two exact recipe-book
   trigger owners with per-owner evidence; the six non-bidi `ClientLanguage`
   owners plus 7 manager owners and 2 trigger owners route to

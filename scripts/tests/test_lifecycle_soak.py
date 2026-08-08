@@ -1,6 +1,8 @@
 import copy
+import hashlib
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -91,6 +93,15 @@ class LifecycleSoakManifestTests(unittest.TestCase):
             lifecycle_soak.SoakFailure, "keys differ from the fixed owner set"
         ):
             lifecycle_soak.validate_manifest(manifest)
+
+    def test_client_binary_identity_is_file_sha256(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / "bbb-native"
+            binary.write_bytes(b"lifecycle release identity")
+            self.assertEqual(
+                lifecycle_soak.file_sha256(binary),
+                hashlib.sha256(binary.read_bytes()).hexdigest(),
+            )
 
 
 class LifecycleSoakEvidenceTests(unittest.TestCase):
