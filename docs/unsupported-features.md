@@ -52,14 +52,12 @@ Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycl
 Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`
 Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`
-Matrix routes: `performance-official-equal-load`, `performance-gpu-execution-duration`
 
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
   artifact/scenario mappings validate without a false `equivalent`: capture commit
-  `6c16fda0` is bound to gated evidence commit `0bfd97ae0` by the independently
-  recomputed `elf-load-image-v1` identity, and the current Linux/lifecycle reports
-  are exact-HEAD receipts. Full-gate this updated receipt page, then close its two
-  performance routes; add exact decision-test/source-owner evidence for every
+  `6c16fda0` is bound to gated evidence commit `bfcc657cf` by the independently
+  recomputed `elf-load-image-v1` identity, and its Linux/lifecycle reports are
+  exact-commit receipts. Add exact decision-test/source-owner evidence for every
   remaining matrix-only record. The report must preserve the invalid
   host-audio receipt until real ALSA device access exists; the user-waived macOS
   `deferred-external` row is not a closure blocker but retains its source basis
