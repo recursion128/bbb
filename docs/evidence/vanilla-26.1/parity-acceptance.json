@@ -278,7 +278,6 @@
         "rendering-level-backend-lifecycle",
         "rendering-nondeterministic-golden-exclusions",
         "rendering-official-noop-surfaces",
-        "resources-default-pack-stack",
         "resources-indexed-built-in-packs",
         "resources-indexed-panorama",
         "resources-indexed-realms",
@@ -324,7 +323,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "6db92d402f64e10490dabbb252f53d13b0b099fcfe0b20cc41942d9f2d619106",
+      "sha256": "bcab71223f98d5301f39119f73d4f965b8224623012b473c27310e8473f6d35e",
       "valid": true
     },
     {
@@ -413,6 +412,7 @@
         "rendering-level-scene-projection",
         "rendering-level-section-lifecycle",
         "rendering-particle-provider-registration",
+        "resources-default-pack-stack",
         "resources-reload-recovery",
         "resources-runtime-mipmap-update",
         "security-secure-chat-reporting",
@@ -431,7 +431,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-08T02:04:51Z\tbfcc657cf93001265e748fcf53223f723ad0f57c\tclean\ttotal:23s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:12s",
-      "sha256": "c29583aae9af33a42bfae3857667faa23135188f83e6cedd3c6e45bff5a1eb4b",
+      "sha256": "081c7da47072add33807413296a72459c8fd3796b19f3cc435f7d35f97035ddf",
       "valid": true
     },
     {
@@ -680,7 +680,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "a15aeb3a72dd38e52c941ab83d478999475c3af77aade997b9a38d4f4ffb50f6",
+      "sha256": "a23a3908a4affaafab178bc584d19ce6be127e8cf691275da67912f8ec7da528",
       "valid": true
     },
     {
@@ -3264,6 +3264,20 @@
       "valid": true
     },
     {
+      "artifact_id": "repo:crates/bbb-pack/src/asset_index.rs",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "resources-default-pack-stack"
+      ],
+      "path": "crates/bbb-pack/src/asset_index.rs",
+      "scenario_ids": [],
+      "sha256": "47290715a14f7178fd16a1f040f2e17bae1a2ac88acf1d3f5af9e6ed682d35fe",
+      "valid": true
+    },
+    {
       "artifact_id": "repo:crates/bbb-pack/src/item_registry.rs",
       "bbb_commit": null,
       "exists": true,
@@ -3339,13 +3353,28 @@
       "valid": true
     },
     {
+      "artifact_id": "repo:crates/bbb-pack/src/roots.rs",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "resources-default-pack-stack"
+      ],
+      "path": "crates/bbb-pack/src/roots.rs",
+      "scenario_ids": [],
+      "sha256": "f2a4b6c8818e90f5285bd61ae68e3bb44e41b66b650015f874566a97c25d9dbd",
+      "valid": true
+    },
+    {
       "artifact_id": "repo:crates/bbb-pack/src/selected_packs.rs",
       "bbb_commit": null,
       "exists": true,
       "invalid_reasons": [],
       "kind": "repo-evidence",
       "mechanism_ids": [
-        "persistence-options-apply"
+        "persistence-options-apply",
+        "resources-default-pack-stack"
       ],
       "path": "crates/bbb-pack/src/selected_packs.rs",
       "scenario_ids": [],
@@ -7521,7 +7550,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "6db92d402f64e10490dabbb252f53d13b0b099fcfe0b20cc41942d9f2d619106",
+      "sha256": "bcab71223f98d5301f39119f73d4f965b8224623012b473c27310e8473f6d35e",
       "valid": true
     },
     {
@@ -7736,7 +7765,8 @@
         "protocol-listener-contracts",
         "protocol-packet-tables",
         "protocol-play-handler-decisions",
-        "protocol-serverbound-call-sites"
+        "protocol-serverbound-call-sites",
+        "resources-default-pack-stack"
       ],
       "path": "scripts/cargo-dev.sh",
       "scenario_ids": [],
@@ -8120,7 +8150,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "a15aeb3a72dd38e52c941ab83d478999475c3af77aade997b9a38d4f4ffb50f6"
+      "sha256": "a23a3908a4affaafab178bc584d19ce6be127e8cf691275da67912f8ec7da528"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8128,7 +8158,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "6db92d402f64e10490dabbb252f53d13b0b099fcfe0b20cc41942d9f2d619106"
+      "sha256": "bcab71223f98d5301f39119f73d4f965b8224623012b473c27310e8473f6d35e"
     }
   ],
   "mechanisms": [
@@ -8769,21 +8799,47 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
+        "full-gate",
         "linux-platform",
         "parity-matrix",
+        "repo:crates/bbb-pack/src/asset_index.rs",
         "repo:crates/bbb-pack/src/resources.rs",
-        "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
+        "repo:crates/bbb-pack/src/roots.rs",
+        "repo:crates/bbb-pack/src/selected_packs.rs",
+        "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md",
+        "repo:scripts/cargo-dev.sh"
       ],
       "bbb": {
         "evidence_commit": "bfcc657cf93001265e748fcf53223f723ad0f57c",
         "evidence_references": [
+          "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
           "crates/bbb-pack/src/resources.rs",
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
+          "crates/bbb-pack/src/resources.rs#metadata_filter_clears_metadata_without_filtering_resource",
+          "crates/bbb-pack/src/resources.rs#resource_stack_filter_blocks_lower_priority_assets",
+          "crates/bbb-pack/src/resources.rs#resource_stack_filter_keeps_current_pack_resource",
+          "crates/bbb-pack/src/resources.rs#resource_stack_resolves_highest_precedence_resource_and_lists_unique_ids",
+          "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "crates/bbb-pack/src/selected_packs.rs#prepared_generation_reuses_compiled_filter_and_overlay_metadata",
+          "crates/bbb-pack/src/selected_packs.rs#server_packs_follow_startup_packs_in_push_order",
+          "docs/wiki/mechanisms/resources/offline-asset-trust.md",
+          "scripts/cargo-dev.sh"
         ],
         "owner": "`bbb-pack::PackResourceStack`"
       },
       "differential_scenarios": [
+        {
+          "artifact_ids": [
+            "full-gate",
+            "repo:crates/bbb-pack/src/asset_index.rs",
+            "repo:crates/bbb-pack/src/resources.rs",
+            "repo:crates/bbb-pack/src/roots.rs",
+            "repo:crates/bbb-pack/src/selected_packs.rs"
+          ],
+          "kind": "state-trace",
+          "scenario_id": "focused-resources-default-pack-stack",
+          "status": "passed"
+        },
         {
           "artifact_ids": [
             "linux-platform"
@@ -8793,27 +8849,73 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-pack discovers_and_verifies_indexed_object",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack metadata_filter_clears_metadata_without_filtering_resource",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/resources.rs#metadata_filter_clears_metadata_without_filtering_resource",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack resource_stack_filter_blocks_lower_priority_assets",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/resources.rs#resource_stack_filter_blocks_lower_priority_assets",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack resource_stack_filter_keeps_current_pack_resource",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/resources.rs#resource_stack_filter_keeps_current_pack_resource",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack resource_stack_resolves_highest_precedence_resource_and_lists_unique_ids",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/resources.rs#resource_stack_resolves_highest_precedence_resource_and_lists_unique_ids",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack single_resource_and_list_resources_use_highest_precedence_metadata",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/resources.rs#single_resource_and_list_resources_use_highest_precedence_metadata",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/roots.rs#indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack prepared_generation_reuses_compiled_filter_and_overlay_metadata",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/selected_packs.rs#prepared_generation_reuses_compiled_filter_and_overlay_metadata",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack server_packs_follow_startup_packs_in_push_order",
+          "ignored": false,
+          "reference": "crates/bbb-pack/src/selected_packs.rs#server_packs_follow_startup_packs_in_push_order",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
         "domain": "resources",
         "line": 17,
         "required_state_projection": "vanilla/startup/selected/server priority、filter、stack",
-        "route_reopen_condition": "pack priority/filter 合同变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "任一 source hash、owner set、pack priority/filter/metadata/stack 合同、CLI/built-in selection scope 或 owned-read API 变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "resources-default-pack-stack",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 46,
@@ -37017,6 +37119,21 @@
     {
       "artifact_ids": [
         "full-gate",
+        "repo:crates/bbb-pack/src/asset_index.rs",
+        "repo:crates/bbb-pack/src/resources.rs",
+        "repo:crates/bbb-pack/src/roots.rs",
+        "repo:crates/bbb-pack/src/selected_packs.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "resources-default-pack-stack"
+      ],
+      "scenario_id": "focused-resources-default-pack-stack",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
         "repo:crates/bbb-native/src/resource_pack_runtime.rs",
         "repo:crates/bbb-native/src/resource_reload.rs",
         "repo:crates/bbb-native/src/runtime/tests.rs",
@@ -37996,7 +38113,6 @@
       "rendering-client-block-entity-tracking",
       "rendering-client-level-dirty-handoff",
       "rendering-level-backend-lifecycle",
-      "resources-default-pack-stack",
       "resources-indexed-panorama",
       "resources-indexed-vanilla-provider",
       "resources-language-manager",
@@ -38030,11 +38146,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 59,
+      "equivalent": 60,
       "not-needed": 25,
-      "partial": 62
+      "partial": 61
     },
-    "valid_count": 85
+    "valid_count": 86
   },
   "vanilla_version": "26.1"
 }
