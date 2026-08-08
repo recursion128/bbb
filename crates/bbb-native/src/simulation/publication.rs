@@ -252,6 +252,41 @@ fn publish_control_views(
     snapshot.rcu(|current| {
         let mut app = current.app.clone();
         app.running = publication.running;
+        app.cursor_gui_position = publication
+            .input_runtime
+            .cursor_position
+            .map(|position| [position.x, position.y]);
+        app.gui_surface_width = publication.input_runtime.gui_scaled_width;
+        app.gui_surface_height = publication.input_runtime.gui_scaled_height;
+        app.cursor_captured = publication.input_runtime.cursor_captured;
+        app.input_focused = publication.input.is_focused();
+        app.mouse_button_events = publication.input_runtime.mouse_button_events;
+        app.left_mouse_button_events = publication.input_runtime.left_mouse_button_events;
+        app.left_mouse_button_press_events =
+            publication.input_runtime.left_mouse_button_press_events;
+        app.inventory_mouse_button_events = publication.input_runtime.inventory_mouse_button_events;
+        app.inventory_mouse_button_consumed_events = publication
+            .input_runtime
+            .inventory_mouse_button_consumed_events;
+        app.inventory_recipe_book_button_hit_events = publication
+            .input_runtime
+            .inventory_recipe_book_button_hit_events;
+        app.keyboard_events = publication.input_runtime.keyboard_events;
+        app.keyboard_press_events = publication.input_runtime.keyboard_press_events;
+        app.key_t_events = publication.input_runtime.key_t_events;
+        app.inventory_keyboard_events = publication.input_runtime.inventory_keyboard_events;
+        app.inventory_key_t_press_events = publication.input_runtime.inventory_key_t_press_events;
+        let (recipe_book_search_focused, recipe_book_search_text_char_count) = publication
+            .input
+            .recipe_book_search_receipt(&publication.world);
+        app.recipe_book_search_focused = recipe_book_search_focused;
+        app.recipe_book_search_text_char_count = recipe_book_search_text_char_count;
+        app.recipe_book_language_requests = publication.input_runtime.recipe_book_language_requests;
+        app.recipe_book_language_target_available = publication
+            .input_runtime
+            .recipe_book_language_target_available;
+        app.recipe_book_language_transitions =
+            publication.input_runtime.recipe_book_language_transitions;
         app.disconnected_screen = publication.input.disconnected_screen_status();
         app.chat_screen = publication
             .input
@@ -333,18 +368,19 @@ mod tests {
         let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(
+        let mut input_runtime = SimulationInputRuntime::new(
             PhysicalSize::new(1280, 720),
             false,
             ClientInformation::default(),
         );
+        input_runtime.set_gui_scale_options(0, false);
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
         let network = HudDebugNetworkSampler::default();
         let tps = HudDebugTpsSampler::default();
         let now = Instant::now();
-        let initial = input(
+        let mut initial = input(
             &world,
             &client_input,
             &input_runtime,
@@ -355,6 +391,8 @@ mod tests {
             &tps,
             now,
         );
+        initial.input_runtime.cursor_position =
+            Some(winit::dpi::PhysicalPosition::new(239.25, 107.5));
         let publisher = SimulationPublisher::new(
             initial,
             Arc::clone(&control.snapshot),
@@ -367,6 +405,36 @@ mod tests {
         assert_eq!(render.generation, control_world.generation);
         assert_eq!(render.generation, control_snapshot.generation);
         assert!(Arc::ptr_eq(&render.world, &control_world.world));
+        assert_eq!(
+            control_snapshot.app.cursor_gui_position,
+            Some([239.25, 107.5])
+        );
+        assert_eq!(control_snapshot.app.gui_surface_width, 427);
+        assert_eq!(control_snapshot.app.gui_surface_height, 240);
+        assert!(!control_snapshot.app.cursor_captured);
+        assert!(!control_snapshot.app.input_focused);
+        assert_eq!(control_snapshot.app.mouse_button_events, 0);
+        assert_eq!(control_snapshot.app.left_mouse_button_events, 0);
+        assert_eq!(control_snapshot.app.left_mouse_button_press_events, 0);
+        assert_eq!(control_snapshot.app.inventory_mouse_button_events, 0);
+        assert_eq!(
+            control_snapshot.app.inventory_mouse_button_consumed_events,
+            0
+        );
+        assert_eq!(
+            control_snapshot.app.inventory_recipe_book_button_hit_events,
+            0
+        );
+        assert_eq!(control_snapshot.app.keyboard_events, 0);
+        assert_eq!(control_snapshot.app.keyboard_press_events, 0);
+        assert_eq!(control_snapshot.app.key_t_events, 0);
+        assert_eq!(control_snapshot.app.inventory_keyboard_events, 0);
+        assert_eq!(control_snapshot.app.inventory_key_t_press_events, 0);
+        assert!(!control_snapshot.app.recipe_book_search_focused);
+        assert_eq!(control_snapshot.app.recipe_book_search_text_char_count, 0);
+        assert_eq!(control_snapshot.app.recipe_book_language_requests, 0);
+        assert!(!control_snapshot.app.recipe_book_language_target_available);
+        assert_eq!(control_snapshot.app.recipe_book_language_transitions, 0);
     }
 
     #[test]

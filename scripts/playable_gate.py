@@ -151,6 +151,46 @@ def _nonnegative_int(value: Any, path: str) -> int:
     return value
 
 
+MOUSE_BUTTON_COUNTER_KEYS = (
+    "mouse_button_events",
+    "left_mouse_button_events",
+    "left_mouse_button_press_events",
+    "inventory_mouse_button_events",
+    "inventory_mouse_button_consumed_events",
+    "inventory_recipe_book_button_hit_events",
+)
+MOUSE_BUTTON_COUNTER_EXPECTED_DELTAS = {
+    "mouse_button_events": 2,
+    "left_mouse_button_events": 2,
+    "left_mouse_button_press_events": 1,
+    "inventory_mouse_button_events": 2,
+    "inventory_mouse_button_consumed_events": 2,
+    "inventory_recipe_book_button_hit_events": 1,
+}
+KEYBOARD_COUNTER_KEYS = (
+    "keyboard_events",
+    "keyboard_press_events",
+    "key_t_events",
+    "inventory_keyboard_events",
+    "inventory_key_t_press_events",
+)
+KEYBOARD_COUNTER_EXPECTED_DELTAS = {
+    "keyboard_events": 2,
+    "keyboard_press_events": 1,
+    "key_t_events": 2,
+    "inventory_keyboard_events": 2,
+    "inventory_key_t_press_events": 1,
+}
+
+
+def _mouse_button_counters(value: Any, path: str) -> dict[str, int]:
+    owner = _object(value, path)
+    return {
+        key: _nonnegative_int(owner.get(key), f"{path}.{key}")
+        for key in MOUSE_BUTTON_COUNTER_KEYS
+    }
+
+
 def _object(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise GateFailure(f"{path} must be an object, got {type(value).__name__}")
@@ -165,9 +205,9 @@ def validate_evidence(
 ) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 17:
+    if evidence.get("schema") != 18:
         raise GateFailure(
-            f"playable evidence schema must be 17, got {evidence.get('schema')!r}"
+            f"playable evidence schema must be 18, got {evidence.get('schema')!r}"
         )
 
     version = evidence.get("vanilla_version")
@@ -360,7 +400,7 @@ def _validate_language_transition(
         "options_write_observed": True,
         "screen_closed": True,
         "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
-        "search_focus_input": "input.key:chat",
+        "search_focus_input": "uinput:chat",
         "search_text_input": "input.text:excitedze",
     }
     for key, value in expected.items():
@@ -401,10 +441,46 @@ def _validate_language_transition(
         raise GateFailure("language transition retained a resource reload failure")
     if transition.get("language_bidirectional") is not False:
         raise GateFailure("en_pt language transition did not select LTR text direction")
+    if transition.get("inventory_game_type_name") != "survival":
+        raise GateFailure(
+            "language transition did not use Vanilla's survival InventoryScreen owner"
+        )
+    if transition.get("recipe_book_search_focused_before_text") is not True:
+        raise GateFailure("recipe-book search was not focused before the trigger text")
+    if transition.get("recipe_book_search_text_char_count_after") != len(
+        RECIPE_LANGUAGE_TRIGGER
+    ):
+        raise GateFailure("recipe-book search did not retain the complete trigger text")
+    if transition.get("recipe_book_language_target_available") is not True:
+        raise GateFailure("en_pt was not available from the committed language catalog")
+    if transition.get("recipe_book_language_requests_delta") != 1:
+        raise GateFailure("recipe-book search did not emit exactly one language request")
+    if transition.get("recipe_book_language_transitions_delta") != 1:
+        raise GateFailure("runtime did not apply exactly one recipe-book language transition")
     if transition.get("recipe_book_settings_commands_delta") != 1:
         raise GateFailure(
             "recipe-book pointer click did not queue exactly one settings packet"
         )
+    click_attempts = _positive_int(
+        transition.get("pointer_click_attempts"),
+        "language_transition.pointer_click_attempts",
+    )
+    if click_attempts != 1:
+        raise GateFailure(
+            "language transition must be attributable to exactly one seat click"
+        )
+    for key in MOUSE_BUTTON_COUNTER_KEYS:
+        if transition.get(f"{key}_delta") != MOUSE_BUTTON_COUNTER_EXPECTED_DELTAS[key]:
+            raise GateFailure(
+                "language transition seat click did not publish one pressed/released "
+                f"pair through {key}"
+            )
+    for key in KEYBOARD_COUNTER_KEYS:
+        if transition.get(f"{key}_delta") != KEYBOARD_COUNTER_EXPECTED_DELTAS[key]:
+            raise GateFailure(
+                "language transition search focus did not publish one KeyT "
+                f"pressed/released pair through {key}"
+            )
     if transition.get("broadcast_client_information_commands_delta") != 1:
         raise GateFailure(
             "language options save did not queue exactly one ClientInformation broadcast"
@@ -545,6 +621,65 @@ def _validate_language_transition(
         raise GateFailure(
             "language transition pointer target did not match window geometry"
         )
+    pre_click = _object(
+        transition.get("pre_click_receipt"),
+        "language_transition.pre_click_receipt",
+    )
+    if pre_click.get("local_inventory_open") is not True:
+        raise GateFailure(
+            "language transition inventory was not stable immediately before the click"
+        )
+    if pre_click.get("renderer_frame_index_after_move", 0) <= pre_click.get(
+        "renderer_frame_index_before_move", 0
+    ):
+        raise GateFailure(
+            "language transition did not present the pointer move before the click"
+        )
+    for key in ("screenshot_sha256", "pointer_receipt_sha256"):
+        if re.fullmatch(r"[0-9a-f]{64}", str(pre_click.get(key))) is None:
+            raise GateFailure(f"language_transition.pre_click_receipt.{key} is malformed")
+    if pre_click.get("screenshot_dimensions") != surface:
+        raise GateFailure(
+            "language transition pre-click screenshot did not match the renderer surface"
+        )
+    observed_cursor = pre_click.get("cursor_gui_position_observed")
+    if (
+        not isinstance(observed_cursor, list)
+        or len(observed_cursor) != 2
+        or any(
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not math.isfinite(value)
+            for value in observed_cursor
+        )
+    ):
+        raise GateFailure(
+            "language transition pre-click receipt lacks a finite GUI cursor position"
+        )
+    button_left = gui_target[0] - RECIPE_BUTTON_WIDTH // 2
+    button_top = gui_target[1] - RECIPE_BUTTON_HEIGHT // 2
+    if not (
+        button_left <= observed_cursor[0] < button_left + RECIPE_BUTTON_WIDTH
+        and button_top <= observed_cursor[1] < button_top + RECIPE_BUTTON_HEIGHT
+    ):
+        raise GateFailure(
+            "language transition pre-click GUI cursor was outside the recipe button"
+        )
+    if pre_click.get("cursor_captured") is not False:
+        raise GateFailure(
+            "language transition cursor remained captured immediately before the click"
+        )
+    if pre_click.get("input_focused") is not True:
+        raise GateFailure(
+            "language transition window was not focused immediately before the click"
+        )
+    _mouse_button_counters(
+        pre_click.get("mouse_button_counters_before"),
+        "language_transition.pre_click_receipt.mouse_button_counters_before",
+    )
+    for key in ("screenshot_path", "pointer_receipt_path"):
+        if not isinstance(pre_click.get(key), str) or not pre_click[key]:
+            raise GateFailure(f"language_transition.pre_click_receipt.{key} is missing")
 
     options_before_hash = transition.get("options_before_sha256")
     if (
@@ -3982,9 +4117,47 @@ def _crafting_recipe_book_is_open(address: tuple[str, int]) -> bool:
     return isinstance(crafting, dict) and crafting.get("open") is True
 
 
+def _client_game_type_name(address: tuple[str, int]) -> str | None:
+    level_state = _control_request(address, "world.level_state")
+    gameplay = level_state.get("gameplay") if isinstance(level_state, dict) else None
+    value = gameplay.get("game_type_name") if isinstance(gameplay, dict) else None
+    return value if isinstance(value, str) else None
+
+
+def _recipe_book_input_receipt(address: tuple[str, int]) -> dict[str, Any]:
+    status = _object(_control_request(address, "app.status"), "app.status")
+    app = _object(status.get("app"), "app.status.app")
+    receipt = {
+        "search_focused": app.get("recipe_book_search_focused"),
+        "search_text_char_count": _nonnegative_int(
+            app.get("recipe_book_search_text_char_count"),
+            "app.status.app.recipe_book_search_text_char_count",
+        ),
+        "language_requests": _nonnegative_int(
+            app.get("recipe_book_language_requests"),
+            "app.status.app.recipe_book_language_requests",
+        ),
+        "language_target_available": app.get(
+            "recipe_book_language_target_available"
+        ),
+        "language_transitions": _nonnegative_int(
+            app.get("recipe_book_language_transitions"),
+            "app.status.app.recipe_book_language_transitions",
+        ),
+    }
+    receipt.update(
+        {
+            key: _nonnegative_int(app.get(key), f"app.status.app.{key}")
+            for key in KEYBOARD_COUNTER_KEYS
+        }
+    )
+    return receipt
+
+
 def drive_recipe_book_language_transition(
     address: tuple[str, int],
     injector: list[str],
+    server_command: Path,
     client_game_dir: Path,
     client_locale: str,
     timeout_seconds: float,
@@ -4019,6 +4192,19 @@ def drive_recipe_book_language_transition(
 
     with _seat_input_only():
         regained = _seat_reach_the_world(address, injector, deadline)
+        # The preceding interaction and seat scenarios intentionally run in
+        # creative mode. Vanilla `InventoryScreen.init` immediately replaces
+        # itself with `CreativeModeInventoryScreen` while the player has
+        # infinite materials; that screen has no recipe-book button. Restore
+        # survival before pressing E so this receipt exercises the exact
+        # InventoryScreen/CraftingRecipeBookComponent owner it claims.
+        _server_console_command(server_command, "gamemode survival bbb-playablegate")
+        inventory_game_type_name = _await_value(
+            deadline,
+            "the client to enter survival before opening InventoryScreen",
+            lambda: _client_game_type_name(address),
+            lambda value: value == "survival",
+        )
         _seat_inject(injector, "key", "inventory")
         _await_value(
             deadline,
@@ -4107,13 +4293,168 @@ def drive_recipe_book_language_transition(
             str(pointer_target[0]),
             str(pointer_target[1]),
         )
-        _seat_inject(injector, "click", "left")
-        _await_value(
-            deadline,
-            "the recipe-book settings owner to observe the pointer click",
-            lambda: _crafting_recipe_book_is_open(address),
-            lambda value: value is True,
+        frame_index_before_move = _nonnegative_int(
+            renderer.get("frame_index"), "renderer.counters.frame_index"
         )
+        renderer_after_move = _await_value(
+            deadline,
+            "three presented frames after the recipe-book pointer move",
+            lambda: _object(
+                _control_request(address, "renderer.counters"), "renderer.counters"
+            ),
+            lambda value: int(value.get("frame_index", 0))
+            >= frame_index_before_move + 3,
+        )
+        frame_index_after_move = _nonnegative_int(
+            renderer_after_move.get("frame_index"), "renderer.counters.frame_index"
+        )
+        local_inventory_open = _inventory_state(address).get("local_inventory_open")
+        if local_inventory_open is not True:
+            raise GateFailure(
+                "the local inventory closed after the pointer move and before the click"
+            )
+        app_status = _object(_control_request(address, "app.status"), "app.status")
+        app_state = _object(app_status.get("app"), "app.status.app")
+        observed_cursor = app_state.get("cursor_gui_position")
+        if (
+            not isinstance(observed_cursor, list)
+            or len(observed_cursor) != 2
+            or any(
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                for value in observed_cursor
+            )
+        ):
+            raise GateFailure(
+                "app.status did not publish a finite GUI cursor position after the move"
+            )
+        if [app_state.get("gui_surface_width"), app_state.get("gui_surface_height")] != [
+            gui_width,
+            gui_height,
+        ]:
+            raise GateFailure(
+                "app.status and renderer counters disagreed on the GUI surface"
+            )
+        cursor_captured = app_state.get("cursor_captured")
+        input_focused = app_state.get("input_focused")
+        mouse_button_counters_before = _mouse_button_counters(
+            app_state, "app.status.app"
+        )
+        artifact_dir = client_game_dir.parent
+        pre_click_screenshot_path = artifact_dir / "language-transition-pre-click.png"
+        pre_click_screenshot = _capture_screenshot(
+            address, pre_click_screenshot_path, deadline
+        )
+        pre_click_dimensions = list(_png_dimensions(pre_click_screenshot))
+        pointer_receipt_path = artifact_dir / "language-transition-pointer.json"
+        pointer_receipt = {
+            "schema": 1,
+            "compositor_window": compositor,
+            "renderer_surface": [surface_width, surface_height],
+            "renderer_gui_surface": [gui_width, gui_height],
+            "recipe_button_gui_center": [button_gui_x, button_gui_y],
+            "recipe_button_physical_target": [
+                button_physical_x,
+                button_physical_y,
+            ],
+            "pointer_global_target": pointer_target,
+            "renderer_frame_index_before_move": frame_index_before_move,
+            "renderer_frame_index_after_move": frame_index_after_move,
+            "local_inventory_open": local_inventory_open,
+            "cursor_gui_position_observed": observed_cursor,
+            "cursor_captured": cursor_captured,
+            "input_focused": input_focused,
+            "mouse_button_counters_before": mouse_button_counters_before,
+            "click_attempts": [],
+        }
+        pointer_receipt_bytes = b""
+
+        def _write_pointer_receipt() -> None:
+            nonlocal pointer_receipt_bytes
+            pointer_receipt_bytes = (
+                json.dumps(pointer_receipt, indent=2, sort_keys=True) + "\n"
+            ).encode("utf-8")
+            pointer_receipt_path.write_bytes(pointer_receipt_bytes)
+
+        _write_pointer_receipt()
+        pre_click_receipt = {
+            "local_inventory_open": local_inventory_open,
+            "renderer_frame_index_before_move": frame_index_before_move,
+            "renderer_frame_index_after_move": frame_index_after_move,
+            "cursor_gui_position_observed": observed_cursor,
+            "cursor_captured": cursor_captured,
+            "input_focused": input_focused,
+            "mouse_button_counters_before": mouse_button_counters_before,
+            "screenshot_path": str(pre_click_screenshot_path),
+            "screenshot_sha256": hashlib.sha256(pre_click_screenshot).hexdigest(),
+            "screenshot_dimensions": pre_click_dimensions,
+            "pointer_receipt_path": str(pointer_receipt_path),
+        }
+        button_left = button_gui_x - RECIPE_BUTTON_WIDTH // 2
+        button_top = button_gui_y - RECIPE_BUTTON_HEIGHT // 2
+        if not (
+            button_left <= observed_cursor[0] < button_left + RECIPE_BUTTON_WIDTH
+            and button_top <= observed_cursor[1] < button_top + RECIPE_BUTTON_HEIGHT
+        ):
+            raise GateFailure(
+                "the observed GUI cursor was outside the recipe-book button before click: "
+                f"{observed_cursor!r}"
+            )
+        if cursor_captured is not False:
+            raise GateFailure(
+                "the recipe-book pointer remained captured immediately before the click"
+            )
+        if input_focused is not True:
+            raise GateFailure(
+                "the recipe-book window was not focused immediately before the click"
+            )
+        _seat_inject(injector, "click", "left")
+        try:
+            _await_value(
+                min(deadline, time.monotonic() + 15.0),
+                "the recipe-book settings owner to observe the pointer click",
+                lambda: _crafting_recipe_book_is_open(address),
+                lambda value: value is True,
+            )
+            click_observed = True
+        except GateFailure:
+            click_observed = False
+        attempt_status = _object(
+            _control_request(address, "app.status"), "app.status"
+        )
+        attempt_app = _object(attempt_status.get("app"), "app.status.app")
+        mouse_button_counters_after = _mouse_button_counters(
+            attempt_app, "app.status.app"
+        )
+        mouse_button_counter_deltas = {
+            key: mouse_button_counters_after[key] - mouse_button_counters_before[key]
+            for key in MOUSE_BUTTON_COUNTER_KEYS
+        }
+        attempt_cursor = attempt_app.get("cursor_gui_position")
+        attempt_inventory_open = _inventory_state(address).get("local_inventory_open")
+        pointer_receipt["click_attempts"].append(
+            {
+                "attempt": 1,
+                "recipe_book_open": click_observed,
+                "local_inventory_open": attempt_inventory_open,
+                "cursor_gui_position_observed": attempt_cursor,
+                "cursor_captured": attempt_app.get("cursor_captured"),
+                "input_focused": attempt_app.get("input_focused"),
+                "mouse_button_counters_after": mouse_button_counters_after,
+                "mouse_button_counter_deltas": mouse_button_counter_deltas,
+            }
+        )
+        _write_pointer_receipt()
+        if not click_observed:
+            raise GateFailure(
+                "the recipe-book settings owner did not observe the attributable pointer "
+                f"click; input counter deltas: {mouse_button_counter_deltas!r}"
+            )
+        pointer_click_attempts = 1
+        pre_click_receipt["pointer_receipt_sha256"] = hashlib.sha256(
+            pointer_receipt_bytes
+        ).hexdigest()
 
     net_after_open = _object(_control_request(address, "net.counters"), "net.counters")
     settings_delta = int(
@@ -4124,8 +4465,31 @@ def drive_recipe_book_language_transition(
         net_after_open.get("broadcast_client_information_commands_queued", 0)
     )
 
-    _tap_key(address, "chat")
+    recipe_input_before = _recipe_book_input_receipt(address)
+    with _seat_input_only():
+        _seat_inject(injector, "key", "chat")
+        search_focused = _await_value(
+            deadline,
+            "the open recipe book to focus its search field",
+            lambda: _recipe_book_input_receipt(address),
+            lambda value: value.get("search_focused") is True,
+        )
+    if search_focused.get("language_target_available") is not True:
+        raise GateFailure(
+            "the committed NativeItemRuntime language catalog does not expose en_pt"
+        )
     _input_text(address, RECIPE_LANGUAGE_TRIGGER)
+    recipe_input_after = _await_value(
+        deadline,
+        "the recipe-book trigger request to cross the runtime language owner",
+        lambda: _recipe_book_input_receipt(address),
+        lambda value: value.get("search_text_char_count")
+        == len(RECIPE_LANGUAGE_TRIGGER)
+        and int(value.get("language_requests", 0))
+        == int(recipe_input_before.get("language_requests", 0)) + 1
+        and int(value.get("language_transitions", 0))
+        == int(recipe_input_before.get("language_transitions", 0)) + 1,
+    )
 
     def _transition_state() -> dict[str, Any]:
         net = _object(_control_request(address, "net.counters"), "net.counters")
@@ -4192,6 +4556,29 @@ def drive_recipe_book_language_transition(
             "selected_language_probe_value"
         ),
         "language_bidirectional": resources_after.get("language_bidirectional"),
+        "inventory_game_type_name": inventory_game_type_name,
+        "recipe_book_search_focused_before_text": search_focused.get(
+            "search_focused"
+        ),
+        "recipe_book_search_text_char_count_after": recipe_input_after.get(
+            "search_text_char_count"
+        ),
+        "recipe_book_language_target_available": recipe_input_after.get(
+            "language_target_available"
+        ),
+        "recipe_book_language_requests_delta": int(
+            recipe_input_after.get("language_requests", 0)
+        )
+        - int(recipe_input_before.get("language_requests", 0)),
+        "recipe_book_language_transitions_delta": int(
+            recipe_input_after.get("language_transitions", 0)
+        )
+        - int(recipe_input_before.get("language_transitions", 0)),
+        **{
+            f"{key}_delta": int(recipe_input_after.get(key, 0))
+            - int(recipe_input_before.get(key, 0))
+            for key in KEYBOARD_COUNTER_KEYS
+        },
         "recipe_book_open_after_click": True,
         "recipe_book_settings_commands_delta": settings_delta,
         "compositor_window": compositor,
@@ -4200,8 +4587,14 @@ def drive_recipe_book_language_transition(
         "recipe_button_gui_center": [button_gui_x, button_gui_y],
         "recipe_button_physical_target": [button_physical_x, button_physical_y],
         "pointer_global_target": pointer_target,
+        "pointer_click_attempts": pointer_click_attempts,
+        **{
+            f"{key}_delta": mouse_button_counter_deltas[key]
+            for key in MOUSE_BUTTON_COUNTER_KEYS
+        },
+        "pre_click_receipt": pre_click_receipt,
         "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
-        "search_focus_input": "input.key:chat",
+        "search_focus_input": "uinput:chat",
         "search_text_input": "input.text:excitedze",
         "options_path": str(options_path),
         "options_language_before": options_before.get("language"),
@@ -5236,7 +5629,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 17,
+        "schema": 18,
         "mode": "live",
         "vanilla_version": "26.1",
         "client_locale": args.client_locale,
@@ -5471,6 +5864,7 @@ def collect_live(args: argparse.Namespace) -> None:
                         lambda: drive_recipe_book_language_transition(
                             address,
                             injector,
+                            args.server_command,
                             args.client_game_dir,
                             args.client_locale,
                             min(240.0, gameplay_timeout),

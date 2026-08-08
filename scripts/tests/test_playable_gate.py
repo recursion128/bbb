@@ -851,7 +851,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 17)
+        self.assertEqual(evidence["schema"], 18)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -974,8 +974,26 @@ class PlayableGateLifecycleTests(unittest.TestCase):
             "target_selected_language_probe_key": "menu.multiplayer",
             "target_selected_language_probe_value": "Play with yer mates",
             "language_bidirectional": False,
+            "inventory_game_type_name": "survival",
+            "recipe_book_search_focused_before_text": True,
+            "recipe_book_search_text_char_count_after": 9,
+            "recipe_book_language_target_available": True,
+            "recipe_book_language_requests_delta": 1,
+            "recipe_book_language_transitions_delta": 1,
             "recipe_book_open_after_click": True,
             "recipe_book_settings_commands_delta": 1,
+            "pointer_click_attempts": 1,
+            "mouse_button_events_delta": 2,
+            "left_mouse_button_events_delta": 2,
+            "left_mouse_button_press_events_delta": 1,
+            "inventory_mouse_button_events_delta": 2,
+            "inventory_mouse_button_consumed_events_delta": 2,
+            "inventory_recipe_book_button_hit_events_delta": 1,
+            "keyboard_events_delta": 2,
+            "keyboard_press_events_delta": 1,
+            "key_t_events_delta": 2,
+            "inventory_keyboard_events_delta": 2,
+            "inventory_key_t_press_events_delta": 1,
             "compositor_window": {
                 "driver": "uinput",
                 "window": "bbb-native",
@@ -996,8 +1014,29 @@ class PlayableGateLifecycleTests(unittest.TestCase):
             "recipe_button_gui_center": [239, 107],
             "recipe_button_physical_target": [717, 322],
             "pointer_global_target": [717, 322],
+            "pre_click_receipt": {
+                "local_inventory_open": True,
+                "renderer_frame_index_before_move": 40,
+                "renderer_frame_index_after_move": 43,
+                "cursor_gui_position_observed": [239.25, 107.5],
+                "cursor_captured": False,
+                "input_focused": True,
+                "mouse_button_counters_before": {
+                    "mouse_button_events": 10,
+                    "left_mouse_button_events": 8,
+                    "left_mouse_button_press_events": 4,
+                    "inventory_mouse_button_events": 4,
+                    "inventory_mouse_button_consumed_events": 4,
+                    "inventory_recipe_book_button_hit_events": 0,
+                },
+                "screenshot_path": "/tmp/language-transition-pre-click.png",
+                "screenshot_sha256": "c" * 64,
+                "screenshot_dimensions": [1280, 720],
+                "pointer_receipt_path": "/tmp/language-transition-pointer.json",
+                "pointer_receipt_sha256": "d" * 64,
+            },
             "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
-            "search_focus_input": "input.key:chat",
+            "search_focus_input": "uinput:chat",
             "search_text_input": "input.text:excitedze",
             "options_language_before": "zh_cn",
             "options_before_sha256": "a" * 64,

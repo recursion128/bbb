@@ -31444,6 +31444,33 @@ fn text_input_needs_the_window_focused_like_the_vanilla_tick_does() {
 }
 
 #[test]
+fn closing_recipe_book_screen_revokes_stale_search_text_input_focus() {
+    // `AbstractRecipeBookScreen.removed` destroys the focused EditBox with
+    // the screen. A retained projection may still carry its last focus bit,
+    // but TextInputManager must stop the IME once that screen is unreachable
+    // so the next physical T can open ChatScreen.
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    assert!(world.open_local_inventory());
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+    input.recipe_book_search_focused = true;
+
+    assert!(input.text_input_is_active(&world));
+    assert!(input.recipe_book_search_receipt(&world).0);
+    assert!(world.close_local_container(0));
+    assert!(!input.text_input_is_active(&world));
+    assert!(!input.recipe_book_search_receipt(&world).0);
+}
+
+#[test]
 fn the_global_press_keys_ignore_screen_state_and_key_releases() {
     // `KeyboardHandler.keyPress` (KeyboardHandler.java:465-489) answers these
     // two on any press, before a screen sees the event, and returns without

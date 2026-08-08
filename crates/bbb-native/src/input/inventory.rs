@@ -2066,7 +2066,7 @@ fn handle_anvil_rename_key_input(
     }
 }
 
-fn recipe_book_search_is_active(input: &ClientInputState, world: &WorldStore) -> bool {
+pub(crate) fn recipe_book_search_is_active(input: &ClientInputState, world: &WorldStore) -> bool {
     input.recipe_book_search_focused && recipe_book_search_box_is_open(world)
 }
 
@@ -2716,7 +2716,7 @@ fn inventory_screen_cursor_position(
     (x.is_finite() && y.is_finite()).then(|| (x.floor() as i32, y.floor() as i32))
 }
 
-fn recipe_book_button_at_position(
+pub(crate) fn recipe_book_button_at_position(
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,

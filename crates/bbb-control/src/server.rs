@@ -51,6 +51,7 @@ pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
             disconnected_screen: None,
             chat_screen: None,
             death_screen: None,
+            ..AppStatus::default()
         },
         ..ControlSnapshot::default()
     }))

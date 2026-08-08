@@ -4140,6 +4140,46 @@ fn recipe_book_button_click_toggles_local_setting_and_queues_packet() {
 }
 
 #[test]
+fn scaled_local_inventory_recipe_button_click_uses_the_logical_gui_surface() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_local_inventory());
+    let surface = PhysicalSize::new(427, 240);
+    let cursor = Some(PhysicalPosition::new(239.18671875, 107.33333333333333));
+
+    assert_eq!(
+        recipe_book_button_at_position(&world, cursor, surface),
+        Some(RecipeBookType::Crafting)
+    );
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        cursor,
+        surface,
+    ));
+
+    assert!(world.recipe_book().settings.crafting.open);
+    assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::RecipeBookChangeSettings(
+            RecipeBookChangeSettingsCommand {
+                book_type: RecipeBookType::Crafting,
+                open: true,
+                filtering: false,
+            }
+        ))
+    ));
+}
+
+#[test]
 fn recipe_book_filter_click_toggles_filtering_and_queues_packet() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

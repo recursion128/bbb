@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "e7b53d4e73d44c80e9bac1ce0699089465f58cedef37fc05f844e0ae4ce6a48f"
+      "sha256": "1d6367d91968b3856702cb9fd4c30301d779bf074452a6927b3921180010e502"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -23955,6 +23955,8 @@
         "tests": [
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
           "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/simulation/input_commands.rs#mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
+          "crates/bbb-native/src/input/tests.rs#closing_recipe_book_screen_revokes_stale_search_text_input_focus",
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]
@@ -23981,6 +23983,8 @@
         "tests": [
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
           "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/simulation/input_commands.rs#mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
+          "crates/bbb-native/src/input/tests.rs#closing_recipe_book_screen_revokes_stale_search_text_input_focus",
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]
@@ -38037,6 +38041,8 @@
         "tests": [
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
           "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/simulation/input_commands.rs#mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
+          "crates/bbb-native/src/input/tests.rs#closing_recipe_book_screen_revokes_stale_search_text_input_focus",
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]
@@ -38138,6 +38144,8 @@
         "tests": [
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
           "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/simulation/input_commands.rs#mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
+          "crates/bbb-native/src/input/tests.rs#closing_recipe_book_screen_revokes_stale_search_text_input_focus",
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]
@@ -38189,6 +38197,8 @@
         "tests": [
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
           "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/simulation/input_commands.rs#mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
+          "crates/bbb-native/src/input/tests.rs#closing_recipe_book_screen_revokes_stale_search_text_input_focus",
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]

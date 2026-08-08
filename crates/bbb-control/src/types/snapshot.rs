@@ -15,6 +15,48 @@ pub struct AppStatus {
     pub version: String,
     pub running: bool,
     #[serde(default)]
+    pub cursor_gui_position: Option<[f64; 2]>,
+    #[serde(default)]
+    pub gui_surface_width: u32,
+    #[serde(default)]
+    pub gui_surface_height: u32,
+    #[serde(default)]
+    pub cursor_captured: bool,
+    #[serde(default)]
+    pub input_focused: bool,
+    #[serde(default)]
+    pub mouse_button_events: u64,
+    #[serde(default)]
+    pub left_mouse_button_events: u64,
+    #[serde(default)]
+    pub left_mouse_button_press_events: u64,
+    #[serde(default)]
+    pub inventory_mouse_button_events: u64,
+    #[serde(default)]
+    pub inventory_mouse_button_consumed_events: u64,
+    #[serde(default)]
+    pub inventory_recipe_book_button_hit_events: u64,
+    #[serde(default)]
+    pub keyboard_events: u64,
+    #[serde(default)]
+    pub keyboard_press_events: u64,
+    #[serde(default)]
+    pub key_t_events: u64,
+    #[serde(default)]
+    pub inventory_keyboard_events: u64,
+    #[serde(default)]
+    pub inventory_key_t_press_events: u64,
+    #[serde(default)]
+    pub recipe_book_search_focused: bool,
+    #[serde(default)]
+    pub recipe_book_search_text_char_count: usize,
+    #[serde(default)]
+    pub recipe_book_language_requests: u64,
+    #[serde(default)]
+    pub recipe_book_language_target_available: bool,
+    #[serde(default)]
+    pub recipe_book_language_transitions: u64,
+    #[serde(default)]
     pub disconnected_screen: Option<DisconnectedScreenStatus>,
     #[serde(default)]
     pub chat_screen: Option<ChatScreenStatus>,
@@ -676,6 +718,7 @@ impl ControlState {
                     disconnected_screen: None,
                     chat_screen: None,
                     death_screen: None,
+                    ..AppStatus::default()
                 },
                 ..ControlSnapshot::default()
             })),

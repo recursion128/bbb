@@ -256,18 +256,18 @@ pub(crate) use inventory::{
     handle_inventory_key_input_with_clipboard, handle_inventory_mouse_input_with_item_runtime,
     handle_inventory_mouse_wheel, handle_inventory_text_input, inventory_screen_layout,
     inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
-    maybe_close_narrow_recipe_book, queue_lectern_button_click, recipe_book_button_position,
-    recipe_book_main_gui_offset, recipe_book_search_entry_consumes_key,
-    recipe_book_tab_count_for_background, recipe_book_type_for_background,
-    recipe_book_type_settings, recipe_book_visible_tab_indices, sync_beacon_effect_selection_state,
-    sync_loom_pattern_state_for_hud, sync_recipe_book_presentation,
-    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
-    RecipeBookPresentationHudState, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
-    LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT,
-    LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y,
-    LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
-    RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X,
-    RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X,
+    maybe_close_narrow_recipe_book, queue_lectern_button_click, recipe_book_button_at_position,
+    recipe_book_button_position, recipe_book_main_gui_offset,
+    recipe_book_search_entry_consumes_key, recipe_book_tab_count_for_background,
+    recipe_book_type_for_background, recipe_book_type_settings, recipe_book_visible_tab_indices,
+    sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+    sync_recipe_book_presentation, sync_stonecutter_recipe_scroll_state, InventoryScreenBackground,
+    InventorySlotLayout, RecipeBookPresentationHudState, LOOM_PATTERN_BUTTON_COLUMNS,
+    LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
+    LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH,
+    LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+    RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+    RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X,
     RECIPE_BOOK_PAGE_BUTTON_HEIGHT, RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
     RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
     RECIPE_BOOK_RECIPE_BUTTON_SIZE, RECIPE_BOOK_RECIPE_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_Y,
@@ -1511,7 +1511,7 @@ impl ClientInputState {
             || world
                 .creative_inventory_snapshot()
                 .is_some_and(|snapshot| self.creative_inventory.search_is_active(snapshot))
-            || self.recipe_book_search_focused
+            || inventory::recipe_book_search_is_active(self, world)
             || inventory::anvil_screen_is_open(world)
             || self.chat_entry_is_active()
     }
@@ -2199,7 +2199,12 @@ impl ClientInputState {
         })
     }
 
-    fn clear_pressed(&mut self) {
+    /// Release only held gameplay bindings, matching
+    /// `KeyMapping.releaseAll`. Screen-owned focus, text, hover and drag
+    /// state remain with the open screen; clearing those after every input
+    /// batch makes a focused `EditBox` lose ownership before its next
+    /// `CharacterEvent` arrives.
+    fn release_gameplay_pressed(&mut self) {
         self.sneak_released_by_screen_when_down |= self.toggle_crouch && self.sneak;
         self.sprint_released_by_screen_when_down |= self.toggle_sprint && self.sprint_key_down;
         self.attack_released_by_screen_when_down |= self.toggle_attack && self.mouse_left_down;
@@ -2223,6 +2228,22 @@ impl ClientInputState {
         self.mouse_delta_y = 0.0;
         self.scroll_accumulated_x = 0.0;
         self.scroll_accumulated_y = 0.0;
+        #[cfg(test)]
+        {
+            self.local_player_movement_tick_accumulator_seconds = 0.0;
+        }
+        self.last_vehicle_command_at = None;
+        self.riding_jump_charge_seconds = None;
+        self.clear_sprint_trigger();
+        self.creative_flight_jump_trigger_ticks = 0;
+        self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+    }
+
+    /// Tear down screen-local transient interaction as well as gameplay
+    /// bindings. Terminal screen replacement uses this stronger reset; a
+    /// normal `release_active_input` deliberately does not.
+    fn clear_pressed(&mut self) {
+        self.release_gameplay_pressed();
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
         self.inventory_hovered_slot = None;
@@ -2258,15 +2279,6 @@ impl ClientInputState {
         self.advancement_mouse_left_down = false;
         self.advancement_is_scrolling = false;
         self.reset_debug_crash_hold();
-        #[cfg(test)]
-        {
-            self.local_player_movement_tick_accumulator_seconds = 0.0;
-        }
-        self.last_vehicle_command_at = None;
-        self.riding_jump_charge_seconds = None;
-        self.clear_sprint_trigger();
-        self.creative_flight_jump_trigger_ticks = 0;
-        self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
     }
 
     fn clear_modifiers(&mut self) {
@@ -11578,6 +11590,17 @@ fn debug_block_state_description(
 }
 
 impl ClientInputState {
+    pub(crate) fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    pub(crate) fn recipe_book_search_receipt(&self, world: &WorldStore) -> (bool, usize) {
+        (
+            inventory::recipe_book_search_is_active(self, world),
+            self.recipe_book_search_text.chars().count(),
+        )
+    }
+
     pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {
         self.loom_selected_pattern_index
     }
@@ -11683,7 +11706,7 @@ pub(crate) fn release_active_input(
 ) {
     let before = player_input_from_state(input);
     let riding_jump_charge_seconds = input.riding_jump_charge_seconds.take();
-    input.clear_pressed();
+    input.release_gameplay_pressed();
     let after = player_input_from_state(input);
     if after != before {
         queue_player_input_command(counters, net_commands, after);

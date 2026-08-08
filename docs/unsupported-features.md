@@ -82,8 +82,10 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   trigger owners with per-owner evidence; the six non-bidi `ClientLanguage`
   owners plus 7 manager owners and 2 trigger owners route to
   `resources-language-manager`, while `getVisualOrder` routes to
-  `ui-bidirectional-shaping`. Its new implementation still requires a clean
-  full gate and exact-HEAD language/platform receipt before those rows close.
+  `ui-bidirectional-shaping`. Its implementation now carries attributable
+  pointer, physical KeyT, screen-focus, reload, options-save and broadcast
+  receipts, but remains partial until a clean full gate and exact-HEAD
+  language/platform receipt close those rows.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in

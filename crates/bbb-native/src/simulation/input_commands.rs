@@ -50,7 +50,8 @@ use crate::{
         handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
         handle_mouse_wheel, handle_text_input_with_item_runtime, inventory_screen_layout,
         queue_chat_command, queue_debug_recreate_server_query_request, queue_lectern_button_click,
-        recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
+        recipe_book_button_at_position, recipe_book_type_for_background, recipe_book_type_settings,
+        release_active_input,
         reporting::PlayerReportingPlatformRequest,
         social::SocialInteractionsPlatformRequest,
         CommandSuggestionTextMeasurer, DebugClipboard, DebugFeatureCountRequest,
@@ -91,6 +92,23 @@ pub(crate) struct SimulationInputRuntime {
     pub(crate) minimized: bool,
     cursor_position: Option<PhysicalPosition<f64>>,
     cursor_captured: bool,
+    /// Process-lifetime receipts for the physical mouse-button path. These
+    /// distinguish winit delivery from screen routing and consumption without
+    /// exposing mutable input state to the control thread.
+    mouse_button_events: u64,
+    left_mouse_button_events: u64,
+    left_mouse_button_press_events: u64,
+    inventory_mouse_button_events: u64,
+    inventory_mouse_button_consumed_events: u64,
+    inventory_recipe_book_button_hit_events: u64,
+    keyboard_events: u64,
+    keyboard_press_events: u64,
+    key_t_events: u64,
+    inventory_keyboard_events: u64,
+    inventory_key_t_press_events: u64,
+    recipe_book_language_requests: u64,
+    recipe_book_language_target_available: bool,
+    recipe_book_language_transitions: u64,
     text_measurements: HudFontGlyphMap,
     code_of_conduct_overlay: CodeOfConductOverlayState,
     net_disconnect_requested: bool,
@@ -120,6 +138,20 @@ pub(crate) struct SimulationInputPublication {
     pub(crate) minimized: bool,
     pub(crate) cursor_position: Option<PhysicalPosition<f64>>,
     pub(crate) cursor_captured: bool,
+    pub(crate) mouse_button_events: u64,
+    pub(crate) left_mouse_button_events: u64,
+    pub(crate) left_mouse_button_press_events: u64,
+    pub(crate) inventory_mouse_button_events: u64,
+    pub(crate) inventory_mouse_button_consumed_events: u64,
+    pub(crate) inventory_recipe_book_button_hit_events: u64,
+    pub(crate) keyboard_events: u64,
+    pub(crate) keyboard_press_events: u64,
+    pub(crate) key_t_events: u64,
+    pub(crate) inventory_keyboard_events: u64,
+    pub(crate) inventory_key_t_press_events: u64,
+    pub(crate) recipe_book_language_requests: u64,
+    pub(crate) recipe_book_language_target_available: bool,
+    pub(crate) recipe_book_language_transitions: u64,
     pub(crate) code_of_conduct_overlay: CodeOfConductOverlayProjection,
 }
 
@@ -164,6 +196,20 @@ impl SimulationInputRuntime {
             enforce_unicode: false,
             cursor_position: None,
             cursor_captured,
+            mouse_button_events: 0,
+            left_mouse_button_events: 0,
+            left_mouse_button_press_events: 0,
+            inventory_mouse_button_events: 0,
+            inventory_mouse_button_consumed_events: 0,
+            inventory_recipe_book_button_hit_events: 0,
+            keyboard_events: 0,
+            keyboard_press_events: 0,
+            key_t_events: 0,
+            inventory_keyboard_events: 0,
+            inventory_key_t_press_events: 0,
+            recipe_book_language_requests: 0,
+            recipe_book_language_target_available: false,
+            recipe_book_language_transitions: 0,
             text_measurements: HudFontGlyphMap::default(),
             code_of_conduct_overlay: CodeOfConductOverlayState::default(),
             net_disconnect_requested: false,
@@ -205,6 +251,20 @@ impl SimulationInputRuntime {
             minimized: self.minimized,
             cursor_position: self.cursor_position,
             cursor_captured: self.cursor_captured,
+            mouse_button_events: self.mouse_button_events,
+            left_mouse_button_events: self.left_mouse_button_events,
+            left_mouse_button_press_events: self.left_mouse_button_press_events,
+            inventory_mouse_button_events: self.inventory_mouse_button_events,
+            inventory_mouse_button_consumed_events: self.inventory_mouse_button_consumed_events,
+            inventory_recipe_book_button_hit_events: self.inventory_recipe_book_button_hit_events,
+            keyboard_events: self.keyboard_events,
+            keyboard_press_events: self.keyboard_press_events,
+            key_t_events: self.key_t_events,
+            inventory_keyboard_events: self.inventory_keyboard_events,
+            inventory_key_t_press_events: self.inventory_key_t_press_events,
+            recipe_book_language_requests: self.recipe_book_language_requests,
+            recipe_book_language_target_available: self.recipe_book_language_target_available,
+            recipe_book_language_transitions: self.recipe_book_language_transitions,
             code_of_conduct_overlay: self.code_of_conduct_overlay.projection(),
         }
     }
@@ -893,6 +953,13 @@ impl SimulationInputRuntime {
         clipboard_text: Option<String>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        self.keyboard_events = self.keyboard_events.saturating_add(1);
+        if matches!(state, ElementState::Pressed) {
+            self.keyboard_press_events = self.keyboard_press_events.saturating_add(1);
+        }
+        if matches!(physical_key, PhysicalKey::Code(KeyCode::KeyT)) {
+            self.key_t_events = self.key_t_events.saturating_add(1);
+        }
         // `KeyboardHandler.keyPress` (KeyboardHandler.java:465-489) answers the
         // fullscreen and screenshot keys before it hands the event to
         // `screen.keyPressed`, so every screen dispatch below runs after this
@@ -1137,6 +1204,17 @@ impl SimulationInputRuntime {
 
         let chat_screen_was_open = context.input.chat_entry_is_active();
         let container_open = context.world.open_container_id().is_some();
+        let inventory_open = inventory_screen_layout(context.world).is_some();
+        if inventory_open {
+            self.inventory_keyboard_events = self.inventory_keyboard_events.saturating_add(1);
+            if matches!(
+                (physical_key, state),
+                (PhysicalKey::Code(KeyCode::KeyT), ElementState::Pressed)
+            ) {
+                self.inventory_key_t_press_events =
+                    self.inventory_key_t_press_events.saturating_add(1);
+            }
+        }
         let recipe_book_open = recipe_book_screen_is_open(context.world);
         let dialog_open = context.world.dialog_screen_is_open();
         let sign_editor_open = context
@@ -1467,13 +1545,20 @@ impl SimulationInputRuntime {
             .item_runtime
             .as_ref()
             .is_some_and(|runtime| runtime.has_available_language(RECIPE_BOOK_LANGUAGE_TARGET));
-        apply_recipe_book_language_transition(
+        self.recipe_book_language_requests = self
+            .recipe_book_language_requests
+            .saturating_add(u64::from(requests));
+        self.recipe_book_language_target_available = target_available;
+        if apply_recipe_book_language_transition(
             requests,
             target_available,
             &mut self.client_information,
             context.server_resource_packs,
             context.platform,
-        );
+        ) {
+            self.recipe_book_language_transitions =
+                self.recipe_book_language_transitions.saturating_add(1);
+        }
     }
 
     /// The element that currently owns pre-edit rendering, in the same
@@ -1726,6 +1811,14 @@ impl SimulationInputRuntime {
         pause_draft_target: Option<HudPauseDraftButton>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        self.mouse_button_events = self.mouse_button_events.saturating_add(1);
+        if button == MouseButton::Left {
+            self.left_mouse_button_events = self.left_mouse_button_events.saturating_add(1);
+            if state == ElementState::Pressed {
+                self.left_mouse_button_press_events =
+                    self.left_mouse_button_press_events.saturating_add(1);
+            }
+        }
         // A click re-projects the raw physical cache with the current GUI
         // projection (`MouseHandler.onButton` -> `getScaledXPos`); the screen
         // handlers below read the runtime's logical cursor position, so
@@ -2163,13 +2256,27 @@ impl SimulationInputRuntime {
             return;
         }
         if context.world.open_container_id().is_some() {
+            self.inventory_mouse_button_events =
+                self.inventory_mouse_button_events.saturating_add(1);
+            if matches!((button, state), (MouseButton::Left, ElementState::Pressed))
+                && recipe_book_button_at_position(
+                    context.world,
+                    self.cursor_position,
+                    self.gui_surface_size(),
+                )
+                .is_some()
+            {
+                self.inventory_recipe_book_button_hit_events = self
+                    .inventory_recipe_book_button_hit_events
+                    .saturating_add(1);
+            }
             self.request_cursor_capture(false, context.platform);
             if recipe_book_screen_is_open(context.world) {
                 context.platform.submit(PlatformEffect::RecipeBookInput(
                     ScreenNarrationScheduleInput::MouseAction,
                 ));
             }
-            handle_inventory_mouse_input_with_item_runtime(
+            let consumed = handle_inventory_mouse_input_with_item_runtime(
                 context.input,
                 context.world,
                 context.net_counters,
@@ -2180,6 +2287,11 @@ impl SimulationInputRuntime {
                 self.cursor_position,
                 self.gui_surface_size(),
             );
+            if consumed {
+                self.inventory_mouse_button_consumed_events = self
+                    .inventory_mouse_button_consumed_events
+                    .saturating_add(1);
+            }
             flush_local_interaction_sound_actions(
                 context.world,
                 context.level_random,
@@ -2568,6 +2680,17 @@ impl SimulationInputRuntime {
             context.level_random,
             context.audio_events,
         );
+        // Control input is a synthetic transport into the same screen owner,
+        // not an alternate behavior path. RecipeBookComponent's hidden
+        // language request is produced inside the shared key/text handler and
+        // must cross the same runtime resource/options boundary as a winit
+        // event before the next request can observe it.
+        self.apply_recipe_book_language_requests(context);
+        if narrates_chat && recipe_book_screen_is_open(context.world) {
+            context.platform.submit(PlatformEffect::RecipeBookInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
         if narrates_chat
             && (chat_screen_was_open
                 || context.input.chat_entry_is_active()
@@ -2675,12 +2798,12 @@ fn apply_recipe_book_language_transition(
     client_information: &mut ClientInformation,
     server_resource_packs: &mut ServerResourcePackRuntime,
     platform: &mut PlatformEffectCollector<'_>,
-) {
+) -> bool {
     if requests == 0
         || !target_available
         || client_information.language == RECIPE_BOOK_LANGUAGE_TARGET
     {
-        return;
+        return false;
     }
 
     client_information.language = RECIPE_BOOK_LANGUAGE_TARGET.to_string();
@@ -2695,6 +2818,7 @@ fn apply_recipe_book_language_transition(
         }],
         broadcast: client_information.clone(),
     });
+    true
 }
 
 fn apply_client_options_save_completed(
@@ -3513,7 +3637,8 @@ mod tests {
             None,
         )
         .unwrap();
-        let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
+        let mut services_block_lists =
+            ServicesBlockListRuntime::new(Handle::current(), mailbox.clone());
         let mut particle_runtime = None;
         let mut item_runtime = None;
         let mut terrain_textures = TerrainTextureState::default();
@@ -3562,6 +3687,169 @@ mod tests {
         // dropped.
         assert_eq!(runtime.last_applied_sequence, 1);
         assert!(!input.debug_pause_screen_is_open());
+    }
+
+    #[tokio::test]
+    async fn mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption() {
+        use crate::services_block_list_runtime::ServicesBlockListRuntime;
+        use crate::terrain_runtime::TerrainTextureState;
+        use bbb_control::{AudioCounters, NetCounters};
+        use tokio::runtime::Handle;
+        use uuid::Uuid;
+
+        let mailbox = crate::simulation::commands::SimulationMailbox::default();
+        let now = Instant::now();
+        let mut input = crate::input::ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        assert!(world.open_local_inventory());
+        let mut net_counters = NetCounters::default();
+        let (net_tx, mut net_rx) = mpsc::channel(1);
+        let net_commands = Some(net_tx);
+        let mut first_person_hand_presentation =
+            crate::item_models::FirstPersonHandPresentation::default();
+        let mut server_resource_packs = ServerResourcePackRuntime::new(
+            Handle::current(),
+            std::env::temp_dir(),
+            "mouse-button-receipt-test",
+            Uuid::nil(),
+            None,
+        )
+        .unwrap();
+        let mut services_block_lists =
+            ServicesBlockListRuntime::new(Handle::current(), mailbox.clone());
+        let mut particle_runtime = None;
+        let mut item_runtime = None;
+        let mut terrain_textures = TerrainTextureState::default();
+        let mut win_screen_resources =
+            std::sync::Arc::new(crate::win_screen_resources::WinScreenResources {
+                lines: Vec::new(),
+                narration_components: Vec::new(),
+                total_scroll_length: 0,
+            });
+        let mut level_random = bbb_world::LevelEventSoundRandomState::default();
+        let mut audio_events: Option<&mut dyn AudioEventSink> = None;
+        let collector =
+            crate::simulation::effects::RenderEffectCollector::new(1, AudioCounters::default());
+        let mut platform = collector.platform();
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
+        runtime.set_gui_scale_options(0, false);
+        assert!(!world.recipe_book().settings.crafting.open);
+        let mut context = SimulationInputContext {
+            input: &mut input,
+            now,
+            first_person_hand_presentation: &mut first_person_hand_presentation,
+            world: &mut world,
+            net_counters: &mut net_counters,
+            net_commands: &net_commands,
+            server_resource_packs: &mut server_resource_packs,
+            services_block_lists: &mut services_block_lists,
+            particle_runtime: &mut particle_runtime,
+            item_runtime: &mut item_runtime,
+            terrain_textures: &mut terrain_textures,
+            code_of_conduct: None,
+            win_screen_resources: &mut win_screen_resources,
+            entity_partial_tick: 0.0,
+            level_random: &mut level_random,
+            audio_events: &mut audio_events,
+            platform: &mut platform,
+        };
+        assert!(simulation_wants_cursor(context.input, context.world));
+
+        runtime.apply_mouse_button(
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(239.18671875, 107.33333333333333)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            &mut context,
+        );
+
+        assert_eq!(runtime.mouse_button_events, 1);
+        assert_eq!(runtime.left_mouse_button_events, 1);
+        assert_eq!(runtime.left_mouse_button_press_events, 1);
+        assert_eq!(runtime.inventory_mouse_button_events, 1);
+        assert_eq!(runtime.inventory_mouse_button_consumed_events, 1);
+        assert_eq!(runtime.inventory_recipe_book_button_hit_events, 1);
+        assert_eq!(runtime.keyboard_events, 0);
+        assert!(context.world.recipe_book().settings.crafting.open);
+        assert_eq!(
+            context
+                .net_counters
+                .recipe_book_change_settings_commands_queued,
+            1
+        );
+        assert!(matches!(
+            net_rx.try_recv(),
+            Ok(NetCommand::RecipeBookChangeSettings(_))
+        ));
+        mailbox
+            .enqueue(SimulationCommand::Key {
+                physical_key: PhysicalKey::Code(KeyCode::KeyT),
+                state: ElementState::Pressed,
+                clipboard_text: None,
+            })
+            .unwrap();
+        mailbox
+            .enqueue(SimulationCommand::Key {
+                physical_key: PhysicalKey::Code(KeyCode::KeyT),
+                state: ElementState::Released,
+                clipboard_text: None,
+            })
+            .unwrap();
+        mailbox
+            .enqueue(SimulationCommand::ImeCommit("t".to_string()))
+            .unwrap();
+        runtime.apply_commands(mailbox.drain_through_barrier(), &mut context, false);
+        assert!(context.input.recipe_book_search_hud_state().focused);
+        assert_eq!(context.input.recipe_book_search_hud_state().text, "");
+        mailbox
+            .enqueue(SimulationCommand::ImeCommit("excitedz".to_string()))
+            .unwrap();
+        runtime.apply_commands(mailbox.drain_through_barrier(), &mut context, false);
+        assert!(context.input.recipe_book_search_hud_state().focused);
+        runtime.apply_input_control(
+            InputControlRequest::Text {
+                text: "e".to_string(),
+            },
+            &mut context,
+        );
+        let search = context.input.recipe_book_search_hud_state();
+        assert!(search.focused);
+        assert_eq!(search.text, "excitedze");
+        assert_eq!(context.input.take_recipe_book_language_requests(), 0);
+        assert_eq!(runtime.recipe_book_language_requests, 1);
+        assert_eq!(runtime.keyboard_events, 2);
+        assert_eq!(runtime.keyboard_press_events, 1);
+        assert_eq!(runtime.key_t_events, 2);
+        assert_eq!(runtime.inventory_keyboard_events, 2);
+        assert_eq!(runtime.inventory_key_t_press_events, 1);
+        assert!(!runtime.recipe_book_language_target_available);
+        assert_eq!(runtime.recipe_book_language_transitions, 0);
+        let publication = runtime.publication();
+        assert_eq!(publication.mouse_button_events, 1);
+        assert_eq!(publication.left_mouse_button_events, 1);
+        assert_eq!(publication.left_mouse_button_press_events, 1);
+        assert_eq!(publication.inventory_mouse_button_events, 1);
+        assert_eq!(publication.inventory_mouse_button_consumed_events, 1);
+        assert_eq!(publication.inventory_recipe_book_button_hit_events, 1);
+        assert_eq!(publication.keyboard_events, 2);
+        assert_eq!(publication.keyboard_press_events, 1);
+        assert_eq!(publication.key_t_events, 2);
+        assert_eq!(publication.inventory_keyboard_events, 2);
+        assert_eq!(publication.inventory_key_t_press_events, 1);
+        assert_eq!(publication.recipe_book_language_requests, 1);
+        assert!(!publication.recipe_book_language_target_available);
+        assert_eq!(publication.recipe_book_language_transitions, 0);
     }
 
     #[tokio::test]

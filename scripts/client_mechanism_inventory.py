@@ -9145,6 +9145,8 @@ LANGUAGE_MANAGER_SELECTION_EVIDENCE = OwnerEvidence(
     (
         "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
         "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+        "crates/bbb-native/src/simulation/input_commands.rs#mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
+        "crates/bbb-native/src/input/tests.rs#closing_recipe_book_screen_revokes_stale_search_text_input_focus",
         "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
         "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner",
     ),
