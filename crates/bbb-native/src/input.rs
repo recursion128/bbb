@@ -747,6 +747,11 @@ pub(crate) struct ClientInputState {
     recipe_book_search_selection: usize,
     recipe_book_search_focused: bool,
     recipe_book_search_suppress_open_key_commit: bool,
+    /// `RecipeBookComponent.checkSearchStringUpdate` requests the fixed
+    /// `en_pt` language when the search text lowercases to `excitedze`.
+    /// Keep only a count: the target is a Vanilla constant, so owned strings
+    /// would add allocation without carrying any information.
+    recipe_book_language_requests: u32,
     recipe_book_crafting_tab_index: usize,
     recipe_book_furnace_tab_index: usize,
     recipe_book_blast_furnace_tab_index: usize,
@@ -3521,6 +3526,10 @@ impl ClientInputState {
     /// way every other debug-hotkey side effect is.
     pub(crate) fn take_debug_client_option_writes(&mut self) -> Vec<ClientOptionWrite> {
         std::mem::take(&mut self.debug_client_option_writes)
+    }
+
+    pub(crate) fn take_recipe_book_language_requests(&mut self) -> u32 {
+        std::mem::take(&mut self.recipe_book_language_requests)
     }
 
     pub(crate) fn debug_show_local_server_entity_hit_boxes(&self) -> bool {

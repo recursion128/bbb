@@ -105,9 +105,9 @@ pub(crate) struct SimulationInputRuntime {
     /// `TextInputManager.textInputEnabled`: the last state handed to the
     /// window, so a steady screen does not re-request it every step.
     text_input_enabled: bool,
-    /// What `Options.buildPlayerInformation` would return. Nothing this client
-    /// changes at runtime feeds it, so `broadcastOptions` re-sends the values
-    /// the session was configured with.
+    /// What `Options.buildPlayerInformation` would return. Most values remain
+    /// startup configuration; the recipe-book `excitedze` action replaces the
+    /// language before `Options.save` calls `broadcastOptions`.
     client_information: ClientInformation,
 }
 
@@ -215,6 +215,10 @@ impl SimulationInputRuntime {
 
     pub(crate) fn gui_surface_size(&self) -> PhysicalSize<u32> {
         self.gui_surface_size
+    }
+
+    pub(crate) fn client_information(&self) -> &ClientInformation {
+        &self.client_information
     }
 
     pub(crate) fn player_section_ready(
@@ -505,6 +509,13 @@ impl SimulationInputRuntime {
                 if !success {
                     tracing::warn!(path = %path.display(), "platform path open failed");
                 }
+            }
+            SimulationCommand::ClientOptionsSaveCompleted(information) => {
+                apply_client_options_save_completed(
+                    information,
+                    context.net_counters,
+                    context.net_commands,
+                );
             }
             SimulationCommand::ResourceReloadAck(ack) => {
                 match apply_resource_reload_ack(*ack, context) {
@@ -1210,11 +1221,6 @@ impl SimulationInputRuntime {
                 ScreenNarrationScheduleInput::KeyboardAction,
             ));
         }
-        if recipe_book_open && matches!(state, ElementState::Pressed) {
-            context.platform.submit(PlatformEffect::RecipeBookInput(
-                ScreenNarrationScheduleInput::KeyboardAction,
-            ));
-        }
         if !self.cursor_captured
             && !container_open
             && !sign_editor_open
@@ -1246,6 +1252,12 @@ impl SimulationInputRuntime {
             &self.text_measurements,
             Some(&mut clipboard),
         );
+        self.apply_recipe_book_language_requests(context);
+        if recipe_book_open && matches!(state, ElementState::Pressed) {
+            context.platform.submit(PlatformEffect::RecipeBookInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
         if matches!(state, ElementState::Pressed)
             && (chat_screen_was_open || context.input.chat_entry_is_active())
         {
@@ -1306,12 +1318,8 @@ impl SimulationInputRuntime {
         if !client_option_writes.is_empty() {
             context.platform.submit(PlatformEffect::SaveClientOptions {
                 writes: client_option_writes,
+                broadcast: self.client_information.clone(),
             });
-            crate::input::queue_broadcast_client_information_command(
-                context.net_counters,
-                context.net_commands,
-                &self.client_information,
-            );
         }
         for _ in 0..context.input.take_screenshot_requests() {
             context.platform.submit(PlatformEffect::GrabScreenshot);
@@ -1448,6 +1456,24 @@ impl SimulationInputRuntime {
                 "opened pause screen requested by debug hotkey"
             );
         }
+    }
+
+    fn apply_recipe_book_language_requests(
+        &mut self,
+        context: &mut SimulationInputContext<'_, '_, '_>,
+    ) {
+        let requests = context.input.take_recipe_book_language_requests();
+        let target_available = context
+            .item_runtime
+            .as_ref()
+            .is_some_and(|runtime| runtime.has_available_language(RECIPE_BOOK_LANGUAGE_TARGET));
+        apply_recipe_book_language_transition(
+            requests,
+            target_available,
+            &mut self.client_information,
+            context.server_resource_packs,
+            context.platform,
+        );
     }
 
     /// The element that currently owns pre-edit rendering, in the same
@@ -1672,6 +1698,7 @@ impl SimulationInputRuntime {
             text,
             &self.text_measurements,
         );
+        self.apply_recipe_book_language_requests(context);
         if chat_screen_was_open || context.input.chat_entry_is_active() {
             context.platform.submit(PlatformEffect::ChatScreenInput(
                 ScreenNarrationScheduleInput::KeyboardAction,
@@ -2635,6 +2662,53 @@ fn debug_profiling_commands(
         .collect()
 }
 
+const RECIPE_BOOK_LANGUAGE_TARGET: &str = "en_pt";
+
+/// `RecipeBookComponent.checkSearchStringUpdate` updates `LanguageManager`
+/// and `Options.languageCode`, starts `Minecraft.reloadResourcePacks`, then
+/// calls `Options.save`; `save` writes the option and broadcasts the updated
+/// `ClientInformation`. Ordinary platform effects remain ahead of the reload
+/// barrier, so the render/resource owner observes the new locale first.
+fn apply_recipe_book_language_transition(
+    requests: u32,
+    target_available: bool,
+    client_information: &mut ClientInformation,
+    server_resource_packs: &mut ServerResourcePackRuntime,
+    platform: &mut PlatformEffectCollector<'_>,
+) {
+    if requests == 0
+        || !target_available
+        || client_information.language == RECIPE_BOOK_LANGUAGE_TARGET
+    {
+        return;
+    }
+
+    client_information.language = RECIPE_BOOK_LANGUAGE_TARGET.to_string();
+    platform.submit(PlatformEffect::SetClientLocale(
+        RECIPE_BOOK_LANGUAGE_TARGET.to_string(),
+    ));
+    server_resource_packs.request_reload();
+    platform.submit(PlatformEffect::SaveClientOptions {
+        writes: vec![crate::client_options::ClientOptionWrite {
+            key: "lang",
+            value: crate::client_options::ClientOptionValue::Text(RECIPE_BOOK_LANGUAGE_TARGET),
+        }],
+        broadcast: client_information.clone(),
+    });
+}
+
+fn apply_client_options_save_completed(
+    information: ClientInformation,
+    net_counters: &mut bbb_control::NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    crate::input::queue_broadcast_client_information_command(
+        net_counters,
+        net_commands,
+        &information,
+    );
+}
+
 fn recipe_book_screen_is_open(world: &WorldStore) -> bool {
     inventory_screen_layout(world)
         .and_then(|layout| recipe_book_type_for_background(layout.background))
@@ -3119,6 +3193,94 @@ mod tests {
                 DebugProfilingCommand::Start,
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn recipe_book_language_transition_reloads_saves_and_broadcasts_in_order() {
+        use bbb_control::AudioCounters;
+        use tokio::runtime::Handle;
+        use uuid::Uuid;
+
+        let cache_dir = std::env::temp_dir().join(format!(
+            "bbb-recipe-language-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let mut packs = ServerResourcePackRuntime::new(
+            Handle::current(),
+            cache_dir.clone(),
+            "recipe-language-test",
+            Uuid::nil(),
+            None,
+        )
+        .unwrap();
+        let (net_tx, mut net_rx) = mpsc::channel(4);
+        let net_commands = Some(net_tx);
+        let mut counters = bbb_control::NetCounters::default();
+        let mut information = ClientInformation::default();
+        let collector =
+            crate::simulation::effects::RenderEffectCollector::new(1, AudioCounters::default());
+        let mut platform = collector.platform();
+
+        apply_recipe_book_language_transition(
+            1,
+            false,
+            &mut information,
+            &mut packs,
+            &mut platform,
+        );
+        assert_eq!(information.language, "en_us");
+        assert!(packs.take_reload().is_none());
+        assert!(net_rx.try_recv().is_err());
+
+        apply_recipe_book_language_transition(1, true, &mut information, &mut packs, &mut platform);
+        // Repeated checks after the selected language changed are no-ops.
+        apply_recipe_book_language_transition(1, true, &mut information, &mut packs, &mut platform);
+        assert_eq!(information.language, "en_pt");
+        assert!(packs.take_reload().is_some());
+        assert!(packs.take_reload().is_none());
+        // The packet cannot overtake the platform owner's save attempt.
+        assert_eq!(counters.broadcast_client_information_commands_queued, 0);
+        assert!(net_rx.try_recv().is_err());
+
+        drop(platform);
+        let batch = collector.finish(None).expect("locale and save effects");
+        let mut render = RecordingRenderSink::default();
+        crate::simulation::effects::RenderEffectConsumer::default()
+            .consume(batch, None, &mut render)
+            .unwrap();
+        assert_eq!(
+            render.0,
+            vec![
+                PlatformEffect::SetClientLocale("en_pt".to_string()),
+                PlatformEffect::SaveClientOptions {
+                    writes: vec![crate::client_options::ClientOptionWrite {
+                        key: "lang",
+                        value: crate::client_options::ClientOptionValue::Text("en_pt"),
+                    }],
+                    broadcast: information.clone(),
+                },
+            ]
+        );
+        let broadcast = match &render.0[1] {
+            PlatformEffect::SaveClientOptions { broadcast, .. } => broadcast.clone(),
+            effect => panic!("expected save completion payload, got {effect:?}"),
+        };
+        apply_client_options_save_completed(broadcast, &mut counters, &net_commands);
+        assert_eq!(counters.broadcast_client_information_commands_queued, 1);
+        assert!(matches!(
+            net_rx.try_recv(),
+            Ok(NetCommand::BroadcastClientInformation(ClientInformation {
+                language,
+                ..
+            })) if language == "en_pt"
+        ));
+        assert!(net_rx.try_recv().is_err());
+
+        let _ = std::fs::remove_dir_all(cache_dir);
     }
 
     #[test]

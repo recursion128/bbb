@@ -592,6 +592,13 @@ impl NativeItemRuntime {
         self.language.is_bidirectional()
     }
 
+    /// Whether the accepted client pack stack declares `language_code` in
+    /// `pack.mcmeta`. Vanilla's `LanguageManager.languages` uses that metadata,
+    /// not the mere presence of a `lang/*.json` resource.
+    pub fn has_available_language(&self, language_code: &str) -> bool {
+        self.language.has_available_language(language_code)
+    }
+
     /// Creates an independent owner for simulation-side item queries.
     ///
     /// Immutable pack catalogs and atlas indices are copied, while renderer-only

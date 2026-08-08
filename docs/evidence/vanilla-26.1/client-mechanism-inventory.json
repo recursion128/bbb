@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "e2751b8cb73b9760c1a08cf37c5c0591373919e502a5abfb93d51a599c488a50"
+      "sha256": "e7b53d4e73d44c80e9bac1ce0699089465f58cedef37fc05f844e0ae4ce6a48f"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -634,9 +634,12 @@
     },
     "resources-language-manager": {
       "bbb_evidence": [
-        "crates/bbb-pack/src/language.rs"
+        "crates/bbb-pack/src/language.rs",
+        "crates/bbb-pack/src/metadata.rs",
+        "crates/bbb-native/src/simulation/input_commands.rs"
       ],
-      "owner_count": 7
+      "owner_count": 15,
+      "owner_evidence_count": 15
     },
     "resources-reload-listeners": {
       "bbb_evidence": [
@@ -782,6 +785,13 @@
       ],
       "owner_count": 17,
       "owner_evidence_count": 17
+    },
+    "ui-bidirectional-shaping": {
+      "bbb_evidence": [
+        "crates/bbb-render-types/src/text_visual_order.rs"
+      ],
+      "owner_count": 1,
+      "owner_evidence_count": 1
     },
     "ui-chat-screen-surface": {
       "bbb_evidence": [
@@ -15062,11 +15072,14 @@
       "bbb_evidence": {
         "implementation": [
           "crates/bbb-native/src/input/commands.rs#queue_broadcast_client_information_command",
-          "crates/bbb-net/src/driver/commands.rs#send_play_client_information"
+          "crates/bbb-net/src/driver/commands.rs#send_play_client_information",
+          "crates/bbb-native/src/simulation/input_commands.rs#apply_client_options_save_completed"
         ],
         "tests": [
           "crates/bbb-net/src/driver/commands/tests.rs#broadcast_client_information_keeps_each_phase_own_packet_id",
-          "crates/bbb-native/src/input/tests.rs#focus_pause_toggle_queues_the_option_line_vanilla_saves"
+          "crates/bbb-native/src/input/tests.rs#focus_pause_toggle_queues_the_option_line_vanilla_saves",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]
       },
       "category": "persistence",
@@ -16734,11 +16747,15 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "crates/bbb-native/src/client_options.rs#rendered"
+          "crates/bbb-native/src/client_options.rs#rendered",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn apply("
         ],
         "tests": [
           "crates/bbb-native/src/client_options.rs#save_writes_every_catalogued_key_in_vanilla_order",
-          "crates/bbb-native/src/client_options.rs#save_round_trips_and_drops_keys_this_client_does_not_know"
+          "crates/bbb-native/src/client_options.rs#save_round_trips_and_drops_keys_this_client_does_not_know",
+          "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
         ]
       },
       "category": "persistence",
@@ -23928,6 +23945,58 @@
         "path": "net/minecraft/client/gui/screens/options/OptionsScreen.java"
       },
       "vanilla_owner": "net.minecraft.client.gui.screens.options.OptionsScreen#repositionElements()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/simulation/input_commands.rs#apply_recipe_book_language_transition",
+          "crates/bbb-native/src/main.rs#save_client_options_and_enqueue_broadcast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.gui.screens.recipebook.RecipeBookComponent#checkSearchStringUpdate()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 496,
+        "path": "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.screens.recipebook.RecipeBookComponent#checkSearchStringUpdate()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/simulation/input_commands.rs#apply_recipe_book_language_transition",
+          "crates/bbb-native/src/main.rs#save_client_options_and_enqueue_broadcast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.gui.screens.recipebook.RecipeBookComponent#pirateSpeechForThePeople(final String searchTarget)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 505,
+        "path": "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.screens.recipebook.RecipeBookComponent#pirateSpeechForThePeople(final String searchTarget)"
     },
     {
       "bbb_evidence": {
@@ -37788,6 +37857,190 @@
       "vanilla_owner": "net.minecraft.client.resources.SkinManager.TextureCache#registerTexture(final MinecraftProfileTexture textureInfo)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/language.rs#pub fn load_resource_stack(",
+          "crates/bbb-pack/src/language.rs#fn append_resource_stack(",
+          "crates/bbb-pack/src/roots.rs#pub fn load_client_language_catalog("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#language_catalog_resource_stack_merges_namespaces_and_pack_precedence",
+          "crates/bbb-pack/src/language.rs#language_catalog_skips_bad_pack_resource_and_keeps_other_namespaces",
+          "crates/bbb-pack/src/language.rs#malformed_language_json_stops_only_its_namespace_resource_stack",
+          "crates/bbb-pack/src/language.rs#pack_roots_language_catalog_applies_default_deprecated_translations"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "constructor",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#ClientLanguage(final Map <String, String> storage,final boolean defaultRightToLeft)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 24,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#ClientLanguage(final Map <String, String> storage,final boolean defaultRightToLeft)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/language.rs#pub fn load_resource_stack(",
+          "crates/bbb-pack/src/language.rs#fn append_resource_stack(",
+          "crates/bbb-pack/src/roots.rs#pub fn load_client_language_catalog("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#language_catalog_resource_stack_merges_namespaces_and_pack_precedence",
+          "crates/bbb-pack/src/language.rs#language_catalog_skips_bad_pack_resource_and_keeps_other_namespaces",
+          "crates/bbb-pack/src/language.rs#malformed_language_json_stops_only_its_namespace_resource_stack",
+          "crates/bbb-pack/src/language.rs#pack_roots_language_catalog_applies_default_deprecated_translations"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#appendFrom(final String languageCode,final List <Resource> resources,final Map <String, String> translations)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 49,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#appendFrom(final String languageCode,final List <Resource> resources,final Map <String, String> translations)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/language.rs#LanguageCatalog"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#language_catalog_parses_json_and_normalizes_numeric_formats"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#getOrDefault(final String key,final String defaultValue)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 59,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#getOrDefault(final String key,final String defaultValue)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-render-types/src/text_visual_order.rs#visual_order"
+        ],
+        "tests": [
+          "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
+          "crates/bbb-render-types/src/text_visual_order.rs#visual_order_matches_icu_mixed_direction_and_mirroring_vectors",
+          "crates/bbb-render-types/src/text_visual_order.rs#visual_order_carries_utf16_metadata_like_vanilla_substring_source"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "text",
+      "kind": "method",
+      "mechanism_id": "ui-bidirectional-shaping",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#getVisualOrder(final FormattedText logicalOrderText)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 74,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#getVisualOrder(final FormattedText logicalOrderText)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/language.rs#LanguageCatalog"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#language_catalog_parses_json_and_normalizes_numeric_formats"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#has(final String key)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 64,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#has(final String key)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/language.rs#pub fn is_bidirectional(",
+          "crates/bbb-item-model/src/item_runtime.rs#pub fn language_bidirectional("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#isDefaultRightToLeft()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 69,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#isDefaultRightToLeft()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/language.rs#pub fn load_resource_stack(",
+          "crates/bbb-pack/src/language.rs#fn append_resource_stack(",
+          "crates/bbb-pack/src/roots.rs#pub fn load_client_language_catalog("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#language_catalog_resource_stack_merges_namespaces_and_pack_precedence",
+          "crates/bbb-pack/src/language.rs#language_catalog_skips_bad_pack_resource_and_keeps_other_namespaces",
+          "crates/bbb-pack/src/language.rs#malformed_language_json_stops_only_its_namespace_resource_stack",
+          "crates/bbb-pack/src/language.rs#pack_roots_language_catalog_applies_default_deprecated_translations"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "language",
+      "kind": "method",
+      "mechanism_id": "resources-language-manager",
+      "owner_id": "method:net.minecraft.client.resources.language.ClientLanguage#loadFrom(final ResourceManager resourceManager,final List <String> languageStack,final boolean defaultRightToLeft)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 29,
+        "path": "net/minecraft/client/resources/language/ClientLanguage.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.language.ClientLanguage#loadFrom(final ResourceManager resourceManager,final List <String> languageStack,final boolean defaultRightToLeft)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/simulation/input_commands.rs#apply_recipe_book_language_transition",
+          "crates/bbb-native/src/main.rs#save_client_options_and_enqueue_broadcast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "constructor",
@@ -37802,6 +38055,17 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#LanguageManager(final String languageCode,final Consumer <ClientLanguage> reloadCallback)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/metadata.rs#PackMetadataCatalog",
+          "crates/bbb-pack/src/language.rs#pub fn has_available_language("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_loads_default_language_and_pack_languages",
+          "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_skips_invalid_language_metadata_pack",
+          "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "method",
@@ -37816,6 +38080,17 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#extractLanguages(final Stream <PackResources> resourcePacks)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/metadata.rs#PackMetadataCatalog",
+          "crates/bbb-pack/src/language.rs#pub fn has_available_language("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_loads_default_language_and_pack_languages",
+          "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_skips_invalid_language_metadata_pack",
+          "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "method",
@@ -37830,6 +38105,17 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#getLanguage(final String code)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/metadata.rs#PackMetadataCatalog",
+          "crates/bbb-pack/src/language.rs#pub fn has_available_language("
+        ],
+        "tests": [
+          "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_loads_default_language_and_pack_languages",
+          "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_skips_invalid_language_metadata_pack",
+          "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "method",
@@ -37844,6 +38130,18 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#getLanguages()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/simulation/input_commands.rs#apply_recipe_book_language_transition",
+          "crates/bbb-native/src/main.rs#save_client_options_and_enqueue_broadcast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "method",
@@ -37858,6 +38156,17 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#getSelected()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn load_client_language_catalog(",
+          "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language",
+          "crates/bbb-pack/src/language.rs#indexed_selected_locale_honors_pack_override_and_filter",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "method",
@@ -37872,6 +38181,18 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#onResourceManagerReload(final ResourceManager resourceManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/simulation/input_commands.rs#apply_recipe_book_language_transition",
+          "crates/bbb-native/src/main.rs#save_client_options_and_enqueue_broadcast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
+          "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+          "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+          "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner"
+        ]
+      },
       "category": "resource-consumer",
       "domain": "language",
       "kind": "method",
@@ -55407,6 +55728,8 @@
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
+      "resources-language-manager",
+      "ui-bidirectional-shaping",
       "resources-server-pack-lifecycle",
       "audio-sound-manager-engine",
       "security-secure-chat-reporting",
@@ -55631,6 +55954,10 @@
     {
       "path": "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java",
       "sha256": "429ec07c47e70914f9ddd3eb0aa838b36493c4547af93c6fa6c0e3ce3bb57008"
+    },
+    {
+      "path": "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java",
+      "sha256": "0651995cc1cac7928dc01737dd98150ee3001eb9e377c5179452125d6ba46da6"
     },
     {
       "path": "net/minecraft/client/gui/screens/social/PlayerSocialManager.java",
@@ -56865,6 +57192,10 @@
       "sha256": "246edfb74d6b2268c709254fb1d30980ea58d41afd19b3048942174802a1b73b"
     },
     {
+      "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+      "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+    },
+    {
       "path": "net/minecraft/client/resources/language/LanguageManager.java",
       "sha256": "7750a201dbc857147bb080cb3e8eb483eaa8560d0179745cfba41547ab1662a2"
     },
@@ -57129,7 +57460,7 @@
       "render-scene": 15,
       "render-section": 29,
       "render-step": 238,
-      "resource-consumer": 120,
+      "resource-consumer": 129,
       "resources": 124,
       "respawn-data": 9,
       "screen-open": 9,
@@ -57154,7 +57485,7 @@
       "identity": 25,
       "input": 75,
       "interaction": 69,
-      "language": 7,
+      "language": 15,
       "lifecycle": 24,
       "movement": 39,
       "options": 27,
@@ -57170,17 +57501,17 @@
       "startup": 19,
       "support": 228,
       "telemetry": 17,
-      "text": 35,
+      "text": 36,
       "ui": 311,
       "world": 59
     },
     "by_role": {
-      "decision": 1529,
+      "decision": 1538,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3176,
-    "owner_count": 3176,
+    "mapped_owner_count": 3185,
+    "owner_count": 3185,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

@@ -4349,6 +4349,82 @@ fn recipe_book_search_click_focuses_and_edits_local_text() {
 }
 
 #[test]
+fn recipe_book_excitedze_search_requests_the_en_pt_language_decision() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_search_focused = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
+    });
+    world.apply_recipe_book_settings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings::default(),
+        blast_furnace: RecipeBookTypeSettings::default(),
+        smoker: RecipeBookTypeSettings::default(),
+    });
+
+    assert!(handle_inventory_text_input(
+        &mut input,
+        &world,
+        &mut counters,
+        &commands,
+        None,
+        "EXCITEDZE",
+    ));
+    assert_eq!(input.recipe_book_search_text, "EXCITEDZE");
+    assert_eq!(input.take_recipe_book_language_requests(), 1);
+
+    // Vanilla checks after EditBox-accepted keys too, including cursor-only
+    // edits, but not after the focused-field guard consumes an unrelated key.
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::ArrowLeft,
+    ));
+    assert_eq!(input.take_recipe_book_language_requests(), 1);
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::F3,
+    ));
+    assert_eq!(input.take_recipe_book_language_requests(), 0);
+
+    // A rejected character likewise does not reach checkSearchStringUpdate.
+    assert!(!handle_inventory_text_input(
+        &mut input,
+        &world,
+        &mut counters,
+        &commands,
+        None,
+        "\n",
+    ));
+    assert_eq!(input.take_recipe_book_language_requests(), 0);
+
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::Backspace,
+    ));
+    assert_eq!(input.take_recipe_book_language_requests(), 0);
+}
+
+#[test]
 fn recipe_book_tab_click_selects_local_tab_without_packet() {
     let commands = None;
     let mut input = ClientInputState::new(true);

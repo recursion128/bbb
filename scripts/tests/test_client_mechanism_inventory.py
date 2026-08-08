@@ -57,6 +57,30 @@ public class Owner {
             builder.hashes[relative], hashlib.sha256(source.encode("utf-8")).hexdigest()
         )
 
+    def test_selected_method_surface_fails_closed_when_owner_census_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "fixture/Owner.java"
+            self.write_source(
+                root,
+                relative,
+                "package fixture; public class Owner { public void other() {} }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "selected method census changed",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "decision",
+                        "fixture",
+                        "fixture-mechanism",
+                        relative,
+                        selected_methods=("selected",),
+                    )
+                )
+
     def test_profile_key_and_skin_owners_are_distinct_lifecycles(self) -> None:
         by_source = {surface.source_path: surface for surface in inventory.METHOD_SURFACES}
         profile_keys = by_source[
@@ -76,6 +100,74 @@ public class Owner {
         self.assertEqual(
             inventory.MECHANISM_EVIDENCE[skins.mechanism_id],
             ("crates/bbb-item-model/src/skin_runtime.rs",),
+        )
+
+    def test_language_owner_census_includes_client_and_recipe_trigger_evidence(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        language_owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "resources-language-manager"
+        ]
+        bidi_owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "ui-bidirectional-shaping"
+        ]
+
+        self.assertEqual(len(language_owners), 15)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in language_owners),
+            Counter(
+                {
+                    "net/minecraft/client/resources/language/LanguageManager.java": 7,
+                    "net/minecraft/client/resources/language/ClientLanguage.java": 6,
+                    "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java": 2,
+                }
+            ),
+        )
+        self.assertEqual(
+            value["mechanisms"]["resources-language-manager"]["owner_evidence_count"],
+            15,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in language_owners
+            )
+        )
+        self.assertEqual(len(bidi_owners), 1)
+        self.assertIn("#getVisualOrder(", bidi_owners[0]["vanilla_owner"])
+        self.assertEqual(
+            value["mechanisms"]["ui-bidirectional-shaping"]["owner_evidence_count"],
+            1,
+        )
+        source_hashes = {
+            source["path"]: source["sha256"] for source in value["source_files"]
+        }
+        self.assertEqual(
+            source_hashes[
+                "net/minecraft/client/resources/language/LanguageManager.java"
+            ],
+            "7750a201dbc857147bb080cb3e8eb483eaa8560d0179745cfba41547ab1662a2",
+        )
+        self.assertEqual(
+            source_hashes[
+                "net/minecraft/client/resources/language/ClientLanguage.java"
+            ],
+            "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536",
+        )
+        self.assertEqual(
+            source_hashes[
+                "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java"
+            ],
+            "0651995cc1cac7928dc01737dd98150ee3001eb9e377c5179452125d6ba46da6",
         )
 
     def test_audio_owner_census_has_complete_evidence_and_explicit_scope_rulings(self) -> None:

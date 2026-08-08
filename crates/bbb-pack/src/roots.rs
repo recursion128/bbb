@@ -445,6 +445,7 @@ impl PackRoots {
         let mut catalog =
             self.load_language_stack(metadata.language_stack(selected_language_code))?;
         catalog.set_bidirectional(metadata.selected_bidirectional(selected_language_code));
+        catalog.set_available_languages(metadata.languages.keys().cloned());
         Ok(catalog)
     }
 

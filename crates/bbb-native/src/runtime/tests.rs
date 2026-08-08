@@ -14515,7 +14515,8 @@ fn first_multiplayer_tutorial_queues_the_joined_sentinel_in_the_same_effect_batc
         bbb_control::AudioCounters::default(),
     );
     let mut platform = collector.platform();
-    advance_first_multiplayer_server_tutorial(&mut world, &mut platform);
+    let information = bbb_protocol::packets::ClientInformation::default();
+    advance_first_multiplayer_server_tutorial(&mut world, &information, &mut platform);
     drop(platform);
 
     let mut effects = RecordingEffects::default();
@@ -14534,6 +14535,7 @@ fn first_multiplayer_tutorial_queues_the_joined_sentinel_in_the_same_effect_batc
                     key: "joinedFirstServer",
                     value: crate::client_options::ClientOptionValue::Boolean(true),
                 }],
+                broadcast: information.clone(),
             }
         ]
     );
@@ -14542,7 +14544,7 @@ fn first_multiplayer_tutorial_queues_the_joined_sentinel_in_the_same_effect_batc
         2,
         bbb_control::AudioCounters::default(),
     );
-    advance_first_multiplayer_server_tutorial(&mut world, &mut duplicate.platform());
+    advance_first_multiplayer_server_tutorial(&mut world, &information, &mut duplicate.platform());
     assert!(duplicate.finish(None).is_none());
 }
 

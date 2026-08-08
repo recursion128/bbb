@@ -13,7 +13,7 @@ use bbb_control::{
     ControlWriteRequest, RendererCounters, SimulationCommandMailboxClassCounters,
     SimulationCommandMailboxCounters,
 };
-use bbb_protocol::packets::Vec3d;
+use bbb_protocol::packets::{ClientInformation, Vec3d};
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudDisconnectedScreenHitTarget,
     HudFontGlyphMap, HudGameEventHitTarget, HudPauseDraftButton, HudPlayerReportingHitTarget,
@@ -196,6 +196,9 @@ pub(crate) enum SimulationCommand {
         path: PathBuf,
         success: bool,
     },
+    /// Render/platform owner completed the `options.txt` write attempt;
+    /// Vanilla calls `broadcastOptions` after this point even on failure.
+    ClientOptionsSaveCompleted(ClientInformation),
     ResourceReloadAck(Box<crate::resource_reload::ResourceReloadAck>),
     TerrainReadiness {
         level_generation: u64,
@@ -224,6 +227,7 @@ impl SimulationCommand {
                 | Self::ClipboardWriteResult { .. }
                 | Self::OpenUriResult { .. }
                 | Self::OpenPathResult { .. }
+                | Self::ClientOptionsSaveCompleted(_)
                 | Self::Shutdown
         )
     }
@@ -254,6 +258,7 @@ impl SimulationCommand {
             | Self::ScreenshotSaved { .. }
             | Self::OpenUriResult { .. }
             | Self::OpenPathResult { .. }
+            | Self::ClientOptionsSaveCompleted(_)
             | Self::ResourceReloadAck(_)
             | Self::TerrainReadiness { .. }
             | Self::DebugProfilingLifecycle(_) => SimulationCommandProducerClass::RenderFeedback,
@@ -269,6 +274,7 @@ impl SimulationCommand {
                 .saturating_sub(std::mem::size_of::<HudFontGlyphMap>()),
             Self::OpenUriResult { url, .. } => url.capacity(),
             Self::OpenPathResult { path, .. } => path.capacity(),
+            Self::ClientOptionsSaveCompleted(information) => information.language.capacity(),
             Self::ResourceReloadAck(ack) => ack.mailbox_retained_logical_bytes(),
             Self::DebugProfilingLifecycle(DebugProfilingLifecycle::ReportSaved { path }) => {
                 path.capacity()
@@ -1674,6 +1680,10 @@ mod tests {
             .requires_world_snapshot_rebuild());
         assert!(!SimulationCommand::CursorCaptureResult { captured: true }
             .requires_world_snapshot_rebuild());
+        assert!(
+            !SimulationCommand::ClientOptionsSaveCompleted(ClientInformation::default())
+                .requires_world_snapshot_rebuild()
+        );
         assert!(SimulationCommand::TerrainReadiness {
             level_generation: 1,
             level_load_start: 1,

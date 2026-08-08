@@ -278,6 +278,7 @@ struct NativeRenderEffectSink<'a> {
     mailbox: &'a SimulationMailbox,
     clipboard: &'a mut NativeDebugClipboard,
     terrain_upload: &'a mut TerrainUploadState,
+    client_locale: &'a mut String,
     debug_profiler: &'a mut DebugProfiler,
     debug_options_screen_narration: &'a mut ScreenNarrationRuntime,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
@@ -299,6 +300,24 @@ impl ParticleBatchSink for NativeRenderEffectSink<'_> {
     fn submit_particle_batch(&mut self, batch: bbb_renderer::ParticleSpawnBatch) {
         self.renderer.submit_particle_spawns(batch);
     }
+}
+
+/// Complete Vanilla's synchronous `Options.save` contract: attempt the file
+/// write first, then publish the client-information completion regardless of
+/// a missing file owner or write failure. The caller owns presentation/logging
+/// of the optional write result; the ordering lives here once.
+fn save_client_options_and_enqueue_broadcast(
+    client_options: Option<&mut ClientOptionsFile>,
+    writes: &[client_options::ClientOptionWrite],
+    broadcast: bbb_protocol::packets::ClientInformation,
+    mailbox: &SimulationMailbox,
+) -> Option<Result<bool>> {
+    let result = client_options.map(|options| options.apply(writes));
+    mailbox.enqueue_or_report(
+        SimulationCommand::ClientOptionsSaveCompleted(broadcast),
+        "client options save completion",
+    );
+    result
 }
 
 impl PlatformEffectSink for NativeRenderEffectSink<'_> {
@@ -343,14 +362,19 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     "open path result",
                 );
             }
-            PlatformEffect::SaveClientOptions { writes } => {
-                let Some(options) = self.client_options.as_mut() else {
-                    tracing::warn!("no options.txt owner to save a debug hotkey toggle into");
-                    return;
-                };
-                // `Options.save` only logs when the write fails.
-                if let Err(error) = options.apply(&writes) {
-                    tracing::warn!(%error, "failed to save options.txt");
+            PlatformEffect::SaveClientOptions { writes, broadcast } => {
+                match save_client_options_and_enqueue_broadcast(
+                    self.client_options.as_deref_mut(),
+                    &writes,
+                    broadcast,
+                    self.mailbox,
+                ) {
+                    // `Options.save` only logs when the write fails.
+                    Some(Err(error)) => {
+                        tracing::warn!(%error, "failed to save options.txt");
+                    }
+                    None => tracing::warn!("no options.txt owner to save client options into"),
+                    Some(Ok(_)) => {}
                 }
             }
             PlatformEffect::Screenshot(path) => {
@@ -399,6 +423,9 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                         "failed to dump dynamic textures requested by debug hotkey"
                     ),
                 }
+            }
+            PlatformEffect::SetClientLocale(locale) => {
+                *self.client_locale = locale;
             }
             PlatformEffect::ProfilingToggled { commands } => {
                 let requests = commands.len();
@@ -631,6 +658,8 @@ fn run_client(args: startup::Args) -> Result<()> {
         return Ok(());
     }
 
+    let mut client_locale = args.client_locale.clone();
+
     let loaded_pack_roots = load_pack_roots_with_options(&args)?;
     let mut pack_roots = loaded_pack_roots.roots;
     let resource_pack_options_reconciliation = loaded_pack_roots.options_reconciliation;
@@ -669,7 +698,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     net_counters.client_resources = std::sync::Arc::new(client_resource_pack_diagnostics(
         pack_roots.as_ref(),
         false,
-        Some(&args.client_locale),
+        Some(&client_locale),
         None,
     ));
     let code_of_conduct_store_path = args
@@ -805,7 +834,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut item_runtime = pack_roots.as_ref().and_then(|roots| {
         NativeItemRuntime::load_with_locale_and_font_options(
             roots,
-            &args.client_locale,
+            &client_locale,
             FontOptions {
                 uniform: args.client_force_unicode_font,
                 japanese_variants: args.client_japanese_glyph_variants,
@@ -1112,7 +1141,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         item_runtime
             .as_ref()
             .is_some_and(NativeItemRuntime::language_bidirectional),
-        Some(&args.client_locale),
+        Some(&client_locale),
         item_runtime
             .as_ref()
             .map(|runtime| runtime.localized_text(SELECTED_LANGUAGE_PROBE_KEY)),
@@ -1385,6 +1414,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                         mailbox: &simulation_mailbox,
                         clipboard: &mut debug_clipboard,
                         terrain_upload: &mut terrain_upload,
+                        client_locale: &mut client_locale,
                         debug_profiler: &mut debug_profiler,
                         debug_options_screen_narration: &mut debug_options_screen_narration,
                         stats_screen_narration: &mut stats_screen_narration,
@@ -1445,7 +1475,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                 &mut terrain_upload,
                 &mut hud_render_runtime,
                 &mut renderer,
-                &args.client_locale,
+                &client_locale,
                 FontOptions {
                     uniform: args.client_force_unicode_font,
                     japanese_variants: args.client_japanese_glyph_variants,
@@ -2722,6 +2752,56 @@ mod tests {
         BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, LightData,
         SignBlockEntityTextState,
     };
+
+    #[test]
+    fn client_options_save_completion_follows_missing_or_failed_file_owner() {
+        let mut information = bbb_protocol::packets::ClientInformation::default();
+        information.language = "en_pt".to_string();
+        let writes = [client_options::ClientOptionWrite {
+            key: "lang",
+            value: client_options::ClientOptionValue::Text("en_pt"),
+        }];
+
+        let missing_owner_mailbox = SimulationMailbox::default();
+        assert!(save_client_options_and_enqueue_broadcast(
+            None,
+            &writes,
+            information.clone(),
+            &missing_owner_mailbox,
+        )
+        .is_none());
+        let missing_owner = missing_owner_mailbox.drain_through_barrier();
+        assert!(matches!(
+            missing_owner.as_slice(),
+            [simulation::commands::SequencedSimulationCommand {
+                command: SimulationCommand::ClientOptionsSaveCompleted(completed),
+                ..
+            }] if completed.language == "en_pt"
+        ));
+
+        let path = std::env::temp_dir()
+            .join(format!("bbb-options-save-failure-{}", std::process::id()))
+            .join("missing-parent")
+            .join("options.txt");
+        let mut file = ClientOptionsFile::load(path, ClientOptionHost::default()).unwrap();
+        let failed_write_mailbox = SimulationMailbox::default();
+        assert!(matches!(
+            save_client_options_and_enqueue_broadcast(
+                Some(&mut file),
+                &writes,
+                information,
+                &failed_write_mailbox,
+            ),
+            Some(Err(_))
+        ));
+        assert!(matches!(
+            failed_write_mailbox.drain_through_barrier().as_slice(),
+            [simulation::commands::SequencedSimulationCommand {
+                command: SimulationCommand::ClientOptionsSaveCompleted(completed),
+                ..
+            }] if completed.language == "en_pt"
+        ));
+    }
 
     #[test]
     fn runtime_wants_cursor_for_pending_sign_editor() {

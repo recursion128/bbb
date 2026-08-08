@@ -56,10 +56,13 @@ Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-ho
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
-- Close the 100 records that remain `partial` in the current parity acceptance
-  report. All 147 records and reverse artifact/scenario mappings validate against
-  gated evidence commit `7c738fadc` with zero false `equivalent`, zero missing
-  focused-decision evidence, and current Vanilla owner source hashes; the
+Matrix routes: `docs-chinese-mechanism-wiki`, `lifecycle-client-runtime`, `lifecycle-client-task-handoff`, `lifecycle-session-replacement`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `persistence-options-file`, `persistence-options-unconsumed`, `platform-linux-seat-matrix`, `player-local-inventory-actions`, `resources-server-pack-lifecycle`
+- Close the 113 records that remain `partial` in the current parity acceptance
+  report. The current staging report contains all 147 records and reverse
+  artifact/scenario mappings, uses gated evidence commit `38bc40741`, and keeps
+  every owner touched after that commit open rather than retaining a false
+  `equivalent`; focused-decision evidence and current Vanilla owner source hashes
+  remain fail-closed. The
   bidirectional-text owner is specifically bound to `Language`, `ClientLanguage`,
   `FormattedBidiReorder`, and `SubStringSource` instead of a prose-derived source
   fallback. Current visual/draw/performance receipts are rebound from capture
@@ -73,7 +76,13 @@ Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycl
   session-replacement, task-handoff and client-runtime rows completed independent owner/focused review.
   Preserve invalid receipts until replaced; the user-waived
   macOS `deferred-external` row is not a closure blocker but retains its source
-  basis and reopen condition.
+  basis and reopen condition. The language census now derives all 7
+  `LanguageManager`, all 7 `ClientLanguage`, and the two exact recipe-book
+  trigger owners with per-owner evidence; the six non-bidi `ClientLanguage`
+  owners plus 7 manager owners and 2 trigger owners route to
+  `resources-language-manager`, while `getVisualOrder` routes to
+  `ui-bidirectional-shaping`. Its new implementation still requires a clean
+  full gate and exact-HEAD language/platform receipt before those rows close.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in

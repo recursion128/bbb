@@ -48,6 +48,7 @@ class MethodSurface:
     mechanism_id: str
     source_path: str
     scope: str = "external-client"
+    selected_methods: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -4011,12 +4012,21 @@ OPTIONS_FILE_OWNER_EVIDENCE = _owner_evidence(
     ),
     (
         OwnerEvidence(
-            ("crates/bbb-native/src/client_options.rs#rendered",),
+            (
+                "crates/bbb-native/src/client_options.rs#rendered",
+                "crates/bbb-native/src/client_options.rs#pub(crate) fn apply(",
+            ),
             (
                 "crates/bbb-native/src/client_options.rs"
                 "#save_writes_every_catalogued_key_in_vanilla_order",
                 "crates/bbb-native/src/client_options.rs"
                 "#save_round_trips_and_drops_keys_this_client_does_not_know",
+                "crates/bbb-native/src/client_options.rs"
+                "#recipe_book_language_write_stores_the_bare_language_code",
+                "crates/bbb-native/src/simulation/input_commands.rs"
+                "#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+                "crates/bbb-native/src/main.rs"
+                "#client_options_save_completion_follows_missing_or_failed_file_owner",
             ),
         ),
         ("save",),
@@ -4222,12 +4232,18 @@ OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
                 "crates/bbb-native/src/input/commands.rs"
                 "#queue_broadcast_client_information_command",
                 "crates/bbb-net/src/driver/commands.rs#send_play_client_information",
+                "crates/bbb-native/src/simulation/input_commands.rs"
+                "#apply_client_options_save_completed",
             ),
             (
                 "crates/bbb-net/src/driver/commands/tests.rs"
                 "#broadcast_client_information_keeps_each_phase_own_packet_id",
                 "crates/bbb-native/src/input/tests.rs"
                 "#focus_pause_toggle_queues_the_option_line_vanilla_saves",
+                "crates/bbb-native/src/simulation/input_commands.rs"
+                "#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+                "crates/bbb-native/src/main.rs"
+                "#client_options_save_completion_follows_missing_or_failed_file_owner",
             ),
         ),
         ("broadcastOptions",),
@@ -9121,6 +9137,112 @@ SERVER_PACK_ROOT_OWNER_EVIDENCE = _owner_evidence(
     (SERVER_PACK_SHUTDOWN_EVIDENCE, ("clearDownloadedResourcePacks",)),
 )
 
+LANGUAGE_MANAGER_SELECTION_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/simulation/input_commands.rs#apply_recipe_book_language_transition",
+        "crates/bbb-native/src/main.rs#save_client_options_and_enqueue_broadcast",
+    ),
+    (
+        "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
+        "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+        "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
+        "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner",
+    ),
+)
+
+LANGUAGE_MANAGER_METADATA_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/metadata.rs#PackMetadataCatalog",
+        "crates/bbb-pack/src/language.rs#pub fn has_available_language(",
+    ),
+    (
+        "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_loads_default_language_and_pack_languages",
+        "crates/bbb-pack/src/metadata.rs#pack_metadata_catalog_skips_invalid_language_metadata_pack",
+        "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language",
+    ),
+)
+
+LANGUAGE_MANAGER_RELOAD_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/roots.rs#pub fn load_client_language_catalog(",
+        "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
+    ),
+    (
+        "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language",
+        "crates/bbb-pack/src/language.rs#indexed_selected_locale_honors_pack_override_and_filter",
+        "crates/bbb-native/src/simulation/input_commands.rs#recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
+    ),
+)
+
+LANGUAGE_MANAGER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        LANGUAGE_MANAGER_SELECTION_EVIDENCE,
+        ("LanguageManager", "setSelected", "getSelected"),
+    ),
+    (
+        LANGUAGE_MANAGER_METADATA_EVIDENCE,
+        ("extractLanguages", "getLanguages", "getLanguage"),
+    ),
+    (LANGUAGE_MANAGER_RELOAD_EVIDENCE, ("onResourceManagerReload",)),
+)
+
+CLIENT_LANGUAGE_LOAD_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/language.rs#pub fn load_resource_stack(",
+        "crates/bbb-pack/src/language.rs#fn append_resource_stack(",
+        "crates/bbb-pack/src/roots.rs#pub fn load_client_language_catalog(",
+    ),
+    (
+        "crates/bbb-pack/src/language.rs#language_catalog_resource_stack_merges_namespaces_and_pack_precedence",
+        "crates/bbb-pack/src/language.rs#language_catalog_skips_bad_pack_resource_and_keeps_other_namespaces",
+        "crates/bbb-pack/src/language.rs#malformed_language_json_stops_only_its_namespace_resource_stack",
+        "crates/bbb-pack/src/language.rs#pack_roots_language_catalog_applies_default_deprecated_translations",
+    ),
+)
+
+CLIENT_LANGUAGE_LOOKUP_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-pack/src/language.rs#LanguageCatalog",),
+    (
+        "crates/bbb-pack/src/language.rs#language_catalog_parses_json_and_normalizes_numeric_formats",
+    ),
+)
+
+CLIENT_LANGUAGE_DIRECTION_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/language.rs#pub fn is_bidirectional(",
+        "crates/bbb-item-model/src/item_runtime.rs#pub fn language_bidirectional(",
+    ),
+    (
+        "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language",
+    ),
+)
+
+CLIENT_LANGUAGE_BIDI_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-render-types/src/text_visual_order.rs#visual_order",),
+    (
+        "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
+        "crates/bbb-render-types/src/text_visual_order.rs#visual_order_matches_icu_mixed_direction_and_mirroring_vectors",
+        "crates/bbb-render-types/src/text_visual_order.rs#visual_order_carries_utf16_metadata_like_vanilla_substring_source",
+    ),
+)
+
+CLIENT_LANGUAGE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        CLIENT_LANGUAGE_LOAD_EVIDENCE,
+        ("ClientLanguage", "loadFrom", "appendFrom"),
+    ),
+    (CLIENT_LANGUAGE_LOOKUP_EVIDENCE, ("getOrDefault", "has")),
+    (CLIENT_LANGUAGE_DIRECTION_EVIDENCE, ("isDefaultRightToLeft",)),
+    (CLIENT_LANGUAGE_BIDI_EVIDENCE, ("getVisualOrder",)),
+)
+
+RECIPE_BOOK_LANGUAGE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        LANGUAGE_MANAGER_SELECTION_EVIDENCE,
+        ("checkSearchStringUpdate", "pirateSpeechForThePeople"),
+    ),
+)
+
 AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
     "com/mojang/blaze3d/audio/Library.java": AUDIO_LIBRARY_OWNER_EVIDENCE,
     "com/mojang/blaze3d/audio/Channel.java": AUDIO_CHANNEL_OWNER_EVIDENCE,
@@ -9136,10 +9258,19 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
     "net/minecraft/client/MusicToastDisplayState.java": MUSIC_TOAST_DISPLAY_OWNER_EVIDENCE,
+    "net/minecraft/client/resources/language/LanguageManager.java": LANGUAGE_MANAGER_OWNER_EVIDENCE,
+    "net/minecraft/client/resources/language/ClientLanguage.java": CLIENT_LANGUAGE_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java": RECIPE_BOOK_LANGUAGE_OWNER_EVIDENCE,
 }
 
 
 METHOD_OWNER_EVIDENCE = {
+    "resources-language-manager": {
+        **LANGUAGE_MANAGER_OWNER_EVIDENCE,
+        **CLIENT_LANGUAGE_OWNER_EVIDENCE,
+        **RECIPE_BOOK_LANGUAGE_OWNER_EVIDENCE,
+    },
+    "ui-bidirectional-shaping": CLIENT_LANGUAGE_OWNER_EVIDENCE,
     "resources-server-pack-lifecycle": SERVER_PACK_ROOT_OWNER_EVIDENCE,
     "audio-sound-manager-engine": AUDIO_SOUND_MANAGER_OWNER_EVIDENCE,
     "security-secure-chat-reporting": SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE,
@@ -9509,6 +9640,14 @@ METHOD_SURFACES = (
     MethodSurface("render-step", "rendering", "rendering-frame-order", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),
+    MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/ClientLanguage.java"),
+    MethodSurface(
+        "resource-consumer",
+        "language",
+        "resources-language-manager",
+        "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java",
+        selected_methods=("checkSearchStringUpdate", "pirateSpeechForThePeople"),
+    ),
     MethodSurface("resource-consumer", "text", "ui-font-manager", "net/minecraft/client/gui/font/FontManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/MusicManager.java"),
@@ -9848,7 +9987,14 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state",
         "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
     ),
-    "resources-language-manager": ("crates/bbb-pack/src/language.rs",),
+    "resources-language-manager": (
+        "crates/bbb-pack/src/language.rs",
+        "crates/bbb-pack/src/metadata.rs",
+        "crates/bbb-native/src/simulation/input_commands.rs",
+    ),
+    "ui-bidirectional-shaping": (
+        "crates/bbb-render-types/src/text_visual_order.rs",
+    ),
     "ui-font-manager": ("crates/bbb-item-model/src/font.rs",),
     "audio-sound-manager-engine": (
         "crates/bbb-pack/src/sounds.rs",
@@ -10026,7 +10172,21 @@ class InventoryBuilder:
         source = self.source(spec.source_path)
         if not source.types:
             raise ClientMechanismInventoryError(f"{spec.source_path}: no declared Java type")
-        for method in sorted(source.methods, key=lambda item: item.span.start_byte):
+        methods = sorted(source.methods, key=lambda item: item.span.start_byte)
+        if spec.selected_methods:
+            counts = Counter(method.name for method in methods)
+            invalid = {
+                name: counts[name]
+                for name in spec.selected_methods
+                if counts[name] != 1
+            }
+            if invalid:
+                raise ClientMechanismInventoryError(
+                    f"{spec.source_path}: selected method census changed: {invalid}"
+                )
+            selected = set(spec.selected_methods)
+            methods = [method for method in methods if method.name in selected]
+        for method in methods:
             route = self.method_route(source, spec, method)
             signature = self.method_signature(method)
             evidence = None
@@ -10175,6 +10335,16 @@ class InventoryBuilder:
                     f"ServerList method lacks a homogeneous route: {signature}"
                 )
             return route
+        if (
+            spec.source_path
+            == "net/minecraft/client/resources/language/ClientLanguage.java"
+            and method.name == "getVisualOrder"
+        ):
+            return MethodRoute(
+                "resource-consumer",
+                "text",
+                "ui-bidirectional-shaping",
+            )
         if spec.source_path == "net/minecraft/util/HttpUtil.java" and method.name in {
             "getAvailablePort",
             "isPortAvailable",

@@ -336,6 +336,15 @@ impl ClientOptionsFile {
                     enum_text.push_str(&value.to_string());
                     enum_text.as_str()
                 }
+                ClientOptionValue::Text(value) => {
+                    assert_eq!(
+                        spec.encoding,
+                        ClientOptionEncoding::Text,
+                        "{} is not written as bare text",
+                        write.key
+                    );
+                    value
+                }
             };
             if self.options.raw(spec.key) != Some(text) {
                 self.options.set_raw(spec.key, text);
@@ -360,12 +369,14 @@ pub(crate) struct ClientOptionWrite {
     pub(crate) value: ClientOptionValue,
 }
 
-/// The two encodings a hotkey can write today: `Options.save` writes booleans
-/// as `true`/`false` and enum options as their numeric id.
+/// The encodings runtime actions can write today: `Options.save` writes
+/// booleans as `true`/`false`, enum options as their numeric id, and language
+/// codes as bare text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ClientOptionValue {
     Boolean(bool),
     EnumId(i32),
+    Text(&'static str),
 }
 
 /// The catalogued spec for `key`, so a binding can be checked against the
@@ -616,6 +627,23 @@ mod tests {
 
         let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
         assert_eq!(reloaded.raw("narrator"), Some("3"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn recipe_book_language_write_stores_the_bare_language_code() {
+        let path = unique_options_path("recipe-language");
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        assert!(file
+            .apply(&[ClientOptionWrite {
+                key: "lang",
+                value: ClientOptionValue::Text("en_pt"),
+            }])
+            .unwrap());
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(reloaded.raw("lang"), Some("en_pt"));
         let _ = fs::remove_file(path);
     }
 

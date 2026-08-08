@@ -1759,7 +1759,12 @@ fn handle_recipe_book_search_text_input(
             return true;
         }
     }
+    let accepted = text.chars().any(is_recipe_book_search_char);
+    if !accepted {
+        return false;
+    }
     insert_recipe_book_search_text(input, text);
+    maybe_request_recipe_book_language(input);
     true
 }
 
@@ -1786,8 +1791,8 @@ fn handle_recipe_book_search_key_input(
         return false;
     }
 
-    match code {
-        KeyCode::Escape => false,
+    let search_box_handled = match code {
+        KeyCode::Escape => return false,
         KeyCode::KeyA if input.text_edit_shortcut_down() => {
             select_recipe_book_search_text(input);
             true
@@ -1883,7 +1888,27 @@ fn handle_recipe_book_search_key_input(
             }
             true
         }
-        _ => true,
+        _ => false,
+    };
+    if search_box_handled {
+        maybe_request_recipe_book_language(input);
+    }
+    // `RecipeBookComponent.keyPressed` consumes every non-Escape key while
+    // its visible search box is focused, but calls `checkSearchStringUpdate`
+    // only when `EditBox.keyPressed` returned true.
+    true
+}
+
+/// `RecipeBookComponent.checkSearchStringUpdate` lowercases with
+/// `Locale.ROOT` and compares with the fixed `excitedze` token after both
+/// `keyPressed` and `charTyped`. The language owner decides whether `en_pt`
+/// exists and whether it is already selected.
+fn maybe_request_recipe_book_language(input: &mut ClientInputState) {
+    if input
+        .recipe_book_search_text
+        .eq_ignore_ascii_case("excitedze")
+    {
+        input.recipe_book_language_requests = input.recipe_book_language_requests.saturating_add(1);
     }
 }
 

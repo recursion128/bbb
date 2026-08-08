@@ -42,10 +42,16 @@ pub(crate) enum PlatformEffect {
     DumpDynamicTextures {
         requests: u32,
     },
+    /// Replace the render/resource owner's selected locale before the
+    /// terminal resource-reload effect consumes it.
+    SetClientLocale(String),
     /// `KeyboardHandler`'s `options.save()` after a debug hotkey flipped a
     /// persisted field.
     SaveClientOptions {
         writes: Vec<crate::client_options::ClientOptionWrite>,
+        /// `Options.save` always broadcasts after the write attempt finishes,
+        /// including when the file owner is absent or the write fails.
+        broadcast: bbb_protocol::packets::ClientInformation,
     },
     ProfilingToggled {
         commands: Vec<DebugProfilingCommand>,

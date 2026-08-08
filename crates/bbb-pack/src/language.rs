@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{bail, Context, Result};
 use regex::Regex;
@@ -10,9 +10,13 @@ pub const DEFAULT_LANGUAGE_CODE: &str = "en_us";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LanguageCatalog {
-    pub translations: BTreeMap<String, String>,
+    translations: BTreeMap<String, String>,
     #[serde(default)]
     bidirectional: bool,
+    /// Languages declared by the selected pack stack's `language` metadata.
+    /// A JSON file alone does not make a language selectable in Vanilla.
+    #[serde(default)]
+    available_languages: BTreeSet<String>,
 }
 
 impl LanguageCatalog {
@@ -73,11 +77,20 @@ impl LanguageCatalog {
         resources: &[crate::resources::PackResource],
     ) -> Result<()> {
         for resource in resources {
-            let Ok(raw): Result<BTreeMap<String, serde_json::Value>> =
-                stack.read_json_resource(resource, "language file")
-            else {
-                continue;
-            };
+            let raw: BTreeMap<String, serde_json::Value> =
+                match stack.read_json_resource(resource, "language file") {
+                    Ok(raw) => raw,
+                    // `ClientLanguage.appendFrom` catches an `IOException`
+                    // around each resource and keeps walking that stack.
+                    Err(error) if error.chain().any(|cause| cause.is::<std::io::Error>()) => {
+                        continue;
+                    }
+                    // Gson syntax/type failures escape `appendFrom` and are
+                    // caught by `loadFrom`'s namespace-level `Exception`
+                    // guard, so higher-priority resources in this same stack
+                    // must not apply after the malformed entry.
+                    Err(error) => return Err(error),
+                };
             self.merge_raw(raw)
                 .with_context(|| format!("parse language file {}", resource.path.display()))?;
         }
@@ -106,7 +119,11 @@ impl LanguageCatalog {
     }
 
     pub fn get_or_key<'a>(&'a self, key: &'a str) -> &'a str {
-        self.get(key).unwrap_or(key)
+        self.get_or_default(key, key)
+    }
+
+    pub fn get_or_default<'a>(&'a self, key: &str, default_value: &'a str) -> &'a str {
+        self.get(key).unwrap_or(default_value)
     }
 
     pub fn has(&self, key: &str) -> bool {
@@ -125,8 +142,19 @@ impl LanguageCatalog {
         self.bidirectional
     }
 
+    pub fn has_available_language(&self, language_code: &str) -> bool {
+        self.available_languages.contains(language_code)
+    }
+
     pub(crate) fn set_bidirectional(&mut self, bidirectional: bool) {
         self.bidirectional = bidirectional;
+    }
+
+    pub(crate) fn set_available_languages(
+        &mut self,
+        language_codes: impl IntoIterator<Item = String>,
+    ) {
+        self.available_languages = language_codes.into_iter().collect();
     }
 }
 
@@ -192,6 +220,10 @@ mod tests {
         assert_eq!(catalog.get("primitive.number"), Some("42"));
         assert_eq!(catalog.get("primitive.boolean"), Some("true"));
         assert_eq!(catalog.get_or_key("missing.key"), "missing.key");
+        assert_eq!(
+            catalog.get_or_default("missing.key", "explicit fallback"),
+            "explicit fallback"
+        );
     }
 
     #[test]
@@ -325,6 +357,36 @@ mod tests {
     }
 
     #[test]
+    fn malformed_language_json_stops_only_its_namespace_resource_stack() {
+        let root = unique_temp_dir("language-bad-middle-resource");
+        let base = root.join("base");
+        let malformed = root.join("malformed");
+        let higher = root.join("higher");
+        write_json(
+            &base.join("assets/minecraft/lang/en_us.json"),
+            r#"{"stack.value":"base"}"#,
+        );
+        write_json(&malformed.join("assets/minecraft/lang/en_us.json"), "{");
+        write_json(
+            &higher.join("assets/minecraft/lang/en_us.json"),
+            r#"{"stack.value":"higher"}"#,
+        );
+        write_json(
+            &higher.join("assets/custom/lang/en_us.json"),
+            r#"{"custom.value":"still loaded"}"#,
+        );
+
+        let stack = PackResourceStack::from_roots([base, malformed, higher]);
+        let catalog =
+            LanguageCatalog::load_resource_stack(&stack, &[DEFAULT_LANGUAGE_CODE]).unwrap();
+
+        assert_eq!(catalog.get("stack.value"), Some("base"));
+        assert_eq!(catalog.get("custom.value"), Some("still loaded"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn pack_roots_language_catalog_loads_default_then_selected_language() {
         let root = unique_temp_dir("language-pack-roots");
         let assets_dir = root
@@ -377,6 +439,8 @@ mod tests {
         let fallback_catalog = roots.load_client_language_catalog("pirate").unwrap();
         assert_eq!(fallback_catalog.get("menu.play"), Some("Play"));
         assert!(!fallback_catalog.is_bidirectional());
+        assert!(fallback_catalog.has_available_language(DEFAULT_LANGUAGE_CODE));
+        assert!(!fallback_catalog.has_available_language("pirate"));
 
         write_json(
             &sources_dir.join("pack.mcmeta"),
@@ -394,6 +458,7 @@ mod tests {
         let selected_catalog = roots.load_client_language_catalog("pirate").unwrap();
         assert_eq!(selected_catalog.get("menu.play"), Some("Sail"));
         assert!(selected_catalog.is_bidirectional());
+        assert!(selected_catalog.has_available_language("pirate"));
 
         std::fs::remove_dir_all(root).unwrap();
     }
