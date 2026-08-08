@@ -265,7 +265,6 @@
         "items-versioned-property-surface",
         "lifecycle-client-runtime",
         "lifecycle-client-task-handoff",
-        "lifecycle-session-replacement",
         "movement-remote-type-exceptions",
         "persistence-options-derived",
         "persistence-server-list",
@@ -364,7 +363,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "5eb752b76bd486d1c260076980ec0b005c5a85ac8172960ce29ab8ef2b454ebf",
+      "sha256": "18aa4f4ae761151a79e07053dc334309f16c0a122cc2173164de40fb6befcf8e",
       "valid": true
     },
     {
@@ -735,7 +734,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "0181ba90b6a430ffb6009b5f00ae3911351302ffd105b98e07454da96a89f799",
+      "sha256": "062ebe03b68881e6da9e5cfde53e9ede16bb26c8f42e8699d88e88a3d932cff8",
       "valid": true
     },
     {
@@ -2611,6 +2610,7 @@
         "input-key-mapping",
         "interaction-game-mode-guards",
         "lifecycle-client-runtime",
+        "lifecycle-session-replacement",
         "persistence-options-apply",
         "platform-window-surface-state",
         "player-local-environment-effects",
@@ -7666,7 +7666,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "5eb752b76bd486d1c260076980ec0b005c5a85ac8172960ce29ab8ef2b454ebf",
+      "sha256": "18aa4f4ae761151a79e07053dc334309f16c0a122cc2173164de40fb6befcf8e",
       "valid": true
     },
     {
@@ -8275,7 +8275,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "0181ba90b6a430ffb6009b5f00ae3911351302ffd105b98e07454da96a89f799"
+      "sha256": "062ebe03b68881e6da9e5cfde53e9ede16bb26c8f42e8699d88e88a3d932cff8"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8283,7 +8283,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "5eb752b76bd486d1c260076980ec0b005c5a85ac8172960ce29ab8ef2b454ebf"
+      "sha256": "18aa4f4ae761151a79e07053dc334309f16c0a122cc2173164de40fb6befcf8e"
     }
   ],
   "mechanisms": [
@@ -8563,7 +8563,6 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -8572,6 +8571,7 @@
         "repo:crates/bbb-native/src/resource_pack_runtime.rs",
         "repo:crates/bbb-native/src/runtime/events/dispatcher.rs",
         "repo:crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs",
         "repo:crates/bbb-net/src/event_stream.rs",
         "repo:crates/bbb-world/src/client/server_presentation.rs",
         "repo:scripts/playable_gate.py"
@@ -8582,9 +8582,12 @@
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
           "crates/bbb-native/src/runtime/events/dispatcher.rs#session_replacement_has_one_connection_owner_and_frozen_transfer_order",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#play_reconfiguration_clears_level_and_stops_the_previous_audio_generation",
           "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#play_reconfiguration_protocol_switch_does_not_clear_the_level_twice",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
           "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
           "crates/bbb-world/src/client/server_presentation.rs#new_connection_session_keeps_only_transfer_carry_and_server_data",
+          "crates/bbb-world/src/client/server_presentation.rs#terminal_connection_session_drops_transfer_only_carry",
           "scripts/playable_gate.py"
         ],
         "owner": "`WorldStore` connection session→native effect projection"
@@ -8597,6 +8600,7 @@
             "repo:crates/bbb-native/src/resource_pack_runtime.rs",
             "repo:crates/bbb-native/src/runtime/events/dispatcher.rs",
             "repo:crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs",
+            "repo:crates/bbb-native/src/runtime/tests.rs",
             "repo:crates/bbb-world/src/client/server_presentation.rs"
           ],
           "kind": "state-trace",
@@ -8620,7 +8624,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native terminal_close_does_not_fabricate_remote_disconnect",
@@ -8641,9 +8645,21 @@
           "result": "passed-via-full-gate"
         },
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-native play_reconfiguration_clears_level_and_stops_the_previous_audio_generation",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#play_reconfiguration_clears_level_and_stops_the_previous_audio_generation",
+          "result": "passed-via-full-gate"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-native play_reconfiguration_protocol_switch_does_not_clear_the_level_twice",
           "ignored": false,
           "reference": "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#play_reconfiguration_protocol_switch_does_not_clear_the_level_twice",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
           "result": "passed-via-full-gate"
         },
         {
@@ -8651,20 +8667,24 @@
           "ignored": false,
           "reference": "crates/bbb-world/src/client/server_presentation.rs#new_connection_session_keeps_only_transfer_carry_and_server_data",
           "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-world terminal_connection_session_drops_transfer_only_carry",
+          "ignored": false,
+          "reference": "crates/bbb-world/src/client/server_presentation.rs#terminal_connection_session_drops_transfer_only_carry",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
         "domain": "lifecycle/session",
         "line": 13,
         "required_state_projection": "connection/level generation replacement、reconfiguration、Transfer carry、terminal drop",
-        "route_reopen_condition": "replacement carry、generation 或 teardown order 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "replacement carry、generation、Transfer intent、cookie/listener state 或 teardown order 变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "lifecycle-session-replacement",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 12,
@@ -36390,6 +36410,7 @@
         "repo:crates/bbb-native/src/resource_pack_runtime.rs",
         "repo:crates/bbb-native/src/runtime/events/dispatcher.rs",
         "repo:crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs",
         "repo:crates/bbb-world/src/client/server_presentation.rs"
       ],
       "kind": "state-trace",
@@ -39633,7 +39654,6 @@
       "interaction-primary-action-routing",
       "lifecycle-client-runtime",
       "lifecycle-client-task-handoff",
-      "lifecycle-session-replacement",
       "persistence-options-derived",
       "persistence-server-list",
       "platform-window-chrome",
@@ -39713,11 +39733,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 17,
+      "equivalent": 18,
       "not-needed": 25,
-      "partial": 104
+      "partial": 103
     },
-    "valid_count": 43
+    "valid_count": 44
   },
   "vanilla_version": "26.1"
 }

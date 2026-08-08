@@ -48,7 +48,7 @@ Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_
 
 Owner: `scripts` + the matrix-declared BBB owners
 
-Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-session-replacement`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-login-handler-decisions`, `protocol-client-state-flow`
+Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-login-handler-decisions`, `protocol-client-state-flow`
 Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`
 Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`, `player-local-world-edit-ui`
@@ -56,7 +56,7 @@ Matrix routes: `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `hu
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
-- Close the 104 records that remain `partial` in the current parity acceptance
+- Close the 103 records that remain `partial` in the current parity acceptance
   report. All 147 records and reverse artifact/scenario mappings validate against
   gated evidence commit `553d02405` with zero false `equivalent`, zero missing
   focused-decision evidence, and current Vanilla owner source hashes; the
@@ -65,8 +65,8 @@ Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycl
   fallback. Current visual/draw/performance receipts are rebound from capture
   `fa73aed19` by identical `elf-load-image-v1`; remaining closure requires exact-commit
   real ALSA host-device receipt plus per-mechanism matrix review. Exact-commit
-  lifecycle and Linux platform receipts are now present; only the platform seat
-  row has completed its independent owner/focused-evidence review in this slice.
+  lifecycle and Linux platform receipts are now present; the platform seat and
+  session-replacement rows have completed independent owner/focused-evidence review.
   Preserve invalid receipts until replaced; the user-waived
   macOS `deferred-external` row is not a closure blocker but retains its source
   basis and reopen condition.
