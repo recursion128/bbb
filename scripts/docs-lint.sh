@@ -250,6 +250,20 @@ else
   echo "docs lint: client inventory exact-output check skipped (Vanilla tree or repo generator absent)"
 fi
 
+file_drop_generator="$repo_root/scripts/generate-file-drop-capability.py"
+file_drop_output="$repo_root/docs/evidence/vanilla-26.1/file-drop-capability.json"
+if [ -n "$vanilla_root" ] && [ -f "$file_drop_generator" ]; then
+  if ! "$repo_root/scripts/python" \
+    "$file_drop_generator" \
+    --vanilla-root "$vanilla_root" \
+    --output "$file_drop_output" \
+    --check; then
+    failed=1
+  fi
+else
+  echo "docs lint: file-drop capability exact-output check skipped (Vanilla tree or repo generator absent)"
+fi
+
 menu_screen_generator="$repo_root/scripts/generate-menu-screen-catalog.py"
 menu_screen_output="$repo_root/crates/bbb-native/src/input/inventory/menu_screens_26_1.rs"
 if [ -n "$vanilla_root" ] && [ -f "$menu_screen_generator" ]; then

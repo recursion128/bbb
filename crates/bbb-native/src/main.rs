@@ -2418,10 +2418,13 @@ fn update_window_title(window: &Window, connected: bool, current: &mut Option<St
 
 /// Translates winit window events into `SimulationCommand`s — the
 /// `KeyboardHandler.setup`/`MouseHandler.setup` GLFW-callback equivalent.
-/// Two vanilla callbacks are deliberately absent: `WindowEvent::DroppedFile`
-/// (`MouseHandler.onDrop`'s only `Screen.onFilesDrop` consumer is the
-/// pack-selection screen, an options-UI non-goal, and its failure toast only
-/// reports failed GLFW path decodes) and `WindowEvent::CursorEntered`
+/// Two vanilla callbacks are deliberately absent. `WindowEvent::DroppedFile`
+/// cannot provide `MouseHandler.onDrop`'s batch-local failed path count: winit
+/// 0.29.15 flattens successes into individual events and exposes no failure or
+/// batch receipt. The exact failed-file-drop capability receipt is generated at
+/// `docs/evidence/vanilla-26.1/file-drop-capability.json`; a supported platform
+/// adapter must preserve `(valid_paths, failed_count)` before this can be wired.
+/// `WindowEvent::CursorEntered` is also absent
 /// (`cursorEntered`'s only consumer is `setIgnoreFirstMove`, which relative
 /// turn deltas make structurally unnecessary — see `set_cursor_capture`).
 fn enqueue_simulation_window_event(

@@ -267,6 +267,11 @@ public class Owner {
             all(
                 gap["ledger"]
                 == "docs/unsupported-features.md#Machine-readable parity acceptance closure"
+                and gap["artifact"]
+                == "docs/evidence/vanilla-26.1/file-drop-capability.json"
+                and gap["reproduce_command"]
+                == "scripts/python scripts/generate-file-drop-capability.py --vanilla-root "
+                '"$(scripts/vanilla path 26.1 --kind root)" --check'
                 and gap["reason"]
                 and gap["close_condition"]
                 for gap in gaps

@@ -62,6 +62,7 @@ VANILLA_EVIDENCE_MEMBERS = frozenset(
         "client-mechanism-inventory.json",
         "client-options-catalog.json",
         "entity-coverage.json",
+        "file-drop-capability.json",
         "item-component-coverage.json",
         "key-mapping-catalog.json",
         "packet-coverage.json",
@@ -521,6 +522,11 @@ class WikiLint:
         owner_roles: Counter[str] = Counter()
         owner_evidence_counts: Counter[str] = Counter()
         owner_gap_counts: Counter[str] = Counter()
+        declared_owner_ids = {
+            item.get("owner_id")
+            for item in owners
+            if isinstance(item, dict) and isinstance(item.get("owner_id"), str)
+        }
         declared_sources: set[str] = set()
         for item in source_files:
             if not isinstance(item, dict):
@@ -681,6 +687,8 @@ class WikiLint:
                     open_gap = owner_evidence.get("open_gap")
                     if not isinstance(open_gap, dict) or set(open_gap) != {
                         "ledger",
+                        "artifact",
+                        "reproduce_command",
                         "reason",
                         "close_condition",
                     }:
@@ -704,13 +712,100 @@ class WikiLint:
                             self.fail(
                                 f"stale open-gap ledger route for inventory owner {owner_id}: {ledger_ref!r}"
                             )
-                        for field in ("reason", "close_condition"):
+                        for field in ("reason", "close_condition", "reproduce_command"):
                             if (
                                 not isinstance(open_gap.get(field), str)
                                 or not open_gap[field]
                             ):
                                 self.fail(
                                     f"open gap lacks {field} for inventory owner {owner_id}"
+                                )
+                        artifact_ref = open_gap.get("artifact")
+                        artifact_path = (
+                            self.repo / artifact_ref
+                            if isinstance(artifact_ref, str)
+                            and not Path(artifact_ref).is_absolute()
+                            and ".." not in Path(artifact_ref).parts
+                            else None
+                        )
+                        artifact = None
+                        if artifact_path is not None and artifact_path.is_file():
+                            try:
+                                artifact = json.loads(
+                                    artifact_path.read_text(encoding="utf-8")
+                                )
+                            except (OSError, json.JSONDecodeError):
+                                artifact = None
+                        if not isinstance(artifact, dict):
+                            self.fail(
+                                f"open gap lacks readable blocker artifact for inventory owner {owner_id}: {artifact_ref!r}"
+                            )
+                        else:
+                            artifact_mechanism_ids = artifact.get("mechanism_ids")
+                            artifact_owner_ids = artifact.get("owner_ids")
+                            blocker = artifact.get("blocker")
+                            unknown_artifact_mechanisms = (
+                                sorted(set(artifact_mechanism_ids) - set(rows))
+                                if isinstance(artifact_mechanism_ids, list)
+                                and all(
+                                    isinstance(item, str)
+                                    for item in artifact_mechanism_ids
+                                )
+                                else []
+                            )
+                            unknown_artifact_owners = (
+                                sorted(set(artifact_owner_ids) - declared_owner_ids)
+                                if isinstance(artifact_owner_ids, list)
+                                and all(isinstance(item, str) for item in artifact_owner_ids)
+                                else []
+                            )
+                            if unknown_artifact_mechanisms:
+                                self.fail(
+                                    "blocker artifact references unknown mechanism ids: "
+                                    + ", ".join(unknown_artifact_mechanisms)
+                                )
+                            if unknown_artifact_owners:
+                                self.fail(
+                                    "blocker artifact references unknown Vanilla owner ids: "
+                                    + ", ".join(unknown_artifact_owners)
+                                )
+                            if (
+                                artifact.get("schema_version") != 1
+                                or artifact.get("vanilla_version") != "26.1"
+                                or artifact.get("status") != "blocked-external"
+                                or artifact.get("valid") is not True
+                                or not isinstance(artifact_mechanism_ids, list)
+                                or not artifact_mechanism_ids
+                                or not all(
+                                    isinstance(item, str)
+                                    for item in artifact_mechanism_ids
+                                )
+                                or len(artifact_mechanism_ids)
+                                != len(set(artifact_mechanism_ids))
+                                or mechanism_id not in artifact_mechanism_ids
+                                or not isinstance(artifact_owner_ids, list)
+                                or not artifact_owner_ids
+                                or not all(
+                                    isinstance(item, str) for item in artifact_owner_ids
+                                )
+                                or len(artifact_owner_ids) != len(set(artifact_owner_ids))
+                                or owner_id not in artifact_owner_ids
+                                or not isinstance(blocker, dict)
+                                or any(
+                                    not isinstance(blocker.get(field), str)
+                                    or not blocker[field]
+                                    for field in (
+                                        "final_conclusion",
+                                        "missing_condition",
+                                        "reopen_condition",
+                                        "reproduce_command",
+                                    )
+                                )
+                                or blocker.get("reproduce_command")
+                                != open_gap.get("reproduce_command")
+                            ):
+                                self.fail(
+                                    f"blocker artifact does not reverse-map inventory owner {owner_id}"
                                 )
             elif owner_evidence is not None:
                 self.fail(

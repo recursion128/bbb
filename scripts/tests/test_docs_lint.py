@@ -206,6 +206,7 @@ Matrix routes: `fixture-not-needed`
         for name in (
             "client-options-catalog.json",
             "entity-coverage.json",
+            "file-drop-capability.json",
             "item-component-coverage.json",
             "key-mapping-catalog.json",
             "packet-coverage.json",
@@ -790,10 +791,37 @@ Matrix route: `fixture-valid`
             value["owners"][0]["bbb_evidence"] = {
                 "open_gap": {
                     "ledger": "docs/unsupported-features.md#fixture-deferred",
+                    "artifact": "docs/evidence/vanilla-26.1/file-drop-capability.json",
+                    "reproduce_command": "scripts/generate-file-drop-capability.py --check",
                     "reason": "The fixture behavior is not implemented.",
                     "close_condition": "Implement and verify the fixture behavior.",
                 }
             }
+            artifact_path = (
+                repo / "docs/evidence/vanilla-26.1/file-drop-capability.json"
+            )
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "blocker": {
+                            "final_conclusion": "The fixture dependency lacks the event.",
+                            "missing_condition": "The fixture event must be exposed.",
+                            "reopen_condition": "The fixture dependency exposes the event.",
+                            "reproduce_command": "scripts/generate-file-drop-capability.py --check"
+                        },
+                        "mechanism_ids": ["fixture-valid"],
+                        "owner_ids": [value["owners"][0]["owner_id"]],
+                        "schema_version": 1,
+                        "status": "blocked-external",
+                        "valid": True,
+                        "vanilla_version": "26.1",
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
             path.write_text(
                 json.dumps(value, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
@@ -803,6 +831,62 @@ Matrix route: `fixture-valid`
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn(
             "has open owner gaps but is not open in the parity matrix",
+            result.stdout,
+        )
+
+    def test_open_gap_artifact_unknown_mechanism_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["selection_contract"]["owner_evidence_mechanisms"] = [
+                "fixture-valid"
+            ]
+            value["mechanisms"]["fixture-valid"]["owner_evidence_count"] = 1
+            value["mechanisms"]["fixture-valid"]["owner_gap_count"] = 1
+            command = "scripts/generate-file-drop-capability.py --check"
+            value["owners"][0]["bbb_evidence"] = {
+                "open_gap": {
+                    "artifact": "docs/evidence/vanilla-26.1/file-drop-capability.json",
+                    "close_condition": "Implement and verify the fixture behavior.",
+                    "ledger": "docs/unsupported-features.md#fixture-deferred",
+                    "reason": "The fixture behavior is not implemented.",
+                    "reproduce_command": command,
+                }
+            }
+            path.write_text(
+                json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            artifact_path = (
+                repo / "docs/evidence/vanilla-26.1/file-drop-capability.json"
+            )
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "blocker": {
+                            "final_conclusion": "The fixture dependency lacks the event.",
+                            "missing_condition": "The fixture event must be exposed.",
+                            "reopen_condition": "The fixture dependency exposes the event.",
+                            "reproduce_command": command,
+                        },
+                        "mechanism_ids": ["fixture-valid", "fixture-unknown"],
+                        "owner_ids": [value["owners"][0]["owner_id"]],
+                        "schema_version": 1,
+                        "status": "blocked-external",
+                        "valid": True,
+                        "vanilla_version": "26.1",
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(
+            "blocker artifact references unknown mechanism ids: fixture-unknown",
             result.stdout,
         )
 

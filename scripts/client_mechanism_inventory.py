@@ -70,6 +70,8 @@ class OwnerScopeRuling:
 @dataclass(frozen=True)
 class OwnerOpenGap:
     ledger: str
+    artifact: str
+    reproduce_command: str
     reason: str
     close_condition: str
 
@@ -8597,13 +8599,21 @@ HUD_NOW_PLAYING_RUNTIME_OPTION_EVIDENCE = OwnerEvidence(
 
 HUD_FILE_DROP_TOAST_GAP = OwnerOpenGap(
     ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
+    artifact="docs/evidence/vanilla-26.1/file-drop-capability.json",
+    reproduce_command=(
+        "scripts/python scripts/generate-file-drop-capability.py --vanilla-root "
+        '"$(scripts/vanilla path 26.1 --kind root)" --check'
+    ),
     reason=(
-        "Vanilla surfaces failed OS file-drop path conversions through SystemToast, while the "
-        "current winit event surface exposes successful DroppedFile paths but no failed-count event."
+        "Vanilla keeps a valid-path list and exact failed-path count for one GLFW drop batch. "
+        "Pinned winit 0.29.15 exposes only per-success DroppedFile paths; X11 parse failures are "
+        "discarded before WindowEvent delivery and no public backend event carries a batch id or "
+        "failed count."
     ),
     close_condition=(
-        "Provide a supported failed-file-drop receipt/count source and route it through the shared "
-        "SystemToast manager, or record a reproducible external platform blocker."
+        "Provide a supported platform adapter that preserves one drop batch's valid paths and "
+        "exact failed conversion count, then route failedCount > 0 through the shared SystemToast "
+        "manager; re-audit if winit or supported-platform scope changes."
     ),
 )
 
@@ -9974,6 +9984,8 @@ class InventoryBuilder:
             owner["bbb_evidence"] = {
                 "open_gap": {
                     "ledger": evidence.ledger,
+                    "artifact": evidence.artifact,
+                    "reproduce_command": evidence.reproduce_command,
                     "reason": evidence.reason,
                     "close_condition": evidence.close_condition,
                 }

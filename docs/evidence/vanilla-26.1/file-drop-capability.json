@@ -1,0 +1,257 @@
+{
+  "bbb_event_surface": {
+    "adapter": {
+      "failed_path_count_consumed": false,
+      "source": {
+        "anchors": [
+          {
+            "line": 2430,
+            "symbol": "window-event adapter"
+          },
+          {
+            "line": 2424,
+            "symbol": "failed-drop capability blocker"
+          }
+        ],
+        "path": "crates/bbb-native/src/main.rs",
+        "sha256": "e1e1aa49659880a8f62a24f2b4205b23449c9b4eef06ad22201a0b2255bc33ae"
+      },
+      "successful_path_event_consumed": false
+    },
+    "backends": {
+      "linux-wayland": {
+        "contract": "no file-drop WindowEvent implementation",
+        "source_tree": {
+          "file_count": 19,
+          "path": "src/platform_impl/linux/wayland",
+          "searched_events": [
+            "DroppedFile",
+            "HoveredFile",
+            "HoveredFileCancelled"
+          ],
+          "sha256_tree": "844c87ee8c9ba0a58bd513151c27a840f736aefc5e10e5252a331ce8edb140a5"
+        }
+      },
+      "linux-x11": {
+        "contract": {
+          "batch_identity_exposed": false,
+          "failed_path_count_exposed": false,
+          "parse_error_delivery": "no-WindowEvent",
+          "parse_error_variants": [
+            "EmptyData",
+            "InvalidUtf8",
+            "HostnameSpecified",
+            "UnexpectedProtocol",
+            "UnresolvablePath"
+          ],
+          "success_delivery": "DroppedFile-per-path-only-on-Ok-batch"
+        },
+        "sources": [
+          {
+            "anchors": [
+              {
+                "line": 525,
+                "symbol": "drop dispatch accepts only Ok"
+              },
+              {
+                "line": 529,
+                "symbol": "success-only public event"
+              },
+              {
+                "line": 592,
+                "symbol": "parse result retained internally"
+              }
+            ],
+            "path": "src/platform_impl/linux/x11/event_processor.rs",
+            "sha256": "edd6847d26cdd22e9efed78868e4e16cbcfb66e45b1478c9c45ea4e0f4d0a6ad"
+          },
+          {
+            "anchors": [
+              {
+                "line": 52,
+                "symbol": "fallible batch result"
+              },
+              {
+                "line": 156,
+                "symbol": "parse_data"
+              },
+              {
+                "line": 26,
+                "symbol": "invalid UTF-8 is representable internally"
+              }
+            ],
+            "path": "src/platform_impl/linux/x11/dnd.rs",
+            "sha256": "2998a081b0adbd9116e71488008fcb4c161232a5da23d5758f3860fecba7edff"
+          }
+        ]
+      },
+      "macos": {
+        "contract": {
+          "batch_identity_exposed": false,
+          "failed_path_count_exposed": false,
+          "success_delivery": "DroppedFile-per-NSString"
+        },
+        "source": {
+          "anchors": [
+            {
+              "line": 196,
+              "symbol": "one event per NSString"
+            },
+            {
+              "line": 197,
+              "symbol": "NSString converts directly to PathBuf"
+            },
+            {
+              "line": 224,
+              "symbol": "success-only public event"
+            }
+          ],
+          "path": "src/platform_impl/macos/window_delegate.rs",
+          "sha256": "d318b400d2c897123c19984c6f0cadc58fc4d795bdec16a57524f12eba334efc"
+        }
+      },
+      "windows": {
+        "contract": {
+          "batch_identity_exposed": false,
+          "failed_path_count_exposed": false,
+          "success_delivery": "DroppedFile-per-PathBuf"
+        },
+        "source": {
+          "anchors": [
+            {
+              "line": 174,
+              "symbol": "success-only callback"
+            },
+            {
+              "line": 157,
+              "symbol": "one event per converted filename"
+            },
+            {
+              "line": 212,
+              "symbol": "non-file and GetData failures return None"
+            }
+          ],
+          "path": "src/platform_impl/windows/drop_handler.rs",
+          "sha256": "40695228ea4d0b7c52a58239b440e5da617987bee9d4994ecad87826da8f71a0"
+        }
+      }
+    },
+    "dependency": {
+      "name": "winit",
+      "registry_checksum": "0d59ad965a635657faf09c8f062badd885748428933dad8e8bdd64064d92e5ca",
+      "version": "0.29.15"
+    },
+    "public_event_contract": {
+      "batch_identity_exposed": false,
+      "failed_path_count_exposed": false,
+      "success_delivery": "one-event-per-file",
+      "success_event": "DroppedFile(PathBuf)"
+    },
+    "public_event_source": {
+      "anchors": [
+        {
+          "line": 306,
+          "symbol": "WindowEvent"
+        },
+        {
+          "line": 341,
+          "symbol": "DroppedFile(PathBuf)"
+        },
+        {
+          "line": 339,
+          "symbol": "one event per file"
+        }
+      ],
+      "path": "src/event.rs",
+      "sha256": "9272e9056760124e0780f754380cb932ae94aa06af6583f9a982c91005e88e47"
+    }
+  },
+  "blocker": {
+    "classification": "external-dependency-event-surface",
+    "final_conclusion": "The pinned winit public event stream cannot reproduce Vanilla's per-drop-batch valid-path list plus exact failed-path count; X11 parse failures are discarded before WindowEvent delivery and no backend exposes a batch identity or failure count.",
+    "missing_condition": "A supported platform adapter must expose one drop batch's valid paths and exact failed path-conversion count before winit discards or flattens that information.",
+    "reopen_condition": "winit or an owned platform adapter exposes drop batch identity plus exact failed path count, or the supported-platform scope changes.",
+    "reproduce_command": "scripts/python scripts/generate-file-drop-capability.py --vanilla-root \"$(scripts/vanilla path 26.1 --kind root)\" --check"
+  },
+  "generated_by": "scripts/generate-file-drop-capability.py",
+  "generator_inputs": [
+    {
+      "path": "Cargo.lock",
+      "sha256": "0206bf61fad1a13760d693b43e573f139ad7268d4ac28905090ea511c747aea9"
+    },
+    {
+      "path": "scripts/file_drop_capability.py",
+      "sha256": "02ff0c6d1395a2ebab5e80b993427e08025b7c1ba0c70e8dd315deaa10758dcb"
+    },
+    {
+      "path": "scripts/generate-file-drop-capability.py",
+      "sha256": "a3292609365ef94ab5b7f8736504d137366ffb2d795d45c795127d63c3c728ea"
+    }
+  ],
+  "mechanism_ids": [
+    "hud-frame-extract-order",
+    "platform-window-lifecycle"
+  ],
+  "owner_ids": [
+    "method:net.minecraft.client.gui.components.toasts.SystemToast#onFileDropFailure(final Minecraft minecraft,final int count)"
+  ],
+  "schema_version": 1,
+  "status": "blocked-external",
+  "valid": true,
+  "vanilla_contract": {
+    "all_invalid_batch_dispatches_callback": false,
+    "callback_state": [
+      "valid_paths",
+      "failed_path_count"
+    ],
+    "failure_toast_condition": "valid_paths is non-empty and failed_path_count > 0",
+    "sources": [
+      {
+        "anchors": [
+          {
+            "line": 227,
+            "symbol": "onDrop(validPaths, failedCount)"
+          },
+          {
+            "line": 252,
+            "symbol": "InvalidPathException increments failedCount"
+          },
+          {
+            "line": 258,
+            "symbol": "all-invalid batch is not dispatched"
+          },
+          {
+            "line": 233,
+            "symbol": "failure toast requires positive count"
+          }
+        ],
+        "path": "net/minecraft/client/MouseHandler.java",
+        "sha256": "abd50aa0ac3bb6d01ab6e25ed3f72483862d1c928d0587f33b3e1b75162fc696"
+      },
+      {
+        "anchors": [
+          {
+            "line": 154,
+            "symbol": "onFileDropFailure"
+          },
+          {
+            "line": 157,
+            "symbol": "FILE_DROP_FAILURE identity"
+          },
+          {
+            "line": 159,
+            "symbol": "localized failed-count detail"
+          }
+        ],
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
+        "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+      }
+    ],
+    "toast_identity": "FILE_DROP_FAILURE",
+    "toast_translation_keys": [
+      "gui.fileDropFailure.title",
+      "gui.fileDropFailure.detail"
+    ]
+  },
+  "vanilla_version": "26.1"
+}
