@@ -31,8 +31,23 @@ def tree(*windows: dict) -> str:
     return json.dumps({"type": "root", "nodes": list(windows)})
 
 
-def window(identifier: int, pid: int, name: str, focused: bool = False) -> dict:
-    return {"type": "con", "id": identifier, "pid": pid, "name": name, "focused": focused}
+def window(
+    identifier: int,
+    pid: int,
+    name: str,
+    focused: bool = False,
+    rect: dict | None = None,
+) -> dict:
+    result = {
+        "type": "con",
+        "id": identifier,
+        "pid": pid,
+        "name": name,
+        "focused": focused,
+    }
+    if rect is not None:
+        result["rect"] = rect
+    return result
 
 
 class SeatTargetTests(unittest.TestCase):
@@ -87,6 +102,27 @@ class SeatTargetTests(unittest.TestCase):
             seat_inject.InjectError, "no toplevel window"
         ):
             driver._target()
+
+    def test_window_receipt_includes_global_logical_origin(self):
+        driver, run, argv = self.build(
+            tree(
+                window(
+                    2,
+                    20,
+                    "bbb-native",
+                    focused=True,
+                    rect={"x": 37, "y": 19, "width": 1280, "height": 720},
+                )
+            ),
+            {20: ["bbb-native", "--control", "127.0.0.1:9999"]},
+        )
+        with run, argv, mock.patch.object(driver, "_output_scale", return_value=1.0):
+            receipt = driver.window()
+
+        self.assertEqual(receipt["logical_x"], 37)
+        self.assertEqual(receipt["logical_y"], 19)
+        self.assertEqual(receipt["logical_width"], 1280)
+        self.assertEqual(receipt["logical_height"], 720)
 
 
 class SeatKeyRepeatTests(unittest.TestCase):

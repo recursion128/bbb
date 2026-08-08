@@ -301,6 +301,8 @@ class WlrootsDriver:
         return {
             "driver": self.name,
             "window": target.get("name"),
+            "logical_x": rect.get("x"),
+            "logical_y": rect.get("y"),
             "logical_width": rect.get("width"),
             "logical_height": rect.get("height"),
             "fullscreen": bool(target.get("fullscreen_mode")),

@@ -68,6 +68,26 @@ class PlayableGateEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "pose was not initialized"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_options_language_receipt_hashes_the_exact_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "options.txt"
+            self.assertEqual(
+                playable_gate._options_language_file_state(path),
+                {
+                    "exists": False,
+                    "sha256": None,
+                    "language": None,
+                    "language_entry_count": 0,
+                },
+            )
+            path.write_text("version:4189\nlang:en_pt\nfov:0.0\n", encoding="utf-8")
+            state = playable_gate._options_language_file_state(path)
+
+        self.assertTrue(state["exists"])
+        self.assertEqual(state["language"], "en_pt")
+        self.assertEqual(state["language_entry_count"], 1)
+        self.assertRegex(state["sha256"], r"^[0-9a-f]{64}$")
+
 
 class PlayableGateHeadlessProbeTests(unittest.TestCase):
     def probe(self):
@@ -778,6 +798,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
                 packet_ledger=root / "ledger.json",
                 timeout=0.5,
                 output=root / "evidence.json",
+                client_game_dir=root / "client-game",
                 client_log=root / "client.log",
                 server_log=root / "server.log",
                 transfer_server_log=root / "transfer.log",
@@ -791,7 +812,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 15)
+        self.assertEqual(evidence["schema"], 16)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -893,6 +914,56 @@ class PlayableGateLifecycleTests(unittest.TestCase):
         evidence = copy.deepcopy(self.fixture)
         evidence["mode"] = "live"
         evidence["client_locale"] = "zh_cn"
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "missing the recipe-book language transition"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        evidence["language_transition"] = {
+            "trigger": "excitedze",
+            "target_language": "en_pt",
+            "initial_selected_language": "zh_cn",
+            "initial_selected_language_probe_key": "menu.multiplayer",
+            "initial_selected_language_probe_value": "多人游戏",
+            "initial_resource_generation": 0,
+            "indexed_asset_index_id": "30",
+            "target_available": True,
+            "committed_resource_generation": 1,
+            "last_reload_generation": 1,
+            "last_reload_failure_stage": None,
+            "last_reload_error": None,
+            "target_selected_language_probe_key": "menu.multiplayer",
+            "target_selected_language_probe_value": "Play with yer mates",
+            "language_bidirectional": False,
+            "recipe_book_open_after_click": True,
+            "recipe_book_settings_commands_delta": 1,
+            "compositor_window": {
+                "driver": "uinput",
+                "window": "bbb-native",
+                "logical_x": 0,
+                "logical_y": 0,
+                "logical_width": 1280,
+                "logical_height": 720,
+                "fullscreen": False,
+                "floating": False,
+                "output_scale": 1.0,
+            },
+            "renderer_surface": [1280, 720],
+            "recipe_button_surface_center": [666, 347],
+            "pointer_global_target": [666, 347],
+            "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
+            "search_focus_input": "input.key:chat",
+            "search_text_input": "input.text:excitedze",
+            "options_language_before": "zh_cn",
+            "options_before_sha256": "a" * 64,
+            "options_language_after": "en_pt",
+            "options_language_entry_count": 1,
+            "options_after_sha256": "b" * 64,
+            "options_write_observed": True,
+            "broadcast_client_information_commands_delta": 1,
+            "screen_closed": True,
+            "duration_milliseconds": 1000,
+        }
         resource_pack = evidence["lifecycle"]["resource_pack"]
         resource_pack.update(
             {
@@ -901,9 +972,9 @@ class PlayableGateLifecycleTests(unittest.TestCase):
                 "indexed_asset_exposed_resource_count": 4736,
                 "indexed_asset_root_resource_count": 13,
                 "indexed_asset_retained_logical_bytes": 800000,
-                "selected_language": "zh_cn",
+                "selected_language": "en_pt",
                 "selected_language_probe_key": "menu.multiplayer",
-                "selected_language_probe_value": "多人游戏",
+                "selected_language_probe_value": "Play with yer mates",
             }
         )
 
@@ -911,6 +982,15 @@ class PlayableGateLifecycleTests(unittest.TestCase):
 
         resource_pack["indexed_asset_object_count"] = 4748
         with self.assertRaisesRegex(playable_gate.GateFailure, "4749 index objects"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        resource_pack["indexed_asset_object_count"] = 4749
+        evidence["language_transition"][
+            "broadcast_client_information_commands_delta"
+        ] = 0
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "exactly one ClientInformation"
+        ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
     def test_reconfiguration_registry_drift_fails(self):
@@ -1430,6 +1510,7 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         self.assertIn("--transfer-server-port", source)
         self.assertIn("--transfer-server-log", source)
         self.assertIn('--client-locale "$client_locale"', source)
+        self.assertIn('--client-game-dir "$client_game_dir"', source)
         self.assertIn("bbb playable transfer target 26.1", source)
 
     def test_every_session_client_uses_an_artifact_local_game_directory(self):

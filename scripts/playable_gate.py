@@ -145,6 +145,12 @@ def _positive_int(value: Any, path: str) -> int:
     return value
 
 
+def _nonnegative_int(value: Any, path: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise GateFailure(f"{path} must be a non-negative integer, got {value!r}")
+    return value
+
+
 def _object(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise GateFailure(f"{path} must be an object, got {type(value).__name__}")
@@ -159,8 +165,10 @@ def validate_evidence(
 ) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 15:
-        raise GateFailure(f"playable evidence schema must be 15, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 16:
+        raise GateFailure(
+            f"playable evidence schema must be 16, got {evidence.get('schema')!r}"
+        )
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
@@ -269,8 +277,13 @@ def validate_evidence(
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
+    selected_locale = _validate_language_transition(
+        evidence.get("language_transition"),
+        client_locale,
+        required=evidence.get("mode") == "live" and client_locale == "zh_cn",
+    )
     _validate_lifecycle(
-        evidence.get("lifecycle"), client_locale, evidence.get("mode") == "live"
+        evidence.get("lifecycle"), selected_locale, evidence.get("mode") == "live"
     )
 
 
@@ -316,8 +329,167 @@ BLOCK_INTERACTION_COMMAND_DELTAS = (
 )
 
 
+def _validate_language_transition(
+    transition: Any, client_locale: str, *, required: bool
+) -> str:
+    """Validate the live RecipeBookComponent ``excitedze`` receipt.
+
+    The checked fixture deliberately leaves this platform interaction absent.
+    A live zh_cn run, however, is the exact contract used to close the language
+    mechanism and may not fall back to startup-only locale diagnostics.
+    """
+
+    if transition is None:
+        if required:
+            raise GateFailure(
+                "live zh_cn evidence is missing the recipe-book language transition"
+            )
+        return client_locale
+
+    transition = _object(transition, "language_transition")
+    expected = {
+        "trigger": "excitedze",
+        "target_language": "en_pt",
+        "initial_selected_language": client_locale,
+        "initial_selected_language_probe_key": "menu.multiplayer",
+        "target_selected_language_probe_key": "menu.multiplayer",
+        "target_selected_language_probe_value": "Play with yer mates",
+        "recipe_book_open_after_click": True,
+        "target_available": True,
+        "options_language_after": "en_pt",
+        "options_write_observed": True,
+        "screen_closed": True,
+        "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
+        "search_focus_input": "input.key:chat",
+        "search_text_input": "input.text:excitedze",
+    }
+    for key, value in expected.items():
+        if transition.get(key) != value:
+            raise GateFailure(
+                f"language_transition.{key} must be {value!r}, got {transition.get(key)!r}"
+            )
+    initial_translation = {
+        "en_us": "Multiplayer",
+        "ar_sa": "اللعب متعدد اللاعبين",
+        "zh_cn": "多人游戏",
+    }[client_locale]
+    if transition.get("initial_selected_language_probe_value") != initial_translation:
+        raise GateFailure(
+            "language transition did not start from the selected startup translation"
+        )
+    if transition.get("indexed_asset_index_id") != "30":
+        raise GateFailure(
+            "language transition was not backed by Vanilla asset index 30"
+        )
+
+    initial_generation = _nonnegative_int(
+        transition.get("initial_resource_generation"),
+        "language_transition.initial_resource_generation",
+    )
+    committed_generation = _positive_int(
+        transition.get("committed_resource_generation"),
+        "language_transition.committed_resource_generation",
+    )
+    if committed_generation <= initial_generation:
+        raise GateFailure("language transition did not advance the resource generation")
+    if transition.get("last_reload_generation") != committed_generation:
+        raise GateFailure("language transition did not commit its reload generation")
+    if (
+        transition.get("last_reload_failure_stage") is not None
+        or transition.get("last_reload_error") is not None
+    ):
+        raise GateFailure("language transition retained a resource reload failure")
+    if transition.get("language_bidirectional") is not False:
+        raise GateFailure("en_pt language transition did not select LTR text direction")
+    if transition.get("recipe_book_settings_commands_delta") != 1:
+        raise GateFailure(
+            "recipe-book pointer click did not queue exactly one settings packet"
+        )
+    if transition.get("broadcast_client_information_commands_delta") != 1:
+        raise GateFailure(
+            "language options save did not queue exactly one ClientInformation broadcast"
+        )
+
+    compositor = _object(
+        transition.get("compositor_window"),
+        "language_transition.compositor_window",
+    )
+    if compositor.get("driver") != "uinput":
+        raise GateFailure(
+            "language transition pointer receipt did not use the release uinput seat"
+        )
+    for key in ("logical_x", "logical_y", "logical_width", "logical_height"):
+        _nonnegative_int(
+            compositor.get(key), f"language_transition.compositor_window.{key}"
+        )
+    if compositor.get("output_scale") != 1.0:
+        raise GateFailure(
+            "language transition must run before the display-scale scenario"
+        )
+
+    surface = transition.get("renderer_surface")
+    if (
+        not isinstance(surface, list)
+        or len(surface) != 2
+        or any(
+            not isinstance(value, int) or isinstance(value, bool) or value <= 0
+            for value in surface
+        )
+    ):
+        raise GateFailure(
+            "language_transition.renderer_surface must be [width, height]"
+        )
+    if surface != [compositor["logical_width"], compositor["logical_height"]]:
+        raise GateFailure(
+            "language transition compositor and renderer surfaces did not match at scale 1"
+        )
+    target = transition.get("recipe_button_surface_center")
+    if (
+        not isinstance(target, list)
+        or len(target) != 2
+        or any(
+            not isinstance(value, int) or isinstance(value, bool) for value in target
+        )
+        or not 0 <= target[0] < surface[0]
+        or not 0 <= target[1] < surface[1]
+    ):
+        raise GateFailure(
+            "language transition recipe button target was outside the surface"
+        )
+    expected_pointer = [
+        compositor["logical_x"] + target[0],
+        compositor["logical_y"] + target[1],
+    ]
+    if transition.get("pointer_global_target") != expected_pointer:
+        raise GateFailure(
+            "language transition pointer target did not match window geometry"
+        )
+
+    options_before_hash = transition.get("options_before_sha256")
+    if (
+        options_before_hash is not None
+        and re.fullmatch(r"[0-9a-f]{64}", str(options_before_hash)) is None
+    ):
+        raise GateFailure("language transition options-before hash is malformed")
+    options_after_hash = transition.get("options_after_sha256")
+    if re.fullmatch(r"[0-9a-f]{64}", str(options_after_hash)) is None:
+        raise GateFailure("language transition options-after hash is malformed")
+    if options_after_hash == options_before_hash:
+        raise GateFailure("language transition did not change the options artifact")
+    if transition.get("options_language_entry_count") != 1:
+        raise GateFailure(
+            "language transition options artifact must contain one lang entry"
+        )
+
+    _positive_int(
+        transition.get("duration_milliseconds"),
+        "language_transition.duration_milliseconds",
+    )
+    return "en_pt"
+
+
 def _validate_lifecycle(
-    lifecycle: Any, client_locale: str, require_indexed_language_diagnostics: bool
+    lifecycle: Any, selected_locale: str, require_indexed_language_diagnostics: bool
 ) -> None:
     lifecycle = _object(lifecycle, "lifecycle")
     if lifecycle.get("stage") != "complete":
@@ -409,14 +581,14 @@ def _validate_lifecycle(
         raise GateFailure("active server pack was absent from client resource diagnostics")
     if resource_pack.get("server_pack_selected_after_pop") is not False:
         raise GateFailure("popped server pack remained in client resource diagnostics")
-    expected_active_direction = client_locale == "ar_sa"
+    expected_active_direction = selected_locale == "ar_sa"
     if (
         resource_pack.get("language_bidirectional_while_active")
         is not expected_active_direction
     ):
         raise GateFailure(
             "active resource-pack language direction did not match the selected "
-            f"{client_locale} locale"
+            f"{selected_locale} locale"
         )
     if resource_pack.get("language_bidirectional_after_pop") is not False:
         raise GateFailure(
@@ -441,15 +613,18 @@ def _validate_lifecycle(
             resource_pack.get("indexed_asset_retained_logical_bytes"),
             "lifecycle.resource_pack.indexed_asset_retained_logical_bytes",
         )
-        if resource_pack.get("selected_language") != client_locale:
-            raise GateFailure("live client resource diagnostics selected the wrong language")
+        if resource_pack.get("selected_language") != selected_locale:
+            raise GateFailure(
+                "live client resource diagnostics selected the wrong language"
+            )
         if resource_pack.get("selected_language_probe_key") != "menu.multiplayer":
             raise GateFailure("live client resource diagnostics used the wrong language probe")
         expected_translation = {
             "en_us": "Multiplayer",
             "ar_sa": "اللعب متعدد اللاعبين",
             "zh_cn": "多人游戏",
-        }[client_locale]
+            "en_pt": "Play with yer mates",
+        }[selected_locale]
         if resource_pack.get("selected_language_probe_value") != expected_translation:
             raise GateFailure(
                 "live client resource diagnostics did not resolve the selected-language probe"
@@ -3668,6 +3843,265 @@ def drive_inventory_interaction(
     }
 
 
+RECIPE_LANGUAGE_TRIGGER = "excitedze"
+RECIPE_LANGUAGE_TARGET = "en_pt"
+LOCAL_INVENTORY_GUI_WIDTH = 176
+LOCAL_INVENTORY_GUI_HEIGHT = 166
+LOCAL_INVENTORY_RECIPE_BUTTON_X = 104
+LOCAL_INVENTORY_RECIPE_BUTTON_Y = 61
+RECIPE_BUTTON_WIDTH = 20
+RECIPE_BUTTON_HEIGHT = 18
+POINTER_ORIGIN_CLAMP_DELTA = -10_000
+
+
+def _options_language_file_state(path: Path) -> dict[str, Any]:
+    """Read the durable ``Options.save`` artifact without normalising it."""
+
+    if not path.exists():
+        return {
+            "exists": False,
+            "sha256": None,
+            "language": None,
+            "language_entry_count": 0,
+        }
+    data = path.read_bytes()
+    languages = []
+    for line in data.decode("utf-8").splitlines():
+        key, separator, value = line.partition(":")
+        if separator and key == "lang":
+            languages.append(value)
+    return {
+        "exists": True,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "language": languages[-1] if languages else None,
+        "language_entry_count": len(languages),
+    }
+
+
+def _crafting_recipe_book_is_open(address: tuple[str, int]) -> bool:
+    recipe_book = _control_request(address, "world.client_recipe_book")
+    settings = recipe_book.get("settings") if isinstance(recipe_book, dict) else None
+    crafting = settings.get("crafting") if isinstance(settings, dict) else None
+    return isinstance(crafting, dict) and crafting.get("open") is True
+
+
+def drive_recipe_book_language_transition(
+    address: tuple[str, int],
+    injector: list[str],
+    client_game_dir: Path,
+    client_locale: str,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """Exercise Vanilla's RecipeBookComponent language easter egg live.
+
+    Opening the panel is deliberately a compositor-seat pointer action.  The
+    focused key and text are then replayed through the native control input
+    surface so the receipt can name the exact accepted input calls, while the
+    committed locale, reload generation, options file and serverbound counter
+    are all read from their independent owners.
+    """
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    options_path = client_game_dir / "options.txt"
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before recipe-book language transition")
+    initial_resources = _object(
+        net_before.get("client_resources"), "net.counters.client_resources"
+    )
+    if initial_resources.get("selected_language") != client_locale:
+        raise GateFailure(
+            "recipe-book language transition did not start from the requested "
+            f"{client_locale!r} locale"
+        )
+    initial_generation = _nonnegative_int(
+        initial_resources.get("generation"), "client_resources.generation"
+    )
+    if _crafting_recipe_book_is_open(address):
+        raise GateFailure("recipe book was already open before its pointer receipt")
+
+    with _seat_input_only():
+        regained = _seat_reach_the_world(address, injector, deadline)
+        _seat_inject(injector, "key", "inventory")
+        _await_value(
+            deadline,
+            "the local survival inventory to open for the language transition",
+            lambda: _inventory_state(address).get("local_inventory_open"),
+            lambda value: value is True,
+        )
+
+        compositor = _object(
+            _seat_inject_json(injector, "window"), "seat window geometry"
+        )
+        if (
+            compositor.get("driver") != "uinput"
+            or compositor.get("output_scale") != 1.0
+        ):
+            raise GateFailure(
+                "recipe-book pointer receipt requires the release uinput seat at scale 1"
+            )
+        logical_x = _nonnegative_int(compositor.get("logical_x"), "window.logical_x")
+        logical_y = _nonnegative_int(compositor.get("logical_y"), "window.logical_y")
+        logical_width = _positive_int(
+            compositor.get("logical_width"), "window.logical_width"
+        )
+        logical_height = _positive_int(
+            compositor.get("logical_height"), "window.logical_height"
+        )
+        renderer = _object(
+            _control_request(address, "renderer.counters"), "renderer.counters"
+        )
+        surface_width = _positive_int(renderer.get("width"), "renderer.counters.width")
+        surface_height = _positive_int(
+            renderer.get("height"), "renderer.counters.height"
+        )
+        if [surface_width, surface_height] != [logical_width, logical_height]:
+            raise GateFailure(
+                "recipe-book pointer receipt requires matching compositor and "
+                "renderer surfaces before display transitions"
+            )
+
+        button_x = (
+            (surface_width - LOCAL_INVENTORY_GUI_WIDTH) // 2
+            + LOCAL_INVENTORY_RECIPE_BUTTON_X
+            + RECIPE_BUTTON_WIDTH // 2
+        )
+        button_y = (
+            (surface_height - LOCAL_INVENTORY_GUI_HEIGHT) // 2
+            + LOCAL_INVENTORY_RECIPE_BUTTON_Y
+            + RECIPE_BUTTON_HEIGHT // 2
+        )
+        if not 0 <= button_x < surface_width or not 0 <= button_y < surface_height:
+            raise GateFailure(
+                "computed recipe-book button centre is outside the surface"
+            )
+        pointer_target = [logical_x + button_x, logical_y + button_y]
+        # Relative pointer devices have no queryable global position.  Clamp
+        # against the single gate output's top-left edge, then advance to the
+        # window-relative Vanilla button centre resolved above.
+        _seat_inject(
+            injector,
+            "move",
+            str(POINTER_ORIGIN_CLAMP_DELTA),
+            str(POINTER_ORIGIN_CLAMP_DELTA),
+        )
+        _seat_inject(
+            injector,
+            "move",
+            str(pointer_target[0]),
+            str(pointer_target[1]),
+        )
+        _seat_inject(injector, "click", "left")
+        _await_value(
+            deadline,
+            "the recipe-book settings owner to observe the pointer click",
+            lambda: _crafting_recipe_book_is_open(address),
+            lambda value: value is True,
+        )
+
+    net_after_open = _object(_control_request(address, "net.counters"), "net.counters")
+    settings_delta = int(
+        net_after_open.get("recipe_book_change_settings_commands_queued", 0)
+    ) - int(net_before.get("recipe_book_change_settings_commands_queued", 0))
+    options_before = _options_language_file_state(options_path)
+    broadcast_before = int(
+        net_after_open.get("broadcast_client_information_commands_queued", 0)
+    )
+
+    _tap_key(address, "chat")
+    _input_text(address, RECIPE_LANGUAGE_TRIGGER)
+
+    def _transition_state() -> dict[str, Any]:
+        net = _object(_control_request(address, "net.counters"), "net.counters")
+        resources = _object(
+            net.get("client_resources"), "net.counters.client_resources"
+        )
+        return {
+            "net": net,
+            "resources": resources,
+            "options": _options_language_file_state(options_path),
+        }
+
+    committed = _await_value(
+        deadline,
+        "the en_pt reload, durable options write, and ordered broadcast",
+        _transition_state,
+        lambda value: (
+            value["resources"].get("selected_language") == RECIPE_LANGUAGE_TARGET
+            and int(value["resources"].get("generation", 0)) > initial_generation
+            and value["resources"].get("last_reload_generation")
+            == value["resources"].get("generation")
+            and value["resources"].get("last_reload_failure_stage") is None
+            and value["resources"].get("selected_language_probe_value")
+            == "Play with yer mates"
+            and value["options"].get("language") == RECIPE_LANGUAGE_TARGET
+            and value["options"].get("language_entry_count") == 1
+            and int(value["net"].get("broadcast_client_information_commands_queued", 0))
+            == broadcast_before + 1
+        ),
+    )
+    resources_after = committed["resources"]
+    options_after = committed["options"]
+    net_after = committed["net"]
+
+    _control_request(address, "net.container_close", {"container_id": 0})
+    _await_value(
+        deadline,
+        "the local inventory to close after the language transition",
+        lambda: _inventory_state(address).get("local_inventory_open"),
+        lambda value: value is not True,
+    )
+
+    return {
+        "trigger": RECIPE_LANGUAGE_TRIGGER,
+        "target_language": RECIPE_LANGUAGE_TARGET,
+        "initial_selected_language": initial_resources.get("selected_language"),
+        "initial_selected_language_probe_key": initial_resources.get(
+            "selected_language_probe_key"
+        ),
+        "initial_selected_language_probe_value": initial_resources.get(
+            "selected_language_probe_value"
+        ),
+        "initial_resource_generation": initial_generation,
+        "indexed_asset_index_id": initial_resources.get("indexed_asset_index_id"),
+        "target_available": True,
+        "committed_resource_generation": resources_after.get("generation"),
+        "last_reload_generation": resources_after.get("last_reload_generation"),
+        "last_reload_failure_stage": resources_after.get("last_reload_failure_stage"),
+        "last_reload_error": resources_after.get("last_reload_error"),
+        "target_selected_language_probe_key": resources_after.get(
+            "selected_language_probe_key"
+        ),
+        "target_selected_language_probe_value": resources_after.get(
+            "selected_language_probe_value"
+        ),
+        "language_bidirectional": resources_after.get("language_bidirectional"),
+        "recipe_book_open_after_click": True,
+        "recipe_book_settings_commands_delta": settings_delta,
+        "compositor_window": compositor,
+        "renderer_surface": [surface_width, surface_height],
+        "recipe_button_surface_center": [button_x, button_y],
+        "pointer_global_target": pointer_target,
+        "pointer_input_path": "uinput -> libinput -> compositor -> wl_seat -> winit",
+        "search_focus_input": "input.key:chat",
+        "search_text_input": "input.text:excitedze",
+        "options_path": str(options_path),
+        "options_language_before": options_before.get("language"),
+        "options_before_sha256": options_before.get("sha256"),
+        "options_language_after": options_after.get("language"),
+        "options_language_entry_count": options_after.get("language_entry_count"),
+        "options_after_sha256": options_after.get("sha256"),
+        "options_write_observed": options_after.get("exists") is True,
+        "broadcast_client_information_commands_delta": int(
+            net_after.get("broadcast_client_information_commands_queued", 0)
+        )
+        - broadcast_before,
+        "regained_world": regained,
+        "screen_closed": True,
+        "duration_milliseconds": max(1, round((time.monotonic() - started_at) * 1000)),
+    }
+
+
 def _png_dimensions(data: bytes) -> tuple[int, int]:
     if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
         raise GateFailure("screenshot readback did not produce a PNG file")
@@ -4574,6 +5008,7 @@ LIVE_SCENARIO_SECTIONS = (
     "sound_particle_push",
     "inventory_interaction",
     "screenshot_readback",
+    "language_transition",
     "lifecycle",
 )
 
@@ -4683,7 +5118,7 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 15,
+        "schema": 16,
         "mode": "live",
         "vanilla_version": "26.1",
         "client_locale": args.client_locale,
@@ -4891,8 +5326,7 @@ def collect_live(args: argparse.Namespace) -> None:
             # The seat scenario runs before the lifecycle teardown, and after
             # the synthetic scenarios have proven the canonical paths, so a
             # seat failure is unambiguously about the platform event path.
-            plan = (
-                *plan[:-1],
+            platform_plan = (
                 (
                     SEAT_SCENARIO_SECTION,
                     "platform_seat",
@@ -4909,6 +5343,24 @@ def collect_live(args: argparse.Namespace) -> None:
                         min(240.0, gameplay_timeout),
                     ),
                 ),
+            )
+            if args.client_locale == "zh_cn":
+                platform_plan = (
+                    *platform_plan,
+                    (
+                        "language_transition",
+                        "resource_language",
+                        lambda: drive_recipe_book_language_transition(
+                            address,
+                            injector,
+                            args.client_game_dir,
+                            args.client_locale,
+                            min(240.0, gameplay_timeout),
+                        ),
+                    ),
+                )
+            platform_plan = (
+                *platform_plan,
                 (
                     DISPLAY_SCENARIO_SECTION,
                     "platform_display",
@@ -4927,8 +5379,8 @@ def collect_live(args: argparse.Namespace) -> None:
                         min(180.0, gameplay_timeout),
                     ),
                 ),
-                plan[-1],
             )
+            plan = (*plan[:-1], *platform_plan, plan[-1])
         for scenario_name, stage, run in plan:
             failure_scenario = scenario_name
             failure_stage = stage

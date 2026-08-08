@@ -482,6 +482,7 @@ if ! run_python collect-live \
   --packet-ledger "$repo_root/docs/evidence/vanilla-26.1/packet-coverage.json" \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs" \
   --output "$evidence_json" \
+  --client-game-dir "$client_game_dir" \
   --timeout "$timeout_seconds" \
   --server-command "$server_command" \
   --profile-id "$profile_id" \
