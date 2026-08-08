@@ -34,6 +34,7 @@ enum NetworkConnectionExit {
 pub(crate) struct NetworkRuntime {
     events: Option<mpsc::Receiver<NetEvent>>,
     commands: Option<mpsc::Sender<NetCommand>>,
+    connection_start: Option<oneshot::Sender<()>>,
     terminal_close: Option<oneshot::Sender<()>>,
     tasks: JoinSet<()>,
 }
@@ -51,6 +52,7 @@ impl NetworkRuntime {
         Self {
             events: None,
             commands: None,
+            connection_start: None,
             terminal_close: None,
             tasks: JoinSet::new(),
         }
@@ -76,7 +78,14 @@ impl NetworkRuntime {
                 }
             }
         };
-        Self::spawn_tasks(
+        let (connection_start, connection_start_rx) = oneshot::channel();
+        let gated_connection = async move {
+            if connection_start_rx.await.is_err() {
+                return NetworkConnectionExit::Local;
+            }
+            connection.await
+        };
+        let mut owner = Self::spawn_tasks(
             runtime,
             simulation_mailbox,
             network_rx,
@@ -84,8 +93,10 @@ impl NetworkRuntime {
             simulation_rx,
             command_tx,
             final_event_tx,
-            connection,
-        )
+            gated_connection,
+        );
+        owner.connection_start = Some(connection_start);
+        owner
     }
 
     pub(crate) fn take_channels(
@@ -95,6 +106,15 @@ impl NetworkRuntime {
         Option<mpsc::Sender<NetCommand>>,
     ) {
         (self.events.take(), self.commands.take())
+    }
+
+    /// Release the external connection only after the native initial-load
+    /// owner has installed the simulation consumer and saved its clean marker.
+    /// An idle runtime has no activation sender and is already active.
+    pub(crate) fn activate(&mut self) -> bool {
+        self.connection_start
+            .take()
+            .is_none_or(|start| start.send(()).is_ok())
     }
 
     pub(crate) fn shutdown_and_join(
@@ -110,6 +130,7 @@ impl NetworkRuntime {
         shutdown_timeout: Duration,
     ) -> Result<(), NetworkShutdownError> {
         if self.tasks.is_empty() {
+            self.connection_start.take();
             self.terminal_close.take();
             return Ok(());
         }
@@ -117,6 +138,7 @@ impl NetworkRuntime {
         if let Some(terminal_close) = self.terminal_close.take() {
             let _ = terminal_close.send(());
         }
+        self.connection_start.take();
 
         runtime.block_on(async {
             let mut first_task_failure = None;
@@ -207,6 +229,7 @@ impl NetworkRuntime {
         Self {
             events: Some(simulation_rx),
             commands: Some(command_tx),
+            connection_start: None,
             terminal_close: Some(terminal_close),
             tasks,
         }
@@ -215,7 +238,13 @@ impl NetworkRuntime {
 
 #[cfg(test)]
 mod tests {
-    use std::future;
+    use std::{
+        future,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        },
+    };
 
     use super::*;
 
@@ -255,6 +284,54 @@ mod tests {
         network.shutdown_and_join(&runtime).unwrap();
 
         assert!(network.tasks.is_empty());
+    }
+
+    #[test]
+    fn external_connection_is_not_polled_until_initial_load_activation() {
+        let runtime = Runtime::new().unwrap();
+        let polled = Arc::new(AtomicBool::new(false));
+        let connection_polled = Arc::clone(&polled);
+        let connection = future::poll_fn(move |_| {
+            connection_polled.store(true, Ordering::SeqCst);
+            std::task::Poll::Pending
+        });
+        let (network_tx, network_rx) = mpsc::channel(4);
+        let (simulation_tx, simulation_rx) = mpsc::channel(4);
+        let (command_tx, _command_rx) = mpsc::channel(1);
+        let (connection_start, connection_start_rx) = oneshot::channel();
+        let gated_connection = async move {
+            if connection_start_rx.await.is_err() {
+                return NetworkConnectionExit::Local;
+            }
+            connection.await
+        };
+        let mut owner = NetworkRuntime::spawn_tasks(
+            &runtime,
+            SimulationMailbox::default(),
+            network_rx,
+            simulation_tx,
+            simulation_rx,
+            command_tx,
+            network_tx,
+            gated_connection,
+        );
+        owner.connection_start = Some(connection_start);
+
+        runtime.block_on(tokio::task::yield_now());
+        assert!(!polled.load(Ordering::SeqCst));
+        assert!(owner.activate());
+        runtime
+            .block_on(async {
+                timeout(Duration::from_secs(1), async {
+                    while !polled.load(Ordering::SeqCst) {
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+            })
+            .expect("activated connection should be polled");
+        assert!(polled.load(Ordering::SeqCst));
+        owner.shutdown_and_join(&runtime).unwrap();
     }
 
     #[test]

@@ -290,9 +290,35 @@ impl ClientOptionsFile {
         &self.options
     }
 
+    /// The marker read by `Minecraft.<init>` before it marks the new startup
+    /// dirty. Any non-`true` text is conservatively treated as an incomplete
+    /// prior startup, which preserves Vanilla's safe fullscreen fallback.
+    pub(crate) fn started_cleanly(&self) -> bool {
+        self.options.raw("startedCleanly") == Some("true")
+    }
+
+    /// `Minecraft.<init>` and `onGameLoadFinished` both assign the marker and
+    /// call `Options.save` unconditionally. Keep that lifecycle distinct from
+    /// hotkey writes, whose no-change path deliberately avoids a rewrite.
+    pub(crate) fn save_started_cleanly(&mut self, clean: bool) -> Result<()> {
+        self.options.set_raw("startedCleanly", bool_text(clean));
+        self.options
+            .save(&self.path)
+            .with_context(|| format!("write {}", self.path.display()))
+    }
+
+    /// After the dirty marker has been saved, an incomplete previous startup
+    /// clears the in-memory preferred mode. A second failed startup leaves the
+    /// old disk line intact; a successful load's final save removes it, which
+    /// is the exact `Minecraft.<init>` / `onGameLoadFinished` ordering.
+    pub(crate) fn clear_startup_fullscreen_resolution(&mut self) {
+        self.options.fullscreen_resolution = None;
+    }
+
     /// Keep the in-memory `Options` lists synchronized with the startup
-    /// repository decision. Vanilla does not save here; a later hotkey save
-    /// rewrites the already-reconciled lists along with every other option.
+    /// repository decision. Vanilla does not save at this mutation point; the
+    /// successful startup marker or a later hotkey save rewrites the already-
+    /// reconciled lists along with every other option.
     pub(crate) fn apply_resource_pack_reconciliation(
         &mut self,
         reconciliation: &bbb_pack::ClientPackOptionsReconciliation,
@@ -593,6 +619,49 @@ mod tests {
         assert_eq!(reloaded.raw("pauseOnLostFocus"), Some("false"));
         // `save` rewrites the whole file, so the untouched keys come back too.
         assert_eq!(reloaded.raw("renderDistance"), Some("12"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn startup_cleanliness_is_false_until_initial_load_finishes() {
+        let path = unique_options_path("startup-cleanliness");
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        assert!(file.started_cleanly());
+        file.save_started_cleanly(false).unwrap();
+        assert!(
+            !ClientOptionsFile::load(path.clone(), ClientOptionHost::default())
+                .unwrap()
+                .started_cleanly()
+        );
+        file.save_started_cleanly(true).unwrap();
+        assert!(
+            ClientOptionsFile::load(path.clone(), ClientOptionHost::default())
+                .unwrap()
+                .started_cleanly()
+        );
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn incomplete_startup_clears_fullscreen_resolution_only_on_successful_final_save() {
+        let path = unique_options_path("startup-fullscreen-reset");
+        fs::write(
+            &path,
+            "startedCleanly:false\nfullscreenResolution:1920x1080@144:24\n",
+        )
+        .unwrap();
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        file.save_started_cleanly(false).unwrap();
+        file.clear_startup_fullscreen_resolution();
+        assert!(fs::read_to_string(&path)
+            .unwrap()
+            .contains("fullscreenResolution:1920x1080@144:24"));
+        file.save_started_cleanly(true).unwrap();
+        assert!(!fs::read_to_string(&path)
+            .unwrap()
+            .contains("fullscreenResolution"));
         let _ = fs::remove_file(path);
     }
 

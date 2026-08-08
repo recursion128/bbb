@@ -5,16 +5,16 @@
       "source": {
         "anchors": [
           {
-            "line": 2460,
+            "line": 2491,
             "symbol": "window-event adapter"
           },
           {
-            "line": 2454,
+            "line": 2485,
             "symbol": "failed-drop capability blocker"
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "0cf33c3da653eb5a4f87e13ee05f51084fe54d5481008a197e440010f43975d7"
+        "sha256": "d16273b6fa09fbcc2777b740f2e0b7f897257d4f816bfcbb58c0b5f9164d1f71"
       },
       "successful_path_event_consumed": false
     },
@@ -177,7 +177,7 @@
   "generator_inputs": [
     {
       "path": "Cargo.lock",
-      "sha256": "0206bf61fad1a13760d693b43e573f139ad7268d4ac28905090ea511c747aea9"
+      "sha256": "ab79864b9d946d52188575c1b70bf6d9ec3d02e73fa7b71ab022536552bec08f"
     },
     {
       "path": "scripts/file_drop_capability.py",

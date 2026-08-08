@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "866d08ff625522f86e7a797062a3c0d6190d565714b5773326ceb71902d28640"
+      "sha256": "ce7fb9bef1d22e66c61a386d10d5afd9403f3c35bef07203ac6d53a83651ce3f"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -832,16 +832,25 @@
     },
     "startup-client-bootstrap": {
       "bbb_evidence": [
-        "crates/bbb-native/src/startup.rs"
+        "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+        "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+        "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+        "crates/bbb-native/src/startup.rs#pub(crate) fn build_window",
+        "crates/bbb-native/src/main.rs#fn run_client",
+        "crates/bbb-native/src/network_runtime.rs#pub(crate) fn activate",
+        "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
+        "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
+        "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
       ],
-      "owner_count": 12
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "startup-session-identity": {
       "bbb_evidence": [
         "crates/bbb-net/src/types/connection.rs",
         "docs/wiki/architecture/offline-runtime.md"
       ],
-      "owner_count": 9
+      "owner_count": 12
     },
     "ui-accessibility-surface": {
       "bbb_evidence": [
@@ -11451,6 +11460,28 @@
       "vanilla_owner": "net.minecraft.client.KeyboardHandler#tick()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#fn run_client",
+          "crates/bbb-native/src/network_runtime.rs#pub(crate) fn activate",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn build_window"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#startup_cleanliness_brackets_native_bootstrap_and_successful_initial_load",
+          "crates/bbb-native/src/client_options.rs#startup_cleanliness_is_false_until_initial_load_finishes",
+          "crates/bbb-native/src/client_options.rs#incomplete_startup_clears_fullscreen_resolution_only_on_successful_final_save",
+          "crates/bbb-native/src/network_runtime.rs#external_connection_is_not_polled_until_initial_load_activation",
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "constructor",
@@ -12600,6 +12631,24 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#getLaunchedVersion()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The repo-native executable has no JVM minecraft.launcher.brand property; the optional value only decorates crash/telemetry output and is absent in the repo-owned launcher contract.",
+          "reopen_condition": "Reopen if BBB adds a generic launcher-brand startup field, exports launcher telemetry, or the official shared-launch contract sets minecraft.launcher.brand.",
+          "vanilla_basis": [
+            "net/minecraft/client/Minecraft.java:2425-2429",
+            "net/minecraft/client/Minecraft.java:2903-2905",
+            "net/minecraft/client/telemetry/ClientTelemetryManager.java:47"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -13573,6 +13622,28 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#onFullscreenError(final int error,final long description)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#fn run_client",
+          "crates/bbb-native/src/network_runtime.rs#pub(crate) fn activate",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn build_window"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#startup_cleanliness_brackets_native_bootstrap_and_successful_initial_load",
+          "crates/bbb-native/src/client_options.rs#startup_cleanliness_is_false_until_initial_load_finishes",
+          "crates/bbb-native/src/client_options.rs#incomplete_startup_clears_fullscreen_resolution_only_on_successful_final_save",
+          "crates/bbb-native/src/network_runtime.rs#external_connection_is_not_polled_until_initial_load_activation",
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -24737,9 +24808,9 @@
     },
     {
       "category": "startup",
-      "domain": "startup",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "startup-client-bootstrap",
+      "mechanism_id": "startup-session-identity",
       "owner_id": "method:net.minecraft.client.main.Main#emptyStringToEmptyOptional(final String xuid)",
       "role": "decision",
       "scope": "external-client",
@@ -24750,6 +24821,25 @@
       "vanilla_owner": "net.minecraft.client.main.Main#emptyStringToEmptyOptional(final String xuid)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
+          "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+          "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+          "crates/bbb-native/src/startup.rs#fn unescape_java_argument",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+          "crates/bbb-native/src/startup.rs#impl WindowConfig"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -24765,9 +24855,9 @@
     },
     {
       "category": "startup",
-      "domain": "startup",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "startup-client-bootstrap",
+      "mechanism_id": "startup-session-identity",
       "owner_id": "method:net.minecraft.client.main.Main#hasValidUuid(final OptionSpec <String> uuidOption,final OptionSet optionSet,final Logger logger)",
       "role": "decision",
       "scope": "external-client",
@@ -24779,9 +24869,9 @@
     },
     {
       "category": "startup",
-      "domain": "startup",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "startup-client-bootstrap",
+      "mechanism_id": "startup-session-identity",
       "owner_id": "method:net.minecraft.client.main.Main#isUuidValid(final OptionSpec <String> uuidOption,final OptionSet optionSet,final Logger logger)",
       "role": "decision",
       "scope": "external-client",
@@ -24792,6 +24882,28 @@
       "vanilla_owner": "net.minecraft.client.main.Main#isUuidValid(final OptionSpec <String> uuidOption,final OptionSet optionSet,final Logger logger)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#fn run_client",
+          "crates/bbb-native/src/network_runtime.rs#pub(crate) fn activate",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
+          "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn build_window"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#startup_cleanliness_brackets_native_bootstrap_and_successful_initial_load",
+          "crates/bbb-native/src/client_options.rs#startup_cleanliness_is_false_until_initial_load_finishes",
+          "crates/bbb-native/src/client_options.rs#incomplete_startup_clears_fullscreen_resolution_only_on_successful_final_save",
+          "crates/bbb-native/src/network_runtime.rs#external_connection_is_not_polled_until_initial_load_activation",
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -24806,6 +24918,25 @@
       "vanilla_owner": "net.minecraft.client.main.Main#main(final String [] args)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
+          "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+          "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+          "crates/bbb-native/src/startup.rs#fn unescape_java_argument",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+          "crates/bbb-native/src/startup.rs#impl WindowConfig"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -24820,6 +24951,25 @@
       "vanilla_owner": "net.minecraft.client.main.Main#ofNullable(final @Nullable Integer value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
+          "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+          "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+          "crates/bbb-native/src/startup.rs#fn unescape_java_argument",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+          "crates/bbb-native/src/startup.rs#impl WindowConfig"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -24834,6 +24984,17 @@
       "vanilla_owner": "net.minecraft.client.main.Main#parseArgument(final OptionSet optionSet,final OptionSpec <T> optionSpec)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) fn server_resource_pack_proxy_from_args",
+          "crates/bbb-net/src/resource_pack.rs#pub fn from_vanilla_args"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_project_vanilla_socks_proxy_without_exposing_password",
+          "crates/bbb-net/src/resource_pack.rs#vanilla_proxy_arguments_fall_back_and_require_both_credentials",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -24848,6 +25009,25 @@
       "vanilla_owner": "net.minecraft.client.main.Main#stringHasValue(final @Nullable String string)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
+          "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+          "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+          "crates/bbb-native/src/startup.rs#fn unescape_java_argument",
+          "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+          "crates/bbb-native/src/startup.rs#impl WindowConfig"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+          "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+          "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+          "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+          "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+          "scripts/tests/test_official_client_benchmark.py#test_bbb_launch_arguments_pin_the_same_external_settings",
+          "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -57869,6 +58049,7 @@
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
+      "startup-client-bootstrap",
       "resources-offline-asset-trust",
       "resources-indexed-vanilla-provider",
       "resources-language-manager",
@@ -59711,7 +59892,7 @@
       "diagnostics": 42,
       "effects": 18,
       "entities": 402,
-      "identity": 25,
+      "identity": 28,
       "input": 75,
       "interaction": 69,
       "language": 15,
@@ -59727,7 +59908,7 @@
       "resources": 163,
       "security": 30,
       "singleplayer": 52,
-      "startup": 19,
+      "startup": 16,
       "support": 228,
       "telemetry": 17,
       "text": 36,

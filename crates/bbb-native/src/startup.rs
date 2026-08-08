@@ -78,13 +78,26 @@ impl FromStr for RedactedString {
 pub(crate) struct Args {
     /// Vanilla `--gameDir`: the directory `options.txt` is read from and
     /// written back to.
-    #[arg(long = "game-dir", value_name = "PATH", default_value = ".")]
+    #[arg(
+        long = "game-dir",
+        alias = "gameDir",
+        value_name = "PATH",
+        default_value = "."
+    )]
     pub(crate) game_dir: PathBuf,
     /// Managed cache root printed by `scripts/vanilla path 26.1 --kind root`.
     #[arg(long = "vanilla-root", value_name = "PATH")]
     pub(crate) vanilla_root: Option<PathBuf>,
     #[arg(long, default_value = "127.0.0.1:25565")]
     pub(crate) server: String,
+    /// Vanilla `Main --quickPlayMultiplayer`; normalized onto BBB's one
+    /// external-server startup path after stored options have been bound.
+    #[arg(
+        long = "quickPlayMultiplayer",
+        value_name = "ADDR",
+        conflicts_with_all = ["status_server", "probe_server"]
+    )]
+    pub(crate) quick_play_multiplayer: Option<String>,
     #[arg(long, default_value = "bbb-client")]
     pub(crate) username: String,
     #[arg(long, value_name = "ADDR", conflicts_with = "probe_server")]
@@ -166,6 +179,21 @@ pub(crate) struct Args {
     pub(crate) client_narrator_hotkey: bool,
     #[arg(long = "client-fullscreen", default_value_t = false, action = ArgAction::Set)]
     pub(crate) client_fullscreen: bool,
+    /// Vanilla's no-argument `--fullscreen` launch switch. This is kept
+    /// separate from BBB's explicit boolean option so both syntaxes retain
+    /// their own argument contract.
+    #[arg(long = "fullscreen", action = ArgAction::SetTrue)]
+    pub(crate) vanilla_fullscreen: bool,
+    /// Vanilla `Main --width/--height` defaults. Signed input is intentional:
+    /// the native window owner clamps degenerate values to one.
+    #[arg(long = "width", default_value_t = 854, allow_hyphen_values = true)]
+    pub(crate) window_width: i32,
+    #[arg(long = "height", default_value_t = 480, allow_hyphen_values = true)]
+    pub(crate) window_height: i32,
+    #[arg(long = "fullscreenWidth", allow_hyphen_values = true)]
+    pub(crate) fullscreen_width: Option<i32>,
+    #[arg(long = "fullscreenHeight", allow_hyphen_values = true)]
+    pub(crate) fullscreen_height: Option<i32>,
     #[arg(
         long = "client-fullscreen-resolution",
         value_parser = parse_client_fullscreen_resolution
@@ -811,6 +839,24 @@ pub(crate) fn init_tracing() {
         .init();
 }
 
+/// `Main.main` names the GUI owner `Render thread` immediately before native
+/// renderer initialization. Linux `perf` and `/proc` consume the pthread name,
+/// so use that same OS-visible identity rather than a Rust-only label.
+#[cfg(target_os = "linux")]
+pub(crate) fn name_current_render_thread() -> Result<()> {
+    let name = c"Render thread";
+    // SAFETY: `pthread_self` identifies the current live thread, `name` is a
+    // static NUL-terminated string, and its 13 bytes fit Linux's 16-byte limit.
+    let result = unsafe { libc::pthread_setname_np(libc::pthread_self(), name.as_ptr()) };
+    ensure!(result == 0, "pthread_setname_np failed with errno {result}");
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn name_current_render_thread() -> Result<()> {
+    Ok(())
+}
+
 pub(crate) fn parse_args() -> Args {
     let matches = Args::command().get_matches();
     let mut args = match Args::from_arg_matches(&matches) {
@@ -818,7 +864,98 @@ pub(crate) fn parse_args() -> Args {
         Err(error) => error.exit(),
     };
     apply_stored_client_options(&mut args, &matches);
+    if let Err(message) = apply_vanilla_bootstrap_arguments(&mut args) {
+        Args::command()
+            .error(clap::error::ErrorKind::InvalidValue, message)
+            .exit();
+    }
     args
+}
+
+/// Collapse Vanilla's launcher spellings onto BBB's existing single-owner
+/// external multiplayer startup contract. Stored fullscreen is the base;
+/// the no-argument launch switch and quick-play address are explicit startup
+/// overrides, matching `Main.main`'s argument-derived `GameConfig`.
+fn apply_vanilla_bootstrap_arguments(args: &mut Args) -> std::result::Result<(), String> {
+    if args.vanilla_fullscreen {
+        args.client_fullscreen = true;
+    }
+    if let Some(server) = args.quick_play_multiplayer.as_ref() {
+        args.server = unescape_java_argument(server)?;
+        args.connect_server = true;
+    }
+    if args.client_fullscreen_resolution.is_none() {
+        if let (Some(width), Some(height)) = (args.fullscreen_width, args.fullscreen_height) {
+            // `Window.<init>` constructs this fallback only when both launch
+            // dimensions exist; a stored `fullscreenResolution` wins first.
+            args.client_fullscreen_resolution = Some(window_surface::PreferredVideoMode {
+                width: width.max(0) as u32,
+                height: height.max(0) as u32,
+                refresh_rate_hz: 60,
+                total_bits: 24,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Apache Commons Lang 3.19 `StringEscapeUtils.unescapeJava`, used by
+/// `Main.getQuickPlayVariant`: Java control escapes, Unicode escapes (including
+/// repeated `u`/optional `+`), octal escapes, and the Java rule that removes
+/// the slash from an otherwise unknown escape.
+fn unescape_java_argument(input: &str) -> std::result::Result<String, String> {
+    let mut output = Vec::<u16>::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            let mut units = [0_u16; 2];
+            output.extend_from_slice(ch.encode_utf16(&mut units));
+            continue;
+        }
+        let Some(next) = chars.next() else {
+            break;
+        };
+        match next {
+            'b' => output.push(u16::from(b'\x08')),
+            'n' => output.push(u16::from(b'\n')),
+            't' => output.push(u16::from(b'\t')),
+            'f' => output.push(u16::from(b'\x0c')),
+            'r' => output.push(u16::from(b'\r')),
+            '\\' => output.push(u16::from(b'\\')),
+            '"' => output.push(u16::from(b'"')),
+            '\'' => output.push(u16::from(b'\'')),
+            'u' => {
+                while chars.next_if_eq(&'u').is_some() {}
+                let _ = chars.next_if_eq(&'+');
+                let digits: String = chars.by_ref().take(4).collect();
+                if digits.chars().count() != 4 {
+                    return Err("incomplete Unicode escape in --quickPlayMultiplayer".to_string());
+                }
+                let value = u16::from_str_radix(&digits, 16).map_err(|_| {
+                    format!("invalid Unicode escape \\u{digits} in --quickPlayMultiplayer")
+                })?;
+                output.push(value);
+            }
+            digit @ '0'..='7' => {
+                let mut digits = String::from(digit);
+                let maximum = if digit <= '3' { 3 } else { 2 };
+                while digits.len() < maximum {
+                    let Some(candidate @ '0'..='7') = chars.peek().copied() else {
+                        break;
+                    };
+                    digits.push(candidate);
+                    chars.next();
+                }
+                output.push(u16::from_str_radix(&digits, 8).expect("octal digits are validated"));
+            }
+            other => {
+                let mut units = [0_u16; 2];
+                output.extend_from_slice(other.encode_utf16(&mut units));
+            }
+        }
+    }
+    String::from_utf16(&output)
+        .map_err(|_| "unpaired UTF-16 surrogate in --quickPlayMultiplayer".to_string())
 }
 
 /// Vanilla reads these values from `options.txt` alone, so the file is the
@@ -849,6 +986,24 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
     args.stored_incompatible_resource_packs =
         stored_text_list(&options, "incompatibleResourcePacks");
     bind_stored_client_options(args, StoredOptions::new(&options, matches));
+    apply_stored_window_override(args, &options);
+}
+
+/// `Minecraft.<init>` applies `overrideWidth`/`overrideHeight` after Main's
+/// display arguments and only when both are positive. These diagnostic launch
+/// overrides therefore intentionally beat an explicit `--width/--height`,
+/// unlike ordinary options mirrored by BBB startup flags.
+fn apply_stored_window_override(args: &mut Args, options: &ClientOptions) {
+    let override_width = options
+        .raw("overrideWidth")
+        .and_then(|raw| raw.parse::<i32>().ok());
+    let override_height = options
+        .raw("overrideHeight")
+        .and_then(|raw| raw.parse::<i32>().ok());
+    if let (Some(width @ 1..), Some(height @ 1..)) = (override_width, override_height) {
+        args.window_width = width;
+        args.window_height = height;
+    }
 }
 
 fn stored_text_list(options: &ClientOptions, key: &'static str) -> Vec<String> {
@@ -2129,29 +2284,34 @@ pub(crate) fn create_event_loop() -> Result<EventLoop<()>> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct WindowConfig {
     pub(crate) title: String,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
+    pub(crate) width: i32,
+    pub(crate) height: i32,
 }
 
 impl Default for WindowConfig {
     fn default() -> Self {
         Self {
             title: "bbb-native".to_string(),
-            width: 1280,
-            height: 720,
+            width: 854,
+            height: 480,
         }
     }
 }
 
 impl WindowConfig {
+    pub(crate) fn from_args(args: &Args) -> Self {
+        Self {
+            width: args.window_width,
+            height: args.window_height,
+            ..Self::default()
+        }
+    }
+
     pub(crate) fn physical_size(&self) -> PhysicalSize<u32> {
         // `Window.allowedWindowMinSize` (Window.java:551) clamps every stored
         // window dimension to at least one, so a degenerate display size can
         // never construct a zero-width native window.
-        PhysicalSize::new(
-            window_surface::allowed_window_min_size(self.width),
-            window_surface::allowed_window_min_size(self.height),
-        )
+        PhysicalSize::new(self.width.max(1) as u32, self.height.max(1) as u32)
     }
 }
 
@@ -2163,8 +2323,7 @@ impl WindowConfig {
 /// errors in a process-global queue behind an installable callback, so every
 /// failure is handled where it occurs and flows into the guarded crash
 /// report.
-pub(crate) fn build_window(event_loop: &EventLoop<()>) -> Result<Window> {
-    let config = WindowConfig::default();
+pub(crate) fn build_window(event_loop: &EventLoop<()>, config: &WindowConfig) -> Result<Window> {
     WindowBuilder::new()
         .with_title(config.title.clone())
         .with_inner_size(config.physical_size())
@@ -2238,6 +2397,18 @@ mod tests {
     fn tracing_keeps_machine_readable_cli_stdout_clean() {
         let source = include_str!("startup.rs");
         assert!(source.contains(".with_writer(std::io::stderr)"));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn render_thread_name_is_visible_to_linux_profilers() {
+        name_current_render_thread().unwrap();
+        assert_eq!(
+            std::fs::read_to_string("/proc/thread-self/comm")
+                .unwrap()
+                .trim_end(),
+            "Render thread"
+        );
     }
 
     #[test]
@@ -3691,11 +3862,90 @@ mod tests {
     fn window_config_clamps_dimensions_to_minimum_nonzero() {
         let mut config = WindowConfig::default();
         config.width = 0;
-        config.height = 0;
+        config.height = -10;
         assert_eq!(config.physical_size(), PhysicalSize::new(1, 1));
 
         let config = WindowConfig::default();
-        assert_eq!(config.physical_size(), PhysicalSize::new(1280, 720));
+        assert_eq!(config.physical_size(), PhysicalSize::new(854, 480));
+    }
+
+    #[test]
+    fn vanilla_bootstrap_arguments_feed_the_single_external_startup_path() {
+        let mut args = Args::parse_from([
+            "bbb-native",
+            "--gameDir",
+            "/tmp/vanilla-game",
+            "--width",
+            "1280",
+            "--height",
+            "720",
+            "--fullscreen",
+            "--quickPlayMultiplayer",
+            "127.0.0.1:25570",
+        ]);
+        apply_vanilla_bootstrap_arguments(&mut args).unwrap();
+
+        assert_eq!(args.game_dir, PathBuf::from("/tmp/vanilla-game"));
+        assert_eq!(args.server, "127.0.0.1:25570");
+        assert!(args.connect_server);
+        assert!(args.client_fullscreen);
+        assert_eq!(
+            WindowConfig::from_args(&args).physical_size(),
+            PhysicalSize::new(1280, 720)
+        );
+    }
+
+    #[test]
+    fn vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only() {
+        assert_eq!(unescape_java_argument(r"\uu+0041\q").unwrap(), "Aq");
+        assert_eq!(unescape_java_argument(r"\uD83D\uDE00").unwrap(), "😀");
+        assert!(unescape_java_argument(r"\u12").is_err());
+        let mut args = Args::parse_from([
+            "bbb-native",
+            "--quickPlayMultiplayer",
+            r"example\u002eorg\07225565",
+            "--fullscreenWidth",
+            "1920",
+            "--fullscreenHeight",
+            "1080",
+        ]);
+        apply_vanilla_bootstrap_arguments(&mut args).unwrap();
+        assert_eq!(args.server, "example.org:25565");
+        assert_eq!(
+            args.client_fullscreen_resolution.map(|mode| mode.write()),
+            Some("1920x1080@60:24".to_string())
+        );
+
+        args.client_fullscreen_resolution =
+            window_surface::PreferredVideoMode::parse("2560x1440@144:30");
+        apply_vanilla_bootstrap_arguments(&mut args).unwrap();
+        assert_eq!(
+            args.client_fullscreen_resolution.map(|mode| mode.write()),
+            Some("2560x1440@144:30".to_string())
+        );
+    }
+
+    #[test]
+    fn stored_positive_window_override_beats_main_display_arguments_only_as_a_pair() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("overrideWidth", "1600");
+        options.set_raw_for_test("overrideHeight", "900");
+        let mut args = Args::parse_from(["bbb-native", "--width", "1280", "--height", "720"]);
+
+        apply_stored_window_override(&mut args, &options);
+        assert_eq!(
+            WindowConfig::from_args(&args).physical_size(),
+            PhysicalSize::new(1600, 900)
+        );
+
+        options.set_raw_for_test("overrideHeight", "0");
+        args.window_width = 1280;
+        args.window_height = 720;
+        apply_stored_window_override(&mut args, &options);
+        assert_eq!(
+            WindowConfig::from_args(&args).physical_size(),
+            PhysicalSize::new(1280, 720)
+        );
     }
 
     #[test]

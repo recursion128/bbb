@@ -44,6 +44,7 @@ icu_time = { version = "2.2", features = ["unstable_chrono_0_4"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 isocountry = "0.3.2"
 kira = { version = "0.12.1", default-features = false, features = ["ogg", "vorbis"] }
+libc = "0.2"
 md5 = "0.7"
 num-bigint = "0.4"
 pollster = "0.3"

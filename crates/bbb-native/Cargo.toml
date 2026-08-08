@@ -37,6 +37,7 @@ clap = { workspace = true }
 glam = { workspace = true }
 hexf-parse = { workspace = true }
 isocountry = { workspace = true }
+libc = { workspace = true }
 pollster = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }

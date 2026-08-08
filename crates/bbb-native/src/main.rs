@@ -643,7 +643,7 @@ fn main() {
     }
 }
 
-fn run_client(args: startup::Args) -> Result<()> {
+fn run_client(mut args: startup::Args) -> Result<()> {
     if run_build_info_if_requested(&args)? {
         return Ok(());
     }
@@ -657,6 +657,45 @@ fn run_client(args: startup::Args) -> Result<()> {
     if run_probe_if_requested(&runtime, &args)? {
         return Ok(());
     }
+    if let Err(error) = startup::name_current_render_thread() {
+        tracing::warn!(%error, "failed to name native render thread");
+    }
+
+    // `Minecraft.<init>` reads the previous marker, marks this startup dirty,
+    // and saves before constructing the native window. A failed bootstrap
+    // therefore remains observable on the next launch; only a fully assembled
+    // initial client below writes the marker clean again.
+    let mut client_options = match ClientOptionsFile::load(
+        args.game_dir.join("options.txt"),
+        ClientOptionHost {
+            locale_is_japanese: client_options::locale_is_japanese(
+                sys_locale::get_locale().as_deref(),
+            ),
+            platform_is_windows: crate::platform::HOST_IS_WINDOWS,
+        },
+    ) {
+        Ok(mut options) => {
+            let previous_startup_was_incomplete = !options.started_cleanly();
+            if previous_startup_was_incomplete {
+                args.client_fullscreen = false;
+                args.client_fullscreen_resolution = None;
+                tracing::warn!(
+                    "detected incomplete prior startup; disabling startup fullscreen mode"
+                );
+            }
+            if let Err(error) = options.save_started_cleanly(false) {
+                tracing::warn!(%error, "failed to mark client startup incomplete");
+            }
+            if previous_startup_was_incomplete {
+                options.clear_startup_fullscreen_resolution();
+            }
+            Some(options)
+        }
+        Err(error) => {
+            tracing::warn!(%error, "failed to read options.txt");
+            None
+        }
+    };
 
     let mut client_locale = args.client_locale.clone();
 
@@ -916,7 +955,8 @@ fn run_client(args: startup::Args) -> Result<()> {
     }
 
     let event_loop = create_event_loop()?;
-    let window = build_window(&event_loop)?;
+    let window_config = startup::WindowConfig::from_args(&args);
+    let window = build_window(&event_loop, &window_config)?;
     let window_backend = window_icon::NativeWindowBackend::detect(&window)?;
     let window_size = window.inner_size();
     let window_platform = window_backend.platform_identity(std::env::consts::OS);
@@ -1318,39 +1358,30 @@ fn run_client(args: startup::Args) -> Result<()> {
     let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
     // `Minecraft.fillSystemReport` reports the options the failing run used, so
     // capture them once here rather than reading a file mid-failure.
-    let mut client_options = match ClientOptionsFile::load(
-        args.game_dir.join("options.txt"),
-        ClientOptionHost {
-            locale_is_japanese: client_options::locale_is_japanese(
-                sys_locale::get_locale().as_deref(),
-            ),
-            platform_is_windows: crate::platform::HOST_IS_WINDOWS,
-        },
-    ) {
-        Ok(mut options) => {
-            if let Some(reconciliation) = resource_pack_options_reconciliation.as_ref() {
-                options.apply_resource_pack_reconciliation(reconciliation);
-            }
-            fatal_failures
-                .borrow_mut()
-                .attach_client_options(options.options().dump_for_report());
-            let rebound: Vec<_> = client_options::key_bindings::rebound_keys(options.options())
-                .into_iter()
-                .filter(|(name, _)| name.starts_with("key.debug."))
-                .collect();
-            if !rebound.is_empty() {
-                tracing::warn!(
-                    bindings = ?rebound,
-                    "options.txt rebinds debug keys this client still reads at their Vanilla defaults"
-                );
-            }
-            Some(options)
+    if let Some(options) = client_options.as_mut() {
+        if let Some(reconciliation) = resource_pack_options_reconciliation.as_ref() {
+            options.apply_resource_pack_reconciliation(reconciliation);
         }
-        Err(error) => {
-            tracing::warn!(%error, "failed to read options.txt");
-            None
+        fatal_failures
+            .borrow_mut()
+            .attach_client_options(options.options().dump_for_report());
+        let rebound: Vec<_> = client_options::key_bindings::rebound_keys(options.options())
+            .into_iter()
+            .filter(|(name, _)| name.starts_with("key.debug."))
+            .collect();
+        if !rebound.is_empty() {
+            tracing::warn!(
+                bindings = ?rebound,
+                "options.txt rebinds debug keys this client still reads at their Vanilla defaults"
+            );
         }
-    };
+        if let Err(error) = options.save_started_cleanly(true) {
+            tracing::warn!(%error, "failed to mark initial client load complete");
+        }
+    }
+    if !network_runtime.activate() {
+        tracing::warn!("network runtime ended before initial-load activation");
+    }
     let event_failures = Rc::clone(&fatal_failures);
 
     let event_loop_result = event_loop.run(move |event, target| {
@@ -2801,6 +2832,39 @@ mod tests {
                 ..
             }] if completed.language == "en_pt"
         ));
+    }
+
+    #[test]
+    fn startup_cleanliness_brackets_native_bootstrap_and_successful_initial_load() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let dirty = production
+            .find("options.save_started_cleanly(false)")
+            .expect("startup dirty marker");
+        let packs = production
+            .find("load_pack_roots_with_options(&args)")
+            .unwrap();
+        let window = production
+            .find("build_window(&event_loop, &window_config)")
+            .unwrap();
+        let simulation = production
+            .find("let mut simulation_thread = SimulationThread::")
+            .unwrap();
+        let clean = production
+            .find("options.save_started_cleanly(true)")
+            .expect("successful initial-load marker");
+        let connect = production
+            .find("network_runtime.activate()")
+            .expect("quick-play activation barrier");
+        let event_loop = production
+            .find("event_loop.run(move |event, target|")
+            .unwrap();
+
+        assert!(dirty < packs && packs < window && window < simulation);
+        assert!(simulation < clean && clean < connect && connect < event_loop);
     }
 
     #[test]

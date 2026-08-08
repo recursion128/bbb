@@ -371,6 +371,29 @@ MINECRAFT_METHOD_ROUTES = _method_routes(
     ),
 )
 
+
+MAIN_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("startup", "startup", "startup-client-bootstrap"),
+        (
+            "main",
+            "getQuickPlayVariant",
+            "unescapeJavaArgument",
+            "ofNullable",
+            "parseArgument",
+            "stringHasValue",
+        ),
+    ),
+    (
+        MethodRoute("startup", "identity", "startup-session-identity"),
+        (
+            "emptyStringToEmptyOptional",
+            "hasValidUuid",
+            "isUuidValid",
+        ),
+    ),
+)
+
 DIRECT_SUPPORT_ROUTE = MethodRoute(
     "support-accessor",
     "support",
@@ -9530,6 +9553,112 @@ INDEXED_VANILLA_PROVIDER_OWNER_CENSUS_TEST = (
     "#test_indexed_vanilla_provider_owner_census_is_exact_and_has_per_owner_evidence"
 )
 
+STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
+)
+
+STARTUP_ARGUMENT_IMPLEMENTATION = (
+    "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
+    "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+    "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+    "crates/bbb-native/src/startup.rs#fn unescape_java_argument",
+    "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+    "crates/bbb-native/src/startup.rs#impl WindowConfig",
+)
+
+STARTUP_ARGUMENT_TESTS = (
+    "crates/bbb-native/src/startup.rs"
+    "#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
+    "crates/bbb-native/src/startup.rs"
+    "#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
+    "crates/bbb-native/src/startup.rs"
+    "#window_config_clamps_dimensions_to_minimum_nonzero",
+    "crates/bbb-native/src/startup.rs"
+    "#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
+    "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
+    "scripts/tests/test_official_client_benchmark.py"
+    "#test_bbb_launch_arguments_pin_the_same_external_settings",
+    STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST,
+)
+
+STARTUP_RUNTIME_IMPLEMENTATION = (
+    "crates/bbb-native/src/main.rs#fn run_client",
+    "crates/bbb-native/src/network_runtime.rs#pub(crate) fn activate",
+    "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
+    "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
+    "crates/bbb-native/src/startup.rs#pub(crate) fn build_window",
+)
+
+STARTUP_RUNTIME_TESTS = (
+    "crates/bbb-native/src/main.rs"
+    "#startup_cleanliness_brackets_native_bootstrap_and_successful_initial_load",
+    "crates/bbb-native/src/client_options.rs"
+    "#startup_cleanliness_is_false_until_initial_load_finishes",
+    "crates/bbb-native/src/client_options.rs"
+    "#incomplete_startup_clears_fullscreen_resolution_only_on_successful_final_save",
+    "crates/bbb-native/src/network_runtime.rs"
+    "#external_connection_is_not_polled_until_initial_load_activation",
+    *STARTUP_ARGUMENT_TESTS,
+)
+
+STARTUP_PROXY_IMPLEMENTATION = (
+    "crates/bbb-native/src/startup.rs#pub(crate) fn server_resource_pack_proxy_from_args",
+    "crates/bbb-net/src/resource_pack.rs#pub fn from_vanilla_args",
+)
+
+STARTUP_PROXY_TESTS = (
+    "crates/bbb-native/src/startup.rs"
+    "#args_project_vanilla_socks_proxy_without_exposing_password",
+    "crates/bbb-net/src/resource_pack.rs"
+    "#vanilla_proxy_arguments_fall_back_and_require_both_credentials",
+    STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST,
+)
+
+MAIN_STARTUP_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(STARTUP_RUNTIME_IMPLEMENTATION, STARTUP_RUNTIME_TESTS),
+        ("main",),
+    ),
+    (
+        OwnerEvidence(STARTUP_ARGUMENT_IMPLEMENTATION, STARTUP_ARGUMENT_TESTS),
+        (
+            "getQuickPlayVariant",
+            "unescapeJavaArgument",
+            "ofNullable",
+            "parseArgument",
+        ),
+    ),
+    (
+        OwnerEvidence(STARTUP_PROXY_IMPLEMENTATION, STARTUP_PROXY_TESTS),
+        ("stringHasValue",),
+    ),
+)
+
+MINECRAFT_STARTUP_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(STARTUP_RUNTIME_IMPLEMENTATION, STARTUP_RUNTIME_TESTS),
+        ("Minecraft", "onGameLoadFinished"),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST,),
+            OwnerScopeRuling(
+                "not-reachable-in-current-scope",
+                (
+                    "net/minecraft/client/Minecraft.java:2425-2429",
+                    "net/minecraft/client/Minecraft.java:2903-2905",
+                    "net/minecraft/client/telemetry/ClientTelemetryManager.java:47",
+                ),
+                "The repo-native executable has no JVM minecraft.launcher.brand property; the optional value only decorates crash/telemetry output and is absent in the repo-owned launcher contract.",
+                "Reopen if BBB adds a generic launcher-brand startup field, exports launcher telemetry, or the official shared-launch contract sets minecraft.launcher.brand.",
+            ),
+        ),
+        ("getLauncherBrand",),
+    ),
+)
+
 INDEXED_VANILLA_PROVIDER_IMPLEMENTATION = (
     "crates/bbb-pack/src/roots.rs#pub fn from_root",
     "crates/bbb-pack/src/selected_packs.rs#fn vanilla",
@@ -9657,6 +9786,7 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **CAMERA_FOG_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
+    "net/minecraft/client/main/Main.java": MAIN_STARTUP_OWNER_EVIDENCE,
     "net/minecraft/client/main/GameConfig.java": GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
     "net/minecraft/client/resources/ClientPackSource.java": CLIENT_PACK_SOURCE_PROVIDER_OWNER_EVIDENCE,
     "net/minecraft/client/resources/IndexedAssetSource.java": INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
@@ -9670,6 +9800,10 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
 
 
 METHOD_OWNER_EVIDENCE = {
+    "startup-client-bootstrap": {
+        **MAIN_STARTUP_OWNER_EVIDENCE,
+        **MINECRAFT_STARTUP_OWNER_EVIDENCE,
+    },
     "resources-offline-asset-trust": {
         **GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
         **INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
@@ -10588,7 +10722,17 @@ SERVERBOUND_SCAN_PATHS = (
 
 
 MECHANISM_EVIDENCE = {
-    "startup-client-bootstrap": ("crates/bbb-native/src/startup.rs",),
+    "startup-client-bootstrap": (
+        "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
+        "crates/bbb-native/src/startup.rs#fn apply_stored_window_override",
+        "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
+        "crates/bbb-native/src/startup.rs#pub(crate) fn build_window",
+        "crates/bbb-native/src/main.rs#fn run_client",
+        "crates/bbb-native/src/network_runtime.rs#pub(crate) fn activate",
+        "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
+        "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
+        STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST,
+    ),
     "startup-session-identity": ("crates/bbb-net/src/types/connection.rs", "docs/wiki/architecture/offline-runtime.md"),
     "lifecycle-client-runtime": (
         "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
@@ -11271,6 +11415,14 @@ class InventoryBuilder:
                 "out-of-scope",
                 "out-of-scope",
             )
+        if spec.source_path == "net/minecraft/client/main/Main.java":
+            route = MAIN_METHOD_ROUTES.get(method.name)
+            if route is None:
+                signature = InventoryBuilder.method_signature(method)
+                raise ClientMechanismInventoryError(
+                    f"Main method lacks a homogeneous route: {signature}"
+                )
+            return route
         if spec.source_path != "net/minecraft/client/Minecraft.java":
             return MethodRoute(
                 spec.category,
