@@ -1432,6 +1432,23 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         self.assertIn('--client-locale "$client_locale"', source)
         self.assertIn("bbb playable transfer target 26.1", source)
 
+    def test_every_session_client_uses_an_artifact_local_game_directory(self):
+        source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
+            encoding="utf-8"
+        )
+
+        for variable in (
+            "probe_game_dir",
+            "client_game_dir",
+            "restricted_client_game_dir",
+        ):
+            self.assertIn(
+                f'{variable}="$artifact_dir/',
+                source,
+            )
+            self.assertIn(f'--game-dir "${variable}"', source)
+        self.assertEqual(source.count("--game-dir"), 3)
+
     def test_headless_control_focus_precedes_synthetic_input(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         movement = source[

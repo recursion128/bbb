@@ -200,7 +200,17 @@ transfer_server_command="$artifact_dir/transfer-server-command.fifo"
 server_pack_dir="$artifact_dir/server-pack-http"
 server_pack_zip="$server_pack_dir/lifecycle-pack.zip"
 server_pack_cache="$artifact_dir/server-pack-cache"
-mkdir -p "$server_dir" "$world_dir" "$transfer_server_dir" "$transfer_world_dir"
+probe_game_dir="$artifact_dir/probe-game"
+client_game_dir="$artifact_dir/client-game"
+restricted_client_game_dir="$artifact_dir/restricted-client-game"
+mkdir -p \
+  "$server_dir" \
+  "$world_dir" \
+  "$transfer_server_dir" \
+  "$transfer_world_dir" \
+  "$probe_game_dir" \
+  "$client_game_dir" \
+  "$restricted_client_game_dir"
 
 server_port=${BBB_PLAYABLE_PORT:-}
 if [ -z "$server_port" ]; then
@@ -424,6 +434,7 @@ fi
 
 if ! "$repo_root/scripts/process" run --timeout "$timeout_seconds" -- \
   "$client_bin" \
+    --game-dir "$probe_game_dir" \
     --vanilla-root "$vanilla_root" \
     --server "127.0.0.1:$server_port" \
     --username bbb-probe \
@@ -446,6 +457,7 @@ fi
 echo "playable gate: launching bbb-native with bbb-control on 127.0.0.1:$control_port"
 RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
   "$repo_root/scripts/process" exec -- "$client_bin" \
+    --game-dir "$client_game_dir" \
     --vanilla-root "$vanilla_root" \
     --server "127.0.0.1:$server_port" \
     --username bbb-playablegate \
@@ -486,6 +498,7 @@ fi
 echo "playable gate: launching system-visibility ChatScreen acceptance client"
 RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
   "$repo_root/scripts/process" exec -- "$client_bin" \
+    --game-dir "$restricted_client_game_dir" \
     --vanilla-root "$vanilla_root" \
     --server "127.0.0.1:$server_port" \
     --username bbb-restricted \
