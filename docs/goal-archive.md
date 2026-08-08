@@ -91,8 +91,8 @@
 
 - **2026-08-08（工作流 v9）**：跨提交 capture provenance 在原始 SHA 不同时改用
   `elf-load-image-v1` 锁定 Linux 执行映像，排除非加载 symbol/section table 与 GNU build-id 漂移。
-- **2026-08-08（工作流 v11）**：parity acceptance 采用阶段化 code freeze/domain sweep、
-  owner/test/capture hash 依赖闭包与 changed-path 局部失效，formal ABBA 固定为最后阶段。
+- **2026-08-08（工作流 v11）**：parity acceptance 采用阶段化 code freeze/domain sweep、owner/test/capture
+  hash 依赖闭包与局部失效、formal ABBA 最后执行；workflow 行拒绝从说明文字猜 owner，统计只取生成输出。
 - **2026-08-08（indexed presentation owner closure）**：14 个 panorama owner 及 5 个 window-icon
   owner 进入 generated inventory；像素测试锁定 cubemap 行方向，X11 CARDINAL owner 保留完整五尺寸
   icon family；两者的正式 receipt 仍留在 code-freeze resource/platform sweep。

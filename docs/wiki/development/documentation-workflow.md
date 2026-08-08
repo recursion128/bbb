@@ -49,6 +49,12 @@ evidence。`scripts/generate-client-mechanism-inventory.py --check` 对完整输
 inventory→matrix 映射和 ledger↔matrix 双向 route。矩阵的 `equivalent` 行必须通过该
 inventory 或本地链接/路径指向可执行、可定位证据，不能只写“已有测试”。
 
+`docs-chinese-mechanism-wiki` 是显式登记的仓库可执行工作流，不拥有独立 Vanilla client 行为
+owner：acceptance 用完整 Vanilla source corpus hash 约束目标版本，并拒绝从 matrix、ledger 或
+evidence 说明文字中的 Java 类名猜测伪 source owner；其他新 `docs-*` ID 不自动获得该豁免。
+owner、mechanism 与状态数量只从 inventory `summary`、acceptance report 和 lint 运行输出读取；
+matrix 正文中的生成统计快照会被 docs lint 拒绝。
+
 该 inventory 与 packet、registry-holder、item-component、entity、particle-provider 五份
 coverage ledger，client-options、key-mapping 两份 catalog，以及 file-drop blocker 与 parity
 acceptance，共同组成 `docs/evidence/vanilla-26.1/` 的十成员封闭版本集合。matrix 仍是唯一

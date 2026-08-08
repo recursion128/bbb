@@ -67,6 +67,7 @@ OPEN_STATUSES = frozenset(
     {"partial", "missing", "active", "unverified", "deferred-external"}
 )
 ROUTED_STATUSES = OPEN_STATUSES | {"not-needed"}
+REPOSITORY_WORKFLOW_MECHANISM_IDS = frozenset({"docs-chinese-mechanism-wiki"})
 PROTOCOL_STATE_DOMAINS = frozenset(
     {
         "startup",
@@ -710,6 +711,37 @@ def matched_source_hashes(
         if digest is not None:
             result.append({"path": relative, "sha256": digest})
     return result
+
+
+def mechanism_source_hashes(
+    *,
+    mechanism_id: str,
+    row: dict[str, str],
+    owners: list[dict[str, object]],
+    inventory_hashes: dict[str, str],
+    class_sources: dict[str, list[Path]],
+    source_root: Path,
+    ledger_basis: str,
+    evidence_basis: str,
+) -> list[dict[str, object]]:
+    """Resolve Vanilla owner hashes without inventing owners for repo workflows."""
+    if mechanism_id in REPOSITORY_WORKFLOW_MECHANISM_IDS:
+        return []
+    return matched_source_hashes(
+        row=row,
+        owners=owners,
+        inventory_hashes=inventory_hashes,
+        class_sources=class_sources,
+        source_root=source_root,
+        ledger_basis=ledger_basis,
+        evidence_basis=evidence_basis,
+    )
+
+
+def allows_empty_vanilla_source_hashes(mechanism_id: str) -> bool:
+    return mechanism_id in REPOSITORY_WORKFLOW_MECHANISM_IDS or mechanism_id.startswith(
+        "coverage-"
+    )
 
 
 def resolve_markdown_link(repo: Path, source: Path, raw: str) -> Path | None:
@@ -1699,7 +1731,8 @@ def build_report(
                 if path.resolve() == ledger_path.resolve():
                     continue
                 evidence_basis_parts.append(path.read_text(encoding="utf-8"))
-        source_hashes = matched_source_hashes(
+        source_hashes = mechanism_source_hashes(
+            mechanism_id=mechanism_id,
             row=row,
             owners=owner_rows,
             inventory_hashes=inventory_hashes,
@@ -1883,7 +1916,7 @@ def build_report(
             ]
 
         reasons: list[str] = []
-        if not source_hashes and not mechanism_id.startswith(("coverage-", "docs-")):
+        if not source_hashes and not allows_empty_vanilla_source_hashes(mechanism_id):
             reasons.append("no hashed Vanilla owner source was resolved")
         if row["status"] in ROUTED_STATUSES and mechanism_id not in ledger_ids:
             reasons.append("matrix status has no bilateral ledger route")
@@ -2327,7 +2360,8 @@ def validate_report(
                 ):
                     evidence_basis_parts.append(path.read_text(encoding="utf-8"))
             try:
-                expected_source_hashes = matched_source_hashes(
+                expected_source_hashes = mechanism_source_hashes(
+                    mechanism_id=mechanism_id,
                     row=row,
                     owners=inventory_owners_by_mechanism.get(mechanism_id, []),
                     inventory_hashes=inventory_hashes,
@@ -2343,7 +2377,7 @@ def validate_report(
                     issues.append(f"stale Vanilla source mapping for {mechanism_id}")
             if (
                 not vanilla.get("source_hashes")
-                and not mechanism_id.startswith(("coverage-", "docs-"))
+                and not allows_empty_vanilla_source_hashes(mechanism_id)
                 and record.get("valid") is True
             ):
                 issues.append(f"mechanism lacks hashed Vanilla owner source: {mechanism_id}")

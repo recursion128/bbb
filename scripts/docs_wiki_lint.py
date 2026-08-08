@@ -210,10 +210,23 @@ class WikiLint:
         if not matrix.is_file():
             self.fail("parity matrix missing: docs/wiki/parity/vanilla-26.1-matrix.md")
             return {}
+        matrix_text = matrix.read_text(encoding="utf-8")
+        prose = "\n".join(
+            line for line in matrix_text.splitlines() if not line.startswith("|")
+        )
+        if re.search(
+            r"[\d,]+\s*个 owner 映射到\s*[\d,]+\s*个|矩阵.{0,80}共\s*[\d,]+\s*行",
+            prose,
+            re.DOTALL,
+        ):
+            self.fail(
+                "parity matrix prose hardcodes generated census counts; "
+                "read inventory JSON summary and lint output instead"
+            )
         seen: set[str] = set()
         rows: dict[str, dict[str, str]] = {}
         for line_number, line in enumerate(
-            matrix.read_text(encoding="utf-8").splitlines(), start=1
+            matrix_text.splitlines(), start=1
         ):
             if not line.startswith("| `"):
                 continue

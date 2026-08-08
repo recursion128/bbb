@@ -25,6 +25,7 @@ from parity_acceptance import (
     focused_test_references,
     main,
     matched_source_hashes,
+    mechanism_source_hashes,
     parse_args,
     parse_matrix,
     performance_prerequisite_reasons,
@@ -101,6 +102,63 @@ class ParityAcceptanceTests(unittest.TestCase):
         self.assertEqual(
             [item["path"] for item in without_inventory],
             ["net/minecraft/client/Shared.java"],
+        )
+
+    def test_docs_workflow_does_not_invent_vanilla_owner_from_evidence_prose(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source_root = Path(temporary)
+            example = source_root / "net/minecraft/client/Example.java"
+            example.parent.mkdir(parents=True)
+            example.write_text("class Example {}\n", encoding="utf-8")
+            digest = hashlib.sha256(example.read_bytes()).hexdigest()
+
+            result = mechanism_source_hashes(
+                mechanism_id="docs-chinese-mechanism-wiki",
+                row={
+                    "vanilla_owner": "repository documentation workflow",
+                    "required_state": "IDs, routes, evidence and stale output",
+                },
+                owners=[],
+                inventory_hashes={
+                    "net/minecraft/client/Example.java": digest,
+                },
+                class_sources={"Example": [example]},
+                source_root=source_root,
+                ledger_basis="Example is mentioned in ledger prose",
+                evidence_basis="Example is mentioned in evidence prose",
+            )
+
+        self.assertEqual(result, [])
+
+    def test_unregistered_docs_prefix_still_requires_a_vanilla_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source_root = Path(temporary)
+            example = source_root / "net/minecraft/client/Example.java"
+            example.parent.mkdir(parents=True)
+            example.write_text("class Example {}\n", encoding="utf-8")
+            digest = hashlib.sha256(example.read_bytes()).hexdigest()
+
+            result = mechanism_source_hashes(
+                mechanism_id="docs-unregistered-workflow",
+                row={
+                    "vanilla_owner": "`Example.run`",
+                    "required_state": "state",
+                },
+                owners=[],
+                inventory_hashes={
+                    "net/minecraft/client/Example.java": digest,
+                },
+                class_sources={"Example": [example]},
+                source_root=source_root,
+                ledger_basis="",
+                evidence_basis="",
+            )
+
+        self.assertEqual(
+            [item["path"] for item in result],
+            ["net/minecraft/client/Example.java"],
         )
 
     def make_fixture(self, root: Path) -> tuple[Path, Path]:

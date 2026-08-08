@@ -542,6 +542,20 @@ Matrix route: `fixture-valid`
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("broken relative Markdown link", result.stdout)
 
+    def test_parity_matrix_hardcoded_generated_counts_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            matrix = repo / "docs/wiki/parity/vanilla-26.1-matrix.md"
+            matrix.write_text(
+                matrix.read_text(encoding="utf-8")
+                + "\n## 审计摘要\n\n生成 inventory 将 3,185 个 owner 映射到 115 个机制；矩阵共 147 行。\n",
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("hardcodes generated census counts", result.stdout)
+
     def test_historical_markdown_outside_wiki_fails(self) -> None:
         for relative in ("docs/archive/old-design.md", "docs/legacy-note.md"):
             with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:

@@ -58,8 +58,8 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-block-model-pip
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
 Matrix routes: `docs-chinese-mechanism-wiki`, `lifecycle-client-runtime`, `lifecycle-client-task-handoff`, `lifecycle-session-replacement`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `persistence-options-file`, `persistence-options-unconsumed`, `platform-linux-seat-matrix`, `player-local-inventory-actions`, `resources-server-pack-lifecycle`
 Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`, `player-local-vitals-status`, `registries-built-in-catalogs`, `registries-synchronized-data`, `rendering-client-particle-routing`, `rendering-particle-provider-registration`
-- Close the 121 records that remain `partial` in the current parity acceptance
-  report. Schema v3 keeps all 147 matrix-derived records and reverse artifact/scenario
+- Close every record that remains `partial` in the current parity acceptance
+  report. Schema v3 keeps one record per matrix row and reverse artifact/scenario
   mappings, derives `implementation-gap` / `focused-evidence-pending` /
   `formal-receipt-pending` / `external-blocker`, and hashes each mechanism's BBB
   owner/path closure, focused-test contract, Vanilla source and capture identity.
@@ -101,6 +101,10 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   winit's single-icon API. That row likewise stays partial until the exact-HEAD
   resource/platform sweep; user-waived macOS live validation is not substituted
   for the required Linux receipt.
+  The documentation-workflow row now carries executable docs-lint/acceptance tests,
+  derives no Java owner from prose, and obtains generated counts only from inventory
+  and acceptance output. It remains `partial` until the clean gated code-freeze
+  acceptance sweep; this workflow change does not restore a false `equivalent`.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in
