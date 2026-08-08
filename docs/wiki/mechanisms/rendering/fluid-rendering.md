@@ -70,6 +70,17 @@ renderer tests 覆盖内部面、不同 fluid、上方同 fluid、角高、side 
 backface、邻 chunk、occlusion、tint 与 waterlogged 内部面。三场景同 tick 锚点检查水
 顶/侧面、玻璃交界、深度和透明排序；共同 draw evidence 证明两 API 都提交真实内容。
 
+- `crates/bbb-native/src/terrain_runtime/textures/tests.rs#fluid_render_data_uses_still_top_and_flowing_sides`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#culls_internal_faces_between_fluid_blocks`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#keeps_faces_between_different_fluid_kinds`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#fluid_top_face_averages_corner_heights_from_adjacent_fluids`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#fluid_flowing_top_uses_flowing_texture_and_rotated_uvs`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#water_side_overlay_neighbor_uses_overlay_texture_without_reversed_back_face`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#fluid_faces_use_flat_vanilla_light_without_ambient_occlusion`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#culls_fluid_faces_between_adjacent_chunk_snapshots`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#fluid_face_occlusion_uses_vanilla_height_and_top_surface_ordering`
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#waterlogged_block_emits_block_and_fluid_layers`
+
 ## 当前差异
 
 fluid mesh 当前通过 P0 视觉合同；相机介质/fog 是相邻但独立机制，应在 parity matrix
