@@ -9245,6 +9245,57 @@ RECIPE_BOOK_LANGUAGE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CHUNK_LAYER_BUILD_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-renderer/src/terrain.rs#build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera",
+        "crates/bbb-renderer/src/terrain/mesh.rs#build_chunk_section_subset_mesh_layers_with_lookup",
+    ),
+    (
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#layer_builder_splits_opaque_and_cutout_meshes",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#forced_translucent_cube_faces_emit_in_translucent_layer",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#transparent_cube_faces_emit_in_cutout_layer",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#section_layer_builder_reuses_texture_layer_routing_without_changing_meshes",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#waterlogged_block_emits_block_and_fluid_layers",
+        "crates/bbb-native/src/terrain_runtime/textures/tests.rs#fast_leaves_force_root_and_nested_model_transparency_opaque",
+    ),
+)
+
+CHUNK_LAYER_SORT_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+        "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
+    ),
+    (
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+        "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+        "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers",
+    ),
+)
+
+SECTION_COMPILER_LAYER_OWNER_EVIDENCE = _owner_evidence(
+    (CHUNK_LAYER_BUILD_OWNER_EVIDENCE, ("compile", "getOrBeginLayer")),
+)
+
+MESH_DATA_SORT_OWNER_EVIDENCE = _owner_evidence(
+    (CHUNK_LAYER_SORT_OWNER_EVIDENCE, ("sortQuads", "buildSortedIndexBuffer")),
+)
+
+VERTEX_SORTING_OWNER_EVIDENCE = _owner_evidence(
+    (CHUNK_LAYER_SORT_OWNER_EVIDENCE, ("byDistance", "sort", "apply")),
+)
+
+SECTION_RENDER_SORT_OWNER_EVIDENCE = _owner_evidence(
+    (CHUNK_LAYER_SORT_OWNER_EVIDENCE, ("createVertexSorting",)),
+)
+
+RENDERING_CHUNK_LAYER_OWNER_EVIDENCE = {
+    **SECTION_COMPILER_LAYER_OWNER_EVIDENCE,
+    **MESH_DATA_SORT_OWNER_EVIDENCE,
+    **VERTEX_SORTING_OWNER_EVIDENCE,
+    **SECTION_RENDER_SORT_OWNER_EVIDENCE,
+}
+
 CAMERA_FLUID_OWNER_EVIDENCE = OwnerEvidence(
     (
         "crates/bbb-native/src/camera_fov.rs#camera_fluid_in_camera",
@@ -9480,6 +9531,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-level-pass": RENDERING_LEVEL_PASS_OWNER_EVIDENCE,
     "rendering-effects-screenshot": RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE,
     "rendering-camera-fluid-fog": {},
+    "rendering-chunk-layer-routing": RENDERING_CHUNK_LAYER_OWNER_EVIDENCE,
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
     "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
     "input-mouse-routing": INPUT_MOUSE_ROUTING_OWNER_EVIDENCE,
@@ -9841,6 +9893,33 @@ METHOD_SURFACES = (
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/PeriodicNotificationManager.java"),
     MethodSurface("render-step", "rendering", "rendering-frame-order", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
+    MethodSurface(
+        "render-layer",
+        "rendering",
+        "rendering-chunk-layer-routing",
+        "net/minecraft/client/renderer/chunk/SectionCompiler.java",
+        selected_methods=("compile", "getOrBeginLayer"),
+    ),
+    MethodSurface(
+        "render-layer",
+        "rendering",
+        "rendering-chunk-layer-routing",
+        "com/mojang/blaze3d/vertex/MeshData.java",
+        selected_methods=("sortQuads", "buildSortedIndexBuffer"),
+    ),
+    MethodSurface(
+        "render-layer",
+        "rendering",
+        "rendering-chunk-layer-routing",
+        "com/mojang/blaze3d/vertex/VertexSorting.java",
+    ),
+    MethodSurface(
+        "render-layer",
+        "rendering",
+        "rendering-chunk-layer-routing",
+        "net/minecraft/client/renderer/chunk/SectionRenderDispatcher.java",
+        selected_methods=("createVertexSorting",),
+    ),
     MethodSurface(
         "camera-fog",
         "rendering",
@@ -10261,6 +10340,20 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
         "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
         "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present",
+    ),
+    "rendering-chunk-layer-routing": (
+        "crates/bbb-renderer/src/terrain.rs#build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera",
+        "crates/bbb-renderer/src/terrain/mesh.rs#build_chunk_section_subset_mesh_layers_with_lookup",
+        "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+        "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#layer_builder_splits_opaque_and_cutout_meshes",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#forced_translucent_cube_faces_emit_in_translucent_layer",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#transparent_cube_faces_emit_in_cutout_layer",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#section_layer_builder_reuses_texture_layer_routing_without_changing_meshes",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+        "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+        "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers",
     ),
     "rendering-level-backend-lifecycle": (
         "crates/bbb-renderer/src/resource_reload.rs",

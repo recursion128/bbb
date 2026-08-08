@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "3eda1c473150b6fa9149c163d97552c96e54ca0c7907669bf176a095802dda05"
+      "sha256": "3ee7c9c220b61569bf25ec0b84842f010cb6c7819bd295fdca3630e7ee4a8349"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -501,6 +501,24 @@
       ],
       "owner_count": 35,
       "owner_evidence_count": 35
+    },
+    "rendering-chunk-layer-routing": {
+      "bbb_evidence": [
+        "crates/bbb-renderer/src/terrain.rs#build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera",
+        "crates/bbb-renderer/src/terrain/mesh.rs#build_chunk_section_subset_mesh_layers_with_lookup",
+        "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+        "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#layer_builder_splits_opaque_and_cutout_meshes",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#forced_translucent_cube_faces_emit_in_translucent_layer",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#transparent_cube_faces_emit_in_cutout_layer",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#section_layer_builder_reuses_texture_layer_routing_without_changing_meshes",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+        "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+        "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+        "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+      ],
+      "owner_count": 10,
+      "owner_evidence_count": 10
     },
     "rendering-client-biome-tint": {
       "bbb_evidence": [
@@ -7927,6 +7945,188 @@
         "path": "com/mojang/blaze3d/platform/Window.java"
       },
       "vanilla_owner": "com.mojang.blaze3d.platform.Window.WindowInitFailed#WindowInitFailed(final String message)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.MeshData#sortQuads(final ByteBufferBuilder indexBufferTarget,final VertexSorting sorting)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 62,
+        "path": "com/mojang/blaze3d/vertex/MeshData.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.MeshData#sortQuads(final ByteBufferBuilder indexBufferTarget,final VertexSorting sorting)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.MeshData.SortState#buildSortedIndexBuffer(final ByteBufferBuilder target,final VertexSorting sorting)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 85,
+        "path": "com/mojang/blaze3d/vertex/MeshData.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.MeshData.SortState#buildSortedIndexBuffer(final ByteBufferBuilder target,final VertexSorting sorting)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.VertexSorting#byDistance(final Vector3fc origin)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 16,
+        "path": "com/mojang/blaze3d/vertex/VertexSorting.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.VertexSorting#byDistance(final Vector3fc origin)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.VertexSorting#byDistance(final VertexSorting.DistanceFunction function)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 20,
+        "path": "com/mojang/blaze3d/vertex/VertexSorting.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.VertexSorting#byDistance(final VertexSorting.DistanceFunction function)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.VertexSorting#byDistance(final float x,final float y,final float z)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 12,
+        "path": "com/mojang/blaze3d/vertex/VertexSorting.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.VertexSorting#byDistance(final float x,final float y,final float z)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.VertexSorting#sort(CompactVectorArray points)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 35,
+        "path": "com/mojang/blaze3d/vertex/VertexSorting.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.VertexSorting#sort(CompactVectorArray points)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:com.mojang.blaze3d.vertex.VertexSorting.DistanceFunction#apply(Vector3f value)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 39,
+        "path": "com/mojang/blaze3d/vertex/VertexSorting.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.vertex.VertexSorting.DistanceFunction#apply(Vector3f value)"
     },
     {
       "category": "out-of-scope",
@@ -37691,6 +37891,88 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-renderer/src/terrain.rs#build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera",
+          "crates/bbb-renderer/src/terrain/mesh.rs#build_chunk_section_subset_mesh_layers_with_lookup"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#layer_builder_splits_opaque_and_cutout_meshes",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#forced_translucent_cube_faces_emit_in_translucent_layer",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#transparent_cube_faces_emit_in_cutout_layer",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#section_layer_builder_reuses_texture_layer_routing_without_changing_meshes",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#waterlogged_block_emits_block_and_fluid_layers",
+          "crates/bbb-native/src/terrain_runtime/textures/tests.rs#fast_leaves_force_root_and_nested_model_transparency_opaque"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:net.minecraft.client.renderer.chunk.SectionCompiler#compile(final SectionPos sectionPos,final RenderSectionRegion region,final VertexSorting vertexSorting,final SectionBufferBuilderPack builders)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 58,
+        "path": "net/minecraft/client/renderer/chunk/SectionCompiler.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.chunk.SectionCompiler#compile(final SectionPos sectionPos,final RenderSectionRegion region,final VertexSorting vertexSorting,final SectionBufferBuilderPack builders)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain.rs#build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera",
+          "crates/bbb-renderer/src/terrain/mesh.rs#build_chunk_section_subset_mesh_layers_with_lookup"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#layer_builder_splits_opaque_and_cutout_meshes",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#forced_translucent_cube_faces_emit_in_translucent_layer",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#transparent_cube_faces_emit_in_cutout_layer",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#section_layer_builder_reuses_texture_layer_routing_without_changing_meshes",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#waterlogged_block_emits_block_and_fluid_layers",
+          "crates/bbb-native/src/terrain_runtime/textures/tests.rs#fast_leaves_force_root_and_nested_model_transparency_opaque"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:net.minecraft.client.renderer.chunk.SectionCompiler#getOrBeginLayer(final Map <ChunkSectionLayer, BufferBuilder> startedLayers,final SectionBufferBuilderPack buffers,final ChunkSectionLayer layer)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 138,
+        "path": "net/minecraft/client/renderer/chunk/SectionCompiler.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.chunk.SectionCompiler#getOrBeginLayer(final Map <ChunkSectionLayer, BufferBuilder> startedLayers,final SectionBufferBuilderPack buffers,final ChunkSectionLayer layer)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/terrain/mesh.rs#sort_translucent_quads_by_distance",
+          "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
+      "category": "render-layer",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-chunk-layer-routing",
+      "owner_id": "method:net.minecraft.client.renderer.chunk.SectionRenderDispatcher.RenderSection#createVertexSorting(final SectionPos sectionPos,final Vec3 cameraPos)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 407,
+        "path": "net/minecraft/client/renderer/chunk/SectionRenderDispatcher.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.chunk.SectionRenderDispatcher.RenderSection#createVertexSorting(final SectionPos sectionPos,final Vec3 cameraPos)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
           "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
         ],
@@ -56639,6 +56921,7 @@
       "rendering-level-pass",
       "rendering-effects-screenshot",
       "rendering-camera-fluid-fog",
+      "rendering-chunk-layer-routing",
       "input-keyboard-routing",
       "input-debug-key-actions",
       "input-mouse-routing",
@@ -56740,6 +57023,14 @@
     {
       "path": "com/mojang/blaze3d/platform/Window.java",
       "sha256": "8878ed11ca73f28ba934e51209e9d05729df1407b6119b6708c3614d71c69458"
+    },
+    {
+      "path": "com/mojang/blaze3d/vertex/MeshData.java",
+      "sha256": "5adf4adbbbaf76f3e4e09cf9274d9524bb0a49bdc3bf65f95347b72ea63d4d76"
+    },
+    {
+      "path": "com/mojang/blaze3d/vertex/VertexSorting.java",
+      "sha256": "6041c8c5990c612fdb1dfaedab4745d5387afb58f808cf014cc7eb15d46d1340"
     },
     {
       "path": "com/mojang/realmsclient/RealmsMainScreen.java",
@@ -56940,6 +57231,14 @@
     {
       "path": "net/minecraft/client/renderer/blockentity/BlockEntityRenderers.java",
       "sha256": "d926a740ea5a8ccd590df6aaee4c13d3baa70e60f6ab0c186b2c8f05c99eaae9"
+    },
+    {
+      "path": "net/minecraft/client/renderer/chunk/SectionCompiler.java",
+      "sha256": "761670bea070f11b7e57dd95a072c915d430b3e267110116f8cb0121aaed6545"
+    },
+    {
+      "path": "net/minecraft/client/renderer/chunk/SectionRenderDispatcher.java",
+      "sha256": "941c1b9f1fc66e508d2ea81f88c39ec61f7a5dbdb542822899134a4682534fe7"
     },
     {
       "path": "net/minecraft/client/renderer/entity/AbstractBoatRenderer.java",
@@ -58398,6 +58697,7 @@
       "render-diagnostics": 3,
       "render-dirty-handoff": 6,
       "render-effect": 4,
+      "render-layer": 10,
       "render-lifecycle": 9,
       "render-light": 3,
       "render-scene": 15,
@@ -58437,7 +58737,7 @@
       "protocol": 747,
       "realms": 100,
       "registries": 123,
-      "rendering": 322,
+      "rendering": 332,
       "resources": 144,
       "security": 30,
       "singleplayer": 52,
@@ -58449,12 +58749,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1573,
+      "decision": 1583,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3220,
-    "owner_count": 3220,
+    "mapped_owner_count": 3230,
+    "owner_count": 3230,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

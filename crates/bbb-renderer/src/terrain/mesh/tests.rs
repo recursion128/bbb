@@ -1942,6 +1942,58 @@ fn translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla() {
 }
 
 #[test]
+fn translucent_layer_sort_uses_world_camera_equivalent_to_vanilla_section_local_sorting() {
+    let near = TerrainQuad {
+        corners: [
+            [0.0, 0.0, 0.0],
+            [16.0, 0.0, 0.0],
+            [16.0, 16.0, 0.0],
+            [0.0, 16.0, 0.0],
+        ],
+        normal: [0.0, 0.0, -1.0],
+        uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        cull: None,
+        texture_index: 0,
+        tint: TerrainTint::WHITE,
+        transparency: TerrainTransparency::TRANSLUCENT,
+        shade: true,
+        light_emission: 0,
+    };
+    let far = TerrainQuad {
+        corners: [
+            [0.0, 0.0, 16.0],
+            [16.0, 0.0, 16.0],
+            [16.0, 16.0, 16.0],
+            [0.0, 16.0, 16.0],
+        ],
+        normal: [0.0, 0.0, 1.0],
+        ..near
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_shape(
+        7,
+        TerrainMaterialClass::Opaque,
+        0,
+        TerrainRenderShape::Quads(vec![near, far]),
+    );
+    let snapshot = TerrainChunkSnapshot::new(3, -2, 0, 1, cells);
+    let section_origin = [48.0, 0.0, -32.0];
+    let camera_local = [1.5, 0.5, -4.0];
+    let camera_world = std::array::from_fn(|axis| section_origin[axis] + camera_local[axis]);
+
+    let layers = build_terrain_mesh_layers_with_atlas_and_camera(
+        &[snapshot],
+        &TerrainTextureAtlas::unit(),
+        camera_world,
+    );
+
+    assert_eq!(
+        layers.translucent[0].indices,
+        vec![4, 5, 6, 4, 6, 7, 0, 2, 1, 0, 3, 2]
+    );
+}
+
+#[test]
 fn transparent_cube_faces_emit_in_cutout_layer() {
     let mut face_transparency = [TerrainTransparency::OPAQUE; 6];
     face_transparency[TerrainFace::Up.index()] = TerrainTransparency {

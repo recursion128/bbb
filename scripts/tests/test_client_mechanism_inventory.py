@@ -213,6 +213,42 @@ public class Owner {
             )
         )
 
+    def test_chunk_layer_owner_census_covers_routing_and_sort_contracts(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "rendering-chunk-layer-routing"
+        ]
+
+        self.assertEqual(len(owners), 10)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            Counter(
+                {
+                    "net/minecraft/client/renderer/chunk/SectionCompiler.java": 2,
+                    "com/mojang/blaze3d/vertex/MeshData.java": 2,
+                    "com/mojang/blaze3d/vertex/VertexSorting.java": 5,
+                    "net/minecraft/client/renderer/chunk/SectionRenderDispatcher.java": 1,
+                }
+            ),
+        )
+        mechanism = value["mechanisms"]["rendering-chunk-layer-routing"]
+        self.assertEqual(mechanism["owner_count"], 10)
+        self.assertEqual(mechanism["owner_evidence_count"], 10)
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+
     def test_audio_owner_census_has_complete_evidence_and_explicit_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT
