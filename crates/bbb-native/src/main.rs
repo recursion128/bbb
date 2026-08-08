@@ -769,23 +769,24 @@ fn run_client(mut args: startup::Args) -> Result<()> {
             )
         })
         .transpose()?;
+    let client_identity = startup::client_identity_from_args(&args);
     let mut network_runtime = start_network_if_requested(
         &runtime,
         &args,
+        &client_identity,
         &mut code_of_conduct_acceptance,
         known_packs_manager,
         &simulation_mailbox,
     )?;
     let (net_events, net_commands) = network_runtime.take_channels();
-    let profile_id = bbb_protocol::codec::offline_player_uuid(&args.username);
-    world.set_local_player_profile_id(profile_id);
+    world.set_local_player_profile_id(client_identity.profile_id);
     let server_resource_pack_runtime = ServerResourcePackRuntime::new(
         runtime.handle().clone(),
         args.server_resource_pack_cache_dir
             .clone()
             .unwrap_or_else(|| default_server_resource_pack_cache_dir(&args.game_dir)),
-        args.username.clone(),
-        profile_id,
+        client_identity.username.clone(),
+        client_identity.profile_id,
         startup::server_resource_pack_proxy_from_args(&args),
     )?;
     start_control_api(&runtime, args.control, &control);
@@ -2865,6 +2866,30 @@ mod tests {
 
         assert!(dirty < packs && packs < window && window < simulation);
         assert!(simulation < clean && clean < connect && connect < event_loop);
+    }
+
+    #[test]
+    fn one_startup_identity_feeds_network_world_and_server_pack_headers() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let identity = production
+            .find("let client_identity = startup::client_identity_from_args(&args)")
+            .expect("single startup identity owner");
+        let network = production
+            .find("&client_identity,\n        &mut code_of_conduct_acceptance")
+            .expect("network identity projection");
+        let world = production
+            .find("world.set_local_player_profile_id(client_identity.profile_id)")
+            .expect("canonical world identity projection");
+        let packs = production
+            .find("client_identity.username.clone(),\n        client_identity.profile_id")
+            .expect("server-pack request identity projection");
+
+        assert!(identity < network && network < world && world < packs);
+        assert!(!production.contains("offline_player_uuid(&args.username)"));
     }
 
     #[test]

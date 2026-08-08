@@ -5,16 +5,16 @@
       "source": {
         "anchors": [
           {
-            "line": 2491,
+            "line": 2492,
             "symbol": "window-event adapter"
           },
           {
-            "line": 2485,
+            "line": 2486,
             "symbol": "failed-drop capability blocker"
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "d16273b6fa09fbcc2777b740f2e0b7f897257d4f816bfcbb58c0b5f9164d1f71"
+        "sha256": "a5559947aaa57526e1bd43cd2ad2aba6e6730202ebdf7d01d3787b5906c37787"
       },
       "successful_path_event_consumed": false
     },

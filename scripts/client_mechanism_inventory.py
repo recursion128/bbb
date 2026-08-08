@@ -7248,7 +7248,7 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
         OwnerEvidence(
             (
                 "crates/bbb-world/src/client/local_player.rs#pub fn local_player_profile_id(&self) -> Option<Uuid> {",
-                "crates/bbb-native/src/main.rs#world.set_local_player_profile_id(profile_id);",
+                "crates/bbb-native/src/main.rs#world.set_local_player_profile_id(client_identity.profile_id);",
             ),
             (
                 "crates/bbb-protocol/src/codec.rs#offline_uuid_matches_java_name_uuid_shape",
@@ -9558,6 +9558,11 @@ STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST = (
     "#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
 )
 
+STARTUP_IDENTITY_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_startup_identity_owner_census_is_exact_and_has_per_owner_evidence"
+)
+
 STARTUP_ARGUMENT_IMPLEMENTATION = (
     "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
     "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
@@ -9656,6 +9661,119 @@ MINECRAFT_STARTUP_OWNER_EVIDENCE = _owner_evidence(
             ),
         ),
         ("getLauncherBrand",),
+    ),
+)
+
+STARTUP_IDENTITY_IMPLEMENTATION = (
+    "crates/bbb-net/src/types/connection.rs#pub struct ClientIdentity",
+    "crates/bbb-net/src/types/connection.rs#pub fn offline_with_identity",
+    "crates/bbb-native/src/startup.rs#pub(crate) fn client_identity_from_args",
+    "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
+    "crates/bbb-native/src/main.rs#fn run_client",
+    "crates/bbb-world/src/client/local_player.rs#pub fn set_local_player_profile_id",
+    "crates/bbb-net/src/resource_pack.rs#fn download_headers",
+)
+
+STARTUP_IDENTITY_TESTS = (
+    "crates/bbb-native/src/startup.rs"
+    "#vanilla_launcher_uuid_is_lenient_and_one_identity_feeds_login",
+    "crates/bbb-native/src/startup.rs"
+    "#invalid_launcher_uuid_falls_back_to_the_username_offline_identity",
+    "crates/bbb-net/src/types/connection.rs"
+    "#explicit_launcher_identity_is_preserved_for_login_instead_of_rederived",
+    "crates/bbb-native/src/main.rs"
+    "#one_startup_identity_feeds_network_world_and_server_pack_headers",
+    "crates/bbb-net/src/resource_pack.rs"
+    "#server_pack_download_verifies_hash_headers_and_reuses_cache",
+    STARTUP_IDENTITY_OWNER_CENSUS_TEST,
+)
+
+STARTUP_OFFLINE_SERVICE_IMPLEMENTATION = (
+    "crates/bbb-native/src/services_block_list_runtime.rs#ServicesBlockListRuntime::new",
+    "crates/bbb-net/src/chat_session.rs",
+    "docs/unsupported-features.md",
+)
+
+STARTUP_OFFLINE_SERVICE_TESTS = (
+    "crates/bbb-native/src/services_block_list_runtime.rs"
+    "#services_block_list_offline_play_and_disconnect_stay_inactive",
+    "crates/bbb-net/src/chat_session.rs#outbound_requests_are_unsigned_without_a_session",
+    STARTUP_IDENTITY_OWNER_CENSUS_TEST,
+)
+
+MAIN_IDENTITY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(STARTUP_IDENTITY_IMPLEMENTATION, STARTUP_IDENTITY_TESTS),
+        ("emptyStringToEmptyOptional", "hasValidUuid", "isUuidValid"),
+    ),
+)
+
+USER_IDENTITY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(STARTUP_IDENTITY_IMPLEMENTATION, STARTUP_IDENTITY_TESTS),
+        ("User", "getProfileId", "getName"),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (STARTUP_IDENTITY_OWNER_CENSUS_TEST,),
+            OwnerScopeRuling(
+                "not-reachable-in-current-scope",
+                (
+                    "net/minecraft/client/User.java:22-23",
+                    "net/minecraft/client/Minecraft.java:429-430",
+                ),
+                "getSessionId only decorates Vanilla's debug log with the access token and undashed profile id; BBB deliberately retains no session secret or equivalent observable product surface.",
+                "Reopen if BBB exposes an official session-id diagnostic contract or the offline-only scope decision is reversed.",
+            ),
+        ),
+        ("getSessionId",),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (STARTUP_IDENTITY_OWNER_CENSUS_TEST,),
+            OwnerScopeRuling(
+                "not-reachable-in-current-scope",
+                (
+                    "net/minecraft/client/User.java:34-35",
+                    "net/minecraft/client/Minecraft.java:832-834",
+                ),
+                "getAccessToken is consumed only by the online UserApiService branch; the declared offline-only client selects the OFFLINE service and owns no access-token startup field.",
+                "Reopen only if the offline-only scope decision is reversed and the online authentication service is restored.",
+            ),
+        ),
+        ("getAccessToken",),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (STARTUP_IDENTITY_OWNER_CENSUS_TEST,),
+            OwnerScopeRuling(
+                "not-reachable-in-current-scope",
+                (
+                    "net/minecraft/client/User.java:38-43",
+                    "net/minecraft/client/telemetry/ClientTelemetryManager.java:36-41",
+                ),
+                "getClientId and getXuid only populate Mojang telemetry properties; BBB has no telemetry sender in the declared scope.",
+                "Reopen if BBB gains a Mojang telemetry upload surface or the scope-telemetry-upload decision changes.",
+            ),
+        ),
+        ("getClientId", "getXuid"),
+    ),
+)
+
+MINECRAFT_IDENTITY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            STARTUP_OFFLINE_SERVICE_IMPLEMENTATION,
+            STARTUP_OFFLINE_SERVICE_TESTS,
+        ),
+        ("createUserApiService",),
+    ),
+    (
+        OwnerEvidence(STARTUP_IDENTITY_IMPLEMENTATION, STARTUP_IDENTITY_TESTS),
+        ("getGameProfile",),
     ),
 )
 
@@ -9786,7 +9904,11 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **CAMERA_FOG_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
-    "net/minecraft/client/main/Main.java": MAIN_STARTUP_OWNER_EVIDENCE,
+    "net/minecraft/client/main/Main.java": {
+        **MAIN_STARTUP_OWNER_EVIDENCE,
+        **MAIN_IDENTITY_OWNER_EVIDENCE,
+    },
+    "net/minecraft/client/User.java": USER_IDENTITY_OWNER_EVIDENCE,
     "net/minecraft/client/main/GameConfig.java": GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
     "net/minecraft/client/resources/ClientPackSource.java": CLIENT_PACK_SOURCE_PROVIDER_OWNER_EVIDENCE,
     "net/minecraft/client/resources/IndexedAssetSource.java": INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
@@ -9803,6 +9925,11 @@ METHOD_OWNER_EVIDENCE = {
     "startup-client-bootstrap": {
         **MAIN_STARTUP_OWNER_EVIDENCE,
         **MINECRAFT_STARTUP_OWNER_EVIDENCE,
+    },
+    "startup-session-identity": {
+        **MAIN_IDENTITY_OWNER_EVIDENCE,
+        **USER_IDENTITY_OWNER_EVIDENCE,
+        **MINECRAFT_IDENTITY_OWNER_EVIDENCE,
     },
     "resources-offline-asset-trust": {
         **GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
@@ -10733,7 +10860,14 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
         STARTUP_BOOTSTRAP_OWNER_CENSUS_TEST,
     ),
-    "startup-session-identity": ("crates/bbb-net/src/types/connection.rs", "docs/wiki/architecture/offline-runtime.md"),
+    "startup-session-identity": (
+        "crates/bbb-net/src/types/connection.rs#pub struct ClientIdentity",
+        "crates/bbb-native/src/startup.rs#pub(crate) fn client_identity_from_args",
+        "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
+        "crates/bbb-native/src/main.rs#fn run_client",
+        "crates/bbb-net/src/resource_pack.rs#fn download_headers",
+        STARTUP_IDENTITY_OWNER_CENSUS_TEST,
+    ),
     "lifecycle-client-runtime": (
         "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
         "crates/bbb-native/src/simulation/thread.rs#shutdown_and_join",

@@ -472,6 +472,91 @@ public class Owner {
             "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8",
         )
 
+    def test_startup_identity_owner_census_is_exact_and_has_per_owner_evidence(
+        self,
+    ) -> None:
+        mechanism_id = "startup-session-identity"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == mechanism_id
+        ]
+        expected_methods = {
+            "net/minecraft/client/main/Main.java": {
+                "emptyStringToEmptyOptional",
+                "hasValidUuid",
+                "isUuidValid",
+            },
+            "net/minecraft/client/User.java": {
+                "User",
+                "getSessionId",
+                "getProfileId",
+                "getName",
+                "getAccessToken",
+                "getClientId",
+                "getXuid",
+            },
+            "net/minecraft/client/Minecraft.java": {
+                "createUserApiService",
+                "getGameProfile",
+            },
+        }
+
+        self.assertEqual(len(owners), 12)
+        for path, methods in expected_methods.items():
+            self.assertEqual(
+                {
+                    owner["vanilla_owner"].split("#", 1)[1].split("(", 1)[0]
+                    for owner in owners
+                    if owner["source"]["path"] == path
+                },
+                methods,
+            )
+        mechanism = value["mechanisms"][mechanism_id]
+        self.assertEqual(mechanism["owner_count"], 12)
+        self.assertEqual(mechanism["owner_evidence_count"], 12)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 0)
+        self.assertTrue(
+            all(
+                owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        scope_rulings = [
+            owner["bbb_evidence"]["scope_ruling"]
+            for owner in owners
+            if "scope_ruling" in owner["bbb_evidence"]
+        ]
+        self.assertEqual(len(scope_rulings), 4)
+        self.assertTrue(
+            all(
+                ruling["conclusion"] == "not-reachable-in-current-scope"
+                and ruling["reopen_condition"]
+                for ruling in scope_rulings
+            )
+        )
+        source_hashes = {
+            source["path"]: source["sha256"] for source in value["source_files"]
+        }
+        self.assertEqual(
+            source_hashes["net/minecraft/client/User.java"],
+            "35c6275df245db8e8a546b77b525e2ca241c92012aea96056576caa743321d0b",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/client/main/Main.java"],
+            "9e13409317a698c7d0bc0d406fef66a13fae422a08ee7ae92aa1b5f2374ffb49",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/client/Minecraft.java"],
+            "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8",
+        )
+
     def test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT

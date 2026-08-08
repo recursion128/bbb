@@ -189,6 +189,11 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   if the offline-only scope decision itself is reversed; restoring the online
   surface means reimplementing encrypted login, session join, and the
   profile-key lifecycle from vanilla source.
+  Vanilla `Main --uuid` is distinct from those online credentials: it also
+  selects the offline launch identity, so BBB retains that exact CLI surface
+  with Authlib/JDK lenient parsing and username-derived fallback. One derived
+  identity feeds login, canonical local-player state and server-pack headers;
+  this does not reopen online authentication.
 The offline service boundary follows vanilla's `UserApiService.OFFLINE_PROPERTIES`
 semantics — empty flags and ban scopes, so profile-flag chat restrictions, the
 Services block list and the abuse-report sender stay inert exactly like

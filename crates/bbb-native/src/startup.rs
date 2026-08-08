@@ -6,7 +6,9 @@ use std::{
 use anyhow::{ensure, Context, Result};
 use bbb_audio::AudioVolumeSettings;
 use bbb_control::ControlState;
-use bbb_net::{ConnectionOptions, ServerPackDownloadProxy, ServerResourcePackPolicy};
+use bbb_net::{
+    ClientIdentity, ConnectionOptions, ServerPackDownloadProxy, ServerResourcePackPolicy,
+};
 use bbb_pack::{KnownPacksManager, PackRoots};
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
@@ -100,6 +102,11 @@ pub(crate) struct Args {
     pub(crate) quick_play_multiplayer: Option<String>,
     #[arg(long, default_value = "bbb-client")]
     pub(crate) username: String,
+    /// Vanilla `Main --uuid`. Both 32-digit undashed and Java UUID group
+    /// spellings are accepted; an invalid value warns and falls back to the
+    /// username-derived offline UUID just like the official launcher owner.
+    #[arg(long = "uuid", value_name = "UUID")]
+    pub(crate) uuid: Option<String>,
     #[arg(long, value_name = "ADDR", conflicts_with = "probe_server")]
     pub(crate) status_server: Option<String>,
     #[arg(long)]
@@ -855,6 +862,62 @@ pub(crate) fn name_current_render_thread() -> Result<()> {
 #[cfg(not(target_os = "linux"))]
 pub(crate) fn name_current_render_thread() -> Result<()> {
     Ok(())
+}
+
+/// `Main.hasValidUuid` / `UndashedUuid.fromStringLenient` followed by
+/// `UUIDUtil.createOfflinePlayerUUID`. Keep this as the only startup identity
+/// decision so login, world state, and server-pack headers share one UUID.
+pub(crate) fn client_identity_from_args(args: &Args) -> ClientIdentity {
+    if let Some(value) = args.uuid.as_deref() {
+        if let Some(profile_id) = parse_vanilla_launcher_uuid(value) {
+            return ClientIdentity::with_profile_id(args.username.clone(), profile_id);
+        }
+        tracing::warn!(uuid = value, "Invalid UUID; using offline player UUID");
+    }
+    ClientIdentity::offline(args.username.clone())
+}
+
+/// Authlib 7.0.63 `UndashedUuid.fromStringLenient` first inserts the canonical
+/// four dashes into a 32-character Java `\\w` value, then delegates to
+/// `java.util.UUID.fromString`. JDK 25 also accepts shorter non-empty hex
+/// groups and masks them to 32/16/16/16/48 bits, so reproduce that behavior
+/// instead of relying on Rust UUID's stricter presentation parser.
+fn parse_vanilla_launcher_uuid(value: &str) -> Option<Uuid> {
+    let normalized = if value.len() == 32
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+    {
+        format!(
+            "{}-{}-{}-{}-{}",
+            &value[0..8],
+            &value[8..12],
+            &value[12..16],
+            &value[16..20],
+            &value[20..32]
+        )
+    } else {
+        value.to_owned()
+    };
+    if normalized.len() > 36 {
+        return None;
+    }
+    let groups = normalized.split('-').collect::<Vec<_>>();
+    if groups.len() != 5 || groups.iter().any(|group| group.is_empty()) {
+        return None;
+    }
+    let parse = |group: &str| {
+        i64::from_str_radix(group.strip_prefix('+').unwrap_or(group), 16)
+            .ok()
+            .map(|value| value as u64)
+    };
+    let most = ((parse(groups[0])? & 0xffff_ffff) << 32)
+        | ((parse(groups[1])? & 0xffff) << 16)
+        | (parse(groups[2])? & 0xffff);
+    let least = ((parse(groups[3])? & 0xffff) << 48) | (parse(groups[4])? & 0xffff_ffff_ffff);
+    Some(Uuid::from_u128(
+        (u128::from(most) << 64) | u128::from(least),
+    ))
 }
 
 pub(crate) fn parse_args() -> Args {
@@ -1673,7 +1736,8 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
         return Ok(false);
     }
 
-    let mut options = connection_options_from_args(args)?;
+    let identity = client_identity_from_args(args);
+    let mut options = connection_options_from_args(args, &identity)?;
     let roots = load_pack_roots(args)?;
     options.known_packs_manager = load_known_packs_manager(roots.as_ref());
     options.client_information = client_information_from_args(args)?;
@@ -1770,6 +1834,7 @@ fn apply_resource_pack_dirs(
 pub(crate) fn start_network_if_requested(
     runtime: &Runtime,
     args: &Args,
+    identity: &ClientIdentity,
     code_of_conduct: &mut CodeOfConductAcceptance,
     known_packs_manager: Option<Arc<KnownPacksManager>>,
     simulation_mailbox: &SimulationMailbox,
@@ -1778,7 +1843,7 @@ pub(crate) fn start_network_if_requested(
         return Ok(NetworkRuntime::idle());
     }
 
-    let mut options = connection_options_from_args(args)?;
+    let mut options = connection_options_from_args(args, identity)?;
     options.client_information = client_information_from_args(args)?;
     options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
     options.known_packs_manager = known_packs_manager;
@@ -1790,8 +1855,11 @@ pub(crate) fn start_network_if_requested(
     ))
 }
 
-fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
-    let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+fn connection_options_from_args(
+    args: &Args,
+    identity: &ClientIdentity,
+) -> Result<ConnectionOptions> {
+    let mut options = ConnectionOptions::offline_with_identity(&args.server, identity)?;
     options.server_resource_pack_policy = args.server_resource_pack_policy.into();
     Ok(options)
 }
@@ -2480,6 +2548,7 @@ mod tests {
     #[test]
     fn args_select_server_resource_pack_policy_and_cache_directory() {
         let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        let default_identity = client_identity_from_args(&defaults);
         assert_eq!(
             defaults.server_resource_pack_policy,
             ServerResourcePackPolicyArg::Decline
@@ -2489,7 +2558,7 @@ mod tests {
         assert_eq!(defaults.proxy_port, 8080);
         assert!(server_resource_pack_proxy_from_args(&defaults).is_none());
         assert_eq!(
-            connection_options_from_args(&defaults)
+            connection_options_from_args(&defaults, &default_identity)
                 .unwrap()
                 .server_resource_pack_policy,
             ServerResourcePackPolicy::Decline
@@ -2503,6 +2572,7 @@ mod tests {
             "/tmp/bbb-server-packs",
         ])
         .unwrap();
+        let accepted_identity = client_identity_from_args(&accepted);
         assert_eq!(
             accepted.server_resource_pack_policy,
             ServerResourcePackPolicyArg::Accept
@@ -2512,7 +2582,7 @@ mod tests {
             Some(PathBuf::from("/tmp/bbb-server-packs"))
         );
         assert_eq!(
-            connection_options_from_args(&accepted)
+            connection_options_from_args(&accepted, &accepted_identity)
                 .unwrap()
                 .server_resource_pack_policy,
             ServerResourcePackPolicy::Accept
@@ -3896,6 +3966,45 @@ mod tests {
             WindowConfig::from_args(&args).physical_size(),
             PhysicalSize::new(1280, 720)
         );
+    }
+
+    #[test]
+    fn vanilla_launcher_uuid_is_lenient_and_one_identity_feeds_login() {
+        let expected = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+        for value in [
+            "00112233-4455-6677-8899-aabbccddeeff",
+            "00112233445566778899aabbccddeeff",
+        ] {
+            let args =
+                Args::parse_from(["bbb-native", "--username", "identity-test", "--uuid", value]);
+            let identity = client_identity_from_args(&args);
+            assert_eq!(identity.username, "identity-test");
+            assert_eq!(identity.profile_id, expected);
+            let connection = connection_options_from_args(&args, &identity).unwrap();
+            assert_eq!(connection.username, identity.username);
+            assert_eq!(connection.profile_id, identity.profile_id);
+        }
+
+        assert_eq!(
+            parse_vanilla_launcher_uuid("1-2-3-4-5"),
+            Some(Uuid::from_u128(0x00000001_0002_0003_0004_000000000005))
+        );
+    }
+
+    #[test]
+    fn invalid_launcher_uuid_falls_back_to_the_username_offline_identity() {
+        let args = Args::parse_from([
+            "bbb-native",
+            "--username",
+            "identity-test",
+            "--uuid",
+            "not-a-uuid",
+        ]);
+        let identity = client_identity_from_args(&args);
+
+        assert_eq!(identity, ClientIdentity::offline("identity-test"));
+        assert_eq!(parse_vanilla_launcher_uuid("not-a-uuid"), None);
+        assert_eq!(parse_vanilla_launcher_uuid("_".repeat(32).as_str()), None);
     }
 
     #[test]

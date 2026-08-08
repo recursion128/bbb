@@ -36,6 +36,12 @@ launcher；它只服务于验证和等负载比较。
 `enforce-secure-profile=false`，使用固定用户名 `bbb-benchmark` 与非秘密占位 token
 `offline`，绝不读取或记录真实凭据。
 
+BBB 不复制官方 launcher 为 online service 保留的 token/xuid/clientId 字段；这些字段
+在已声明的 offline-only 范围没有可达产品效果。`--uuid` 不属于在线认证：BBB 接受
+Authlib 的 32-digit undashed 与 JDK UUID 分组语义，无效值像 `Main.hasValidUuid` 一样
+回退到 username-derived offline UUID。该单一身份投影同时用于 login、canonical world
+本地玩家与 server-pack 请求头，不能由各 consumer 分别重算。
+
 ## 固定运行面
 
 官方命令包含 `--version 26.1`、`--assetsDir`、`--assetIndex 30`、
@@ -60,10 +66,10 @@ server-authoritative replay 由 datapack tick function 每 tick 执行绝对 `tp
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
-| 离线 UUID | `Main.main` → `UUIDUtil.createOfflinePlayerUUID` | benchmark 固定用户名；通用 UUID/token 启动材料仍待实现 | `partial` | launcher CLI focused tests；正式 identity receipt 待 code freeze |
+| 离线 UUID | `Main.hasValidUuid` / `UndashedUuid.fromStringLenient` → invalid 时 `UUIDUtil.createOfflinePlayerUUID` | `bbb-net::ClientIdentity` + `bbb-native::startup` 单一投影；`--uuid` 与 username fallback 均已消费 | `partial` | parser、login/world/server-pack 同 identity focused tests；正式 identity receipt 待 code freeze |
 | 离线服务 | `Minecraft` offline branches | official benchmark launcher contract | `partial` | 既有 real-launch smoke 仅为中间证据，不能关闭最终机制 |
 | asset object store | `AssetIndex`/resource loading | `bbb-pack` default vanilla indexed provider | `partial` | real-load focused tests 已有，正式 resource/platform receipt 待 code freeze |
 | 共同位置序列 | server teleport → player-position packet | replay generator + play apply | `partial` | camera-log 是中间证据，最终须绑定 exact-HEAD domain sweep |
-| 认证服务器 | `authenticateServer` online path | 尚未消费用户提供的在线 session/token 材料 | `partial` | 路由到 `startup-session-identity`，不得用离线 benchmark 配置裁决为不需要 |
+| 认证服务器 | `authenticateServer` online path | offline-only scope 下无 token/session service 或 encryption surface | `not-needed` | [ledger](../../unsupported-features.md) 的用户 scope 裁决与 reopen condition；不得把诊断 token 当作正式 receipt |
 
 更多采样和 invalid-run 规则见[等负载比较](../mechanisms/performance/equal-load-benchmark.md)。
