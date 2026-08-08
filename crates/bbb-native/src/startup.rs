@@ -2311,7 +2311,10 @@ impl WindowConfig {
         // `Window.allowedWindowMinSize` (Window.java:551) clamps every stored
         // window dimension to at least one, so a degenerate display size can
         // never construct a zero-width native window.
-        PhysicalSize::new(self.width.max(1) as u32, self.height.max(1) as u32)
+        PhysicalSize::new(
+            crate::window_surface::allowed_window_min_size(self.width.max(0) as u32),
+            crate::window_surface::allowed_window_min_size(self.height.max(0) as u32),
+        )
     }
 }
 
