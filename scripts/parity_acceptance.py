@@ -235,8 +235,11 @@ CODE_REF_RE = re.compile(
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 CLASS_TOKEN_RE = re.compile(r"\b[A-Z][A-Za-z0-9_$]*\b")
 RUST_TEST_RE = re.compile(
-    r"(?P<attrs>(?:\s*#\[[^\]]+\])+)\s*(?:pub(?:\([^)]*\))?\s+)?fn\s+"
+    r"(?P<attrs>(?:\s*#\[[^\]]+\])+)\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+"
     r"(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\("
+)
+RUST_EXECUTABLE_TEST_ATTR_RE = re.compile(
+    r"#\[\s*(?:test|tokio::test)(?:\s*\([^\]]*\))?\s*\]"
 )
 PYTHON_TEST_RE = re.compile(r"^\s*(?:async\s+)?def\s+(test_[A-Za-z0-9_]+)\s*\(", re.MULTILINE)
 
@@ -772,7 +775,7 @@ def test_symbols(path: Path) -> dict[str, bool]:
     result: dict[str, bool] = {}
     for match in RUST_TEST_RE.finditer(text):
         attrs = match.group("attrs")
-        if "#[test]" not in attrs:
+        if RUST_EXECUTABLE_TEST_ATTR_RE.search(attrs) is None:
             continue
         result[match.group("name")] = "#[ignore" in attrs
     return result

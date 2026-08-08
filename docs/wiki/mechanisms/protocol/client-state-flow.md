@@ -89,8 +89,26 @@ signable command 参数保持 vanilla「无 key pair」语义（`ChatMessage.sig
 ## 聚焦测试（focused tests）和真实证据
 
 生成 coverage 报告记录全部 256 个 clientbound packet 的关闭证据；protocol、world 与
-native focused tests 分别验证 codec、apply 和 publication。共同 replay 的 camera log
-进一步证明 player-position 序列到两个客户端一致。
+native focused tests 分别验证 codec、apply 和 publication。本机制的可执行决策合同是：
+
+- `crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence`
+  验证 login 回包、compression 生效与 configuration phase 切换；
+- `crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff`
+  验证 configuration control 回包不被 canonical registry apply 阻塞，且 finish 只在
+  canonical acknowledgement 后切换为 play；
+- `crates/bbb-net/src/event_stream.rs#play_start_configuration_acknowledges_and_resets_configuration_dedup_state`
+  验证 play 重入 configuration 的 acknowledgement、phase 与 listener-local dedup 状态顺序；
+- `crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback`
+  验证同一 typed packet 的瞬时 effect 与 canonical player state 按 Vanilla 顺序只应用一次；
+- `crates/bbb-native/src/simulation/publication.rs#publication_freezes_world_and_publishes_matching_runtime_state`
+  验证 renderer/control 看到同 generation 的 immutable world 与 runtime state；
+- `crates/bbb-native/src/simulation/publication.rs#input_only_publication_reuses_exact_world_arc_for_render_and_control`
+  验证 input-only publication 不会制造第二份 canonical world，真实 world 变化才生成新 snapshot。
+
+这些都是执行状态迁移或数据结果的行为测试，不使用 source-string guard 代替语义
+断言。共同 replay 的 camera log 在 domain evidence sweep 中进一步证明
+player-position 序列到两个客户端一致；本轮不将该待采集的 formal receipt 冒充为 focused
+evidence。
 
 ## 当前差异
 

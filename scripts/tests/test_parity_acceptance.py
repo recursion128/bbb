@@ -341,6 +341,34 @@ mod tests {
                 ),
             )
 
+    def test_tokio_async_test_is_executable_focused_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, source_root = self.make_fixture(Path(temporary))
+            test_source = repo / "crates/example/src/lib.rs"
+            test_source.write_text(
+                """\
+#[cfg(test)]
+mod tests {
+    #[allow(dead_code)]
+    async fn helper_is_not_a_test() {}
+
+    #[tokio::test]
+    async fn decision_matches_vanilla() {
+        assert_eq!(2 + 2, 4);
+    }
+}
+""",
+                encoding="utf-8",
+            )
+
+            report = self.build_fixture_report(repo, source_root)
+            focused = report["mechanisms"][0]["focused_tests"]
+            self.assertEqual(
+                [test["reference"] for test in focused],
+                ["crates/example/src/lib.rs#decision_matches_vanilla"],
+            )
+            self.assertEqual(focused[0]["result"], "passed-via-full-gate")
+
     def test_change_plan_scopes_direct_central_and_unrelated_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, source_root = self.make_fixture(Path(temporary))
