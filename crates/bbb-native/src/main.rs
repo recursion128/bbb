@@ -718,7 +718,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         args.username.clone(),
         profile_id,
         startup::server_resource_pack_proxy_from_args(&args),
-    );
+    )?;
     start_control_api(&runtime, args.control, &control);
     let force_no_audio_device = {
         #[cfg(feature = "lifecycle-soak")]

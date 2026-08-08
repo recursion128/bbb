@@ -68,17 +68,17 @@ class OwnerScopeRuling:
 
 
 @dataclass(frozen=True)
-class OwnerEvidence:
-    implementation: tuple[str, ...]
-    tests: tuple[str, ...]
-    scope_ruling: OwnerScopeRuling | None = None
-
-
-@dataclass(frozen=True)
 class OwnerOpenGap:
     ledger: str
     reason: str
     close_condition: str
+
+
+@dataclass(frozen=True)
+class OwnerEvidence:
+    implementation: tuple[str, ...]
+    tests: tuple[str, ...]
+    scope_ruling: OwnerScopeRuling | None = None
 
 
 def _method_routes(
@@ -8234,6 +8234,316 @@ AUDIO_SOUND_BUFFER_LIBRARY_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+SERVER_PACK_LOCAL_WORLD_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/resources/server/DownloadedPackSource.java:313-315,369-389",
+        "net/minecraft/client/resources/server/ServerPackManager.java:58-74",
+        "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java:595-597",
+        "com/mojang/realmsclient/util/task/GetServerDetailsTask.java:149-153",
+    ),
+    current_scope_reason=(
+        "The local-path pack entry is called by integrated-world loading, while the only "
+        "other wait-for-feedback caller is Realms. Both are outside the declared external "
+        "multiplayer client surface; ordinary server-controlled packs use pushPack and packet feedback."
+    ),
+    reopen_condition="BBB adds integrated-world or Realms connection support.",
+)
+
+HTTP_UTIL_CONSTRUCTOR_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=("net/minecraft/util/HttpUtil.java:32-33",),
+    current_scope_reason=(
+        "The private utility constructor has an empty body and no state projection; the "
+        "reachable static download methods are inventoried separately."
+    ),
+    reopen_condition="The constructor gains a body or becomes reachable.",
+)
+
+SERVER_PACK_SCOPE_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
+)
+
+SERVER_PACK_ZIP_PROVIDER_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
+    reason=(
+        "Vanilla retains the downloaded archive behind FilePackResources/ZipFile, while BBB "
+        "still eagerly extracts it with extra entry, path, ratio, and expanded-size limits."
+    ),
+    close_condition=(
+        "Replace eager extraction with direct/lazy ZIP lookup and enumeration that preserves "
+        "Vanilla duplicate-entry and file/directory-collision behavior."
+    ),
+)
+
+SERVER_PACK_SHARED_TOAST_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
+    reason=(
+        "Server-pack batches have distinct toast identities, but server-pack and other toast "
+        "families do not yet share one ToastManager admission and occupied-slot owner."
+    ),
+    close_condition=(
+        "Route all toast families through one five-slot queue with multi-slot reservation, "
+        "mixed-family ordering, and one visibility-change sound per update."
+    ),
+)
+
+SERVER_PACK_QUEUE_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+        "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+        "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch",
+    ),
+    (
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_download_log_records_vanilla_file_and_error_shapes",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#failed_runtime_download_writes_vanilla_download_queue_event",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#accepted_packs_are_tracked_in_push_order",
+    ),
+)
+
+SERVER_PACK_HTTP_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+        "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking",
+    ),
+    (
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_download_verifies_hash_headers_and_reuses_cache",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_download_enforces_stream_limit_without_content_length",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_download_removes_bad_requested_cache_before_network_failure",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#unhashed_download_touches_an_existing_content_addressed_file",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#matching_requested_cache_bypasses_the_network_download_size_limit",
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials",
+    ),
+)
+
+SERVER_PACK_HTTP_PROGRESS_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+        "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking",
+    ),
+    (
+        "crates/bbb-net/src/resource_pack.rs"
+        "#server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
+    ),
+)
+
+SERVER_PACK_TOAST_EVIDENCE = SERVER_PACK_SHARED_TOAST_GAP
+
+SERVER_PACK_STATE_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+        "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+        "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches",
+    ),
+    (
+        "crates/bbb-world/src/client/server_presentation.rs"
+        "#resource_pack_push_stores_and_upserts_by_id",
+        "crates/bbb-world/src/client/server_presentation.rs"
+        "#resource_pack_pop_without_id_clears_all_packs",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#accepted_packs_are_tracked_in_push_order",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#one_download_failure_discards_every_other_inactive_pack_across_queued_batches",
+    ),
+)
+
+SERVER_PACK_RELOAD_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+        "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+        "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive",
+    ),
+    (
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+        "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory",
+    ),
+)
+
+SERVER_PACK_PROVIDER_EVIDENCE = SERVER_PACK_ZIP_PROVIDER_GAP
+
+SERVER_PACK_SHUTDOWN_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/resource_pack_runtime.rs#impl Drop for ServerResourcePackRuntime",
+        "crates/bbb-native/src/resource_pack_runtime.rs#fn cleanup_removed_packs",
+    ),
+    (
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#dropping_runtime_removes_materialized_session_directory",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
+    ),
+)
+
+SERVER_PACK_LOCAL_SCOPE_EVIDENCE = OwnerEvidence(
+    ("docs/unsupported-features.md",),
+    (SERVER_PACK_SCOPE_TEST,),
+    SERVER_PACK_LOCAL_WORLD_SCOPE,
+)
+
+HTTP_UTIL_CONSTRUCTOR_EVIDENCE = OwnerEvidence(
+    ("docs/unsupported-features.md",),
+    (SERVER_PACK_SCOPE_TEST,),
+    HTTP_UTIL_CONSTRUCTOR_SCOPE,
+)
+
+DOWNLOADED_PACK_SOURCE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        SERVER_PACK_QUEUE_EVIDENCE,
+        ("DownloadedPackSource",),
+    ),
+    (
+        SERVER_PACK_TOAST_EVIDENCE,
+        ("createDownloadNotifier",),
+    ),
+    (
+        SERVER_PACK_QUEUE_EVIDENCE,
+        ("createUpdateScheduler",),
+    ),
+    (
+        SERVER_PACK_HTTP_EVIDENCE,
+        ("createDownloader", "tryParseSha1Hash"),
+    ),
+    (
+        SERVER_PACK_PROVIDER_EVIDENCE,
+        (
+            "loadRequestedPacks",
+            "createRepositorySource",
+            "configureSource",
+        ),
+    ),
+    (
+        SERVER_PACK_RELOAD_EVIDENCE,
+        (
+            "createReloadConfig",
+            "startReload",
+            "onRecovery",
+            "onRecoveryFailure",
+            "onReloadSuccess",
+        ),
+    ),
+    (
+        SERVER_PACK_STATE_EVIDENCE,
+        (
+            "pushPack",
+            "popPack",
+            "popAll",
+            "createPackResponseSender",
+            "configureForServerControl",
+            "allowServerPacks",
+            "rejectServerPacks",
+        ),
+    ),
+    (
+        SERVER_PACK_LOCAL_SCOPE_EVIDENCE,
+        ("pushLocalPack", "configureForLocalWorld", "waitForPackFeedback"),
+    ),
+    (
+        SERVER_PACK_SHUTDOWN_EVIDENCE,
+        ("cleanupAfterDisconnect", "close"),
+    ),
+)
+
+SERVER_PACK_MANAGER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        SERVER_PACK_QUEUE_EVIDENCE,
+        (
+            "ServerPackManager",
+            "registerForUpdate",
+            "tick",
+            "onDownload",
+            "updateDownloads",
+        ),
+    ),
+    (
+        SERVER_PACK_STATE_EVIDENCE,
+        (
+            "markExistingPacksAsRemoved",
+            "pushPack",
+            "pushNewPack",
+            "acceptPack",
+            "findPackInfo",
+            "popPack",
+            "popAll",
+            "allowServerPacks",
+            "rejectServerPacks",
+            "resetPromptStatus",
+            "cleanupRemovedPacks",
+            "RemovalReason",
+            "ServerPackData",
+            "setRemovalReasonIfNotSet",
+            "isRemoved",
+        ),
+    ),
+    (SERVER_PACK_RELOAD_EVIDENCE, ("triggerReloadIfNeeded",)),
+    (SERVER_PACK_LOCAL_SCOPE_EVIDENCE, ("pushLocalPack",)),
+)
+
+DOWNLOAD_QUEUE_OWNER_EVIDENCE = _owner_evidence(
+    (SERVER_PACK_QUEUE_EVIDENCE, ("DownloadQueue", "runDownload", "getFileInfo", "downloadBatch", "BatchResult")),
+    (SERVER_PACK_SHUTDOWN_EVIDENCE, ("close",)),
+)
+
+DOWNLOAD_CACHE_CLEANER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        SERVER_PACK_QUEUE_EVIDENCE,
+        ("vacuumCacheDir", "listFilesWithModificationTimes", "prioritizeFilesInDirs"),
+    ),
+)
+
+HTTP_UTIL_OWNER_EVIDENCE = _owner_evidence(
+    (HTTP_UTIL_CONSTRUCTOR_EVIDENCE, ("HttpUtil",)),
+    (
+        SERVER_PACK_HTTP_EVIDENCE,
+        (
+            "downloadFile",
+            "updateModificationTime",
+            "hashFile",
+            "checkExistingFile",
+            "cachedFilePath",
+            "downloadAndHash",
+        ),
+    ),
+    (
+        SERVER_PACK_HTTP_PROGRESS_EVIDENCE,
+        ("requestStart", "downloadStart", "downloadedBytes", "requestFinished"),
+    ),
+)
+
+SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE = {
+    "net/minecraft/client/resources/server/DownloadedPackSource.java": DOWNLOADED_PACK_SOURCE_OWNER_EVIDENCE,
+    "net/minecraft/client/resources/server/ServerPackManager.java": SERVER_PACK_MANAGER_OWNER_EVIDENCE,
+    "net/minecraft/server/packs/DownloadQueue.java": DOWNLOAD_QUEUE_OWNER_EVIDENCE,
+    "net/minecraft/server/packs/DownloadCacheCleaner.java": DOWNLOAD_CACHE_CLEANER_OWNER_EVIDENCE,
+    "net/minecraft/util/HttpUtil.java": HTTP_UTIL_OWNER_EVIDENCE,
+}
+
+SERVER_PACK_ROOT_OWNER_EVIDENCE = _owner_evidence(
+    (SERVER_PACK_SHUTDOWN_EVIDENCE, ("clearDownloadedResourcePacks",)),
+)
+
 AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
     "com/mojang/blaze3d/audio/Library.java": AUDIO_LIBRARY_OWNER_EVIDENCE,
     "com/mojang/blaze3d/audio/Channel.java": AUDIO_CHANNEL_OWNER_EVIDENCE,
@@ -8243,8 +8553,14 @@ AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
     "net/minecraft/client/sounds/SoundBufferLibrary.java": AUDIO_SOUND_BUFFER_LIBRARY_OWNER_EVIDENCE,
 }
 
+METHOD_OWNER_EVIDENCE_BY_SOURCE = {
+    **AUDIO_OWNER_EVIDENCE_BY_SOURCE,
+    **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
+}
+
 
 METHOD_OWNER_EVIDENCE = {
+    "resources-server-pack-lifecycle": SERVER_PACK_ROOT_OWNER_EVIDENCE,
     "audio-sound-manager-engine": AUDIO_SOUND_MANAGER_OWNER_EVIDENCE,
     "security-secure-chat-reporting": SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE,
     "rendering-frame-order": RENDERING_FRAME_ORDER_OWNER_EVIDENCE,
@@ -8590,6 +8906,10 @@ METHOD_SURFACES = (
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/server/packs/resources/FallbackResourceManager.java"),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/server/packs/resources/MultiPackResourceManager.java"),
     MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/client/resources/server/DownloadedPackSource.java"),
+    MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/client/resources/server/ServerPackManager.java"),
+    MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/server/packs/DownloadQueue.java"),
+    MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/server/packs/DownloadCacheCleaner.java"),
+    MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/util/HttpUtil.java"),
     MethodSurface("protocol-handler", "protocol", "protocol-login-handler-decisions", "net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java"),
     MethodSurface("protocol-handler", "protocol", "protocol-configuration-handler-decisions", "net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java"),
     MethodSurface("protocol-handler", "protocol", "protocol-play-handler-decisions", "net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java"),
@@ -8715,26 +9035,38 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-pack/src/server_pack.rs#rejects_parent_traversal_and_removes_staging_directory",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
-        "crates/bbb-net/src/resource_pack.rs#server_pack_download_rejects_hash_mismatch_and_cleans_partial_file",
+        "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+        "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+        "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+        "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+        "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+        "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+        "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials",
         "crates/bbb-net/src/resource_pack.rs#vanilla_proxy_arguments_fall_back_and_require_both_credentials",
         "crates/bbb-native/src/startup.rs#args_project_vanilla_socks_proxy_without_exposing_password",
         "crates/bbb-native/src/resource_pack_runtime.rs#default_server_pack_cache_uses_vanilla_game_directory_downloads",
+        "crates/bbb-native/src/resource_pack_runtime.rs#server_pack_runtime_initializes_the_exact_vanilla_download_queue_root",
+        "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
         "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_emits_push_and_response_events",
         "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_emits_push_and_response_events",
         "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
         "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
         "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
         "crates/bbb-native/src/resource_pack_runtime.rs#download_progress_preserves_batch_counts_and_terminal_failure",
+        "crates/bbb-native/src/resource_pack_runtime.rs#download_progress_ignores_a_pack_from_another_sequential_batch",
         "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
-        "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_other_inactive_pack_in_the_same_batch",
+        "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches",
+        "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
         "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
         "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
         "crates/bbb-native/src/resource_pack_runtime.rs#dropping_runtime_removes_materialized_session_directory",
         "crates/bbb-native/src/runtime/tests.rs#server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide",
         "crates/bbb-renderer/src/hud.rs#system_toast_sanitizes_text_and_visible_portion",
+        "crates/bbb-renderer/src/hud.rs#system_toast_instances_use_distinct_vanilla_slots",
         "scripts/playable_gate.py",
+        "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings",
     ),
     "protocol-packet-tables": ("docs/evidence/vanilla-26.1/packet-coverage.json",),
     "protocol-listener-contracts": ("docs/evidence/vanilla-26.1/packet-coverage.json",),
@@ -9106,7 +9438,7 @@ class InventoryBuilder:
             signature = self.method_signature(method)
             evidence = None
             if route.mechanism_id in OWNER_EVIDENCE_MECHANISMS:
-                source_evidence = AUDIO_OWNER_EVIDENCE_BY_SOURCE.get(spec.source_path)
+                source_evidence = METHOD_OWNER_EVIDENCE_BY_SOURCE.get(spec.source_path)
                 evidence = (
                     source_evidence.get(method.name)
                     if source_evidence is not None
@@ -9250,6 +9582,17 @@ class InventoryBuilder:
                     f"ServerList method lacks a homogeneous route: {signature}"
                 )
             return route
+        if spec.source_path == "net/minecraft/util/HttpUtil.java" and method.name in {
+            "getAvailablePort",
+            "isPortAvailable",
+        }:
+            return MethodRoute(
+                "out-of-scope",
+                "singleplayer",
+                "scope-singleplayer-integrated",
+                "out-of-scope",
+                "out-of-scope",
+            )
         if spec.source_path != "net/minecraft/client/Minecraft.java":
             return MethodRoute(
                 spec.category,

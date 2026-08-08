@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashSet, VecDeque},
     fs,
     sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -66,20 +66,21 @@ use bbb_renderer::{
     HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
     HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
     HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
-    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
-    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
-    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
-    ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
-    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    HudSystemToastInstance, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
+    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
+    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
+    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting,
+    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
+    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    HUD_TOAST_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_renderer::{BlockSelectionPhase, BlockSelectionRenderState};
 use bbb_world::{
@@ -90,10 +91,10 @@ use bbb_world::{
     ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState,
     MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
     MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
-    RavagerStunParticleState, ResourcePackDownloadPhase, SignBlockForm, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    VanillaEnchantmentIdentity, WorldLevelInfo, WorldLevelLoadReason, WorldSkybox, WorldStore,
-    WorldWeatherState,
+    RavagerStunParticleState, ResourcePackDownloadPhase, ResourcePackDownloadState, SignBlockForm,
+    SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight,
+    TerrainMaterialClass, VanillaEnchantmentIdentity, WorldLevelInfo, WorldLevelLoadReason,
+    WorldSkybox, WorldStore, WorldWeatherState,
 };
 use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
@@ -687,8 +688,7 @@ pub(crate) struct ClientAnimationTickState {
 pub(crate) struct HudRenderRuntime {
     narrator_toggle_toast: SystemToastAnimationState,
     insecure_chat_toast: SystemToastAnimationState,
-    server_pack_download_toast: SystemToastAnimationState,
-    server_pack_download_batch: Option<u64>,
+    server_pack_download_toasts: ServerPackDownloadToastRuntime,
     resource_pack_load_failure_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
     periodic_notification_toast: SystemToastAnimationState,
@@ -1331,6 +1331,128 @@ impl SystemToastAnimationState {
                 "minecraft:ui.toast.out"
             }),
         })
+    }
+}
+
+#[derive(Debug, Default)]
+struct ServerPackDownloadToastRuntime {
+    session_generation: Option<u64>,
+    seen_batches: HashSet<u64>,
+    queued_batches: VecDeque<u64>,
+    visible: Vec<ServerPackDownloadToastInstance>,
+    last_update_sequence: u64,
+}
+
+#[derive(Debug)]
+struct ServerPackDownloadToastInstance {
+    batch_sequence: u64,
+    slot: u8,
+    animation: SystemToastAnimationState,
+}
+
+impl ServerPackDownloadToastRuntime {
+    fn update(
+        &mut self,
+        session_generation: u64,
+        downloads: &[ResourcePackDownloadState],
+        now: Instant,
+    ) -> Vec<(u8, ResourcePackDownloadState, SystemToastAnimationFrame)> {
+        if self.session_generation != Some(session_generation) {
+            *self = Self {
+                session_generation: Some(session_generation),
+                ..Self::default()
+            };
+        }
+        if downloads.is_empty() {
+            *self = Self {
+                session_generation: Some(session_generation),
+                ..Self::default()
+            };
+            return Vec::new();
+        }
+        let newest_update = downloads
+            .iter()
+            .map(|download| download.update_sequence)
+            .max()
+            .unwrap_or_default();
+        if newest_update < self.last_update_sequence {
+            *self = Self {
+                session_generation: Some(session_generation),
+                ..Self::default()
+            };
+        }
+        self.last_update_sequence = self.last_update_sequence.max(newest_update);
+
+        for download in downloads {
+            if self.seen_batches.insert(download.batch_sequence) {
+                self.queued_batches.push_back(download.batch_sequence);
+            }
+        }
+        self.visible.retain(|toast| {
+            downloads
+                .iter()
+                .any(|download| download.batch_sequence == toast.batch_sequence)
+        });
+
+        let mut frames = Vec::new();
+        self.visible.retain_mut(|toast| {
+            let Some(download) = downloads
+                .iter()
+                .find(|download| download.batch_sequence == toast.batch_sequence)
+            else {
+                return false;
+            };
+            let warning_count = usize::try_from(download.update_sequence).unwrap_or(usize::MAX);
+            let frame = if download.phase == ResourcePackDownloadPhase::Succeeded {
+                toast.animation.update_forced_hidden(warning_count, now)
+            } else {
+                toast.animation.update(warning_count, now)
+            };
+            if let Some(frame) = frame {
+                frames.push((toast.slot, download.clone(), frame));
+                true
+            } else {
+                false
+            }
+        });
+        while self.visible.len() < HUD_TOAST_SLOTS {
+            let Some(batch_sequence) = self.queued_batches.pop_front() else {
+                break;
+            };
+            let Some(slot) = (0..HUD_TOAST_SLOTS)
+                .find(|slot| {
+                    self.visible
+                        .iter()
+                        .all(|toast| usize::from(toast.slot) != *slot)
+                })
+                .and_then(|slot| u8::try_from(slot).ok())
+            else {
+                self.queued_batches.push_front(batch_sequence);
+                break;
+            };
+            let Some(download) = downloads
+                .iter()
+                .find(|download| download.batch_sequence == batch_sequence)
+                .cloned()
+            else {
+                continue;
+            };
+            self.visible.push(ServerPackDownloadToastInstance {
+                batch_sequence,
+                slot,
+                animation: SystemToastAnimationState::default(),
+            });
+            frames.push((
+                slot,
+                download,
+                SystemToastAnimationFrame {
+                    visible_portion: 0.0,
+                    visibility_sound: None,
+                },
+            ));
+        }
+        frames.sort_by_key(|(slot, _, _)| *slot);
+        frames
     }
 }
 
@@ -3940,8 +4062,8 @@ pub(crate) fn update_renderer_from_publication(
         .as_ref()
         .map(|screen| stats_screen_narration_frame(input, screen, item_runtime, gui_surface_size));
     let toasts_started_at = profiling_enabled.then(Instant::now);
-    let (hud_system_toast, hud_system_toast_sound) =
-        hud_system_toast(hud_render_runtime, world, item_runtime, now);
+    let (hud_system_toasts, hud_system_toast_sound) =
+        hud_system_toasts(hud_render_runtime, world, item_runtime, now);
     if let (Some(audio_events), Some(sound)) =
         (audio_events.as_deref_mut(), hud_system_toast_sound.as_ref())
     {
@@ -5044,7 +5166,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_social_interactions_screen,
             hud_player_reporting_screen,
             hud_stats_screen,
-            hud_system_toast,
+            hud_system_toasts,
             hud_advancement_toasts,
             hud_recipe_toasts,
             hud_tutorial_toasts,
@@ -7801,12 +7923,12 @@ fn hud_styled_runs_from_component_runs(runs: &[StyledTextRun]) -> Vec<HudStyledT
         .collect()
 }
 
-fn hud_system_toast(
+fn hud_system_toasts(
     state: &mut HudRenderRuntime,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     now: Instant,
-) -> (Option<HudSystemToast>, Option<LocalSoundEventState>) {
+) -> (Vec<HudSystemToastInstance>, Option<LocalSoundEventState>) {
     let periodic_notification = state.periodic_notifications.update(now).cloned();
     // `GameNarrator.updateNarratorStatus`: `narrator.toast.enabled` keeps the
     // status name as its detail line; the OFF edge shows
@@ -7819,85 +7941,91 @@ fn hud_system_toast(
                 .narrator_toggle_toast()
                 .map(|toggle| (frame, toggle.clone()))
         });
-    let (frame, title, message, multiline) = if let Some((frame, toggle)) = narrator_toggle {
-        if toggle.enabled {
+    if let Some((frame, toggle)) = narrator_toggle {
+        let (title, message) = if toggle.enabled {
             (
-                frame,
                 localized_gui_text(item_runtime, "narrator.toast.enabled", "Narrator Enabled"),
                 toggle.status_name,
-                false,
             )
         } else {
             (
-                frame,
                 localized_gui_text(item_runtime, "narrator.toast.disabled", "Narrator Disabled"),
                 String::new(),
-                false,
             )
-        }
-    } else if let Some((frame, download)) =
-        world.resource_pack_download_state().and_then(|download| {
-            if state.server_pack_download_batch != Some(download.batch_sequence) {
-                state.server_pack_download_batch = Some(download.batch_sequence);
-                state.server_pack_download_toast = SystemToastAnimationState::default();
-            }
-            let warning_count = usize::try_from(download.update_sequence).unwrap_or(usize::MAX);
-            let frame = if download.phase == ResourcePackDownloadPhase::Succeeded {
-                state
-                    .server_pack_download_toast
-                    .update_forced_hidden(warning_count, now)
-            } else {
-                state.server_pack_download_toast.update(warning_count, now)
-            }?;
-            Some((frame, download))
-        })
-    {
-        let current_pack = download.current_pack.to_string();
-        let total_packs = download.total_packs.to_string();
-        if download.phase == ResourcePackDownloadPhase::Failed {
-            let failed_packs = download.failed_packs.to_string();
-            (
-                frame,
-                localized_gui_text_with_args(
-                    item_runtime,
-                    "download.pack.failed",
-                    "%s out of %s pack(s) failed to download",
-                    &[&failed_packs, &total_packs],
-                ),
-                String::new(),
-                false,
-            )
-        } else {
-            let progress = match download.total_bytes.filter(|total| *total > 0) {
-                Some(total_bytes) => {
-                    let percent = download.downloaded_bytes.saturating_mul(100) / total_bytes;
-                    localized_gui_text_with_args(
-                        item_runtime,
-                        "download.pack.progress.percent",
-                        "Progress: %s%%",
-                        &[&percent.to_string()],
+        };
+        return system_toast_frame(frame, title, message, false);
+    }
+
+    let download_frames = state.server_pack_download_toasts.update(
+        world.resource_pack_session_generation(),
+        world.resource_pack_download_states(),
+        now,
+    );
+    if !download_frames.is_empty() {
+        let sound = download_frames
+            .iter()
+            .find_map(|(_, _, frame)| frame.visibility_sound)
+            .map(system_toast_sound);
+        let toasts = download_frames
+            .into_iter()
+            .map(|(slot, download, frame)| {
+                let current_pack = download.current_pack.to_string();
+                let total_packs = download.total_packs.to_string();
+                let (title, message) = if download.phase == ResourcePackDownloadPhase::Failed {
+                    let failed_packs = download.failed_packs.to_string();
+                    (
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "download.pack.failed",
+                            "%s out of %s pack(s) failed to download",
+                            &[&failed_packs, &total_packs],
+                        ),
+                        String::new(),
                     )
+                } else {
+                    let progress = match download.total_bytes.filter(|total| *total > 0) {
+                        Some(total_bytes) => {
+                            let percent =
+                                download.downloaded_bytes.saturating_mul(100) / total_bytes;
+                            localized_gui_text_with_args(
+                                item_runtime,
+                                "download.pack.progress.percent",
+                                "Progress: %s%%",
+                                &[&percent.to_string()],
+                            )
+                        }
+                        None => localized_gui_text_with_args(
+                            item_runtime,
+                            "download.pack.progress.bytes",
+                            "Progress: %s (total size unknown)",
+                            &[&server_pack_bytes_human_readable(download.downloaded_bytes)],
+                        ),
+                    };
+                    (
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "download.pack.title",
+                            "Downloading resource pack %s/%s",
+                            &[&current_pack, &total_packs],
+                        ),
+                        progress,
+                    )
+                };
+                HudSystemToastInstance {
+                    toast: HudSystemToast {
+                        title,
+                        message,
+                        multiline: false,
+                        visible_portion: frame.visible_portion,
+                    },
+                    slot,
                 }
-                None => localized_gui_text_with_args(
-                    item_runtime,
-                    "download.pack.progress.bytes",
-                    "Progress: %s (total size unknown)",
-                    &[&server_pack_bytes_human_readable(download.downloaded_bytes)],
-                ),
-            };
-            (
-                frame,
-                localized_gui_text_with_args(
-                    item_runtime,
-                    "download.pack.title",
-                    "Downloading resource pack %s/%s",
-                    &[&current_pack, &total_packs],
-                ),
-                progress,
-                false,
-            )
-        }
-    } else if let Some(frame) = state
+            })
+            .collect();
+        return (toasts, sound);
+    }
+
+    let (frame, title, message, multiline) = if let Some(frame) = state
         .insecure_chat_toast
         .update(world.insecure_chat_warning_count(), now)
     {
@@ -7948,7 +8076,7 @@ fn hud_system_toast(
             .periodic_notification_toast
             .update(notification.sequence, now)
         else {
-            return (None, None);
+            return (Vec::new(), None);
         };
         let elapsed_periods = notification.elapsed_periods.to_string();
         (
@@ -7968,28 +8096,55 @@ fn hud_system_toast(
             false,
         )
     } else {
-        return (None, None);
+        return (Vec::new(), None);
     };
+    system_toast_frame(frame, title, message, multiline)
+}
+
+#[cfg(test)]
+fn hud_system_toast(
+    state: &mut HudRenderRuntime,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    now: Instant,
+) -> (Option<HudSystemToast>, Option<LocalSoundEventState>) {
+    let (toasts, sound) = hud_system_toasts(state, world, item_runtime, now);
+    (toasts.into_iter().next().map(|toast| toast.toast), sound)
+}
+
+fn system_toast_frame(
+    frame: SystemToastAnimationFrame,
+    title: String,
+    message: String,
+    multiline: bool,
+) -> (Vec<HudSystemToastInstance>, Option<LocalSoundEventState>) {
     (
-        Some(HudSystemToast {
-            title,
-            message,
-            multiline,
-            visible_portion: frame.visible_portion,
-        }),
-        frame.visibility_sound.map(|location| LocalSoundEventState {
-            sound: SoundHolderState {
-                kind: "direct".to_string(),
-                registry_id: None,
-                location: Some(location.to_string()),
-                fixed_range: None,
+        vec![HudSystemToastInstance {
+            toast: HudSystemToast {
+                title,
+                message,
+                multiline,
+                visible_portion: frame.visible_portion,
             },
-            source: "master".to_string(),
-            volume: 1.0,
-            pitch: 1.0,
-            seed: 0,
-        }),
+            slot: 0,
+        }],
+        frame.visibility_sound.map(system_toast_sound),
     )
+}
+
+fn system_toast_sound(location: &'static str) -> LocalSoundEventState {
+    LocalSoundEventState {
+        sound: SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(location.to_string()),
+            fixed_range: None,
+        },
+        source: "master".to_string(),
+        volume: 1.0,
+        pitch: 1.0,
+        seed: 0,
+    }
 }
 
 fn server_pack_bytes_human_readable(bytes: u64) -> String {

@@ -13682,19 +13682,24 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         phase: bbb_world::ResourcePackDownloadPhase::Downloading,
     }));
 
-    let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
+    let (toasts, sound) = hud_system_toasts(&mut state, &world, None, start);
     assert_eq!(
-        toast,
-        Some(HudSystemToast {
-            title: "Downloading resource pack 1/2".to_string(),
-            message: "Progress: 50%".to_string(),
-            multiline: false,
-            visible_portion: 0.0,
-        })
+        toasts,
+        vec![bbb_renderer::HudSystemToastInstance {
+            toast: HudSystemToast {
+                title: "Downloading resource pack 1/2".to_string(),
+                message: "Progress: 50%".to_string(),
+                multiline: false,
+                visible_portion: 0.0,
+            },
+            slot: 0,
+        }]
     );
+    assert!(sound.is_none());
+    let (_, sound) = hud_system_toasts(&mut state, &world, None, start + Duration::from_millis(16));
     assert_eq!(
-        sound.and_then(|sound| sound.sound.location),
-        Some("minecraft:ui.toast.in".to_string())
+        sound.and_then(|sound| sound.sound.location).as_deref(),
+        Some("minecraft:ui.toast.in")
     );
 
     world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
@@ -13707,9 +13712,10 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         failed_packs: 1,
         phase: bbb_world::ResourcePackDownloadPhase::Failed,
     }));
-    let (toast, _) = hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600));
+    let (toasts, _) =
+        hud_system_toasts(&mut state, &world, None, start + Duration::from_millis(700));
     assert_eq!(
-        toast.unwrap().title,
+        toasts[0].toast.title,
         "1 out of 2 pack(s) failed to download"
     );
 
@@ -13723,15 +13729,38 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         failed_packs: 0,
         phase: bbb_world::ResourcePackDownloadPhase::Downloading,
     }));
-    let (toast, _) = hud_system_toast(
+    let (toasts, _) = hud_system_toasts(
         &mut state,
         &world,
         None,
         start + Duration::from_millis(1_000),
     );
+    assert_eq!(toasts.len(), 2);
+    assert_eq!(toasts[0].slot, 0);
     assert_eq!(
-        toast.unwrap().message,
+        toasts[0].toast.title,
+        "1 out of 2 pack(s) failed to download"
+    );
+    assert_eq!(toasts[1].slot, 1);
+    assert_eq!(
+        toasts[1].toast.message,
         "Progress: 2.0 KB (total size unknown)"
+    );
+    let (_, sound) = hud_system_toasts(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(1_016),
+    );
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location).as_deref(),
+        Some("minecraft:ui.toast.in")
+    );
+    let _ = hud_system_toasts(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(1_616),
     );
 
     world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
@@ -13744,16 +13773,38 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         failed_packs: 0,
         phase: bbb_world::ResourcePackDownloadPhase::Succeeded,
     }));
-    let (_, sound) = hud_system_toast(
+    let (_, sound) = hud_system_toasts(
         &mut state,
         &world,
         None,
-        start + Duration::from_millis(1_600),
+        start + Duration::from_millis(1_620),
     );
     assert_eq!(
         sound.and_then(|sound| sound.sound.location),
         Some("minecraft:ui.toast.out".to_string())
     );
+
+    world.reset_resource_pack_session();
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 7,
+        update_sequence: 1,
+        current_pack: 1,
+        total_packs: 1,
+        downloaded_bytes: 64,
+        total_bytes: None,
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+    }));
+    let (toasts, sound) = hud_system_toasts(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(2_000),
+    );
+    assert_eq!(toasts.len(), 1);
+    assert_eq!(toasts[0].slot, 0);
+    assert_eq!(toasts[0].toast.title, "Downloading resource pack 1/1");
+    assert!(sound.is_none());
 }
 
 #[test]

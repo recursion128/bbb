@@ -1029,7 +1029,7 @@ pub struct Renderer {
     pub(super) hud_stats_scrollbar_sprites:
         [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
     pub(super) hud_system_toast_background: Option<HudNineSliceSprite>,
-    pub(super) hud_system_toast: Option<crate::hud::HudSystemToast>,
+    pub(super) hud_system_toasts: Vec<crate::hud::HudSystemToastInstance>,
     pub(super) hud_advancement_toast_background: Option<HudSpriteGpu>,
     pub(super) hud_advancement_toasts: Vec<crate::hud::HudAdvancementToast>,
     pub(super) hud_recipe_toast_background: Option<HudSpriteGpu>,
@@ -2924,7 +2924,7 @@ impl Renderer {
             hud_stats_sprites: std::array::from_fn(|_| None),
             hud_stats_scrollbar_sprites: std::array::from_fn(|_| None),
             hud_system_toast_background: None,
-            hud_system_toast: None,
+            hud_system_toasts: Vec::new(),
             hud_advancement_toast_background: None,
             hud_advancement_toasts: Vec::new(),
             hud_recipe_toast_background: None,

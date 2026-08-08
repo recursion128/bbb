@@ -29,12 +29,12 @@ use bbb_renderer::{
     HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
     HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
     HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
-    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
-    HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
-    RendererCameraFrame, SelectionOutline, SignTextOutlineContext, SignTextSurface,
-    WorldBorderRenderState,
+    HudSystemToastInstance, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen,
+    HudTextStyle, HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
+    ItemModelResidencyFrame, Renderer, RendererCameraFrame, SelectionOutline,
+    SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -2903,7 +2903,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>,
     pub(crate) hud_player_reporting_screen: Option<HudPlayerReportingScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
-    pub(crate) hud_system_toast: Option<HudSystemToast>,
+    pub(crate) hud_system_toasts: Vec<HudSystemToastInstance>,
     pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
     pub(crate) hud_recipe_toasts: Vec<HudRecipeToast>,
     pub(crate) hud_tutorial_toasts: Vec<HudTutorialToast>,
@@ -3384,7 +3384,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);
     renderer.set_hud_player_reporting_screen(frame.hud_player_reporting_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
-    renderer.set_hud_system_toast(frame.hud_system_toast);
+    renderer.set_hud_system_toasts(frame.hud_system_toasts);
     renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);
     renderer.set_hud_recipe_toasts(frame.hud_recipe_toasts);
     renderer.set_hud_tutorial_toasts(frame.hud_tutorial_toasts);

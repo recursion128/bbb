@@ -9,7 +9,8 @@ use std::{
 };
 
 use bbb_net::{
-    download_server_pack_with_progress, NetCommand, ServerPackDownloadProgress,
+    append_server_pack_download_log, download_server_pack_with_progress,
+    initialize_server_pack_download_cache, NetCommand, ServerPackDownloadProgress,
     ServerPackDownloadProxy, ServerPackDownloadRequest,
 };
 use bbb_pack::{
@@ -183,7 +184,7 @@ pub(crate) struct ServerResourcePackRuntime {
     download_batches: Vec<DownloadBatch>,
     required_declines_disconnected: HashSet<PackKey>,
     session_alive: Arc<AtomicBool>,
-    download_presentation: Option<ResourcePackDownloadState>,
+    download_presentations: Vec<ResourcePackDownloadState>,
     next_download_update_sequence: u64,
 }
 
@@ -194,14 +195,16 @@ impl ServerResourcePackRuntime {
         username: impl Into<String>,
         profile_id: Uuid,
         download_proxy: Option<ServerPackDownloadProxy>,
-    ) -> Self {
-        Self::with_optional_runtime(
+    ) -> anyhow::Result<Self> {
+        let cache_dir = cache_dir.into();
+        initialize_server_pack_download_cache(&cache_dir)?;
+        Ok(Self::with_optional_runtime(
             Some(runtime),
-            cache_dir.into(),
+            cache_dir,
             username.into(),
             profile_id,
             download_proxy,
-        )
+        ))
     }
 
     fn with_optional_runtime(
@@ -216,14 +219,16 @@ impl ServerResourcePackRuntime {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let materialized_session_dir = cache_dir.join("materialized").join(format!(
-            "session-{}-{session_serial}-{session_nonce}",
-            std::process::id()
-        ));
+        let materialized_session_dir = std::env::temp_dir()
+            .join("bbb-native-server-pack-materialized")
+            .join(format!(
+                "session-{}-{session_serial}-{session_nonce}",
+                std::process::id()
+            ));
         let (task_tx, task_rx) = std_mpsc::channel();
         Self {
             runtime,
-            download_cache_dir: cache_dir.join("downloads"),
+            download_cache_dir: cache_dir,
             materialized_session_dir,
             username,
             profile_id,
@@ -242,7 +247,7 @@ impl ServerResourcePackRuntime {
             download_batches: Vec::new(),
             required_declines_disconnected: HashSet::new(),
             session_alive: Arc::new(AtomicBool::new(true)),
-            download_presentation: None,
+            download_presentations: Vec::new(),
             next_download_update_sequence: 1,
         }
     }
@@ -487,29 +492,17 @@ impl ServerResourcePackRuntime {
         if additions.is_empty() {
             return;
         }
-        let download_batch = self.next_download_batch;
-        self.next_download_batch = self.next_download_batch.saturating_add(1);
-        let members = additions.iter().map(|(key, _, _)| *key).collect::<Vec<_>>();
-        let requests = additions
-            .iter()
-            .map(|(key, url, hash)| PackDownloadRequest {
-                key: *key,
-                url: url.clone(),
-                hash: hash.clone(),
-            })
-            .collect();
-        self.download_batches.push(DownloadBatch {
-            id: download_batch,
-            outcomes: members
-                .iter()
-                .copied()
-                .map(|key| (key, DownloadOutcome::Pending))
-                .collect(),
-            members,
-            requests,
-            started: false,
-        });
-        for (key, _, _) in additions {
+        for (key, url, hash) in additions {
+            let download_batch = self.next_download_batch;
+            self.next_download_batch = self.next_download_batch.saturating_add(1);
+            let request = PackDownloadRequest { key, url, hash };
+            self.download_batches.push(DownloadBatch {
+                id: download_batch,
+                outcomes: [(key, DownloadOutcome::Pending)].into_iter().collect(),
+                members: vec![key],
+                requests: vec![request],
+                started: false,
+            });
             self.packs.push(TrackedPack {
                 key,
                 download_batch,
@@ -568,9 +561,10 @@ impl ServerResourcePackRuntime {
                 let current_pack = u32::try_from(index + 1).unwrap_or(u32::MAX);
                 let progress_tx = task_tx.clone();
                 let expected_sha1 = (!request_spec.hash.is_empty()).then_some(request_spec.hash);
+                let download_url = request_spec.url;
                 let request = ServerPackDownloadRequest::new(
-                    request_spec.url,
-                    expected_sha1,
+                    download_url.clone(),
+                    expected_sha1.clone(),
                     download_cache_dir.join(key.id.to_string()),
                     username.clone(),
                     profile_id,
@@ -586,6 +580,15 @@ impl ServerResourcePackRuntime {
                     });
                 })
                 .await;
+                if let Err(error) = append_server_pack_download_log(
+                    &download_cache_dir,
+                    key.id,
+                    &download_url,
+                    expected_sha1.as_deref(),
+                    result.as_ref().ok(),
+                ) {
+                    tracing::warn!(%error, "server pack download event could not be logged");
+                }
                 match result {
                     Ok(download) => {
                         if task_tx.send(PackTaskEvent::Downloaded { key }).is_err() {
@@ -801,11 +804,11 @@ impl ServerResourcePackRuntime {
         if !current_batch {
             return;
         }
-        let failed_packs = self
-            .download_presentation
-            .as_ref()
-            .filter(|state| state.batch_sequence == batch_id)
-            .map_or(0, |state| state.failed_packs);
+        let previous = self
+            .download_presentations
+            .iter()
+            .find(|state| state.batch_sequence == batch_id);
+        let failed_packs = previous.map_or(0, |state| state.failed_packs);
         let update_sequence = self.next_download_update_sequence;
         self.next_download_update_sequence = self.next_download_update_sequence.saturating_add(1);
         let mut state = ResourcePackDownloadState {
@@ -818,11 +821,7 @@ impl ServerResourcePackRuntime {
             failed_packs,
             phase: ResourcePackDownloadPhase::Downloading,
         };
-        if let Some(previous) = self
-            .download_presentation
-            .as_ref()
-            .filter(|previous| previous.batch_sequence == batch_id)
-        {
+        if let Some(previous) = previous {
             state.downloaded_bytes = previous.downloaded_bytes;
             state.total_bytes = previous.total_bytes;
         }
@@ -851,7 +850,17 @@ impl ServerResourcePackRuntime {
                 }
             }
         }
-        self.download_presentation = Some(state);
+        if let Some(current) = self
+            .download_presentations
+            .iter_mut()
+            .find(|current| current.batch_sequence == batch_id)
+        {
+            *current = state;
+        } else {
+            self.download_presentations.push(state);
+            self.download_presentations
+                .sort_by_key(|state| state.batch_sequence);
+        }
     }
 
     fn record_download_outcome(&mut self, key: PackKey, outcome: DownloadOutcome) {
@@ -920,13 +929,11 @@ impl ServerResourcePackRuntime {
                     });
                 }
             } else {
-                for key in members {
-                    let Some(pack) = self.packs.iter_mut().find(|pack| pack.key == key) else {
-                        continue;
-                    };
+                for pack in &mut self.packs {
                     if pack.removed || pack.active {
                         continue;
                     }
+                    let key = pack.key;
                     if let PackDownloadState::Ready(materialization) = &pack.state {
                         remove_materialized_root(&materialization.root);
                     }
@@ -936,8 +943,7 @@ impl ServerResourcePackRuntime {
                         pack.runtime_state = failed_runtime_state(
                             ResourcePackFailureStage::Download,
                             None,
-                            "discarded because another pack in the same download batch failed"
-                                .to_string(),
+                            "discarded because another server pack download failed".to_string(),
                         );
                     }
                     pack.pending_terminal_response = None;
@@ -957,56 +963,42 @@ impl ServerResourcePackRuntime {
     }
 
     fn resolve_preparation_failures(&mut self) {
-        let failed_batches = self
-            .packs
-            .iter()
-            .filter(|pack| {
-                !pack.removed
-                    && !pack.active
-                    && pack.pending_terminal_response
-                        == Some(ResourcePackResponseAction::FailedReload)
-            })
-            .map(|pack| pack.download_batch)
-            .collect::<HashSet<_>>();
-        for batch_id in failed_batches {
-            let waiting = self.packs.iter().any(|pack| {
-                pack.download_batch == batch_id
-                    && !pack.removed
-                    && !pack.active
-                    && matches!(pack.state, PackDownloadState::Pending)
-            });
-            if waiting {
+        let has_pending_download = self.packs.iter().any(|pack| {
+            !pack.removed && !pack.active && matches!(pack.state, PackDownloadState::Pending)
+        });
+        if has_pending_download {
+            return;
+        }
+        let has_preparation_failure = self.packs.iter().any(|pack| {
+            !pack.removed
+                && !pack.active
+                && pack.pending_terminal_response == Some(ResourcePackResponseAction::FailedReload)
+        });
+        if !has_preparation_failure {
+            return;
+        }
+        for pack in &mut self.packs {
+            if pack.removed || pack.active {
                 continue;
             }
-            let keys = self
-                .packs
-                .iter()
-                .filter(|pack| pack.download_batch == batch_id && !pack.removed && !pack.active)
-                .map(|pack| pack.key)
-                .collect::<Vec<_>>();
-            for key in keys {
-                let Some(pack) = self.packs.iter_mut().find(|pack| pack.key == key) else {
-                    continue;
-                };
-                if let PackDownloadState::Ready(materialization) = &pack.state {
-                    remove_materialized_root(&materialization.root);
-                }
-                pack.removed = true;
-                pack.state = PackDownloadState::Failed;
-                if pack.runtime_state.failure.is_none() {
-                    pack.runtime_state = failed_runtime_state(
-                        ResourcePackFailureStage::Materialize,
-                        None,
-                        "discarded because another pack in the same preparation batch failed"
-                            .to_string(),
-                    );
-                }
-                pack.pending_terminal_response = None;
-                self.responses.push_back(DeferredResponse {
-                    key,
-                    action: ResourcePackResponseAction::FailedReload,
-                });
+            let key = pack.key;
+            if let PackDownloadState::Ready(materialization) = &pack.state {
+                remove_materialized_root(&materialization.root);
             }
+            pack.removed = true;
+            pack.state = PackDownloadState::Failed;
+            if pack.runtime_state.failure.is_none() {
+                pack.runtime_state = failed_runtime_state(
+                    ResourcePackFailureStage::Materialize,
+                    None,
+                    "discarded because another server pack preparation failed".to_string(),
+                );
+            }
+            pack.pending_terminal_response = None;
+            self.responses.push_back(DeferredResponse {
+                key,
+                action: ResourcePackResponseAction::FailedReload,
+            });
         }
     }
 
@@ -1048,8 +1040,8 @@ impl ServerResourcePackRuntime {
                 );
             }
         }
-        if world.resource_pack_download_state() != self.download_presentation.as_ref() {
-            world.set_resource_pack_download_state(self.download_presentation.clone());
+        if world.resource_pack_download_states() != self.download_presentations {
+            world.set_resource_pack_download_states(self.download_presentations.clone());
         }
     }
 
@@ -1209,6 +1201,82 @@ mod tests {
         );
     }
 
+    #[test]
+    fn server_pack_runtime_initializes_the_exact_vanilla_download_queue_root() {
+        let async_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let cache_dir = unique_temp_dir("queue-root");
+        let runtime = ServerResourcePackRuntime::new(
+            async_runtime.handle().clone(),
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(runtime.download_cache_dir, cache_dir);
+        assert!(runtime.download_cache_dir.join("log.json").is_file());
+        assert!(!runtime.download_cache_dir.join("downloads").exists());
+
+        drop(runtime);
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[test]
+    fn failed_runtime_download_writes_vanilla_download_queue_event() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let url = format!("http://{address}/failed.zip");
+        let pack_id = Uuid::from_u128(9);
+        let mut world = WorldStore::new();
+        push_accepted(&mut world, pack_id, &url);
+        let async_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let cache_dir = unique_temp_dir("queue-event");
+        let mut runtime = ServerResourcePackRuntime::new(
+            async_runtime.handle().clone(),
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+            None,
+        )
+        .unwrap();
+
+        async_runtime.block_on(async {
+            runtime.synchronize(&mut world, &None, true);
+            for _ in 0..200 {
+                tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                runtime.synchronize(&mut world, &None, true);
+                if std::fs::read_to_string(cache_dir.join("log.json"))
+                    .unwrap()
+                    .lines()
+                    .next()
+                    .is_some()
+                {
+                    return;
+                }
+            }
+            panic!("server pack failure did not reach the download queue event log");
+        });
+
+        let raw = std::fs::read_to_string(cache_dir.join("log.json")).unwrap();
+        let entries = raw.lines().collect::<Vec<_>>();
+        assert_eq!(entries.len(), 1);
+        let event: serde_json::Value = serde_json::from_str(entries[0]).unwrap();
+        assert_eq!(event["id"], pack_id.to_string());
+        assert_eq!(event["url"], url);
+        assert_eq!(event["error"], "download_failed");
+
+        drop(runtime);
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
     fn push_accepted(world: &mut WorldStore, id: Uuid, url: &str) -> PackKey {
         world.apply_resource_pack_push(ResourcePackPush {
             id,
@@ -1246,17 +1314,20 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![first, second]
         );
-        assert_eq!(runtime.download_batches.len(), 1);
-        assert_eq!(runtime.download_batches[0].members, vec![first, second]);
+        assert_eq!(runtime.download_batches.len(), 2);
+        assert_eq!(runtime.download_batches[0].members, vec![first]);
+        assert_eq!(runtime.download_batches[1].members, vec![second]);
         assert_eq!(
             runtime.download_batches[0]
                 .requests
                 .iter()
                 .map(|request| request.key)
                 .collect::<Vec<_>>(),
-            vec![first, second]
+            vec![first]
         );
+        assert_eq!(runtime.download_batches[1].requests[0].key, second);
         assert!(!runtime.download_batches[0].started);
+        assert!(!runtime.download_batches[1].started);
     }
 
     #[test]
@@ -1274,39 +1345,24 @@ mod tests {
         );
         let mut runtime = test_runtime("progress");
         runtime.reconcile_world(&world, true);
+        assert_eq!(runtime.download_batches.len(), 2);
+        assert_eq!(runtime.download_batches[0].members, vec![first]);
+        assert_eq!(runtime.download_batches[1].members, vec![second]);
         let batch_id = runtime.download_batches[0].id;
 
-        for (key, current_pack, progress) in [
-            (first, 1, ServerPackDownloadProgress::RequestStarted),
-            (
-                first,
-                1,
-                ServerPackDownloadProgress::DownloadStarted {
-                    total_bytes: Some(1_024),
-                },
-            ),
-            (
-                first,
-                1,
-                ServerPackDownloadProgress::DownloadedBytes { bytes: 512 },
-            ),
-            (
-                first,
-                1,
-                ServerPackDownloadProgress::RequestFinished { success: false },
-            ),
-            (second, 2, ServerPackDownloadProgress::RequestStarted),
-            (
-                second,
-                2,
-                ServerPackDownloadProgress::RequestFinished { success: true },
-            ),
+        for progress in [
+            ServerPackDownloadProgress::RequestStarted,
+            ServerPackDownloadProgress::DownloadStarted {
+                total_bytes: Some(1_024),
+            },
+            ServerPackDownloadProgress::DownloadedBytes { bytes: 512 },
+            ServerPackDownloadProgress::RequestFinished { success: false },
         ] {
             runtime.apply_task_event(PackTaskEvent::DownloadProgress {
                 batch_id,
-                key,
-                current_pack,
-                total_packs: 2,
+                key: first,
+                current_pack: 1,
+                total_packs: 1,
                 progress,
             });
         }
@@ -1314,24 +1370,101 @@ mod tests {
 
         let progress = world.resource_pack_download_state().unwrap();
         assert_eq!(progress.batch_sequence, batch_id);
-        assert_eq!(progress.current_pack, 2);
-        assert_eq!(progress.total_packs, 2);
+        assert_eq!(progress.current_pack, 1);
+        assert_eq!(progress.total_packs, 1);
         assert_eq!(progress.failed_packs, 1);
         assert_eq!(progress.phase, ResourcePackDownloadPhase::Failed);
+    }
+
+    #[test]
+    fn download_progress_ignores_a_pack_from_another_sequential_batch() {
+        let mut world = WorldStore::new();
+        let first = push_accepted(
+            &mut world,
+            Uuid::from_u128(1),
+            "https://example.test/first.zip",
+        );
+        let second = push_accepted(
+            &mut world,
+            Uuid::from_u128(2),
+            "https://example.test/second.zip",
+        );
+        let mut runtime = test_runtime("progress-partition");
+        runtime.reconcile_world(&world, true);
+        let first_batch = runtime.download_batches[0].id;
+        let second_batch = runtime.download_batches[1].id;
+
+        runtime.apply_task_event(PackTaskEvent::DownloadProgress {
+            batch_id: first_batch,
+            key: first,
+            current_pack: 1,
+            total_packs: 1,
+            progress: ServerPackDownloadProgress::RequestStarted,
+        });
+        runtime.apply_task_event(PackTaskEvent::DownloadProgress {
+            batch_id: first_batch,
+            key: first,
+            current_pack: 1,
+            total_packs: 1,
+            progress: ServerPackDownloadProgress::RequestFinished { success: false },
+        });
+        runtime.apply_task_event(PackTaskEvent::DownloadProgress {
+            batch_id: first_batch,
+            key: second,
+            current_pack: 1,
+            total_packs: 1,
+            progress: ServerPackDownloadProgress::RequestStarted,
+        });
+        assert_eq!(runtime.download_presentations.len(), 1);
+        assert_eq!(
+            runtime.download_presentations[0].batch_sequence,
+            first_batch
+        );
+        assert_eq!(
+            runtime.download_presentations[0].phase,
+            ResourcePackDownloadPhase::Failed
+        );
+        runtime.apply_task_event(PackTaskEvent::DownloadProgress {
+            batch_id: second_batch,
+            key: second,
+            current_pack: 1,
+            total_packs: 1,
+            progress: ServerPackDownloadProgress::RequestStarted,
+        });
+        assert_eq!(
+            runtime
+                .download_presentations
+                .last()
+                .unwrap()
+                .batch_sequence,
+            second_batch
+        );
+        runtime.publish_runtime_diagnostics(&mut world);
+        assert_eq!(world.resource_pack_download_states().len(), 2);
+        assert_eq!(
+            world.resource_pack_download_states()[0].batch_sequence,
+            first_batch
+        );
+        assert_eq!(
+            world.resource_pack_download_states()[1].batch_sequence,
+            second_batch
+        );
     }
 
     #[test]
     fn dropping_runtime_removes_materialized_session_directory() {
         let runtime = test_runtime("drop-cleanup");
         let session_dir = runtime.materialized_session_dir.clone();
-        let cache_root = runtime.download_cache_dir.parent().unwrap().to_path_buf();
+        let cache_root = runtime.download_cache_dir.clone();
         std::fs::create_dir_all(&session_dir).unwrap();
         std::fs::write(session_dir.join("marker"), b"materialized").unwrap();
 
         drop(runtime);
 
         assert!(!session_dir.exists());
-        std::fs::remove_dir_all(cache_root).unwrap();
+        if cache_root.exists() {
+            std::fs::remove_dir_all(cache_root).unwrap();
+        }
     }
 
     #[test]
@@ -1837,24 +1970,31 @@ mod tests {
     }
 
     #[test]
-    fn one_download_failure_discards_other_inactive_pack_in_the_same_batch() {
+    fn one_download_failure_discards_every_other_inactive_pack_across_queued_batches() {
         let mut world = WorldStore::new();
         let first = push_accepted(
             &mut world,
             Uuid::from_u128(1),
             "https://example.test/first.zip",
         );
+        let mut runtime = test_runtime("batch-failure");
+        runtime.reconcile_world(&world, true);
+        assert_eq!(runtime.download_batches.len(), 1);
+
         let second = push_accepted(
             &mut world,
             Uuid::from_u128(2),
             "https://example.test/second.zip",
         );
-        let mut runtime = test_runtime("batch-failure");
         runtime.reconcile_world(&world, true);
+        assert_eq!(runtime.download_batches.len(), 2);
+        assert_ne!(
+            runtime.download_batches[0].id,
+            runtime.download_batches[1].id
+        );
 
-        runtime.apply_task_event(PackTaskEvent::Downloaded { key: first });
         runtime.apply_task_event(PackTaskEvent::Failed {
-            key: second,
+            key: first,
             action: ResourcePackResponseAction::FailedDownload,
             error: "connection reset".to_string(),
         });
@@ -1870,8 +2010,8 @@ mod tests {
                 .map(|response| (response.key, response.action))
                 .collect::<Vec<_>>(),
             vec![
-                (first, ResourcePackResponseAction::Discarded),
-                (second, ResourcePackResponseAction::FailedDownload),
+                (first, ResourcePackResponseAction::FailedDownload),
+                (second, ResourcePackResponseAction::Discarded),
             ]
         );
         runtime.reconcile_world(&world, true);
@@ -1883,38 +2023,46 @@ mod tests {
     }
 
     #[test]
-    fn one_preparation_failure_fails_every_new_pack_in_the_same_batch() {
+    fn one_preparation_failure_fails_every_new_pack_across_queued_batches() {
         let mut world = WorldStore::new();
         let first = push_accepted(
             &mut world,
             Uuid::from_u128(1),
             "https://example.test/first.zip",
         );
+        let mut runtime = test_runtime("preparation-failure");
+        runtime.reconcile_world(&world, true);
+
         let second = push_accepted(
             &mut world,
             Uuid::from_u128(2),
             "https://example.test/second.zip",
         );
-        let mut runtime = test_runtime("preparation-failure");
         runtime.reconcile_world(&world, true);
-        let first_root = ready_root(&runtime, "first");
+        assert_eq!(runtime.download_batches.len(), 2);
 
         runtime.apply_task_event(PackTaskEvent::Downloaded { key: first });
-        runtime.apply_task_event(PackTaskEvent::Ready {
-            key: first,
-            materialization: ready_materialization(first_root.clone()),
-        });
-        runtime.apply_task_event(PackTaskEvent::Downloaded { key: second });
         runtime.apply_task_event(PackTaskEvent::Failed {
-            key: second,
+            key: first,
             action: ResourcePackResponseAction::FailedReload,
             error: "invalid pack metadata".to_string(),
         });
         runtime.resolve_download_batches();
         runtime.resolve_preparation_failures();
+        assert!(!runtime.packs[0].removed);
+        assert!(!runtime.packs[1].removed);
+
+        let second_root = ready_root(&runtime, "second");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key: second });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key: second,
+            materialization: ready_materialization(second_root.clone()),
+        });
+        runtime.resolve_download_batches();
+        runtime.resolve_preparation_failures();
         runtime.cleanup_removed_packs();
 
-        assert!(!first_root.exists());
+        assert!(!second_root.exists());
         assert_eq!(runtime.packs.len(), 2);
         assert!(runtime.packs.iter().all(|pack| pack.removed));
         assert_eq!(

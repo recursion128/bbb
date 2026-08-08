@@ -1,8 +1,9 @@
 pub use crate::event_stream::run_event_stream;
 pub use crate::probe::run_probe;
 pub use crate::resource_pack::{
-    download_server_pack, download_server_pack_with_progress, ServerPackDownload,
-    ServerPackDownloadProgress, ServerPackDownloadProxy, ServerPackDownloadRequest,
+    append_server_pack_download_log, download_server_pack, download_server_pack_with_progress,
+    initialize_server_pack_download_cache, ServerPackDownload, ServerPackDownloadProgress,
+    ServerPackDownloadProxy, ServerPackDownloadRequest, VANILLA_MAX_KEPT_SERVER_PACK_FILES,
     VANILLA_MAX_SERVER_PACK_DOWNLOAD_BYTES,
 };
 pub use crate::status::status_ping;

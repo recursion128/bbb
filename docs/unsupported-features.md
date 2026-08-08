@@ -55,6 +55,7 @@ Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-r
 Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `lifecycle-client-runtime`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
+Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `rendering-level-section-lifecycle`
 
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
   artifact/scenario mappings validate without a false `equivalent`: capture commit
@@ -65,16 +66,42 @@ Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-durat
   host-audio receipt until real ALSA device access exists; the user-waived macOS
   `deferred-external` row is not a closure blocker but retains its source basis
   and reopen condition.
-- The server-pack lifecycle implementation changed shared runtime/net/world/HUD
-  evidence after `bfcc657cf`; the 27 affected `equivalent` rows are temporarily
-  reopened until the implementation commit passes the full gate and the report
-  is rebound. This is evidence invalidation, not a new behavior-gap checklist.
+- The server-pack lifecycle census now covers all 68 reachable/helper owners in
+  `DownloadedPackSource`, `ServerPackManager`, `DownloadQueue`,
+  `DownloadCacheCleaner`, the `HttpUtil` download chain and the Minecraft clear
+  call. Download/cache/log/vacuum ordering, one DownloadQueue batch per external
+  push, cross-batch failure propagation and per-batch five-slot progress toasts
+  now have decision-level tests. Inventory keeps four affected owners explicitly
+  machine-routed as open gaps (one shared-toast owner and three ZIP-provider
+  owners). The pack provider remains open: Vanilla passes
+  the downloaded ZIP directly to `FilePackResources`/`ZipFile`, while BBB still
+  eagerly extracts it and imposes non-Vanilla archive-entry, path-length,
+  per-entry, expansion-ratio and expanded-size limits. Replace that materializer
+  with direct/lazy ZIP resource semantics, including duplicate entries and
+  file/directory collision behavior, before closing this mechanism. Reopen the
+  provider work if `FilePackResources`, `ZipFile` lookup/enumeration, resource
+  filter or reload ownership changes.
+- Server-pack batches now retain distinct toast identity and standard-height
+  slot placement, but all toast families still need one shared `ToastManager`
+  admission/occupied-slot queue. Today narrator, warning and server-pack paths
+  are prioritized separately, so mixed-family ordering, multi-slot toast
+  reservation and the single visibility-change sound per update are not yet
+  Vanilla-equivalent. Reopen this item if `ToastManager.update`, slot occupancy,
+  toast height or visibility-sound ownership changes.
+- The server-pack runtime/net/world/HUD implementation and per-owner evidence
+  also remain open until the final implementation commit passes full gate and a
+  current live receipt; shared rows affected after `bfcc657cf` stay reopened
+  meanwhile. Preserve the official `server/%08X/%UUID` runtime identity/order in
+  any provider replacement when that identity reaches diagnostics or receipts.
 - The reachable SOCKS proxy/cache correction also changed nine shared startup,
   window, UI and persistence evidence owners; those rows remain temporarily
   reopened until the same full-gate/rebind checkpoint completes.
 - Advancing the evidence commit beyond `bfcc657cf` also expires nine
   lifecycle/visual/draw/performance receipts; they stay open until exact-commit
   soak and formal differential recapture replace those artifacts.
+- The default-pack-stack and Linux seat rows also require a current-HEAD live
+  receipt; the last valid receipt is `f08443e67` and is retained as stale
+  evidence until the final server-pack implementation HEAD is captured.
 
 ## Render-step and HUD presentation closure
 

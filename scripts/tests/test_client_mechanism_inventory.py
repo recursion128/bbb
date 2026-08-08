@@ -141,6 +141,97 @@ public class Owner {
             )
         )
 
+    def test_server_pack_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "resources-server-pack-lifecycle"
+        ]
+
+        self.assertEqual(len(owners), 68)
+        mechanism = value["mechanisms"]["resources-server-pack-lifecycle"]
+        self.assertEqual(mechanism["owner_count"], 68)
+        self.assertEqual(mechanism["owner_evidence_count"], 68)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 4)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            Counter(
+                {
+                    "net/minecraft/client/Minecraft.java": 1,
+                    "net/minecraft/client/resources/server/DownloadedPackSource.java": 25,
+                    "net/minecraft/client/resources/server/ServerPackManager.java": 22,
+                    "net/minecraft/server/packs/DownloadQueue.java": 6,
+                    "net/minecraft/server/packs/DownloadCacheCleaner.java": 3,
+                    "net/minecraft/util/HttpUtil.java": 11,
+                }
+            ),
+        )
+        self.assertTrue(
+            all(
+                (
+                    owner["bbb_evidence"].get("implementation")
+                    and owner["bbb_evidence"].get("tests")
+                )
+                or set(owner["bbb_evidence"]) == {"open_gap"}
+                for owner in owners
+            )
+        )
+        open_gaps = {
+            owner["vanilla_owner"]: owner["bbb_evidence"]["open_gap"]
+            for owner in owners
+            if "open_gap" in owner["bbb_evidence"]
+        }
+        self.assertEqual(
+            set(open_gaps),
+            {
+                "net.minecraft.client.resources.server.DownloadedPackSource#createDownloadNotifier(final int totalCount)",
+                "net.minecraft.client.resources.server.DownloadedPackSource#loadRequestedPacks(final List <PackReloadConfig.IdAndPath> packsToLoad)",
+                "net.minecraft.client.resources.server.DownloadedPackSource#createRepositorySource()",
+                "net.minecraft.client.resources.server.DownloadedPackSource#configureSource(final List <Pack> packs)",
+            },
+        )
+        self.assertTrue(
+            all(
+                gap["ledger"] == "docs/unsupported-features.md#Machine-readable parity acceptance closure"
+                and gap["reason"]
+                and gap["close_condition"]
+                for gap in open_gaps.values()
+            )
+        )
+        scoped = {
+            owner["vanilla_owner"]: owner["bbb_evidence"]["scope_ruling"]
+            for owner in owners
+            if "scope_ruling" in owner["bbb_evidence"]
+        }
+        self.assertEqual(len(scoped), 5)
+        self.assertTrue(
+            all(ruling["reopen_condition"] for ruling in scoped.values())
+        )
+        self.assertIn(
+            "net.minecraft.util.HttpUtil#HttpUtil()",
+            scoped,
+        )
+
+        http_port_owners = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] == "net/minecraft/util/HttpUtil.java"
+            and owner["vanilla_owner"].split("#", 1)[1].split("(", 1)[0]
+            in {"getAvailablePort", "isPortAvailable"}
+        ]
+        self.assertEqual(len(http_port_owners), 2)
+        self.assertTrue(
+            all(
+                owner["mechanism_id"] == "scope-singleplayer-integrated"
+                and owner["scope"] == "out-of-scope"
+                for owner in http_port_owners
+            )
+        )
     def test_minecraft_method_partition_is_total_and_homogeneous(self) -> None:
         generated = (
             inventory.REPO_ROOT

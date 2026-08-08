@@ -3349,7 +3349,8 @@ mod tests {
             "window-surface-focus-test",
             Uuid::nil(),
             None,
-        );
+        )
+        .unwrap();
         let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
         let mut particle_runtime = None;
         let mut item_runtime = None;
@@ -3468,7 +3469,8 @@ mod tests {
             "ime-preedit-handoff-test",
             Uuid::nil(),
             None,
-        );
+        )
+        .unwrap();
         let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
         let mut particle_runtime = None;
         let mut item_runtime = None;

@@ -30,7 +30,9 @@ pub struct ServerPresentationState {
     #[serde(default)]
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
     #[serde(default)]
-    pub resource_pack_download: Option<ResourcePackDownloadState>,
+    pub resource_pack_downloads: Vec<ResourcePackDownloadState>,
+    #[serde(default)]
+    pub resource_pack_session_generation: u64,
     #[serde(skip)]
     next_resource_pack_push_sequence: u64,
     #[serde(default)]
@@ -341,11 +343,39 @@ impl WorldStore {
     }
 
     pub fn set_resource_pack_download_state(&mut self, state: Option<ResourcePackDownloadState>) {
-        self.presentation.resource_pack_download = state;
+        let Some(state) = state else {
+            self.presentation.resource_pack_downloads.clear();
+            return;
+        };
+        if let Some(current) = self
+            .presentation
+            .resource_pack_downloads
+            .iter_mut()
+            .find(|current| current.batch_sequence == state.batch_sequence)
+        {
+            *current = state;
+        } else {
+            self.presentation.resource_pack_downloads.push(state);
+            self.presentation
+                .resource_pack_downloads
+                .sort_by_key(|state| state.batch_sequence);
+        }
+    }
+
+    pub fn set_resource_pack_download_states(&mut self, states: Vec<ResourcePackDownloadState>) {
+        self.presentation.resource_pack_downloads = states;
     }
 
     pub fn resource_pack_download_state(&self) -> Option<&ResourcePackDownloadState> {
-        self.presentation.resource_pack_download.as_ref()
+        self.presentation.resource_pack_downloads.last()
+    }
+
+    pub fn resource_pack_download_states(&self) -> &[ResourcePackDownloadState] {
+        &self.presentation.resource_pack_downloads
+    }
+
+    pub fn resource_pack_session_generation(&self) -> u64 {
+        self.presentation.resource_pack_session_generation
     }
 
     pub fn apply_resource_pack_pop(&mut self, packet: ProtocolResourcePackPop) -> usize {
@@ -375,7 +405,11 @@ impl WorldStore {
 
     pub fn reset_resource_pack_session(&mut self) {
         self.presentation.resource_packs.clear();
-        self.presentation.resource_pack_download = None;
+        self.presentation.resource_pack_downloads.clear();
+        self.presentation.resource_pack_session_generation = self
+            .presentation
+            .resource_pack_session_generation
+            .saturating_add(1);
         self.update_resource_pack_count();
     }
 
@@ -1090,6 +1124,7 @@ mod tests {
 
         assert!(store.resource_packs().is_empty());
         assert!(store.resource_pack_download_state().is_none());
+        assert_eq!(store.resource_pack_session_generation(), 1);
         assert_eq!(store.counters().resource_packs_tracked, 0);
         assert_eq!(store.counters().resource_pack_pop_packets, 0);
     }

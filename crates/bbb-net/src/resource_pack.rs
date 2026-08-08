@@ -1,26 +1,29 @@
 use std::{
+    collections::{HashMap, HashSet},
     fmt,
     fs::{File, OpenOptions},
     io::{Read, Write},
     net::Ipv6Addr,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 use anyhow::{bail, Context, Result};
 use bbb_protocol::packets::{ResourcePackPush, ResourcePackResponseAction};
+use chrono::{SecondsFormat, Utc};
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderValue, CONTENT_LENGTH, USER_AGENT},
 };
+use serde::ser::{SerializeMap, Serializer};
 use sha1::{Digest, Sha1};
 use uuid::Uuid;
 
 use crate::types::ServerResourcePackPolicy;
 
 pub const VANILLA_MAX_SERVER_PACK_DOWNLOAD_BYTES: u64 = 250 * 1024 * 1024;
-const DEFAULT_SERVER_PACK_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
+pub const VANILLA_MAX_KEPT_SERVER_PACK_FILES: usize = 20;
 static DOWNLOAD_SERIAL: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, PartialEq, Eq)]
@@ -92,7 +95,7 @@ pub struct ServerPackDownloadRequest {
     pub cache_dir: PathBuf,
     pub username: String,
     pub profile_id: Uuid,
-    pub timeout: Duration,
+    pub timeout: Option<Duration>,
     pub max_bytes: u64,
     pub proxy: Option<ServerPackDownloadProxy>,
 }
@@ -111,7 +114,7 @@ impl ServerPackDownloadRequest {
             cache_dir: cache_dir.into(),
             username: username.into(),
             profile_id,
-            timeout: DEFAULT_SERVER_PACK_DOWNLOAD_TIMEOUT,
+            timeout: None,
             max_bytes: VANILLA_MAX_SERVER_PACK_DOWNLOAD_BYTES,
             proxy: None,
         }
@@ -129,6 +132,209 @@ pub struct ServerPackDownload {
     pub sha1: String,
     pub bytes: u64,
     pub cache_hit: bool,
+}
+
+pub fn initialize_server_pack_download_cache(cache_dir: &Path) -> Result<()> {
+    std::fs::create_dir_all(cache_dir)
+        .with_context(|| format!("create server pack download cache {}", cache_dir.display()))?;
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(cache_dir.join("log.json"))
+        .with_context(|| {
+            format!(
+                "open server pack download event log {}",
+                cache_dir.join("log.json").display()
+            )
+        })?;
+    vacuum_server_pack_download_cache(cache_dir, VANILLA_MAX_KEPT_SERVER_PACK_FILES);
+    Ok(())
+}
+
+pub fn append_server_pack_download_log(
+    cache_dir: &Path,
+    pack_id: Uuid,
+    url: &str,
+    requested_hash: Option<&str>,
+    download: Option<&ServerPackDownload>,
+) -> Result<()> {
+    let event_time = Utc::now().to_rfc3339_opts(SecondsFormat::AutoSi, true);
+    let requested_hash = requested_hash.and_then(parse_expected_sha1);
+    let outcome = match download {
+        Some(download) => match server_pack_file_info(cache_dir, &download.archive_path) {
+            Ok((name, size)) => ServerPackLogOutcome::File { name, size },
+            Err(error) => {
+                tracing::warn!(%error, "server pack download log could not inspect cache file");
+                ServerPackLogOutcome::Error("no_access")
+            }
+        },
+        None => ServerPackLogOutcome::Error("download_failed"),
+    };
+
+    let log_path = cache_dir.join("log.json");
+    let mut output = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .with_context(|| format!("open server pack download event log {}", log_path.display()))?;
+    {
+        let mut serializer = serde_json::Serializer::new(&mut output);
+        let mut entry = serializer.serialize_map(None).with_context(|| {
+            format!(
+                "encode server pack download event log {}",
+                log_path.display()
+            )
+        })?;
+        entry.serialize_entry("id", &pack_id.to_string())?;
+        entry.serialize_entry("url", url)?;
+        entry.serialize_entry("time", &event_time)?;
+        if let Some(hash) = requested_hash {
+            entry.serialize_entry("hash", &hash)?;
+        }
+        match outcome {
+            ServerPackLogOutcome::File { name, size } => {
+                entry.serialize_entry("file", &ServerPackLogFile { name: &name, size })?;
+            }
+            ServerPackLogOutcome::Error(error) => entry.serialize_entry("error", error)?,
+        }
+        entry.end()?;
+    }
+    output.write_all(b"\n").with_context(|| {
+        format!(
+            "append server pack download event log {}",
+            log_path.display()
+        )
+    })?;
+    output.flush().with_context(|| {
+        format!(
+            "flush server pack download event log {}",
+            log_path.display()
+        )
+    })?;
+    Ok(())
+}
+
+enum ServerPackLogOutcome {
+    File { name: String, size: u64 },
+    Error(&'static str),
+}
+
+#[derive(serde::Serialize)]
+struct ServerPackLogFile<'a> {
+    name: &'a str,
+    size: u64,
+}
+
+fn server_pack_file_info(cache_dir: &Path, path: &Path) -> Result<(String, u64)> {
+    let size = std::fs::metadata(path)
+        .with_context(|| format!("read server pack cache metadata {}", path.display()))?
+        .len();
+    let relative = path.strip_prefix(cache_dir).with_context(|| {
+        format!(
+            "server pack cache file {} is outside {}",
+            path.display(),
+            cache_dir.display()
+        )
+    })?;
+    Ok((relative.to_string_lossy().into_owned(), size))
+}
+
+#[derive(Debug)]
+struct ServerPackCacheFile {
+    path: PathBuf,
+    modified: SystemTime,
+    removal_priority: usize,
+}
+
+fn vacuum_server_pack_download_cache(cache_dir: &Path, max_files: usize) {
+    let mut files = match nested_server_pack_cache_files(cache_dir) {
+        Ok(files) => files,
+        Err(error) => {
+            tracing::error!(%error, cache = %cache_dir.display(), "failed to vacuum server pack cache");
+            return;
+        }
+    };
+    let remove_count = files.len().saturating_sub(max_files);
+    if remove_count == 0 {
+        return;
+    }
+
+    files.sort_by(|left, right| right.modified.cmp(&left.modified));
+    let mut parent_counts = HashMap::<PathBuf, usize>::new();
+    for file in &mut files {
+        let parent = file
+            .path
+            .parent()
+            .expect("nested server pack cache file has a parent")
+            .to_path_buf();
+        let count = parent_counts.entry(parent).or_default();
+        file.removal_priority = *count;
+        *count = count.saturating_add(1);
+    }
+    files.reverse();
+    files.sort_by(|left, right| right.removal_priority.cmp(&left.removal_priority));
+
+    let mut empty_directory_candidates = HashSet::new();
+    for file in files.into_iter().take(remove_count) {
+        match std::fs::remove_file(&file.path) {
+            Ok(()) => {
+                if file.removal_priority == 0 {
+                    if let Some(parent) = file.path.parent() {
+                        empty_directory_candidates.insert(parent.to_path_buf());
+                    }
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, path = %file.path.display(), "failed to delete server pack cache file");
+            }
+        }
+    }
+    empty_directory_candidates.remove(cache_dir);
+    for directory in empty_directory_candidates {
+        match std::fs::remove_dir(&directory) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => {}
+            Err(error) => {
+                tracing::warn!(%error, path = %directory.display(), "failed to delete empty server pack cache directory");
+            }
+        }
+    }
+}
+
+fn nested_server_pack_cache_files(cache_dir: &Path) -> Result<Vec<ServerPackCacheFile>> {
+    let mut files = Vec::new();
+    let mut pending = vec![cache_dir.to_path_buf()];
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(&directory)
+            .with_context(|| format!("walk server pack cache {}", directory.display()))?
+        {
+            let entry = entry.with_context(|| {
+                format!("read server pack cache entry under {}", directory.display())
+            })?;
+            let file_type = entry.file_type().with_context(|| {
+                format!("inspect server pack cache entry {}", entry.path().display())
+            })?;
+            if file_type.is_dir() {
+                pending.push(entry.path());
+            } else if file_type.is_file() && directory != cache_dir {
+                let modified = entry
+                    .metadata()
+                    .with_context(|| {
+                        format!("read server pack cache metadata {}", entry.path().display())
+                    })?
+                    .modified()
+                    .with_context(|| {
+                        format!("read server pack cache mtime {}", entry.path().display())
+                    })?;
+                files.push(ServerPackCacheFile {
+                    path: entry.path(),
+                    modified,
+                    removal_priority: 0,
+                });
+            }
+        }
+    }
+    Ok(files)
 }
 
 /// Progress callbacks emitted in the same order as Vanilla's
@@ -162,10 +368,16 @@ where
     tokio::task::spawn_blocking(move || {
         progress(ServerPackDownloadProgress::RequestStarted);
         let result = download_server_pack_blocking(request, &mut progress);
-        progress(ServerPackDownloadProgress::RequestFinished {
-            success: result.is_ok(),
-        });
-        result
+        match &result {
+            Ok((_, completion_reported)) if !completion_reported => {
+                progress(ServerPackDownloadProgress::RequestFinished { success: true });
+            }
+            Err(_) => {
+                progress(ServerPackDownloadProgress::RequestFinished { success: false });
+            }
+            Ok(_) => {}
+        }
+        result.map(|(download, _)| download)
     })
     .await
     .context("join server pack download worker")?
@@ -174,52 +386,55 @@ where
 fn download_server_pack_blocking(
     request: ServerPackDownloadRequest,
     progress: &mut impl FnMut(ServerPackDownloadProgress),
-) -> Result<ServerPackDownload> {
+) -> Result<(ServerPackDownload, bool)> {
     if request.max_bytes == 0 {
         bail!("server pack download byte limit must be positive");
     }
-    if request.timeout.is_zero() {
+    if request.timeout.is_some_and(|timeout| timeout.is_zero()) {
         bail!("server pack download timeout must be positive");
     }
     if !is_allowed_resource_pack_url(&request.url) {
-        bail!("server pack URL must use HTTP or HTTPS without whitespace");
+        bail!("server pack URL must be a valid HTTP or HTTPS URL");
     }
     reqwest::Url::parse(&request.url).context("parse server pack URL")?;
-    std::fs::create_dir_all(&request.cache_dir).with_context(|| {
-        format!(
-            "create server pack download cache {}",
-            request.cache_dir.display()
-        )
-    })?;
-
     let expected_sha1 = request
         .expected_sha1
         .as_deref()
         .and_then(parse_expected_sha1);
-    if let Some(expected_sha1) = expected_sha1.as_deref() {
-        let cached_path = cached_archive_path(&request.cache_dir, expected_sha1);
-        if let Ok(bytes) = validate_cached_archive(&cached_path, expected_sha1, request.max_bytes) {
+    let requested_target_path = expected_sha1
+        .as_deref()
+        .map(|hash| cached_archive_path(&request.cache_dir, hash));
+    if let Some((expected_sha1, cached_path)) =
+        expected_sha1.as_deref().zip(requested_target_path.as_ref())
+    {
+        if let Ok(bytes) = validate_cached_archive(&cached_path, expected_sha1) {
+            progress(ServerPackDownloadProgress::RequestFinished { success: true });
             touch_cached_archive(&cached_path);
-            return Ok(ServerPackDownload {
-                archive_path: cached_path,
-                sha1: expected_sha1.to_string(),
-                bytes,
-                cache_hit: true,
-            });
+            return Ok((
+                ServerPackDownload {
+                    archive_path: cached_path.clone(),
+                    sha1: expected_sha1.to_string(),
+                    bytes,
+                    cache_hit: true,
+                },
+                true,
+            ));
         }
+        delete_cache_entry(&cached_path).with_context(|| {
+            format!(
+                "remove mismatched server pack cache {}",
+                cached_path.display()
+            )
+        })?;
     }
 
-    let partial_path = allocate_partial_path(&request.cache_dir)?;
-    let mut cleanup = DownloadCleanup::new(partial_path.clone());
-    let mut output = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&partial_path)
-        .with_context(|| format!("create server pack download {}", partial_path.display()))?;
     // Vanilla uses `Proxy.NO_PROXY` unless `Main --proxyHost` created an
     // explicit SOCKS proxy. Disable reqwest's environment proxy discovery so
     // ambient HTTP_PROXY/HTTPS_PROXY cannot silently change that contract.
-    let mut client_builder = Client::builder().timeout(request.timeout).no_proxy();
+    let mut client_builder = Client::builder().no_proxy();
+    if let Some(timeout) = request.timeout {
+        client_builder = client_builder.timeout(timeout);
+    }
     if let Some(proxy) = request
         .proxy
         .as_ref()
@@ -243,6 +458,12 @@ fn download_server_pack_blocking(
         .get(CONTENT_LENGTH)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.parse::<u64>().ok());
+    std::fs::create_dir_all(&request.cache_dir).with_context(|| {
+        format!(
+            "create server pack download cache {}",
+            request.cache_dir.display()
+        )
+    })?;
     progress(ServerPackDownloadProgress::DownloadStarted {
         total_bytes: content_length,
     });
@@ -255,9 +476,32 @@ fn download_server_pack_blocking(
         }
     }
 
+    let (download_path, mut cleanup) = match requested_target_path {
+        Some(path) => (path, None),
+        None => {
+            let path = allocate_partial_path(&request.cache_dir)?;
+            let cleanup = DownloadCleanup::new(path.clone());
+            (path, Some(cleanup))
+        }
+    };
+    let mut output_options = OpenOptions::new();
+    output_options.write(true);
+    if expected_sha1.is_some() {
+        // Vanilla passes only `StandardOpenOption.CREATE` here. The requested
+        // target is normally absent after `deleteIfExists`, but a file raced
+        // into place is overwritten from offset zero without an extra
+        // `TRUNCATE_EXISTING` semantic.
+        output_options.create(true);
+    } else {
+        output_options.create_new(true);
+    }
+    let mut output = output_options
+        .open(&download_path)
+        .with_context(|| format!("create server pack download {}", download_path.display()))?;
+
     let mut digest = Sha1::new();
     let mut bytes = 0_u64;
-    let mut buffer = [0_u8; 64 * 1024];
+    let mut buffer = [0_u8; 8_196];
     loop {
         let read = response
             .read(&mut buffer)
@@ -268,6 +512,7 @@ fn download_server_pack_blocking(
         bytes = bytes
             .checked_add(read as u64)
             .context("server pack download size overflow")?;
+        progress(ServerPackDownloadProgress::DownloadedBytes { bytes });
         if bytes > request.max_bytes {
             bail!(
                 "server pack response exceeded the {} byte limit",
@@ -278,7 +523,6 @@ fn download_server_pack_blocking(
         output
             .write_all(&buffer[..read])
             .context("write server pack download cache")?;
-        progress(ServerPackDownloadProgress::DownloadedBytes { bytes });
     }
     output.flush().context("flush server pack download cache")?;
     drop(output);
@@ -288,22 +532,32 @@ fn download_server_pack_blocking(
         if expected_sha1 != actual_sha1 {
             bail!("server pack SHA-1 mismatch: expected {expected_sha1}, downloaded {actual_sha1}");
         }
+        return Ok((
+            ServerPackDownload {
+                archive_path: download_path,
+                sha1: actual_sha1,
+                bytes,
+                cache_hit: false,
+            },
+            false,
+        ));
     }
 
     let archive_path = cached_archive_path(&request.cache_dir, &actual_sha1);
-    let cache_hit = publish_cached_archive(
-        &partial_path,
-        &archive_path,
-        &actual_sha1,
-        request.max_bytes,
-    )?;
-    cleanup.disarm();
-    Ok(ServerPackDownload {
-        archive_path,
-        sha1: actual_sha1,
-        bytes,
-        cache_hit,
-    })
+    let cache_hit = publish_cached_archive(&download_path, &archive_path, &actual_sha1)?;
+    cleanup
+        .as_mut()
+        .expect("unhashed download owns a temporary cache file")
+        .disarm();
+    Ok((
+        ServerPackDownload {
+            archive_path,
+            sha1: actual_sha1,
+            bytes,
+            cache_hit,
+        },
+        false,
+    ))
 }
 
 fn download_headers(username: &str, profile_id: Uuid) -> Result<HeaderMap> {
@@ -343,20 +597,27 @@ fn cached_archive_path(cache_dir: &Path, sha1: &str) -> PathBuf {
     cache_dir.join(sha1)
 }
 
+fn delete_cache_entry(path: &Path) -> std::io::Result<()> {
+    let metadata = match std::fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    if metadata.file_type().is_dir() {
+        std::fs::remove_dir(path)
+    } else {
+        std::fs::remove_file(path)
+    }
+}
+
 fn touch_cached_archive(path: &Path) {
-    if let Ok(file) = OpenOptions::new().write(true).open(path) {
+    if let Ok(file) = File::open(path) {
         let _ = file.set_modified(std::time::SystemTime::now());
     }
 }
-fn validate_cached_archive(path: &Path, expected_sha1: &str, max_bytes: u64) -> Result<u64> {
+fn validate_cached_archive(path: &Path, expected_sha1: &str) -> Result<u64> {
     let mut file =
         File::open(path).with_context(|| format!("open cached server pack {}", path.display()))?;
-    let metadata = file
-        .metadata()
-        .with_context(|| format!("read cached server pack metadata {}", path.display()))?;
-    if metadata.len() > max_bytes {
-        bail!("cached server pack exceeds the download byte limit");
-    }
     let mut digest = Sha1::new();
     let mut bytes = 0_u64;
     let mut buffer = [0_u8; 64 * 1024];
@@ -370,9 +631,6 @@ fn validate_cached_archive(path: &Path, expected_sha1: &str, max_bytes: u64) -> 
         bytes = bytes
             .checked_add(read as u64)
             .context("cached server pack size overflow")?;
-        if bytes > max_bytes {
-            bail!("cached server pack exceeds the download byte limit");
-        }
         digest.update(&buffer[..read]);
     }
     let actual_sha1 = format!("{:x}", digest.finalize());
@@ -382,14 +640,10 @@ fn validate_cached_archive(path: &Path, expected_sha1: &str, max_bytes: u64) -> 
     Ok(bytes)
 }
 
-fn publish_cached_archive(
-    partial_path: &Path,
-    archive_path: &Path,
-    sha1: &str,
-    max_bytes: u64,
-) -> Result<bool> {
+fn publish_cached_archive(partial_path: &Path, archive_path: &Path, sha1: &str) -> Result<bool> {
     if archive_path.exists() {
-        if validate_cached_archive(archive_path, sha1, max_bytes).is_ok() {
+        if validate_cached_archive(archive_path, sha1).is_ok() {
+            touch_cached_archive(archive_path);
             std::fs::remove_file(partial_path).with_context(|| {
                 format!(
                     "remove duplicate server pack download {}",
@@ -416,7 +670,7 @@ fn publish_cached_archive(
             Ok(false)
         }
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-            validate_cached_archive(archive_path, sha1, max_bytes)?;
+            validate_cached_archive(archive_path, sha1)?;
             std::fs::remove_file(partial_path).with_context(|| {
                 format!(
                     "remove raced server pack download {}",
@@ -482,26 +736,7 @@ pub(crate) fn response_action_for_push_with_policy(
 }
 
 fn is_allowed_resource_pack_url(url: &str) -> bool {
-    if url
-        .chars()
-        .any(|ch| ch.is_ascii_control() || ch.is_whitespace())
-    {
-        return false;
-    }
-    let Some((scheme, rest)) = url.split_once(':') else {
-        return false;
-    };
-    if scheme.is_empty() || rest.is_empty() {
-        return false;
-    }
-    let mut chars = scheme.chars();
-    if !chars.next().is_some_and(|ch| ch.is_ascii_alphabetic()) {
-        return false;
-    }
-    if !chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '+' | '-' | '.')) {
-        return false;
-    }
-    matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
+    reqwest::Url::parse(url).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
 }
 
 #[cfg(test)]
@@ -535,6 +770,9 @@ mod tests {
         assert!(is_allowed_resource_pack_url(&valid.url));
         assert!(is_allowed_resource_pack_url(
             "http://example.invalid/pack.zip"
+        ));
+        assert!(is_allowed_resource_pack_url(
+            "https://example.invalid/pack with space.zip"
         ));
         assert!(!is_allowed_resource_pack_url(
             "ftp://example.invalid/pack.zip"
@@ -605,6 +843,95 @@ mod tests {
         std::fs::remove_dir_all(cache_dir).unwrap();
     }
 
+    #[test]
+    fn server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log() {
+        let cache_dir = unique_temp_dir("cache-vacuum");
+        initialize_server_pack_download_cache(&cache_dir).unwrap();
+        let first = cache_dir.join(Uuid::from_u128(1).to_string());
+        let second = cache_dir.join(Uuid::from_u128(2).to_string());
+        std::fs::create_dir_all(&first).unwrap();
+        std::fs::create_dir_all(&second).unwrap();
+        let first_new = cache_file_at(&first, "first-new", 4);
+        let second_new = cache_file_at(&second, "second-new", 3);
+        let second_old = cache_file_at(&second, "second-old", 2);
+        let first_old = cache_file_at(&first, "first-old", 1);
+
+        vacuum_server_pack_download_cache(&cache_dir, 2);
+
+        assert!(cache_dir.join("log.json").is_file());
+        assert!(first_new.is_file());
+        assert!(second_new.is_file());
+        assert!(!first_old.exists());
+        assert!(!second_old.exists());
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[test]
+    fn server_pack_download_log_records_vanilla_file_and_error_shapes() {
+        let cache_dir = unique_temp_dir("download-log");
+        initialize_server_pack_download_cache(&cache_dir).unwrap();
+        let pack_id = Uuid::from_u128(7);
+        let pack_dir = cache_dir.join(pack_id.to_string());
+        std::fs::create_dir_all(&pack_dir).unwrap();
+        let archive_path = pack_dir.join("abcdef0123456789abcdef0123456789abcdef01");
+        std::fs::write(&archive_path, b"pack").unwrap();
+        let download = ServerPackDownload {
+            archive_path: archive_path.clone(),
+            sha1: "abcdef0123456789abcdef0123456789abcdef01".to_string(),
+            bytes: 4,
+            cache_hit: false,
+        };
+
+        append_server_pack_download_log(
+            &cache_dir,
+            pack_id,
+            "https://example.invalid/pack.zip",
+            Some("ABCDEF0123456789ABCDEF0123456789ABCDEF01"),
+            Some(&download),
+        )
+        .unwrap();
+        append_server_pack_download_log(
+            &cache_dir,
+            Uuid::from_u128(8),
+            "https://example.invalid/failed.zip",
+            Some("invalid"),
+            None,
+        )
+        .unwrap();
+        std::fs::remove_file(&archive_path).unwrap();
+        append_server_pack_download_log(
+            &cache_dir,
+            pack_id,
+            "https://example.invalid/missing.zip",
+            None,
+            Some(&download),
+        )
+        .unwrap();
+
+        let raw = std::fs::read_to_string(cache_dir.join("log.json")).unwrap();
+        let lines = raw.lines().collect::<Vec<_>>();
+        assert_eq!(lines.len(), 3);
+        assert!(lines[0].starts_with("{\"id\":"));
+        let entries = lines
+            .iter()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(entries[0]["id"], pack_id.to_string());
+        assert_eq!(
+            entries[0]["hash"],
+            "abcdef0123456789abcdef0123456789abcdef01"
+        );
+        assert_eq!(
+            entries[0]["file"]["name"],
+            format!("{}/abcdef0123456789abcdef0123456789abcdef01", pack_id)
+        );
+        assert_eq!(entries[0]["file"]["size"], 4);
+        assert_eq!(entries[1]["error"], "download_failed");
+        assert!(entries[1].get("hash").is_none());
+        assert_eq!(entries[2]["error"], "no_access");
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
     #[tokio::test]
     async fn server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials() {
         let body = b"server-pack-through-socks".to_vec();
@@ -665,7 +992,7 @@ mod tests {
 
     #[tokio::test]
     async fn server_pack_download_reports_vanilla_progress_order_for_network_and_cache() {
-        let body = b"server-pack-progress".to_vec();
+        let body = vec![b'p'; 20_000];
         let expected_sha1 = sha1_hex(&body);
         let cache_dir = unique_temp_dir("progress");
         let (url, server) = serve_once(body.clone(), true);
@@ -685,29 +1012,68 @@ mod tests {
         .unwrap();
         server.join().unwrap();
 
-        assert_eq!(
-            *progress.lock().unwrap(),
-            vec![
-                ServerPackDownloadProgress::RequestStarted,
+        {
+            let progress = progress.lock().unwrap();
+            assert_eq!(progress[0], ServerPackDownloadProgress::RequestStarted);
+            assert_eq!(
+                progress[1],
                 ServerPackDownloadProgress::DownloadStarted {
                     total_bytes: Some(body.len() as u64),
-                },
-                ServerPackDownloadProgress::DownloadedBytes {
-                    bytes: body.len() as u64,
-                },
-                ServerPackDownloadProgress::RequestFinished { success: true },
-            ]
-        );
+                }
+            );
+            assert_eq!(
+                progress.last(),
+                Some(&ServerPackDownloadProgress::RequestFinished { success: true })
+            );
+            let downloaded_bytes = progress
+                .iter()
+                .filter_map(|event| match event {
+                    ServerPackDownloadProgress::DownloadedBytes { bytes } => Some(*bytes),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(downloaded_bytes.last(), Some(&(body.len() as u64)));
+            let mut previous = 0;
+            for bytes in downloaded_bytes {
+                assert!(bytes > previous);
+                assert!(bytes - previous <= 8_196);
+                previous = bytes;
+            }
+        }
 
+        File::options()
+            .write(true)
+            .open(&downloaded.archive_path)
+            .unwrap()
+            .set_modified(SystemTime::UNIX_EPOCH)
+            .unwrap();
         let cached_progress = Arc::new(Mutex::new(Vec::new()));
+        let mtime_at_finish = Arc::new(Mutex::new(None));
         let captured = Arc::clone(&cached_progress);
+        let captured_mtime = Arc::clone(&mtime_at_finish);
+        let cached_path = downloaded.archive_path.clone();
         let cached = download_server_pack_with_progress(request, move |event| {
+            if event == (ServerPackDownloadProgress::RequestFinished { success: true }) {
+                *captured_mtime.lock().unwrap() =
+                    Some(std::fs::metadata(&cached_path).unwrap().modified().unwrap());
+            }
             captured.lock().unwrap().push(event);
         })
         .await
         .unwrap();
         assert!(cached.cache_hit);
         assert_eq!(cached.archive_path, downloaded.archive_path);
+        assert_eq!(
+            *mtime_at_finish.lock().unwrap(),
+            Some(SystemTime::UNIX_EPOCH)
+        );
+        assert!(
+            std::fs::metadata(&cached.archive_path)
+                .unwrap()
+                .modified()
+                .unwrap()
+                > SystemTime::UNIX_EPOCH
+        );
         assert_eq!(
             *cached_progress.lock().unwrap(),
             vec![
@@ -719,12 +1085,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn server_pack_download_rejects_hash_mismatch_and_cleans_partial_file() {
+    async fn requested_hash_mismatch_preserves_vanilla_target_for_next_validation() {
         let cache_dir = unique_temp_dir("hash-mismatch");
-        let (url, server) = serve_once(b"wrong contents".to_vec(), true);
+        let body = b"wrong contents".to_vec();
+        let (url, server) = serve_once(body.clone(), true);
+        let expected_sha1 = "0000000000000000000000000000000000000000";
         let request = ServerPackDownloadRequest::new(
             url,
-            Some("0000000000000000000000000000000000000000".to_string()),
+            Some(expected_sha1.to_string()),
             &cache_dir,
             "bbb-client",
             Uuid::nil(),
@@ -734,7 +1102,133 @@ mod tests {
         server.join().unwrap();
 
         assert!(format!("{error:#}").contains("SHA-1 mismatch"));
+        assert_eq!(std::fs::read(cache_dir.join(expected_sha1)).unwrap(), body);
+        assert_eq!(cache_dir.read_dir().unwrap().count(), 1);
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn requested_hash_target_race_preserves_vanilla_non_truncating_create() {
+        let body = b"requested-body".to_vec();
+        let expected_sha1 = sha1_hex(&body);
+        let cache_dir = unique_temp_dir("requested-target-race");
+        let (url, server) = serve_once(body.clone(), true);
+        let request = ServerPackDownloadRequest::new(
+            url,
+            Some(expected_sha1.clone()),
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+        );
+        let raced_target = cache_dir.join(&expected_sha1);
+        let callback_target = raced_target.clone();
+
+        let downloaded = download_server_pack_with_progress(request, move |progress| {
+            if matches!(progress, ServerPackDownloadProgress::DownloadStarted { .. }) {
+                let mut raced_contents = body.clone();
+                raced_contents.extend_from_slice(b"-raced-trailer");
+                std::fs::write(&callback_target, raced_contents).unwrap();
+            }
+        })
+        .await
+        .unwrap();
+        server.join().unwrap();
+
+        assert_eq!(downloaded.archive_path, raced_target);
+        assert_eq!(downloaded.sha1, expected_sha1);
+        assert_eq!(
+            std::fs::read(downloaded.archive_path).unwrap(),
+            b"requested-body-raced-trailer"
+        );
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn server_pack_download_removes_bad_requested_cache_before_network_failure() {
+        let cache_dir = unique_temp_dir("bad-requested-cache");
+        let expected_sha1 = "0000000000000000000000000000000000000000";
+        let cached_path = cache_dir.join(expected_sha1);
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::write(&cached_path, b"corrupt").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let request = ServerPackDownloadRequest::new(
+            format!("http://{address}/unreachable.zip"),
+            Some(expected_sha1.to_string()),
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+        );
+
+        download_server_pack(request).await.unwrap_err();
+
+        assert!(!cached_path.exists());
         assert!(cache_dir.read_dir().unwrap().next().is_none());
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn unhashed_download_touches_an_existing_content_addressed_file() {
+        let body = b"same-unhashed-server-pack".to_vec();
+        let cache_dir = unique_temp_dir("unhashed-touch");
+        let (first_url, first_server) = serve_once(body.clone(), true);
+        let first_request =
+            ServerPackDownloadRequest::new(first_url, None, &cache_dir, "bbb-client", Uuid::nil());
+        assert_eq!(first_request.timeout, None);
+        let first = download_server_pack(first_request).await.unwrap();
+        first_server.join().unwrap();
+        File::options()
+            .write(true)
+            .open(&first.archive_path)
+            .unwrap()
+            .set_modified(SystemTime::UNIX_EPOCH)
+            .unwrap();
+
+        let (second_url, second_server) = serve_once(body, true);
+        let second = download_server_pack(ServerPackDownloadRequest::new(
+            second_url,
+            None,
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+        ))
+        .await
+        .unwrap();
+        second_server.join().unwrap();
+
+        assert!(second.cache_hit);
+        assert_eq!(second.archive_path, first.archive_path);
+        assert!(
+            std::fs::metadata(second.archive_path)
+                .unwrap()
+                .modified()
+                .unwrap()
+                > SystemTime::UNIX_EPOCH
+        );
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn matching_requested_cache_bypasses_the_network_download_size_limit() {
+        let body = b"preseeded-cache";
+        let expected_sha1 = sha1_hex(body);
+        let cache_dir = unique_temp_dir("preseeded-over-limit");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::write(cache_dir.join(&expected_sha1), body).unwrap();
+        let mut request = ServerPackDownloadRequest::new(
+            "https://example.invalid/not-requested.zip",
+            Some(expected_sha1),
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+        );
+        request.max_bytes = 4;
+
+        let cached = download_server_pack(request).await.unwrap();
+
+        assert!(cached.cache_hit);
+        assert_eq!(cached.bytes, body.len() as u64);
         std::fs::remove_dir_all(cache_dir).unwrap();
     }
 
@@ -746,10 +1240,25 @@ mod tests {
             ServerPackDownloadRequest::new(url, None, &cache_dir, "bbb-client", Uuid::nil());
         request.max_bytes = 4;
 
-        let error = download_server_pack(request).await.unwrap_err();
+        let progress = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&progress);
+        let error = download_server_pack_with_progress(request, move |event| {
+            captured.lock().unwrap().push(event);
+        })
+        .await
+        .unwrap_err();
         server.join().unwrap();
 
         assert!(format!("{error:#}").contains("exceeded the 4 byte limit"));
+        assert_eq!(
+            *progress.lock().unwrap(),
+            vec![
+                ServerPackDownloadProgress::RequestStarted,
+                ServerPackDownloadProgress::DownloadStarted { total_bytes: None },
+                ServerPackDownloadProgress::DownloadedBytes { bytes: 8 },
+                ServerPackDownloadProgress::RequestFinished { success: false },
+            ]
+        );
         assert!(cache_dir.read_dir().unwrap().next().is_none());
         std::fs::remove_dir_all(cache_dir).unwrap();
     }
@@ -895,5 +1404,17 @@ mod tests {
             "bbb-server-pack-download-{label}-{}-{nanos}",
             std::process::id()
         ))
+    }
+
+    fn cache_file_at(directory: &Path, name: &str, modified_seconds: u64) -> PathBuf {
+        let path = directory.join(name);
+        std::fs::write(&path, name.as_bytes()).unwrap();
+        File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(modified_seconds))
+            .unwrap();
+        path
     }
 }

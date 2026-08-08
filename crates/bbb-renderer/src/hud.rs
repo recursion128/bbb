@@ -1109,6 +1109,13 @@ pub struct HudSystemToast {
     pub visible_portion: f32,
 }
 
+/// One system toast admitted to Vanilla's shared five-slot toast area.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudSystemToastInstance {
+    pub toast: HudSystemToast,
+    pub slot: u8,
+}
+
 /// One visible Vanilla advancement toast. Native owns queue/slot/timing and
 /// item resolution; the renderer owns exact font wrapping and draw order.
 #[derive(Debug, Clone, PartialEq)]
@@ -6392,7 +6399,19 @@ impl Renderer {
     }
 
     pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
-        self.hud_system_toast = toast.and_then(sanitize_hud_system_toast);
+        self.hud_system_toasts = toast
+            .and_then(sanitize_hud_system_toast)
+            .map(|toast| HudSystemToastInstance { toast, slot: 0 })
+            .into_iter()
+            .collect();
+    }
+
+    pub fn set_hud_system_toasts(&mut self, toasts: Vec<HudSystemToastInstance>) {
+        self.hud_system_toasts = toasts
+            .into_iter()
+            .filter_map(sanitize_hud_system_toast_instance)
+            .take(HUD_TOAST_SLOTS)
+            .collect();
     }
 
     pub fn set_hud_advancement_toasts(&mut self, toasts: Vec<HudAdvancementToast>) {
@@ -7105,7 +7124,7 @@ impl Renderer {
         post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
     ) {
         let surface_size = self.gui_surface_size();
-        if let Some(toast) = &self.hud_system_toast {
+        for toast in &self.hud_system_toasts {
             push_hud_system_toast(
                 vertices,
                 post_gui_item_commands,
@@ -7116,7 +7135,8 @@ impl Renderer {
                 &self.hud_obfuscated_glyph_pool,
                 self.counters.frame_index,
                 surface_size,
-                toast,
+                &toast.toast,
+                toast.slot,
             );
         }
         push_hud_advancement_toasts(
@@ -12144,11 +12164,13 @@ fn push_hud_system_toast<'a>(
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     toast: &HudSystemToast,
+    slot: u8,
 ) {
     let Some(font_atlas) = font_atlas else {
         return;
     };
-    let (rect, x, _, _) = hud_system_toast_layout(surface_size, toast, glyphs);
+    let (rect, x, _, _, y_offset) =
+        hud_system_toast_instance_layout(surface_size, toast, slot, glyphs);
     if let Some(background) = background {
         for segment in nine_slice_segments(rect, background.scaling) {
             push_hud_draw_with_uv_and_tint(
@@ -12190,7 +12212,7 @@ fn push_hud_system_toast<'a>(
             glyphs,
             obfuscated_pool,
             frame_index,
-            (x + 18.0, y),
+            (x + 18.0, y + y_offset),
             0.0,
             false,
             tint,
@@ -12235,6 +12257,18 @@ fn hud_system_toast_layout(
     );
     let x = surface_size.width as f32 - width as f32 * toast.visible_portion;
     (absolute_hud_rect(x, 0.0, width, height), x, width, height)
+}
+
+fn hud_system_toast_instance_layout(
+    surface_size: PhysicalSize<u32>,
+    toast: &HudSystemToast,
+    slot: u8,
+    glyphs: &HudFontGlyphMap,
+) -> (HudRect, f32, u32, u32, f32) {
+    let (mut rect, x, width, height) = hud_system_toast_layout(surface_size, toast, glyphs);
+    let y_offset = f32::from(slot) * 32.0;
+    rect.y += y_offset;
+    (rect, x, width, height, y_offset)
 }
 
 fn hud_system_toast_message_lines(toast: &HudSystemToast, glyphs: &HudFontGlyphMap) -> Vec<String> {
@@ -22209,6 +22243,18 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
     })
 }
 
+fn sanitize_hud_system_toast_instance(
+    instance: HudSystemToastInstance,
+) -> Option<HudSystemToastInstance> {
+    if usize::from(instance.slot) >= HUD_TOAST_SLOTS {
+        return None;
+    }
+    Some(HudSystemToastInstance {
+        toast: sanitize_hud_system_toast(instance.toast)?,
+        slot: instance.slot,
+    })
+}
+
 fn sanitize_hud_advancement_toast(toast: HudAdvancementToast) -> Option<HudAdvancementToast> {
     if !toast.visible_portion.is_finite() || usize::from(toast.slot) >= HUD_TOAST_SLOTS {
         return None;
@@ -24103,6 +24149,34 @@ mod tests {
         );
         assert_eq!(wide_width, 210);
         assert_eq!(wide_x, 110.0);
+    }
+
+    #[test]
+    fn system_toast_instances_use_distinct_vanilla_slots() {
+        let toast = HudSystemToast {
+            title: "Download failed".to_string(),
+            message: String::new(),
+            multiline: false,
+            visible_portion: 1.0,
+        };
+        let (first, _, _, first_height, first_offset) = hud_system_toast_instance_layout(
+            PhysicalSize::new(320, 240),
+            &toast,
+            0,
+            &HudFontGlyphMap::new(),
+        );
+        let (second, _, _, second_height, second_offset) = hud_system_toast_instance_layout(
+            PhysicalSize::new(320, 240),
+            &toast,
+            1,
+            &HudFontGlyphMap::new(),
+        );
+
+        assert_eq!(first_height, 32);
+        assert_eq!(second_height, 32);
+        assert_eq!(first_offset, 0.0);
+        assert_eq!(second_offset, 32.0);
+        assert_eq!(second.y, first.y + first_height as f32);
     }
 
     #[test]

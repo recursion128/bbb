@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "3648016ab55a69affb1d5080ce1d89b76fdd0d3de97c55fede3472b66fe1fbdf"
+      "sha256": "439c4034ef4d2666f92d6fa20b721c919ce848f8d870d298fea19e0a020abdf6"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -670,28 +670,42 @@
         "crates/bbb-pack/src/server_pack.rs#rejects_parent_traversal_and_removes_staging_directory",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
-        "crates/bbb-net/src/resource_pack.rs#server_pack_download_rejects_hash_mismatch_and_cleans_partial_file",
+        "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+        "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+        "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+        "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+        "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+        "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+        "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials",
         "crates/bbb-net/src/resource_pack.rs#vanilla_proxy_arguments_fall_back_and_require_both_credentials",
         "crates/bbb-native/src/startup.rs#args_project_vanilla_socks_proxy_without_exposing_password",
         "crates/bbb-native/src/resource_pack_runtime.rs#default_server_pack_cache_uses_vanilla_game_directory_downloads",
+        "crates/bbb-native/src/resource_pack_runtime.rs#server_pack_runtime_initializes_the_exact_vanilla_download_queue_root",
+        "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
         "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_emits_push_and_response_events",
         "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_emits_push_and_response_events",
         "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
         "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
         "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
         "crates/bbb-native/src/resource_pack_runtime.rs#download_progress_preserves_batch_counts_and_terminal_failure",
+        "crates/bbb-native/src/resource_pack_runtime.rs#download_progress_ignores_a_pack_from_another_sequential_batch",
         "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
-        "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_other_inactive_pack_in_the_same_batch",
+        "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches",
+        "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
         "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
         "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
         "crates/bbb-native/src/resource_pack_runtime.rs#dropping_runtime_removes_materialized_session_directory",
         "crates/bbb-native/src/runtime/tests.rs#server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide",
         "crates/bbb-renderer/src/hud.rs#system_toast_sanitizes_text_and_visible_portion",
-        "scripts/playable_gate.py"
+        "crates/bbb-renderer/src/hud.rs#system_toast_instances_use_distinct_vanilla_slots",
+        "scripts/playable_gate.py",
+        "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
       ],
-      "owner_count": 26
+      "owner_count": 68,
+      "owner_evidence_count": 68,
+      "owner_gap_count": 4
     },
     "scope-client-level-noop-hooks": {
       "bbb_evidence": [
@@ -721,7 +735,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 50
+      "owner_count": 52
     },
     "scope-support-accessors": {
       "bbb_evidence": [
@@ -11340,6 +11354,16 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#clearClientLevel(final Screen screen)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#impl Drop for ServerResourcePackRuntime",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn cleanup_removed_packs"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#dropping_runtime_removes_materialized_session_directory",
+          "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34593,6 +34617,19 @@
       "vanilla_owner": "net.minecraft.client.resources.language.LanguageManager#setSelected(final String code)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "constructor",
@@ -34607,6 +34644,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#DownloadedPackSource(final Minecraft minecraft,final Path packCache,final GameConfig.UserData user)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34621,6 +34671,16 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#allowServerPacks()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#impl Drop for ServerResourcePackRuntime",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn cleanup_removed_packs"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#dropping_runtime_removes_materialized_session_directory",
+          "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34635,6 +34695,16 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#cleanupAfterDisconnect()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#impl Drop for ServerResourcePackRuntime",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn cleanup_removed_packs"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#dropping_runtime_removes_materialized_session_directory",
+          "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34649,6 +34719,25 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#close()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The local-path pack entry is called by integrated-world loading, while the only other wait-for-feedback caller is Realms. Both are outside the declared external multiplayer client surface; ordinary server-controlled packs use pushPack and packet feedback.",
+          "reopen_condition": "BBB adds integrated-world or Realms connection support.",
+          "vanilla_basis": [
+            "net/minecraft/client/resources/server/DownloadedPackSource.java:313-315,369-389",
+            "net/minecraft/client/resources/server/ServerPackManager.java:58-74",
+            "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java:595-597",
+            "com/mojang/realmsclient/util/task/GetServerDetailsTask.java:149-153"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34663,6 +34752,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#configureForLocalWorld()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34677,6 +34779,13 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#configureForServerControl(final Connection connection,final ServerPackManager.PackPromptStatus packPromptStatus)"
     },
     {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Replace eager extraction with direct/lazy ZIP lookup and enumeration that preserves Vanilla duplicate-entry and file/directory-collision behavior.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the downloaded archive behind FilePackResources/ZipFile, while BBB still eagerly extracts it with extra entry, path, ratio, and expanded-size limits."
+        }
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34691,6 +34800,13 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#configureSource(final List <Pack> packs)"
     },
     {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Route all toast families through one five-slot queue with multi-slot reservation, mixed-family ordering, and one visibility-change sound per update.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Server-pack batches have distinct toast identities, but server-pack and other toast families do not yet share one ToastManager admission and occupied-slot owner."
+        }
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34705,6 +34821,22 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#createDownloadNotifier(final int totalCount)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34719,6 +34851,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#createDownloader(final DownloadQueue downloadQueue,final Executor mainThreadExecutor,final User user,final Proxy proxy)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34733,6 +34878,20 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#createPackResponseSender(final Connection connection)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+          "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+          "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+          "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34747,6 +34906,13 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#createReloadConfig()"
     },
     {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Replace eager extraction with direct/lazy ZIP lookup and enumeration that preserves Vanilla duplicate-entry and file/directory-collision behavior.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the downloaded archive behind FilePackResources/ZipFile, while BBB still eagerly extracts it with extra entry, path, ratio, and expanded-size limits."
+        }
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34761,6 +34927,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#createRepositorySource()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34775,6 +34954,13 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#createUpdateScheduler(final Executor mainThreadExecutor)"
     },
     {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Replace eager extraction with direct/lazy ZIP lookup and enumeration that preserves Vanilla duplicate-entry and file/directory-collision behavior.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the downloaded archive behind FilePackResources/ZipFile, while BBB still eagerly extracts it with extra entry, path, ratio, and expanded-size limits."
+        }
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34789,6 +34975,20 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#loadRequestedPacks(final List <PackReloadConfig.IdAndPath> packsToLoad)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+          "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+          "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+          "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34803,6 +35003,20 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#onRecovery()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+          "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+          "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+          "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34817,6 +35031,20 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#onRecoveryFailure()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+          "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+          "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+          "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34831,6 +35059,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#onReloadSuccess()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34845,6 +35086,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#popAll()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34859,6 +35113,25 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#popPack(final UUID id)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The local-path pack entry is called by integrated-world loading, while the only other wait-for-feedback caller is Realms. Both are outside the declared external multiplayer client surface; ordinary server-controlled packs use pushPack and packet feedback.",
+          "reopen_condition": "BBB adds integrated-world or Realms connection support.",
+          "vanilla_basis": [
+            "net/minecraft/client/resources/server/DownloadedPackSource.java:313-315,369-389",
+            "net/minecraft/client/resources/server/ServerPackManager.java:58-74",
+            "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java:595-597",
+            "com/mojang/realmsclient/util/task/GetServerDetailsTask.java:149-153"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34873,6 +35146,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#pushLocalPack(final UUID id,final Path path)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34887,6 +35173,19 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#pushPack(final UUID id,final URL url,final @Nullable String hash)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34901,6 +35200,20 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#rejectServerPacks()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+          "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+          "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+          "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34915,6 +35228,22 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#startReload(final PackReloadConfig.Callbacks callbacks)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34929,6 +35258,25 @@
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#tryParseSha1Hash(final @Nullable String hash)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The local-path pack entry is called by integrated-world loading, while the only other wait-for-feedback caller is Realms. Both are outside the declared external multiplayer client surface; ordinary server-controlled packs use pushPack and packet feedback.",
+          "reopen_condition": "BBB adds integrated-world or Realms connection support.",
+          "vanilla_basis": [
+            "net/minecraft/client/resources/server/DownloadedPackSource.java:313-315,369-389",
+            "net/minecraft/client/resources/server/ServerPackManager.java:58-74",
+            "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java:595-597",
+            "com/mojang/realmsclient/util/task/GetServerDetailsTask.java:149-153"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
@@ -34941,6 +35289,607 @@
         "path": "net/minecraft/client/resources/server/DownloadedPackSource.java"
       },
       "vanilla_owner": "net.minecraft.client.resources.server.DownloadedPackSource#waitForPackFeedback(final UUID packId)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#ServerPackManager(final PackDownloader downloader,final PackLoadFeedback packLoadFeedback,final PackReloadConfig reloadConfig,final Runnable updateRequest,final ServerPackManager.PackPromptStatus packPromptStatus)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 24,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#ServerPackManager(final PackDownloader downloader,final PackLoadFeedback packLoadFeedback,final PackReloadConfig reloadConfig,final Runnable updateRequest,final ServerPackManager.PackPromptStatus packPromptStatus)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#acceptPack(final ServerPackManager.ServerPackData pack)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 86,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#acceptPack(final ServerPackManager.ServerPackData pack)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#allowServerPacks()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 117,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#allowServerPacks()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#cleanupRemovedPacks()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 154,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#cleanupRemovedPacks()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#findPackInfo(final UUID id)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 91,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#findPackInfo(final UUID id)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#markExistingPacksAsRemoved(final UUID id)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 42,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#markExistingPacksAsRemoved(final UUID id)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#onDownload(final Collection <ServerPackManager.ServerPackData> data,final DownloadQueue.BatchResult result)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 173,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#onDownload(final Collection <ServerPackManager.ServerPackData> data,final DownloadQueue.BatchResult result)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#popAll()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 109,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#popAll()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#popPack(final UUID id)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 101,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#popPack(final UUID id)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The local-path pack entry is called by integrated-world loading, while the only other wait-for-feedback caller is Realms. Both are outside the declared external multiplayer client surface; ordinary server-controlled packs use pushPack and packet feedback.",
+          "reopen_condition": "BBB adds integrated-world or Realms connection support.",
+          "vanilla_basis": [
+            "net/minecraft/client/resources/server/DownloadedPackSource.java:313-315,369-389",
+            "net/minecraft/client/resources/server/ServerPackManager.java:58-74",
+            "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java:595-597",
+            "com/mojang/realmsclient/util/task/GetServerDetailsTask.java:149-153"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#pushLocalPack(final UUID id,final Path path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 58,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#pushLocalPack(final UUID id,final Path path)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#pushNewPack(final UUID id,final ServerPackManager.ServerPackData pack)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 76,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#pushNewPack(final UUID id,final ServerPackManager.ServerPackData pack)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#pushPack(final UUID id,final URL url,final @Nullable HashCode hash)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 50,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#pushPack(final UUID id,final URL url,final @Nullable HashCode hash)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#registerForUpdate()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 38,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#registerForUpdate()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#rejectServerPacks()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 129,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#rejectServerPacks()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#resetPromptStatus()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 141,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#resetPromptStatus()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#tick()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 145,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#tick()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
+          "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
+          "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
+          "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_preparation_failure_fails_every_new_pack_across_queued_batches",
+          "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#triggerReloadIfNeeded()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 230,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#triggerReloadIfNeeded()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager#updateDownloads()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 200,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager#updateDownloads()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager.RemovalReason#RemovalReason(final PackLoadFeedback.@Nullable FinalResult serverResponse)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 349,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager.RemovalReason#RemovalReason(final PackLoadFeedback.@Nullable FinalResult serverResponse)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager.ServerPackData#ServerPackData(final UUID id,final URL url,final @Nullable HashCode hash)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 364,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager.ServerPackData#ServerPackData(final UUID id,final URL url,final @Nullable HashCode hash)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager.ServerPackData#isRemoved()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 376,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager.ServerPackData#isRemoved()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn apply_resource_pack_push",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn reconcile_world",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn resolve_download_batches"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+          "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
+          "crates/bbb-native/src/resource_pack_runtime.rs#one_download_failure_discards_every_other_inactive_pack_across_queued_batches"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.client.resources.server.ServerPackManager.ServerPackData#setRemovalReasonIfNotSet(final ServerPackManager.RemovalReason removalReason)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 370,
+        "path": "net/minecraft/client/resources/server/ServerPackManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.resources.server.ServerPackManager.ServerPackData#setRemovalReasonIfNotSet(final ServerPackManager.RemovalReason removalReason)"
     },
     {
       "category": "out-of-scope",
@@ -37902,6 +38851,246 @@
       "vanilla_owner": "net.minecraft.client.telemetry.WorldSessionTelemetryManager#worldSessionStart()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadCacheCleaner#listFilesWithModificationTimes(final Path cacheDir)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 69,
+        "path": "net/minecraft/server/packs/DownloadCacheCleaner.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadCacheCleaner#listFilesWithModificationTimes(final Path cacheDir)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadCacheCleaner#prioritizeFilesInDirs(final List <DownloadCacheCleaner.PathAndTime> filesAndDates)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 88,
+        "path": "net/minecraft/server/packs/DownloadCacheCleaner.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadCacheCleaner#prioritizeFilesInDirs(final List <DownloadCacheCleaner.PathAndTime> filesAndDates)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadCacheCleaner#vacuumCacheDir(final Path cacheDir,final int maxFiles)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 26,
+        "path": "net/minecraft/server/packs/DownloadCacheCleaner.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadCacheCleaner#vacuumCacheDir(final Path cacheDir,final int maxFiles)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadQueue#DownloadQueue(final Path cacheDir)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 39,
+        "path": "net/minecraft/server/packs/DownloadQueue.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadQueue#DownloadQueue(final Path cacheDir)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#impl Drop for ServerResourcePackRuntime",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn cleanup_removed_packs"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#dropping_runtime_removes_materialized_session_directory",
+          "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadQueue#close()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 99,
+        "path": "net/minecraft/server/packs/DownloadQueue.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadQueue#close()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadQueue#downloadBatch(final DownloadQueue.BatchConfig config,final Map <UUID, DownloadQueue.DownloadRequest> requests)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 93,
+        "path": "net/minecraft/server/packs/DownloadQueue.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadQueue#downloadBatch(final DownloadQueue.BatchConfig config,final Map <UUID, DownloadQueue.DownloadRequest> requests)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadQueue#getFileInfo(final Path downloadedFile)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 82,
+        "path": "net/minecraft/server/packs/DownloadQueue.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadQueue#getFileInfo(final Path downloadedFile)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadQueue#runDownload(final DownloadQueue.BatchConfig config,final Map <UUID, DownloadQueue.DownloadRequest> requests)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 46,
+        "path": "net/minecraft/server/packs/DownloadQueue.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadQueue#runDownload(final DownloadQueue.BatchConfig config,final Map <UUID, DownloadQueue.DownloadRequest> requests)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub fn initialize_server_pack_download_cache",
+          "crates/bbb-net/src/resource_pack.rs#pub fn append_server_pack_download_log",
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn start_pack_batch"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_runtime_download_writes_vanilla_download_queue_event",
+          "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.server.packs.DownloadQueue.BatchResult#BatchResult()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 109,
+        "path": "net/minecraft/server/packs/DownloadQueue.java"
+      },
+      "vanilla_owner": "net.minecraft.server.packs.DownloadQueue.BatchResult#BatchResult()"
+    },
+    {
       "category": "resources",
       "domain": "resources",
       "kind": "constructor",
@@ -38418,6 +39607,336 @@
         "path": "net/minecraft/server/packs/resources/MultiPackResourceManager.java"
       },
       "vanilla_owner": "net.minecraft.server.packs.resources.MultiPackResourceManager#listResources(final String directory,final Predicate <Identifier> filter)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The private utility constructor has an empty body and no state projection; the reachable static download methods are inventoried separately.",
+          "reopen_condition": "The constructor gains a body or becomes reachable.",
+          "vanilla_basis": [
+            "net/minecraft/util/HttpUtil.java:32-33"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#HttpUtil()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 32,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#HttpUtil()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#cachedFilePath(final Path targetDir,final HashCode requestedHash)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 166,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#cachedFilePath(final Path targetDir,final HashCode requestedHash)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#checkExistingFile(final Path file,final HashFunction hashFunction,final HashCode expectedHash)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 153,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#checkExistingFile(final Path file,final HashFunction hashFunction,final HashCode expectedHash)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#downloadAndHash(final HashFunction hashFunction,final int maxSize,final HttpUtil.DownloadProgressListener listener,final InputStream input,final Path downloadFile)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 170,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#downloadAndHash(final HashFunction hashFunction,final int maxSize,final HttpUtil.DownloadProgressListener listener,final InputStream input,final Path downloadFile)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#downloadFile(final Path targetDir,final URL url,final Map <String, String> headers,final HashFunction hashFunction,final @Nullable HashCode requestedHash,final int maxSize,final Proxy proxy,final HttpUtil.DownloadProgressListener listener)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 35,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#downloadFile(final Path targetDir,final URL url,final Map <String, String> headers,final HashFunction hashFunction,final @Nullable HashCode requestedHash,final int maxSize,final Proxy proxy,final HttpUtil.DownloadProgressListener listener)"
+    },
+    {
+      "category": "out-of-scope",
+      "domain": "singleplayer",
+      "kind": "method",
+      "mechanism_id": "scope-singleplayer-integrated",
+      "owner_id": "method:net.minecraft.util.HttpUtil#getAvailablePort()",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
+      "source": {
+        "line": 199,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#getAvailablePort()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#hashFile(final Path file,final HashFunction hashFunction)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 140,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#hashFile(final Path file,final HashFunction hashFunction)"
+    },
+    {
+      "category": "out-of-scope",
+      "domain": "singleplayer",
+      "kind": "method",
+      "mechanism_id": "scope-singleplayer-integrated",
+      "owner_id": "method:net.minecraft.util.HttpUtil#isPortAvailable(final int port)",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
+      "source": {
+        "line": 207,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#isPortAvailable(final int port)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
+          "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
+          "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
+          "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil#updateModificationTime(final Path targetFile)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 132,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil#updateModificationTime(final Path targetFile)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil.DownloadProgressListener#downloadStart(OptionalLong sizeBytes)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 222,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil.DownloadProgressListener#downloadStart(OptionalLong sizeBytes)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil.DownloadProgressListener#downloadedBytes(long bytesSoFar)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 224,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil.DownloadProgressListener#downloadedBytes(long bytesSoFar)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil.DownloadProgressListener#requestFinished(boolean success)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 226,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil.DownloadProgressListener#requestFinished(boolean success)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/resource_pack.rs#pub async fn download_server_pack_with_progress",
+          "crates/bbb-net/src/resource_pack.rs#fn download_server_pack_blocking"
+        ],
+        "tests": [
+          "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-server-pack-lifecycle",
+      "owner_id": "method:net.minecraft.util.HttpUtil.DownloadProgressListener#requestStart()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 220,
+        "path": "net/minecraft/util/HttpUtil.java"
+      },
+      "vanilla_owner": "net.minecraft.util.HttpUtil.DownloadProgressListener#requestStart()"
     },
     {
       "category": "packet-table",
@@ -50112,6 +51631,7 @@
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
+      "resources-server-pack-lifecycle",
       "audio-sound-manager-engine",
       "security-secure-chat-reporting",
       "rendering-frame-order",
@@ -50225,6 +51745,10 @@
       "sha256": "db787798e468532b36ab8d2f530193c7f155d193dd709007ec1418ddf39a3537"
     },
     {
+      "path": "com/mojang/realmsclient/util/task/GetServerDetailsTask.java",
+      "sha256": "14766b6c9ad6bceb93a3fd6410c3f4b2d4662a768711cdaa591b49a963d2126f"
+    },
+    {
       "path": "net/minecraft/CrashReport.java",
       "sha256": "cbed37a79c30f57960ed709eacf815ab3f3e38ecafece700f5029fa625f9b9b1"
     },
@@ -50299,6 +51823,10 @@
     {
       "path": "net/minecraft/client/gui/screens/worldselection/SelectWorldScreen.java",
       "sha256": "0749c3bee56cd81ca24a8c78fc23d0bc3ca0c86ea224c2f61437e4efd2fdd8f6"
+    },
+    {
+      "path": "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java",
+      "sha256": "d59d6f9fd703cdf43e9c192cdded21a13e2d542ae18b9e004c78e913c5b6b438"
     },
     {
       "path": "net/minecraft/client/main/Main.java",
@@ -51525,6 +53053,10 @@
       "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
     },
     {
+      "path": "net/minecraft/client/resources/server/ServerPackManager.java",
+      "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+    },
+    {
       "path": "net/minecraft/client/resources/sounds/AbstractSoundInstance.java",
       "sha256": "de77877ff74595b8af36acd8fa2cf3376d2d1ffb581222199461ec5284da85e1"
     },
@@ -51689,12 +53221,24 @@
       "sha256": "48e36df8e652face1c29b76d22585564c0123f28c6121f22aaedbd48f6ec651e"
     },
     {
+      "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
+      "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
+    },
+    {
+      "path": "net/minecraft/server/packs/DownloadQueue.java",
+      "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
+    },
+    {
       "path": "net/minecraft/server/packs/resources/FallbackResourceManager.java",
       "sha256": "b4fbc95f05584e2a8ae29bab0c553eab57d54ab743b86cafdc8dcc2be39bfb5c"
     },
     {
       "path": "net/minecraft/server/packs/resources/MultiPackResourceManager.java",
       "sha256": "2bf7a1fb457e0c71b4663651ad97bcfb9075935de5891bedca65d15124906d3e"
+    },
+    {
+      "path": "net/minecraft/util/HttpUtil.java",
+      "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
     },
     {
       "path": "net/minecraft/world/entity/EntityType.java",
@@ -51741,7 +53285,7 @@
       "menu-screen": 25,
       "movement": 20,
       "movement-report": 4,
-      "out-of-scope": 225,
+      "out-of-scope": 227,
       "packet-table": 256,
       "particle-provider": 117,
       "particle-routing": 6,
@@ -51762,7 +53306,7 @@
       "render-section": 29,
       "render-step": 131,
       "resource-consumer": 105,
-      "resources": 82,
+      "resources": 124,
       "respawn-data": 9,
       "screen-open": 9,
       "security": 30,
@@ -51796,9 +53340,9 @@
       "realms": 100,
       "registries": 123,
       "rendering": 287,
-      "resources": 102,
+      "resources": 144,
       "security": 30,
-      "singleplayer": 50,
+      "singleplayer": 52,
       "startup": 19,
       "support": 228,
       "telemetry": 17,
@@ -51807,12 +53351,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1359,
-      "out-of-scope": 225,
+      "decision": 1401,
+      "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3004,
-    "owner_count": 3004,
+    "mapped_owner_count": 3048,
+    "owner_count": 3048,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"
