@@ -204,6 +204,11 @@ pub enum NetEvent {
     /// carrying any pending chat acknowledgement, and the connection stays
     /// live (reading packets) until that answer arrives.
     StartConfiguration,
+    /// The server finished sending configuration data.  The connection must
+    /// remain in configuration and withhold its acknowledgement until the
+    /// canonical world validates and freezes the collected registries, then
+    /// answers with [`crate::NetCommand::FinishConfiguration`].
+    FinishConfiguration,
     /// A position correction; the canonical world applies it and answers
     /// with [`crate::NetCommand::AcceptTeleport`] carrying the post-apply
     /// transform.  Outgoing player moves are gated until the accept is on

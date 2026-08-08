@@ -67,6 +67,7 @@ pub(crate) enum ConnectionDrive {
     AcknowledgeConfiguration {
         pending_chat_acknowledgement: Option<packets::ChatAcknowledgement>,
     },
+    FinishConfiguration,
     Disconnect,
 }
 
@@ -103,6 +104,7 @@ pub(crate) async fn read_packet_or_drive_connection(
                             pending_chat_acknowledgement,
                         });
                     }
+                    Some(NetCommand::FinishConfiguration) => {}
                     Some(NetCommand::MovePlayer(command)) => {
                         // Vanilla ignores player moves while a teleport awaits
                         // its accept; queueing them would echo stale
@@ -319,6 +321,11 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PlayerLoaded) => {}
                     Some(NetCommand::AcceptTeleport(_)) => {}
                     Some(NetCommand::AcknowledgeConfiguration { .. }) => {}
+                    Some(NetCommand::FinishConfiguration) => {
+                        if matches!(state, ConnectionState::Configuration) {
+                            return Ok(ConnectionDrive::FinishConfiguration);
+                        }
+                    }
                     Some(NetCommand::MovePlayer(_)) => {}
                     Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
@@ -480,6 +487,52 @@ mod tests {
         .expect("drive should not hang")
         .unwrap();
 
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_finishes_configuration_only_after_canonical_command() {
+        let (mut conn, server) = raw_connection_pair().await;
+        let (tx, mut commands) = mpsc::channel(1);
+        tx.send(NetCommand::FinishConfiguration).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Configuration,
+                &mut commands,
+                &mut player_position_state,
+                false,
+            ),
+        )
+        .await
+        .expect("canonical completion should drive the configuration handoff")
+        .unwrap();
+
+        assert!(matches!(result, ConnectionDrive::FinishConfiguration));
+        drop(conn);
+        server.await.unwrap();
+
+        let (mut conn, server) = raw_connection_pair().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::FinishConfiguration).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Login,
+                &mut commands,
+                &mut player_position_state,
+                false,
+            ),
+        )
+        .await
+        .expect("stale completion outside configuration should be ignored")
+        .unwrap();
         assert!(matches!(result, ConnectionDrive::Disconnect));
         server.await.unwrap();
     }

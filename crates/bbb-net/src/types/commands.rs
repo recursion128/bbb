@@ -230,6 +230,10 @@ pub enum NetCommand {
     AcknowledgeConfiguration {
         pending_chat_acknowledgement: Option<ChatAcknowledgement>,
     },
+    /// The canonical world successfully froze the configuration registries;
+    /// the connection may now acknowledge the server's finish packet and
+    /// install the play protocols.
+    FinishConfiguration,
     MovePlayer(PlayerMoveCommand),
     MoveVehicle(VehicleMoveCommand),
     PlayerAction(PlayerAction),

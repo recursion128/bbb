@@ -1276,10 +1276,7 @@ fn configuration_registry_and_tag_projections_commit_at_play_transition() {
     assert!(!piglin_admiring(&world));
 
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::StateChanged {
-        state: bbb_net::ConnectionState::Play,
-    })
-    .unwrap();
+    tx.try_send(NetEvent::FinishConfiguration).unwrap();
     drop(tx);
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),

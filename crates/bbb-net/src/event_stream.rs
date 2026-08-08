@@ -147,6 +147,10 @@ async fn run_event_stream_inner(
                 stream.acknowledge_start_configuration().await?;
                 continue;
             }
+            ConnectionDrive::FinishConfiguration => {
+                stream.finish_configuration().await?;
+                continue;
+            }
             ConnectionDrive::Disconnect => return Ok(()),
         };
         tracing::debug!(
@@ -633,9 +637,22 @@ mod tests {
             .await
             .unwrap();
 
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        assert_eq!(stream.state, ConnectionState::Configuration);
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("finish-configuration event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::FinishConfiguration));
+
+        stream.finish_configuration().await.unwrap();
+
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
-            .expect("finish configuration should be sent")
+            .expect("finish configuration should be sent after canonical completion")
             .unwrap();
         assert_eq!(
             packet_id,

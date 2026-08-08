@@ -31,10 +31,7 @@ impl EventStreamContext {
         let mut transfer = None;
         match packet {
             ConfigurationClientbound::Finish => {
-                let (id, payload) = packets::encode_configuration_finish();
-                self.conn.send_packet(id, &payload).await?;
-                self.state = ConnectionState::Play;
-                emit(&self.events, NetEvent::StateChanged { state: self.state }).await?;
+                emit(&self.events, NetEvent::FinishConfiguration).await?;
             }
             ConfigurationClientbound::Disconnect {
                 reason,
@@ -179,5 +176,19 @@ impl EventStreamContext {
             }
         }
         Ok(transfer)
+    }
+
+    pub(super) async fn finish_configuration(&mut self) -> Result<()> {
+        if !matches!(self.state, ConnectionState::Configuration) {
+            bail!(
+                "cannot finish configuration while connection state is {:?}",
+                self.state
+            );
+        }
+
+        let (id, payload) = packets::encode_configuration_finish();
+        self.conn.send_packet(id, &payload).await?;
+        self.state = ConnectionState::Play;
+        emit(&self.events, NetEvent::StateChanged { state: self.state }).await
     }
 }

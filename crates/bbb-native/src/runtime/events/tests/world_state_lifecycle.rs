@@ -76,10 +76,7 @@ fn login_starts_fresh_registry_session_but_play_reconfiguration_keeps_access() {
         state: bbb_net::ConnectionState::Configuration,
     })
     .unwrap();
-    tx.try_send(NetEvent::StateChanged {
-        state: bbb_net::ConnectionState::Play,
-    })
-    .unwrap();
+    tx.try_send(NetEvent::FinishConfiguration).unwrap();
     let mut counters = NetCounters::default();
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -148,16 +145,14 @@ fn invalid_configuration_registry_commit_requests_disconnect() {
     });
 
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::StateChanged {
-        state: bbb_net::ConnectionState::Play,
-    })
-    .unwrap();
+    tx.try_send(NetEvent::FinishConfiguration).unwrap();
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx)),
         1
     );
 
     assert_eq!(command_rx.try_recv().unwrap(), NetCommand::Disconnect);
+    assert!(command_rx.try_recv().is_err());
     assert_eq!(
         world
             .apply_diagnostics()
@@ -166,6 +161,35 @@ fn invalid_configuration_registry_commit_requests_disconnect() {
             .map(|error| error.source.as_str()),
         Some("registry_configuration_validation")
     );
+}
+
+#[test]
+fn valid_configuration_registry_commit_requests_finish_acknowledgement() {
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+    tx.try_send(NetEvent::FinishConfiguration).unwrap();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx)),
+        2
+    );
+
+    assert_eq!(
+        command_rx.try_recv().unwrap(),
+        NetCommand::FinishConfiguration
+    );
+    assert!(command_rx.try_recv().is_err());
+    assert!(world
+        .apply_diagnostics()
+        .last_apply_error
+        .as_ref()
+        .is_none());
 }
 
 #[test]

@@ -300,18 +300,15 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 }
                 world.begin_registry_configuration();
             }
-            NetEvent::StateChanged {
-                state: ConnectionState::Play,
-            } => match world.finish_registry_configuration() {
+            NetEvent::FinishConfiguration => match world.finish_registry_configuration() {
                 Ok(()) => {
                     if let Some(audio_events) = audio_events.as_deref_mut() {
                         synchronize_audio_registries_from_world(world, audio_events);
                     }
+                    queue_connection_answer(net_commands, NetCommand::FinishConfiguration);
                 }
                 Err(_) => {
-                    if let Some(tx) = net_commands {
-                        let _ = tx.try_send(NetCommand::Disconnect);
-                    }
+                    queue_connection_answer(net_commands, NetCommand::Disconnect);
                 }
             },
             NetEvent::ServicesPublicKeys {
