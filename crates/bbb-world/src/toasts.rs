@@ -20,6 +20,14 @@ pub struct ClientToastState {
     /// `ToastManager.clear()` leaves the music instance intact.
     #[serde(default)]
     pub now_playing: ClientNowPlayingToastState,
+    /// Vanilla `Options.joinedFirstServer`, consumed by the only production
+    /// owner that creates a duration-bound `TutorialToast`.
+    #[serde(default)]
+    pub joined_first_server: bool,
+    /// Retains Minecraft's `socialInteractionsToast` handle even after its
+    /// natural timeout so the key path can issue the same idempotent hide.
+    #[serde(default)]
+    pub social_interactions_tutorial_owned: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,11 +60,30 @@ pub enum ClientToastEventKind {
         category_item: ItemStackSummary,
         unlocked_item: ItemStackSummary,
     },
-    Tutorial {
-        toast_id: u64,
-        kind: TutorialToastKind,
-    },
+    Tutorial(ClientTutorialToastEvent),
     System(ClientSystemToastEvent),
+}
+
+/// Stable identity for a tutorial toast independent of the shared queue's
+/// sequence. Step-owned ids may overlap the one process-owned social toast.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientTutorialToastToken {
+    Step(u64),
+    SocialInteractions,
+}
+
+/// Ordered mutations for Vanilla `TutorialToast` objects. Lifetime and slide
+/// state remain native because both are measured in wall-clock milliseconds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientTutorialToastEvent {
+    Show {
+        token: ClientTutorialToastToken,
+        kind: TutorialToastKind,
+        time_to_display_ms: u32,
+    },
+    Hide {
+        token: ClientTutorialToastToken,
+    },
 }
 
 /// One call-site-ordered system-toast mutation.  The native ToastManager uses
@@ -85,7 +112,7 @@ impl ClientToastEvent {
                 display,
             } => Some((advancement_id, display)),
             ClientToastEventKind::Recipe { .. }
-            | ClientToastEventKind::Tutorial { .. }
+            | ClientToastEventKind::Tutorial(_)
             | ClientToastEventKind::System(_) => None,
         }
     }
@@ -98,14 +125,14 @@ impl ClientToastEvent {
                 unlocked_item,
             } => Some((*recipe_id, category_item, unlocked_item)),
             ClientToastEventKind::Advancement { .. }
-            | ClientToastEventKind::Tutorial { .. }
+            | ClientToastEventKind::Tutorial(_)
             | ClientToastEventKind::System(_) => None,
         }
     }
 
-    pub fn tutorial(&self) -> Option<(u64, TutorialToastKind)> {
+    pub fn tutorial(&self) -> Option<ClientTutorialToastEvent> {
         match self.kind {
-            ClientToastEventKind::Tutorial { toast_id, kind } => Some((toast_id, kind)),
+            ClientToastEventKind::Tutorial(event) => Some(event),
             ClientToastEventKind::Advancement { .. }
             | ClientToastEventKind::Recipe { .. }
             | ClientToastEventKind::System(_) => None,
@@ -117,7 +144,7 @@ impl ClientToastEvent {
             ClientToastEventKind::System(event) => Some(event),
             ClientToastEventKind::Advancement { .. }
             | ClientToastEventKind::Recipe { .. }
-            | ClientToastEventKind::Tutorial { .. } => None,
+            | ClientToastEventKind::Tutorial(_) => None,
         }
     }
 }
@@ -192,8 +219,53 @@ impl WorldStore {
     }
 
     pub(crate) fn push_tutorial_toast_event(&mut self, toast_id: u64, kind: TutorialToastKind) {
-        self.push_client_toast_event(ClientToastEventKind::Tutorial { toast_id, kind });
+        self.push_client_toast_event(ClientToastEventKind::Tutorial(
+            ClientTutorialToastEvent::Show {
+                token: ClientTutorialToastToken::Step(toast_id),
+                kind,
+                time_to_display_ms: 0,
+            },
+        ));
         self.counters.tutorial_toast_events = self.counters.tutorial_toast_events.saturating_add(1);
+    }
+
+    /// Apply the `Minecraft.tick` first-multiplayer-server call site before
+    /// the ordinary tutorial owner. The caller uses the return value to queue
+    /// the same-tick `Options.save` effect on the platform thread.
+    pub fn show_social_interactions_tutorial_if_first_join(&mut self) -> bool {
+        if self.level.is_none() || self.client_toasts.joined_first_server {
+            return false;
+        }
+        self.client_toasts.joined_first_server = true;
+        self.client_toasts.social_interactions_tutorial_owned = true;
+        self.push_client_toast_event(ClientToastEventKind::Tutorial(
+            ClientTutorialToastEvent::Show {
+                token: ClientTutorialToastToken::SocialInteractions,
+                kind: TutorialToastKind::SocialInteractions,
+                time_to_display_ms: 8_000,
+            },
+        ));
+        self.counters.tutorial_toast_events = self.counters.tutorial_toast_events.saturating_add(1);
+        true
+    }
+
+    pub fn set_joined_first_server(&mut self, joined: bool) {
+        self.client_toasts.joined_first_server = joined;
+    }
+
+    /// `Minecraft.handleKeybinds` hides the retained toast handle before it
+    /// installs `SocialInteractionsScreen`.
+    pub fn hide_social_interactions_tutorial(&mut self) -> bool {
+        if !self.client_toasts.social_interactions_tutorial_owned {
+            return false;
+        }
+        self.client_toasts.social_interactions_tutorial_owned = false;
+        self.push_client_toast_event(ClientToastEventKind::Tutorial(
+            ClientTutorialToastEvent::Hide {
+                token: ClientTutorialToastToken::SocialInteractions,
+            },
+        ));
+        true
     }
 
     pub(crate) fn push_system_toast_event(&mut self, event: ClientSystemToastEvent) {
@@ -202,9 +274,14 @@ impl WorldStore {
 
     pub(crate) fn clear_client_toasts_for_disconnect(&mut self) {
         let now_playing = std::mem::take(&mut self.client_toasts.now_playing);
+        let joined_first_server = self.client_toasts.joined_first_server;
+        let social_interactions_tutorial_owned =
+            self.client_toasts.social_interactions_tutorial_owned;
         self.client_toasts = ClientToastState {
             generation: self.client_toasts.generation.saturating_add(1),
             now_playing,
+            joined_first_server,
+            social_interactions_tutorial_owned,
             ..ClientToastState::default()
         };
     }
@@ -230,7 +307,7 @@ impl WorldStore {
                         .recipe_book_notification_events_dropped
                         .saturating_add(1);
                 }
-                Some(ClientToastEventKind::Tutorial { .. }) => {
+                Some(ClientToastEventKind::Tutorial(_)) => {
                     self.counters.tutorial_toast_events_dropped = self
                         .counters
                         .tutorial_toast_events_dropped

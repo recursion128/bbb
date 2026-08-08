@@ -14,9 +14,10 @@ use bbb_renderer::{
     HUD_TOAST_SLOTS,
 };
 use bbb_world::{
-    ClientSystemToastEvent, ClientToastEvent, ClientTutorialToastState, LocalSoundEventState,
-    ResourcePackDownloadPhase, ResourcePackDownloadState, ResourcePackDownloadToastAction,
-    SoundHolderState, TutorialToastKind, WorldStore,
+    ClientSystemToastEvent, ClientToastEvent, ClientTutorialToastEvent, ClientTutorialToastState,
+    ClientTutorialToastToken, LocalSoundEventState, ResourcePackDownloadPhase,
+    ResourcePackDownloadState, ResourcePackDownloadToastAction, SoundHolderState,
+    TutorialToastKind, WorldStore,
 };
 
 use crate::terrain_runtime::TerrainTextureState;
@@ -370,13 +371,15 @@ pub(super) struct RecipeToastItem {
 
 #[derive(Debug)]
 pub(super) struct TutorialToastState {
-    id: u64,
+    pub(super) token: ClientTutorialToastToken,
     icon: HudTutorialToastIcon,
     pub(super) lines: Vec<Vec<HudStyledTextRun>>,
     pub(super) height: u32,
     target_progress: Option<f32>,
     smoothed_progress: Option<f32>,
     last_smoothing_ms: u64,
+    pub(super) time_to_display_ms: u64,
+    pub(super) force_hide: bool,
 }
 
 impl RecipeToastState {
@@ -583,8 +586,26 @@ impl ClientToastRuntime {
                 last_changed_ms: 0,
                 displayed_index: 0,
             })
-        } else if let Some((id, kind)) = event.tutorial() {
-            ClientToast::Tutorial(tutorial_toast_state(id, kind, item_runtime, glyphs))
+        } else if let Some(tutorial) = event.tutorial() {
+            match tutorial {
+                ClientTutorialToastEvent::Show {
+                    token,
+                    kind,
+                    time_to_display_ms,
+                } => ClientToast::Tutorial(tutorial_toast_state(
+                    token,
+                    kind,
+                    u64::from(time_to_display_ms),
+                    item_runtime,
+                    glyphs,
+                )),
+                ClientTutorialToastEvent::Hide { token } => {
+                    if let Some(tutorial) = self.find_tutorial_mut(token) {
+                        tutorial.force_hide = true;
+                    }
+                    return;
+                }
+            }
         } else if let Some(system) = event.system() {
             self.ingest_system_event(system.clone(), item_runtime, glyphs);
             return;
@@ -694,6 +715,20 @@ impl ClientToastRuntime {
             })
     }
 
+    fn find_tutorial_mut(
+        &mut self,
+        token: ClientTutorialToastToken,
+    ) -> Option<&mut TutorialToastState> {
+        self.visible
+            .iter_mut()
+            .map(|instance| &mut instance.toast)
+            .chain(self.queued.iter_mut())
+            .find_map(|toast| match toast {
+                ClientToast::Tutorial(tutorial) if tutorial.token == token => Some(tutorial),
+                _ => None,
+            })
+    }
+
     fn reconcile_tutorial_progress(&mut self, active: Option<ClientTutorialToastState>) {
         for toast in self
             .visible
@@ -704,7 +739,9 @@ impl ClientToastRuntime {
             let ClientToast::Tutorial(tutorial) = toast else {
                 continue;
             };
-            if let Some(active) = active.filter(|active| active.id == tutorial.id) {
+            if let Some(active) =
+                active.filter(|active| tutorial.token == ClientTutorialToastToken::Step(active.id))
+            {
                 tutorial.target_progress = active
                     .progress_millionths
                     .map(|progress| progress as f32 / 1_000_000.0);
@@ -1087,7 +1124,14 @@ impl ClientToastInstance {
                 )
             }
             ClientToast::Tutorial(tutorial) => {
-                if let (Some(smoothed), Some(target)) = (
+                if tutorial.time_to_display_ms > 0 {
+                    let progress = (self.fully_visible_ms as f32
+                        / tutorial.time_to_display_ms as f32)
+                        .min(1.0);
+                    tutorial.target_progress = Some(progress);
+                    tutorial.smoothed_progress = Some(progress);
+                    tutorial.last_smoothing_ms = self.fully_visible_ms;
+                } else if let (Some(smoothed), Some(target)) = (
                     tutorial.smoothed_progress.as_mut(),
                     tutorial.target_progress,
                 ) {
@@ -1099,7 +1143,16 @@ impl ClientToastInstance {
                     *smoothed += (target - *smoothed) * smoothing.clamp(0.0, 1.0);
                     tutorial.last_smoothing_ms = self.fully_visible_ms;
                 }
-                active_tutorial_toast.is_some_and(|active| active.id == tutorial.id)
+                !tutorial.force_hide
+                    && if tutorial.time_to_display_ms > 0 {
+                        // The duration-bound constructor hides strictly after
+                        // the requested duration, not at its final sample.
+                        self.fully_visible_ms <= tutorial.time_to_display_ms
+                    } else {
+                        active_tutorial_toast.is_some_and(|active| {
+                            tutorial.token == ClientTutorialToastToken::Step(active.id)
+                        })
+                    }
             }
             ClientToast::System(system) => {
                 if system.changed {
@@ -1332,8 +1385,9 @@ fn download_system_toast_content(
 }
 
 fn tutorial_toast_state(
-    id: u64,
+    token: ClientTutorialToastToken,
     kind: TutorialToastKind,
+    time_to_display_ms: u64,
     item_runtime: Option<&NativeItemRuntime>,
     glyphs: &HudFontGlyphMap,
 ) -> TutorialToastState {
@@ -1410,6 +1464,22 @@ fn tutorial_toast_state(
                 "The recipe book can help",
             ),
         ),
+        TutorialToastKind::SocialInteractions => {
+            let bound_key = crate::client_options::key_bindings::bound_key_display_key(
+                "key.socialInteractions",
+            )
+            .unwrap_or("key.keyboard.p");
+            let social_interactions = key(bound_key, "P");
+            (
+                HudTutorialToastIcon::SocialInteractions,
+                plain("tutorial.socialInteractions.title", "Social Interactions"),
+                with_keys(
+                    "tutorial.socialInteractions.description",
+                    "Press %s to open",
+                    &[social_interactions],
+                ),
+            )
+        }
     };
     for run in &mut title {
         run.color = Some(0x50_0050);
@@ -1425,13 +1495,15 @@ fn tutorial_toast_state(
         .saturating_add(3);
     let progress = kind.progressable().then_some(0.0);
     TutorialToastState {
-        id,
+        token,
         icon,
         lines,
         height,
         target_progress: progress,
         smoothed_progress: progress,
         last_smoothing_ms: 0,
+        time_to_display_ms,
+        force_hide: false,
     }
 }
 

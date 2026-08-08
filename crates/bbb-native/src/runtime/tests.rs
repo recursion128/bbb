@@ -14366,6 +14366,212 @@ fn tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smoo
 }
 
 #[test]
+fn social_tutorial_toast_freezes_localized_key_content_and_hides_strictly_after_8000ms() {
+    let first_root = unique_runtime_temp_dir("social-tutorial-first");
+    let second_root = unique_runtime_temp_dir("social-tutorial-second");
+    for root in [&first_root, &second_root] {
+        write_runtime_bow_item_assets(root);
+    }
+    write_runtime_json(
+        &runtime_assets_dir(&first_root)
+            .join("lang")
+            .join("en_us.json"),
+        r#"{
+            "tutorial.socialInteractions.title": "First Social",
+            "tutorial.socialInteractions.description": "Tap %s first",
+            "key.keyboard.p": "First P"
+        }"#,
+    );
+    write_runtime_json(
+        &runtime_assets_dir(&second_root)
+            .join("lang")
+            .join("en_us.json"),
+        r#"{
+            "tutorial.socialInteractions.title": "Reloaded Social",
+            "tutorial.socialInteractions.description": "Use %s after reload",
+            "key.keyboard.p": "Reloaded P"
+        }"#,
+    );
+    let first_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&first_root).unwrap()).unwrap();
+    let second_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&second_root).unwrap()).unwrap();
+    let mut world = runtime_tutorial_world();
+    assert!(world.show_social_interactions_tutorial_if_first_join());
+
+    let mut glyphs = bbb_renderer::HudFontGlyphMap::new();
+    let glyph = bbb_renderer::HudAsciiGlyph {
+        width: 5,
+        height: 8,
+        advance: 6,
+        ..bbb_renderer::HudAsciiGlyph::default()
+    };
+    for ch in ' '..='~' {
+        glyphs.insert_first_wins(ch, glyph);
+    }
+
+    let start = Instant::now();
+    let mut runtime = ClientToastRuntime::default();
+    runtime.update_with_resources(&world, Some(&first_runtime), &glyphs, start);
+    runtime.update_with_resources(&world, Some(&second_runtime), &glyphs, start);
+    runtime.update_with_resources(
+        &world,
+        Some(&second_runtime),
+        &glyphs,
+        start + Duration::from_millis(600),
+    );
+
+    let tutorial = runtime
+        .visible
+        .iter()
+        .find(|instance| matches!(instance.toast, ClientToast::Tutorial(_)))
+        .expect("social tutorial is admitted");
+    let ClientToast::Tutorial(tutorial_state) = &tutorial.toast else {
+        unreachable!()
+    };
+    assert_eq!(
+        tutorial_state.token,
+        bbb_world::ClientTutorialToastToken::SocialInteractions
+    );
+    assert_eq!(tutorial_state.time_to_display_ms, 8_000);
+    assert_eq!(tutorial_state.lines.len(), 2);
+    assert_eq!(
+        tutorial_state.lines[0]
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "First Social"
+    );
+    assert_eq!(
+        tutorial_state.lines[1]
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "Tap First P first"
+    );
+    assert!(tutorial_state.lines[1]
+        .iter()
+        .any(|run| run.text == "First P" && run.style.bold));
+
+    runtime.update_with_resources(
+        &world,
+        Some(&second_runtime),
+        &glyphs,
+        start + Duration::from_millis(8_600),
+    );
+    let projected = runtime.project_tutorials();
+    assert_eq!(projected.len(), 1);
+    assert_eq!(
+        projected[0].icon,
+        bbb_renderer::HudTutorialToastIcon::SocialInteractions
+    );
+    assert_eq!(projected[0].progress, Some(1.0));
+    assert!(runtime.visible.iter().any(|instance| {
+        matches!(
+            &instance.toast,
+            ClientToast::Tutorial(tutorial)
+                if tutorial.token == bbb_world::ClientTutorialToastToken::SocialInteractions
+                    && instance.showing
+        )
+    }));
+
+    runtime.update_with_resources(
+        &world,
+        Some(&second_runtime),
+        &glyphs,
+        start + Duration::from_millis(8_601),
+    );
+    assert!(runtime.visible.iter().any(|instance| {
+        matches!(
+            &instance.toast,
+            ClientToast::Tutorial(tutorial)
+                if tutorial.token == bbb_world::ClientTutorialToastToken::SocialInteractions
+                    && !instance.showing
+        )
+    }));
+
+    std::fs::remove_dir_all(first_root).unwrap();
+    std::fs::remove_dir_all(second_root).unwrap();
+}
+
+#[test]
+fn first_multiplayer_tutorial_queues_the_joined_sentinel_in_the_same_effect_batch_once() {
+    #[derive(Default)]
+    struct RecordingEffects(Vec<crate::simulation::effects::PlatformEffect>);
+
+    impl crate::simulation::effects::PlatformEffectSink for RecordingEffects {
+        fn apply_platform_effect(&mut self, effect: crate::simulation::effects::PlatformEffect) {
+            self.0.push(effect);
+        }
+    }
+
+    impl crate::simulation::effects::ParticleBatchSink for RecordingEffects {
+        fn submit_particle_batch(&mut self, _batch: bbb_renderer::ParticleSpawnBatch) {}
+    }
+
+    let mut world = runtime_tutorial_world();
+    let collector = crate::simulation::effects::RenderEffectCollector::new(
+        1,
+        bbb_control::AudioCounters::default(),
+    );
+    let mut platform = collector.platform();
+    advance_first_multiplayer_server_tutorial(&mut world, &mut platform);
+    drop(platform);
+
+    let mut effects = RecordingEffects::default();
+    crate::simulation::effects::RenderEffectConsumer::default()
+        .consume(
+            collector.finish(None).expect("same-tick save effect"),
+            None,
+            &mut effects,
+        )
+        .unwrap();
+    assert_eq!(
+        effects.0,
+        vec![
+            crate::simulation::effects::PlatformEffect::SaveClientOptions {
+                writes: vec![crate::client_options::ClientOptionWrite {
+                    key: "joinedFirstServer",
+                    value: crate::client_options::ClientOptionValue::Boolean(true),
+                }],
+            }
+        ]
+    );
+
+    let duplicate = crate::simulation::effects::RenderEffectCollector::new(
+        2,
+        bbb_control::AudioCounters::default(),
+    );
+    advance_first_multiplayer_server_tutorial(&mut world, &mut duplicate.platform());
+    assert!(duplicate.finish(None).is_none());
+}
+
+#[test]
+fn social_interactions_hide_mutates_the_same_visible_tutorial_before_screen_open() {
+    let mut world = runtime_tutorial_world();
+    assert!(world.show_social_interactions_tutorial_if_first_join());
+    let start = Instant::now();
+    let mut runtime = ClientToastRuntime::default();
+    runtime.update(&world, start);
+    runtime.update(&world, start);
+
+    assert!(world.hide_social_interactions_tutorial());
+    world.open_social_interactions_screen();
+    runtime.update(&world, start + Duration::from_millis(1));
+
+    assert!(world.social_interactions_screen().is_some());
+    assert!(runtime.visible.iter().any(|instance| {
+        matches!(
+            &instance.toast,
+            ClientToast::Tutorial(tutorial)
+                if tutorial.token == bbb_world::ClientTutorialToastToken::SocialInteractions
+                    && tutorial.force_hide
+                    && !instance.showing
+        )
+    }));
+}
+
+#[test]
 fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(

@@ -43,11 +43,15 @@ pub enum TutorialToastKind {
     PunchTree,
     OpenInventory,
     CraftPlanks,
+    SocialInteractions,
 }
 
 impl TutorialToastKind {
     pub fn progressable(self) -> bool {
-        matches!(self, Self::Movement | Self::Look | Self::PunchTree)
+        matches!(
+            self,
+            Self::Movement | Self::Look | Self::PunchTree | Self::SocialInteractions
+        )
     }
 }
 
@@ -799,10 +803,52 @@ mod tests {
         ));
         assert_eq!(
             world.client_toast_events()[2].tutorial(),
-            world
-                .active_tutorial_toast()
-                .map(|toast| (toast.id, toast.kind))
+            world.active_tutorial_toast().map(|toast| {
+                crate::ClientTutorialToastEvent::Show {
+                    token: crate::ClientTutorialToastToken::Step(toast.id),
+                    kind: toast.kind,
+                    time_to_display_ms: 0,
+                }
+            })
         );
+    }
+
+    #[test]
+    fn first_multiplayer_tick_owns_one_timed_social_toast_and_persists_across_disconnect() {
+        let mut no_level = WorldStore::new();
+        assert!(!no_level.show_social_interactions_tutorial_if_first_join());
+        assert!(no_level.client_toast_events().is_empty());
+
+        let mut world = tutorial_world();
+        assert!(world.show_social_interactions_tutorial_if_first_join());
+        assert_eq!(
+            world
+                .client_toast_events()
+                .back()
+                .and_then(|event| event.tutorial()),
+            Some(crate::ClientTutorialToastEvent::Show {
+                token: crate::ClientTutorialToastToken::SocialInteractions,
+                kind: TutorialToastKind::SocialInteractions,
+                time_to_display_ms: 8_000,
+            })
+        );
+        assert!(!world.show_social_interactions_tutorial_if_first_join());
+        assert_eq!(world.client_toast_events().len(), 2);
+
+        world.clear_client_level();
+        assert!(world.client_toasts().joined_first_server);
+        assert!(world.client_toasts().social_interactions_tutorial_owned);
+        assert!(world.hide_social_interactions_tutorial());
+        assert_eq!(
+            world
+                .client_toast_events()
+                .back()
+                .and_then(|event| event.tutorial()),
+            Some(crate::ClientTutorialToastEvent::Hide {
+                token: crate::ClientTutorialToastToken::SocialInteractions,
+            })
+        );
+        assert!(!world.hide_social_interactions_tutorial());
     }
 
     #[test]

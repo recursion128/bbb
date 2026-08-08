@@ -1194,6 +1194,31 @@ mod tests {
         let mut input = ClientInputState::new(true);
         let mut counters = NetCounters::default();
         let mut world = WorldStore::new();
+        world.apply_login(&bbb_protocol::packets::PlayLogin {
+            player_id: 7,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: bbb_protocol::packets::CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        assert!(world.show_social_interactions_tutorial_if_first_join());
 
         handle_key_input(
             &mut input,
@@ -1204,6 +1229,15 @@ mod tests {
             ElementState::Pressed,
         );
         assert!(world.social_interactions_screen().is_some());
+        assert_eq!(
+            world
+                .client_toast_events()
+                .back()
+                .and_then(|event| event.tutorial()),
+            Some(bbb_world::ClientTutorialToastEvent::Hide {
+                token: bbb_world::ClientTutorialToastToken::SocialInteractions,
+            })
+        );
         handle_key_input(
             &mut input,
             &mut counters,

@@ -262,7 +262,7 @@ public class Owner {
             for owner in owners
             if "open_gap" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(gaps), 3)
+        self.assertEqual(len(gaps), 1)
         self.assertTrue(
             all(
                 gap["ledger"]
@@ -270,6 +270,26 @@ public class Owner {
                 and gap["reason"]
                 and gap["close_condition"]
                 for gap in gaps
+            )
+        )
+        timed_tutorial_owners = [
+            owner
+            for owner in owners
+            if owner["source"]["path"]
+            == "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+            and owner["vanilla_owner"].split("#", 1)[1].split("(", 1)[0]
+            == "TutorialToast"
+        ]
+        self.assertEqual(len(timed_tutorial_owners), 2)
+        self.assertTrue(
+            all(
+                "crates/bbb-world/src/toasts.rs#pub fn "
+                "show_social_interactions_tutorial_if_first_join"
+                in owner["bbb_evidence"]["implementation"]
+                and "crates/bbb-native/src/runtime/tests.rs#"
+                "social_tutorial_toast_freezes_localized_key_content_and_hides_strictly_after_8000ms"
+                in owner["bbb_evidence"]["tests"]
+                for owner in timed_tutorial_owners
             )
         )
         dynamic_title_owners = [
@@ -307,7 +327,7 @@ public class Owner {
         mechanism = value["mechanisms"]["hud-frame-extract-order"]
         self.assertEqual(mechanism["owner_count"], 118)
         self.assertEqual(mechanism["owner_evidence_count"], 118)
-        self.assertEqual(mechanism["owner_gap_count"], 3)
+        self.assertEqual(mechanism["owner_gap_count"], 1)
 
     def test_music_toast_display_state_is_hashed_and_routed_to_startup_consumption(self) -> None:
         generated = (

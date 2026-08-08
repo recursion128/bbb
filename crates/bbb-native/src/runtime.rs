@@ -2554,6 +2554,23 @@ fn push_simulation_profile_duration(
     }
 }
 
+fn advance_first_multiplayer_server_tutorial(
+    world: &mut WorldStore,
+    platform_effects: &mut crate::simulation::effects::PlatformEffectCollector<'_>,
+) {
+    if !world.show_social_interactions_tutorial_if_first_join() {
+        return;
+    }
+    platform_effects.submit(
+        crate::simulation::effects::PlatformEffect::SaveClientOptions {
+            writes: vec![crate::client_options::ClientOptionWrite {
+                key: "joinedFirstServer",
+                value: crate::client_options::ClientOptionValue::Boolean(true),
+            }],
+        },
+    );
+}
+
 pub(crate) fn advance_simulation(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -3030,6 +3047,7 @@ pub(crate) fn advance_simulation(
         &mut audio_events,
     );
     for _ in 0..advanced_ticks {
+        advance_first_multiplayer_server_tutorial(world, platform_effects);
         if let Some(CrosshairTarget::Block(hit)) = crosshair_target_from_camera_at_partial_tick(
             world,
             camera_pose_from_world(world),

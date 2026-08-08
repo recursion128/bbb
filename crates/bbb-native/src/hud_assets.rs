@@ -442,6 +442,10 @@ pub(crate) fn try_load_hud_textures(
         (HudTutorialToastIcon::Tree, "toast/tree"),
         (HudTutorialToastIcon::RecipeBook, "toast/recipe_book"),
         (HudTutorialToastIcon::WoodenPlanks, "toast/wooden_planks"),
+        (
+            HudTutorialToastIcon::SocialInteractions,
+            "toast/social_interactions",
+        ),
     ] {
         let sprite = hud_sprite(&sprites, sprite_name)?;
         renderer.upload_hud_tutorial_toast_icon(icon, sprite.width, sprite.height, &sprite.rgba)?;

@@ -5047,6 +5047,7 @@ INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE = _owner_evidence(
                 "crates/bbb-native/src/input/tests.rs#digit_key_selects_hotbar_slot_updates_world_and_queues_command",
                 "crates/bbb-native/src/input/tests.rs#camera_perspective_f5_consumes_one_cycle_per_press_edge",
                 "crates/bbb-native/src/input/tests.rs#drop_key_queues_drop_item_action",
+                "crates/bbb-native/src/input/social.rs#social_interactions_default_p_key_opens_and_closes_away_from_search",
             ),
         ),
         ("handleKeybinds",),
@@ -8477,9 +8478,51 @@ HUD_TUTORIAL_TOAST_EVIDENCE = OwnerEvidence(
     (
         "crates/bbb-native/src/runtime/tests.rs"
         "#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#social_tutorial_toast_freezes_localized_key_content_and_hides_strictly_after_8000ms",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#social_interactions_hide_mutates_the_same_visible_tutorial_before_screen_open",
         "crates/bbb-renderer/src/hud.rs"
         "#tutorial_toast_height_slot_layout_and_progress_follow_vanilla",
     ),
+)
+
+HUD_TIMED_TUTORIAL_TOAST_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-world/src/toasts.rs"
+        "#pub fn show_social_interactions_tutorial_if_first_join",
+        "crates/bbb-native/src/runtime.rs"
+        "#world.show_social_interactions_tutorial_if_first_join()",
+        "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState",
+        "crates/bbb-native/src/input.rs#fn open_social_interactions_screen",
+        "crates/bbb-native/src/startup.rs#pub(crate) client_joined_first_server",
+        "crates/bbb-native/src/client_options.rs#pub(crate) struct ClientOptionWrite",
+        "crates/bbb-renderer/src/hud.rs#pub enum HudTutorialToastIcon",
+    ),
+    (
+        "crates/bbb-world/src/tutorial.rs"
+        "#first_multiplayer_tick_owns_one_timed_social_toast_and_persists_across_disconnect",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#social_tutorial_toast_freezes_localized_key_content_and_hides_strictly_after_8000ms",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#social_interactions_hide_mutates_the_same_visible_tutorial_before_screen_open",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#first_multiplayer_tutorial_queues_the_joined_sentinel_in_the_same_effect_batch_once",
+        "crates/bbb-native/src/input/social.rs"
+        "#social_interactions_default_p_key_opens_and_closes_away_from_search",
+        "crates/bbb-native/src/startup.rs"
+        "#joined_first_server_is_consumed_at_startup_and_explicit_cli_wins",
+        "crates/bbb-native/src/client_options.rs"
+        "#first_server_tutorial_sentinel_rewrites_and_survives_reload",
+        "crates/bbb-native/src/component_text.rs"
+        "#bound_key_display_keys_follow_rebinds_and_defaults",
+    ),
+)
+
+HUD_TUTORIAL_CONSTRUCTOR_EVIDENCE = OwnerEvidence(
+    HUD_TUTORIAL_TOAST_EVIDENCE.implementation
+    + HUD_TIMED_TUTORIAL_TOAST_EVIDENCE.implementation,
+    HUD_TUTORIAL_TOAST_EVIDENCE.tests + HUD_TIMED_TUTORIAL_TOAST_EVIDENCE.tests,
 )
 
 HUD_PERIODIC_TOAST_EVIDENCE = OwnerEvidence(
@@ -8550,18 +8593,6 @@ HUD_NOW_PLAYING_RUNTIME_OPTION_EVIDENCE = OwnerEvidence(
         "#stored_music_options_reach_startup_and_explicit_cli_wins",
     ),
     MUSIC_TOAST_RUNTIME_OPTION_SCOPE,
-)
-
-HUD_TIMED_TUTORIAL_TOAST_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
-    reason=(
-        "The survival tutorial toasts use the shared manager, but the 8000 ms social-interactions "
-        "TutorialToast constructor/update path has no native event producer or timed lifetime."
-    ),
-    close_condition=(
-        "Implement the social-interactions timed TutorialToast call site and its exact progress, "
-        "hide, admission, and extraction behavior."
-    ),
 )
 
 HUD_FILE_DROP_TOAST_GAP = OwnerOpenGap(
@@ -8999,7 +9030,7 @@ RECIPE_TOAST_OWNER_EVIDENCE = _owner_evidence(
 )
 
 TUTORIAL_TOAST_OWNER_EVIDENCE = _owner_evidence(
-    (HUD_TIMED_TUTORIAL_TOAST_GAP, ("TutorialToast",)),
+    (HUD_TUTORIAL_CONSTRUCTOR_EVIDENCE, ("TutorialToast",)),
     (
         HUD_TUTORIAL_TOAST_EVIDENCE,
         (
@@ -9543,6 +9574,7 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/simulation/thread.rs#shutdown_and_join",
         "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_tracks_normal_world_tick_rate",
         "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks",
+        "crates/bbb-native/src/runtime/tests.rs#first_multiplayer_tutorial_queues_the_joined_sentinel_in_the_same_effect_batch_once",
         "scripts/playable_gate.py",
     ),
     "lifecycle-session-replacement": (

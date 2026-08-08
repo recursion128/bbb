@@ -51,7 +51,7 @@ Owner: `scripts` + the matrix-declared BBB owners
 Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-session-replacement`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-login-handler-decisions`, `protocol-client-state-flow`
 Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`
-Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`
+Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`, `player-local-world-edit-ui`
 Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `lifecycle-client-runtime`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
@@ -99,10 +99,13 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   sprite and draw-order tests. `SystemToast` now retains a structured
   translatable title through native state and resolves it against the current
   language at extraction, while construction/reset-time message lines and the
-  original width remain frozen. Three owners remain honestly open across two
-  root gaps: the 8000 ms social-interactions tutorial toast and failed OS
-  file-drop counts unavailable from the current winit event surface. Close
-  those mechanisms or retain a reproducible external-platform blocker.
+  original width remain frozen. The first-multiplayer-server owner now consumes
+  `joinedFirstServer`, emits the 8000 ms social-interactions tutorial before the
+  ordinary tutorial tick, persists the sentinel in the same effect batch, uses
+  the rebound key component, and preserves Vanilla's strict `> 8000 ms` hide
+  boundary. One owner remains honestly open: failed OS file-drop counts are
+  unavailable from the current winit event surface. Close that mechanism or
+  retain a reproducible external-platform blocker.
 - Advancing the evidence commit beyond `bfcc657cf` also expires nine
   lifecycle/visual/draw/performance receipts; they stay open until exact-commit
   soak and formal differential recapture replace those artifacts.

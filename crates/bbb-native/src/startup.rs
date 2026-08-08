@@ -359,6 +359,14 @@ pub(crate) struct Args {
     pub(crate) client_screen_effect_scale: f32,
     #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
     pub(crate) tutorial_step: TutorialStepArg,
+    /// Vanilla's process-persisted first-multiplayer-server sentinel. It is a
+    /// startup option because BBB intentionally has no in-game options UI.
+    #[arg(
+        long = "client-joined-first-server",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_joined_first_server: bool,
     #[arg(
         long = "render-distance",
         default_value_t = VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
@@ -930,6 +938,11 @@ fn bind_stored_client_options(
         client_reduced_debug_info
     );
     flag!("client_vignette", "vignette", client_vignette);
+    flag!(
+        "client_joined_first_server",
+        "joinedFirstServer",
+        client_joined_first_server
+    );
     parsed!(
         "client_narrator",
         "narrator",
@@ -2525,6 +2538,28 @@ mod tests {
             TutorialStep::from(args.tutorial_step),
             TutorialStep::CraftPlanks
         );
+    }
+
+    #[test]
+    fn joined_first_server_is_consumed_at_startup_and_explicit_cli_wins() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("joinedFirstServer", "true");
+
+        let mut stored_args = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(
+            &mut stored_args,
+            StoredOptions::without_command_line(&options),
+        );
+        assert!(stored_args.client_joined_first_server);
+
+        let matches = Args::command().get_matches_from([
+            "bbb-native",
+            "--client-joined-first-server",
+            "false",
+        ]);
+        let mut explicit_args = Args::from_arg_matches(&matches).unwrap();
+        bind_stored_client_options(&mut explicit_args, StoredOptions::new(&options, &matches));
+        assert!(!explicit_args.client_joined_first_server);
     }
 
     #[test]

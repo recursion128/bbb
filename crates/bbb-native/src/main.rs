@@ -652,6 +652,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut world = WorldStore::new();
     world.set_local_player_auto_jump_enabled(args.client_auto_jump);
     world.set_tutorial_step(args.tutorial_step.into());
+    world.set_joined_first_server(args.client_joined_first_server);
     world.set_social_server_label(args.server.clone());
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     world.set_chat_presentation_config(ChatPresentationConfig {

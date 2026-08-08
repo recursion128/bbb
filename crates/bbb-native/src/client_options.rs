@@ -586,6 +586,23 @@ mod tests {
     }
 
     #[test]
+    fn first_server_tutorial_sentinel_rewrites_and_survives_reload() {
+        let path = unique_options_path("joined-first-server");
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        assert!(file
+            .apply(&[ClientOptionWrite {
+                key: "joinedFirstServer",
+                value: ClientOptionValue::Boolean(true),
+            }])
+            .unwrap());
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(reloaded.raw("joinedFirstServer"), Some("true"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
     fn an_enum_option_write_stores_the_numeric_id() {
         let path = unique_options_path("enum-id");
         let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();

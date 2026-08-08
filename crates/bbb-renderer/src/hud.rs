@@ -1201,10 +1201,11 @@ pub enum HudTutorialToastIcon {
     Tree,
     RecipeBook,
     WoodenPlanks,
+    SocialInteractions,
 }
 
 impl HudTutorialToastIcon {
-    pub const COUNT: usize = 5;
+    pub const COUNT: usize = 6;
 
     const fn as_index(self) -> usize {
         match self {
@@ -1213,6 +1214,7 @@ impl HudTutorialToastIcon {
             Self::Tree => 2,
             Self::RecipeBook => 3,
             Self::WoodenPlanks => 4,
+            Self::SocialInteractions => 5,
         }
     }
 }

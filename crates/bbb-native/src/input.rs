@@ -12070,6 +12070,9 @@ fn open_social_interactions_screen(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     return_to_pause: bool,
 ) {
+    if !return_to_pause {
+        world.hide_social_interactions_tutorial();
+    }
     if input.open_social_interactions_screen(world, return_to_pause) {
         input.interrupt_chat_screen();
         release_active_input(input, world, counters, net_commands);
