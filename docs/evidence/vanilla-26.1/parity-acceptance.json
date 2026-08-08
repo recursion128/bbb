@@ -238,6 +238,12 @@
         "debug-integrated-server-mirrors",
         "diagnostics-client-level-report",
         "diagnostics-client-only-inspection-exclusions",
+        "entities-fixed-type-surface",
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
         "identity-profile-key-lifecycle",
         "identity-skin-presentation",
         "input-debug-key-actions",
@@ -258,24 +264,43 @@
         "interaction-server-authority-exclusions",
         "items-server-owned-effects",
         "items-versioned-property-surface",
+        "lifecycle-client-runtime",
         "lifecycle-session-replacement",
         "movement-remote-type-exceptions",
+        "persistence-options-apply",
         "platform-macos-release",
+        "platform-window-surface-state",
         "platform-windows-release",
         "player-local-camera-targeting",
+        "player-local-environment-effects",
         "player-local-input-movement",
         "player-local-item-use-state",
         "player-local-movement-reporting",
         "player-local-session-respawn",
         "player-local-vehicle-control",
         "protocol-client-state-flow",
+        "protocol-configuration-handler-decisions",
         "protocol-framing-no-world-state",
+        "protocol-listener-contracts",
         "protocol-login-handler-decisions",
+        "protocol-packet-tables",
+        "protocol-play-handler-decisions",
+        "protocol-serverbound-call-sites",
         "registries-unsynchronized-fixed-identities",
         "rendering-client-biome-tint",
         "rendering-client-block-entity-tracking",
         "rendering-client-level-dirty-handoff",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-frame-order",
         "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
         "rendering-nondeterministic-golden-exclusions",
         "rendering-official-noop-surfaces",
         "resources-indexed-built-in-packs",
@@ -298,8 +323,10 @@
         "scope-support-accessors",
         "scope-telemetry-upload",
         "scope-title-screen",
+        "security-secure-chat-reporting",
         "startup-client-bootstrap",
         "startup-session-identity",
+        "ui-accessibility-surface",
         "ui-bidirectional-shaping",
         "ui-chat-screen-surface",
         "ui-container-server-authority-exclusions",
@@ -323,7 +350,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "bcab71223f98d5301f39119f73d4f965b8224623012b473c27310e8473f6d35e",
+      "sha256": "19475417db5a0c13c383cad665bc1d402ee1f6cc449d819a3616893ebbfb43cc",
       "valid": true
     },
     {
@@ -680,7 +707,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "a23a3908a4affaafab178bc584d19ce6be127e8cf691275da67912f8ec7da528",
+      "sha256": "bc666b82fb4e421f1ff15351abe4adc480bbd937322b4b96f8046e0687cb0600",
       "valid": true
     },
     {
@@ -2165,7 +2192,7 @@
       ],
       "path": "crates/bbb-native/src/resource_pack_runtime.rs",
       "scenario_ids": [],
-      "sha256": "517df9293f88bd2ff6889d1f34fe7f8b4af1b1f82c4b64ebb39823292cadd9c1",
+      "sha256": "61ec61c7a4f4fa4ff48fc4ec96ceda526b4f8ea2bb657ff87051b476dffe6f0d",
       "valid": true
     },
     {
@@ -2205,7 +2232,7 @@
       ],
       "path": "crates/bbb-native/src/runtime.rs",
       "scenario_ids": [],
-      "sha256": "3de84bf8d5abe4f63cf1b3892641ab6ba37a355788576dd5b712700969c27638",
+      "sha256": "3de317cfb627153c235e12cafcf5740a97da18d39c9bff00aad5d47bc038bb4a",
       "valid": true
     },
     {
@@ -2587,7 +2614,7 @@
       ],
       "path": "crates/bbb-native/src/runtime/tests.rs",
       "scenario_ids": [],
-      "sha256": "225ee8ca796e73f4d21a441b652b46a76281c6137d1ea115aa370f3be3ef0864",
+      "sha256": "05c1b65cea634d92b78175cc57ad2519cf2d9e6314133863491d48d439809a14",
       "valid": true
     },
     {
@@ -3206,7 +3233,7 @@
       ],
       "path": "crates/bbb-net/src/resource_pack.rs",
       "scenario_ids": [],
-      "sha256": "c4f58f61bcee9345bef0f0fa4481786c43e5d7b828700ad6f324427e6d60267f",
+      "sha256": "cc973de8f2a7fd94496dd2d430d60e27d301009809270c3e5e22a21da7b73dcc",
       "valid": true
     },
     {
@@ -4720,7 +4747,7 @@
       ],
       "path": "crates/bbb-renderer/src/hud.rs",
       "scenario_ids": [],
-      "sha256": "a843581dcf21d237409ddab76ecb348e84b626b7813667a65288387e5e008c1a",
+      "sha256": "db954055a250cbbfa013c05c2c7412f47b80a92a753406686e704e7379656a34",
       "valid": true
     },
     {
@@ -6304,7 +6331,7 @@
       ],
       "path": "crates/bbb-world/src/client/server_presentation.rs",
       "scenario_ids": [],
-      "sha256": "2a2da92883f67a2cf760c2f109be152077c57025dbf0986ec0d97996c7121ee1",
+      "sha256": "00c3574008ed5f40b294429f70a50f72f64c48ca06fd7644e90bff7ebc0ac141",
       "valid": true
     },
     {
@@ -7550,7 +7577,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "bcab71223f98d5301f39119f73d4f965b8224623012b473c27310e8473f6d35e",
+      "sha256": "19475417db5a0c13c383cad665bc1d402ee1f6cc449d819a3616893ebbfb43cc",
       "valid": true
     },
     {
@@ -8150,7 +8177,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "a23a3908a4affaafab178bc584d19ce6be127e8cf691275da67912f8ec7da528"
+      "sha256": "bc666b82fb4e421f1ff15351abe4adc480bbd937322b4b96f8046e0687cb0600"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8158,7 +8185,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "bcab71223f98d5301f39119f73d4f965b8224623012b473c27310e8473f6d35e"
+      "sha256": "19475417db5a0c13c383cad665bc1d402ee1f6cc449d819a3616893ebbfb43cc"
     }
   ],
   "mechanisms": [
@@ -8320,6 +8347,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -8370,7 +8398,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native production_shutdown_has_one_owner_and_frozen_order",
@@ -8395,12 +8423,14 @@
         "domain": "lifecycle",
         "line": 12,
         "required_state_projection": "tick deadline、render handoff、terminal shutdown",
-        "route_reopen_condition": "run/tick/terminal owner、deadline 或 join order 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "run/tick/terminal owner、deadline 或 join order 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "lifecycle-client-runtime",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 9,
@@ -10590,6 +10620,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -11087,7 +11118,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -11333,12 +11364,14 @@
         "domain": "protocol",
         "line": 30,
         "required_state_projection": "phase/direction/id/class/resource id",
-        "route_reopen_condition": "五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "protocol-packet-tables",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 256,
@@ -11629,6 +11662,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -12126,7 +12160,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -12372,12 +12406,14 @@
         "domain": "protocol",
         "line": 31,
         "required_state_projection": "handler surface 与 phase contract",
-        "route_reopen_condition": "任一 listener interface/source hash、owner set、GameProtocols clientbound table、phase dispatch 或 unknown-packet contract 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "任一 listener interface/source hash、owner set、GameProtocols clientbound table、phase dispatch 或 unknown-packet contract 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "protocol-listener-contracts",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 155,
@@ -13356,6 +13392,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -13854,7 +13891,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -14100,12 +14137,14 @@
         "domain": "protocol",
         "line": 33,
         "required_state_projection": "registry/tags/known-pack FIFO → atomic validation/freeze → finish ACK → Play；invalid registry disconnects without ACK",
-        "route_reopen_condition": "configuration handler source/owner set 或 ordering 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "configuration handler source/owner set 或 ordering 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "protocol-configuration-handler-decisions",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 16,
@@ -14140,6 +14179,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -14635,7 +14675,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -14881,12 +14921,14 @@
         "domain": "protocol/world",
         "line": 34,
         "required_state_projection": "canonical apply、runtime effect、ack/diagnostics",
-        "route_reopen_condition": "play handler/source hash、owner set、packet table、canonical apply/runtime effect 或 ack/diagnostics ordering 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "play handler/source hash、owner set、packet table、canonical apply/runtime effect 或 ack/diagnostics ordering 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "protocol-play-handler-decisions",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 238,
@@ -15211,6 +15253,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -15708,7 +15751,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -15954,12 +15997,14 @@
         "domain": "protocol/input",
         "line": 36,
         "required_state_projection": "action/ack/command invocation and state guards",
-        "route_reopen_condition": "任一 call-site source hash、owner set、serverbound table、action/prediction/ack ordering 或 CLI/offline scope 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "任一 call-site source hash、owner set、serverbound table、action/prediction/ack ordering 或 CLI/offline scope 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "protocol-serverbound-call-sites",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 67,
@@ -19591,6 +19636,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/environment_audio_runtime.rs",
@@ -19628,7 +19674,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native environment_audio_projects_vanilla_rounded_mood_percent",
@@ -19683,12 +19729,14 @@
         "domain": "player/audio",
         "line": 66,
         "required_state_projection": "crit/magicCrit 经 Animate 4/5 tracking-emitter（vanilla `sendToTrackingPlayersAndSelf` 含发起者，本地粒子多 1 RTT 视觉延迟）、portal transition intensity（+0.0125/-0.05/clamp、0→rising PORTAL_TRIGGER 音效、容器关闭、spinning `portal*20+nausea*7` 加权）、mood/underwater enter-exit/water-vision/local playSound 既有 owner",
-        "route_reopen_condition": "crit 本地判定语义变化、portal intensity 曲线变化或 nether portal screen overlay 渲染接入时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "crit 本地判定语义变化、portal intensity 曲线变化或 nether portal screen overlay 渲染接入时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "player-local-environment-effects",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 8,
@@ -21025,6 +21073,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -21106,7 +21155,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -21515,12 +21564,14 @@
         "domain": "entities",
         "line": 79,
         "required_state_projection": "fixed ids、spawn/schema/behavior coverage",
-        "route_reopen_condition": "entity registry 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "entity registry 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "entities-fixed-type-surface",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 157,
@@ -21696,6 +21747,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -21777,7 +21829,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -22186,12 +22238,14 @@
         "domain": "entities/rendering",
         "line": 80,
         "required_state_projection": "entity type→renderer/state/model",
-        "route_reopen_condition": "renderer registration 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "renderer registration 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-entity-renderer-registration",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 155,
@@ -22365,6 +22419,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -22446,7 +22501,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -22855,12 +22910,14 @@
         "domain": "entities/rendering",
         "line": 81,
         "required_state_projection": "layer order/state/material",
-        "route_reopen_condition": "layer registration 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "layer registration 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-entity-layer-registration",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 90,
@@ -23870,6 +23927,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -23901,7 +23959,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native show_only_reduced_info_ors_the_reduced_debug_info_option_with_the_player_flag",
@@ -23998,12 +24056,14 @@
         "domain": "ui/rendering",
         "line": 84,
         "required_state_projection": "每帧 HUD 抽取顺序由单一 `renderer_frame` 路径承担：input/use-item tick 之后抽 HUD，hotbar+decorations 与 camera overlays 分族但同帧同序；camera player 由 `WorldStore::camera_entity_id` 唯一裁决（未收到 `SetCamera` 时回落本地玩家）；reduced-debug/hide-gui/level-loading 门控与断线清理都在同一处收敛",
-        "route_reopen_condition": "owner/symbol、每帧抽取顺序、camera player 裁决或 hide-gui/loading 门控搬家时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、每帧抽取顺序、camera player 裁决或 hide-gui/loading 门控搬家时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "hud-frame-extract-order",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 11,
@@ -24037,6 +24097,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/runtime.rs",
@@ -24066,7 +24127,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native hud_air_bubble_pop_sound_matches_vanilla_dedup_reset_and_gain_formulas",
@@ -24205,12 +24266,14 @@
         "domain": "ui/rendering",
         "line": 85,
         "required_state_projection": "全部 vitals 走 `WorldStore::hud_camera_player_vitals` 单一投影：本地与远端 camera player 共用同一 heart type/排布判据（`Gui.HeartType.forPlayer`/`getSprite`），armor/food/air/absorption 计数、饥饿抖动与 regeneration 心跳、vehicle heart 行数与心行优先级一致",
-        "route_reopen_condition": "owner/symbol、heart type 优先级、心行/气泡排布常量或 camera player vitals 投影搬家时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、heart type 优先级、心行/气泡排布常量或 camera player vitals 投影搬家时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "hud-player-vitals",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 19,
@@ -24248,6 +24311,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/crosshair.rs",
@@ -24279,7 +24343,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native spectator_crosshair_follows_the_hit_entity_menu_provider",
@@ -24352,12 +24416,14 @@
         "domain": "ui/rendering",
         "line": 86,
         "required_state_projection": "hotbar slot 装饰、off-hand 侧别与选中物品名只在 camera player 是本地玩家时投影，旁观非玩家实体按 vanilla 隐藏；crosshair 走 `canRenderCrosshairForSpectator` 与 attack-indicator 判据，contextual info 与准星共用同一命中目标通道",
-        "route_reopen_condition": "owner/symbol、spectator/camera 门控、attack indicator 或 contextual info 判据变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、spectator/camera 门控、attack indicator 或 contextual info 判据变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "hud-hotbar-selection",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 6,
@@ -24382,6 +24448,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/runtime.rs",
@@ -24412,7 +24479,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native animate_player_wake_sleep_overlay_frame_wiring_is_hide_gui_independent",
@@ -24521,12 +24588,14 @@
         "domain": "ui/rendering",
         "line": 87,
         "required_state_projection": "vignette 亮度随 darkness 效果与光照插值、portal/nausea overlay 走各自 pipeline、spyglass 与 pumpkin/frozen/fire/water overlay 纹理与顺序一致；状态效果图标按 ambient/blinking 与 sprite 解析投影",
-        "route_reopen_condition": "owner/symbol、overlay 顺序/亮度曲线、effect 图标 sprite 解析或 pipeline 数量变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、overlay 顺序/亮度曲线、effect 图标 sprite 解析或 pipeline 数量变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "hud-overlay-effects",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 10,
@@ -24555,6 +24624,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/client_options.rs",
@@ -24591,7 +24661,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native defaults_carry_the_text_vanilla_writes_for_every_catalogued_key",
@@ -24730,12 +24800,14 @@
         "domain": "ui/rendering",
         "line": 88,
         "required_state_projection": "title/subtitle 计时与 `clear`、overlay message 淡出、chat 与 sound subtitle 位置（screen 是否 in-game UI 决定 before-screen 还是 deferred）、tab list、scoreboard sidebar、boss bar 与 debug overlay 均逐 owner 投影；saving indicator 对外部客户端恒为 vanilla no-op（`getSingleplayerServer()` 为 null）",
-        "route_reopen_condition": "owner/symbol、title/overlay 计时常量、subtitle 位置判据或 tab/scoreboard/boss 排布变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、title/overlay 计时常量、subtitle 位置判据或 tab/scoreboard/boss 排布变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "hud-text-and-lists",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 19,
@@ -24773,6 +24845,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/main.rs",
@@ -24816,7 +24889,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native redraw_arm_orders_update_render_and_framerate_resample_like_render_frame",
@@ -24979,12 +25052,14 @@
         "domain": "rendering/frame",
         "line": 89,
         "required_state_projection": "update→extract→render 单一帧路径与 `FRAME_STEPS` 顺序、per-tick 渲染态推进（camera spin/totem/boss darkening 走 runsNormally 门控）、framerate limiter（10..260、iconified/AFK/menu 节流）、resize 重配置、clearLevel 触发 `resetData`（维度重生不触发）、setLevel 重绑 cardinal lighting",
-        "route_reopen_condition": "owner/symbol、FRAME_STEPS 顺序、tick 门控、framerate 节流表或 resetData 归属变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、FRAME_STEPS 顺序、tick 门控、framerate 节流表或 resetData 归属变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-frame-order",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 10,
@@ -25017,6 +25092,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -25060,7 +25136,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native camera_eye_height_is_applied_before_detached_camera_offset",
@@ -25217,12 +25293,14 @@
         "domain": "rendering/extract",
         "line": 90,
         "required_state_projection": "window/options/camera/gui 每帧采样进不可变 RendererFrame（唯一 commit 点）、hideGui 门 renderNames、improvedTransparency && !panoramic 门 shader transparency、submit/feature dispatcher 与 entity model 层归属",
-        "route_reopen_condition": "owner/symbol、extract 顺序、RendererFrame 唯一 commit 点或 transparency 判据变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、extract 顺序、RendererFrame 唯一 commit 点或 transparency 判据变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-extract-surface",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 11,
@@ -25256,6 +25334,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -25298,7 +25377,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native camera_perspective_detached_pose_matches_back_and_mirrored_front_offsets",
@@ -25479,12 +25558,14 @@
         "domain": "rendering/level",
         "line": 91,
         "required_state_projection": "level pass 后 hud3d 投影+深度清屏再画手/totem、hurt tilt 与 view bob 矩阵、block outline 门（hideGui/camera player/spectator）、night vision/boss darkening 标量、waypoint locator 的 point/horizon 投影、SetCamera 实体切换与 spectator glow 判据",
-        "route_reopen_condition": "owner/symbol、hand pass 深度清屏、outline/glow 门控或投影公式变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、hand pass 深度清屏、outline/glow 门控或投影公式变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-level-pass",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 14,
@@ -25521,6 +25602,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -25584,7 +25666,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native camera_perspective_cycles_and_applies_only_first_person_post_effect_boundaries",
@@ -25801,12 +25883,14 @@
         "domain": "rendering/effects",
         "line": 92,
         "required_state_projection": "相机实体 post effect（creeper/spider/enderman）check/set/clear/F4 toggle、menu blur、totem `displayItemActivation`（40 tick/随机偏移）、UI shader 预编译、lightmap level/UI 双源、glint alpha/速度进 uniform、diffuse lighting 方向、panorama 纹理注册与滚速；auto-screenshot 仅 `isLocalServer()`（外部客户端恒 false，vanilla no-op）",
-        "route_reopen_condition": "owner/symbol、post-effect 门控、totem 动画常量、lightmap 双源或 auto-screenshot 前提变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、post-effect 门控、totem 动画常量、lightmap 双源或 auto-screenshot 前提变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-effects-screenshot",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 17,
@@ -26394,6 +26478,7 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/block_entity_visibility.rs",
@@ -26497,7 +26582,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native compiled_section_gate_precedes_camera_frustum_submission",
@@ -26606,12 +26691,14 @@
         "domain": "rendering/scene",
         "line": 96,
         "required_state_projection": "entity、block entity、breaking、outline extraction/submission",
-        "route_reopen_condition": "owner/symbol、resource material flag、selection/crack gate 或 submission order 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、resource material flag、selection/crack gate 或 submission order 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-level-scene-projection",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 15,
@@ -26645,6 +26732,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/runtime/tests.rs",
@@ -26675,7 +26763,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native block_destroy_render_ticks_respect_frozen_world_ticking_state",
@@ -26730,12 +26818,14 @@
         "domain": "rendering/effects",
         "line": 97,
         "required_state_projection": "weather order、id/position/highest stage、20/400 expiry、freeze/teardown/budget",
-        "route_reopen_condition": "owner/symbol、weather/effect order、expiry/budget、world projection 或 teardown lifetime 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、weather/effect order、expiry/budget、world projection 或 teardown lifetime 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-level-effect-lifecycle",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 4,
@@ -26758,6 +26848,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/entity_scene/tests.rs",
@@ -26789,7 +26880,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native visible_entity_render_state_count_reads_the_current_survivor_owner",
@@ -26838,12 +26929,14 @@
         "domain": "rendering/diagnostics",
         "line": 98,
         "required_state_projection": "visible/total/SD、single collect/finalize、generation/stale clear、phase/depth",
-        "route_reopen_condition": "owner/symbol、GUI extract order、gizmo producer/lifetime、phase/depth 或 generation reset 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、GUI extract order、gizmo producer/lifetime、phase/depth 或 generation reset 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-level-diagnostics-gizmos",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 3,
@@ -26865,6 +26958,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/runtime/render_extract.rs",
@@ -26899,7 +26993,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native level_renderer_light_consumers_cannot_restore_raw_pack_resolvers",
@@ -26936,12 +27030,14 @@
         "domain": "rendering/light",
         "line": 99,
         "required_state_projection": "emissive/emission、block/sky、packed/normalized query",
-        "route_reopen_condition": "owner/symbol、state facts、查询坐标、fallback 或生产 resolver 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、state facts、查询坐标、fallback 或生产 resolver 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-level-light-query",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 3,
@@ -28020,6 +28116,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/client_options.rs",
@@ -28060,7 +28157,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native an_enum_option_write_stores_the_numeric_id",
@@ -28187,12 +28284,14 @@
         "domain": "accessibility",
         "line": 111,
         "required_state_projection": "进程式 TTS 后端承接四条 narration 入口（chat/system-chat/system 队列 + system-now 打断），状态门控与 vanilla 相同；Ctrl+B 循环发 `NARRATOR_TOGGLE` toast 并按启动冻结的 voice*master 音量朗读；RAII Drop 收割子进程；`checkStatus`/`NarratorInitException` 的 MessageBox 中止面按 CLI 显式后端记录为警告继续；IME preedit 按焦点 owner 路由并在焦点切换时双向移交（`lastPreeditEvent` 常存 + resubmit/清除）",
-        "route_reopen_condition": "owner/symbol、narration 门控、toast/音量链或 TTS 生命周期变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、narration 门控、toast/音量链或 TTS 生命周期变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "ui-accessibility-surface",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 17,
@@ -29584,6 +29683,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -29617,7 +29717,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native focus_loss_clears_pressed_input_and_queues_release",
@@ -29738,12 +29838,14 @@
         "domain": "platform",
         "line": 121,
         "required_state_projection": "非零 resize 清 minimized 并同步发布逻辑 GUI 面（ceiling division），零尺寸只标 minimized；`calculateScale` 逐级增长+manual cap+unicode 奇数上取；焦点丢失清输入并释放捕获、严格 >500ms 失焦暂停在步末裁决；物理/逻辑尺寸各归其 owner、线宽走物理宽度；resize 失败带新旧尺寸入 crash report",
-        "route_reopen_condition": "owner/symbol、scale 公式、resize/焦点/暂停判据变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、scale 公式、resize/焦点/暂停判据变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "platform-window-surface-state",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 17,
@@ -30184,6 +30286,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-audio/src/device.rs",
@@ -30248,7 +30351,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-audio only_the_empty_name_selects_the_default_device",
@@ -30411,12 +30514,14 @@
         "domain": "persistence",
         "line": 125,
         "required_state_projection": "`buildPlayerInformation`、`Options.save` 收尾的 `broadcastOptions`、crash report option dump、fullscreen mode、font provider filters；graphics preset 在 options load 后覆盖 17 项并进入 biome blend、section compile policy、mipmap atlas、entity distance、weather render/tick 与 adapter-resolved filtering；无显式 CLI pack roots 时按 stored ID/兼容性重放 `loadSelectedResourcePacks` 后建立同一 immutable generation；`isSoundDeviceDefault` 为空串系统默认判据并进入异步设备 reload 链；`simulationDistance` 只影响已裁决不需要的 integrated-server surface",
-        "route_reopen_condition": "这八个 owner、preset 17 项、`dirtyFromPlayer`/`<768` 同步判据、pack ID/兼容性裁决、音频设备选择、资源 reload 保留或 adapter filtering 规则变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "这八个 owner、preset 17 项、`dirtyFromPlayer`/`<768` 同步判据、pack ID/兼容性裁决、音频设备选择、资源 reload 保留或 adapter filtering 规则变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "persistence-options-apply",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 8,
@@ -30782,6 +30887,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/death_screen.rs",
@@ -30841,7 +30947,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native draft_discard_escape_continues_normal_and_hardcore_exit_paths",
@@ -31076,12 +31182,14 @@
         "domain": "security",
         "line": 130,
         "required_state_projection": "chatVisibility 四 restriction 与 restrictions screen、isBlocked（非本地且 hidden 或 blocked）的三处 chat 消费、matched-name 走 discovered-names map、block-list 会话 generation 门控（离线恒 inactive；online 面已按 scope 决策移除）、reporting environment/draft/evidence 链与 pause/death draft 确认、入站签名验证与 last-seen ack；出站签名按 vanilla 无 key pair 语义恒空",
-        "route_reopen_condition": "owner/symbol、offline 服务边界、draft 确认门、签名/ack 语义或 block-list 会话生命周期变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "owner/symbol、offline 服务边界、draft 确认门、签名/ack 语义或 block-list 会话生命周期变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "security-secure-chat-reporting",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 30,
@@ -38084,6 +38192,12 @@
       "audio-client-level-sound-routing",
       "audio-sound-manager-engine",
       "diagnostics-client-level-report",
+      "entities-fixed-type-surface",
+      "hud-frame-extract-order",
+      "hud-hotbar-selection",
+      "hud-overlay-effects",
+      "hud-player-vitals",
+      "hud-text-and-lists",
       "identity-skin-presentation",
       "input-debug-key-actions",
       "input-key-mapping",
@@ -38100,19 +38214,38 @@
       "interaction-pick-actions",
       "interaction-prediction-sequence",
       "interaction-primary-action-routing",
+      "lifecycle-client-runtime",
       "lifecycle-session-replacement",
+      "persistence-options-apply",
+      "platform-window-surface-state",
       "player-local-camera-targeting",
+      "player-local-environment-effects",
       "player-local-input-movement",
       "player-local-item-use-state",
       "player-local-movement-reporting",
       "player-local-session-respawn",
       "player-local-vehicle-control",
       "protocol-client-state-flow",
+      "protocol-configuration-handler-decisions",
+      "protocol-listener-contracts",
       "protocol-login-handler-decisions",
+      "protocol-packet-tables",
+      "protocol-play-handler-decisions",
+      "protocol-serverbound-call-sites",
       "rendering-client-biome-tint",
       "rendering-client-block-entity-tracking",
       "rendering-client-level-dirty-handoff",
+      "rendering-effects-screenshot",
+      "rendering-entity-layer-registration",
+      "rendering-entity-renderer-registration",
+      "rendering-extract-surface",
+      "rendering-frame-order",
       "rendering-level-backend-lifecycle",
+      "rendering-level-diagnostics-gizmos",
+      "rendering-level-effect-lifecycle",
+      "rendering-level-light-query",
+      "rendering-level-pass",
+      "rendering-level-scene-projection",
       "resources-indexed-panorama",
       "resources-indexed-vanilla-provider",
       "resources-language-manager",
@@ -38121,8 +38254,10 @@
       "resources-reload-recovery",
       "resources-server-pack-lifecycle",
       "resources-window-icons",
+      "security-secure-chat-reporting",
       "startup-client-bootstrap",
       "startup-session-identity",
+      "ui-accessibility-surface",
       "ui-bidirectional-shaping",
       "ui-chat-screen-surface",
       "ui-context-entity-type",
@@ -38146,11 +38281,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 60,
+      "equivalent": 33,
       "not-needed": 25,
-      "partial": 61
+      "partial": 88
     },
-    "valid_count": 86
+    "valid_count": 59
   },
   "vanilla_version": "26.1"
 }

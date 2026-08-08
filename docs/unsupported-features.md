@@ -52,6 +52,7 @@ Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `lifecycl
 Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`
 Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`
+Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `lifecycle-client-runtime`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
 
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
   artifact/scenario mappings validate without a false `equivalent`: capture commit
@@ -62,6 +63,10 @@ Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-r
   host-audio receipt until real ALSA device access exists; the user-waived macOS
   `deferred-external` row is not a closure blocker but retains its source basis
   and reopen condition.
+- The server-pack lifecycle implementation changed shared runtime/net/world/HUD
+  evidence after `bfcc657cf`; the 27 affected `equivalent` rows are temporarily
+  reopened until the implementation commit passes the full gate and the report
+  is rebound. This is evidence invalidation, not a new behavior-gap checklist.
 
 ## Render-step and HUD presentation closure
 
