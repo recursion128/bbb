@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "e78abf165ddad9aff820d155c19659f7b0c5715d2cde329355858284b7a5d75f"
+      "sha256": "54562795a170e65ab0bb68620456bc06062e658daeec013caa4cbb91a07ded31"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -666,7 +666,7 @@
         "crates/bbb-pack/src/resources.rs",
         "docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
-      "owner_count": 46
+      "owner_count": 45
     },
     "resources-language-manager": {
       "bbb_evidence": [
@@ -676,6 +676,16 @@
       ],
       "owner_count": 15,
       "owner_evidence_count": 15
+    },
+    "resources-offline-asset-trust": {
+      "bbb_evidence": [
+        "crates/bbb-pack/src/asset_index.rs",
+        "crates/bbb-pack/src/roots.rs#pub fn from_root",
+        "crates/bbb-pack/src/resources.rs#impl ResourceIntegrity",
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md"
+      ],
+      "owner_count": 2,
+      "owner_evidence_count": 2
     },
     "resources-reload-listeners": {
       "bbb_evidence": [
@@ -24684,6 +24694,31 @@
       "vanilla_owner": "net.minecraft.client.gui.screens.worldselection.SelectWorldScreen#updateButtonStatus(final @Nullable LevelSummary summary)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/roots.rs#pub fn from_root",
+          "crates/bbb-pack/src/asset_index.rs#pub(crate) fn discover"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/asset_index.rs#missing_version_metadata_keeps_external_asset_source_optional",
+          "crates/bbb-pack/src/asset_index.rs#rejects_oversized_index_before_opening_or_hashing_it",
+          "scripts/tests/test_client_mechanism_inventory.py#test_offline_asset_trust_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resources",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-offline-asset-trust",
+      "owner_id": "method:net.minecraft.client.main.GameConfig.FolderData#getExternalAssetSource()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 46,
+        "path": "net/minecraft/client/main/GameConfig.java"
+      },
+      "vanilla_owner": "net.minecraft.client.main.GameConfig.FolderData#getExternalAssetSource()"
+    },
+    {
       "category": "startup",
       "domain": "startup",
       "kind": "method",
@@ -38909,10 +38944,28 @@
       "vanilla_owner": "net.minecraft.client.resources.ClientPackSource#populatePackList(final BiConsumer <String, Function <String, Pack>> discoveredPacks)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/asset_index.rs#pub(crate) fn discover",
+          "crates/bbb-pack/src/asset_index.rs#pub(crate) fn resource",
+          "crates/bbb-pack/src/asset_index.rs#pub(crate) fn root_resource",
+          "crates/bbb-pack/src/asset_index.rs#pub(crate) fn list_resources",
+          "crates/bbb-pack/src/resources.rs#impl ResourceIntegrity"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
+          "crates/bbb-pack/src/asset_index.rs#rejects_wrong_object_size_and_sha1",
+          "crates/bbb-pack/src/asset_index.rs#rejects_wrong_index_metadata_and_missing_object",
+          "crates/bbb-pack/src/asset_index.rs#rejects_path_escape_index_id_and_asset_key",
+          "crates/bbb-pack/src/asset_index.rs#rejects_unbounded_declared_object_size_without_opening_an_object",
+          "crates/bbb-pack/src/asset_index.rs#rejects_unbounded_object_count_and_total_declared_bytes",
+          "scripts/tests/test_client_mechanism_inventory.py#test_offline_asset_trust_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
       "category": "resources",
       "domain": "resources",
       "kind": "method",
-      "mechanism_id": "resources-default-pack-stack",
+      "mechanism_id": "resources-offline-asset-trust",
       "owner_id": "method:net.minecraft.client.resources.IndexedAssetSource#createIndexFs(final Path assetsDirectory,final String index)",
       "role": "decision",
       "scope": "external-client",
@@ -57210,6 +57263,7 @@
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
+      "resources-offline-asset-trust",
       "resources-language-manager",
       "ui-bidirectional-shaping",
       "resources-server-pack-lifecycle",
@@ -57475,6 +57529,10 @@
     {
       "path": "net/minecraft/client/gui/screens/worldselection/WorldOpenFlows.java",
       "sha256": "d59d6f9fd703cdf43e9c192cdded21a13e2d542ae18b9e004c78e913c5b6b438"
+    },
+    {
+      "path": "net/minecraft/client/main/GameConfig.java",
+      "sha256": "ef1849c0a683377277c72fb812cf32267374b19cde3724a058bcd4d1f200f61b"
     },
     {
       "path": "net/minecraft/client/main/Main.java",
@@ -59016,7 +59074,7 @@
       "render-section": 29,
       "render-step": 238,
       "resource-consumer": 129,
-      "resources": 124,
+      "resources": 125,
       "respawn-data": 9,
       "screen-open": 9,
       "security": 30,
@@ -59050,7 +59108,7 @@
       "realms": 100,
       "registries": 123,
       "rendering": 332,
-      "resources": 144,
+      "resources": 145,
       "security": 30,
       "singleplayer": 52,
       "startup": 19,
@@ -59061,12 +59119,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1583,
+      "decision": 1584,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3230,
-    "owner_count": 3230,
+    "mapped_owner_count": 3231,
+    "owner_count": 3231,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

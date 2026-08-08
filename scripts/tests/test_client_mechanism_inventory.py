@@ -249,6 +249,63 @@ public class Owner {
             )
         )
 
+    def test_offline_asset_trust_owner_census_is_exact_and_has_per_owner_evidence(self) -> None:
+        mechanism_id = "resources-offline-asset-trust"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == mechanism_id
+        ]
+
+        self.assertEqual(
+            {owner["owner_id"] for owner in owners},
+            {
+                "method:net.minecraft.client.main.GameConfig.FolderData"
+                "#getExternalAssetSource()",
+                "method:net.minecraft.client.resources.IndexedAssetSource"
+                "#createIndexFs(final Path assetsDirectory,final String index)",
+            },
+        )
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            Counter(
+                {
+                    "net/minecraft/client/main/GameConfig.java": 1,
+                    "net/minecraft/client/resources/IndexedAssetSource.java": 1,
+                }
+            ),
+        )
+        mechanism = value["mechanisms"][mechanism_id]
+        self.assertEqual(mechanism["owner_count"], 2)
+        self.assertEqual(mechanism["owner_evidence_count"], 2)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 0)
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        source_hashes = {
+            source["path"]: source["sha256"] for source in value["source_files"]
+        }
+        self.assertEqual(
+            source_hashes["net/minecraft/client/main/GameConfig.java"],
+            "ef1849c0a683377277c72fb812cf32267374b19cde3724a058bcd4d1f200f61b",
+        )
+        self.assertEqual(
+            source_hashes[
+                "net/minecraft/client/resources/IndexedAssetSource.java"
+            ],
+            "c3ff408940d49574e71210993ac3359277d19d1935ed0c34d74dc17f509dfb01",
+        )
+
     def test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT

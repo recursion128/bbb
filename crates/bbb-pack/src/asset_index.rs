@@ -84,12 +84,6 @@ impl VanillaAssetIndex {
         let index_path = assets_dir
             .join("indexes")
             .join(format!("{}.json", version.asset_index.id));
-        verify_file(
-            &index_path,
-            version.asset_index.size,
-            &version.asset_index.sha1,
-            "Vanilla asset index",
-        )?;
         if version.asset_index.size > MAX_ASSET_INDEX_BYTES {
             bail!(
                 "Vanilla asset index {} is {} bytes, exceeding the {} byte limit",
@@ -98,53 +92,15 @@ impl VanillaAssetIndex {
                 MAX_ASSET_INDEX_BYTES
             );
         }
+        verify_file(
+            &index_path,
+            version.asset_index.size,
+            &version.asset_index.sha1,
+            "Vanilla asset index",
+        )?;
         let document: AssetIndexDocument =
             read_json_file_limited(&index_path, MAX_ASSET_INDEX_BYTES, "Vanilla asset index")?;
-        if document.objects.len() > MAX_ASSET_INDEX_OBJECTS {
-            bail!(
-                "Vanilla asset index has {} objects, exceeding the {} object limit",
-                document.objects.len(),
-                MAX_ASSET_INDEX_OBJECTS
-            );
-        }
-        let mut total_object_bytes = 0_u64;
-        for (name, object) in &document.objects {
-            validate_asset_key(name)
-                .with_context(|| format!("invalid Vanilla asset-index key {name:?}"))?;
-            validate_sha1(&object.hash, &format!("asset object {name:?} SHA-1"))?;
-            if object.size > MAX_ASSET_OBJECT_BYTES {
-                bail!(
-                    "Vanilla asset object {name:?} is {} bytes, exceeding the {} byte limit",
-                    object.size,
-                    MAX_ASSET_OBJECT_BYTES
-                );
-            }
-            total_object_bytes = total_object_bytes
-                .checked_add(object.size)
-                .context("Vanilla asset-index total object size overflow")?;
-            if total_object_bytes > MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES {
-                bail!(
-                    "Vanilla asset index declares {total_object_bytes} object bytes, exceeding the {} byte limit",
-                    MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES
-                );
-            }
-        }
-        let retained_logical_bytes =
-            document
-                .objects
-                .iter()
-                .try_fold(0_u64, |total, (name, object)| -> Result<u64> {
-                    let entry_bytes = u64::try_from(name.len())
-                        .context("Vanilla asset-index key length overflow")?
-                        .checked_add(
-                            u64::try_from(object.hash.len()).expect("SHA-1 length fits u64"),
-                        )
-                        .and_then(|bytes| bytes.checked_add(ASSET_INDEX_ENTRY_LOGICAL_BYTES))
-                        .context("Vanilla asset-index retained byte count overflow")?;
-                    total
-                        .checked_add(entry_bytes)
-                        .context("Vanilla asset-index retained byte count overflow")
-                })?;
+        let retained_logical_bytes = validate_asset_index_document(&document)?;
 
         Ok(Some(Self {
             index_id: version.asset_index.id,
@@ -214,6 +170,51 @@ impl VanillaAssetIndex {
             },
         }
     }
+}
+
+fn validate_asset_index_document(document: &AssetIndexDocument) -> Result<u64> {
+    validate_asset_index_object_count(document.objects.len())?;
+    let mut total_object_bytes = 0_u64;
+    let mut retained_logical_bytes = 0_u64;
+    for (name, object) in &document.objects {
+        validate_asset_key(name)
+            .with_context(|| format!("invalid Vanilla asset-index key {name:?}"))?;
+        validate_sha1(&object.hash, &format!("asset object {name:?} SHA-1"))?;
+        if object.size > MAX_ASSET_OBJECT_BYTES {
+            bail!(
+                "Vanilla asset object {name:?} is {} bytes, exceeding the {} byte limit",
+                object.size,
+                MAX_ASSET_OBJECT_BYTES
+            );
+        }
+        total_object_bytes = total_object_bytes
+            .checked_add(object.size)
+            .context("Vanilla asset-index total object size overflow")?;
+        if total_object_bytes > MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES {
+            bail!(
+                "Vanilla asset index declares {total_object_bytes} object bytes, exceeding the {} byte limit",
+                MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES
+            );
+        }
+        let entry_bytes = u64::try_from(name.len())
+            .context("Vanilla asset-index key length overflow")?
+            .checked_add(u64::try_from(object.hash.len()).expect("SHA-1 length fits u64"))
+            .and_then(|bytes| bytes.checked_add(ASSET_INDEX_ENTRY_LOGICAL_BYTES))
+            .context("Vanilla asset-index retained byte count overflow")?;
+        retained_logical_bytes = retained_logical_bytes
+            .checked_add(entry_bytes)
+            .context("Vanilla asset-index retained byte count overflow")?;
+    }
+    Ok(retained_logical_bytes)
+}
+
+fn validate_asset_index_object_count(count: usize) -> Result<()> {
+    if count > MAX_ASSET_INDEX_OBJECTS {
+        bail!(
+            "Vanilla asset index has {count} objects, exceeding the {MAX_ASSET_INDEX_OBJECTS} object limit"
+        );
+    }
+    Ok(())
 }
 
 fn resource_path_is_below(path: &str, prefix: &str) -> bool {
@@ -438,6 +439,70 @@ mod tests {
         assert!(validate_asset_key("Minecraft/font/unifont.zip").is_err());
         assert!(validate_asset_key("minecraft/font/\0.zip").is_err());
         assert!(validate_asset_key("pack.mcmeta").is_ok());
+    }
+
+    #[test]
+    fn missing_version_metadata_keeps_external_asset_source_optional() {
+        let root = fixture_root("missing-metadata");
+
+        assert!(VanillaAssetIndex::discover(&root).unwrap().is_none());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_oversized_index_before_opening_or_hashing_it() {
+        let root = fixture_root("oversized-index");
+        let downloads = root.join("downloads/26.1");
+        std::fs::create_dir_all(&downloads).unwrap();
+        std::fs::write(
+            downloads.join("26.1.json"),
+            format!(
+                r#"{{"assetIndex":{{"id":"30","sha1":"{}","size":{}}}}}"#,
+                "0".repeat(40),
+                MAX_ASSET_INDEX_BYTES + 1
+            ),
+        )
+        .unwrap();
+
+        let error = VanillaAssetIndex::discover(&root).unwrap_err().to_string();
+        assert!(
+            error.contains("exceeding the 4194304 byte limit"),
+            "{error}"
+        );
+        assert!(!error.contains("open Vanilla asset index"), "{error}");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_unbounded_object_count_and_total_declared_bytes() {
+        let error = validate_asset_index_object_count(MAX_ASSET_INDEX_OBJECTS + 1)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("exceeding the 100000 object limit"),
+            "{error}"
+        );
+
+        let objects = (0..=MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES / MAX_ASSET_OBJECT_BYTES)
+            .map(|index| {
+                (
+                    format!("minecraft/sounds/{index}.ogg"),
+                    AssetObject {
+                        hash: "0".repeat(40),
+                        size: MAX_ASSET_OBJECT_BYTES,
+                    },
+                )
+            })
+            .collect();
+        let error = validate_asset_index_document(&AssetIndexDocument { objects })
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("exceeding the 17179869184 byte limit"),
+            "{error}"
+        );
     }
 
     #[test]

@@ -9504,11 +9504,59 @@ AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
     "net/minecraft/client/sounds/MusicManager.java": MUSIC_MANAGER_OWNER_EVIDENCE,
 }
 
+OFFLINE_ASSET_TRUST_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_offline_asset_trust_owner_census_is_exact_and_has_per_owner_evidence"
+)
+
+GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE = {
+    "getExternalAssetSource": OwnerEvidence(
+        (
+            "crates/bbb-pack/src/roots.rs#pub fn from_root",
+            "crates/bbb-pack/src/asset_index.rs#pub(crate) fn discover",
+        ),
+        (
+            "crates/bbb-pack/src/asset_index.rs"
+            "#missing_version_metadata_keeps_external_asset_source_optional",
+            "crates/bbb-pack/src/asset_index.rs"
+            "#rejects_oversized_index_before_opening_or_hashing_it",
+            OFFLINE_ASSET_TRUST_OWNER_CENSUS_TEST,
+        ),
+    ),
+}
+
+INDEXED_ASSET_SOURCE_OWNER_EVIDENCE = {
+    "createIndexFs": OwnerEvidence(
+        (
+            "crates/bbb-pack/src/asset_index.rs#pub(crate) fn discover",
+            "crates/bbb-pack/src/asset_index.rs#pub(crate) fn resource",
+            "crates/bbb-pack/src/asset_index.rs#pub(crate) fn root_resource",
+            "crates/bbb-pack/src/asset_index.rs#pub(crate) fn list_resources",
+            "crates/bbb-pack/src/resources.rs#impl ResourceIntegrity",
+        ),
+        (
+            "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
+            "crates/bbb-pack/src/asset_index.rs#rejects_wrong_object_size_and_sha1",
+            "crates/bbb-pack/src/asset_index.rs"
+            "#rejects_wrong_index_metadata_and_missing_object",
+            "crates/bbb-pack/src/asset_index.rs"
+            "#rejects_path_escape_index_id_and_asset_key",
+            "crates/bbb-pack/src/asset_index.rs"
+            "#rejects_unbounded_declared_object_size_without_opening_an_object",
+            "crates/bbb-pack/src/asset_index.rs"
+            "#rejects_unbounded_object_count_and_total_declared_bytes",
+            OFFLINE_ASSET_TRUST_OWNER_CENSUS_TEST,
+        ),
+    ),
+}
+
 METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **AUDIO_OWNER_EVIDENCE_BY_SOURCE,
     **CAMERA_FOG_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
+    "net/minecraft/client/main/GameConfig.java": GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
+    "net/minecraft/client/resources/IndexedAssetSource.java": INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
     "net/minecraft/client/MusicToastDisplayState.java": MUSIC_TOAST_DISPLAY_OWNER_EVIDENCE,
     "net/minecraft/client/resources/language/LanguageManager.java": LANGUAGE_MANAGER_OWNER_EVIDENCE,
     "net/minecraft/client/resources/language/ClientLanguage.java": CLIENT_LANGUAGE_OWNER_EVIDENCE,
@@ -9517,6 +9565,10 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
 
 
 METHOD_OWNER_EVIDENCE = {
+    "resources-offline-asset-trust": {
+        **GAME_CONFIG_ASSET_TRUST_OWNER_EVIDENCE,
+        **INDEXED_ASSET_SOURCE_OWNER_EVIDENCE,
+    },
     "resources-language-manager": {
         **LANGUAGE_MANAGER_OWNER_EVIDENCE,
         **CLIENT_LANGUAGE_OWNER_EVIDENCE,
@@ -10166,8 +10218,15 @@ METHOD_SURFACES = (
     MethodSurface("startup", "startup", "startup-client-bootstrap", "net/minecraft/client/main/Main.java"),
     MethodSurface("startup", "startup", "startup-session-identity", "net/minecraft/client/User.java"),
     MethodSurface("lifecycle", "lifecycle", "lifecycle-client-runtime", "net/minecraft/client/Minecraft.java"),
+    MethodSurface(
+        "resources",
+        "resources",
+        "resources-offline-asset-trust",
+        "net/minecraft/client/main/GameConfig.java",
+        selected_methods=("getExternalAssetSource",),
+    ),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/client/resources/ClientPackSource.java"),
-    MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/client/resources/IndexedAssetSource.java"),
+    MethodSurface("resources", "resources", "resources-offline-asset-trust", "net/minecraft/client/resources/IndexedAssetSource.java"),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/server/packs/resources/FallbackResourceManager.java"),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/server/packs/resources/MultiPackResourceManager.java"),
     MethodSurface("resources", "resources", "resources-server-pack-lifecycle", "net/minecraft/client/resources/server/DownloadedPackSource.java"),
@@ -10412,6 +10471,12 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/simulation/commands.rs#production_producers_cannot_restore_ignored_mailbox_results",
     ),
     "resources-default-pack-stack": ("crates/bbb-pack/src/resources.rs", "docs/wiki/mechanisms/resources/offline-asset-trust.md"),
+    "resources-offline-asset-trust": (
+        "crates/bbb-pack/src/asset_index.rs",
+        "crates/bbb-pack/src/roots.rs#pub fn from_root",
+        "crates/bbb-pack/src/resources.rs#impl ResourceIntegrity",
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md",
+    ),
     "resources-reload-listeners": ("crates/bbb-native/src/resource_reload.rs",),
     "resources-reload-recovery": (
         "crates/bbb-native/src/resource_reload.rs#apply_native_resource_reload",
