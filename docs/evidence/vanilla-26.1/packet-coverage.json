@@ -9868,10 +9868,10 @@
             "crates/bbb-world/src/client/player_info.rs#player_info_rejects_unvalidated_profile_keys",
             "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#services_public_keys_event_enables_world_validation",
-            "crates/bbb-native/src/runtime/tests.rs#insecure_chat_warning_projects_multiline_toast_before_low_disk_queue",
+            "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
             "crates/bbb-native/src/runtime/tests.rs#lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world",
-            "crates/bbb-renderer/src/hud.rs#multiline_system_toast_wraps_at_two_hundred_pixels_and_grows_height"
+            "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
           ],
           "gap": null,
           "status": "complete"
@@ -11345,7 +11345,7 @@
             "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
             "crates/bbb-net/src/probe/play.rs#probe_applies_recipe_book_packets_to_world",
             "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
-            "crates/bbb-world/src/toasts.rs#advancement_and_recipe_events_share_one_packet_order",
+            "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
             "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#recipe_book_events_update_world_state_and_world_counters",
             "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
             "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order",
@@ -14609,7 +14609,7 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_advancement_packets_to_world",
             "crates/bbb-world/src/advancements.rs#update_advancements_retains_rich_display_and_packet_node_order",
             "crates/bbb-world/src/toasts.rs#client_toast_handoff_is_globally_sequenced_bounded_and_level_scoped",
-            "crates/bbb-world/src/level.rs#respawn_clears_advancement_toast_handoff_without_dropping_tree",
+            "crates/bbb-world/src/level.rs#respawn_retains_toast_manager_handoff_and_advancement_tree",
             "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_counts_retained_window_lag_and_consumes_once",
             "crates/bbb-renderer/src/hud.rs#advancement_toast_block_icon_uses_after_blur_gui_residency"
           ],
