@@ -8506,6 +8506,8 @@ HUD_NOW_PLAYING_TOAST_EVIDENCE = OwnerEvidence(
         "#now_playing_translation_and_music_note_palette_match_vanilla",
         "crates/bbb-renderer/src/hud.rs"
         "#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+        "crates/bbb-renderer/src/hud.rs"
+        "#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug",
     ),
 )
 

@@ -23673,7 +23673,7 @@ mod tests {
     }
 
     #[test]
-    fn hide_gui_suppresses_ingame_draws_but_keeps_sleep_debug_and_toasts() {
+    fn hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug() {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
         };
@@ -23726,15 +23726,15 @@ mod tests {
             visible_portion: 1.0,
         }));
         let toast_commands = renderer.collect_hud_draws().commands.len();
-        assert!(
-            toast_commands > debug_commands,
-            "ToastManager presentation remains visible under F1"
+        assert_eq!(
+            toast_commands, debug_commands,
+            "ToastManager extraction is suppressed under F1"
         );
 
         renderer.set_hide_gui(false);
         assert!(
             renderer.collect_hud_draws().commands.len() > toast_commands,
-            "unchanged crosshair state returns immediately when F1 is disabled"
+            "unchanged crosshair and toast state return when F1 is disabled"
         );
     }
 

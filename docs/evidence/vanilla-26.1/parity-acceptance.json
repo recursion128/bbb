@@ -173,7 +173,7 @@
       ],
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
       "scenario_ids": [],
-      "sha256": "a5db202572882411e392b92741400e90acf2695cd88c34fa43b45efaeaa221c3",
+      "sha256": "09c35ee066bba27eb8dc7223acbbeba50575bb0359de4cbb2238f9807c3a2f76",
       "valid": true
     },
     {
@@ -4793,7 +4793,7 @@
       ],
       "path": "crates/bbb-renderer/src/hud.rs",
       "scenario_ids": [],
-      "sha256": "fd3524154e7e621e61e923f9e061d38f7a3d10a7aa6a2733860997adf8658ecf",
+      "sha256": "c54aedba11bade0e9c995125977bfccb1968c7d8e9acf6a474c2e2559ea40398",
       "valid": true
     },
     {
@@ -7855,7 +7855,7 @@
       ],
       "path": "scripts/client_mechanism_inventory.py",
       "scenario_ids": [],
-      "sha256": "4618f27bb99f9b43854c25af256b7a6dbd63d7c59536dd9ec4ebfd819e1c2978",
+      "sha256": "1d8246caedeff1e6bd68c93a1dd0dff49c116648d779ab251b321f4e52ae3e3a",
       "valid": true
     },
     {
@@ -8216,7 +8216,7 @@
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
-      "sha256": "a5db202572882411e392b92741400e90acf2695cd88c34fa43b45efaeaa221c3"
+      "sha256": "09c35ee066bba27eb8dc7223acbbeba50575bb0359de4cbb2238f9807c3a2f76"
     },
     {
       "path": "docs/unsupported-features.md",
@@ -24501,6 +24501,12 @@
           "command": "scripts/cargo-dev.sh test -p bbb-renderer camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures",
           "ignored": false,
           "reference": "crates/bbb-renderer/src/hud.rs#camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-renderer hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug",
+          "ignored": false,
+          "reference": "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug",
           "result": "passed-via-full-gate"
         },
         {

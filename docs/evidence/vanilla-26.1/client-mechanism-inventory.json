@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "4618f27bb99f9b43854c25af256b7a6dbd63d7c59536dd9ec4ebfd819e1c2978"
+      "sha256": "1d8246caedeff1e6bd68c93a1dd0dff49c116648d779ab251b321f4e52ae3e3a"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -19348,7 +19348,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19380,7 +19381,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19412,7 +19414,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19444,7 +19447,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19476,7 +19480,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19508,7 +19513,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19540,7 +19546,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19572,7 +19579,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19604,7 +19612,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19636,7 +19645,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19668,7 +19678,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19700,7 +19711,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19732,7 +19744,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19764,7 +19777,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19796,7 +19810,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -19828,7 +19843,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21014,7 +21030,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21113,7 +21130,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21299,7 +21317,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21340,7 +21359,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21382,6 +21402,7 @@
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
           "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug",
           "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins"
         ]
       },
@@ -21423,7 +21444,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21464,7 +21486,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21563,7 +21586,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
@@ -21691,7 +21715,8 @@
           "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
           "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-renderer/src/hud.rs#hide_gui_suppresses_ingame_draws_and_toasts_but_keeps_sleep_and_debug"
         ]
       },
       "category": "render-step",
