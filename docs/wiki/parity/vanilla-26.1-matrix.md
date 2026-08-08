@@ -153,7 +153,7 @@
 | `rendering-nondeterministic-golden-exclusions` | rendering/tests | official render pipeline/driver | semantic/pixel focused evidence | no cross-driver full-frame golden hash | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `diagnostics-client-only-inspection-exclusions` | diagnostics | F3/F3+I client-visible owners | protocol-backed local diagnostics | no server-private/integrated/options-only state | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `coverage-external-client-census` | workflow | selected Vanilla external-client owner corpus | generated inventory/matrix/ledger lint | owner mapping、evidence、bilateral routes、stale checks | `partial` | `scripts/client_mechanism_inventory.py`、`scripts/docs_wiki_lint.py`、`scripts/parity_acceptance.py`、`scripts/bbb_tools/executable_identity.py`、`scripts/tests/test_parity_acceptance.py`；current full-gate `bfcc657cf` | Vanilla owner corpus、census、executable identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md) |
-| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `partial` | `scripts/docs_wiki_lint.py`、`scripts/tests/test_docs_lint.py`、`scripts/parity_acceptance.py`；blocker artifact exact-output/layout/双向 owner/未知 ID lint；acceptance schema v2 immutable gate receipt 与 per-Mechanism ledger source-hash scoping focused tests | ledger source-hash scoping 等待 current full-gate rebind；目标版本、canonical owner、blocker artifact、receipt framing/identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md) |
+| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `equivalent` | `scripts/docs_wiki_lint.py`、`scripts/tests/test_docs_lint.py`、`scripts/parity_acceptance.py`、`scripts/tests/test_parity_acceptance.py`；blocker artifact exact-output/layout/双向 owner/未知 ID lint；acceptance schema v2 将 selected clean full-gate line 绑定为 immutable `gate-receipt-line-v1` artifact，并按每个 Mechanism 的精确 ledger section 重算/校验 source hashes，拒绝 unrelated/stale/tampered 映射；15 个 parity acceptance focused tests 与 exact `7c738fadc` full gate 通过 | 目标版本、canonical owner、blocker artifact、ledger route/source-hash scoping、receipt framing/identity 或 acceptance schema 变化时重开 |
 
 ## 审计摘要
 
@@ -161,7 +161,7 @@
 资源、渲染、性能和范围排除的长期机制行，共 147 行。`equivalent` 只用于已有 generated
 coverage、决策级 focused evidence 或真实 acceptance 的行。
 
-当前分布：20 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、101 行 `partial`、
+当前分布：21 行 `equivalent`、25 行 `not-needed`、0 行 `missing`、100 行 `partial`、
 1 行 `deferred-external`（`platform-macos-release`）。`partial` 包含真实 host-device
 audio receipt 与缺少精确 focused/source evidence 的行；全部双向路由到账本，不能因旧声明保留
 `equivalent`。无 `active` 或 `unverified` 行；开放状态只由账本排程。
