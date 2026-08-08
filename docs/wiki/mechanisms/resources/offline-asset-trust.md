@@ -221,7 +221,7 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 | namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | focused covered；formal receipt pending | list/root/path-safety tests |
 | lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | focused covered；formal receipt pending | missing/size/SHA/lazy/accounting tests |
 | locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | focused covered；formal receipt pending | zh_cn/CJK/OGG diagnostic acceptance |
-| window icon consumer | `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | focused covered；formal receipt pending | root path/order/budget/platform/source-guard tests；旧 index 30 receipt 仅作诊断证据 |
+| window icon consumer | `IconSet` 4 owner + `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | focused covered；formal receipt pending | root path/order/budget、X11 five-size ARGB/platform/source-owner tests；旧 index 30 receipt 仅作诊断证据 |
 
 ## 结构性不变量
 
@@ -230,7 +230,7 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 - index 枚举不得打开或 hash 全部 object；integrity 必须延迟到实际 read/open。
 - font、language、sound 不得恢复各自的 index-specific fallback/resolver。
 - window icon 不得绕过 `WindowIconCatalog` 恢复 source/generated 专用路径；selected、startup
-  与 server pack 不参与 Vanilla root icon 查询。
+  与 server pack 不参与 Vanilla root icon 查询；X11 不得把五张标准图降成单张 winit icon。
 - generation 内消费者不能混用两次 reload 的资源，失败必须保留上一代。
 
 ## 聚焦测试（focused tests）和真实证据
@@ -242,7 +242,8 @@ single/stack、source/index/selected/server priority、filter、`.mcmeta`、lazy
 `random/click_stereo.ogg`，以及生成 8192×4729、114432 glyph 的默认 atlas，验证
 `中`、`日`、`한`、U+20000 metrics/UV。window-icon acceptance 从 index 30 按需读取两组
 五张 PNG 与两份 ICNS，核对 exact dimensions、ICNS header/length、对象完整性及预算；
-Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=0` diagnostics。
+X11 focused owner 将五张图片按 Vanilla 顺序编码为同一个 `_NET_WM_ICON` ARGB CARDINAL
+property；Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=0` diagnostics。
 
 ## 当前差异
 
@@ -250,10 +251,10 @@ Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=
 已覆盖，但在 code-freeze resource/platform sweep 前仍保持 matrix `partial`。icon 的
 唯一 CPU owner 是 `bbb-pack::WindowIconCatalog`：standard family 在提交前完整解析五张 PNG，
 macOS family 有界读取并校验 ICNS；`bbb-native::window_icon` 只做 backend 选择和一次 startup
-apply。Wayland/未知 backend 零读取跳过，X11 使用窄 RGBA projection，macOS 使用
-原始 ICNS；任一 prepare/apply 失败继续使用平台默认图标，不保留 shadow state，也不参与
-runtime resource reload。其余未消费家族没有当前产品 surface，依据和重开条件由上表及
-唯一 ledger 保留。
+apply。Wayland/未知 backend 零读取跳过，macOS 使用原始 ICNS；X11 不走 winit 的单图标
+降级，而是一次提交 16/32/48/128/256 五段 width/height/ARGB CARDINAL。任一 prepare/apply
+失败继续使用平台默认图标，不保留 shadow state，也不参与 runtime resource reload。其余
+未消费家族没有当前产品 surface，依据和重开条件由上表及唯一 ledger 保留。
 
 ## 账本/goal 路由
 

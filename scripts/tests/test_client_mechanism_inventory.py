@@ -628,6 +628,64 @@ public class Owner {
             "3f94659ed528c32563412dbd803b6da5b425f94f3ca2233186a8af085216b03f",
         )
 
+    def test_window_icon_owner_census_is_exact_and_has_per_owner_evidence(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "resources-window-icons"
+        ]
+
+        self.assertEqual(len(owners), 5)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            Counter(
+                {
+                    "com/mojang/blaze3d/platform/IconSet.java": 4,
+                    "com/mojang/blaze3d/platform/Window.java": 1,
+                }
+            ),
+        )
+        mechanism = value["mechanisms"]["resources-window-icons"]
+        self.assertEqual(mechanism["owner_count"], 5)
+        self.assertEqual(mechanism["owner_evidence_count"], 5)
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        chrome_owners = [
+            owner["vanilla_owner"]
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "platform-window-chrome"
+        ]
+        self.assertFalse(
+            any("#setIcon(" in owner for owner in chrome_owners),
+            "the icon resource decision must not remain routed as generic chrome",
+        )
+        source_hashes = {
+            source["path"]: source["sha256"] for source in value["source_files"]
+        }
+        self.assertEqual(
+            source_hashes["com/mojang/blaze3d/platform/IconSet.java"],
+            "6872096fee8bc7983a5b9630b86316a20e0416be0a5f707bbfeef89564ca02df",
+        )
+        self.assertEqual(
+            source_hashes["com/mojang/blaze3d/platform/Window.java"],
+            "8878ed11ca73f28ba934e51209e9d05729df1407b6119b6708c3614d71c69458",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/client/Minecraft.java"],
+            "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8",
+        )
+
     def test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT
@@ -2503,7 +2561,8 @@ class LocalPlayer {
                     "platform-window-lifecycle": 16,
                     "platform-window-display-mode": 10,
                     "platform-window-surface-state": 13,
-                    "platform-window-chrome": 4,
+                    "platform-window-chrome": 3,
+                    "resources-window-icons": 1,
                     # Six `MouseHandler` position/button reads, four `KeyMapping`
                     # name/category/default/down reads and 17 `Window` geometry
                     # and flag reads.

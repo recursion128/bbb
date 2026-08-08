@@ -351,6 +351,7 @@ dependencies = [
  "url",
  "uuid",
  "winit",
+ "x11-dl",
  "zip",
 ]
 

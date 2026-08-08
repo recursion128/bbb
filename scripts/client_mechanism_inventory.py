@@ -785,7 +785,11 @@ WINDOW_METHOD_ROUTES = _method_routes(
     ),
     (
         MethodRoute("platform", "platform", "platform-window-chrome"),
-        ("setTitle", "setIcon", "selectCursor", "setAllowCursorChanges"),
+        ("setTitle", "selectCursor", "setAllowCursorChanges"),
+    ),
+    (
+        MethodRoute("resource-consumer", "resources", "resources-window-icons"),
+        ("setIcon",),
     ),
 )
 
@@ -6426,21 +6430,54 @@ PLATFORM_WINDOW_SURFACE_STATE_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
-PLATFORM_WINDOW_CHROME_OWNER_EVIDENCE = _owner_evidence(
+WINDOW_ICON_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence"
+)
+
+WINDOW_ICON_RESOURCE_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconSet",
+        "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+        "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
+    ),
+    (
+        "crates/bbb-pack/src/window_icons.rs#loads_release_and_snapshot_standard_paths_in_vanilla_order",
+        "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+        "crates/bbb-pack/src/window_icons.rs#indexed_icons_validate_integrity_and_do_not_open_unrelated_objects",
+        "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
+        WINDOW_ICON_OWNER_CENSUS_TEST,
+    ),
+)
+
+WINDOW_ICON_SET_OWNER_EVIDENCE = _owner_evidence(
+    (
+        WINDOW_ICON_RESOURCE_OWNER_EVIDENCE,
+        ("IconSet", "getStandardIcons", "getMacIcon", "getFile"),
+    ),
+)
+
+WINDOW_ICON_WINDOW_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
             (
                 "crates/bbb-native/src/window_icon.rs#install_startup_window_icon",
                 "crates/bbb-native/src/window_icon.rs#prepare_standard_icons",
+                "crates/bbb-native/src/window_icon.rs#apply_x11_icon_property",
             ),
             (
                 "crates/bbb-native/src/window_icon.rs#platform_target_preserves_vanilla_family_and_wayland_skip",
-                "crates/bbb-native/src/window_icon.rs#standard_catalog_converts_all_five_icons_before_platform_selection",
+                "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
                 "crates/bbb-native/src/window_icon.rs#production_source_has_one_ordered_startup_call_and_no_icon_path_resolver",
+                "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+                WINDOW_ICON_OWNER_CENSUS_TEST,
             ),
         ),
         ("setIcon",),
     ),
+)
+
+PLATFORM_WINDOW_CHROME_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
             (
@@ -10011,6 +10048,7 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     "net/minecraft/client/resources/language/LanguageManager.java": LANGUAGE_MANAGER_OWNER_EVIDENCE,
     "net/minecraft/client/resources/language/ClientLanguage.java": CLIENT_LANGUAGE_OWNER_EVIDENCE,
     "net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java": RECIPE_BOOK_LANGUAGE_OWNER_EVIDENCE,
+    "com/mojang/blaze3d/platform/IconSet.java": WINDOW_ICON_SET_OWNER_EVIDENCE,
 }
 
 
@@ -10047,6 +10085,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-level-pass": RENDERING_LEVEL_PASS_OWNER_EVIDENCE,
     "rendering-effects-screenshot": RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE,
     "resources-indexed-panorama": PANORAMA_GAME_RENDERER_OWNER_EVIDENCE,
+    "resources-window-icons": WINDOW_ICON_WINDOW_OWNER_EVIDENCE,
     "rendering-camera-fluid-fog": {},
     "rendering-chunk-layer-routing": RENDERING_CHUNK_LAYER_OWNER_EVIDENCE,
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
@@ -10691,6 +10730,13 @@ METHOD_SURFACES = (
         selected_methods=("getExternalAssetSource",),
     ),
     MethodSurface("resources", "resources", "resources-default-pack-stack", "net/minecraft/client/resources/ClientPackSource.java"),
+    MethodSurface(
+        "resource-consumer",
+        "resources",
+        "resources-window-icons",
+        "com/mojang/blaze3d/platform/IconSet.java",
+        selected_methods=("IconSet", "getStandardIcons", "getMacIcon", "getFile"),
+    ),
     MethodSurface("resources", "resources", "resources-offline-asset-trust", "net/minecraft/client/resources/IndexedAssetSource.java"),
     MethodSurface(
         "resource-provider",
@@ -11318,6 +11364,13 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-pack/src/language.rs",
         "crates/bbb-pack/src/metadata.rs",
         "crates/bbb-native/src/simulation/input_commands.rs",
+    ),
+    "resources-window-icons": (
+        "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+        "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
+        "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
+        WINDOW_ICON_OWNER_CENSUS_TEST,
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md",
     ),
     "ui-bidirectional-shaping": (
         "crates/bbb-render-types/src/text_visual_order.rs",

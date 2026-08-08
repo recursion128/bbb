@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "c9d2ed7d98e6eff23d6836e1449bcdcf4957615726a0b986181d7205ee97c79c"
+      "sha256": "85725901b80dd70cf44273d0c4faa299c3d0e08203724bbe45785ff0b3c8e7db"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -310,8 +310,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/window_icon.rs"
       ],
-      "owner_count": 6,
-      "owner_evidence_count": 6
+      "owner_count": 5,
+      "owner_evidence_count": 5
     },
     "platform-window-display-mode": {
       "bbb_evidence": [
@@ -788,6 +788,17 @@
       ],
       "owner_count": 68,
       "owner_evidence_count": 68
+    },
+    "resources-window-icons": {
+      "bbb_evidence": [
+        "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+        "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
+        "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
+        "scripts/tests/test_client_mechanism_inventory.py#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence",
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md"
+      ],
+      "owner_count": 5,
+      "owner_evidence_count": 5
     },
     "scope-client-level-noop-hooks": {
       "bbb_evidence": [
@@ -6763,6 +6774,118 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconSet",
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+          "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/window_icons.rs#loads_release_and_snapshot_standard_paths_in_vanilla_order",
+          "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+          "crates/bbb-pack/src/window_icons.rs#indexed_icons_validate_integrity_and_do_not_open_unrelated_objects",
+          "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
+          "scripts/tests/test_client_mechanism_inventory.py#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-window-icons",
+      "owner_id": "method:com.mojang.blaze3d.platform.IconSet#IconSet(final String ... path)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 17,
+        "path": "com/mojang/blaze3d/platform/IconSet.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.platform.IconSet#IconSet(final String ... path)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconSet",
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+          "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/window_icons.rs#loads_release_and_snapshot_standard_paths_in_vanilla_order",
+          "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+          "crates/bbb-pack/src/window_icons.rs#indexed_icons_validate_integrity_and_do_not_open_unrelated_objects",
+          "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
+          "scripts/tests/test_client_mechanism_inventory.py#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-window-icons",
+      "owner_id": "method:com.mojang.blaze3d.platform.IconSet#getFile(final PackResources resources,final String fileName)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 35,
+        "path": "com/mojang/blaze3d/platform/IconSet.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.platform.IconSet#getFile(final PackResources resources,final String fileName)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconSet",
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+          "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/window_icons.rs#loads_release_and_snapshot_standard_paths_in_vanilla_order",
+          "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+          "crates/bbb-pack/src/window_icons.rs#indexed_icons_validate_integrity_and_do_not_open_unrelated_objects",
+          "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
+          "scripts/tests/test_client_mechanism_inventory.py#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-window-icons",
+      "owner_id": "method:com.mojang.blaze3d.platform.IconSet#getMacIcon(final PackResources resources)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 31,
+        "path": "com/mojang/blaze3d/platform/IconSet.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.platform.IconSet#getMacIcon(final PackResources resources)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconSet",
+          "crates/bbb-pack/src/window_icons.rs#pub enum WindowIconCatalog",
+          "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/window_icons.rs#loads_release_and_snapshot_standard_paths_in_vanilla_order",
+          "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+          "crates/bbb-pack/src/window_icons.rs#indexed_icons_validate_integrity_and_do_not_open_unrelated_objects",
+          "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
+          "scripts/tests/test_client_mechanism_inventory.py#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-window-icons",
+      "owner_id": "method:com.mojang.blaze3d.platform.IconSet#getStandardIcons(final PackResources resources)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 21,
+        "path": "com/mojang/blaze3d/platform/IconSet.java"
+      },
+      "vanilla_owner": "com.mojang.blaze3d.platform.IconSet#getStandardIcons(final PackResources resources)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-native/src/startup.rs#build_window",
           "crates/bbb-native/src/main.rs#native platform window created"
         ],
@@ -7673,18 +7796,21 @@
       "bbb_evidence": {
         "implementation": [
           "crates/bbb-native/src/window_icon.rs#install_startup_window_icon",
-          "crates/bbb-native/src/window_icon.rs#prepare_standard_icons"
+          "crates/bbb-native/src/window_icon.rs#prepare_standard_icons",
+          "crates/bbb-native/src/window_icon.rs#apply_x11_icon_property"
         ],
         "tests": [
           "crates/bbb-native/src/window_icon.rs#platform_target_preserves_vanilla_family_and_wayland_skip",
-          "crates/bbb-native/src/window_icon.rs#standard_catalog_converts_all_five_icons_before_platform_selection",
-          "crates/bbb-native/src/window_icon.rs#production_source_has_one_ordered_startup_call_and_no_icon_path_resolver"
+          "crates/bbb-native/src/window_icon.rs#x11_property_preserves_all_five_icons_and_argb_order",
+          "crates/bbb-native/src/window_icon.rs#production_source_has_one_ordered_startup_call_and_no_icon_path_resolver",
+          "crates/bbb-pack/src/window_icons.rs#standard_prepare_is_all_or_nothing_and_ignores_selected_root_overrides",
+          "scripts/tests/test_client_mechanism_inventory.py#test_window_icon_owner_census_is_exact_and_has_per_owner_evidence"
         ]
       },
-      "category": "platform",
-      "domain": "platform",
+      "category": "resource-consumer",
+      "domain": "resources",
       "kind": "method",
-      "mechanism_id": "platform-window-chrome",
+      "mechanism_id": "resources-window-icons",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setIcon(final PackResources resources,final IconSet iconSet)",
       "role": "decision",
       "scope": "external-client",
@@ -58627,6 +58753,7 @@
       "rendering-level-pass",
       "rendering-effects-screenshot",
       "resources-indexed-panorama",
+      "resources-window-icons",
       "rendering-camera-fluid-fog",
       "rendering-chunk-layer-routing",
       "input-keyboard-routing",
@@ -58727,6 +58854,10 @@
     {
       "path": "com/mojang/blaze3d/platform/ClipboardManager.java",
       "sha256": "6bebf3d1f14ebd1cb94fc289f947e6a95221292e1bfa483f8fe7fbcc8872328f"
+    },
+    {
+      "path": "com/mojang/blaze3d/platform/IconSet.java",
+      "sha256": "6872096fee8bc7983a5b9630b86316a20e0416be0a5f707bbfeef89564ca02df"
     },
     {
       "path": "com/mojang/blaze3d/platform/Window.java",
@@ -60436,7 +60567,7 @@
       "particle-routing": 6,
       "persistence": 52,
       "pick-action": 3,
-      "platform": 50,
+      "platform": 49,
       "player-lifecycle": 4,
       "player-state": 14,
       "prediction": 1,
@@ -60451,7 +60582,7 @@
       "render-scene": 15,
       "render-section": 29,
       "render-step": 236,
-      "resource-consumer": 143,
+      "resource-consumer": 148,
       "resource-provider": 21,
       "resources": 122,
       "respawn-data": 9,
@@ -60482,12 +60613,12 @@
       "movement": 39,
       "options": 27,
       "persistence": 52,
-      "platform": 50,
+      "platform": 49,
       "protocol": 747,
       "realms": 100,
       "registries": 123,
       "rendering": 330,
-      "resources": 177,
+      "resources": 182,
       "security": 30,
       "singleplayer": 52,
       "startup": 16,
@@ -60498,12 +60629,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1614,
+      "decision": 1618,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3261,
-    "owner_count": 3261,
+    "mapped_owner_count": 3265,
+    "owner_count": 3265,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

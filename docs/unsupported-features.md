@@ -94,7 +94,13 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   exact source hash plus the same cube→overlay→blur→menu offscreen decision
   test. Its remaining open reason after the implementation commit is the
   code-freeze resource/platform/lifecycle formal receipt, not a missing owner
-  implementation.
+  implementation. Window icons now derive all four `IconSet` methods plus
+  `Window.setIcon` with per-owner evidence; the source-hashed Minecraft startup
+  caller selects release/snapshot, and the Linux owner publishes all five
+  standard sizes as one X11 ARGB CARDINAL property instead of degrading to
+  winit's single-icon API. That row likewise stays partial until the exact-HEAD
+  resource/platform sweep; user-waived macOS live validation is not substituted
+  for the required Linux receipt.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in

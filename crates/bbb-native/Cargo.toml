@@ -52,6 +52,9 @@ url = { workspace = true }
 winit = { workspace = true }
 zip = { workspace = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+x11-dl = { workspace = true }
+
 [dev-dependencies]
 bbb-item-model = { path = "../bbb-item-model", features = ["test-support"] }
 image = { workspace = true }

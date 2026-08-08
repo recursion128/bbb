@@ -71,6 +71,7 @@ writeable = "0.6"
 uuid = { version = "1", features = ["serde"] }
 wgpu = "0.19"
 winit = "0.29"
+x11-dl = "2.21.0"
 zip = { version = "2.4.2", default-features = false, features = ["deflate-flate2", "flate2"] }
 
 [workspace.lints.rust]

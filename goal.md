@@ -475,7 +475,7 @@ atlas padding）与全屏 screen 上的 toast/F3 overlay 收集路径（见 arch
 原子 immutable resource generation、font/language/sound 与动态 presentation owner 已由 Wiki
 资源机制页、focused tests 和 playable diagnostics 覆盖并转入维护。20 个 reload-listener consumer
 已完成逐族 prepare/apply/rollback 审计；root window icon 已由 vanilla-only catalog 接入
-native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private generation 服务可达
+native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panorama 经唯一 CPU catalog 与 renderer-private generation 服务可达
 断线页。built-in pack ZIP 与 Realms 对应 surface 仍按账本保留为 `not-needed`。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一

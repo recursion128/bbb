@@ -1,9 +1,13 @@
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, StandardWindowIcon, WindowIconCatalog, WindowIconFamily, WindowIconSet};
+#[cfg(target_os = "linux")]
+use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::{
     raw_window_handle::{HasDisplayHandle, RawDisplayHandle},
-    window::{Icon, Window},
+    window::Window,
 };
+
+const STANDARD_ICON_SIZES: [u32; 5] = [16, 32, 48, 128, 256];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NativeWindowBackend {
@@ -160,15 +164,11 @@ fn apply_catalog(
 ) -> Result<AppliedWindowIcon> {
     match (target, catalog) {
         (WindowIconTarget::X11, WindowIconCatalog::Standard(icons)) => {
-            let mut icons = prepare_standard_icons(icons)?;
-            let resource_count = icons.len();
-            let primary = icons
-                .remove(&256)
-                .context("prepared window icon family is missing 256px icon")?;
-            window.set_window_icon(Some(primary));
+            let property = prepare_standard_icons(icons)?;
+            apply_x11_icon_property(window, &property.cardinals)?;
             Ok(AppliedWindowIcon {
-                resource_count,
-                primary_size: Some(256),
+                resource_count: property.resource_count,
+                primary_size: property.primary_size,
                 taskbar_size: None,
             })
         }
@@ -190,19 +190,106 @@ fn apply_catalog(
     }
 }
 
-fn prepare_standard_icons(
-    icons: Vec<StandardWindowIcon>,
-) -> Result<std::collections::BTreeMap<u32, Icon>> {
-    let mut prepared = std::collections::BTreeMap::new();
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct X11IconProperty {
+    cardinals: Vec<u32>,
+    resource_count: usize,
+    primary_size: Option<u32>,
+}
+
+fn prepare_standard_icons(icons: Vec<StandardWindowIcon>) -> Result<X11IconProperty> {
+    let mut requested_sizes = Vec::with_capacity(icons.len());
+    let mut cardinals = Vec::new();
     for icon in icons {
         let (requested_size, [width, height], rgba) = icon.into_native_parts();
-        let native = Icon::from_rgba(rgba, width, height)
-            .with_context(|| format!("prepare {requested_size}px native window icon"))?;
-        if prepared.insert(requested_size, native).is_some() {
-            bail!("duplicate {requested_size}px native window icon");
+        let pixel_count = width
+            .checked_mul(height)
+            .and_then(|count| usize::try_from(count).ok())
+            .context("window icon dimensions exceed the host address space")?;
+        let expected_bytes = pixel_count
+            .checked_mul(4)
+            .context("window icon RGBA byte count overflow")?;
+        if rgba.len() != expected_bytes {
+            bail!(
+                "{requested_size}px window icon declares {width}x{height} but contains {} RGBA bytes",
+                rgba.len()
+            );
         }
+        requested_sizes.push(requested_size);
+        cardinals.push(width);
+        cardinals.push(height);
+        cardinals.extend(rgba.chunks_exact(4).map(|pixel| {
+            u32::from(pixel[3]) << 24
+                | u32::from(pixel[0]) << 16
+                | u32::from(pixel[1]) << 8
+                | u32::from(pixel[2])
+        }));
     }
-    Ok(prepared)
+    if requested_sizes != STANDARD_ICON_SIZES {
+        bail!(
+            "standard window icon family has sizes {requested_sizes:?}, expected {STANDARD_ICON_SIZES:?}"
+        );
+    }
+    Ok(X11IconProperty {
+        cardinals,
+        resource_count: requested_sizes.len(),
+        primary_size: requested_sizes.last().copied(),
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn apply_x11_icon_property(window: &Window, cardinals: &[u32]) -> Result<()> {
+    use std::os::raw::{c_int, c_ulong};
+
+    use x11_dl::xlib;
+
+    let display = match window.display_handle()?.as_raw() {
+        RawDisplayHandle::Xlib(handle) => handle
+            .display
+            .context("X11 display handle has no Xlib display pointer")?
+            .as_ptr()
+            .cast::<xlib::Display>(),
+        other => bail!("X11 icon target has non-Xlib display handle {other:?}"),
+    };
+    let xwindow = match window.window_handle()?.as_raw() {
+        RawWindowHandle::Xlib(handle) => handle.window,
+        other => bail!("X11 icon target has non-Xlib window handle {other:?}"),
+    };
+    let property_len = c_int::try_from(cardinals.len())
+        .context("X11 window icon property exceeds the Xlib item-count range")?;
+    let native_cardinals = cardinals
+        .iter()
+        .copied()
+        .map(c_ulong::from)
+        .collect::<Vec<_>>();
+    let xlib = xlib::Xlib::open().map_err(|err| anyhow::anyhow!("load Xlib: {err}"))?;
+
+    // SAFETY: winit owns a live Xlib display/window pair for the X11 backend,
+    // the property data remains allocated through both calls, and Xlib's
+    // format-32 ABI consumes one native `unsigned long` per CARDINAL.
+    unsafe {
+        let property = (xlib.XInternAtom)(display, c"_NET_WM_ICON".as_ptr(), 0);
+        if property == 0 {
+            bail!("XInternAtom returned None for _NET_WM_ICON");
+        }
+        (xlib.XChangeProperty)(
+            display,
+            xwindow,
+            property,
+            xlib::XA_CARDINAL,
+            32,
+            xlib::PropModeReplace,
+            native_cardinals.as_ptr().cast(),
+            property_len,
+        );
+        (xlib.XFlush)(display);
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn apply_x11_icon_property(_window: &Window, _cardinals: &[u32]) -> Result<()> {
+    bail!("X11 window icon apply is only available on Linux")
 }
 
 /// The AppKit call itself lives in `bbb-platform-macos`, whose closure
@@ -223,8 +310,6 @@ mod tests {
     use image::{Rgba, RgbaImage};
 
     use super::*;
-
-    const STANDARD_ICON_SIZES: [u32; 5] = [16, 32, 48, 128, 256];
 
     #[test]
     fn platform_target_preserves_vanilla_family_and_wayland_skip() {
@@ -283,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn standard_catalog_converts_all_five_icons_before_platform_selection() {
+    fn x11_property_preserves_all_five_icons_and_argb_order() {
         let fixture = Fixture::new("prepare");
         fixture.write_standard_icons();
         let WindowIconCatalog::Standard(icons) = fixture
@@ -294,10 +379,15 @@ mod tests {
             panic!("expected standard window icons");
         };
         let prepared = prepare_standard_icons(icons).unwrap();
-        assert_eq!(
-            prepared.keys().copied().collect::<Vec<_>>(),
-            STANDARD_ICON_SIZES
-        );
+        assert_eq!(prepared.resource_count, STANDARD_ICON_SIZES.len());
+        assert_eq!(prepared.primary_size, Some(256));
+        let mut cursor = 0;
+        for size in STANDARD_ICON_SIZES {
+            assert_eq!(&prepared.cardinals[cursor..cursor + 2], &[size, size]);
+            assert_eq!(prepared.cardinals[cursor + 2], 0xff01_0203);
+            cursor += 2 + usize::try_from(size * size).unwrap();
+        }
+        assert_eq!(cursor, prepared.cardinals.len());
     }
 
     #[test]
