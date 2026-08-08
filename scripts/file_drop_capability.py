@@ -1,10 +1,10 @@
-"""Derive the Vanilla/winit failed-file-drop capability contract.
+"""Derive the Vanilla/winit failed-file-drop scope contract.
 
-This is blocker evidence, not an implementation-status table.  The report is
-rebuilt from the verified Vanilla workspace, Cargo.lock, the resolved winit
-source package, and BBB's window-event adapter.  If any side gains a usable
-batch/failure channel the derivation fails closed so the open gap must be
-re-audited instead of silently retaining a stale external-blocker ruling.
+This is mechanism evidence, not a second implementation-status table.  The
+report is rebuilt from the verified Vanilla workspace, its exact Java 25
+LWJGL/GLFW artifacts, Cargo.lock, the resolved winit source package, and BBB's
+window-event adapter.  It proves whether the failed-path branch or a valid-path
+consumer is observable in the declared Linux/Wayland surface.
 """
 
 from __future__ import annotations
@@ -15,10 +15,14 @@ from pathlib import Path
 import re
 import subprocess
 import tomllib
+import zipfile
 
 
 VANILLA_VERSION = "26.1"
 WINIT_VERSION = "0.29.15"
+LWJGL_VERSION = "3.4.1"
+LWJGL_COMMIT = "b800ccffab14396fc529ddb6c931b7c5c5226763"
+GLFW_COMMIT = "9352d8fe93cd443be18157abe81f16500549aec0"
 MECHANISM_IDS = ("hud-frame-extract-order", "platform-window-lifecycle")
 OWNER_IDS = (
     "method:net.minecraft.client.gui.components.toasts.SystemToast#"
@@ -31,12 +35,61 @@ REPRODUCE_COMMAND = (
 
 MOUSE_HANDLER = "net/minecraft/client/MouseHandler.java"
 SYSTEM_TOAST = "net/minecraft/client/gui/components/toasts/SystemToast.java"
+SCREEN = "net/minecraft/client/gui/screens/Screen.java"
+PACK_SELECTION_SCREEN = "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java"
 WINIT_EVENT = "src/event.rs"
 WINIT_WINDOWS_DROP = "src/platform_impl/windows/drop_handler.rs"
 WINIT_MACOS_DROP = "src/platform_impl/macos/window_delegate.rs"
 WINIT_X11_PROCESSOR = "src/platform_impl/linux/x11/event_processor.rs"
 WINIT_X11_DND = "src/platform_impl/linux/x11/dnd.rs"
 WINIT_WAYLAND_ROOT = "src/platform_impl/linux/wayland"
+BBB_MAIN = "crates/bbb-native/src/main.rs"
+
+UPSTREAM_SOURCE_RECEIPTS = (
+    {
+        "owner": "GLFW::_glfwParseUriList",
+        "repository": "https://github.com/glfw/glfw",
+        "revision": GLFW_COMMIT,
+        "path": "src/init.c",
+        "sha256": "b6ff7576ff61505c06043da7a8a14e4e1f15c30b07c7953e2a838f25ed138893",
+    },
+    {
+        "owner": "GLFW::dataDeviceHandleDrop",
+        "repository": "https://github.com/glfw/glfw",
+        "revision": GLFW_COMMIT,
+        "path": "src/wl_window.c",
+        "sha256": "0371bbf004408002563cd03055d3949fe6aff56112f430ad1fe8d019e52aceae",
+    },
+    {
+        "owner": "LWJGL::GLFWDropCallback.getName",
+        "repository": "https://github.com/LWJGL/lwjgl3",
+        "revision": LWJGL_COMMIT,
+        "path": "modules/lwjgl/glfw/src/generated/java/org/lwjgl/glfw/GLFWDropCallback.java",
+        "sha256": "8f7bde750d1b99785f4e0fa40831a790baacedf7a08be329be0d9dfed87cf81d",
+    },
+    {
+        "owner": "LWJGL::MemoryUtil.memUTF8",
+        "repository": "https://github.com/LWJGL/lwjgl3",
+        "revision": LWJGL_COMMIT,
+        "path": "modules/lwjgl/core25/src/main/java/org/lwjgl/system/MemoryUtil.java",
+        "sha256": "dd76c861ea8c8a25ee0ba6c0f3cd041ec8a07a4f1bc473f30e10a9e845603159",
+    },
+    {
+        "owner": "LWJGL::MultiReleaseTextDecoding.decodeUTF8",
+        "repository": "https://github.com/LWJGL/lwjgl3",
+        "revision": LWJGL_COMMIT,
+        "path": "modules/lwjgl/core11/src/main/java/org/lwjgl/system/MultiReleaseTextDecoding.java",
+        "sha256": "b3bf1c0594bb7c264787df50cfaace52bd9f6ba9ee3026049d7e60d08da5d5b0",
+    },
+    {
+        "owner": "OpenJDK::UnixPath",
+        "repository": "https://github.com/openjdk/jdk25u",
+        "revision": "78770bfaefd23ae77ec4f8ddd769c1c2d9c282df",
+        "release": "jdk-25.0.1+8",
+        "path": "src/java.base/unix/classes/sun/nio/fs/UnixPath.java",
+        "sha256": "515557ab1e13000656f13a6dc157b73894c720f4f990547766b8c0fc48f688c2",
+    },
+)
 
 GENERATOR_INPUT_PATHS = (
     "Cargo.lock",
@@ -52,6 +105,11 @@ class FileDropCapabilityError(RuntimeError):
 def sha256_file(path: Path) -> str:
     with path.open("rb") as handle:
         return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def sha1_file(path: Path) -> str:
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha1").hexdigest()
 
 
 def _line(text: str, pattern: str, context: str) -> int:
@@ -184,6 +242,32 @@ def _tree_receipt(root: Path, relative: str) -> dict[str, object]:
     }
 
 
+def _on_files_drop_occurrences(vanilla_root: Path) -> list[dict[str, object]]:
+    rows = []
+    for path in sorted(vanilla_root.rglob("*.java")):
+        count = path.read_text(encoding="utf-8").count("onFilesDrop(")
+        if count:
+            rows.append(
+                {
+                    "count": count,
+                    "path": path.relative_to(vanilla_root).as_posix(),
+                    "sha256": sha256_file(path),
+                }
+            )
+    expected_paths = (MOUSE_HANDLER, PACK_SELECTION_SCREEN, SCREEN)
+    expected = [
+        {
+            "count": 1,
+            "path": relative,
+            "sha256": sha256_file(vanilla_root / relative),
+        }
+        for relative in expected_paths
+    ]
+    if rows != sorted(expected, key=lambda row: row["path"]):
+        raise FileDropCapabilityError(f"Vanilla onFilesDrop surface changed: {rows!r}")
+    return rows
+
+
 def _winit_lock_record(cargo_lock: Path) -> dict[str, str]:
     value = tomllib.loads(cargo_lock.read_text(encoding="utf-8"))
     records = [
@@ -228,10 +312,138 @@ def resolve_winit_root(repo_root: Path) -> Path:
     return Path(packages[0]["manifest_path"]).resolve().parent
 
 
+def _library_artifact(
+    version: dict[str, object], download_root: Path, coordinate: str
+) -> tuple[str, str, Path]:
+    libraries = [
+        item for item in version.get("libraries", []) if item.get("name") == coordinate
+    ]
+    if len(libraries) != 1:
+        raise FileDropCapabilityError(
+            f"Vanilla metadata must contain exactly one {coordinate} library"
+        )
+    artifact = libraries[0].get("downloads", {}).get("artifact", {})
+    relative = artifact.get("path")
+    expected_sha1 = artifact.get("sha1")
+    if not isinstance(relative, str) or not isinstance(expected_sha1, str):
+        raise FileDropCapabilityError(
+            f"Vanilla library metadata is incomplete: {coordinate}"
+        )
+    jar_path = download_root / "libraries" / relative
+    if not jar_path.is_file() or sha1_file(jar_path) != expected_sha1:
+        raise FileDropCapabilityError(f"Vanilla library hash mismatch: {coordinate}")
+    return relative, expected_sha1, jar_path
+
+
+def _zip_entry_receipts(
+    archive: zipfile.ZipFile, entries: tuple[str, ...]
+) -> list[dict[str, str]]:
+    names = set(archive.namelist())
+    if not set(entries).issubset(names):
+        missing = sorted(set(entries) - names)
+        raise FileDropCapabilityError(f"Vanilla LWJGL entries are absent: {missing!r}")
+    return [
+        {"path": entry, "sha256": hashlib.sha256(archive.read(entry)).hexdigest()}
+        for entry in entries
+    ]
+
+
+def _vanilla_runtime_receipt(download_root: Path) -> dict[str, object]:
+    version_path = download_root / f"{VANILLA_VERSION}.json"
+    if not version_path.is_file():
+        raise FileDropCapabilityError(
+            f"Vanilla version metadata is absent: {version_path}"
+        )
+    version = json.loads(version_path.read_text(encoding="utf-8"))
+    java_runtime = version.get("javaVersion")
+    if java_runtime != {"component": "java-runtime-epsilon", "majorVersion": 25}:
+        raise FileDropCapabilityError(
+            f"Vanilla Java runtime contract changed: {java_runtime!r}"
+        )
+
+    core_relative, core_sha1, core_path = _library_artifact(
+        version, download_root, f"org.lwjgl:lwjgl:{LWJGL_VERSION}"
+    )
+    decoder_entry = (
+        "META-INF/versions/11/org/lwjgl/system/MultiReleaseTextDecoding.class"
+    )
+    memory_entry = "META-INF/versions/25/org/lwjgl/system/MemoryUtil.class"
+    with zipfile.ZipFile(core_path) as archive:
+        manifest = archive.read("META-INF/MANIFEST.MF")
+        if b"Multi-Release: true" not in manifest:
+            raise FileDropCapabilityError("Vanilla LWJGL core is no longer multi-release")
+        core_entries = _zip_entry_receipts(archive, (decoder_entry, memory_entry))
+
+    glfw_relative, glfw_sha1, glfw_path = _library_artifact(
+        version, download_root, f"org.lwjgl:lwjgl-glfw:{LWJGL_VERSION}"
+    )
+    callback_entry = "org/lwjgl/glfw/GLFWDropCallback.class"
+    with zipfile.ZipFile(glfw_path) as archive:
+        callback_entries = _zip_entry_receipts(archive, (callback_entry,))
+
+    native_relative, native_sha1, native_path = _library_artifact(
+        version,
+        download_root,
+        f"org.lwjgl:lwjgl-glfw:{LWJGL_VERSION}:natives-linux",
+    )
+
+    prefix = "linux/x64/org/lwjgl/glfw/libglfw.so"
+    git_entry = f"META-INF/{prefix}.git"
+    sha1_entry = f"META-INF/{prefix}.sha1"
+    with zipfile.ZipFile(native_path) as archive:
+        names = set(archive.namelist())
+        required = {prefix, git_entry, sha1_entry}
+        if not required.issubset(names):
+            raise FileDropCapabilityError("Vanilla GLFW native provenance entries are absent")
+        native = archive.read(prefix)
+        embedded_commit = archive.read(git_entry).decode("ascii").strip()
+        embedded_sha1 = archive.read(sha1_entry).decode("ascii").strip()
+    if embedded_commit != GLFW_COMMIT:
+        raise FileDropCapabilityError(
+            f"Vanilla GLFW commit changed: {embedded_commit!r}"
+        )
+    actual_native_sha1 = hashlib.sha1(native).hexdigest()
+    if embedded_sha1 != actual_native_sha1:
+        raise FileDropCapabilityError("Vanilla GLFW embedded native hash mismatch")
+    version_marker = b"3.5.0 Wayland X11 GLX Null EGL OSMesa monotonic shared"
+    if version_marker not in native:
+        raise FileDropCapabilityError("Vanilla GLFW Linux backend marker changed")
+    return {
+        "java_runtime": java_runtime,
+        "lwjgl_core": {
+            "artifact": core_relative,
+            "artifact_sha1": core_sha1,
+            "artifact_sha256": sha256_file(core_path),
+            "multi_release": True,
+            "selected_java_25_entries": core_entries,
+        },
+        "lwjgl_glfw_java": {
+            "artifact": glfw_relative,
+            "artifact_sha1": glfw_sha1,
+            "artifact_sha256": sha256_file(glfw_path),
+            "selected_entries": callback_entries,
+        },
+        "lwjgl_glfw_native_linux": {
+            "artifact": native_relative,
+            "artifact_sha1": native_sha1,
+            "artifact_sha256": sha256_file(native_path),
+            "embedded_glfw_commit": embedded_commit,
+            "native_entry": prefix,
+            "native_sha1": actual_native_sha1,
+            "native_sha256": hashlib.sha256(native).hexdigest(),
+            "version_backend_marker": version_marker.decode("ascii"),
+        },
+    }
+
+
 def build_report(
-    repo_root: Path, vanilla_root: Path, winit_root: Path
+    repo_root: Path,
+    vanilla_root: Path,
+    vanilla_download_root: Path,
+    winit_root: Path,
 ) -> dict[str, object]:
     dependency = _winit_lock_record(repo_root / "Cargo.lock")
+    vanilla_runtime = _vanilla_runtime_receipt(vanilla_download_root)
     winit_manifest = tomllib.loads((winit_root / "Cargo.toml").read_text(encoding="utf-8"))
     package = winit_manifest.get("package", {})
     if package.get("name") != "winit" or package.get("version") != WINIT_VERSION:
@@ -256,6 +468,19 @@ def build_report(
             "onFileDropFailure": r"public static void onFileDropFailure\([^\n]+int count\)",
             "FILE_DROP_FAILURE identity": r"SystemToast\.SystemToastId\.FILE_DROP_FAILURE",
             "localized failed-count detail": r'Component\.translatable\("gui\.fileDropFailure\.detail", count\)',
+        },
+    )
+    screen_receipt = _receipt(
+        vanilla_root,
+        SCREEN,
+        {"base onFilesDrop is empty": r"public void onFilesDrop\([^\n]+\) \{\s*\}"},
+    )
+    pack_selection_receipt = _receipt(
+        vanilla_root,
+        PACK_SELECTION_SCREEN,
+        {
+            "only observable valid-path consumer": r"@Override\s+public void onFilesDrop\([^\n]+\)",
+            "drop opens a confirmation screen": r"String names = extractPackNames\(files\)[\s\S]+?new ConfirmScreen",
         },
     )
     for required in ("Paths.get(name)", "names.add(Paths.get(name))"):
@@ -320,22 +545,21 @@ def build_report(
         },
     )
 
-    bbb_main = "crates/bbb-native/src/main.rs"
     bbb_receipt = _receipt(
         repo_root,
-        bbb_main,
+        BBB_MAIN,
         {
             "window-event adapter": r"fn enqueue_simulation_window_event\(",
-            "failed-drop capability blocker": r"failed-file-drop capability receipt",
+            "Linux Java 25 scope ruling": r"official LWJGL decoding makes that failure\s+/// branch unreachable",
         },
     )
-    main_text = (repo_root / bbb_main).read_text(encoding="utf-8")
+    main_text = (repo_root / BBB_MAIN).read_text(encoding="utf-8")
     adapter_body_start = main_text.index("fn enqueue_simulation_window_event(")
     adapter_body_end = main_text.index("\n}\n", adapter_body_start) + 2
     adapter_body = main_text[adapter_body_start:adapter_body_end]
     if "WindowEvent::DroppedFile" in adapter_body:
         raise FileDropCapabilityError(
-            "BBB window adapter now consumes DroppedFile; re-audit the blocker"
+            "BBB restored the lossy winit DroppedFile path inside the window adapter"
         )
 
     generator_inputs = [
@@ -348,14 +572,21 @@ def build_report(
                 "failed_path_count_consumed": False,
                 "source": bbb_receipt,
                 "successful_path_event_consumed": False,
+                "valid_path_values_consumed": False,
+                "valid_path_values_scope": (
+                    "Screen.onFilesDrop is empty on the declared screen surface; "
+                    "PackSelectionScreen and in-game configuration UI are out of scope."
+                ),
             },
             "backends": {
                 "linux-wayland": {
                     "contract": "no file-drop WindowEvent implementation",
+                    "scope": "not-needed: no observable declared-screen effect",
                     "source_tree": _tree_receipt(winit_root, WINIT_WAYLAND_ROOT),
                 },
                 "linux-x11": {
                     "contract": x11_contract,
+                    "scope": "not-needed release row",
                     "sources": [x11_processor_receipt, x11_dnd_receipt],
                 },
                 "macos": {
@@ -364,6 +595,7 @@ def build_report(
                         "failed_path_count_exposed": False,
                         "success_delivery": "DroppedFile-per-NSString",
                     },
+                    "scope": "deferred release validation",
                     "source": macos_receipt,
                 },
                 "windows": {
@@ -372,6 +604,7 @@ def build_report(
                         "failed_path_count_exposed": False,
                         "success_delivery": "DroppedFile-per-PathBuf",
                     },
+                    "scope": "not-needed platform",
                     "source": windows_receipt,
                 },
             },
@@ -387,20 +620,27 @@ def build_report(
                 },
             ),
         },
-        "blocker": {
-            "classification": "external-dependency-event-surface",
+        "scope_ruling": {
+            "classification": "not-needed-declared-linux-wayland",
             "final_conclusion": (
-                "The pinned winit public event stream cannot reproduce Vanilla's per-drop-batch "
-                "valid-path list plus exact failed-path count; X11 parse failures are discarded "
-                "before WindowEvent delivery and no backend exposes a batch identity or failure count."
+                "On official Java 25, GLFW paths are NUL-terminated before LWJGL's Java-11 "
+                "multi-release UTF-8 decoder replaces malformed input. The resulting valid "
+                "Java String cannot trigger UnixPath's NUL or malformed-UTF-16 rejection, so "
+                "failedCount remains zero on Linux/Wayland. The only onFilesDrop override is "
+                "PackSelectionScreen, excluded by the command-line-only configuration scope."
             ),
-            "missing_condition": (
-                "A supported platform adapter must expose one drop batch's valid paths and exact "
-                "failed path-conversion count before winit discards or flattens that information."
-            ),
+            "predicates": [
+                "official runtime major version is Java 25",
+                "GLFWDropCallback.getName uses NUL-terminated MemoryUtil.memUTF8",
+                "Java 25 selects LWJGL's versions/25 MemoryUtil and versions/11 UTF-8 decoder",
+                "the selected decoder uses StandardCharsets.UTF_8 replacement semantics",
+                "UnixPath rejects NUL or malformed UTF-16, neither of which survives that chain",
+                "Screen.onFilesDrop is empty and PackSelectionScreen is the only override",
+            ],
             "reopen_condition": (
-                "winit or an owned platform adapter exposes drop batch identity plus exact failed "
-                "path count, or the supported-platform scope changes."
+                "The official Java/LWJGL/GLFW/JDK conversion chain changes, a supported platform "
+                "can produce InvalidPathException, BBB adds PackSelectionScreen or another "
+                "onFilesDrop consumer, or the declared platform/configuration scope changes."
             ),
             "reproduce_command": REPRODUCE_COMMAND,
         },
@@ -409,13 +649,21 @@ def build_report(
         "mechanism_ids": list(MECHANISM_IDS),
         "owner_ids": list(OWNER_IDS),
         "schema_version": 1,
-        "status": "blocked-external",
+        "status": "scope-ruled-not-needed",
+        "upstream_source_receipts": list(UPSTREAM_SOURCE_RECEIPTS),
         "valid": True,
         "vanilla_contract": {
             "all_invalid_batch_dispatches_callback": False,
             "callback_state": ["valid_paths", "failed_path_count"],
             "failure_toast_condition": "valid_paths is non-empty and failed_path_count > 0",
-            "sources": [mouse_receipt, toast_receipt],
+            "official_runtime": vanilla_runtime,
+            "on_files_drop_occurrences": _on_files_drop_occurrences(vanilla_root),
+            "sources": [
+                mouse_receipt,
+                toast_receipt,
+                screen_receipt,
+                pack_selection_receipt,
+            ],
             "toast_identity": "FILE_DROP_FAILURE",
             "toast_translation_keys": [
                 "gui.fileDropFailure.title",
@@ -426,9 +674,14 @@ def build_report(
     }
 
 
-def render_report(repo_root: Path, vanilla_root: Path, winit_root: Path) -> str:
+def render_report(
+    repo_root: Path,
+    vanilla_root: Path,
+    vanilla_download_root: Path,
+    winit_root: Path,
+) -> str:
     return json.dumps(
-        build_report(repo_root, vanilla_root, winit_root),
+        build_report(repo_root, vanilla_root, vanilla_download_root, winit_root),
         ensure_ascii=False,
         indent=2,
         sort_keys=True,

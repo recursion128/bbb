@@ -56,7 +56,7 @@ owner、mechanism 与状态数量只从 inventory `summary`、acceptance report 
 matrix 正文中的生成统计快照会被 docs lint 拒绝。
 
 该 inventory 与 packet、registry-holder、item-component、entity、particle-provider 五份
-coverage ledger，client-options、key-mapping 两份 catalog，以及 file-drop blocker 与 parity
+coverage ledger，client-options、key-mapping 两份 catalog，以及 file-drop capability 与 parity
 acceptance，共同组成 `docs/evidence/vanilla-26.1/` 的十成员封闭版本集合。matrix 仍是唯一
 机制状态索引；acceptance 只派生 owner/test/capture hash、开放原因、双向 artifact mapping 与
 changed-path 失效计划。五份 coverage ledger 的开放行数由 `scripts/coverage-status.py` 汇总，

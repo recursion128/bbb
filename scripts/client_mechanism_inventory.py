@@ -8501,7 +8501,7 @@ SERVER_PACK_TOAST_EVIDENCE = OwnerEvidence(
 
 TOAST_OWNER_CENSUS_TEST = (
     "scripts/tests/test_client_mechanism_inventory.py"
-    "#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+    "#test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps"
 )
 
 HUD_TOAST_SHARED_EVIDENCE = OwnerEvidence(
@@ -8695,24 +8695,33 @@ HUD_NOW_PLAYING_RUNTIME_OPTION_EVIDENCE = OwnerEvidence(
     MUSIC_TOAST_RUNTIME_OPTION_SCOPE,
 )
 
-HUD_FILE_DROP_TOAST_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
-    artifact="docs/evidence/vanilla-26.1/file-drop-capability.json",
-    reproduce_command=(
-        "scripts/python scripts/generate-file-drop-capability.py --vanilla-root "
-        '"$(scripts/vanilla path 26.1 --kind root)" --check'
+HUD_FILE_DROP_TOAST_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/MouseHandler.java:227-260",
     ),
-    reason=(
-        "Vanilla keeps a valid-path list and exact failed-path count for one GLFW drop batch. "
-        "Pinned winit 0.29.15 exposes only per-success DroppedFile paths; X11 parse failures are "
-        "discarded before WindowEvent delivery and no public backend event carries a batch id or "
-        "failed count."
+    current_scope_reason=(
+        "Official 26.1 runs Java 25 and selects LWJGL's multi-release Java-11 UTF-8 "
+        "decoder, which replaces malformed input after NUL-terminated GLFW conversion; "
+        "the resulting String cannot trip UnixPath's InvalidPathException conditions. "
+        "The base Screen drop callback is empty and the only override is the excluded "
+        "in-game PackSelectionScreen."
     ),
-    close_condition=(
-        "Provide a supported platform adapter that preserves one drop batch's valid paths and "
-        "exact failed conversion count, then route failedCount > 0 through the shared SystemToast "
-        "manager; re-audit if winit or supported-platform scope changes."
+    reopen_condition=(
+        "The Java/LWJGL/GLFW/JDK conversion chain changes, a declared platform can produce "
+        "InvalidPathException, or BBB adds PackSelectionScreen/another onFilesDrop consumer."
     ),
+)
+
+HUD_FILE_DROP_TOAST_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/main.rs#enqueue_simulation_window_event",
+        "docs/evidence/vanilla-26.1/file-drop-capability.json#not-needed-declared-linux-wayland",
+    ),
+    (
+        "scripts/tests/test_file_drop_capability.py#test_checked_receipt_matches_verified_vanilla_and_pinned_winit",
+    ),
+    HUD_FILE_DROP_TOAST_SCOPE,
 )
 
 SYSTEM_TOAST_WORLD_UI_SCOPE = OwnerScopeRuling(
@@ -9077,7 +9086,7 @@ SYSTEM_TOAST_OWNER_EVIDENCE = _owner_evidence(
         HUD_DYNAMIC_SYSTEM_TITLE_EVIDENCE,
         ("SystemToast", "extractRenderState", "reset"),
     ),
-    (HUD_FILE_DROP_TOAST_GAP, ("onFileDropFailure",)),
+    (HUD_FILE_DROP_TOAST_EVIDENCE, ("onFileDropFailure",)),
     (
         SYSTEM_TOAST_WORLD_UI_SCOPE_EVIDENCE,
         (

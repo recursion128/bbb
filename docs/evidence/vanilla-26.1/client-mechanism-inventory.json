@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "85725901b80dd70cf44273d0c4faa299c3d0e08203724bbe45785ff0b3c8e7db"
+      "sha256": "81365cbcd0a29df880b592632e98f4fe25f5fcfb227571092bbe33a655688ebd"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -69,8 +69,7 @@
         "crates/bbb-native/src/runtime/render_extract.rs"
       ],
       "owner_count": 118,
-      "owner_evidence_count": 118,
-      "owner_gap_count": 1
+      "owner_evidence_count": 118
     },
     "hud-hotbar-selection": {
       "bbb_evidence": [
@@ -21004,7 +21003,7 @@
           ]
         },
         "tests": [
-          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps"
         ]
       },
       "category": "render-step",
@@ -21035,7 +21034,7 @@
           ]
         },
         "tests": [
-          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps"
         ]
       },
       "category": "render-step",
@@ -21053,13 +21052,21 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "artifact": "docs/evidence/vanilla-26.1/file-drop-capability.json",
-          "close_condition": "Provide a supported platform adapter that preserves one drop batch's valid paths and exact failed conversion count, then route failedCount > 0 through the shared SystemToast manager; re-audit if winit or supported-platform scope changes.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Vanilla keeps a valid-path list and exact failed-path count for one GLFW drop batch. Pinned winit 0.29.15 exposes only per-success DroppedFile paths; X11 parse failures are discarded before WindowEvent delivery and no public backend event carries a batch id or failed count.",
-          "reproduce_command": "scripts/python scripts/generate-file-drop-capability.py --vanilla-root \"$(scripts/vanilla path 26.1 --kind root)\" --check"
-        }
+        "implementation": [
+          "crates/bbb-native/src/main.rs#enqueue_simulation_window_event",
+          "docs/evidence/vanilla-26.1/file-drop-capability.json#not-needed-declared-linux-wayland"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Official 26.1 runs Java 25 and selects LWJGL's multi-release Java-11 UTF-8 decoder, which replaces malformed input after NUL-terminated GLFW conversion; the resulting String cannot trip UnixPath's InvalidPathException conditions. The base Screen drop callback is empty and the only override is the excluded in-game PackSelectionScreen.",
+          "reopen_condition": "The Java/LWJGL/GLFW/JDK conversion chain changes, a declared platform can produce InvalidPathException, or BBB adds PackSelectionScreen/another onFilesDrop consumer.",
+          "vanilla_basis": [
+            "net/minecraft/client/MouseHandler.java:227-260"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_file_drop_capability.py#test_checked_receipt_matches_verified_vanilla_and_pinned_winit"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -21117,7 +21124,7 @@
           ]
         },
         "tests": [
-          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps"
         ]
       },
       "category": "render-step",
@@ -21150,7 +21157,7 @@
           ]
         },
         "tests": [
-          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps"
         ]
       },
       "category": "render-step",
@@ -21183,7 +21190,7 @@
           ]
         },
         "tests": [
-          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps"
         ]
       },
       "category": "render-step",

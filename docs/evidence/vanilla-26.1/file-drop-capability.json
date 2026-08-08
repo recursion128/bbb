@@ -5,22 +5,25 @@
       "source": {
         "anchors": [
           {
-            "line": 2492,
+            "line": 2493,
             "symbol": "window-event adapter"
           },
           {
-            "line": 2486,
-            "symbol": "failed-drop capability blocker"
+            "line": 2488,
+            "symbol": "Linux Java 25 scope ruling"
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "a5559947aaa57526e1bd43cd2ad2aba6e6730202ebdf7d01d3787b5906c37787"
+        "sha256": "83d8ecbd9b4e83eec1b8177e7fd0c32138a5176fc1b145e659f14dde3668e09c"
       },
-      "successful_path_event_consumed": false
+      "successful_path_event_consumed": false,
+      "valid_path_values_consumed": false,
+      "valid_path_values_scope": "Screen.onFilesDrop is empty on the declared screen surface; PackSelectionScreen and in-game configuration UI are out of scope."
     },
     "backends": {
       "linux-wayland": {
         "contract": "no file-drop WindowEvent implementation",
+        "scope": "not-needed: no observable declared-screen effect",
         "source_tree": {
           "file_count": 19,
           "path": "src/platform_impl/linux/wayland",
@@ -46,6 +49,7 @@
           ],
           "success_delivery": "DroppedFile-per-path-only-on-Ok-batch"
         },
+        "scope": "not-needed release row",
         "sources": [
           {
             "anchors": [
@@ -91,6 +95,7 @@
           "failed_path_count_exposed": false,
           "success_delivery": "DroppedFile-per-NSString"
         },
+        "scope": "deferred release validation",
         "source": {
           "anchors": [
             {
@@ -116,6 +121,7 @@
           "failed_path_count_exposed": false,
           "success_delivery": "DroppedFile-per-PathBuf"
         },
+        "scope": "not-needed platform",
         "source": {
           "anchors": [
             {
@@ -166,13 +172,6 @@
       "sha256": "9272e9056760124e0780f754380cb932ae94aa06af6583f9a982c91005e88e47"
     }
   },
-  "blocker": {
-    "classification": "external-dependency-event-surface",
-    "final_conclusion": "The pinned winit public event stream cannot reproduce Vanilla's per-drop-batch valid-path list plus exact failed-path count; X11 parse failures are discarded before WindowEvent delivery and no backend exposes a batch identity or failure count.",
-    "missing_condition": "A supported platform adapter must expose one drop batch's valid paths and exact failed path-conversion count before winit discards or flattens that information.",
-    "reopen_condition": "winit or an owned platform adapter exposes drop batch identity plus exact failed path count, or the supported-platform scope changes.",
-    "reproduce_command": "scripts/python scripts/generate-file-drop-capability.py --vanilla-root \"$(scripts/vanilla path 26.1 --kind root)\" --check"
-  },
   "generated_by": "scripts/generate-file-drop-capability.py",
   "generator_inputs": [
     {
@@ -181,11 +180,11 @@
     },
     {
       "path": "scripts/file_drop_capability.py",
-      "sha256": "02ff0c6d1395a2ebab5e80b993427e08025b7c1ba0c70e8dd315deaa10758dcb"
+      "sha256": "4bf0ca321d8d6e3712a1c4a709ec28f07c53226616dcd304f4d420e843aa9613"
     },
     {
       "path": "scripts/generate-file-drop-capability.py",
-      "sha256": "a3292609365ef94ab5b7f8736504d137366ffb2d795d45c795127d63c3c728ea"
+      "sha256": "92483c59c15bafc1d77e858206535b05b6087b62fab00eea94b5113a9bfe5e4a"
     }
   ],
   "mechanism_ids": [
@@ -196,7 +195,66 @@
     "method:net.minecraft.client.gui.components.toasts.SystemToast#onFileDropFailure(final Minecraft minecraft,final int count)"
   ],
   "schema_version": 1,
-  "status": "blocked-external",
+  "scope_ruling": {
+    "classification": "not-needed-declared-linux-wayland",
+    "final_conclusion": "On official Java 25, GLFW paths are NUL-terminated before LWJGL's Java-11 multi-release UTF-8 decoder replaces malformed input. The resulting valid Java String cannot trigger UnixPath's NUL or malformed-UTF-16 rejection, so failedCount remains zero on Linux/Wayland. The only onFilesDrop override is PackSelectionScreen, excluded by the command-line-only configuration scope.",
+    "predicates": [
+      "official runtime major version is Java 25",
+      "GLFWDropCallback.getName uses NUL-terminated MemoryUtil.memUTF8",
+      "Java 25 selects LWJGL's versions/25 MemoryUtil and versions/11 UTF-8 decoder",
+      "the selected decoder uses StandardCharsets.UTF_8 replacement semantics",
+      "UnixPath rejects NUL or malformed UTF-16, neither of which survives that chain",
+      "Screen.onFilesDrop is empty and PackSelectionScreen is the only override"
+    ],
+    "reopen_condition": "The official Java/LWJGL/GLFW/JDK conversion chain changes, a supported platform can produce InvalidPathException, BBB adds PackSelectionScreen or another onFilesDrop consumer, or the declared platform/configuration scope changes.",
+    "reproduce_command": "scripts/python scripts/generate-file-drop-capability.py --vanilla-root \"$(scripts/vanilla path 26.1 --kind root)\" --check"
+  },
+  "status": "scope-ruled-not-needed",
+  "upstream_source_receipts": [
+    {
+      "owner": "GLFW::_glfwParseUriList",
+      "path": "src/init.c",
+      "repository": "https://github.com/glfw/glfw",
+      "revision": "9352d8fe93cd443be18157abe81f16500549aec0",
+      "sha256": "b6ff7576ff61505c06043da7a8a14e4e1f15c30b07c7953e2a838f25ed138893"
+    },
+    {
+      "owner": "GLFW::dataDeviceHandleDrop",
+      "path": "src/wl_window.c",
+      "repository": "https://github.com/glfw/glfw",
+      "revision": "9352d8fe93cd443be18157abe81f16500549aec0",
+      "sha256": "0371bbf004408002563cd03055d3949fe6aff56112f430ad1fe8d019e52aceae"
+    },
+    {
+      "owner": "LWJGL::GLFWDropCallback.getName",
+      "path": "modules/lwjgl/glfw/src/generated/java/org/lwjgl/glfw/GLFWDropCallback.java",
+      "repository": "https://github.com/LWJGL/lwjgl3",
+      "revision": "b800ccffab14396fc529ddb6c931b7c5c5226763",
+      "sha256": "8f7bde750d1b99785f4e0fa40831a790baacedf7a08be329be0d9dfed87cf81d"
+    },
+    {
+      "owner": "LWJGL::MemoryUtil.memUTF8",
+      "path": "modules/lwjgl/core25/src/main/java/org/lwjgl/system/MemoryUtil.java",
+      "repository": "https://github.com/LWJGL/lwjgl3",
+      "revision": "b800ccffab14396fc529ddb6c931b7c5c5226763",
+      "sha256": "dd76c861ea8c8a25ee0ba6c0f3cd041ec8a07a4f1bc473f30e10a9e845603159"
+    },
+    {
+      "owner": "LWJGL::MultiReleaseTextDecoding.decodeUTF8",
+      "path": "modules/lwjgl/core11/src/main/java/org/lwjgl/system/MultiReleaseTextDecoding.java",
+      "repository": "https://github.com/LWJGL/lwjgl3",
+      "revision": "b800ccffab14396fc529ddb6c931b7c5c5226763",
+      "sha256": "b3bf1c0594bb7c264787df50cfaace52bd9f6ba9ee3026049d7e60d08da5d5b0"
+    },
+    {
+      "owner": "OpenJDK::UnixPath",
+      "path": "src/java.base/unix/classes/sun/nio/fs/UnixPath.java",
+      "release": "jdk-25.0.1+8",
+      "repository": "https://github.com/openjdk/jdk25u",
+      "revision": "78770bfaefd23ae77ec4f8ddd769c1c2d9c282df",
+      "sha256": "515557ab1e13000656f13a6dc157b73894c720f4f990547766b8c0fc48f688c2"
+    }
+  ],
   "valid": true,
   "vanilla_contract": {
     "all_invalid_batch_dispatches_callback": false,
@@ -205,6 +263,66 @@
       "failed_path_count"
     ],
     "failure_toast_condition": "valid_paths is non-empty and failed_path_count > 0",
+    "official_runtime": {
+      "java_runtime": {
+        "component": "java-runtime-epsilon",
+        "majorVersion": 25
+      },
+      "lwjgl_core": {
+        "artifact": "org/lwjgl/lwjgl/3.4.1/lwjgl-3.4.1.jar",
+        "artifact_sha1": "6105690714874b995aa7812e4f7732a21109276c",
+        "artifact_sha256": "9b1c3a3a078c2377219ecb8a2662730b3dece07c10592cf1d12f957286037b69",
+        "multi_release": true,
+        "selected_java_25_entries": [
+          {
+            "path": "META-INF/versions/11/org/lwjgl/system/MultiReleaseTextDecoding.class",
+            "sha256": "6b924666de1fee6f2031a78a33ada60826891f3d8c26bfbaa47840a3c7bcc6a7"
+          },
+          {
+            "path": "META-INF/versions/25/org/lwjgl/system/MemoryUtil.class",
+            "sha256": "9cff459681c4124b514a814054e5e0a92e7204da9137fdf51ba281dfe75c7fb7"
+          }
+        ]
+      },
+      "lwjgl_glfw_java": {
+        "artifact": "org/lwjgl/lwjgl-glfw/3.4.1/lwjgl-glfw-3.4.1.jar",
+        "artifact_sha1": "a782b1ddd175c9107bf300fd92920579ea65e2a4",
+        "artifact_sha256": "c2d93964f0a8b2a846708c7fb1b0a095e7d79dce8ea4c543969ffef508027190",
+        "selected_entries": [
+          {
+            "path": "org/lwjgl/glfw/GLFWDropCallback.class",
+            "sha256": "15424490c54ad4dcd14d8ce0e8c76a2d60b20c867165676f143407a0d80840cf"
+          }
+        ]
+      },
+      "lwjgl_glfw_native_linux": {
+        "artifact": "org/lwjgl/lwjgl-glfw/3.4.1/lwjgl-glfw-3.4.1-natives-linux.jar",
+        "artifact_sha1": "23cdf7655ce9f3b27ad90f08e73345e0d5b46362",
+        "artifact_sha256": "d73bb4d13d636ac7e5af1a9ba1067320ba7b529d46a08da86e5f6e96d7f5b4cb",
+        "embedded_glfw_commit": "9352d8fe93cd443be18157abe81f16500549aec0",
+        "native_entry": "linux/x64/org/lwjgl/glfw/libglfw.so",
+        "native_sha1": "369640389948670bd997051d8d6acba09a71df69",
+        "native_sha256": "3e60dc782ca4a3d112d10e26338441f446e69ca1ee402359d0e8baad6bf49556",
+        "version_backend_marker": "3.5.0 Wayland X11 GLX Null EGL OSMesa monotonic shared"
+      }
+    },
+    "on_files_drop_occurrences": [
+      {
+        "count": 1,
+        "path": "net/minecraft/client/MouseHandler.java",
+        "sha256": "abd50aa0ac3bb6d01ab6e25ed3f72483862d1c928d0587f33b3e1b75162fc696"
+      },
+      {
+        "count": 1,
+        "path": "net/minecraft/client/gui/screens/Screen.java",
+        "sha256": "b64da74171e4bb30405cb774c407a3a13aedd85310abfcaa3fc803e2096461df"
+      },
+      {
+        "count": 1,
+        "path": "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java",
+        "sha256": "429ec07c47e70914f9ddd3eb0aa838b36493c4547af93c6fa6c0e3ce3bb57008"
+      }
+    ],
     "sources": [
       {
         "anchors": [
@@ -245,6 +363,30 @@
         ],
         "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
         "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+      },
+      {
+        "anchors": [
+          {
+            "line": 474,
+            "symbol": "base onFilesDrop is empty"
+          }
+        ],
+        "path": "net/minecraft/client/gui/screens/Screen.java",
+        "sha256": "b64da74171e4bb30405cb774c407a3a13aedd85310abfcaa3fc803e2096461df"
+      },
+      {
+        "anchors": [
+          {
+            "line": 229,
+            "symbol": "only observable valid-path consumer"
+          },
+          {
+            "line": 231,
+            "symbol": "drop opens a confirmation screen"
+          }
+        ],
+        "path": "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java",
+        "sha256": "429ec07c47e70914f9ddd3eb0aa838b36493c4547af93c6fa6c0e3ce3bb57008"
       }
     ],
     "toast_identity": "FILE_DROP_FAILURE",

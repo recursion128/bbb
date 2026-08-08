@@ -119,23 +119,25 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   `joinedFirstServer`, emits the 8000 ms social-interactions tutorial before the
   ordinary tutorial tick, persists the sentinel in the same effect batch, uses
   the rebound key component, and preserves Vanilla's strict `> 8000 ms` hide
-  boundary. One owner remains honestly open. The generated
+  boundary. The generated
   [`file-drop-capability.json`](evidence/vanilla-26.1/file-drop-capability.json)
   derives Vanilla's single-batch `(valid_paths, failed_count)` contract and
-  `SystemToast.onFileDropFailure` translation from source hashes, then pins
-  winit 0.29.15 by Cargo.lock checksum and audits its public event plus
-  Windows/macOS/X11/Wayland backends. The public API has no batch identity or
-  failed count; X11 keeps fallible parsing internally but delivers only an
-  `Ok` path list, so BBB cannot reconstruct the exact count after
-  `WindowEvent`. Reproduce with
+  `SystemToast.onFileDropFailure` translation from source hashes. Its exact
+  official artifact receipt proves 26.1 launches Java 25, which selects
+  LWJGL's versions/25 `MemoryUtil` and versions/11 UTF-8 decoder. GLFW has
+  already NUL-terminated each path and that decoder replaces malformed UTF-8,
+  so the resulting valid Java `String` cannot reach UnixPath's NUL or malformed
+  UTF-16 `InvalidPathException` branches: `failedCount` remains zero on the
+  declared Linux/Wayland surface. Base `Screen.onFilesDrop` is empty and the
+  sole override is the excluded in-game `PackSelectionScreen`, so successful
+  paths also have no observable effect. Reproduce with
   `scripts/python scripts/generate-file-drop-capability.py --vanilla-root
-  "$(scripts/vanilla path 26.1 --kind root)" --check`. Close only when a
-  supported owned adapter preserves one batch's valid paths and exact failed
-  conversion count before winit flattens/discards them, then routes
-  `failedCount > 0` through the shared toast manager. Reopen when the winit
-  event/backend contract or supported-platform scope changes. This external
-  blocker remains recorded even though macOS-only deferred work is not a
-  delivery blocker.
+  "$(scripts/vanilla path 26.1 --kind root)" --check`. This owner is therefore
+  machine-routed `not-reachable-in-current-scope`, while the two broader matrix
+  rows stay `partial` for their remaining code-freeze receipts. Reopen when the
+  Java/LWJGL/GLFW/JDK conversion chain, supported-platform scope, or screen
+  file-drop surface changes. The user-waived macOS release receipt is not
+  substituted for the Linux source ruling.
 
 ## Render-step and HUD presentation closure
 

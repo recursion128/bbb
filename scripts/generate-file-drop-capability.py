@@ -8,7 +8,7 @@ import difflib
 from pathlib import Path
 import sys
 
-from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_workspace
 from file_drop_capability import (
     FileDropCapabilityError,
     render_report,
@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    args.source_root = resolve_source_root(args)
+    args.workspace = resolve_workspace(args)
     return args
 
 
@@ -43,7 +43,12 @@ def main() -> int:
             if args.winit_root is not None
             else resolve_winit_root(REPO_ROOT)
         )
-        rendered = render_report(REPO_ROOT, args.source_root, winit_root)
+        rendered = render_report(
+            REPO_ROOT,
+            args.workspace.sources,
+            args.workspace.downloads,
+            winit_root,
+        )
     except (FileDropCapabilityError, OSError, ValueError) as error:
         print(f"file-drop capability: {error}", file=sys.stderr)
         return 2

@@ -878,7 +878,7 @@ public class Owner {
             )
         )
 
-    def test_toast_owner_census_has_complete_evidence_scope_and_open_gaps(self) -> None:
+    def test_toast_owner_census_has_complete_evidence_scope_and_no_open_gaps(self) -> None:
         generated = (
             inventory.REPO_ROOT
             / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
@@ -923,20 +923,19 @@ public class Owner {
             for owner in owners
             if "open_gap" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(gaps), 1)
-        self.assertTrue(
-            all(
-                gap["ledger"]
-                == "docs/unsupported-features.md#Machine-readable parity acceptance closure"
-                and gap["artifact"]
-                == "docs/evidence/vanilla-26.1/file-drop-capability.json"
-                and gap["reproduce_command"]
-                == "scripts/python scripts/generate-file-drop-capability.py --vanilla-root "
-                '"$(scripts/vanilla path 26.1 --kind root)" --check'
-                and gap["reason"]
-                and gap["close_condition"]
-                for gap in gaps
-            )
+        self.assertEqual(gaps, [])
+        file_drop = next(
+            owner
+            for owner in owners
+            if "#onFileDropFailure(" in owner["vanilla_owner"]
+        )
+        self.assertIn(
+            "docs/evidence/vanilla-26.1/file-drop-capability.json#not-needed-declared-linux-wayland",
+            file_drop["bbb_evidence"]["implementation"],
+        )
+        self.assertEqual(
+            file_drop["bbb_evidence"]["scope_ruling"]["conclusion"],
+            "not-reachable-in-current-scope",
         )
         timed_tutorial_owners = [
             owner
@@ -980,7 +979,7 @@ public class Owner {
             for owner in owners
             if "scope_ruling" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(scoped), 6)
+        self.assertEqual(len(scoped), 7)
         self.assertTrue(
             all(
                 ruling["conclusion"] == "not-reachable-in-current-scope"
@@ -993,7 +992,7 @@ public class Owner {
         mechanism = value["mechanisms"]["hud-frame-extract-order"]
         self.assertEqual(mechanism["owner_count"], 118)
         self.assertEqual(mechanism["owner_evidence_count"], 118)
-        self.assertEqual(mechanism["owner_gap_count"], 1)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 0)
 
     def test_music_toast_display_state_is_hashed_and_routed_to_startup_consumption(self) -> None:
         generated = (

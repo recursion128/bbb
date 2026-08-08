@@ -2484,9 +2484,10 @@ fn update_window_title(window: &Window, connected: bool, current: &mut Option<St
 /// cannot provide `MouseHandler.onDrop`'s batch-local failed path count: winit
 /// 0.29.15 flattens successes into individual events and exposes no failure or
 /// batch receipt. The exact failed-file-drop capability receipt is generated at
-/// `docs/evidence/vanilla-26.1/file-drop-capability.json`; a supported platform
-/// adapter must preserve `(valid_paths, failed_count)` before this can be wired.
-/// `WindowEvent::CursorEntered` is also absent
+/// `docs/evidence/vanilla-26.1/file-drop-capability.json`; on the declared
+/// Linux/Wayland + Java 25 path, official LWJGL decoding makes that failure
+/// branch unreachable and the only valid-path consumer is an excluded
+/// pack-selection screen. `WindowEvent::CursorEntered` is also absent
 /// (`cursorEntered`'s only consumer is `setIgnoreFirstMove`, which relative
 /// turn deltas make structurally unnecessary — see `set_cursor_capture`).
 fn enqueue_simulation_window_event(
