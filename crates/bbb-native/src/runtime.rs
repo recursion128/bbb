@@ -7723,7 +7723,7 @@ fn hud_system_toasts(
         now,
     );
     (
-        state.client_toasts.project_systems(),
+        state.client_toasts.project_systems(item_runtime),
         sounds.into_iter().find(|sound| {
             matches!(
                 sound.sound.location.as_deref(),

@@ -296,11 +296,70 @@ enum SystemToastToken {
 #[derive(Debug)]
 pub(super) struct SystemToastState {
     token: Option<SystemToastToken>,
-    toast: HudSystemToast,
+    /// Vanilla retains the title `Component` and resolves it during render
+    /// extraction. Current external-client owners use translatable titles, so
+    /// keep that structured source separate from the construction/reset-time
+    /// message projection and final width.
+    title: SystemToastTitle,
+    layout: SystemToastLayout,
     display_time_ms: u64,
     changed: bool,
     pub(super) last_changed_ms: u64,
     force_hide: bool,
+}
+
+#[derive(Debug)]
+struct SystemToastLayout {
+    message_lines: Vec<String>,
+    width: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SystemToastTitle {
+    translation_key: String,
+    fallback: String,
+    args: Vec<String>,
+}
+
+impl SystemToastTitle {
+    fn translated(
+        translation_key: impl Into<String>,
+        fallback: impl Into<String>,
+        args: Vec<String>,
+    ) -> Self {
+        Self {
+            translation_key: translation_key.into(),
+            fallback: fallback.into(),
+            args,
+        }
+    }
+
+    fn resolve(&self, item_runtime: Option<&NativeItemRuntime>) -> String {
+        match self.args.as_slice() {
+            [] => localized_gui_text(item_runtime, &self.translation_key, &self.fallback),
+            [first] => localized_gui_text_with_args(
+                item_runtime,
+                &self.translation_key,
+                &self.fallback,
+                &[first],
+            ),
+            [first, second] => localized_gui_text_with_args(
+                item_runtime,
+                &self.translation_key,
+                &self.fallback,
+                &[first, second],
+            ),
+            args => {
+                let args = args.iter().map(String::as_str).collect::<Vec<_>>();
+                localized_gui_text_with_args(
+                    item_runtime,
+                    &self.translation_key,
+                    &self.fallback,
+                    &args,
+                )
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -362,7 +421,7 @@ impl ClientToast {
                 usize::try_from(tutorial.height.div_ceil(32)).unwrap_or(usize::MAX)
             }
             Self::System(system) => system
-                .toast
+                .layout
                 .message_lines
                 .len()
                 .max(1)
@@ -578,9 +637,9 @@ impl ClientToastRuntime {
                 if let Some(existing) = self.find_system_mut(token) {
                     // `SystemToast.reset` updates content and lifetime, but its
                     // construction-time width remains final.
-                    existing.toast.title = toast.toast.title;
+                    existing.title = toast.title;
                     if !preserve_message {
-                        existing.toast.message_lines = toast.toast.message_lines;
+                        existing.layout.message_lines = toast.layout.message_lines;
                     }
                     existing.changed = true;
                     return;
@@ -597,11 +656,10 @@ impl ClientToastRuntime {
         glyphs: &HudFontGlyphMap,
     ) {
         let elapsed = notification.elapsed_periods.to_string();
-        let title = localized_gui_text_with_args(
-            item_runtime,
-            &notification.title_key,
-            &notification.title_key,
-            &[&elapsed],
+        let title = SystemToastTitle::translated(
+            notification.title_key.clone(),
+            notification.title_key,
+            vec![elapsed.clone()],
         );
         let message = localized_gui_text_with_args(
             item_runtime,
@@ -611,7 +669,12 @@ impl ClientToastRuntime {
         );
         self.push_toast(ClientToast::System(SystemToastState {
             token: None,
-            toast: standard_system_toast(title, Some(message), glyphs),
+            layout: standard_system_toast_layout(
+                title.resolve(item_runtime),
+                Some(message),
+                glyphs,
+            ),
+            title,
             display_time_ms: 5_000,
             changed: false,
             last_changed_ms: 0,
@@ -723,8 +786,14 @@ impl ClientToastRuntime {
     }
 
     #[cfg(test)]
-    pub(super) fn project_systems(&self) -> Vec<HudSystemToastInstance> {
-        self.visible.iter().filter_map(project_system).collect()
+    pub(super) fn project_systems(
+        &self,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> Vec<HudSystemToastInstance> {
+        self.visible
+            .iter()
+            .filter_map(|instance| project_system(instance, item_runtime))
+            .collect()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -739,7 +808,9 @@ impl ClientToastRuntime {
         self.visible
             .iter()
             .filter_map(|instance| match &instance.toast {
-                ClientToast::System(_) => project_system(instance).map(HudToast::System),
+                ClientToast::System(_) => {
+                    project_system(instance, item_runtime).map(HudToast::System)
+                }
                 ClientToast::Advancement(_) => item_runtime.and_then(|item_runtime| {
                     project_advancement(
                         instance,
@@ -937,14 +1008,20 @@ fn project_tutorial(instance: &ClientToastInstance) -> Option<HudTutorialToast> 
     })
 }
 
-fn project_system(instance: &ClientToastInstance) -> Option<HudSystemToastInstance> {
+fn project_system(
+    instance: &ClientToastInstance,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<HudSystemToastInstance> {
     let ClientToast::System(system) = &instance.toast else {
         return None;
     };
-    let mut toast = system.toast.clone();
-    toast.visible_portion = instance.visible_portion;
     Some(HudSystemToastInstance {
-        toast,
+        toast: HudSystemToast {
+            title: system.title.resolve(item_runtime),
+            message_lines: system.layout.message_lines.clone(),
+            width: system.layout.width,
+            visible_portion: instance.visible_portion,
+        },
         slot: instance.slot,
     })
 }
@@ -1061,96 +1138,107 @@ fn system_toast_state(
     item_runtime: Option<&NativeItemRuntime>,
     glyphs: &HudFontGlyphMap,
 ) -> (SystemToastState, bool) {
-    let (token, toast, display_time_ms, update_existing) = match event {
+    let (token, title, message, multiline, display_time_ms, update_existing) = match event {
         ClientSystemToastEvent::NarratorToggle {
             enabled,
             status_name,
         } => {
             let (title, message) = if enabled {
                 (
-                    localized_gui_text(item_runtime, "narrator.toast.enabled", "Narrator Enabled"),
+                    SystemToastTitle::translated(
+                        "narrator.toast.enabled",
+                        "Narrator Enabled",
+                        Vec::new(),
+                    ),
                     Some(status_name),
                 )
             } else {
                 (
-                    localized_gui_text(
-                        item_runtime,
+                    SystemToastTitle::translated(
                         "narrator.toast.disabled",
                         "Narrator Disabled",
+                        Vec::new(),
                     ),
                     None,
                 )
             };
             (
                 Some(SystemToastToken::NarratorToggle),
-                standard_system_toast(title, message, glyphs),
+                title,
+                message,
+                false,
                 5_000,
                 true,
             )
         }
         ClientSystemToastEvent::InsecureServerWarning => {
-            let title = localized_gui_text(
-                item_runtime,
+            let title = SystemToastTitle::translated(
                 "multiplayer.unsecureserver.toast.title",
                 "Chat messages can't be verified",
+                Vec::new(),
             );
             let message = localized_gui_text(
                 item_runtime,
                 "multiplayer.unsecureserver.toast",
                 "Messages sent on this server may be modified and might not reflect the original message",
             );
-            (
-                None,
-                multiline_system_toast(title, message, glyphs),
-                10_000,
-                false,
-            )
+            (None, title, Some(message), true, 10_000, false)
         }
         ClientSystemToastEvent::ResourcePackLoadFailure => (
             Some(SystemToastToken::ResourcePackLoadFailure),
-            standard_system_toast(
-                localized_gui_text(
-                    item_runtime,
-                    "resourcePack.load_fail",
-                    "Resource reload failed",
-                ),
-                None,
-                glyphs,
+            SystemToastTitle::translated(
+                "resourcePack.load_fail",
+                "Resource reload failed",
+                Vec::new(),
             ),
+            None,
+            false,
             5_000,
             true,
         ),
         ClientSystemToastEvent::LowDiskSpace => (
             Some(SystemToastToken::LowDiskSpace),
-            standard_system_toast(
-                localized_gui_text(item_runtime, "chunk.toast.lowDiskSpace", "Low disk space!"),
-                Some(localized_gui_text(
-                    item_runtime,
-                    "chunk.toast.lowDiskSpace.description",
-                    "Might not be able to save the world.",
-                )),
-                glyphs,
-            ),
+            SystemToastTitle::translated("chunk.toast.lowDiskSpace", "Low disk space!", Vec::new()),
+            Some(localized_gui_text(
+                item_runtime,
+                "chunk.toast.lowDiskSpace.description",
+                "Might not be able to save the world.",
+            )),
+            false,
             10_000,
             true,
         ),
         ClientSystemToastEvent::ResourcePackDownload {
             session_generation,
             state,
-        } => (
-            Some(SystemToastToken::ResourcePackDownload {
-                session_generation,
-                batch_sequence: state.batch_sequence,
-            }),
-            download_system_toast(&state, item_runtime, glyphs),
-            5_000,
-            true,
-        ),
+        } => {
+            let (title, message) = download_system_toast_content(&state, item_runtime);
+            (
+                Some(SystemToastToken::ResourcePackDownload {
+                    session_generation,
+                    batch_sequence: state.batch_sequence,
+                }),
+                title,
+                message,
+                false,
+                5_000,
+                true,
+            )
+        }
+    };
+    let layout = if multiline {
+        multiline_system_toast_layout(
+            message.expect("multiline system toast has a message"),
+            glyphs,
+        )
+    } else {
+        standard_system_toast_layout(title.resolve(item_runtime), message, glyphs)
     };
     (
         SystemToastState {
             token,
-            toast,
+            title,
+            layout,
             display_time_ms,
             changed: false,
             last_changed_ms: 0,
@@ -1160,11 +1248,11 @@ fn system_toast_state(
     )
 }
 
-fn standard_system_toast(
+fn standard_system_toast_layout(
     title: String,
     message: Option<String>,
     glyphs: &HudFontGlyphMap,
-) -> HudSystemToast {
+) -> SystemToastLayout {
     let width = glyphs
         .plain_text_width(&title)
         .max(
@@ -1174,19 +1262,13 @@ fn standard_system_toast(
         )
         .saturating_add(30)
         .max(160);
-    HudSystemToast {
-        title,
+    SystemToastLayout {
         message_lines: message.into_iter().collect(),
         width,
-        visible_portion: 0.0,
     }
 }
 
-fn multiline_system_toast(
-    title: String,
-    message: String,
-    glyphs: &HudFontGlyphMap,
-) -> HudSystemToast {
+fn multiline_system_toast_layout(message: String, glyphs: &HudFontGlyphMap) -> SystemToastLayout {
     let message_lines = hud_wrap_styled_text(&[HudStyledTextRun::plain(message)], 200, glyphs)
         .into_iter()
         .map(|line| line.into_iter().map(|run| run.text).collect::<String>())
@@ -1198,31 +1280,26 @@ fn multiline_system_toast(
         .unwrap_or(200)
         .max(200)
         .saturating_add(30);
-    HudSystemToast {
-        title,
+    SystemToastLayout {
         message_lines,
         width,
-        visible_portion: 0.0,
     }
 }
 
-fn download_system_toast(
+fn download_system_toast_content(
     download: &ResourcePackDownloadState,
     item_runtime: Option<&NativeItemRuntime>,
-    glyphs: &HudFontGlyphMap,
-) -> HudSystemToast {
+) -> (SystemToastTitle, Option<String>) {
     let total_packs = download.total_packs.to_string();
     if download.phase == ResourcePackDownloadPhase::Failed {
         let failed_packs = download.failed_packs.to_string();
-        return standard_system_toast(
-            localized_gui_text_with_args(
-                item_runtime,
+        return (
+            SystemToastTitle::translated(
                 "download.pack.failed",
                 "%s out of %s pack(s) failed to download",
-                &[&failed_packs, &total_packs],
+                vec![failed_packs, total_packs],
             ),
             None,
-            glyphs,
         );
     }
     let current_pack = download.current_pack.to_string();
@@ -1243,16 +1320,14 @@ fn download_system_toast(
             &[&server_pack_bytes_human_readable(download.downloaded_bytes)],
         ),
     };
-    standard_system_toast(
-        localized_gui_text_with_args(
-            item_runtime,
+    (
+        SystemToastTitle::translated(
             "download.pack.title",
             "Downloading resource pack %s/%s",
-            &[&current_pack, &total_packs],
+            vec![current_pack, total_packs],
         ),
         (download.toast_action == ResourcePackDownloadToastAction::AddOrUpdateProgress)
             .then_some(progress),
-        glyphs,
     )
 }
 

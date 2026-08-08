@@ -8439,6 +8439,19 @@ HUD_SYSTEM_TOAST_EVIDENCE = OwnerEvidence(
     ),
 )
 
+HUD_DYNAMIC_SYSTEM_TITLE_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/toast.rs#struct SystemToastTitle",
+        "crates/bbb-native/src/runtime/toast.rs#fn project_system",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#system_toast_title_arguments_relocalize_without_rebuilding_download_content",
+    ),
+)
+
 HUD_ADVANCEMENT_TOAST_EVIDENCE = OwnerEvidence(
     ("crates/bbb-native/src/runtime/toast.rs#fn project_advancement",),
     (
@@ -8560,18 +8573,6 @@ HUD_FILE_DROP_TOAST_GAP = OwnerOpenGap(
     close_condition=(
         "Provide a supported failed-file-drop receipt/count source and route it through the shared "
         "SystemToast manager, or record a reproducible external platform blocker."
-    ),
-)
-
-HUD_DYNAMIC_SYSTEM_TITLE_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
-    reason=(
-        "Vanilla retains the SystemToast title Component for extraction after construction, while "
-        "BBB currently freezes the localized title string together with construction-time lines."
-    ),
-    close_condition=(
-        "Retain a structured title component through native state, re-resolve it on extraction, "
-        "and keep only width and message lines frozen across language reload."
     ),
 )
 
@@ -8934,7 +8935,7 @@ TOAST_MANAGER_OWNER_EVIDENCE = _owner_evidence(
 
 SYSTEM_TOAST_OWNER_EVIDENCE = _owner_evidence(
     (
-        HUD_DYNAMIC_SYSTEM_TITLE_GAP,
+        HUD_DYNAMIC_SYSTEM_TITLE_EVIDENCE,
         ("SystemToast", "extractRenderState", "reset"),
     ),
     (HUD_FILE_DROP_TOAST_GAP, ("onFileDropFailure",)),

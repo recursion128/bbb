@@ -339,7 +339,7 @@ mod tests {
             start,
         );
         assert!(sounds.is_empty(), "admission precedes the SHOW transition");
-        let toast = hud.client_toasts.project_systems().remove(0).toast;
+        let toast = hud.client_toasts.project_systems(None).remove(0).toast;
         assert_eq!(toast.title, "periodic.fixture.title");
         assert_eq!(toast.message_lines, ["periodic.fixture.message"]);
         let sounds = hud.client_toasts.update_with_options(

@@ -13630,6 +13630,149 @@ fn narrator_toggle_projects_enabled_and_disabled_system_toasts() {
 }
 
 #[test]
+fn system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen() {
+    let first_root = unique_runtime_temp_dir("system-toast-title-first");
+    let second_root = unique_runtime_temp_dir("system-toast-title-second");
+    for root in [&first_root, &second_root] {
+        write_runtime_bow_item_assets(root);
+    }
+    write_runtime_json(
+        &runtime_assets_dir(&first_root)
+            .join("lang")
+            .join("en_us.json"),
+        r#"{
+            "chunk.toast.lowDiskSpace": "First language title with fixed construction width",
+            "chunk.toast.lowDiskSpace.description": "First frozen message"
+        }"#,
+    );
+    write_runtime_json(
+        &runtime_assets_dir(&second_root)
+            .join("lang")
+            .join("en_us.json"),
+        r#"{
+            "chunk.toast.lowDiskSpace": "Second language title",
+            "chunk.toast.lowDiskSpace.description": "Second reset message that must not resize the existing toast"
+        }"#,
+    );
+    let first_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&first_root).unwrap()).unwrap();
+    let second_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&second_root).unwrap()).unwrap();
+    let glyphs = bbb_renderer::HudFontGlyphMap::default();
+    let start = Instant::now();
+    let mut world = WorldStore::new();
+    let mut state = ClientToastRuntime::default();
+
+    world.apply_low_disk_space_warning();
+    state.update_with_options(&world, Some(&first_runtime), &glyphs, None, 1.0, start);
+    let initial = state.project_systems(Some(&first_runtime)).remove(0).toast;
+    assert_eq!(
+        initial.title,
+        "First language title with fixed construction width"
+    );
+    assert_eq!(initial.message_lines, ["First frozen message"]);
+    let construction_width = initial.width;
+
+    let after_language_reload = state.project_systems(Some(&second_runtime)).remove(0).toast;
+    assert_eq!(after_language_reload.title, "Second language title");
+    assert_eq!(
+        after_language_reload.message_lines,
+        ["First frozen message"]
+    );
+    assert_eq!(after_language_reload.width, construction_width);
+
+    world.apply_low_disk_space_warning();
+    state.update_with_options(
+        &world,
+        Some(&second_runtime),
+        &glyphs,
+        None,
+        1.0,
+        start + Duration::from_millis(10),
+    );
+    let after_reset = state.project_systems(Some(&first_runtime)).remove(0).toast;
+    assert_eq!(
+        after_reset.title,
+        "First language title with fixed construction width"
+    );
+    assert_eq!(
+        after_reset.message_lines,
+        ["Second reset message that must not resize the existing toast"]
+    );
+    assert_eq!(after_reset.width, construction_width);
+
+    std::fs::remove_dir_all(first_root).unwrap();
+    std::fs::remove_dir_all(second_root).unwrap();
+}
+
+#[test]
+fn system_toast_title_arguments_relocalize_without_rebuilding_download_content() {
+    let first_root = unique_runtime_temp_dir("system-toast-args-first");
+    let second_root = unique_runtime_temp_dir("system-toast-args-second");
+    for root in [&first_root, &second_root] {
+        write_runtime_bow_item_assets(root);
+    }
+    write_runtime_json(
+        &runtime_assets_dir(&first_root)
+            .join("lang")
+            .join("en_us.json"),
+        r#"{
+            "download.pack.title": "Initial pack %s/%s",
+            "download.pack.progress.percent": "Initial progress: %s%%"
+        }"#,
+    );
+    write_runtime_json(
+        &runtime_assets_dir(&second_root)
+            .join("lang")
+            .join("en_us.json"),
+        r#"{
+            "download.pack.title": "Reloaded total %2$s current %1$s",
+            "download.pack.progress.percent": "Reloaded progress: %s%%"
+        }"#,
+    );
+    let first_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&first_root).unwrap()).unwrap();
+    let second_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&second_root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 3,
+        update_sequence: 1,
+        current_pack: 2,
+        total_packs: 5,
+        downloaded_bytes: 50,
+        total_bytes: Some(100),
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress,
+    }));
+    let start = Instant::now();
+    let mut state = ClientToastRuntime::default();
+    state.update_with_options(
+        &world,
+        Some(&first_runtime),
+        &bbb_renderer::HudFontGlyphMap::default(),
+        None,
+        1.0,
+        start,
+    );
+
+    let initial = state.project_systems(Some(&first_runtime)).remove(0).toast;
+    assert_eq!(initial.title, "Initial pack 2/5");
+    assert_eq!(initial.message_lines, ["Initial progress: 50%"]);
+    let after_language_reload = state.project_systems(Some(&second_runtime)).remove(0).toast;
+    assert_eq!(after_language_reload.title, "Reloaded total 5 current 2");
+    assert_eq!(
+        after_language_reload.message_lines,
+        ["Initial progress: 50%"]
+    );
+    assert_eq!(after_language_reload.width, initial.width);
+
+    std::fs::remove_dir_all(first_root).unwrap();
+    std::fs::remove_dir_all(second_root).unwrap();
+}
+
+#[test]
 fn low_disk_space_warning_projects_one_server_driven_system_toast() {
     let start = std::time::Instant::now();
     let mut world = WorldStore::new();
@@ -13780,7 +13923,7 @@ fn system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifeti
         toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitle,
     }));
     state.update_with_options(&world, None, &glyphs, None, 1.0, start);
-    let initial = state.project_systems().remove(0);
+    let initial = state.project_systems(None).remove(0);
     assert_eq!(initial.slot, 0);
     assert!(initial.toast.width > 160);
     state.update_with_options(&world, None, &glyphs, None, 1.0, start);
@@ -13812,7 +13955,7 @@ fn system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifeti
         1.0,
         start + Duration::from_millis(4_000),
     );
-    let updated = state.project_systems().remove(0);
+    let updated = state.project_systems(None).remove(0);
     assert_eq!(updated.slot, 0);
     assert_eq!(updated.toast.width, initial.toast.width);
     assert_eq!(
@@ -14612,7 +14755,7 @@ fn mixed_system_toasts_share_fifo_and_multiline_contiguous_slots() {
     );
     assert_eq!(
         state
-            .project_systems()
+            .project_systems(None)
             .iter()
             .map(|toast| toast.toast.title.as_str())
             .collect::<Vec<_>>(),

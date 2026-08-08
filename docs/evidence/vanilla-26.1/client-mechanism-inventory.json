@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "1d8246caedeff1e6bd68c93a1dd0dff49c116648d779ab251b321f4e52ae3e3a"
+      "sha256": "5d08865a71e550b4bb30fc6777363a417fafc2aa7132513d9e75f31d2e095a31"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -70,7 +70,7 @@
       ],
       "owner_count": 118,
       "owner_evidence_count": 118,
-      "owner_gap_count": 7
+      "owner_gap_count": 3
     },
     "hud-hotbar-selection": {
       "bbb_evidence": [
@@ -20000,11 +20000,14 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
-        }
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastTitle",
+          "crates/bbb-native/src/runtime/toast.rs#fn project_system"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_arguments_relocalize_without_rebuilding_download_content"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20021,11 +20024,14 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
-        }
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastTitle",
+          "crates/bbb-native/src/runtime/toast.rs#fn project_system"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_arguments_relocalize_without_rebuilding_download_content"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20094,11 +20100,14 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
-        }
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastTitle",
+          "crates/bbb-native/src/runtime/toast.rs#fn project_system"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_arguments_relocalize_without_rebuilding_download_content"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20505,11 +20514,14 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
-        }
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastTitle",
+          "crates/bbb-native/src/runtime/toast.rs#fn project_system"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
+          "crates/bbb-native/src/runtime/tests.rs#system_toast_title_arguments_relocalize_without_rebuilding_download_content"
+        ]
       },
       "category": "render-step",
       "domain": "ui",

@@ -96,13 +96,13 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   machine-routed evidence; the startup-consumed non-`NEVER` `musicToast` and
   separate `NowPlayingToast` lifecycle are closed with actual resolved sound
   identity, STARTED/STARTED_SILENTLY, timing, pause/static, palette, animated
-  sprite and draw-order tests. Seven owners remain honestly open across three
-  root gaps: the 8000 ms social-interactions tutorial toast, failed OS file-drop
-  counts unavailable from the current winit event surface, and `SystemToast`
-  title `Component` re-resolution after language reload while construction-time
-  width/message lines stay frozen. Close those mechanisms or
-  retain a reproducible external-platform blocker; do not restore the former
-  default-only or string-freeze equivalence claims.
+  sprite and draw-order tests. `SystemToast` now retains a structured
+  translatable title through native state and resolves it against the current
+  language at extraction, while construction/reset-time message lines and the
+  original width remain frozen. Three owners remain honestly open across two
+  root gaps: the 8000 ms social-interactions tutorial toast and failed OS
+  file-drop counts unavailable from the current winit event surface. Close
+  those mechanisms or retain a reproducible external-platform blocker.
 - Advancing the evidence commit beyond `bfcc657cf` also expires nine
   lifecycle/visual/draw/performance receipts; they stay open until exact-commit
   soak and formal differential recapture replace those artifacts.

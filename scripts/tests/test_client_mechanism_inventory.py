@@ -262,7 +262,7 @@ public class Owner {
             for owner in owners
             if "open_gap" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(gaps), 7)
+        self.assertEqual(len(gaps), 3)
         self.assertTrue(
             all(
                 gap["ledger"]
@@ -270,6 +270,23 @@ public class Owner {
                 and gap["reason"]
                 and gap["close_condition"]
                 for gap in gaps
+            )
+        )
+        dynamic_title_owners = [
+            owner
+            for owner in owners
+            if owner["source"]["path"]
+            == "net/minecraft/client/gui/components/toasts/SystemToast.java"
+            and owner["vanilla_owner"].split("#", 1)[1].split("(", 1)[0]
+            in {"SystemToast", "extractRenderState", "reset"}
+        ]
+        self.assertEqual(len(dynamic_title_owners), 4)
+        self.assertTrue(
+            all(
+                "crates/bbb-native/src/runtime/tests.rs"
+                "#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen"
+                in owner["bbb_evidence"]["tests"]
+                for owner in dynamic_title_owners
             )
         )
         scoped = [
@@ -290,7 +307,7 @@ public class Owner {
         mechanism = value["mechanisms"]["hud-frame-extract-order"]
         self.assertEqual(mechanism["owner_count"], 118)
         self.assertEqual(mechanism["owner_evidence_count"], 118)
-        self.assertEqual(mechanism["owner_gap_count"], 7)
+        self.assertEqual(mechanism["owner_gap_count"], 3)
 
     def test_music_toast_display_state_is_hashed_and_routed_to_startup_consumption(self) -> None:
         generated = (
