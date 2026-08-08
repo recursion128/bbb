@@ -233,6 +233,7 @@
         "debug-integrated-server-mirrors",
         "diagnostics-client-level-report",
         "diagnostics-client-only-inspection-exclusions",
+        "entities-fixed-type-surface",
         "identity-profile-key-lifecycle",
         "identity-skin-presentation",
         "input-debug-key-actions",
@@ -268,12 +269,15 @@
         "protocol-framing-no-world-state",
         "protocol-listener-contracts",
         "protocol-login-handler-decisions",
+        "protocol-packet-tables",
         "protocol-play-handler-decisions",
         "protocol-serverbound-call-sites",
         "registries-unsynchronized-fixed-identities",
         "rendering-client-biome-tint",
         "rendering-client-block-entity-tracking",
         "rendering-client-level-dirty-handoff",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
         "rendering-level-backend-lifecycle",
         "rendering-nondeterministic-golden-exclusions",
         "rendering-official-noop-surfaces",
@@ -323,7 +327,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "c1a3f4af01323163ed543958142b7b41f607320a766f6a5e5c8dd077513a4f3b",
+      "sha256": "559eaf22442900ba92e19a47f8d5cf9958c4239abf36bad57f3cdedbdc2bcdac",
       "valid": true
     },
     {
@@ -430,7 +434,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-07T23:35:07Z\te195d60d0b0a2dd907b97d8a3d860060bb0a0df6\tclean\ttotal:23s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:5s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:1s,cross-check:skip,test:12s",
-      "sha256": "febbd525f5018e02f68c952838f6b1b67944d3cbe9dad80b5a43757def0c9b71",
+      "sha256": "848b0b1a0f83d937d68d09efc12682357ed7c596610e8ca379bb042ab36ea69b",
       "valid": true
     },
     {
@@ -679,7 +683,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "d2ef9dd6f6dff30e150aab7f7513671c4471df3e47dab74670ccfd5d559901cb",
+      "sha256": "b7f2e4917c9297e8f69a852e2c79a37b8f17813f910bf499e9118839d88ba749",
       "valid": true
     },
     {
@@ -2326,7 +2330,7 @@
       ],
       "path": "crates/bbb-native/src/runtime/events/dispatcher.rs",
       "scenario_ids": [],
-      "sha256": "593b3089a1c36f687065dd230b86261aae18276e60080bc2072925a8510cb130",
+      "sha256": "3bae3afc8ee6b4e58f6e44624cc3c5bc4f880aaebcb92a072b2392b03a7f879c",
       "valid": true
     },
     {
@@ -2349,7 +2353,7 @@
       ],
       "path": "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs",
       "scenario_ids": [],
-      "sha256": "fde2771ff6cbf56fd5aca4fc516ab8300ec1c151a9c2f431ce64ab06bf5b773e",
+      "sha256": "f9edab5631b5eec1aa6a6e2218f493d0a1085bbd5a953eed469f769c1f02f7f9",
       "valid": true
     },
     {
@@ -2487,7 +2491,7 @@
       ],
       "path": "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs",
       "scenario_ids": [],
-      "sha256": "47a6a8f2d97f0efd4c9c52633f010e805a483b01927bdd3e70d60df8759ff55b",
+      "sha256": "40e9a41a17cfab92f405762e9e6aecac918cc5be40b6499cea2567adccdeca96",
       "valid": true
     },
     {
@@ -3099,6 +3103,20 @@
       "valid": true
     },
     {
+      "artifact_id": "repo:crates/bbb-net/src/driver.rs",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "protocol-configuration-handler-decisions"
+      ],
+      "path": "crates/bbb-net/src/driver.rs",
+      "scenario_ids": [],
+      "sha256": "831508ea18ad518b297b9c1ebe1fff65fcb495c2a2e95209761c53e9545aa3b0",
+      "valid": true
+    },
+    {
       "artifact_id": "repo:crates/bbb-net/src/driver/commands/tests.rs",
       "bbb_commit": null,
       "exists": true,
@@ -3134,21 +3152,7 @@
       ],
       "path": "crates/bbb-net/src/event_stream.rs",
       "scenario_ids": [],
-      "sha256": "50d677f3005d3f72dcf27d9017ab59848fce72dd4235fa6146a16fa71cb5b032",
-      "valid": true
-    },
-    {
-      "artifact_id": "repo:crates/bbb-net/src/event_stream/configuration.rs",
-      "bbb_commit": null,
-      "exists": true,
-      "invalid_reasons": [],
-      "kind": "repo-evidence",
-      "mechanism_ids": [
-        "protocol-configuration-handler-decisions"
-      ],
-      "path": "crates/bbb-net/src/event_stream/configuration.rs",
-      "scenario_ids": [],
-      "sha256": "73f6eafeae5d82b8d0f1a95ed07cec87710d596f1541d3039ad5996b73c26027",
+      "sha256": "16e44650020896abfced28cbcf97d25e4b7128561ab574442963910fbd2e5522",
       "valid": true
     },
     {
@@ -7434,7 +7438,7 @@
       ],
       "path": "docs/evidence/vanilla-26.1/packet-coverage.json",
       "scenario_ids": [],
-      "sha256": "0d10b03250e40a2cfdb40d585053fee9d4c6ac69ffcdf513783e10ff0adc54bf",
+      "sha256": "587ad39f5ac2cfc83bd1e7ba4b167a6fea8e30611f03942be6809bca95933e4c",
       "valid": true
     },
     {
@@ -7501,7 +7505,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "c1a3f4af01323163ed543958142b7b41f607320a766f6a5e5c8dd077513a4f3b",
+      "sha256": "559eaf22442900ba92e19a47f8d5cf9958c4239abf36bad57f3cdedbdc2bcdac",
       "valid": true
     },
     {
@@ -7698,6 +7702,7 @@
       "invalid_reasons": [],
       "kind": "repo-evidence",
       "mechanism_ids": [
+        "protocol-configuration-handler-decisions",
         "protocol-packet-tables"
       ],
       "path": "scripts/cargo-dev.sh",
@@ -8073,7 +8078,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "d2ef9dd6f6dff30e150aab7f7513671c4471df3e47dab74670ccfd5d559901cb"
+      "sha256": "b7f2e4917c9297e8f69a852e2c79a37b8f17813f910bf499e9118839d88ba749"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8081,7 +8086,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "c1a3f4af01323163ed543958142b7b41f607320a766f6a5e5c8dd077513a4f3b"
+      "sha256": "559eaf22442900ba92e19a47f8d5cf9958c4239abf36bad57f3cdedbdc2bcdac"
     }
   ],
   "mechanisms": [
@@ -10441,6 +10446,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -10938,12 +10944,12 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1326,
-          "evidence_set_sha256": "ee04e441e44d42679a8948f2da0a57d40d47d5cac8bcd8bc9267d9a96610f837",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "6b784f8440a8531354bd6fdd4ee36aa8112038be5a24ccaf168f5c10f8ff696d",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -11184,12 +11190,14 @@
         "domain": "protocol",
         "line": 30,
         "required_state_projection": "phase/direction/id/class/resource id",
-        "route_reopen_condition": "五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "current-HEAD evidence gate/receipt 完成后关闭；五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "protocol-packet-tables",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 256,
@@ -11975,8 +11983,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1326,
-          "evidence_set_sha256": "ee04e441e44d42679a8948f2da0a57d40d47d5cac8bcd8bc9267d9a96610f837",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "6b784f8440a8531354bd6fdd4ee36aa8112038be5a24ccaf168f5c10f8ff696d",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -12920,8 +12928,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1326,
-          "evidence_set_sha256": "ee04e441e44d42679a8948f2da0a57d40d47d5cac8bcd8bc9267d9a96610f837",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "6b784f8440a8531354bd6fdd4ee36aa8112038be5a24ccaf168f5c10f8ff696d",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -13269,9 +13277,9 @@
         "repo:crates/bbb-native/src/win_screen_resources.rs",
         "repo:crates/bbb-net/src/chat_session.rs",
         "repo:crates/bbb-net/src/chunk_batch.rs",
+        "repo:crates/bbb-net/src/driver.rs",
         "repo:crates/bbb-net/src/driver/commands/tests.rs",
         "repo:crates/bbb-net/src/event_stream.rs",
-        "repo:crates/bbb-net/src/event_stream/configuration.rs",
         "repo:crates/bbb-net/src/play_bundle.rs",
         "repo:crates/bbb-net/src/resource_pack.rs",
         "repo:crates/bbb-net/src/services_profile_keys.rs",
@@ -13435,6 +13443,7 @@
         "repo:crates/bbb-world/src/toasts.rs",
         "repo:crates/bbb-world/src/tutorial.rs",
         "repo:docs/evidence/vanilla-26.1/packet-coverage.json",
+        "repo:scripts/cargo-dev.sh",
         "repo:scripts/tests/test_block_registry_catalog_extractor.py",
         "repo:scripts/tests/test_entity_catalog.py",
         "repo:scripts/tests/test_entity_coverage_ledger.py",
@@ -13443,11 +13452,15 @@
       "bbb": {
         "evidence_commit": "e195d60d0b0a2dd907b97d8a3d860060bb0a0df6",
         "evidence_references": [
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
+          "crates/bbb-net/src/driver.rs#drive_connection_finishes_configuration_only_after_canonical_command",
           "crates/bbb-net/src/event_stream.rs",
-          "crates/bbb-net/src/event_stream/configuration.rs",
-          "docs/evidence/vanilla-26.1/packet-coverage.json"
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+          "docs/evidence/vanilla-26.1/packet-coverage.json",
+          "scripts/cargo-dev.sh"
         ],
-        "owner": "net configuration state machine"
+        "owner": "net configuration state machine + canonical world registry commit"
       },
       "differential_scenarios": [
         {
@@ -13701,8 +13714,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1326,
-          "evidence_set_sha256": "ee04e441e44d42679a8948f2da0a57d40d47d5cac8bcd8bc9267d9a96610f837",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "6b784f8440a8531354bd6fdd4ee36aa8112038be5a24ccaf168f5c10f8ff696d",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -13942,8 +13955,8 @@
       "matrix": {
         "domain": "protocol",
         "line": 33,
-        "required_state_projection": "registry/tags/known-pack/finish ordering",
-        "route_reopen_condition": "configuration handler 变化时重开；[ledger](../../unsupported-features.md)",
+        "required_state_projection": "registry/tags/known-pack FIFO → atomic validation/freeze → finish ACK → Play；invalid registry disconnects without ACK",
+        "route_reopen_condition": "current-HEAD external lifecycle/platform/packet receipt 尚待重采后关闭；configuration handler source/owner set 或 ordering 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "partial"
       },
       "mechanism_id": "protocol-configuration-handler-decisions",
@@ -14483,8 +14496,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1326,
-          "evidence_set_sha256": "ee04e441e44d42679a8948f2da0a57d40d47d5cac8bcd8bc9267d9a96610f837",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "6b784f8440a8531354bd6fdd4ee36aa8112038be5a24ccaf168f5c10f8ff696d",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -15553,8 +15566,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1326,
-          "evidence_set_sha256": "ee04e441e44d42679a8948f2da0a57d40d47d5cac8bcd8bc9267d9a96610f837",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "6b784f8440a8531354bd6fdd4ee36aa8112038be5a24ccaf168f5c10f8ff696d",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -20868,6 +20881,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -20949,7 +20963,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -21358,12 +21372,14 @@
         "domain": "entities",
         "line": 79,
         "required_state_projection": "fixed ids、spawn/schema/behavior coverage",
-        "route_reopen_condition": "entity registry 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "current-HEAD gate 后关闭；entity registry 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "entities-fixed-type-surface",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 157,
@@ -21539,6 +21555,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -21620,7 +21637,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -22029,12 +22046,14 @@
         "domain": "entities/rendering",
         "line": 80,
         "required_state_projection": "entity type→renderer/state/model",
-        "route_reopen_condition": "renderer registration 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "current-HEAD gate 后关闭；renderer registration 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-entity-renderer-registration",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 155,
@@ -22208,6 +22227,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/camera_pose.rs",
@@ -22289,7 +22309,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -22698,12 +22718,14 @@
         "domain": "entities/rendering",
         "line": 81,
         "required_state_projection": "layer order/state/material",
-        "route_reopen_condition": "layer registration 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "current-HEAD gate 后关闭；layer registration 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "rendering-entity-layer-registration",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 90,
@@ -37904,6 +37926,7 @@
       "audio-client-level-sound-routing",
       "audio-sound-manager-engine",
       "diagnostics-client-level-report",
+      "entities-fixed-type-surface",
       "identity-skin-presentation",
       "input-debug-key-actions",
       "input-key-mapping",
@@ -37931,11 +37954,14 @@
       "protocol-configuration-handler-decisions",
       "protocol-listener-contracts",
       "protocol-login-handler-decisions",
+      "protocol-packet-tables",
       "protocol-play-handler-decisions",
       "protocol-serverbound-call-sites",
       "rendering-client-biome-tint",
       "rendering-client-block-entity-tracking",
       "rendering-client-level-dirty-handoff",
+      "rendering-entity-layer-registration",
+      "rendering-entity-renderer-registration",
       "rendering-level-backend-lifecycle",
       "resources-default-pack-stack",
       "resources-indexed-panorama",
@@ -37971,11 +37997,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 55,
+      "equivalent": 51,
       "not-needed": 25,
-      "partial": 66
+      "partial": 70
     },
-    "valid_count": 81
+    "valid_count": 77
   },
   "vanilla_version": "26.1"
 }

@@ -5612,7 +5612,11 @@
     },
     "configuration/clientbound/CLIENTBOUND_FINISH_CONFIGURATION": {
       "canonical_apply": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"],
+        "evidence": [
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#invalid_configuration_registry_commit_requests_disconnect",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement"
+        ],
         "status": "complete"
       },
       "decode": {
@@ -5626,12 +5630,19 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#invalid_configuration_registry_commit_requests_disconnect",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
           "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#handleConfigurationFinished"
         ],
         "status": "complete"
       },
       "tests": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"],
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#invalid_configuration_registry_commit_requests_disconnect",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement"
+        ],
         "status": "complete"
       }
     },
@@ -5691,12 +5702,17 @@
       "ack_response": {
         "evidence": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#invalid_configuration_registry_commit_requests_disconnect",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
           "vanilla:net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java#handleConfigurationFinished"
         ],
         "status": "complete"
       },
       "command_surface": {
-        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::Finish"],
+        "evidence": [
+          "crates/bbb-net/src/types/commands.rs#FinishConfiguration",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement"
+        ],
         "status": "complete"
       },
       "encoder": {
@@ -5704,11 +5720,19 @@
         "status": "complete"
       },
       "state_guard": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"],
+        "evidence": [
+          "crates/bbb-net/src/driver.rs#drive_connection_finishes_configuration_only_after_canonical_command",
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
+        ],
         "status": "complete"
       },
       "tests": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"],
+        "evidence": [
+          "crates/bbb-net/src/driver.rs#drive_connection_finishes_configuration_only_after_canonical_command",
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#invalid_configuration_registry_commit_requests_disconnect",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement"
+        ],
         "status": "complete"
       }
     },
