@@ -1,4 +1,5 @@
 use super::*;
+use bbb_renderer::{HudSystemToast, HudToast};
 use std::{
     cell::Cell,
     collections::{BTreeMap, BTreeSet},
@@ -3612,18 +3613,15 @@ fn hide_gui_frame_policy_precedes_residency_and_keeps_toasts_independent() {
     assert!(field < setter && setter < residency);
 
     let runtime = include_str!("../runtime.rs");
-    let advancement = runtime
-        .find("let hud_advancement_toasts = hud_render_runtime.client_toasts.project_advancements(")
-        .expect("advancement Toast projection");
-    let recipe = runtime
-        .find("let hud_recipe_toasts = hud_render_runtime.client_toasts.project_recipes(")
-        .expect("recipe Toast projection");
+    let toasts = runtime
+        .find("let hud_toasts = hud_render_runtime.client_toasts.project_toasts(")
+        .expect("shared ToastManager projection");
     let screens = runtime
         .find("let hud_sign_editor_screen =")
         .expect("following Screen projection");
-    assert!(advancement < recipe && recipe < screens);
+    assert!(toasts < screens);
     assert!(
-        !runtime[advancement..screens].contains("input.hide_gui()"),
+        !runtime[toasts..screens].contains("input.hide_gui()"),
         "Vanilla ToastManager is outside Gui.extractRenderState's F1 branch"
     );
 }
@@ -13502,54 +13500,100 @@ fn hud_stats_screen_clamps_pixel_scroll_to_projected_content() {
 #[test]
 fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
     let start = std::time::Instant::now();
-    let mut state = SystemToastAnimationState::default();
-    assert_eq!(state.update(0, start), None);
+    let mut world = WorldStore::new();
+    let mut state = HudRenderRuntime::default();
     assert_eq!(
-        state.update(1, start),
-        Some(SystemToastAnimationFrame {
-            visible_portion: 0.0,
-            visibility_sound: Some("minecraft:ui.toast.in"),
-        })
+        hud_system_toast(&mut state, &world, None, start),
+        (None, None)
+    );
+    world.apply_low_disk_space_warning();
+    assert!(hud_system_toast(&mut state, &world, None, start)
+        .1
+        .is_none());
+    assert_eq!(
+        hud_system_toast(&mut state, &world, None, start)
+            .1
+            .and_then(|sound| sound.sound.location)
+            .as_deref(),
+        Some("minecraft:ui.toast.in")
     );
     assert_eq!(
-        state
-            .update(1, start + Duration::from_millis(300))
-            .map(|frame| frame.visible_portion),
+        hud_system_toast(&mut state, &world, None, start + Duration::from_millis(300))
+            .0
+            .map(|toast| toast.visible_portion),
         Some(0.25)
     );
     assert_eq!(
-        state
-            .update(1, start + Duration::from_millis(600))
-            .map(|frame| frame.visible_portion),
+        hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600))
+            .0
+            .map(|toast| toast.visible_portion),
         Some(1.0)
     );
     assert_eq!(
-        state
-            .update(1, start + Duration::from_millis(10_599))
-            .map(|frame| frame.visible_portion),
+        hud_system_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(10_599)
+        )
+        .0
+        .map(|toast| toast.visible_portion),
         Some(1.0)
     );
     assert_eq!(
-        state.update(1, start + Duration::from_millis(10_600)),
-        Some(SystemToastAnimationFrame {
-            visible_portion: 1.0,
-            visibility_sound: Some("minecraft:ui.toast.out"),
-        })
+        hud_system_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(10_600)
+        )
+        .1
+        .and_then(|sound| sound.sound.location)
+        .as_deref(),
+        Some("minecraft:ui.toast.out")
     );
     assert_eq!(
-        state
-            .update(1, start + Duration::from_millis(10_900))
-            .map(|frame| frame.visible_portion),
+        hud_system_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(10_900)
+        )
+        .0
+        .map(|toast| toast.visible_portion),
         Some(0.75)
     );
-    assert_eq!(state.update(1, start + Duration::from_millis(11_201)), None);
-
     assert_eq!(
-        state.update(2, start + Duration::from_millis(12_000)),
-        Some(SystemToastAnimationFrame {
-            visible_portion: 0.0,
-            visibility_sound: Some("minecraft:ui.toast.in"),
-        })
+        hud_system_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(11_201)
+        )
+        .0,
+        None
+    );
+
+    world.apply_low_disk_space_warning();
+    assert!(hud_system_toast(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(12_000)
+    )
+    .0
+    .is_some());
+    assert_eq!(
+        hud_system_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(12_000)
+        )
+        .1
+        .and_then(|sound| sound.sound.location)
+        .as_deref(),
+        Some("minecraft:ui.toast.in")
     );
 }
 
@@ -13565,8 +13609,8 @@ fn narrator_toggle_projects_enabled_and_disabled_system_toasts() {
         toast,
         Some(HudSystemToast {
             title: "Narrator Enabled".to_string(),
-            message: "Narrates Chat".to_string(),
-            multiline: false,
+            message_lines: vec!["Narrates Chat".to_string()],
+            width: 160,
             visible_portion: 0.0,
         })
     );
@@ -13577,8 +13621,8 @@ fn narrator_toggle_projects_enabled_and_disabled_system_toasts() {
         toast,
         Some(HudSystemToast {
             title: "Narrator Disabled".to_string(),
-            message: String::new(),
-            multiline: false,
+            message_lines: Vec::new(),
+            width: 160,
             visible_portion: 0.0,
         })
     );
@@ -13602,14 +13646,18 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
         toast,
         Some(HudSystemToast {
             title: "Low disk space!".to_string(),
-            message: "Might not be able to save the world.".to_string(),
-            multiline: false,
+            message_lines: vec!["Might not be able to save the world.".to_string()],
+            width: 160,
             visible_portion: 0.0,
         })
     );
+    assert!(sound.is_none());
     assert_eq!(
-        sound.and_then(|sound| sound.sound.location),
-        Some("minecraft:ui.toast.in".to_string())
+        hud_system_toast(&mut state, &world, None, start)
+            .1
+            .and_then(|sound| sound.sound.location)
+            .as_deref(),
+        Some("minecraft:ui.toast.in")
     );
     assert_eq!(
         hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600),)
@@ -13655,15 +13703,184 @@ fn completed_resource_pack_recovery_projects_pack_load_failure_system_toast() {
         toast,
         Some(HudSystemToast {
             title: "Resource reload failed".to_string(),
-            message: String::new(),
-            multiline: false,
+            message_lines: Vec::new(),
+            width: 160,
             visible_portion: 0.0,
         })
     );
+    assert!(sound.is_none());
     assert_eq!(
-        sound.and_then(|sound| sound.sound.location),
-        Some("minecraft:ui.toast.in".to_string())
+        hud_system_toast(&mut state, &world, None, start)
+            .1
+            .and_then(|sound| sound.sound.location)
+            .as_deref(),
+        Some("minecraft:ui.toast.in")
     );
+}
+
+#[test]
+fn shared_toast_projection_preserves_mixed_family_insertion_order() {
+    let mut world = WorldStore::new();
+    world.apply_low_disk_space_warning();
+    enqueue_runtime_advancement_toasts(&mut world, 1, AdvancementFrameType::Task);
+    enqueue_runtime_recipe_toast(&mut world, 1, 1, 2);
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let start = Instant::now();
+    let mut state = ClientToastRuntime::default();
+    state.update_with_options(
+        &world,
+        Some(&item_runtime),
+        &bbb_renderer::HudFontGlyphMap::default(),
+        None,
+        1.0,
+        start,
+    );
+
+    let projected = state.project_toasts(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+    );
+    assert!(matches!(
+        projected.as_slice(),
+        [
+            HudToast::System(_),
+            HudToast::Advancement(_),
+            HudToast::Recipe(_)
+        ]
+    ));
+}
+
+#[test]
+fn system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime() {
+    let mut glyphs = bbb_renderer::HudFontGlyphMap::new();
+    let glyph = bbb_renderer::HudAsciiGlyph {
+        width: 5,
+        height: 8,
+        advance: 6,
+        ..bbb_renderer::HudAsciiGlyph::default()
+    };
+    for ch in ' '..='~' {
+        glyphs.insert_first_wins(ch, glyph);
+    }
+    let mut world = WorldStore::new();
+    let mut state = ClientToastRuntime::default();
+    let start = Instant::now();
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 3,
+        update_sequence: 1,
+        current_pack: 1,
+        total_packs: 100,
+        downloaded_bytes: 0,
+        total_bytes: Some(100),
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitle,
+    }));
+    state.update_with_options(&world, None, &glyphs, None, 1.0, start);
+    let initial = state.project_systems().remove(0);
+    assert_eq!(initial.slot, 0);
+    assert!(initial.toast.width > 160);
+    state.update_with_options(&world, None, &glyphs, None, 1.0, start);
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        1.0,
+        start + Duration::from_millis(600),
+    );
+
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 3,
+        update_sequence: 2,
+        current_pack: 100,
+        total_packs: 100,
+        downloaded_bytes: 100,
+        total_bytes: Some(100),
+        failed_packs: 1,
+        phase: bbb_world::ResourcePackDownloadPhase::Failed,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitle,
+    }));
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        1.0,
+        start + Duration::from_millis(4_000),
+    );
+    let updated = state.project_systems().remove(0);
+    assert_eq!(updated.slot, 0);
+    assert_eq!(updated.toast.width, initial.toast.width);
+    assert_eq!(
+        updated.toast.title,
+        "1 out of 100 pack(s) failed to download"
+    );
+
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        1.0,
+        start + Duration::from_millis(8_999),
+    );
+    assert!(state.visible[0].showing);
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        1.0,
+        start + Duration::from_millis(9_000),
+    );
+    assert!(!state.visible[0].showing);
+}
+
+#[test]
+fn periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime() {
+    let start = Instant::now();
+    let world = WorldStore::new();
+    let glyphs = bbb_renderer::HudFontGlyphMap::default();
+    let mut state = ClientToastRuntime::default();
+    let notification = |sequence| periodic_notifications::PeriodicNotificationToast {
+        title_key: format!("title.{sequence}"),
+        message_key: format!("message.{sequence}"),
+        elapsed_periods: 0,
+        sequence,
+    };
+    state.update_with_options(&world, None, &glyphs, Some(notification(1)), 2.0, start);
+    state.update_with_options(&world, None, &glyphs, Some(notification(2)), 2.0, start);
+    assert_eq!(state.visible.len(), 2, "SystemToast.add does not coalesce");
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        2.0,
+        start + Duration::from_millis(600),
+    );
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        2.0,
+        start + Duration::from_millis(10_599),
+    );
+    assert!(state.visible.iter().all(|toast| toast.showing));
+    state.update_with_options(
+        &world,
+        None,
+        &glyphs,
+        None,
+        2.0,
+        start + Duration::from_millis(10_600),
+    );
+    assert!(state.visible.iter().all(|toast| !toast.showing));
 }
 
 #[test]
@@ -13680,6 +13897,7 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         total_bytes: Some(1_024),
         failed_packs: 0,
         phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress,
     }));
 
     let (toasts, sound) = hud_system_toasts(&mut state, &world, None, start);
@@ -13688,8 +13906,8 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         vec![bbb_renderer::HudSystemToastInstance {
             toast: HudSystemToast {
                 title: "Downloading resource pack 1/2".to_string(),
-                message: "Progress: 50%".to_string(),
-                multiline: false,
+                message_lines: vec!["Progress: 50%".to_string()],
+                width: 160,
                 visible_portion: 0.0,
             },
             slot: 0,
@@ -13707,10 +13925,27 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         update_sequence: 2,
         current_pack: 2,
         total_packs: 2,
+        downloaded_bytes: 512,
+        total_bytes: Some(1_024),
+        failed_packs: 0,
+        phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitlePreserveMessage,
+    }));
+    let (toasts, _) =
+        hud_system_toasts(&mut state, &world, None, start + Duration::from_millis(500));
+    assert_eq!(toasts[0].toast.title, "Downloading resource pack 2/2");
+    assert_eq!(toasts[0].toast.message_lines, ["Progress: 50%"]);
+
+    world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
+        batch_sequence: 7,
+        update_sequence: 3,
+        current_pack: 2,
+        total_packs: 2,
         downloaded_bytes: 0,
         total_bytes: None,
         failed_packs: 1,
         phase: bbb_world::ResourcePackDownloadPhase::Failed,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitle,
     }));
     let (toasts, _) =
         hud_system_toasts(&mut state, &world, None, start + Duration::from_millis(700));
@@ -13721,13 +13956,14 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
 
     world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
         batch_sequence: 8,
-        update_sequence: 3,
+        update_sequence: 4,
         current_pack: 1,
         total_packs: 1,
         downloaded_bytes: 2_048,
         total_bytes: None,
         failed_packs: 0,
         phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress,
     }));
     let (toasts, _) = hud_system_toasts(
         &mut state,
@@ -13743,7 +13979,7 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
     );
     assert_eq!(toasts[1].slot, 1);
     assert_eq!(
-        toasts[1].toast.message,
+        toasts[1].toast.message_lines.join(""),
         "Progress: 2.0 KB (total size unknown)"
     );
     let (_, sound) = hud_system_toasts(
@@ -13765,13 +14001,14 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
 
     world.set_resource_pack_download_state(Some(bbb_world::ResourcePackDownloadState {
         batch_sequence: 8,
-        update_sequence: 4,
+        update_sequence: 5,
         current_pack: 1,
         total_packs: 1,
         downloaded_bytes: 2_048,
         total_bytes: None,
         failed_packs: 0,
         phase: bbb_world::ResourcePackDownloadPhase::Succeeded,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::ForceHide,
     }));
     let (_, sound) = hud_system_toasts(
         &mut state,
@@ -13794,6 +14031,7 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         total_bytes: None,
         failed_packs: 0,
         phase: bbb_world::ResourcePackDownloadPhase::Downloading,
+        toast_action: bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress,
     }));
     let (toasts, sound) = hud_system_toasts(
         &mut state,
@@ -13801,9 +14039,9 @@ fn server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide()
         None,
         start + Duration::from_millis(2_000),
     );
-    assert_eq!(toasts.len(), 1);
-    assert_eq!(toasts[0].slot, 0);
-    assert_eq!(toasts[0].toast.title, "Downloading resource pack 1/1");
+    assert_eq!(toasts.len(), 3);
+    assert_eq!(toasts[2].slot, 2);
+    assert_eq!(toasts[2].toast.title, "Downloading resource pack 1/1");
     assert!(sound.is_none());
 }
 
@@ -14016,7 +14254,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
 }
 
 #[test]
-fn advancement_toast_runtime_clears_visible_and_queued_state_for_new_level() {
+fn toast_runtime_clears_visible_and_queued_state_on_disconnect() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Goal);
     let mut state = ClientToastRuntime::default();
@@ -14029,6 +14267,37 @@ fn advancement_toast_runtime_clears_visible_and_queued_state_for_new_level() {
     assert!(state.visible.is_empty());
     assert!(state.queued.is_empty());
     assert_eq!(state.next_sequence, 0);
+}
+
+#[test]
+fn toast_runtime_survives_respawn_without_duplicate_admission() {
+    let mut world = WorldStore::new();
+    enqueue_runtime_advancement_toasts(&mut world, 1, AdvancementFrameType::Goal);
+    let start = Instant::now();
+    let mut state = ClientToastRuntime::default();
+    state.update(&world, start);
+    assert_eq!(state.visible.len(), 1);
+    let event_sequence = state.next_sequence;
+
+    world.apply_respawn(&bbb_protocol::packets::Respawn {
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: 0,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        data_to_keep: 0,
+    });
+    state.update(&world, start);
+    assert_eq!(state.visible.len(), 1);
+    assert!(state.queued.is_empty());
+    assert_eq!(state.next_sequence, event_sequence);
 }
 
 #[test]
@@ -14059,7 +14328,7 @@ fn recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives() {
     assert_eq!(recipe.last_changed_ms, 4_000);
     assert_eq!(
         recipe
-            .displayed_item(4_000)
+            .displayed_item()
             .and_then(|item| item.unlocked_item.item_id),
         Some(4)
     );
@@ -14243,6 +14512,7 @@ fn enqueue_runtime_advancement_toasts(
 
 fn runtime_tutorial_world() -> WorldStore {
     let mut world = WorldStore::new();
+    world.replace_services_public_keys(Vec::new(), vec![vec![1]]);
     world.apply_login(&PlayLogin {
         player_id: 7,
         hardcore: false,
@@ -14265,7 +14535,7 @@ fn runtime_tutorial_world() -> WorldStore {
             portal_cooldown: 0,
             sea_level: 63,
         },
-        enforces_secure_chat: false,
+        enforces_secure_chat: true,
     });
     world
 }
@@ -14305,57 +14575,71 @@ fn sound_locations(sounds: &[LocalSoundEventState]) -> Vec<&str> {
 }
 
 #[test]
-fn insecure_chat_warning_projects_multiline_toast_before_low_disk_queue() {
+fn mixed_system_toasts_share_fifo_and_multiline_contiguous_slots() {
     let start = std::time::Instant::now();
     let mut world = world_with_custom_dimension_environment();
-    let mut state = HudRenderRuntime::default();
     assert_eq!(world.insecure_chat_warning_count(), 1);
-
-    let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
-    assert_eq!(
-        toast,
-        Some(HudSystemToast {
-            title: "Chat messages can't be verified".to_string(),
-            message: "Messages sent on this server may be modified and might not reflect the original message".to_string(),
-            multiline: true,
-            visible_portion: 0.0,
-        })
-    );
-    assert_eq!(
-        sound.and_then(|sound| sound.sound.location),
-        Some("minecraft:ui.toast.in".to_string())
-    );
-
     world.apply_low_disk_space_warning();
-    assert_eq!(
-        hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600))
-            .0
-            .unwrap()
-            .title,
-        "Chat messages can't be verified"
-    );
-    assert_eq!(
-        hud_system_toast(
-            &mut state,
-            &world,
-            None,
-            start + Duration::from_millis(10_600),
-        )
-        .1
-        .and_then(|sound| sound.sound.location),
-        Some("minecraft:ui.toast.out".to_string())
-    );
 
-    let (toast, sound) = hud_system_toast(
-        &mut state,
+    let mut glyphs = bbb_renderer::HudFontGlyphMap::new();
+    let glyph = bbb_renderer::HudAsciiGlyph {
+        width: 5,
+        height: 8,
+        advance: 6,
+        ..bbb_renderer::HudAsciiGlyph::default()
+    };
+    for ch in ' '..='~' {
+        glyphs.insert_first_wins(ch, glyph);
+    }
+    let mut state = ClientToastRuntime::default();
+    let admission = state.update_with_options(&world, None, &glyphs, None, 1.0, start);
+    assert!(admission.is_empty());
+    assert_eq!(
+        state
+            .visible
+            .iter()
+            .map(|toast| toast.slot)
+            .collect::<Vec<_>>(),
+        [0, 2]
+    );
+    assert_eq!(
+        state
+            .visible
+            .iter()
+            .map(|toast| toast.toast.occupied_slot_count())
+            .collect::<Vec<_>>(),
+        [2, 1]
+    );
+    assert_eq!(
+        state
+            .project_systems()
+            .iter()
+            .map(|toast| toast.toast.title.as_str())
+            .collect::<Vec<_>>(),
+        ["Chat messages can't be verified", "Low disk space!"]
+    );
+    assert_eq!(
+        sound_locations(&state.update_with_options(&world, None, &glyphs, None, 1.0, start)),
+        ["minecraft:ui.toast.in"]
+    );
+    state.update_with_options(
         &world,
         None,
-        start + Duration::from_millis(11_201),
+        &glyphs,
+        None,
+        1.0,
+        start + Duration::from_millis(600),
     );
-    assert_eq!(toast.unwrap().title, "Low disk space!");
     assert_eq!(
-        sound.and_then(|sound| sound.sound.location),
-        Some("minecraft:ui.toast.in".to_string())
+        sound_locations(&state.update_with_options(
+            &world,
+            None,
+            &glyphs,
+            None,
+            1.0,
+            start + Duration::from_millis(10_600),
+        )),
+        ["minecraft:ui.toast.out"]
     );
 }
 

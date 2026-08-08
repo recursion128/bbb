@@ -11,8 +11,8 @@ use bbb_renderer::{
     BlockDestroyOverlay, BlockSelectionRenderState, DebugFilledBox, DebugFilledRect, DebugLine,
     DebugTextBillboard, DisplayTextSurface, EntityFlameSurface, EntityModelInstance,
     EntityNameTagSurface, EntityShadowSurface, FirstPersonMapBackgroundSurface,
-    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast,
-    HudAirSupply, HudBlockItemModel, HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay,
+    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAirSupply,
+    HudBlockItemModel, HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay,
     HudChatContext, HudChatInteraction, HudChatMessage, HudChatRestrictionsScreen,
     HudCommandBlockEditorScreen, HudCommandSuggestions, HudComponentTextRun,
     HudCrosshairAttackIndicator, HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen,
@@ -23,15 +23,14 @@ use bbb_renderer::{
     HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudPlayerReportingControl,
     HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
     HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
-    HudPortalOverlay, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
-    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
-    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
-    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
-    HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
-    HudSystemToastInstance, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen,
-    HudTextStyle, HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette,
-    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    HudPortalOverlay, HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen,
+    HudSleepOverlay, HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
+    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpectatorGui,
+    HudSpectatorGuiSlot, HudSpectatorIcon, HudSpyglassScope, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStyledTextRun, HudTestBlockEditorScreen,
+    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudToast, HudVehicleHealth,
+    HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
     ItemModelResidencyFrame, Renderer, RendererCameraFrame, SelectionOutline,
     SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
@@ -2903,10 +2902,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>,
     pub(crate) hud_player_reporting_screen: Option<HudPlayerReportingScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
-    pub(crate) hud_system_toasts: Vec<HudSystemToastInstance>,
-    pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
-    pub(crate) hud_recipe_toasts: Vec<HudRecipeToast>,
-    pub(crate) hud_tutorial_toasts: Vec<HudTutorialToast>,
+    pub(crate) hud_toasts: Vec<HudToast>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_selected_item_name: Option<bbb_renderer::HudSelectedItemName>,
@@ -3384,10 +3380,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);
     renderer.set_hud_player_reporting_screen(frame.hud_player_reporting_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
-    renderer.set_hud_system_toasts(frame.hud_system_toasts);
-    renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);
-    renderer.set_hud_recipe_toasts(frame.hud_recipe_toasts);
-    renderer.set_hud_tutorial_toasts(frame.hud_tutorial_toasts);
+    renderer.set_hud_toasts(frame.hud_toasts);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_selected_item_name(frame.hud_selected_item_name);

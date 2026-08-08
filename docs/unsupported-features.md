@@ -56,6 +56,7 @@ Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-ho
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `rendering-level-section-lifecycle`
+Matrix routes: `player-local-client-status-options`, `player-local-world-edit-ui`
 
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
   artifact/scenario mappings validate without a false `equivalent`: capture commit
@@ -71,8 +72,10 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   `DownloadCacheCleaner`, the `HttpUtil` download chain and the Minecraft clear
   call. Download/cache/log/vacuum ordering, one DownloadQueue batch per external
   push, cross-batch failure propagation and per-batch five-slot progress toasts
-  now have decision-level tests. Inventory keeps one affected owner explicitly
-  machine-routed as an open gap: the shared-toast owner. The pack provider now
+  now have decision-level tests. All 68 owners have implementation/test or
+  explicit scope evidence; `createDownloadNotifier` is bound to the shared
+  mixed-family five-slot manager, exact callback mutation actions and notifier
+  generation. The pack provider now
   retains the downloaded ZIP as its canonical source, indexes the central
   directory without eager extraction, resolves duplicate lookup using the final
   central entry, preserves central-order overlay/list decisions, and materializes
@@ -83,18 +86,28 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   Vanilla's reverse-push ordering. Reopen the provider
   work if `FilePackResources`, JDK `ZipFile` lookup/enumeration, resource filter,
   overlay or reload ownership changes.
-- Server-pack batches now retain distinct toast identity and standard-height
-  slot placement, but all toast families still need one shared `ToastManager`
-  admission/occupied-slot queue. Today narrator, warning and server-pack paths
-  are prioritized separately, so mixed-family ordering, multi-slot toast
-  reservation and the single visibility-change sound per update are not yet
-  Vanilla-equivalent. Reopen this item if `ToastManager.update`, slot occupancy,
-  toast height or visibility-sound ownership changes.
 - The server-pack runtime/net/world/HUD implementation and per-owner evidence
   also remain open until the final implementation commit passes full gate and a
   current live receipt; shared rows affected after `bfcc657cf` stay reopened
   meanwhile. Reopen runtime identity/order if `packIdSerialNumber`, repository
-  sorting, required-top insertion or diagnostics ownership changes.
+  sorting, required-top insertion, `ToastManager.update`, toast height/slot,
+  notifier callback or diagnostics ownership changes.
+- The ToastManager lifecycle correction changes the shared `WorldStore` level
+  owner file used by the otherwise unchanged client-status and world-edit UI
+  mechanisms. Those two rows stay reopened until this implementation commit
+  passes full gate and their exact-file evidence is rebound.
+- The generated HUD/toast census now covers all 107 methods in `Toast`,
+  `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
+  `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in
+  addition to the existing 11 `hud-frame-extract-order` owners. All 118 have
+  machine-routed evidence; 32 owners remain honestly open across four root
+  gaps: startup-consumed non-`NEVER` `musicToast` plus the separate
+  `NowPlayingToast` lifecycle, the 8000 ms social-interactions tutorial toast,
+  failed OS file-drop counts unavailable from the current winit event surface,
+  and `SystemToast` title `Component` re-resolution after language reload while
+  construction-time width/message lines stay frozen. Close those mechanisms or
+  retain a reproducible external-platform blocker; do not restore the former
+  default-only or string-freeze equivalence claims.
 - The reachable SOCKS proxy/cache correction also changed nine shared startup,
   window, UI and persistence evidence owners; those rows remain temporarily
   reopened until the same full-gate/rebind checkpoint completes.
@@ -716,6 +729,15 @@ Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-u
   or supported in-game surface can change mipmap levels after startup; that
   slice must rebuild the complete resource/GPU generation atomically rather
   than mutate the atlas behind its owner.
+- **World-access/delete, pack-copy and integrated chunk-storage SystemToast
+  helpers.** `SystemToast.onWorldAccessFailure`, `onWorldDeleteFailure`, and
+  `onPackCopyFailure` are called only from title/world-selection or in-game pack
+  selection; `onChunkLoadFailure`/`onChunkSaveFailure` are called only by
+  `IntegratedServer` (`SystemToast.java:132-188`, `IntegratedServer.java:352-363`).
+  Those five owners have no observable effect in the external multiplayer,
+  command-line-configuration scope. Reopen the first group with a supported
+  world/pack-selection UI, and the second with integrated-server or
+  client-owned server chunk storage.
 - **Vanilla OpenGL GPU warnlist reload listener.**
   `GpuWarnlistManager.Preparations.apply` returns warnings only when
   `GpuDevice.getBackendName()` is exactly `OpenGL`; its behavioral consumer is

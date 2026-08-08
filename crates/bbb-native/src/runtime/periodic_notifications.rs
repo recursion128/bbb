@@ -329,13 +329,32 @@ mod tests {
             start,
         );
         let world = bbb_world::WorldStore::new();
-        let (toast, sound) = super::super::hud_system_toast(&mut hud, &world, None, start);
-        let toast = toast.expect("due periodic system toast");
+        let notification = hud.periodic_notifications.update(start).cloned();
+        let sounds = hud.client_toasts.update_with_options(
+            &world,
+            None,
+            &bbb_renderer::HudFontGlyphMap::default(),
+            notification,
+            1.0,
+            start,
+        );
+        assert!(sounds.is_empty(), "admission precedes the SHOW transition");
+        let toast = hud.client_toasts.project_systems().remove(0).toast;
         assert_eq!(toast.title, "periodic.fixture.title");
-        assert_eq!(toast.message, "periodic.fixture.message");
-        assert!(!toast.multiline);
+        assert_eq!(toast.message_lines, ["periodic.fixture.message"]);
+        let sounds = hud.client_toasts.update_with_options(
+            &world,
+            None,
+            &bbb_renderer::HudFontGlyphMap::default(),
+            None,
+            1.0,
+            start,
+        );
         assert_eq!(
-            sound.and_then(|sound| sound.sound.location),
+            sounds
+                .into_iter()
+                .next()
+                .and_then(|sound| sound.sound.location),
             Some("minecraft:ui.toast.in".to_string())
         );
     }

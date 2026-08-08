@@ -831,6 +831,7 @@ impl ServerResourcePackRuntime {
             total_bytes: None,
             failed_packs,
             phase: ResourcePackDownloadPhase::Downloading,
+            toast_action: bbb_world::ResourcePackDownloadToastAction::None,
         };
         if let Some(previous) = previous {
             state.downloaded_bytes = previous.downloaded_bytes;
@@ -838,15 +839,22 @@ impl ServerResourcePackRuntime {
         }
         match progress {
             ServerPackDownloadProgress::RequestStarted => {
-                state.downloaded_bytes = 0;
-                state.total_bytes = None;
+                // `requestStart` changes only the notifier title. Vanilla
+                // retains the previous request's progress message until the
+                // next `downloadStart` supplies a new size.
+                state.toast_action =
+                    bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitlePreserveMessage;
             }
             ServerPackDownloadProgress::DownloadStarted { total_bytes } => {
                 state.downloaded_bytes = 0;
                 state.total_bytes = total_bytes;
+                state.toast_action =
+                    bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress;
             }
             ServerPackDownloadProgress::DownloadedBytes { bytes } => {
                 state.downloaded_bytes = bytes;
+                state.toast_action =
+                    bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress;
             }
             ServerPackDownloadProgress::RequestFinished { success } => {
                 if !success {
@@ -857,6 +865,11 @@ impl ServerResourcePackRuntime {
                         ResourcePackDownloadPhase::Succeeded
                     } else {
                         ResourcePackDownloadPhase::Failed
+                    };
+                    state.toast_action = if state.failed_packs == 0 {
+                        bbb_world::ResourcePackDownloadToastAction::ForceHide
+                    } else {
+                        bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitle
                     };
                 }
             }
@@ -1392,6 +1405,74 @@ mod tests {
         assert_eq!(progress.total_packs, 1);
         assert_eq!(progress.failed_packs, 1);
         assert_eq!(progress.phase, ResourcePackDownloadPhase::Failed);
+        assert_eq!(
+            progress.toast_action,
+            bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitle
+        );
+    }
+
+    #[test]
+    fn download_progress_marks_only_vanilla_toast_mutation_callbacks() {
+        let mut world = WorldStore::new();
+        let key = push_accepted(
+            &mut world,
+            Uuid::from_u128(1),
+            "https://example.test/first.zip",
+        );
+        let mut runtime = test_runtime("progress-toast-actions");
+        runtime.reconcile_world(&world, true);
+        let batch_id = runtime.download_batches[0].id;
+
+        runtime.apply_download_progress(
+            batch_id,
+            key,
+            1,
+            2,
+            ServerPackDownloadProgress::RequestStarted,
+        );
+        assert_eq!(
+            runtime.download_presentations[0].toast_action,
+            bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitlePreserveMessage
+        );
+        runtime.apply_download_progress(
+            batch_id,
+            key,
+            1,
+            2,
+            ServerPackDownloadProgress::DownloadStarted {
+                total_bytes: Some(1_024),
+            },
+        );
+        assert_eq!(
+            runtime.download_presentations[0].toast_action,
+            bbb_world::ResourcePackDownloadToastAction::AddOrUpdateProgress
+        );
+        runtime.apply_download_progress(
+            batch_id,
+            key,
+            1,
+            2,
+            ServerPackDownloadProgress::RequestFinished { success: true },
+        );
+        assert_eq!(
+            runtime.download_presentations[0].toast_action,
+            bbb_world::ResourcePackDownloadToastAction::None,
+            "non-terminal requestFinished does not call updateToast"
+        );
+        runtime.apply_download_progress(
+            batch_id,
+            key,
+            2,
+            2,
+            ServerPackDownloadProgress::RequestStarted,
+        );
+        let second_request = &runtime.download_presentations[0];
+        assert_eq!(second_request.downloaded_bytes, 0);
+        assert_eq!(second_request.total_bytes, Some(1_024));
+        assert_eq!(
+            second_request.toast_action,
+            bbb_world::ResourcePackDownloadToastAction::AddOrUpdateTitlePreserveMessage
+        );
     }
 
     #[test]

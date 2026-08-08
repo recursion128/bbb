@@ -1598,8 +1598,8 @@ mod tests {
             .expect("font");
         let toast = HudSystemToast {
             title: "Toast".to_string(),
-            message: "body".to_string(),
-            multiline: false,
+            message_lines: vec!["body".to_string()],
+            width: 160,
             visible_portion: 1.0,
         };
 

@@ -377,13 +377,19 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
-        self.clear_client_level();
+        // `ClientPacketListener.handleLogin` constructs the new ClientLevel and
+        // calls `Minecraft.setLevel`; it does not call `Gui.onDisconnected`, so
+        // a toast queued before the play login remains owned by ToastManager.
+        // Configuration re-entry has already gone through `clearClientLevel`
+        // and therefore clears the manager on that earlier transition.
+        self.reset_client_level_state(false);
         self.reset_chat_session_state();
         self.available_levels = login.levels.iter().cloned().collect();
         self.server_enforces_secure_chat = Some(login.enforces_secure_chat);
         if !self.seen_insecure_chat_warning && !self.effectively_enforces_secure_chat() {
             self.seen_insecure_chat_warning = true;
             self.insecure_chat_warning_count = self.insecure_chat_warning_count.saturating_add(1);
+            self.push_system_toast_event(crate::ClientSystemToastEvent::InsecureServerWarning);
         }
         // Vanilla constructs the new ClientChunkCache and ClientLevel from these
         // login fields before later SetChunkCacheRadius/SetSimulationDistance
@@ -426,8 +432,6 @@ impl WorldStore {
             // retaining the exact level context (including CacheSlot values).
             self.advance_client_level_generation();
         }
-        self.reset_client_toasts_for_new_level();
-        self.requeue_active_tutorial_toast();
         let closed_server_container_id = self.close_container_for_respawn();
         self.reset_creative_inventory_for_new_level();
         self.reset_local_player_for_respawn(
@@ -647,6 +651,10 @@ impl WorldStore {
     }
 
     pub fn clear_client_level(&mut self) {
+        self.reset_client_level_state(true);
+    }
+
+    fn reset_client_level_state(&mut self, clear_toast_manager: bool) {
         self.advance_client_level_generation();
         let auto_jump_enabled = self.local_player_auto_jump_enabled();
         self.reset_local_player_ambient_audio();
@@ -699,7 +707,9 @@ impl WorldStore {
         self.reset_command_suggestions_for_new_listener();
         self.reset_recipes_for_new_listener();
         self.reset_advancements_for_new_listener();
-        self.reset_client_toasts_for_new_level();
+        if clear_toast_manager {
+            self.clear_client_toasts_for_disconnect();
+        }
         self.clear_hud_for_level_teardown();
         self.clear_level_bound_state();
     }
@@ -1470,7 +1480,7 @@ mod tests {
     }
 
     #[test]
-    fn respawn_clears_advancement_toast_handoff_without_dropping_tree() {
+    fn respawn_retains_toast_manager_handoff_and_advancement_tree() {
         let mut store = WorldStore::new();
         store.apply_update_advancements(UpdateAdvancements {
             reset: true,
@@ -1516,12 +1526,34 @@ mod tests {
 
         store.apply_respawn(&respawn_packet(0));
 
-        assert!(store.client_toast_events().is_empty());
-        assert_eq!(store.client_toasts().next_sequence, 0);
+        assert_eq!(store.client_toast_events().len(), 1);
+        assert_eq!(store.client_toasts().next_sequence, 1);
         assert!(store
             .client_advancements()
             .advancements
             .contains_key("test:root"));
+    }
+
+    #[test]
+    fn play_login_retains_toast_manager_but_level_clear_drops_it() {
+        let mut store = WorldStore::new();
+        store.apply_low_disk_space_warning();
+        let manager_generation = store.client_toasts().generation;
+
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+
+        assert_eq!(store.client_toasts().generation, manager_generation);
+        assert!(matches!(
+            store.client_toast_events()[0].system(),
+            Some(crate::ClientSystemToastEvent::LowDiskSpace)
+        ));
+
+        store.clear_client_level();
+        assert!(store.client_toast_events().is_empty());
+        assert_eq!(
+            store.client_toasts().generation,
+            manager_generation.saturating_add(1)
+        );
     }
 
     #[test]

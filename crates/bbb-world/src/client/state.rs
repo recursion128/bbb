@@ -107,9 +107,9 @@ pub use crate::client::scoreboard::{
 };
 pub use crate::client::server_presentation::{
     CustomPayloadState, ResourcePackDownloadPhase, ResourcePackDownloadState,
-    ResourcePackFailureStage, ResourcePackRuntimeFailure, ResourcePackRuntimePhase,
-    ResourcePackRuntimeState, ResourcePackState, ServerCookieState, ServerDataState,
-    ServerLinkState, ServerPresentationState, TransferTargetState,
+    ResourcePackDownloadToastAction, ResourcePackFailureStage, ResourcePackRuntimeFailure,
+    ResourcePackRuntimePhase, ResourcePackRuntimeState, ResourcePackState, ServerCookieState,
+    ServerDataState, ServerLinkState, ServerPresentationState, TransferTargetState,
 };
 pub use crate::client::social::{
     PlayerSocialState, ServicesBlockListState, SocialInteractionsPage,

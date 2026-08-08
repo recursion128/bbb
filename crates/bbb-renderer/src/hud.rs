@@ -1097,15 +1097,14 @@ pub struct HudStatsScreen {
     pub done_focused: bool,
 }
 
-/// One visible vanilla system toast. Native owns token/update timing; the renderer owns selected
-/// font measurement, nine-slice layout and the right-edge slide transform.
+/// One visible vanilla system toast. Native freezes the construction-time
+/// width and message lines, matching `SystemToast`; the renderer owns the
+/// nine-slice layout and right-edge slide transform.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudSystemToast {
     pub title: String,
-    pub message: String,
-    /// Whether the message follows `SystemToast.multiline` and wraps at the
-    /// vanilla 200-pixel line width.
-    pub multiline: bool,
+    pub message_lines: Vec<String>,
+    pub width: u32,
     pub visible_portion: f32,
 }
 
@@ -1114,6 +1113,15 @@ pub struct HudSystemToast {
 pub struct HudSystemToastInstance {
     pub toast: HudSystemToast,
     pub slot: u8,
+}
+
+/// ToastManager extraction order across every toast family.
+#[derive(Debug, Clone, PartialEq)]
+pub enum HudToast {
+    System(HudSystemToastInstance),
+    Advancement(HudAdvancementToast),
+    Recipe(HudRecipeToast),
+    Tutorial(HudTutorialToast),
 }
 
 /// One visible Vanilla advancement toast. Native owns queue/slot/timing and
@@ -6398,44 +6406,50 @@ impl Renderer {
         self.hud_book_screen = screen.and_then(book::sanitize_hud_book_screen);
     }
 
-    pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
-        self.hud_system_toasts = toast
-            .and_then(sanitize_hud_system_toast)
-            .map(|toast| HudSystemToastInstance { toast, slot: 0 })
+    pub fn set_hud_toasts(&mut self, toasts: Vec<HudToast>) {
+        let mut occupied = [false; HUD_TOAST_SLOTS];
+        self.hud_toasts = toasts
             .into_iter()
+            .filter_map(|toast| sanitize_hud_toast(toast, &mut occupied))
+            .take(HUD_TOAST_SLOTS)
             .collect();
+    }
+
+    pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
+        self.set_hud_system_toasts(
+            toast
+                .map(|toast| HudSystemToastInstance { toast, slot: 0 })
+                .into_iter()
+                .collect(),
+        );
     }
 
     pub fn set_hud_system_toasts(&mut self, toasts: Vec<HudSystemToastInstance>) {
-        self.hud_system_toasts = toasts
-            .into_iter()
-            .filter_map(sanitize_hud_system_toast_instance)
-            .take(HUD_TOAST_SLOTS)
-            .collect();
+        let mut combined = std::mem::take(&mut self.hud_toasts);
+        combined.retain(|toast| !matches!(toast, HudToast::System(_)));
+        combined.extend(toasts.into_iter().map(HudToast::System));
+        self.set_hud_toasts(combined);
     }
 
     pub fn set_hud_advancement_toasts(&mut self, toasts: Vec<HudAdvancementToast>) {
-        self.hud_advancement_toasts = toasts
-            .into_iter()
-            .filter_map(sanitize_hud_advancement_toast)
-            .take(HUD_TOAST_SLOTS)
-            .collect();
+        let mut combined = std::mem::take(&mut self.hud_toasts);
+        combined.retain(|toast| !matches!(toast, HudToast::Advancement(_)));
+        combined.extend(toasts.into_iter().map(HudToast::Advancement));
+        self.set_hud_toasts(combined);
     }
 
     pub fn set_hud_recipe_toasts(&mut self, toasts: Vec<HudRecipeToast>) {
-        self.hud_recipe_toasts = toasts
-            .into_iter()
-            .filter_map(sanitize_hud_recipe_toast)
-            .take(HUD_TOAST_SLOTS)
-            .collect();
+        let mut combined = std::mem::take(&mut self.hud_toasts);
+        combined.retain(|toast| !matches!(toast, HudToast::Recipe(_)));
+        combined.extend(toasts.into_iter().map(HudToast::Recipe));
+        self.set_hud_toasts(combined);
     }
 
     pub fn set_hud_tutorial_toasts(&mut self, toasts: Vec<HudTutorialToast>) {
-        self.hud_tutorial_toasts = toasts
-            .into_iter()
-            .filter_map(sanitize_hud_tutorial_toast)
-            .take(HUD_TOAST_SLOTS)
-            .collect();
+        let mut combined = std::mem::take(&mut self.hud_toasts);
+        combined.retain(|toast| !matches!(toast, HudToast::Tutorial(_)));
+        combined.extend(toasts.into_iter().map(HudToast::Tutorial));
+        self.set_hud_toasts(combined);
     }
 
     pub fn set_hud_debug_options_screen(&mut self, screen: Option<HudDebugOptionsScreen>) {
@@ -6922,38 +6936,43 @@ impl Renderer {
             }
         }
         if stratum != HudScreenStratum::BeforeBlur {
-            for toast in &self.hud_advancement_toasts {
-                if let Some(model) = &toast.block_model {
-                    append_model(
-                        model,
-                        gui_item_slot_placement(hud_advancement_toast_icon_rect(
-                            surface_size,
-                            toast,
-                        )),
-                        None,
-                    );
-                }
-            }
-            for toast in &self.hud_recipe_toasts {
-                if let Some(model) = &toast.category_block_model {
-                    append_model(
-                        model,
-                        gui_item_slot_placement(hud_recipe_toast_category_icon_rect(
-                            surface_size,
-                            toast,
-                        )),
-                        None,
-                    );
-                }
-                if let Some(model) = &toast.unlocked_block_model {
-                    append_model(
-                        model,
-                        gui_item_slot_placement(hud_recipe_toast_unlocked_icon_rect(
-                            surface_size,
-                            toast,
-                        )),
-                        None,
-                    );
+            for toast in &self.hud_toasts {
+                match toast {
+                    HudToast::Advancement(toast) => {
+                        if let Some(model) = &toast.block_model {
+                            append_model(
+                                model,
+                                gui_item_slot_placement(hud_advancement_toast_icon_rect(
+                                    surface_size,
+                                    toast,
+                                )),
+                                None,
+                            );
+                        }
+                    }
+                    HudToast::Recipe(toast) => {
+                        if let Some(model) = &toast.category_block_model {
+                            append_model(
+                                model,
+                                gui_item_slot_placement(hud_recipe_toast_category_icon_rect(
+                                    surface_size,
+                                    toast,
+                                )),
+                                None,
+                            );
+                        }
+                        if let Some(model) = &toast.unlocked_block_model {
+                            append_model(
+                                model,
+                                gui_item_slot_placement(hud_recipe_toast_unlocked_icon_rect(
+                                    surface_size,
+                                    toast,
+                                )),
+                                None,
+                            );
+                        }
+                    }
+                    HudToast::System(_) | HudToast::Tutorial(_) => {}
                 }
             }
         }
@@ -7124,67 +7143,69 @@ impl Renderer {
         post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
     ) {
         let surface_size = self.gui_surface_size();
-        for toast in &self.hud_system_toasts {
-            push_hud_system_toast(
-                vertices,
-                post_gui_item_commands,
-                &self.hud_white_pixel,
-                self.hud_system_toast_background.as_ref(),
-                self.hud_font_atlas.as_ref(),
-                &self.hud_font_glyphs,
-                &self.hud_obfuscated_glyph_pool,
-                self.counters.frame_index,
-                surface_size,
-                &toast.toast,
-                toast.slot,
-            );
+        for toast in &self.hud_toasts {
+            match toast {
+                HudToast::System(toast) => push_hud_system_toast(
+                    vertices,
+                    post_gui_item_commands,
+                    &self.hud_white_pixel,
+                    self.hud_system_toast_background.as_ref(),
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    &toast.toast,
+                    toast.slot,
+                ),
+                HudToast::Advancement(toast) => push_hud_advancement_toasts(
+                    vertices,
+                    commands,
+                    post_gui_item_commands,
+                    &self.hud_white_pixel,
+                    self.hud_item_atlas.as_ref(),
+                    self.hud_digit_atlas.as_ref(),
+                    &self.hud_digit_glyphs,
+                    self.hud_advancement_toast_background.as_ref(),
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    std::slice::from_ref(toast),
+                ),
+                HudToast::Recipe(toast) => push_hud_recipe_toasts(
+                    vertices,
+                    commands,
+                    post_gui_item_commands,
+                    &self.hud_white_pixel,
+                    self.hud_item_atlas.as_ref(),
+                    self.hud_digit_atlas.as_ref(),
+                    &self.hud_digit_glyphs,
+                    self.hud_recipe_toast_background.as_ref(),
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    std::slice::from_ref(toast),
+                ),
+                HudToast::Tutorial(toast) => push_hud_tutorial_toasts(
+                    vertices,
+                    commands,
+                    post_gui_item_commands,
+                    &self.hud_white_pixel,
+                    self.hud_tutorial_toast_background.as_ref(),
+                    &self.hud_tutorial_toast_icons,
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    std::slice::from_ref(toast),
+                ),
+            }
         }
-        push_hud_advancement_toasts(
-            vertices,
-            commands,
-            post_gui_item_commands,
-            &self.hud_white_pixel,
-            self.hud_item_atlas.as_ref(),
-            self.hud_digit_atlas.as_ref(),
-            &self.hud_digit_glyphs,
-            self.hud_advancement_toast_background.as_ref(),
-            self.hud_font_atlas.as_ref(),
-            &self.hud_font_glyphs,
-            &self.hud_obfuscated_glyph_pool,
-            self.counters.frame_index,
-            surface_size,
-            &self.hud_advancement_toasts,
-        );
-        push_hud_recipe_toasts(
-            vertices,
-            commands,
-            post_gui_item_commands,
-            &self.hud_white_pixel,
-            self.hud_item_atlas.as_ref(),
-            self.hud_digit_atlas.as_ref(),
-            &self.hud_digit_glyphs,
-            self.hud_recipe_toast_background.as_ref(),
-            self.hud_font_atlas.as_ref(),
-            &self.hud_font_glyphs,
-            &self.hud_obfuscated_glyph_pool,
-            self.counters.frame_index,
-            surface_size,
-            &self.hud_recipe_toasts,
-        );
-        push_hud_tutorial_toasts(
-            vertices,
-            commands,
-            post_gui_item_commands,
-            &self.hud_white_pixel,
-            self.hud_tutorial_toast_background.as_ref(),
-            &self.hud_tutorial_toast_icons,
-            self.hud_font_atlas.as_ref(),
-            &self.hud_font_glyphs,
-            &self.hud_obfuscated_glyph_pool,
-            self.counters.frame_index,
-            surface_size,
-            &self.hud_tutorial_toasts,
-        );
     }
 
     pub(super) fn collect_hud_draws(&self) -> HudDraws<'_> {
@@ -12197,8 +12218,13 @@ fn push_hud_system_toast<'a>(
             [0.15, 0.15, 0.15, 0.95],
         );
     }
-    let mut text_lines = vec![(toast.title.as_str(), 7.0, hud_argb_to_tint(0xFFFFFF00))];
-    let message_lines = hud_system_toast_message_lines(toast, glyphs);
+    let title_y = if toast.message_lines.is_empty() {
+        12.0
+    } else {
+        7.0
+    };
+    let mut text_lines = vec![(toast.title.as_str(), title_y, hud_argb_to_tint(0xFFFFFF00))];
+    let message_lines = &toast.message_lines;
     text_lines.extend(
         message_lines
             .iter()
@@ -12233,25 +12259,11 @@ fn push_hud_system_toast<'a>(
 fn hud_system_toast_layout(
     surface_size: PhysicalSize<u32>,
     toast: &HudSystemToast,
-    glyphs: &HudFontGlyphMap,
+    _glyphs: &HudFontGlyphMap,
 ) -> (HudRect, f32, u32, u32) {
-    let message_lines = hud_system_toast_message_lines(toast, glyphs);
-    let message_width = message_lines
-        .iter()
-        .map(|line| hud_plain_text_width(line, glyphs))
-        .max()
-        .unwrap_or_default();
-    let width = if toast.multiline {
-        200u32.max(message_width).saturating_add(30)
-    } else {
-        160u32.max(
-            hud_plain_text_width(&toast.title, glyphs)
-                .max(message_width)
-                .saturating_add(30),
-        )
-    };
+    let width = toast.width;
     let height = 20u32.saturating_add(
-        u32::try_from(message_lines.len().max(1))
+        u32::try_from(toast.message_lines.len().max(1))
             .unwrap_or(u32::MAX)
             .saturating_mul(12),
     );
@@ -12266,20 +12278,9 @@ fn hud_system_toast_instance_layout(
     glyphs: &HudFontGlyphMap,
 ) -> (HudRect, f32, u32, u32, f32) {
     let (mut rect, x, width, height) = hud_system_toast_layout(surface_size, toast, glyphs);
-    let y_offset = f32::from(slot) * 32.0;
+    let y_offset = f32::from(slot) * height as f32;
     rect.y += y_offset;
     (rect, x, width, height, y_offset)
-}
-
-fn hud_system_toast_message_lines(toast: &HudSystemToast, glyphs: &HudFontGlyphMap) -> Vec<String> {
-    if !toast.multiline {
-        return vec![toast.message.clone()];
-    }
-    let chars = toast.message.chars().collect::<Vec<_>>();
-    hud_multiline_lines(&toast.message, 200, glyphs)
-        .into_iter()
-        .map(|line| chars[line.begin..line.end].iter().collect())
-        .collect()
 }
 
 const HUD_ADVANCEMENT_TOAST_WIDTH: u32 = 160;
@@ -22225,20 +22226,17 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
     if !toast.visible_portion.is_finite() {
         return None;
     }
-    let multiline = toast.multiline;
     let title = sanitize_hud_text_line(toast.title)?;
-    let message = if multiline {
-        let message = sanitize_hud_multiline_text(toast.message, 256);
-        (!message.is_empty()).then_some(message)?
-    } else if toast.message.is_empty() {
-        String::new()
-    } else {
-        sanitize_hud_text_line(toast.message)?
-    };
+    let message_lines = toast
+        .message_lines
+        .into_iter()
+        .take(256)
+        .filter_map(sanitize_hud_text_line)
+        .collect::<Vec<_>>();
     (!title.is_empty()).then_some(HudSystemToast {
         title,
-        message,
-        multiline,
+        message_lines,
+        width: toast.width.clamp(1, 4_096),
         visible_portion: toast.visible_portion.clamp(0.0, 1.0),
     })
 }
@@ -22246,13 +22244,57 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
 fn sanitize_hud_system_toast_instance(
     instance: HudSystemToastInstance,
 ) -> Option<HudSystemToastInstance> {
-    if usize::from(instance.slot) >= HUD_TOAST_SLOTS {
+    let occupied = instance
+        .toast
+        .message_lines
+        .len()
+        .max(1)
+        .saturating_mul(12)
+        .saturating_add(20)
+        .div_ceil(32);
+    if usize::from(instance.slot).saturating_add(occupied) > HUD_TOAST_SLOTS {
         return None;
     }
     Some(HudSystemToastInstance {
         toast: sanitize_hud_system_toast(instance.toast)?,
         slot: instance.slot,
     })
+}
+
+fn sanitize_hud_toast(toast: HudToast, occupied: &mut [bool; HUD_TOAST_SLOTS]) -> Option<HudToast> {
+    let toast = match toast {
+        HudToast::System(toast) => HudToast::System(sanitize_hud_system_toast_instance(toast)?),
+        HudToast::Advancement(toast) => {
+            HudToast::Advancement(sanitize_hud_advancement_toast(toast)?)
+        }
+        HudToast::Recipe(toast) => HudToast::Recipe(sanitize_hud_recipe_toast(toast)?),
+        HudToast::Tutorial(toast) => HudToast::Tutorial(sanitize_hud_tutorial_toast(toast)?),
+    };
+    let (slot, count) = match &toast {
+        HudToast::System(toast) => (
+            usize::from(toast.slot),
+            toast
+                .toast
+                .message_lines
+                .len()
+                .max(1)
+                .saturating_mul(12)
+                .saturating_add(20)
+                .div_ceil(32),
+        ),
+        HudToast::Advancement(toast) => (usize::from(toast.slot), 1),
+        HudToast::Recipe(toast) => (usize::from(toast.slot), 1),
+        HudToast::Tutorial(toast) => (
+            usize::from(toast.slot),
+            usize::try_from(tutorial_toast_height(toast.lines.len()).div_ceil(32)).ok()?,
+        ),
+    };
+    let end = slot.checked_add(count)?;
+    if end > HUD_TOAST_SLOTS || occupied[slot..end].iter().any(|value| *value) {
+        return None;
+    }
+    occupied[slot..end].fill(true);
+    Some(toast)
 }
 
 fn sanitize_hud_advancement_toast(toast: HudAdvancementToast) -> Option<HudAdvancementToast> {
@@ -23420,8 +23462,8 @@ mod tests {
 
         renderer.set_hud_system_toast(Some(HudSystemToast {
             title: "A".to_string(),
-            message: "A".to_string(),
-            multiline: false,
+            message_lines: vec!["A".to_string()],
+            width: 160,
             visible_portion: 1.0,
         }));
         let toast_commands = renderer.collect_hud_draws().commands.len();
@@ -24076,30 +24118,30 @@ mod tests {
     fn system_toast_sanitizes_text_and_visible_portion() {
         let toast = sanitize_hud_system_toast(HudSystemToast {
             title: "Low\ndisk".to_string(),
-            message: "Might not\tsave".to_string(),
-            multiline: false,
+            message_lines: vec!["Might not\tsave".to_string()],
+            width: 160,
             visible_portion: 2.0,
         })
         .unwrap();
         assert_eq!(toast.title, "Lowdisk");
-        assert_eq!(toast.message, "Might notsave");
+        assert_eq!(toast.message_lines, ["Might notsave"]);
         assert_eq!(toast.visible_portion, 1.0);
         assert!(sanitize_hud_system_toast(HudSystemToast {
             title: "Low disk".to_string(),
-            message: "Warning".to_string(),
-            multiline: false,
+            message_lines: vec!["Warning".to_string()],
+            width: 160,
             visible_portion: f32::NAN,
         })
         .is_none());
         assert_eq!(
             sanitize_hud_system_toast(HudSystemToast {
                 title: "Resource reload failed".to_string(),
-                message: String::new(),
-                multiline: false,
+                message_lines: Vec::new(),
+                width: 160,
                 visible_portion: 1.0,
             })
-            .map(|toast| toast.message),
-            Some(String::new())
+            .map(|toast| toast.message_lines),
+            Some(Vec::new())
         );
     }
 
@@ -24107,8 +24149,8 @@ mod tests {
     fn system_toast_uses_vanilla_width_height_and_right_edge_slide() {
         let toast = HudSystemToast {
             title: "Low disk space!".to_string(),
-            message: "Might not be able to save the world.".to_string(),
-            multiline: false,
+            message_lines: vec!["Might not be able to save the world.".to_string()],
+            width: 160,
             visible_portion: 1.0,
         };
         let (_, x, width, height) =
@@ -24141,8 +24183,8 @@ mod tests {
             PhysicalSize::new(320, 240),
             &HudSystemToast {
                 title: "a".to_string(),
-                message: "a".repeat(30),
-                multiline: false,
+                message_lines: vec!["a".repeat(30)],
+                width: 210,
                 visible_portion: 1.0,
             },
             &glyphs,
@@ -24155,8 +24197,8 @@ mod tests {
     fn system_toast_instances_use_distinct_vanilla_slots() {
         let toast = HudSystemToast {
             title: "Download failed".to_string(),
-            message: String::new(),
-            multiline: false,
+            message_lines: Vec::new(),
+            width: 160,
             visible_portion: 1.0,
         };
         let (first, _, _, first_height, first_offset) = hud_system_toast_instance_layout(
@@ -24180,7 +24222,7 @@ mod tests {
     }
 
     #[test]
-    fn multiline_system_toast_wraps_at_two_hundred_pixels_and_grows_height() {
+    fn multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position() {
         let mut glyphs = HudFontGlyphMap::new();
         glyphs.insert_first_wins(
             'a',
@@ -24193,19 +24235,67 @@ mod tests {
         );
         let toast = HudSystemToast {
             title: "Warning".to_string(),
-            message: "a".repeat(40),
-            multiline: true,
+            message_lines: vec!["a".repeat(33), "a".repeat(7)],
+            width: 230,
             visible_portion: 1.0,
         };
 
-        let lines = hud_system_toast_message_lines(&toast, &glyphs);
         let (_, x, width, height) =
             hud_system_toast_layout(PhysicalSize::new(320, 240), &toast, &glyphs);
+        let (second, _, _, _, second_offset) =
+            hud_system_toast_instance_layout(PhysicalSize::new(320, 240), &toast, 1, &glyphs);
 
-        assert_eq!(lines.iter().map(String::len).collect::<Vec<_>>(), [33, 7]);
+        assert_eq!(
+            toast
+                .message_lines
+                .iter()
+                .map(String::len)
+                .collect::<Vec<_>>(),
+            [33, 7]
+        );
         assert_eq!(width, 230);
         assert_eq!(height, 44);
         assert_eq!(x, 90.0);
+        assert_eq!(second_offset, 44.0);
+        assert_eq!(second.y, 44.0);
+        assert!(
+            sanitize_hud_system_toast_instance(HudSystemToastInstance { toast, slot: 4 }).is_none(),
+            "a 44-pixel system toast cannot begin in the final slot"
+        );
+    }
+
+    #[test]
+    fn unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap() {
+        let system = HudToast::System(HudSystemToastInstance {
+            toast: HudSystemToast {
+                title: "System".to_string(),
+                message_lines: Vec::new(),
+                width: 160,
+                visible_portion: 1.0,
+            },
+            slot: 0,
+        });
+        let recipe = |slot| {
+            HudToast::Recipe(HudRecipeToast {
+                title: "Recipe".to_string(),
+                description: "Description".to_string(),
+                category_icon: None,
+                category_block_model: None,
+                unlocked_icon: None,
+                unlocked_block_model: None,
+                slot,
+                visible_portion: 1.0,
+            })
+        };
+        let mut occupied = [false; HUD_TOAST_SLOTS];
+        let sanitized = vec![system, recipe(1), recipe(0)]
+            .into_iter()
+            .filter_map(|toast| sanitize_hud_toast(toast, &mut occupied))
+            .collect::<Vec<_>>();
+        assert!(matches!(
+            sanitized.as_slice(),
+            [HudToast::System(_), HudToast::Recipe(_)]
+        ));
     }
 
     #[test]

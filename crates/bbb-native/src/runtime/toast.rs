@@ -9,18 +9,21 @@ use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::packets::{AdvancementFrameType, ItemStackSummary};
 use bbb_renderer::{
     hud_wrap_styled_text, HudAdvancementToast, HudFontGlyphMap, HudRecipeToast, HudStyledTextRun,
-    HudTextStyle, HudTutorialToast, HudTutorialToastIcon, HUD_TOAST_SLOTS,
+    HudSystemToast, HudSystemToastInstance, HudTextStyle, HudToast, HudTutorialToast,
+    HudTutorialToastIcon, HUD_TOAST_SLOTS,
 };
 use bbb_world::{
-    ClientToastEvent, ClientTutorialToastState, LocalSoundEventState, SoundHolderState,
-    TutorialToastKind, WorldStore,
+    ClientSystemToastEvent, ClientToastEvent, ClientTutorialToastState, LocalSoundEventState,
+    ResourcePackDownloadPhase, ResourcePackDownloadState, ResourcePackDownloadToastAction,
+    SoundHolderState, TutorialToastKind, WorldStore,
 };
 
 use crate::terrain_runtime::TerrainTextureState;
 
+use super::periodic_notifications::PeriodicNotificationToast;
 use super::{
     fake_block_item_3d_model, hud_fake_item_icon_for_stack, hud_styled_runs_from_rich_text,
-    localized_gui_text,
+    localized_gui_text, localized_gui_text_with_args, server_pack_bytes_human_readable,
 };
 
 const MAX_NATIVE_TOASTS: usize = bbb_world::MAX_CLIENT_TOAST_EVENTS;
@@ -29,8 +32,9 @@ const TOAST_VISIBLE_DURATION: Duration = Duration::from_millis(5_000);
 
 #[derive(Debug, Default)]
 pub(super) struct ClientToastRuntime {
-    pub(super) level_generation: Option<u64>,
+    manager_generation: Option<u64>,
     pub(super) next_sequence: u64,
+    next_periodic_sequence: usize,
     pub(super) queued: VecDeque<ClientToast>,
     pub(super) visible: Vec<ClientToastInstance>,
     pub(super) dropped_events: u64,
@@ -41,6 +45,7 @@ pub(super) enum ClientToast {
     Advancement(ClientToastEvent),
     Recipe(RecipeToastState),
     Tutorial(TutorialToastState),
+    System(SystemToastState),
 }
 
 #[derive(Debug)]
@@ -48,6 +53,28 @@ pub(super) struct RecipeToastState {
     pub(super) items: Vec<RecipeToastItem>,
     changed: bool,
     pub(super) last_changed_ms: u64,
+    displayed_index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SystemToastToken {
+    NarratorToggle,
+    ResourcePackLoadFailure,
+    LowDiskSpace,
+    ResourcePackDownload {
+        session_generation: u64,
+        batch_sequence: u64,
+    },
+}
+
+#[derive(Debug)]
+pub(super) struct SystemToastState {
+    token: Option<SystemToastToken>,
+    toast: HudSystemToast,
+    display_time_ms: u64,
+    changed: bool,
+    pub(super) last_changed_ms: u64,
+    force_hide: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -68,11 +95,8 @@ pub(super) struct TutorialToastState {
 }
 
 impl RecipeToastState {
-    pub(super) fn displayed_item(&self, fully_visible_ms: u64) -> Option<&RecipeToastItem> {
-        let item_count = u64::try_from(self.items.len()).ok()?;
-        let cycle_ms = (TOAST_VISIBLE_DURATION.as_millis() as u64 / item_count).max(1);
-        let index = usize::try_from((fully_visible_ms / cycle_ms) % item_count).ok()?;
-        self.items.get(index)
+    pub(super) fn displayed_item(&self) -> Option<&RecipeToastItem> {
+        self.items.get(self.displayed_index)
     }
 }
 
@@ -82,7 +106,7 @@ pub(super) struct ClientToastInstance {
     pub(super) slot: u8,
     animation_started_at: Option<Instant>,
     became_fully_visible_at: Option<Instant>,
-    showing: bool,
+    pub(super) showing: bool,
     pub(super) visible_portion: f32,
     pub(super) fully_visible_ms: u64,
     finished: bool,
@@ -92,7 +116,7 @@ impl ClientToast {
     pub(super) fn advancement_event(&self) -> Option<&ClientToastEvent> {
         match self {
             Self::Advancement(event) => Some(event),
-            Self::Recipe(_) | Self::Tutorial(_) => None,
+            Self::Recipe(_) | Self::Tutorial(_) | Self::System(_) => None,
         }
     }
 
@@ -105,17 +129,33 @@ impl ClientToast {
         true
     }
 
-    fn occupied_slot_count(&self) -> usize {
+    pub(super) fn occupied_slot_count(&self) -> usize {
         match self {
             Self::Advancement(_) | Self::Recipe(_) => 1,
             Self::Tutorial(tutorial) => {
                 usize::try_from(tutorial.height.div_ceil(32)).unwrap_or(usize::MAX)
             }
+            Self::System(system) => system
+                .toast
+                .message_lines
+                .len()
+                .max(1)
+                .saturating_mul(12)
+                .saturating_add(20)
+                .div_ceil(32),
         }
+    }
+
+    fn system_token(&self) -> Option<&SystemToastToken> {
+        let Self::System(system) = self else {
+            return None;
+        };
+        system.token.as_ref()
     }
 }
 
 impl ClientToastRuntime {
+    #[cfg(test)]
     pub(super) fn update_with_resources(
         &mut self,
         world: &WorldStore,
@@ -123,14 +163,28 @@ impl ClientToastRuntime {
         glyphs: &HudFontGlyphMap,
         now: Instant,
     ) -> Vec<LocalSoundEventState> {
-        let level_generation = world.client_level_generation();
+        self.update_with_options(world, item_runtime, glyphs, None, 1.0, now)
+    }
+
+    pub(super) fn update_with_options(
+        &mut self,
+        world: &WorldStore,
+        item_runtime: Option<&NativeItemRuntime>,
+        glyphs: &HudFontGlyphMap,
+        periodic_notification: Option<PeriodicNotificationToast>,
+        notification_display_time: f32,
+        now: Instant,
+    ) -> Vec<LocalSoundEventState> {
+        let manager_generation = world.client_toasts().generation;
         let canonical_next_sequence = world.client_toasts().next_sequence;
-        if self.level_generation != Some(level_generation)
+        if self.manager_generation != Some(manager_generation)
             || canonical_next_sequence < self.next_sequence
         {
             let dropped_events = self.dropped_events;
+            let next_periodic_sequence = self.next_periodic_sequence;
             *self = Self {
-                level_generation: Some(level_generation),
+                manager_generation: Some(manager_generation),
+                next_periodic_sequence,
                 dropped_events,
                 ..Self::default()
             };
@@ -148,13 +202,19 @@ impl ClientToastRuntime {
             self.next_sequence = event.sequence.saturating_add(1);
             self.ingest_event(event.clone(), item_runtime, glyphs);
         }
+        if let Some(notification) = periodic_notification
+            .filter(|notification| notification.sequence > self.next_periodic_sequence)
+        {
+            self.next_periodic_sequence = notification.sequence;
+            self.ingest_periodic_notification(notification, item_runtime, glyphs);
+        }
 
         let active_tutorial_toast = world.active_tutorial_toast();
         self.reconcile_tutorial_progress(active_tutorial_toast);
         let mut sounds = Vec::new();
         let mut visibility_sound_played = false;
         self.visible.retain_mut(|toast| {
-            let transition = toast.update(now, active_tutorial_toast);
+            let transition = toast.update(now, active_tutorial_toast, notification_display_time);
             if !visibility_sound_played {
                 if let Some(showing) = transition {
                     visibility_sound_played = true;
@@ -169,14 +229,12 @@ impl ClientToastRuntime {
         });
 
         let mut challenge_sound_played = false;
-        loop {
-            let Some((queue_index, slot)) =
-                self.queued.iter().enumerate().find_map(|(index, toast)| {
-                    self.find_free_slots(toast.occupied_slot_count())
-                        .map(|slot| (index, slot))
-                })
-            else {
-                break;
+        let mut queue_index = 0;
+        while queue_index < self.queued.len() {
+            let required = self.queued[queue_index].occupied_slot_count();
+            let Some(slot) = self.find_free_slots(required) else {
+                queue_index += 1;
+                continue;
             };
             let toast = self
                 .queued
@@ -238,18 +296,113 @@ impl ClientToastRuntime {
                 items: vec![item],
                 changed: true,
                 last_changed_ms: 0,
+                displayed_index: 0,
             })
         } else if let Some((id, kind)) = event.tutorial() {
             ClientToast::Tutorial(tutorial_toast_state(id, kind, item_runtime, glyphs))
+        } else if let Some(system) = event.system() {
+            self.ingest_system_event(system.clone(), item_runtime, glyphs);
+            return;
         } else {
             return;
         };
 
+        self.push_toast(toast);
+    }
+
+    fn push_toast(&mut self, toast: ClientToast) {
         if self.queued.len() == MAX_NATIVE_TOASTS {
             self.queued.pop_front();
             self.dropped_events = self.dropped_events.saturating_add(1);
         }
         self.queued.push_back(toast);
+    }
+
+    fn ingest_system_event(
+        &mut self,
+        event: ClientSystemToastEvent,
+        item_runtime: Option<&NativeItemRuntime>,
+        glyphs: &HudFontGlyphMap,
+    ) {
+        if let ClientSystemToastEvent::ResourcePackDownload {
+            session_generation,
+            state,
+        } = &event
+        {
+            let token = SystemToastToken::ResourcePackDownload {
+                session_generation: *session_generation,
+                batch_sequence: state.batch_sequence,
+            };
+            if state.toast_action == ResourcePackDownloadToastAction::ForceHide {
+                if let Some(toast) = self.find_system_mut(&token) {
+                    toast.force_hide = true;
+                }
+                return;
+            }
+        }
+        let preserve_message = matches!(
+            &event,
+            ClientSystemToastEvent::ResourcePackDownload { state, .. }
+                if state.toast_action
+                    == ResourcePackDownloadToastAction::AddOrUpdateTitlePreserveMessage
+        );
+        let (toast, update_existing) = system_toast_state(event, item_runtime, glyphs);
+        if update_existing {
+            if let Some(token) = toast.token.as_ref() {
+                if let Some(existing) = self.find_system_mut(token) {
+                    // `SystemToast.reset` updates content and lifetime, but its
+                    // construction-time width remains final.
+                    existing.toast.title = toast.toast.title;
+                    if !preserve_message {
+                        existing.toast.message_lines = toast.toast.message_lines;
+                    }
+                    existing.changed = true;
+                    return;
+                }
+            }
+        }
+        self.push_toast(ClientToast::System(toast));
+    }
+
+    fn ingest_periodic_notification(
+        &mut self,
+        notification: PeriodicNotificationToast,
+        item_runtime: Option<&NativeItemRuntime>,
+        glyphs: &HudFontGlyphMap,
+    ) {
+        let elapsed = notification.elapsed_periods.to_string();
+        let title = localized_gui_text_with_args(
+            item_runtime,
+            &notification.title_key,
+            &notification.title_key,
+            &[&elapsed],
+        );
+        let message = localized_gui_text_with_args(
+            item_runtime,
+            &notification.message_key,
+            &notification.message_key,
+            &[&elapsed],
+        );
+        self.push_toast(ClientToast::System(SystemToastState {
+            token: None,
+            toast: standard_system_toast(title, Some(message), glyphs),
+            display_time_ms: 5_000,
+            changed: false,
+            last_changed_ms: 0,
+            force_hide: false,
+        }));
+    }
+
+    fn find_system_mut(&mut self, token: &SystemToastToken) -> Option<&mut SystemToastState> {
+        self.visible
+            .iter_mut()
+            .map(|instance| &mut instance.toast)
+            .chain(self.queued.iter_mut())
+            .find(|toast| toast.system_token() == Some(token))
+            .and_then(|toast| match toast {
+                ClientToast::System(system) => Some(system),
+                _ => None,
+            })
     }
 
     fn reconcile_tutorial_progress(&mut self, active: Option<ClientTutorialToastState>) {
@@ -287,6 +440,7 @@ impl ClientToastRuntime {
             .and_then(|slot| u8::try_from(slot).ok())
     }
 
+    #[cfg(test)]
     pub(super) fn project_advancements(
         &self,
         world: &WorldStore,
@@ -300,71 +454,20 @@ impl ClientToastRuntime {
         };
         self.visible
             .iter()
-            .filter_map(|toast| {
-                let (_, display) = toast
-                    .toast
-                    .advancement_event()?
-                    .advancement()
-                    .expect("advancement toast wraps an advancement event");
-                let stack = ItemStackSummary {
-                    item_id: Some(display.icon.item_id),
-                    count: display.icon.count,
-                    component_patch: display.icon.component_patch.clone(),
-                };
-                let icon = hud_fake_item_icon_for_stack(
+            .filter_map(|instance| {
+                project_advancement(
+                    instance,
                     world,
-                    Some(item_runtime),
-                    &stack,
-                    None,
-                    false,
-                    false,
-                    false,
-                    false,
-                    false,
+                    item_runtime,
+                    terrain_textures,
                     keybind_context,
-                    0,
                     partial_tick,
-                )?;
-                let (translation_key, fallback, frame_label_color) = match display.frame_type {
-                    AdvancementFrameType::Task => {
-                        ("advancements.toast.task", "Advancement Made!", 0xFF_FF_00)
-                    }
-                    AdvancementFrameType::Challenge => (
-                        "advancements.toast.challenge",
-                        "Challenge Complete!",
-                        0xFF_88_FF,
-                    ),
-                    AdvancementFrameType::Goal => {
-                        ("advancements.toast.goal", "Goal Reached!", 0xFF_FF_00)
-                    }
-                };
-                Some(HudAdvancementToast {
-                    frame_label: localized_gui_text(Some(item_runtime), translation_key, fallback),
-                    frame_label_color,
-                    title_runs: hud_styled_runs_from_rich_text(&display.title),
-                    icon,
-                    block_model: fake_block_item_3d_model(
-                        world,
-                        &stack,
-                        Some(item_runtime),
-                        terrain_textures,
-                        None,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        keybind_context,
-                        0,
-                    ),
-                    slot: toast.slot,
-                    visible_portion: toast.visible_portion,
-                    fully_visible_ms: toast.fully_visible_ms,
-                })
+                )
             })
             .collect()
     }
 
+    #[cfg(test)]
     pub(super) fn project_recipes(
         &self,
         world: &WorldStore,
@@ -375,108 +478,249 @@ impl ClientToastRuntime {
     ) -> Vec<HudRecipeToast> {
         self.visible
             .iter()
-            .filter_map(|toast| {
-                let ClientToast::Recipe(recipe) = &toast.toast else {
-                    return None;
-                };
-                let item = recipe.displayed_item(toast.fully_visible_ms)?;
-                let category_icon = hud_fake_item_icon_for_stack(
+            .filter_map(|instance| {
+                project_recipe(
+                    instance,
                     world,
                     item_runtime,
-                    &item.category_item,
-                    None,
-                    false,
-                    false,
-                    false,
-                    false,
-                    false,
+                    terrain_textures,
                     keybind_context,
-                    0,
                     partial_tick,
-                );
-                let unlocked_icon = hud_fake_item_icon_for_stack(
-                    world,
-                    item_runtime,
-                    &item.unlocked_item,
-                    None,
-                    false,
-                    false,
-                    false,
-                    false,
-                    false,
-                    keybind_context,
-                    0,
-                    partial_tick,
-                );
-                Some(HudRecipeToast {
-                    title: localized_gui_text(
-                        item_runtime,
-                        "recipe.toast.title",
-                        "New Recipe(s) Unlocked!",
-                    ),
-                    description: localized_gui_text(
-                        item_runtime,
-                        "recipe.toast.description",
-                        "Check your recipe book",
-                    ),
-                    category_icon,
-                    category_block_model: fake_block_item_3d_model(
-                        world,
-                        &item.category_item,
-                        item_runtime,
-                        terrain_textures,
-                        None,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        keybind_context,
-                        0,
-                    ),
-                    unlocked_icon,
-                    unlocked_block_model: fake_block_item_3d_model(
-                        world,
-                        &item.unlocked_item,
-                        item_runtime,
-                        terrain_textures,
-                        None,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        keybind_context,
-                        0,
-                    ),
-                    slot: toast.slot,
-                    visible_portion: toast.visible_portion,
-                })
+                )
             })
             .collect()
     }
 
+    #[cfg(test)]
     pub(super) fn project_tutorials(&self) -> Vec<HudTutorialToast> {
+        self.visible.iter().filter_map(project_tutorial).collect()
+    }
+
+    #[cfg(test)]
+    pub(super) fn project_systems(&self) -> Vec<HudSystemToastInstance> {
+        self.visible.iter().filter_map(project_system).collect()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn project_toasts(
+        &self,
+        world: &WorldStore,
+        item_runtime: Option<&NativeItemRuntime>,
+        terrain_textures: &TerrainTextureState,
+        keybind_context: ItemModelKeybindContext,
+        partial_tick: f32,
+    ) -> Vec<HudToast> {
         self.visible
             .iter()
-            .filter_map(|instance| {
-                let ClientToast::Tutorial(tutorial) = &instance.toast else {
-                    return None;
-                };
-                Some(HudTutorialToast {
-                    icon: tutorial.icon,
-                    lines: tutorial.lines.clone(),
-                    slot: instance.slot,
-                    visible_portion: instance.visible_portion,
-                    progress: tutorial.smoothed_progress,
-                    progress_increasing: tutorial
-                        .target_progress
-                        .zip(tutorial.smoothed_progress)
-                        .is_none_or(|(target, smoothed)| target >= smoothed),
-                })
+            .filter_map(|instance| match &instance.toast {
+                ClientToast::System(_) => project_system(instance).map(HudToast::System),
+                ClientToast::Advancement(_) => item_runtime.and_then(|item_runtime| {
+                    project_advancement(
+                        instance,
+                        world,
+                        item_runtime,
+                        terrain_textures,
+                        keybind_context,
+                        partial_tick,
+                    )
+                    .map(HudToast::Advancement)
+                }),
+                ClientToast::Recipe(_) => project_recipe(
+                    instance,
+                    world,
+                    item_runtime,
+                    terrain_textures,
+                    keybind_context,
+                    partial_tick,
+                )
+                .map(HudToast::Recipe),
+                ClientToast::Tutorial(_) => project_tutorial(instance).map(HudToast::Tutorial),
             })
             .collect()
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_advancement(
+    instance: &ClientToastInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Option<HudAdvancementToast> {
+    let (_, display) = instance
+        .toast
+        .advancement_event()?
+        .advancement()
+        .expect("advancement toast wraps an advancement event");
+    let stack = ItemStackSummary {
+        item_id: Some(display.icon.item_id),
+        count: display.icon.count,
+        component_patch: display.icon.component_patch.clone(),
+    };
+    let icon = hud_fake_item_icon_for_stack(
+        world,
+        Some(item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        keybind_context,
+        0,
+        partial_tick,
+    )?;
+    let (translation_key, fallback, frame_label_color) = match display.frame_type {
+        AdvancementFrameType::Task => ("advancements.toast.task", "Advancement Made!", 0xFF_FF_00),
+        AdvancementFrameType::Challenge => (
+            "advancements.toast.challenge",
+            "Challenge Complete!",
+            0xFF_88_FF,
+        ),
+        AdvancementFrameType::Goal => ("advancements.toast.goal", "Goal Reached!", 0xFF_FF_00),
+    };
+    Some(HudAdvancementToast {
+        frame_label: localized_gui_text(Some(item_runtime), translation_key, fallback),
+        frame_label_color,
+        title_runs: hud_styled_runs_from_rich_text(&display.title),
+        icon,
+        block_model: fake_block_item_3d_model(
+            world,
+            &stack,
+            Some(item_runtime),
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+        ),
+        slot: instance.slot,
+        visible_portion: instance.visible_portion,
+        fully_visible_ms: instance.fully_visible_ms,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_recipe(
+    instance: &ClientToastInstance,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Option<HudRecipeToast> {
+    let ClientToast::Recipe(recipe) = &instance.toast else {
+        return None;
+    };
+    let item = recipe.displayed_item()?;
+    let category_icon = hud_fake_item_icon_for_stack(
+        world,
+        item_runtime,
+        &item.category_item,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        keybind_context,
+        0,
+        partial_tick,
+    );
+    let unlocked_icon = hud_fake_item_icon_for_stack(
+        world,
+        item_runtime,
+        &item.unlocked_item,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        keybind_context,
+        0,
+        partial_tick,
+    );
+    Some(HudRecipeToast {
+        title: localized_gui_text(
+            item_runtime,
+            "recipe.toast.title",
+            "New Recipe(s) Unlocked!",
+        ),
+        description: localized_gui_text(
+            item_runtime,
+            "recipe.toast.description",
+            "Check your recipe book",
+        ),
+        category_icon,
+        category_block_model: fake_block_item_3d_model(
+            world,
+            &item.category_item,
+            item_runtime,
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+        ),
+        unlocked_icon,
+        unlocked_block_model: fake_block_item_3d_model(
+            world,
+            &item.unlocked_item,
+            item_runtime,
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+        ),
+        slot: instance.slot,
+        visible_portion: instance.visible_portion,
+    })
+}
+
+fn project_tutorial(instance: &ClientToastInstance) -> Option<HudTutorialToast> {
+    let ClientToast::Tutorial(tutorial) = &instance.toast else {
+        return None;
+    };
+    Some(HudTutorialToast {
+        icon: tutorial.icon,
+        lines: tutorial.lines.clone(),
+        slot: instance.slot,
+        visible_portion: instance.visible_portion,
+        progress: tutorial.smoothed_progress,
+        progress_increasing: tutorial
+            .target_progress
+            .zip(tutorial.smoothed_progress)
+            .is_none_or(|(target, smoothed)| target >= smoothed),
+    })
+}
+
+fn project_system(instance: &ClientToastInstance) -> Option<HudSystemToastInstance> {
+    let ClientToast::System(system) = &instance.toast else {
+        return None;
+    };
+    let mut toast = system.toast.clone();
+    toast.visible_portion = instance.visible_portion;
+    Some(HudSystemToastInstance {
+        toast,
+        slot: instance.slot,
+    })
 }
 
 impl ClientToastInstance {
@@ -484,6 +728,7 @@ impl ClientToastInstance {
         &mut self,
         now: Instant,
         active_tutorial_toast: Option<ClientTutorialToastState>,
+        notification_display_time: f32,
     ) -> Option<bool> {
         let showing_before_update = self.showing;
         let animation_started_at = *self.animation_started_at.get_or_insert_with(|| {
@@ -512,16 +757,31 @@ impl ClientToastInstance {
             1.0 - progress
         };
         let wanted_showing = match &mut self.toast {
-            ClientToast::Advancement(_) => {
-                Duration::from_millis(self.fully_visible_ms) < TOAST_VISIBLE_DURATION
-            }
+            ClientToast::Advancement(_) => display_time_remaining(
+                self.fully_visible_ms,
+                TOAST_VISIBLE_DURATION.as_millis() as u64,
+                notification_display_time,
+            ),
             ClientToast::Recipe(recipe) => {
                 if recipe.changed {
                     recipe.last_changed_ms = self.fully_visible_ms;
                     recipe.changed = false;
                 }
-                self.fully_visible_ms.saturating_sub(recipe.last_changed_ms)
-                    < TOAST_VISIBLE_DURATION.as_millis() as u64
+                let elapsed = self.fully_visible_ms.saturating_sub(recipe.last_changed_ms);
+                let item_count = recipe.items.len();
+                if item_count > 0 {
+                    let cycle_ms = (TOAST_VISIBLE_DURATION.as_millis() as f64
+                        * f64::from(notification_display_time)
+                        / item_count as f64)
+                        .max(1.0);
+                    recipe.displayed_index =
+                        ((self.fully_visible_ms as f64 / cycle_ms) as usize) % item_count;
+                }
+                display_time_remaining(
+                    elapsed,
+                    TOAST_VISIBLE_DURATION.as_millis() as u64,
+                    notification_display_time,
+                )
             }
             ClientToast::Tutorial(tutorial) => {
                 if let (Some(smoothed), Some(target)) = (
@@ -538,6 +798,18 @@ impl ClientToastInstance {
                 }
                 active_tutorial_toast.is_some_and(|active| active.id == tutorial.id)
             }
+            ClientToast::System(system) => {
+                if system.changed {
+                    system.last_changed_ms = self.fully_visible_ms;
+                    system.changed = false;
+                }
+                !system.force_hide
+                    && display_time_remaining(
+                        self.fully_visible_ms.saturating_sub(system.last_changed_ms),
+                        system.display_time_ms,
+                        notification_display_time,
+                    )
+            }
         };
         if wanted_showing != self.showing {
             let reverse_ms =
@@ -552,6 +824,210 @@ impl ClientToastInstance {
             ) > TOAST_SLIDE_DURATION;
         (showing_before_update != self.showing).then_some(self.showing)
     }
+}
+
+fn display_time_remaining(elapsed_ms: u64, duration_ms: u64, multiplier: f32) -> bool {
+    (elapsed_ms as f64) < duration_ms as f64 * f64::from(multiplier.max(0.0))
+}
+
+fn system_toast_state(
+    event: ClientSystemToastEvent,
+    item_runtime: Option<&NativeItemRuntime>,
+    glyphs: &HudFontGlyphMap,
+) -> (SystemToastState, bool) {
+    let (token, toast, display_time_ms, update_existing) = match event {
+        ClientSystemToastEvent::NarratorToggle {
+            enabled,
+            status_name,
+        } => {
+            let (title, message) = if enabled {
+                (
+                    localized_gui_text(item_runtime, "narrator.toast.enabled", "Narrator Enabled"),
+                    Some(status_name),
+                )
+            } else {
+                (
+                    localized_gui_text(
+                        item_runtime,
+                        "narrator.toast.disabled",
+                        "Narrator Disabled",
+                    ),
+                    None,
+                )
+            };
+            (
+                Some(SystemToastToken::NarratorToggle),
+                standard_system_toast(title, message, glyphs),
+                5_000,
+                true,
+            )
+        }
+        ClientSystemToastEvent::InsecureServerWarning => {
+            let title = localized_gui_text(
+                item_runtime,
+                "multiplayer.unsecureserver.toast.title",
+                "Chat messages can't be verified",
+            );
+            let message = localized_gui_text(
+                item_runtime,
+                "multiplayer.unsecureserver.toast",
+                "Messages sent on this server may be modified and might not reflect the original message",
+            );
+            (
+                None,
+                multiline_system_toast(title, message, glyphs),
+                10_000,
+                false,
+            )
+        }
+        ClientSystemToastEvent::ResourcePackLoadFailure => (
+            Some(SystemToastToken::ResourcePackLoadFailure),
+            standard_system_toast(
+                localized_gui_text(
+                    item_runtime,
+                    "resourcePack.load_fail",
+                    "Resource reload failed",
+                ),
+                None,
+                glyphs,
+            ),
+            5_000,
+            true,
+        ),
+        ClientSystemToastEvent::LowDiskSpace => (
+            Some(SystemToastToken::LowDiskSpace),
+            standard_system_toast(
+                localized_gui_text(item_runtime, "chunk.toast.lowDiskSpace", "Low disk space!"),
+                Some(localized_gui_text(
+                    item_runtime,
+                    "chunk.toast.lowDiskSpace.description",
+                    "Might not be able to save the world.",
+                )),
+                glyphs,
+            ),
+            10_000,
+            true,
+        ),
+        ClientSystemToastEvent::ResourcePackDownload {
+            session_generation,
+            state,
+        } => (
+            Some(SystemToastToken::ResourcePackDownload {
+                session_generation,
+                batch_sequence: state.batch_sequence,
+            }),
+            download_system_toast(&state, item_runtime, glyphs),
+            5_000,
+            true,
+        ),
+    };
+    (
+        SystemToastState {
+            token,
+            toast,
+            display_time_ms,
+            changed: false,
+            last_changed_ms: 0,
+            force_hide: false,
+        },
+        update_existing,
+    )
+}
+
+fn standard_system_toast(
+    title: String,
+    message: Option<String>,
+    glyphs: &HudFontGlyphMap,
+) -> HudSystemToast {
+    let width = glyphs
+        .plain_text_width(&title)
+        .max(
+            message
+                .as_deref()
+                .map_or(0, |message| glyphs.plain_text_width(message)),
+        )
+        .saturating_add(30)
+        .max(160);
+    HudSystemToast {
+        title,
+        message_lines: message.into_iter().collect(),
+        width,
+        visible_portion: 0.0,
+    }
+}
+
+fn multiline_system_toast(
+    title: String,
+    message: String,
+    glyphs: &HudFontGlyphMap,
+) -> HudSystemToast {
+    let message_lines = hud_wrap_styled_text(&[HudStyledTextRun::plain(message)], 200, glyphs)
+        .into_iter()
+        .map(|line| line.into_iter().map(|run| run.text).collect::<String>())
+        .collect::<Vec<_>>();
+    let width = message_lines
+        .iter()
+        .map(|line| glyphs.plain_text_width(line))
+        .max()
+        .unwrap_or(200)
+        .max(200)
+        .saturating_add(30);
+    HudSystemToast {
+        title,
+        message_lines,
+        width,
+        visible_portion: 0.0,
+    }
+}
+
+fn download_system_toast(
+    download: &ResourcePackDownloadState,
+    item_runtime: Option<&NativeItemRuntime>,
+    glyphs: &HudFontGlyphMap,
+) -> HudSystemToast {
+    let total_packs = download.total_packs.to_string();
+    if download.phase == ResourcePackDownloadPhase::Failed {
+        let failed_packs = download.failed_packs.to_string();
+        return standard_system_toast(
+            localized_gui_text_with_args(
+                item_runtime,
+                "download.pack.failed",
+                "%s out of %s pack(s) failed to download",
+                &[&failed_packs, &total_packs],
+            ),
+            None,
+            glyphs,
+        );
+    }
+    let current_pack = download.current_pack.to_string();
+    let progress = match download.total_bytes.filter(|total| *total > 0) {
+        Some(total_bytes) => {
+            let percent = download.downloaded_bytes.saturating_mul(100) / total_bytes;
+            localized_gui_text_with_args(
+                item_runtime,
+                "download.pack.progress.percent",
+                "Progress: %s%%",
+                &[&percent.to_string()],
+            )
+        }
+        None => localized_gui_text_with_args(
+            item_runtime,
+            "download.pack.progress.bytes",
+            "Progress: %s (total size unknown)",
+            &[&server_pack_bytes_human_readable(download.downloaded_bytes)],
+        ),
+    };
+    standard_system_toast(
+        localized_gui_text_with_args(
+            item_runtime,
+            "download.pack.title",
+            "Downloading resource pack %s/%s",
+            &[&current_pack, &total_packs],
+        ),
+        (download.toast_action == ResourcePackDownloadToastAction::AddOrUpdateProgress)
+            .then_some(progress),
+        glyphs,
+    )
 }
 
 fn tutorial_toast_state(

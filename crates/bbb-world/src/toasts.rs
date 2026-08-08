@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use bbb_protocol::packets::{AdvancementDisplaySummary, ItemStackSummary};
 use serde::{Deserialize, Serialize};
 
-use crate::{TutorialToastKind, WorldStore};
+use crate::{ResourcePackDownloadState, TutorialToastKind, WorldStore};
 
 pub const MAX_CLIENT_TOAST_EVENTS: usize = 4096;
 
@@ -13,6 +13,8 @@ pub struct ClientToastState {
     pub events: VecDeque<ClientToastEvent>,
     #[serde(default)]
     pub next_sequence: u64,
+    #[serde(default)]
+    pub generation: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,6 +38,25 @@ pub enum ClientToastEventKind {
         toast_id: u64,
         kind: TutorialToastKind,
     },
+    System(ClientSystemToastEvent),
+}
+
+/// One call-site-ordered system-toast mutation.  The native ToastManager uses
+/// the variant to apply Vanilla's per-owner `add` versus `addOrUpdate`
+/// semantics without reconstructing an order from unrelated counters.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientSystemToastEvent {
+    NarratorToggle {
+        enabled: bool,
+        status_name: String,
+    },
+    InsecureServerWarning,
+    ResourcePackLoadFailure,
+    LowDiskSpace,
+    ResourcePackDownload {
+        session_generation: u64,
+        state: ResourcePackDownloadState,
+    },
 }
 
 impl ClientToastEvent {
@@ -45,7 +66,9 @@ impl ClientToastEvent {
                 advancement_id,
                 display,
             } => Some((advancement_id, display)),
-            ClientToastEventKind::Recipe { .. } | ClientToastEventKind::Tutorial { .. } => None,
+            ClientToastEventKind::Recipe { .. }
+            | ClientToastEventKind::Tutorial { .. }
+            | ClientToastEventKind::System(_) => None,
         }
     }
 
@@ -56,16 +79,27 @@ impl ClientToastEvent {
                 category_item,
                 unlocked_item,
             } => Some((*recipe_id, category_item, unlocked_item)),
-            ClientToastEventKind::Advancement { .. } | ClientToastEventKind::Tutorial { .. } => {
-                None
-            }
+            ClientToastEventKind::Advancement { .. }
+            | ClientToastEventKind::Tutorial { .. }
+            | ClientToastEventKind::System(_) => None,
         }
     }
 
     pub fn tutorial(&self) -> Option<(u64, TutorialToastKind)> {
         match self.kind {
             ClientToastEventKind::Tutorial { toast_id, kind } => Some((toast_id, kind)),
-            ClientToastEventKind::Advancement { .. } | ClientToastEventKind::Recipe { .. } => None,
+            ClientToastEventKind::Advancement { .. }
+            | ClientToastEventKind::Recipe { .. }
+            | ClientToastEventKind::System(_) => None,
+        }
+    }
+
+    pub fn system(&self) -> Option<&ClientSystemToastEvent> {
+        match &self.kind {
+            ClientToastEventKind::System(event) => Some(event),
+            ClientToastEventKind::Advancement { .. }
+            | ClientToastEventKind::Recipe { .. }
+            | ClientToastEventKind::Tutorial { .. } => None,
         }
     }
 }
@@ -110,8 +144,15 @@ impl WorldStore {
         self.counters.tutorial_toast_events = self.counters.tutorial_toast_events.saturating_add(1);
     }
 
-    pub(crate) fn reset_client_toasts_for_new_level(&mut self) {
-        self.client_toasts = ClientToastState::default();
+    pub(crate) fn push_system_toast_event(&mut self, event: ClientSystemToastEvent) {
+        self.push_client_toast_event(ClientToastEventKind::System(event));
+    }
+
+    pub(crate) fn clear_client_toasts_for_disconnect(&mut self) {
+        self.client_toasts = ClientToastState {
+            generation: self.client_toasts.generation.saturating_add(1),
+            ..ClientToastState::default()
+        };
     }
 
     fn push_client_toast_event(&mut self, kind: ClientToastEventKind) {
@@ -141,6 +182,7 @@ impl WorldStore {
                         .tutorial_toast_events_dropped
                         .saturating_add(1);
                 }
+                Some(ClientToastEventKind::System(_)) => {}
                 None => {}
             }
             self.client_toasts.events.pop_front();
@@ -176,9 +218,10 @@ mod tests {
         );
         assert_eq!(store.counters().advancement_toast_events_dropped, 1);
 
-        store.reset_client_toasts_for_new_level();
+        store.clear_client_toasts_for_disconnect();
         assert!(store.client_toast_events().is_empty());
         assert_eq!(store.client_toasts().next_sequence, 0);
+        assert_eq!(store.client_toasts().generation, 1);
         assert_eq!(
             store.counters().advancement_toast_events,
             MAX_CLIENT_TOAST_EVENTS + 1
@@ -197,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn advancement_and_recipe_events_share_one_packet_order() {
+    fn all_toast_families_share_one_call_site_order() {
         let mut store = WorldStore::new();
         store.push_advancement_toast_event(
             "minecraft:test/first".to_string(),
@@ -216,6 +259,7 @@ mod tests {
                 component_patch: Default::default(),
             },
         );
+        store.push_system_toast_event(ClientSystemToastEvent::LowDiskSpace);
         store
             .push_advancement_toast_event("minecraft:test/last".to_string(), advancement_display());
 
@@ -225,7 +269,7 @@ mod tests {
                 .iter()
                 .map(|event| event.sequence)
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2]
+            vec![0, 1, 2, 3]
         );
         assert_eq!(
             store.client_toast_events()[0]
@@ -239,7 +283,11 @@ mod tests {
             7
         );
         assert_eq!(
-            store.client_toast_events()[2]
+            store.client_toast_events()[2].system(),
+            Some(&ClientSystemToastEvent::LowDiskSpace)
+        );
+        assert_eq!(
+            store.client_toast_events()[3]
                 .advancement()
                 .expect("advancement")
                 .0,

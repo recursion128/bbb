@@ -19,7 +19,7 @@ use crate::{
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     for_each_shaped_recipe_grid_slot, protocol_block_pos,
     recipes::slot_display_holders_are_resolved,
-    BlockPos, WorldStore,
+    BlockPos, ClientSystemToastEvent, WorldStore,
 };
 
 const DIALOG_WAITING_CLOSE_ACTIVE_TICKS: u32 = 101;
@@ -644,6 +644,7 @@ impl WorldStore {
     pub fn apply_low_disk_space_warning(&mut self) {
         self.counters.low_disk_space_warnings += 1;
         self.client_ui.low_disk_space_warning_count += 1;
+        self.push_system_toast_event(ClientSystemToastEvent::LowDiskSpace);
     }
 
     /// `SystemToast.addOrUpdate(NARRATOR_TOGGLE, ...)`: every status change
@@ -652,6 +653,10 @@ impl WorldStore {
     pub fn push_narrator_toggle_toast(&mut self, enabled: bool, status_name: &str) {
         self.client_ui.narrator_toggle_toast_count += 1;
         self.client_ui.narrator_toggle_toast = Some(NarratorToggleToastState {
+            enabled,
+            status_name: status_name.to_string(),
+        });
+        self.push_system_toast_event(ClientSystemToastEvent::NarratorToggle {
             enabled,
             status_name: status_name.to_string(),
         });
@@ -674,6 +679,7 @@ impl WorldStore {
             .client_ui
             .resource_pack_load_failure_count
             .saturating_add(1);
+        self.push_system_toast_event(ClientSystemToastEvent::ResourcePackLoadFailure);
     }
 
     pub fn apply_clear_dialog(&mut self) {

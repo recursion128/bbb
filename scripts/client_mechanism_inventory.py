@@ -8265,16 +8265,210 @@ SERVER_PACK_SCOPE_TEST = (
     "#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
 )
 
-SERVER_PACK_SHARED_TOAST_GAP = OwnerOpenGap(
+SERVER_PACK_TOAST_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/resource_pack_runtime.rs#fn apply_download_progress",
+        "crates/bbb-world/src/client/server_presentation.rs"
+        "#pub fn set_resource_pack_download_state",
+        "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+        "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+    ),
+    (
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#download_progress_marks_only_vanilla_toast_mutation_callbacks",
+        "crates/bbb-world/src/client/server_presentation.rs"
+        "#download_toast_events_dedupe_snapshots_and_bind_notifier_generation",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#shared_toast_projection_preserves_mixed_family_insertion_order",
+        "crates/bbb-renderer/src/hud.rs"
+        "#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+        "crates/bbb-renderer/src/hud.rs"
+        "#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position",
+        "crates/bbb-world/src/level.rs"
+        "#play_login_retains_toast_manager_but_level_clear_drops_it",
+    ),
+)
+
+TOAST_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+)
+
+HUD_TOAST_SHARED_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+        "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+        "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+        "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+    ),
+    (
+        "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#shared_toast_projection_preserves_mixed_family_insertion_order",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+        "crates/bbb-renderer/src/hud.rs"
+        "#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+    ),
+)
+
+HUD_SYSTEM_TOAST_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+        "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+        "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+        "crates/bbb-renderer/src/hud.rs"
+        "#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position",
+    ),
+)
+
+HUD_ADVANCEMENT_TOAST_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-native/src/runtime/toast.rs#fn project_advancement",),
+    (
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#advancement_toast_and_screen_preserve_rich_title_runs",
+    ),
+)
+
+HUD_RECIPE_TOAST_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState",),
+    (
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order",
+    ),
+)
+
+HUD_TUTORIAL_TOAST_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState",),
+    (
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+        "crates/bbb-renderer/src/hud.rs"
+        "#tutorial_toast_height_slot_layout_and_progress_follow_vanilla",
+    ),
+)
+
+HUD_PERIODIC_TOAST_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/periodic_notifications.rs"
+        "#struct PeriodicNotificationRuntime",
+        "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification",
+    ),
+    (
+        "crates/bbb-native/src/runtime/periodic_notifications.rs"
+        "#due_notification_projects_through_the_shared_system_toast_surface",
+        "crates/bbb-native/src/runtime/tests.rs"
+        "#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime",
+    ),
+)
+
+HUD_NOW_PLAYING_TOAST_GAP = OwnerOpenGap(
     ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
     reason=(
-        "Server-pack batches have distinct toast identities, but server-pack and other toast "
-        "families do not yet share one ToastManager admission and occupied-slot owner."
+        "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does "
+        "not yet consume that option or project ToastManager's separate NowPlayingToast instance."
     ),
     close_condition=(
-        "Route all toast families through one five-slot queue with multi-slot reservation, "
-        "mixed-family ordering, and one visibility-change sound per update."
+        "Consume the startup musicToast value and implement the separate NowPlayingToast "
+        "music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable."
     ),
+)
+
+HUD_TIMED_TUTORIAL_TOAST_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
+    reason=(
+        "The survival tutorial toasts use the shared manager, but the 8000 ms social-interactions "
+        "TutorialToast constructor/update path has no native event producer or timed lifetime."
+    ),
+    close_condition=(
+        "Implement the social-interactions timed TutorialToast call site and its exact progress, "
+        "hide, admission, and extraction behavior."
+    ),
+)
+
+HUD_FILE_DROP_TOAST_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
+    reason=(
+        "Vanilla surfaces failed OS file-drop path conversions through SystemToast, while the "
+        "current winit event surface exposes successful DroppedFile paths but no failed-count event."
+    ),
+    close_condition=(
+        "Provide a supported failed-file-drop receipt/count source and route it through the shared "
+        "SystemToast manager, or record a reproducible external platform blocker."
+    ),
+)
+
+HUD_DYNAMIC_SYSTEM_TITLE_GAP = OwnerOpenGap(
+    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
+    reason=(
+        "Vanilla retains the SystemToast title Component for extraction after construction, while "
+        "BBB currently freezes the localized title string together with construction-time lines."
+    ),
+    close_condition=(
+        "Retain a structured title component through native state, re-resolve it on extraction, "
+        "and keep only width and message lines frozen across language reload."
+    ),
+)
+
+SYSTEM_TOAST_WORLD_UI_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/gui/components/toasts/SystemToast.java:132-153",
+        "net/minecraft/client/gui/screens/TitleScreen.java:246-262,340-340",
+        "net/minecraft/client/gui/screens/worldselection/EditWorldScreen.java:168-168",
+        "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java:225-225",
+    ),
+    current_scope_reason=(
+        "World access/delete and pack-copy failure helpers are called only by title/world-selection "
+        "or in-game pack-selection surfaces, which are excluded by the external multiplayer and "
+        "command-line-only configuration contract."
+    ),
+    reopen_condition=(
+        "BBB adds singleplayer world-selection or an in-game pack-selection/file-copy surface."
+    ),
+)
+
+SYSTEM_TOAST_WORLD_UI_SCOPE_EVIDENCE = OwnerEvidence(
+    ("docs/unsupported-features.md",),
+    (TOAST_OWNER_CENSUS_TEST,),
+    SYSTEM_TOAST_WORLD_UI_SCOPE,
+)
+
+SYSTEM_TOAST_INTEGRATED_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/gui/components/toasts/SystemToast.java:172-188",
+        "net/minecraft/client/server/IntegratedServer.java:352-363",
+    ),
+    current_scope_reason=(
+        "Chunk load/save failure toasts are emitted only by IntegratedServer callbacks; the "
+        "declared client connects to external multiplayer servers and owns no server chunk storage."
+    ),
+    reopen_condition="BBB adds an integrated server or client-owned server chunk storage.",
+)
+
+SYSTEM_TOAST_INTEGRATED_SCOPE_EVIDENCE = OwnerEvidence(
+    ("docs/unsupported-features.md",),
+    (TOAST_OWNER_CENSUS_TEST,),
+    SYSTEM_TOAST_INTEGRATED_SCOPE,
 )
 
 SERVER_PACK_QUEUE_EVIDENCE = OwnerEvidence(
@@ -8330,8 +8524,6 @@ SERVER_PACK_HTTP_PROGRESS_EVIDENCE = OwnerEvidence(
         "#server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
     ),
 )
-
-SERVER_PACK_TOAST_EVIDENCE = SERVER_PACK_SHARED_TOAST_GAP
 
 SERVER_PACK_STATE_EVIDENCE = OwnerEvidence(
     (
@@ -8541,12 +8733,199 @@ HTTP_UTIL_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+TOAST_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_TOAST_SHARED_EVIDENCE,
+        (
+            "getWantedVisibility",
+            "update",
+            "getSoundEvent",
+            "extractRenderState",
+            "getToken",
+            "xPos",
+            "yPos",
+            "width",
+            "height",
+            "occcupiedSlotCount",
+            "onFinishedRendering",
+            "Visibility",
+            "playSound",
+        ),
+    ),
+)
+
+TOAST_MANAGER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_NOW_PLAYING_TOAST_GAP,
+        (
+            "ToastManager",
+            "update",
+            "extractRenderState",
+            "showNowPlayingToast",
+            "hideNowPlayingToast",
+            "initializeMusicToast",
+            "setMusicToastDisplayState",
+        ),
+    ),
+    (
+        HUD_TOAST_SHARED_EVIDENCE,
+        (
+            "findFreeSlotsIndex",
+            "freeSlotCount",
+            "getToast",
+            "clear",
+            "addToast",
+            "getMinecraft",
+            "getNotificationDisplayTimeMultiplier",
+            "ToastInstance",
+            "resetToast",
+            "hasFinishedRendering",
+            "calculateVisiblePortion",
+        ),
+    ),
+)
+
+SYSTEM_TOAST_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_DYNAMIC_SYSTEM_TITLE_GAP,
+        ("SystemToast", "extractRenderState", "reset"),
+    ),
+    (HUD_FILE_DROP_TOAST_GAP, ("onFileDropFailure",)),
+    (
+        SYSTEM_TOAST_WORLD_UI_SCOPE_EVIDENCE,
+        (
+            "onWorldAccessFailure",
+            "onWorldDeleteFailure",
+            "onPackCopyFailure",
+        ),
+    ),
+    (
+        SYSTEM_TOAST_INTEGRATED_SCOPE_EVIDENCE,
+        ("onChunkLoadFailure", "onChunkSaveFailure"),
+    ),
+    (
+        HUD_SYSTEM_TOAST_EVIDENCE,
+        (
+            "multiline",
+            "nullToEmpty",
+            "width",
+            "height",
+            "forceHide",
+            "getWantedVisibility",
+            "update",
+            "getToken",
+            "add",
+            "addOrUpdate",
+            "onLowDiskSpace",
+            "SystemToastId",
+        ),
+    ),
+)
+
+ADVANCEMENT_TOAST_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_ADVANCEMENT_TOAST_EVIDENCE,
+        (
+            "AdvancementToast",
+            "getWantedVisibility",
+            "update",
+            "getSoundEvent",
+            "isChallengeAdvancement",
+            "extractRenderState",
+        ),
+    ),
+)
+
+RECIPE_TOAST_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_RECIPE_TOAST_EVIDENCE,
+        (
+            "RecipeToast",
+            "getWantedVisibility",
+            "update",
+            "extractRenderState",
+            "addItem",
+            "addOrUpdate",
+        ),
+    ),
+)
+
+TUTORIAL_TOAST_OWNER_EVIDENCE = _owner_evidence(
+    (HUD_TIMED_TUTORIAL_TOAST_GAP, ("TutorialToast",)),
+    (
+        HUD_TUTORIAL_TOAST_EVIDENCE,
+        (
+            "getWantedVisibility",
+            "update",
+            "height",
+            "contentHeight",
+            "extractRenderState",
+            "hide",
+            "updateProgress",
+            "Icons",
+        ),
+    ),
+)
+
+NOW_PLAYING_TOAST_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_NOW_PLAYING_TOAST_GAP,
+        (
+            "NowPlayingToast",
+            "extractToast",
+            "getCurrentSongName",
+            "tickMusicNotes",
+            "getNowPlayingString",
+            "showToast",
+            "update",
+            "extractRenderState",
+            "onFinishedRendering",
+            "width",
+            "getWidth",
+            "height",
+            "xPos",
+            "yPos",
+            "getWantedVisibility",
+            "setWantedVisibility",
+        ),
+    ),
+)
+
+PERIODIC_NOTIFICATION_OWNER_EVIDENCE = _owner_evidence(
+    (
+        HUD_PERIODIC_TOAST_EVIDENCE,
+        (
+            "PeriodicNotificationManager",
+            "prepare",
+            "apply",
+            "close",
+            "stopTimer",
+            "calculateOptimalPeriod",
+            "calculateInitialDelay",
+            "NotificationTask",
+            "reset",
+            "run",
+        ),
+    ),
+)
+
 SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE = {
     "net/minecraft/client/resources/server/DownloadedPackSource.java": DOWNLOADED_PACK_SOURCE_OWNER_EVIDENCE,
     "net/minecraft/client/resources/server/ServerPackManager.java": SERVER_PACK_MANAGER_OWNER_EVIDENCE,
     "net/minecraft/server/packs/DownloadQueue.java": DOWNLOAD_QUEUE_OWNER_EVIDENCE,
     "net/minecraft/server/packs/DownloadCacheCleaner.java": DOWNLOAD_CACHE_CLEANER_OWNER_EVIDENCE,
     "net/minecraft/util/HttpUtil.java": HTTP_UTIL_OWNER_EVIDENCE,
+}
+
+HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE = {
+    "net/minecraft/client/gui/components/toasts/Toast.java": TOAST_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/components/toasts/ToastManager.java": TOAST_MANAGER_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/components/toasts/SystemToast.java": SYSTEM_TOAST_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/components/toasts/AdvancementToast.java": ADVANCEMENT_TOAST_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/components/toasts/RecipeToast.java": RECIPE_TOAST_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/components/toasts/TutorialToast.java": TUTORIAL_TOAST_OWNER_EVIDENCE,
+    "net/minecraft/client/gui/components/toasts/NowPlayingToast.java": NOW_PLAYING_TOAST_OWNER_EVIDENCE,
+    "net/minecraft/client/PeriodicNotificationManager.java": PERIODIC_NOTIFICATION_OWNER_EVIDENCE,
 }
 
 SERVER_PACK_ROOT_OWNER_EVIDENCE = _owner_evidence(
@@ -8565,6 +8944,7 @@ AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
 METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **AUDIO_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
+    **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
 }
 
 
@@ -8927,6 +9307,14 @@ METHOD_SURFACES = (
     MethodSurface("movement", "movement", "player-local-input-movement", "net/minecraft/client/player/LocalPlayer.java"),
     MethodSurface("interaction", "interaction", "interaction-primary-action-routing", "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"),
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/Gui.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/Toast.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/ToastManager.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/SystemToast.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/AdvancementToast.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/RecipeToast.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/TutorialToast.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/PeriodicNotificationManager.java"),
     MethodSurface("render-step", "rendering", "rendering-frame-order", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),

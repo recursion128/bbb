@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "53c3919d9b2c20df96646a35d5de68da41eef8838adbfad6ad9f599d7c5722ca"
+      "sha256": "97213d30ec16dc67245c9d07d10f3ed05792d2b8e656a5183edf9cc333f23e8d"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -68,8 +68,9 @@
       "bbb_evidence": [
         "crates/bbb-native/src/runtime/render_extract.rs"
       ],
-      "owner_count": 11,
-      "owner_evidence_count": 11
+      "owner_count": 118,
+      "owner_evidence_count": 118,
+      "owner_gap_count": 32
     },
     "hud-hotbar-selection": {
       "bbb_evidence": [
@@ -704,8 +705,7 @@
         "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
       ],
       "owner_count": 68,
-      "owner_evidence_count": 68,
-      "owner_gap_count": 1
+      "owner_evidence_count": 68
     },
     "scope-client-level-noop-hooks": {
       "bbb_evidence": [
@@ -17148,6 +17148,246 @@
       "vanilla_owner": "net.minecraft.client.Options.OptionAccess#process(String name,OptionInstance <T> option)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#PeriodicNotificationManager(final Identifier notifications,final Object2BooleanFunction <String> selector)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 53,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#PeriodicNotificationManager(final Identifier notifications,final Object2BooleanFunction <String> selector)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#apply(final Map <String, List <PeriodicNotificationManager.Notification>> preparations,final ResourceManager manager,final ProfilerFiller profiler)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 67,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#apply(final Map <String, List <PeriodicNotificationManager.Notification>> preparations,final ResourceManager manager,final ProfilerFiller profiler)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#calculateInitialDelay(final List <PeriodicNotificationManager.Notification> notifications)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 116,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#calculateInitialDelay(final List <PeriodicNotificationManager.Notification> notifications)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#calculateOptimalPeriod(final List <PeriodicNotificationManager.Notification> notifications,final long initialDelay)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 109,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#calculateOptimalPeriod(final List <PeriodicNotificationManager.Notification> notifications,final long initialDelay)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#close()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 98,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#close()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#prepare(final ResourceManager manager,final ProfilerFiller profiler)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 58,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#prepare(final ResourceManager manager,final ProfilerFiller profiler)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager#stopTimer()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 103,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager#stopTimer()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager.NotificationTask#NotificationTask(final List <PeriodicNotificationManager.Notification> notifications,final long elapsed,final long period)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 129,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager.NotificationTask#NotificationTask(final List <PeriodicNotificationManager.Notification> notifications,final long elapsed,final long period)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager.NotificationTask#reset(final List <PeriodicNotificationManager.Notification> notifications,final long period)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 135,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager.NotificationTask#reset(final List <PeriodicNotificationManager.Notification> notifications,final long period)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#struct PeriodicNotificationRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#fn ingest_periodic_notification"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "crates/bbb-native/src/runtime/tests.rs#periodic_add_queues_distinct_toasts_and_display_multiplier_scales_system_lifetime"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.PeriodicNotificationManager.NotificationTask#run()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 140,
+        "path": "net/minecraft/client/PeriodicNotificationManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.PeriodicNotificationManager.NotificationTask#run()"
+    },
+    {
       "category": "startup",
       "domain": "startup",
       "kind": "constructor",
@@ -18783,6 +19023,2411 @@
         "path": "net/minecraft/client/gui/Gui.java"
       },
       "vanilla_owner": "net.minecraft.client.gui.Gui.HeartType#getSprite(final boolean isHardcore,final boolean isHalf,final boolean isBlink)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#fn project_advancement"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_and_screen_preserve_rich_title_runs"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.AdvancementToast#AdvancementToast(final AdvancementHolder advancement)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 27,
+        "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.AdvancementToast#AdvancementToast(final AdvancementHolder advancement)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#fn project_advancement"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_and_screen_preserve_rich_title_runs"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.AdvancementToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 57,
+        "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.AdvancementToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#fn project_advancement"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_and_screen_preserve_rich_title_runs"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.AdvancementToast#getSoundEvent()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 47,
+        "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.AdvancementToast#getSoundEvent()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#fn project_advancement"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_and_screen_preserve_rich_title_runs"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.AdvancementToast#getWantedVisibility()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 32,
+        "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.AdvancementToast#getWantedVisibility()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#fn project_advancement"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_and_screen_preserve_rich_title_runs"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.AdvancementToast#isChallengeAdvancement()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 52,
+        "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.AdvancementToast#isChallengeAdvancement()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#fn project_advancement"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_and_screen_preserve_rich_title_runs"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.AdvancementToast#update(final ToastManager manager,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 37,
+        "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.AdvancementToast#update(final ToastManager manager,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#NowPlayingToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 32,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#NowPlayingToast()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 79,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#extractToast(final GuiGraphicsExtractor graphics,final Font font)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 36,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#extractToast(final GuiGraphicsExtractor graphics,final Font font)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#getCurrentSongName()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 46,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#getCurrentSongName()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#getNowPlayingString(final @Nullable String currentSongKey)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 61,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#getNowPlayingString(final @Nullable String currentSongKey)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#getWantedVisibility()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 113,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#getWantedVisibility()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#getWidth(final @Nullable String currentSong,final Font font)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 94,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#getWidth(final @Nullable String currentSong,final Font font)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#height()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 98,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#height()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#onFinishedRendering()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 84,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#onFinishedRendering()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#setWantedVisibility(final Toast.Visibility visibility)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 118,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#setWantedVisibility(final Toast.Visibility visibility)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#showToast(final Options options)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 65,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#showToast(final Options options)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#tickMusicNotes()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 50,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#tickMusicNotes()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#update(final ToastManager manager,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 71,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#update(final ToastManager manager,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#width()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 89,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#width()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#xPos(final int screenWidth,final float visiblePortion)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 103,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#xPos(final int screenWidth,final float visiblePortion)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.NowPlayingToast#yPos(final int firstSlotIndex)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 108,
+        "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.NowPlayingToast#yPos(final int firstSlotIndex)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.RecipeToast#RecipeToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 26,
+        "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.RecipeToast#RecipeToast()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.RecipeToast#addItem(final ItemStack craftingStation,final ItemStack unlockedItem)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 67,
+        "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.RecipeToast#addItem(final ItemStack craftingStation,final ItemStack unlockedItem)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.RecipeToast#addOrUpdate(final ToastManager toastManager,final RecipeDisplay recipe)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 72,
+        "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.RecipeToast#addOrUpdate(final ToastManager toastManager,final RecipeDisplay recipe)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.RecipeToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 54,
+        "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.RecipeToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.RecipeToast#getWantedVisibility()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 29,
+        "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.RecipeToast#getWantedVisibility()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct RecipeToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+          "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.RecipeToast#update(final ToastManager manager,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 34,
+        "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.RecipeToast#update(final ToastManager manager,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#SystemToast(final SystemToast.SystemToastId id,final Component title,final @Nullable Component message)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 30,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#SystemToast(final SystemToast.SystemToastId id,final Component title,final @Nullable Component message)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#SystemToast(final SystemToast.SystemToastId id,final Component title,final List <FormattedCharSequence> messageLines,final int width)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 46,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#SystemToast(final SystemToast.SystemToastId id,final Component title,final List <FormattedCharSequence> messageLines,final int width)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#add(final ToastManager toastManager,final SystemToast.SystemToastId id,final Component title,final @Nullable Component message)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 112,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#add(final ToastManager toastManager,final SystemToast.SystemToastId id,final Component title,final @Nullable Component message)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#addOrUpdate(final ToastManager toastManager,final SystemToast.SystemToastId id,final Component title,final @Nullable Component message)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 116,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#addOrUpdate(final ToastManager toastManager,final SystemToast.SystemToastId id,final Component title,final @Nullable Component message)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 88,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#forceHide()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 67,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#forceHide()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#forceHide(final ToastManager toastManager,final SystemToast.SystemToastId id)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 125,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#forceHide(final ToastManager toastManager,final SystemToast.SystemToastId id)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#getToken()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 108,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#getToken()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#getWantedVisibility()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 71,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#getWantedVisibility()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#height()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 62,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#height()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#multiline(final Minecraft minecraft,final SystemToast.SystemToastId id,final Component title,final Component message)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 39,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#multiline(final Minecraft minecraft,final SystemToast.SystemToastId id,final Component title,final Component message)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#nullToEmpty(final @Nullable Component message)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 53,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#nullToEmpty(final @Nullable Component message)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Chunk load/save failure toasts are emitted only by IntegratedServer callbacks; the declared client connects to external multiplayer servers and owns no server chunk storage.",
+          "reopen_condition": "BBB adds an integrated server or client-owned server chunk storage.",
+          "vanilla_basis": [
+            "net/minecraft/client/gui/components/toasts/SystemToast.java:172-188",
+            "net/minecraft/client/server/IntegratedServer.java:352-363"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onChunkLoadFailure(final Minecraft minecraft,final ChunkPos pos)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 172,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onChunkLoadFailure(final Minecraft minecraft,final ChunkPos pos)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Chunk load/save failure toasts are emitted only by IntegratedServer callbacks; the declared client connects to external multiplayer servers and owns no server chunk storage.",
+          "reopen_condition": "BBB adds an integrated server or client-owned server chunk storage.",
+          "vanilla_basis": [
+            "net/minecraft/client/gui/components/toasts/SystemToast.java:172-188",
+            "net/minecraft/client/server/IntegratedServer.java:352-363"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onChunkSaveFailure(final Minecraft minecraft,final ChunkPos pos)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 181,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onChunkSaveFailure(final Minecraft minecraft,final ChunkPos pos)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Provide a supported failed-file-drop receipt/count source and route it through the shared SystemToast manager, or record a reproducible external platform blocker.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla surfaces failed OS file-drop path conversions through SystemToast, while the current winit event surface exposes successful DroppedFile paths but no failed-count event."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onFileDropFailure(final Minecraft minecraft,final int count)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 154,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onFileDropFailure(final Minecraft minecraft,final int count)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onLowDiskSpace(final Minecraft minecraft)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 163,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onLowDiskSpace(final Minecraft minecraft)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "World access/delete and pack-copy failure helpers are called only by title/world-selection or in-game pack-selection surfaces, which are excluded by the external multiplayer and command-line-only configuration contract.",
+          "reopen_condition": "BBB adds singleplayer world-selection or an in-game pack-selection/file-copy surface.",
+          "vanilla_basis": [
+            "net/minecraft/client/gui/components/toasts/SystemToast.java:132-153",
+            "net/minecraft/client/gui/screens/TitleScreen.java:246-262,340-340",
+            "net/minecraft/client/gui/screens/worldselection/EditWorldScreen.java:168-168",
+            "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java:225-225"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onPackCopyFailure(final Minecraft minecraft,final String extraInfo)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 150,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onPackCopyFailure(final Minecraft minecraft,final String extraInfo)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "World access/delete and pack-copy failure helpers are called only by title/world-selection or in-game pack-selection surfaces, which are excluded by the external multiplayer and command-line-only configuration contract.",
+          "reopen_condition": "BBB adds singleplayer world-selection or an in-game pack-selection/file-copy surface.",
+          "vanilla_basis": [
+            "net/minecraft/client/gui/components/toasts/SystemToast.java:132-153",
+            "net/minecraft/client/gui/screens/TitleScreen.java:246-262,340-340",
+            "net/minecraft/client/gui/screens/worldselection/EditWorldScreen.java:168-168",
+            "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java:225-225"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onWorldAccessFailure(final Minecraft minecraft,final String levelId)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 132,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onWorldAccessFailure(final Minecraft minecraft,final String levelId)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "World access/delete and pack-copy failure helpers are called only by title/world-selection or in-game pack-selection surfaces, which are excluded by the external multiplayer and command-line-only configuration contract.",
+          "reopen_condition": "BBB adds singleplayer world-selection or an in-game pack-selection/file-copy surface.",
+          "vanilla_basis": [
+            "net/minecraft/client/gui/components/toasts/SystemToast.java:132-153",
+            "net/minecraft/client/gui/screens/TitleScreen.java:246-262,340-340",
+            "net/minecraft/client/gui/screens/worldselection/EditWorldScreen.java:168-168",
+            "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java:225-225"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_toast_owner_census_has_complete_evidence_scope_and_open_gaps"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#onWorldDeleteFailure(final Minecraft minecraft,final String levelId)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 141,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#onWorldDeleteFailure(final Minecraft minecraft,final String levelId)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Retain a structured title component through native state, re-resolve it on extraction, and keep only width and message lines frozen across language reload.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Vanilla retains the SystemToast title Component for extraction after construction, while BBB currently freezes the localized title string together with construction-time lines."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#reset(final Component title,final @Nullable Component message)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 102,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#reset(final Component title,final @Nullable Component message)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#update(final ToastManager manager,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 76,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#update(final ToastManager manager,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast#width()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 57,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast#width()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId#SystemToastId()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 208,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId#SystemToastId()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct SystemToastState",
+          "crates/bbb-native/src/runtime/toast.rs#fn system_toast_state",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudSystemToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId#SystemToastId(final long displayTime)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 204,
+        "path": "net/minecraft/client/gui/components/toasts/SystemToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId#SystemToastId(final long displayTime)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 25,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#getSoundEvent()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 21,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#getSoundEvent()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#getToken()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 27,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#getToken()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#getWantedVisibility()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 17,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#getWantedVisibility()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#height()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 43,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#height()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#occcupiedSlotCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 47,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#occcupiedSlotCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#onFinishedRendering()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 51,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#onFinishedRendering()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#update(final ToastManager manager,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 19,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#update(final ToastManager manager,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#width()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 39,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#width()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#xPos(final int screenWidth,final float visiblePortion)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 31,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#xPos(final int screenWidth,final float visiblePortion)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast#yPos(final int firstSlotIndex)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 35,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast#yPos(final int firstSlotIndex)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast.Visibility#Visibility(final SoundEvent soundEvent)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 60,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast.Visibility#Visibility(final SoundEvent soundEvent)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.Toast.Visibility#playSound(final SoundManager manager)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 64,
+        "path": "net/minecraft/client/gui/components/toasts/Toast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.Toast.Visibility#playSound(final SoundManager manager)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#ToastManager(final Minecraft minecraft,final Options options)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 33,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#ToastManager(final Minecraft minecraft,final Options options)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#addToast(final Toast toast)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 141,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#addToast(final Toast toast)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#clear()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 135,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#clear()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#extractRenderState(final GuiGraphicsExtractor graphics)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 80,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#extractRenderState(final GuiGraphicsExtractor graphics)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#findFreeSlotsIndex(final int requiredCount)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 99,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#findFreeSlotsIndex(final int requiredCount)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#freeSlotCount()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 115,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#freeSlotCount()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#getMinecraft()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 158,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#getMinecraft()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#getNotificationDisplayTimeMultiplier()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 162,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#getNotificationDisplayTimeMultiplier()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#getToast(final Class <? extends T> clazz,final Object token)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 119,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#getToast(final Class <? extends T> clazz,final Object token)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#hideNowPlayingToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 152,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#hideNowPlayingToast()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#initializeMusicToast(final MusicToastDisplayState state)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 166,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#initializeMusicToast(final MusicToastDisplayState state)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#setMusicToastDisplayState(final MusicToastDisplayState state)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 174,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#setMusicToastDisplayState(final MusicToastDisplayState state)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#showNowPlayingToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 145,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#showNowPlayingToast()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager#update()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 38,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager#update()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#ToastInstance(final T toast,final int firstSlotIndex,final int occupiedSlotCount)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 202,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#ToastInstance(final T toast,final int firstSlotIndex,final int occupiedSlotCount)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#calculateVisiblePortion(final long now)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 226,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#calculateVisiblePortion(final long now)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#extractRenderState(final GuiGraphicsExtractor graphics,final int screenWidth)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 263,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#extractRenderState(final GuiGraphicsExtractor graphics,final int screenWidth)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#getToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 209,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#getToast()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#hasFinishedRendering()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 222,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#hasFinishedRendering()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#resetToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 213,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#resetToast()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#update()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 236,
+        "path": "net/minecraft/client/gui/components/toasts/ToastManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.ToastManager.ToastInstance#update()"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Implement the social-interactions timed TutorialToast call site and its exact progress, hide, admission, and extraction behavior.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "The survival tutorial toasts use the shared manager, but the 8000 ms social-interactions TutorialToast constructor/update path has no native event producer or timed lifetime."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#TutorialToast(final Font font,final TutorialToast.Icons icon,final Component title,final @Nullable Component message,final boolean progressable)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 53,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#TutorialToast(final Font font,final TutorialToast.Icons icon,final Component title,final @Nullable Component message,final boolean progressable)"
+    },
+    {
+      "bbb_evidence": {
+        "open_gap": {
+          "close_condition": "Implement the social-interactions timed TutorialToast call site and its exact progress, hide, admission, and extraction behavior.",
+          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
+          "reason": "The survival tutorial toasts use the shared manager, but the 8000 ms social-interactions TutorialToast constructor/update path has no native event producer or timed lifetime."
+        }
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#TutorialToast(final Font font,final TutorialToast.Icons icon,final Component title,final @Nullable Component message,final boolean progressable,final int timeToDisplayMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 34,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#TutorialToast(final Font font,final TutorialToast.Icons icon,final Component title,final @Nullable Component message,final boolean progressable,final int timeToDisplayMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#contentHeight()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 82,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#contentHeight()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 86,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#extractRenderState(final GuiGraphicsExtractor graphics,final Font font,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#getWantedVisibility()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 57,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#getWantedVisibility()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#height()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 77,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#height()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#hide()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 112,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#hide()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#update(final ToastManager manager,final long fullyVisibleForMs)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 62,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#update(final ToastManager manager,final long fullyVisibleForMs)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast#updateProgress(final float progress)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 116,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast#updateProgress(final float progress)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "constructor",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast.Icons#Icons(final Identifier sprite)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 131,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast.Icons#Icons(final Identifier sprite)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/toast.rs#struct TutorialToastState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+          "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla"
+        ]
+      },
+      "category": "render-step",
+      "domain": "ui",
+      "kind": "method",
+      "mechanism_id": "hud-frame-extract-order",
+      "owner_id": "method:net.minecraft.client.gui.components.toasts.TutorialToast.Icons#extractRenderState(final GuiGraphicsExtractor graphics,final int x,final int y)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 135,
+        "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.components.toasts.TutorialToast.Icons#extractRenderState(final GuiGraphicsExtractor graphics,final int x,final int y)"
     },
     {
       "category": "resource-consumer",
@@ -34810,11 +37455,23 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Route all toast families through one five-slot queue with multi-slot reservation, mixed-family ordering, and one visibility-change sound per update.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Server-pack batches have distinct toast identities, but server-pack and other toast families do not yet share one ToastManager admission and occupied-slot owner."
-        }
+        "implementation": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#fn apply_download_progress",
+          "crates/bbb-world/src/client/server_presentation.rs#pub fn set_resource_pack_download_state",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_pack_runtime.rs#download_progress_marks_only_vanilla_toast_mutation_callbacks",
+          "crates/bbb-world/src/client/server_presentation.rs#download_toast_events_dedupe_snapshots_and_bind_notifier_generation",
+          "crates/bbb-native/src/runtime/tests.rs#server_pack_download_progress_projects_vanilla_system_toast_and_forced_hide",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#system_add_or_update_keeps_slot_and_construction_width_while_resetting_lifetime",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position",
+          "crates/bbb-world/src/level.rs#play_login_retains_toast_manager_but_level_clear_drops_it"
+        ]
       },
       "category": "resources",
       "domain": "resources",
@@ -51804,12 +54461,44 @@
       "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
     },
     {
+      "path": "net/minecraft/client/PeriodicNotificationManager.java",
+      "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
+    },
+    {
       "path": "net/minecraft/client/User.java",
       "sha256": "35c6275df245db8e8a546b77b525e2ca241c92012aea96056576caa743321d0b"
     },
     {
       "path": "net/minecraft/client/gui/Gui.java",
       "sha256": "7856e577eeca5cf3f425d93af43d246037de5ec05008aaa1079447b1a2658051"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
+      "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
+      "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
+      "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
+      "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/Toast.java",
+      "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
+      "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+    },
+    {
+      "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
+      "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
     },
     {
       "path": "net/minecraft/client/gui/font/FontManager.java",
@@ -51844,8 +54533,16 @@
       "sha256": "3aca3245a16d0692dd0cb6c8c3b9318745015bd22c12d680452fd6e10461839b"
     },
     {
+      "path": "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java",
+      "sha256": "429ec07c47e70914f9ddd3eb0aa838b36493c4547af93c6fa6c0e3ce3bb57008"
+    },
+    {
       "path": "net/minecraft/client/gui/screens/social/PlayerSocialManager.java",
       "sha256": "885f864ff02d6f9cb900b7da1e92241d394c13b0030223f0898ed887155f2542"
+    },
+    {
+      "path": "net/minecraft/client/gui/screens/worldselection/EditWorldScreen.java",
+      "sha256": "b24bd06780f1b470e32b7340a291ef7d2569743d5ccf4b77cba33baf87cdd24a"
     },
     {
       "path": "net/minecraft/client/gui/screens/worldselection/SelectWorldScreen.java",
@@ -53331,7 +56028,7 @@
       "render-light": 3,
       "render-scene": 15,
       "render-section": 29,
-      "render-step": 131,
+      "render-step": 238,
       "resource-consumer": 105,
       "resources": 124,
       "respawn-data": 9,
@@ -53374,16 +56071,16 @@
       "support": 228,
       "telemetry": 17,
       "text": 35,
-      "ui": 204,
+      "ui": 311,
       "world": 59
     },
     "by_role": {
-      "decision": 1401,
+      "decision": 1508,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3048,
-    "owner_count": 3048,
+    "mapped_owner_count": 3155,
+    "owner_count": 3155,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

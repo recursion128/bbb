@@ -544,12 +544,6 @@ impl WorldStore {
         self.client_tutorial.stop();
     }
 
-    pub(crate) fn requeue_active_tutorial_toast(&mut self) {
-        if let Some(toast) = self.client_tutorial.active_toast() {
-            self.push_tutorial_toast_event(toast.id, toast.kind);
-        }
-    }
-
     fn tutorial_tick_facts(&self) -> TutorialTickFacts {
         TutorialTickFacts {
             is_survival: self.local_player_is_survival(),
@@ -797,10 +791,14 @@ mod tests {
                 .iter()
                 .map(|event| event.sequence)
                 .collect::<Vec<_>>(),
-            vec![0, 1]
+            vec![0, 1, 2]
         );
+        assert!(matches!(
+            world.client_toast_events()[0].system(),
+            Some(crate::ClientSystemToastEvent::InsecureServerWarning)
+        ));
         assert_eq!(
-            world.client_toast_events()[1].tutorial(),
+            world.client_toast_events()[2].tutorial(),
             world
                 .active_tutorial_toast()
                 .map(|toast| (toast.id, toast.kind))
@@ -808,11 +806,12 @@ mod tests {
     }
 
     #[test]
-    fn respawn_requeues_active_tutorial_toast_and_disconnect_stops_the_instance() {
+    fn respawn_retains_active_tutorial_toast_and_disconnect_stops_the_instance() {
         let mut world = tutorial_world();
         world.advance_tutorial_ticks(1);
         world.advance_tutorial_ticks(MOVEMENT_HINT_DELAY_TICKS);
         let active = world.active_tutorial_toast().unwrap();
+        let retained_events = world.client_toast_events().clone();
 
         world.apply_respawn(&Respawn {
             common_spawn_info: CommonPlayerSpawnInfo {
@@ -830,11 +829,7 @@ mod tests {
             data_to_keep: 0,
         });
         assert_eq!(world.active_tutorial_toast(), Some(active));
-        assert_eq!(world.client_toast_events().len(), 1);
-        assert_eq!(
-            world.client_toast_events()[0].tutorial(),
-            Some((active.id, active.kind))
-        );
+        assert_eq!(world.client_toast_events(), &retained_events);
 
         world.clear_client_level();
         assert_eq!(world.active_tutorial_toast(), None);

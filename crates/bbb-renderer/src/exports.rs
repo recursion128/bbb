@@ -160,7 +160,7 @@ pub use crate::hud::{
     HudStyledTextRun, HudSystemToast, HudSystemToastInstance, HudTestBlockEditorLayout,
     HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorLayout,
     HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle,
-    HudTitleText, HudTutorialToast, HudTutorialToastIcon, HudUvRect, HudVehicleHealth,
+    HudTitleText, HudToast, HudTutorialToast, HudTutorialToastIcon, HudUvRect, HudVehicleHealth,
     HudWinScreen, HudWinScreenLine, HUD_BOOK_HEIGHT, HUD_BOOK_LINE_HEIGHT, HUD_BOOK_MAX_LINES,
     HUD_BOOK_PAGE_BACK_X, HUD_BOOK_PAGE_BUTTON_HEIGHT, HUD_BOOK_PAGE_BUTTON_WIDTH,
     HUD_BOOK_PAGE_BUTTON_Y, HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT,

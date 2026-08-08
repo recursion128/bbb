@@ -13,7 +13,7 @@ use bbb_protocol::RichTextComponent;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::WorldStore;
+use crate::{ClientSystemToastEvent, WorldStore};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerPresentationState {
@@ -126,6 +126,8 @@ pub struct ResourcePackDownloadState {
     pub total_bytes: Option<u64>,
     pub failed_packs: u32,
     pub phase: ResourcePackDownloadPhase,
+    #[serde(default)]
+    pub toast_action: ResourcePackDownloadToastAction,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -134,6 +136,20 @@ pub enum ResourcePackDownloadPhase {
     Downloading,
     Succeeded,
     Failed,
+}
+
+/// The exact `HttpUtil.DownloadProgressListener` call that affects its
+/// per-notifier `SystemToast`. Some download-state changes are diagnostic
+/// only and must not reset the toast lifetime.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourcePackDownloadToastAction {
+    #[default]
+    None,
+    AddOrUpdateTitlePreserveMessage,
+    AddOrUpdateTitle,
+    AddOrUpdateProgress,
+    ForceHide,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -347,6 +363,18 @@ impl WorldStore {
             self.presentation.resource_pack_downloads.clear();
             return;
         };
+        let changed = self
+            .presentation
+            .resource_pack_downloads
+            .iter()
+            .find(|current| current.batch_sequence == state.batch_sequence)
+            != Some(&state);
+        if changed && state.toast_action != ResourcePackDownloadToastAction::None {
+            self.push_system_toast_event(ClientSystemToastEvent::ResourcePackDownload {
+                session_generation: self.presentation.resource_pack_session_generation,
+                state: state.clone(),
+            });
+        }
         if let Some(current) = self
             .presentation
             .resource_pack_downloads
@@ -363,6 +391,27 @@ impl WorldStore {
     }
 
     pub fn set_resource_pack_download_states(&mut self, states: Vec<ResourcePackDownloadState>) {
+        let mut changed = states
+            .iter()
+            .filter(|state| {
+                self.presentation
+                    .resource_pack_downloads
+                    .iter()
+                    .find(|current| current.batch_sequence == state.batch_sequence)
+                    != Some(*state)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        changed.sort_by_key(|state| state.update_sequence);
+        for state in changed
+            .into_iter()
+            .filter(|state| state.toast_action != ResourcePackDownloadToastAction::None)
+        {
+            self.push_system_toast_event(ClientSystemToastEvent::ResourcePackDownload {
+                session_generation: self.presentation.resource_pack_session_generation,
+                state,
+            });
+        }
         self.presentation.resource_pack_downloads = states;
     }
 
@@ -1118,6 +1167,7 @@ mod tests {
             total_bytes: Some(1_024),
             failed_packs: 0,
             phase: ResourcePackDownloadPhase::Downloading,
+            toast_action: ResourcePackDownloadToastAction::AddOrUpdateProgress,
         }));
 
         store.reset_resource_pack_session();
@@ -1127,6 +1177,43 @@ mod tests {
         assert_eq!(store.resource_pack_session_generation(), 1);
         assert_eq!(store.counters().resource_packs_tracked, 0);
         assert_eq!(store.counters().resource_pack_pop_packets, 0);
+    }
+
+    #[test]
+    fn download_toast_events_dedupe_snapshots_and_bind_notifier_generation() {
+        let mut store = WorldStore::new();
+        let state = ResourcePackDownloadState {
+            batch_sequence: 4,
+            update_sequence: 9,
+            current_pack: 1,
+            total_packs: 1,
+            downloaded_bytes: 64,
+            total_bytes: None,
+            failed_packs: 0,
+            phase: ResourcePackDownloadPhase::Downloading,
+            toast_action: ResourcePackDownloadToastAction::AddOrUpdateProgress,
+        };
+        store.set_resource_pack_download_state(Some(state.clone()));
+        store.set_resource_pack_download_states(vec![state.clone()]);
+        assert_eq!(store.client_toast_events().len(), 1);
+        assert!(matches!(
+            store.client_toast_events()[0].system(),
+            Some(crate::ClientSystemToastEvent::ResourcePackDownload {
+                session_generation: 0,
+                state: event,
+            }) if event == &state
+        ));
+
+        store.reset_resource_pack_session();
+        store.set_resource_pack_download_state(Some(state.clone()));
+        assert_eq!(store.client_toast_events().len(), 2);
+        assert!(matches!(
+            store.client_toast_events()[1].system(),
+            Some(crate::ClientSystemToastEvent::ResourcePackDownload {
+                session_generation: 1,
+                state: event,
+            }) if event == &state
+        ));
     }
 
     #[test]

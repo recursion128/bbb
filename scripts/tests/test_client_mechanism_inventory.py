@@ -157,7 +157,7 @@ public class Owner {
         mechanism = value["mechanisms"]["resources-server-pack-lifecycle"]
         self.assertEqual(mechanism["owner_count"], 68)
         self.assertEqual(mechanism["owner_evidence_count"], 68)
-        self.assertEqual(mechanism.get("owner_gap_count", 0), 1)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 0)
         self.assertEqual(
             Counter(owner["source"]["path"] for owner in owners),
             Counter(
@@ -177,7 +177,6 @@ public class Owner {
                     owner["bbb_evidence"].get("implementation")
                     and owner["bbb_evidence"].get("tests")
                 )
-                or set(owner["bbb_evidence"]) == {"open_gap"}
                 for owner in owners
             )
         )
@@ -186,20 +185,7 @@ public class Owner {
             for owner in owners
             if "open_gap" in owner["bbb_evidence"]
         }
-        self.assertEqual(
-            set(open_gaps),
-            {
-                "net.minecraft.client.resources.server.DownloadedPackSource#createDownloadNotifier(final int totalCount)",
-            },
-        )
-        self.assertTrue(
-            all(
-                gap["ledger"] == "docs/unsupported-features.md#Machine-readable parity acceptance closure"
-                and gap["reason"]
-                and gap["close_condition"]
-                for gap in open_gaps.values()
-            )
-        )
+        self.assertEqual(open_gaps, {})
         scoped = {
             owner["vanilla_owner"]: owner["bbb_evidence"]["scope_ruling"]
             for owner in owners
@@ -229,6 +215,82 @@ public class Owner {
                 for owner in http_port_owners
             )
         )
+
+    def test_toast_owner_census_has_complete_evidence_scope_and_open_gaps(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        toast_paths = {
+            "net/minecraft/client/PeriodicNotificationManager.java": 10,
+            "net/minecraft/client/gui/components/toasts/AdvancementToast.java": 6,
+            "net/minecraft/client/gui/components/toasts/NowPlayingToast.java": 16,
+            "net/minecraft/client/gui/components/toasts/RecipeToast.java": 6,
+            "net/minecraft/client/gui/components/toasts/SystemToast.java": 24,
+            "net/minecraft/client/gui/components/toasts/Toast.java": 13,
+            "net/minecraft/client/gui/components/toasts/ToastManager.java": 21,
+            "net/minecraft/client/gui/components/toasts/TutorialToast.java": 11,
+        }
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] in toast_paths
+        ]
+
+        self.assertEqual(len(owners), 107)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            Counter(toast_paths),
+        )
+        self.assertTrue(
+            all(owner["mechanism_id"] == "hud-frame-extract-order" for owner in owners)
+        )
+        self.assertTrue(
+            all(
+                (
+                    owner["bbb_evidence"].get("implementation")
+                    and owner["bbb_evidence"].get("tests")
+                )
+                or set(owner["bbb_evidence"]) == {"open_gap"}
+                for owner in owners
+            )
+        )
+        gaps = [
+            owner["bbb_evidence"]["open_gap"]
+            for owner in owners
+            if "open_gap" in owner["bbb_evidence"]
+        ]
+        self.assertEqual(len(gaps), 32)
+        self.assertTrue(
+            all(
+                gap["ledger"]
+                == "docs/unsupported-features.md#Machine-readable parity acceptance closure"
+                and gap["reason"]
+                and gap["close_condition"]
+                for gap in gaps
+            )
+        )
+        scoped = [
+            owner["bbb_evidence"]["scope_ruling"]
+            for owner in owners
+            if "scope_ruling" in owner["bbb_evidence"]
+        ]
+        self.assertEqual(len(scoped), 5)
+        self.assertTrue(
+            all(
+                ruling["conclusion"] == "not-reachable-in-current-scope"
+                and ruling["vanilla_basis"]
+                and ruling["current_scope_reason"]
+                and ruling["reopen_condition"]
+                for ruling in scoped
+            )
+        )
+        mechanism = value["mechanisms"]["hud-frame-extract-order"]
+        self.assertEqual(mechanism["owner_count"], 118)
+        self.assertEqual(mechanism["owner_evidence_count"], 118)
+        self.assertEqual(mechanism["owner_gap_count"], 32)
+
     def test_minecraft_method_partition_is_total_and_homogeneous(self) -> None:
         generated = (
             inventory.REPO_ROOT
