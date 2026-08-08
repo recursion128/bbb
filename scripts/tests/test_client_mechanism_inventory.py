@@ -249,6 +249,59 @@ public class Owner {
             )
         )
 
+    def test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = sorted(
+            (
+                owner
+                for owner in value["owners"]
+                if owner["mechanism_id"] == "resources-reload-listeners"
+            ),
+            key=lambda owner: owner["source"]["line"],
+        )
+
+        self.assertEqual(len(owners), 20)
+        self.assertEqual(
+            [owner["owner_id"].rsplit(":", 1)[-1] for owner in owners],
+            [str(index) for index in range(20)],
+        )
+        mechanism = value["mechanisms"]["resources-reload-listeners"]
+        self.assertEqual(mechanism["owner_count"], 20)
+        self.assertEqual(mechanism["owner_evidence_count"], 20)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 0)
+        for owner in owners:
+            evidence = owner["bbb_evidence"]
+            self.assertTrue(evidence["implementation"])
+            self.assertTrue(evidence["tests"])
+
+        scope_rulings = {
+            owner["owner_id"]: owner["bbb_evidence"]["scope_ruling"]
+            for owner in owners
+            if "scope_ruling" in owner["bbb_evidence"]
+        }
+        self.assertEqual(
+            set(scope_rulings),
+            {
+                "registration:reload-listener:net.minecraft.client.Minecraft"
+                "#registerReloadListener:4",
+                "registration:reload-listener:net.minecraft.client.Minecraft"
+                "#registerReloadListener:18",
+            },
+        )
+        self.assertTrue(
+            all(
+                ruling["conclusion"] == "not-reachable-in-current-scope"
+                and ruling["vanilla_basis"]
+                and ruling["current_scope_reason"]
+                and ruling["reopen_condition"]
+                for ruling in scope_rulings.values()
+            )
+        )
+
     def test_audio_owner_census_has_complete_evidence_and_explicit_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT

@@ -9854,8 +9854,308 @@ BLOCK_ENTITY_RENDERER_OWNER_EVIDENCE = _registration_evidence(
 )
 
 
+RELOAD_LISTENER_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+)
+
+RELOAD_LISTENER_BARRIER_IMPLEMENTATION = (
+    "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+    "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+    "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+)
+
+RELOAD_LISTENER_BARRIER_TESTS = (
+    "crates/bbb-renderer/src/resource_reload.rs"
+    "#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+    "crates/bbb-native/src/resource_pack_runtime.rs"
+    "#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+)
+
+
+def _reload_listener_evidence(
+    implementation: tuple[str, ...],
+    tests: tuple[str, ...],
+) -> OwnerEvidence:
+    return OwnerEvidence(
+        RELOAD_LISTENER_BARRIER_IMPLEMENTATION + implementation,
+        RELOAD_LISTENER_BARRIER_TESTS + tests + (RELOAD_LISTENER_OWNER_CENSUS_TEST,),
+    )
+
+
+SPLASH_RELOAD_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/resources/SplashManager.java:39-64",
+        "net/minecraft/client/gui/screens/TitleScreen.java:95-99",
+    ),
+    current_scope_reason=(
+        "SplashManager prepares texts/splashes.txt for TitleScreen.init; the declared client "
+        "starts directly from command-line configuration and has no title-screen surface."
+    ),
+    reopen_condition="BBB adds a title-screen surface.",
+)
+
+GPU_WARNLIST_RELOAD_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/renderer/GpuWarnlistManager.java:76-94,137-155",
+        "net/minecraft/client/Options.java:197-207",
+        "net/minecraft/client/gui/screens/options/VideoSettingsScreen.java:77-87",
+    ),
+    current_scope_reason=(
+        "Vanilla emits warnlist matches only for the OpenGL backend and consumes them through "
+        "the improved-transparency options flow. BBB ships wgpu Vulkan/Metal/DX12 backends and "
+        "has no in-game options UI."
+    ),
+    reopen_condition=(
+        "BBB supports an OpenGL backend or the improved-transparency warning/options surface."
+    ),
+)
+
+RELOAD_LISTENER_OWNER_EVIDENCE = _registration_evidence(
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-item-model/src/item_runtime.rs"
+                "#pub fn load_with_locale_and_font_options",
+            ),
+            (
+                "crates/bbb-pack/src/language.rs"
+                "#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language",
+                "crates/bbb-item-model/src/item_runtime/tests.rs"
+                "#world_text_font_direction_tracks_the_selected_language_owner",
+            ),
+        ),
+        ("this.languageManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-pack/src/resource_textures.rs"
+                "#pub fn load_resource_texture_image",
+            ),
+            (
+                "crates/bbb-pack/src/resource_textures.rs"
+                "#loads_namespaced_resource_textures_with_pack_precedence_and_real_dimensions",
+            ),
+        ),
+        ("this.textureManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-renderer/src/core_shaders.rs"
+                "#pub(crate) fn compile_selected_shader_stages",
+                "crates/bbb-renderer/src/resource_reload.rs"
+                "#pub fn transactional_shader_resource_reload",
+            ),
+            (
+                "crates/bbb-renderer/src/resource_reload.rs"
+                "#local_shader_resource_generation_commits_and_rolls_back_as_one_owner",
+            ),
+        ),
+        ("this.shaderManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+                "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn commit_reload",
+            ),
+            (
+                "crates/bbb-native/src/audio_runtime.rs"
+                "#preload_plan_stamps_catalog_generation_and_receipt_is_machine_readable",
+                "crates/bbb-pack/src/sounds.rs"
+                "#pack_roots_stamp_sound_catalog_with_exact_resource_generation",
+            ),
+        ),
+        ("this.soundManager",),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (RELOAD_LISTENER_OWNER_CENSUS_TEST,),
+            SPLASH_RELOAD_SCOPE,
+        ),
+        ("this.splashManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            ("crates/bbb-native/src/resource_reload.rs#fn upload_reload_atlases",),
+            (
+                "crates/bbb-pack/src/roots.rs"
+                "#separate_atlases_share_one_generation_image_budget",
+                "crates/bbb-pack/src/atlas.rs"
+                "#atlas_mips_are_generated_per_sprite_without_cross_sprite_blending",
+            ),
+        ),
+        ("this.atlasManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-item-model/src/font.rs"
+                "#pub fn load_hud_font_atlas_with_options",
+            ),
+            (
+                "crates/bbb-item-model/src/font.rs"
+                "#font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics",
+            ),
+        ),
+        ("this.fontManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            ("crates/bbb-pack/src/roots.rs#pub fn load_terrain_colormaps",),
+            (
+                "crates/bbb-pack/src/roots.rs"
+                "#pack_roots_terrain_colormaps_use_resource_pack_precedence",
+            ),
+        ),
+        (
+            "new GrassColorReloadListener ()",
+            "new FoliageColorReloadListener ()",
+            "new DryFoliageColorReloadListener ()",
+        ),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-item-model/src/item_runtime.rs"
+                "#pub fn load_with_locale_and_font_options",
+            ),
+            (
+                "crates/bbb-pack/src/selected_packs.rs"
+                "#one_selected_generation_composes_custom_model_texture_font_sound_and_data_resources",
+                "crates/bbb-pack/src/block_models/tests.rs"
+                "#block_model_catalog_uses_resource_pack_precedence_for_blockstates_and_models",
+            ),
+        ),
+        ("this.modelManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            ("crates/bbb-pack/src/roots.rs#pub fn load_equipment_asset_catalog",),
+            (
+                "crates/bbb-pack/src/equipment_assets.rs"
+                "#equipment_asset_catalog_uses_resource_pack_precedence",
+            ),
+        ),
+        ("equipmentAssets",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-native/src/entity_assets.rs"
+                "#pub(crate) fn try_load_entity_model_textures",
+            ),
+            (
+                "crates/bbb-native/src/entity_assets.rs"
+                "#loads_pack_defined_entity_texture_resolution",
+            ),
+        ),
+        ("this.entityRenderDispatcher",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-renderer/src/resource_reload.rs"
+                "#pub(crate) fn transactional_resource_reload",
+            ),
+            (
+                "crates/bbb-renderer/src/resource_reload.rs"
+                "#successful_reload_commits_new_owner_and_discards_checkpoint",
+            ),
+        ),
+        ("this.blockEntityRenderDispatcher",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-native/src/particle_runtime.rs"
+                "#pub(crate) fn load",
+            ),
+            (
+                "crates/bbb-pack/src/particle_definitions.rs"
+                "#particle_definition_catalog_uses_resource_pack_overrides",
+                "crates/bbb-pack/src/particle_sprites.rs"
+                "#particle_sprite_catalog_loads_particle_atlas_images",
+            ),
+        ),
+        ("this.particleResources",),
+    ),
+    (
+        _reload_listener_evidence(
+            ("crates/bbb-pack/src/roots.rs#pub fn load_waypoint_style_catalog",),
+            (
+                "crates/bbb-pack/src/waypoint_styles.rs"
+                "#waypoint_style_catalog_uses_resource_pack_overrides",
+                "crates/bbb-renderer/src/resource_reload.rs"
+                "#failed_waypoint_locator_reload_restores_background_style_and_marker_sprite",
+            ),
+        ),
+        ("this.waypointStyles",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-native/src/sky_assets.rs"
+                "#pub(crate) fn try_load_sky_textures",
+                "crates/bbb-native/src/resource_reload.rs"
+                "#terrain_upload.request_reload_all_chunks();",
+            ),
+            (
+                "crates/bbb-native/src/sky_assets.rs"
+                "#loads_vanilla_end_sky_texture_from_resource_stack",
+            ),
+        ),
+        ("this.levelRenderer",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-native/src/sky_assets.rs"
+                "#fn try_load_cloud_texture",
+            ),
+            (
+                "crates/bbb-native/src/sky_assets.rs"
+                "#loads_vanilla_cloud_texture_from_resource_stack",
+            ),
+        ),
+        ("this.levelRenderer.getCloudRenderer ()",),
+    ),
+    (
+        OwnerEvidence(
+            ("docs/unsupported-features.md",),
+            (RELOAD_LISTENER_OWNER_CENSUS_TEST,),
+            GPU_WARNLIST_RELOAD_SCOPE,
+        ),
+        ("this.gpuWarnlistManager",),
+    ),
+    (
+        _reload_listener_evidence(
+            (
+                "crates/bbb-native/src/runtime.rs"
+                "#pub(crate) fn prepare_periodic_notifications",
+                "crates/bbb-native/src/runtime.rs"
+                "#pub(crate) fn install_periodic_notifications",
+            ),
+            (
+                "crates/bbb-native/src/runtime/periodic_notifications.rs"
+                "#reload_preserves_elapsed_but_restarts_selected_initial_delay",
+                "crates/bbb-native/src/runtime/periodic_notifications.rs"
+                "#due_notification_projects_through_the_shared_system_toast_surface",
+            ),
+        ),
+        ("this.regionalCompliancies",),
+    ),
+)
+
+
 REGISTRATION_OWNER_EVIDENCE = {
     "rendering-block-entity-registration": BLOCK_ENTITY_RENDERER_OWNER_EVIDENCE,
+    "resources-reload-listeners": RELOAD_LISTENER_OWNER_EVIDENCE,
 }
 
 

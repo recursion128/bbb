@@ -975,6 +975,23 @@ Matrix route: `fixture-valid`
 
         self.assertIn("reload-listener projection table is stale", lint.issues[0])
 
+    def test_reload_listener_projection_status_must_match_inventory_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lint, owners, mechanisms = self.reload_projection_fixture(
+                Path(directory), ["registration:reload:0"]
+            )
+            owners[0]["bbb_evidence"] = {
+                "scope_ruling": {
+                    "conclusion": "not-reachable-in-current-scope",
+                    "vanilla_basis": ["fixture/Owner.java:1-2"],
+                    "current_scope_reason": "fixture",
+                    "reopen_condition": "fixture",
+                }
+            }
+            lint.check_reload_listener_projections(owners, mechanisms)
+
+        self.assertIn("reload-listener projection table is stale", lint.issues[0])
+
 
 if __name__ == "__main__":
     unittest.main()

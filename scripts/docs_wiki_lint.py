@@ -1075,17 +1075,24 @@ class WikiLint:
             ),
             key=source_order,
         )
+        def evidence_status(item: dict[str, object]) -> str:
+            evidence = item.get("bbb_evidence")
+            if isinstance(evidence, dict):
+                if isinstance(evidence.get("scope_ruling"), dict):
+                    return "not-needed"
+                if isinstance(evidence.get("open_gap"), dict):
+                    return "active"
+            return "existing"
+
         expected_rows = [
-            (index, item.get("owner_id"))
+            (index, item.get("owner_id"), evidence_status(item))
             for index, item in enumerate(expected, start=1)
         ]
-        actual_rows = [
-            (index, owner_id) for index, owner_id, _status in projection_rows
-        ]
+        actual_rows = projection_rows
         if actual_rows != expected_rows:
             self.fail(
                 "reload-listener projection table is stale: "
-                f"expected {len(expected_rows)} source-ordered owners, "
+                f"expected {len(expected_rows)} source-ordered owner/status rows, "
                 f"found {len(actual_rows)}"
             )
 

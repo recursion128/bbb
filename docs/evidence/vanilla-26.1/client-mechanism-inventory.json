@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "3ee7c9c220b61569bf25ec0b84842f010cb6c7819bd295fdca3630e7ee4a8349"
+      "sha256": "e78abf165ddad9aff820d155c19659f7b0c5715d2cde329355858284b7a5d75f"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -681,7 +681,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/resource_reload.rs"
       ],
-      "owner_count": 20
+      "owner_count": 20,
+      "owner_evidence_count": 20
     },
     "resources-reload-recovery": {
       "bbb_evidence": [
@@ -54174,6 +54175,21 @@
       "vanilla_owner": "net.minecraft.client.particle.ParticleResources#register(ParticleTypes.GLOW_SQUID_INK,SquidInkParticle.GlowInkProvider::new)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-item-model/src/item_runtime.rs#pub fn load_with_locale_and_font_options"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/language.rs#pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#world_text_font_direction_tracks_the_selected_language_owner",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54187,6 +54203,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.languageManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-pack/src/resource_textures.rs#pub fn load_resource_texture_image"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/resource_textures.rs#loads_namespaced_resource_textures_with_pack_precedence_and_real_dimensions",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54200,6 +54230,21 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.textureManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-item-model/src/item_runtime.rs#pub fn load_with_locale_and_font_options"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/selected_packs.rs#one_selected_generation_composes_custom_model_texture_font_sound_and_data_resources",
+          "crates/bbb-pack/src/block_models/tests.rs#block_model_catalog_uses_resource_pack_precedence_for_blockstates_and_models",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54213,6 +54258,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.modelManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-pack/src/roots.rs#pub fn load_equipment_asset_catalog"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/equipment_assets.rs#equipment_asset_catalog_uses_resource_pack_precedence",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54226,6 +54285,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(equipmentAssets)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/entity_assets.rs#pub(crate) fn try_load_entity_model_textures"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/entity_assets.rs#loads_pack_defined_entity_texture_resolution",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54239,6 +54312,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.entityRenderDispatcher)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-renderer/src/resource_reload.rs#successful_reload_commits_new_owner_and_discards_checkpoint",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54252,6 +54339,21 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.blockEntityRenderDispatcher)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/particle_runtime.rs#pub(crate) fn load"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/particle_definitions.rs#particle_definition_catalog_uses_resource_pack_overrides",
+          "crates/bbb-pack/src/particle_sprites.rs#particle_sprite_catalog_loads_particle_atlas_images",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54265,6 +54367,21 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.particleResources)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-pack/src/roots.rs#pub fn load_waypoint_style_catalog"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/waypoint_styles.rs#waypoint_style_catalog_uses_resource_pack_overrides",
+          "crates/bbb-renderer/src/resource_reload.rs#failed_waypoint_locator_reload_restores_background_style_and_marker_sprite",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54278,6 +54395,21 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.waypointStyles)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/sky_assets.rs#pub(crate) fn try_load_sky_textures",
+          "crates/bbb-native/src/resource_reload.rs#terrain_upload.request_reload_all_chunks();"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/sky_assets.rs#loads_vanilla_end_sky_texture_from_resource_stack",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54291,6 +54423,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.levelRenderer)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/sky_assets.rs#fn try_load_cloud_texture"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/sky_assets.rs#loads_vanilla_cloud_texture_from_resource_stack",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54304,6 +54450,24 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.levelRenderer.getCloudRenderer ())"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "Vanilla emits warnlist matches only for the OpenGL backend and consumes them through the improved-transparency options flow. BBB ships wgpu Vulkan/Metal/DX12 backends and has no in-game options UI.",
+          "reopen_condition": "BBB supports an OpenGL backend or the improved-transparency warning/options surface.",
+          "vanilla_basis": [
+            "net/minecraft/client/renderer/GpuWarnlistManager.java:76-94,137-155",
+            "net/minecraft/client/Options.java:197-207",
+            "net/minecraft/client/gui/screens/options/VideoSettingsScreen.java:77-87"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54317,6 +54481,22 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.gpuWarnlistManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/runtime.rs#pub(crate) fn prepare_periodic_notifications",
+          "crates/bbb-native/src/runtime.rs#pub(crate) fn install_periodic_notifications"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#reload_preserves_elapsed_but_restarts_selected_initial_delay",
+          "crates/bbb-native/src/runtime/periodic_notifications.rs#due_notification_projects_through_the_shared_system_toast_surface",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54330,6 +54510,21 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.regionalCompliancies)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-renderer/src/core_shaders.rs#pub(crate) fn compile_selected_shader_stages",
+          "crates/bbb-renderer/src/resource_reload.rs#pub fn transactional_shader_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-renderer/src/resource_reload.rs#local_shader_resource_generation_commits_and_rolls_back_as_one_owner",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54343,6 +54538,22 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.shaderManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn prepare_reload",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn commit_reload"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-native/src/audio_runtime.rs#preload_plan_stamps_catalog_generation_and_receipt_is_machine_readable",
+          "crates/bbb-pack/src/sounds.rs#pack_roots_stamp_sound_catalog_with_exact_resource_generation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54356,6 +54567,23 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.soundManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "docs/unsupported-features.md"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "SplashManager prepares texts/splashes.txt for TitleScreen.init; the declared client starts directly from command-line configuration and has no title-screen surface.",
+          "reopen_condition": "BBB adds a title-screen surface.",
+          "vanilla_basis": [
+            "net/minecraft/client/resources/SplashManager.java:39-64",
+            "net/minecraft/client/gui/screens/TitleScreen.java:95-99"
+          ]
+        },
+        "tests": [
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54369,6 +54597,21 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.splashManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn upload_reload_atlases"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/roots.rs#separate_atlases_share_one_generation_image_budget",
+          "crates/bbb-pack/src/atlas.rs#atlas_mips_are_generated_per_sprite_without_cross_sprite_blending",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54382,6 +54625,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.atlasManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-item-model/src/font.rs#pub fn load_hud_font_atlas_with_options"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-item-model/src/font.rs#font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54395,6 +54652,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(this.fontManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-pack/src/roots.rs#pub fn load_terrain_colormaps"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/roots.rs#pack_roots_terrain_colormaps_use_resource_pack_precedence",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54408,6 +54679,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(new GrassColorReloadListener ())"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-pack/src/roots.rs#pub fn load_terrain_colormaps"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/roots.rs#pack_roots_terrain_colormaps_use_resource_pack_precedence",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -54421,6 +54706,20 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#registerReloadListener(new FoliageColorReloadListener ())"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn prepare_native_resource_reload",
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+          "crates/bbb-pack/src/roots.rs#pub fn load_terrain_colormaps"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",
+          "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+          "crates/bbb-pack/src/roots.rs#pack_roots_terrain_colormaps_use_resource_pack_precedence",
+          "scripts/tests/test_client_mechanism_inventory.py#test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings"
+        ]
+      },
       "category": "reload-listener",
       "domain": "resources",
       "kind": "registration-call",
@@ -56988,7 +57287,8 @@
       "hud-hotbar-selection",
       "hud-overlay-effects",
       "hud-text-and-lists",
-      "rendering-block-entity-registration"
+      "rendering-block-entity-registration",
+      "resources-reload-listeners"
     ],
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
     "serverbound_scan_paths": [
@@ -57149,6 +57449,10 @@
       "sha256": "3aca3245a16d0692dd0cb6c8c3b9318745015bd22c12d680452fd6e10461839b"
     },
     {
+      "path": "net/minecraft/client/gui/screens/options/VideoSettingsScreen.java",
+      "sha256": "bcf3a5183fea47161723d0a5d6fa5ecedcf624648b01b270b22ab3210f7d6856"
+    },
+    {
       "path": "net/minecraft/client/gui/screens/packs/PackSelectionScreen.java",
       "sha256": "429ec07c47e70914f9ddd3eb0aa838b36493c4547af93c6fa6c0e3ce3bb57008"
     },
@@ -57223,6 +57527,10 @@
     {
       "path": "net/minecraft/client/renderer/GameRenderer.java",
       "sha256": "8c8147c9235fc7ef461808c01fcece1ee0cbbd057e3d299e39f043aac05503a4"
+    },
+    {
+      "path": "net/minecraft/client/renderer/GpuWarnlistManager.java",
+      "sha256": "c85e4f64962de8baf88f97da90c5bc0c49da04a432ff97f9af56013359a65788"
     },
     {
       "path": "net/minecraft/client/renderer/LevelRenderer.java",
@@ -58431,6 +58739,10 @@
     {
       "path": "net/minecraft/client/resources/SkinManager.java",
       "sha256": "246edfb74d6b2268c709254fb1d30980ea58d41afd19b3048942174802a1b73b"
+    },
+    {
+      "path": "net/minecraft/client/resources/SplashManager.java",
+      "sha256": "320e15f2394c6a1c607eda8074561b470c8721e5c866fa0bdd5e9a588625e95a"
     },
     {
       "path": "net/minecraft/client/resources/language/ClientLanguage.java",
