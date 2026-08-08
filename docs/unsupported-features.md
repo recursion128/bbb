@@ -56,15 +56,17 @@ Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-ho
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `rendering-level-section-lifecycle`
-- Produce a current-HEAD parity acceptance report whose 147 records and reverse
-  artifact/scenario mappings validate without a false `equivalent`: capture commit
-  `6c16fda0` is bound to gated evidence commit `bfcc657cf` by the independently
-  recomputed `elf-load-image-v1` identity, and its Linux/lifecycle reports are
-  exact-commit receipts. Add exact decision-test/source-owner evidence for every
-  remaining matrix-only record. The report must preserve the invalid
-  host-audio receipt until real ALSA device access exists; the user-waived macOS
-  `deferred-external` row is not a closure blocker but retains its source basis
-  and reopen condition.
+- Close the 107 records that remain `partial` in the current parity acceptance
+  report. All 147 records and reverse artifact/scenario mappings validate against
+  gated evidence commit `28f2b8994` with zero false `equivalent`, zero missing
+  focused-decision evidence, and current Vanilla owner source hashes; the
+  bidirectional-text owner is specifically bound to `Language`, `ClientLanguage`,
+  `FormattedBidiReorder`, and `SubStringSource` instead of a prose-derived source
+  fallback. Remaining closure requires exact-commit Linux/lifecycle/visual/draw/
+  performance receipts and the real ALSA host-device receipt, followed by honest
+  matrix status changes. Preserve invalid receipts until replaced; the user-waived
+  macOS `deferred-external` row is not a closure blocker but retains its source
+  basis and reopen condition.
 - The server-pack lifecycle census now covers all 68 reachable/helper owners in
   `DownloadedPackSource`, `ServerPackManager`, `DownloadQueue`,
   `DownloadCacheCleaner`, the `HttpUtil` download chain and the Minecraft clear

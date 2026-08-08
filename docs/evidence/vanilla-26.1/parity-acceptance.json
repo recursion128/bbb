@@ -344,12 +344,12 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "55f474758c82055c04a31fa5a3fc58edadc13ec2330825b07369dc370cf17fbe",
+      "sha256": "188071edc728915aa136ab925db9e87f7c5b7ff651e11bd9a60fd0b8e211a485",
       "valid": true
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+      "bbb_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
       "exists": true,
       "invalid_reasons": [],
       "kind": "gate",
@@ -366,6 +366,7 @@
         "hud-overlay-effects",
         "hud-player-vitals",
         "hud-text-and-lists",
+        "identity-skin-presentation",
         "input-debug-key-actions",
         "input-key-mapping",
         "input-keyboard-routing",
@@ -440,7 +441,16 @@
         "resources-server-pack-lifecycle",
         "security-secure-chat-reporting",
         "ui-accessibility-surface",
+        "ui-bidirectional-shaping",
+        "ui-chat-screen-surface",
         "ui-clipboard-surface",
+        "ui-context-entity-type",
+        "ui-death-screen-surface",
+        "ui-disconnected-screen-surface",
+        "ui-font-manager",
+        "ui-font-provider-pipeline",
+        "ui-local-time-icu",
+        "ui-menu-screen-registration",
         "ui-pause-screen-surface",
         "ui-screen-lifecycle",
         "world-client-ambient-animation",
@@ -454,8 +464,8 @@
         "world-client-session-services"
       ],
       "path": ".git/bbb/gate-log.tsv",
-      "receipt": "2026-08-08T09:24:19Z\t8ffa16bc1f56ff8872d79c82b3df25e4913efac0\tclean\ttotal:255s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:0s,scripts-tests:69s,diff-check:0s,check:8s,cross-check:59s,test:108s",
-      "sha256": "a0feb5769e4e85e43e1ae4da30df41e3124fe66ea6c08c4beea16f78004b3f97",
+      "receipt": "2026-08-08T09:27:19Z\t28f2b8994d17ebf5d03603966b525e9f9bcab572\tclean\ttotal:25s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:14s",
+      "sha256": "2ce7110c129424d64df91c30ee1ea52c0459655cfcdf1baf891fc21f47fc0f6e",
       "valid": true
     },
     {
@@ -706,7 +716,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "e4394ab34a4778730519fca11f547a2650d8fbe0e311b580e96ceebc6769dba3",
+      "sha256": "98e442273dec4ea94051a7d12417e3fffeaee1a6b3d06de2b73420c60d4fdbbf",
       "valid": true
     },
     {
@@ -846,7 +856,8 @@
       "invalid_reasons": [],
       "kind": "repo-evidence",
       "mechanism_ids": [
-        "ui-font-manager"
+        "ui-font-manager",
+        "ui-font-provider-pipeline"
       ],
       "path": "crates/bbb-item-model/src/font.rs",
       "scenario_ids": [],
@@ -860,7 +871,9 @@
       "invalid_reasons": [],
       "kind": "repo-evidence",
       "mechanism_ids": [
-        "persistence-options-apply"
+        "persistence-options-apply",
+        "ui-font-manager",
+        "ui-font-provider-pipeline"
       ],
       "path": "crates/bbb-item-model/src/font/providers.rs",
       "scenario_ids": [],
@@ -894,7 +907,8 @@
         "protocol-login-handler-decisions",
         "protocol-packet-tables",
         "protocol-play-handler-decisions",
-        "protocol-serverbound-call-sites"
+        "protocol-serverbound-call-sites",
+        "ui-local-time-icu"
       ],
       "path": "crates/bbb-item-model/src/item_runtime/tests.rs",
       "scenario_ids": [],
@@ -1196,8 +1210,7 @@
       "kind": "repo-evidence",
       "mechanism_ids": [
         "hud-frame-extract-order",
-        "input-key-mapping",
-        "ui-bidirectional-shaping"
+        "input-key-mapping"
       ],
       "path": "crates/bbb-native/src/component_text.rs",
       "scenario_ids": [],
@@ -1560,20 +1573,6 @@
       "valid": true
     },
     {
-      "artifact_id": "repo:crates/bbb-native/src/input/disconnected_screen.rs",
-      "bbb_commit": null,
-      "exists": true,
-      "invalid_reasons": [],
-      "kind": "repo-evidence",
-      "mechanism_ids": [
-        "ui-disconnected-screen-surface"
-      ],
-      "path": "crates/bbb-native/src/input/disconnected_screen.rs",
-      "scenario_ids": [],
-      "sha256": "544dcfc02d11dfd6a13d5e8209c35e353451c1058267cc2d93b5139a7ceb14f7",
-      "valid": true
-    },
-    {
       "artifact_id": "repo:crates/bbb-native/src/input/game_event_screen.rs",
       "bbb_commit": null,
       "exists": true,
@@ -1913,20 +1912,6 @@
       "valid": true
     },
     {
-      "artifact_id": "repo:crates/bbb-native/src/item_models/dropped.rs",
-      "bbb_commit": null,
-      "exists": true,
-      "invalid_reasons": [],
-      "kind": "repo-evidence",
-      "mechanism_ids": [
-        "ui-context-entity-type"
-      ],
-      "path": "crates/bbb-native/src/item_models/dropped.rs",
-      "scenario_ids": [],
-      "sha256": "bc8da00282ff3b3c3c826324312d8108d2bf6e4b102bf50e2f747e4795974558",
-      "valid": true
-    },
-    {
       "artifact_id": "repo:crates/bbb-native/src/item_models/first_person.rs",
       "bbb_commit": null,
       "exists": true,
@@ -1958,7 +1943,8 @@
         "rendering-effects-screenshot",
         "rendering-entity-layer-registration",
         "rendering-entity-renderer-registration",
-        "rendering-level-pass"
+        "rendering-level-pass",
+        "ui-context-entity-type"
       ],
       "path": "crates/bbb-native/src/item_models/tests.rs",
       "scenario_ids": [],
@@ -2610,6 +2596,8 @@
         "security-secure-chat-reporting",
         "ui-accessibility-surface",
         "ui-chat-screen-surface",
+        "ui-death-screen-surface",
+        "ui-disconnected-screen-surface",
         "ui-menu-screen-registration",
         "world-client-clock-weather",
         "world-client-level-lifecycle",
@@ -4440,6 +4428,20 @@
       "valid": true
     },
     {
+      "artifact_id": "repo:crates/bbb-render-types/src/text_visual_order.rs",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "ui-bidirectional-shaping"
+      ],
+      "path": "crates/bbb-render-types/src/text_visual_order.rs",
+      "scenario_ids": [],
+      "sha256": "150fb3d25fd4779aacd2beb03f4d28d23c947f46a2907bd1fd6434557b83cec6",
+      "valid": true
+    },
+    {
       "artifact_id": "repo:crates/bbb-renderer/src/block_destroy.rs",
       "bbb_commit": null,
       "exists": true,
@@ -4539,20 +4541,6 @@
       "path": "crates/bbb-renderer/src/debug_text_billboards.rs",
       "scenario_ids": [],
       "sha256": "5a3d21bfa144883f01f4b5a996f61de6c7b448a732c6539ed044f137b106cc8b",
-      "valid": true
-    },
-    {
-      "artifact_id": "repo:crates/bbb-renderer/src/entity_models/held_item.rs",
-      "bbb_commit": null,
-      "exists": true,
-      "invalid_reasons": [],
-      "kind": "repo-evidence",
-      "mechanism_ids": [
-        "ui-context-entity-type"
-      ],
-      "path": "crates/bbb-renderer/src/entity_models/held_item.rs",
-      "scenario_ids": [],
-      "sha256": "6fc05facdcc813de5ef10f6a02187ce8ef25b129543778e5dfc43aba6ecb81ac",
       "valid": true
     },
     {
@@ -4723,7 +4711,8 @@
       "mechanism_ids": [
         "entities-fixed-type-surface",
         "rendering-entity-layer-registration",
-        "rendering-entity-renderer-registration"
+        "rendering-entity-renderer-registration",
+        "ui-context-entity-type"
       ],
       "path": "crates/bbb-renderer/src/entity_models/tests/player.rs",
       "scenario_ids": [],
@@ -4839,20 +4828,6 @@
       "path": "crates/bbb-renderer/src/hud/death_screen.rs",
       "scenario_ids": [],
       "sha256": "ee0c63b65c56c8358ae5cded011634dc30eb1cbd7677f74f14e37134a81d1d24",
-      "valid": true
-    },
-    {
-      "artifact_id": "repo:crates/bbb-renderer/src/hud/disconnected_screen.rs",
-      "bbb_commit": null,
-      "exists": true,
-      "invalid_reasons": [],
-      "kind": "repo-evidence",
-      "mechanism_ids": [
-        "ui-disconnected-screen-surface"
-      ],
-      "path": "crates/bbb-renderer/src/hud/disconnected_screen.rs",
-      "scenario_ids": [],
-      "sha256": "ce9e0c85d596c8275a211b883aa96d968204219b8f2971d513cf5886478b9359",
       "valid": true
     },
     {
@@ -7634,7 +7609,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "55f474758c82055c04a31fa5a3fc58edadc13ec2330825b07369dc370cf17fbe",
+      "sha256": "188071edc728915aa136ab925db9e87f7c5b7ff651e11bd9a60fd0b8e211a485",
       "valid": true
     },
     {
@@ -8203,7 +8178,7 @@
       "valid": false
     }
   ],
-  "bbb_evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+  "bbb_evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
   "commands": {
     "portable_check": "scripts/python python scripts/parity_acceptance.py check",
     "strict_artifact_check": "scripts/python python scripts/parity_acceptance.py check --require-artifacts --require-complete"
@@ -8220,7 +8195,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "e4394ab34a4778730519fca11f547a2650d8fbe0e311b580e96ceebc6769dba3"
+      "sha256": "98e442273dec4ea94051a7d12417e3fffeaee1a6b3d06de2b73420c60d4fdbbf"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8228,7 +8203,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "55f474758c82055c04a31fa5a3fc58edadc13ec2330825b07369dc370cf17fbe"
+      "sha256": "188071edc728915aa136ab925db9e87f7c5b7ff651e11bd9a60fd0b8e211a485"
     }
   ],
   "mechanisms": [
@@ -8242,7 +8217,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/startup.rs",
           "scripts/playable_gate.py"
@@ -8322,7 +8297,7 @@
         "repo:docs/wiki/architecture/offline-runtime.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-net/src/types/connection.rs",
           "docs/wiki/architecture/offline-runtime.md"
@@ -8404,7 +8379,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
           "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_tracks_normal_world_tick_rate",
@@ -8526,7 +8501,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -8655,7 +8630,7 @@
         "repo:crates/bbb-native/src/simulation/thread.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input",
@@ -8768,7 +8743,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -8833,7 +8808,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -8904,7 +8879,7 @@
         "repo:scripts/cargo-dev.sh"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
           "crates/bbb-pack/src/resources.rs",
@@ -9090,7 +9065,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -9177,7 +9152,7 @@
         "repo:crates/bbb-native/src/simulation.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -9312,7 +9287,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -9397,7 +9372,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -9814,7 +9789,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime/tests.rs#system_toast_title_arguments_relocalize_without_rebuilding_download_content",
           "crates/bbb-native/src/runtime/tests.rs#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
@@ -9896,14 +9871,19 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
         "repo:crates/bbb-item-model/src/font.rs",
+        "repo:crates/bbb-item-model/src/font/providers.rs",
         "repo:docs/wiki/mechanisms/ui/font-and-text.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
+          "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
+          "crates/bbb-item-model/src/font.rs#font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics",
+          "crates/bbb-item-model/src/font/providers.rs#font_options_filter_providers_before_reference_expansion",
           "docs/wiki/mechanisms/ui/font-and-text.md"
         ],
         "owner": "item-model/render-types/native font"
@@ -9911,21 +9891,34 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-item-model/src/font.rs",
+            "repo:crates/bbb-item-model/src/font/providers.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-font-manager",
-          "status": "invalid"
+          "scenario_id": "focused-ui-font-manager",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model fallback_prefers_first_provider_page",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/font.rs#font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model font_options_filter_providers_before_reference_expansion",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/font/providers.rs#font_options_filter_providers_before_reference_expansion",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -9938,7 +9931,6 @@
       "mechanism_id": "ui-font-manager",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -9999,12 +9991,18 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
+        "repo:crates/bbb-item-model/src/font.rs",
+        "repo:crates/bbb-item-model/src/font/providers.rs",
         "repo:docs/wiki/mechanisms/ui/font-and-text.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
+          "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
+          "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
+          "crates/bbb-item-model/src/font/providers.rs#unihex_provider_parses_ordered_overrides_and_validates_ranges",
           "docs/wiki/mechanisms/ui/font-and-text.md"
         ],
         "owner": "item-model/render-types/native"
@@ -10012,21 +10010,34 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-item-model/src/font.rs",
+            "repo:crates/bbb-item-model/src/font/providers.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-font-provider-pipeline",
-          "status": "invalid"
+          "scenario_id": "focused-ui-font-provider-pipeline",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model flattens_vanilla_reference_chain_in_provider_order",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model unihex_provider_parses_ordered_overrides_and_validates_ranges",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/font/providers.rs#unihex_provider_parses_ordered_overrides_and_validates_ranges",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -10039,7 +10050,6 @@
       "mechanism_id": "ui-font-provider-pipeline",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -10093,7 +10103,7 @@
         "repo:scripts/capture-vanilla-audio-receipt.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -10811,7 +10821,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-pack/src/window_icons.rs",
@@ -10885,7 +10895,7 @@
         "repo:scripts/lifecycle_soak.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-renderer/src/offscreen.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -10968,7 +10978,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -11026,7 +11036,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -11323,7 +11333,7 @@
         "repo:scripts/vanilla-source-tools.sh"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -12365,7 +12375,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -13314,7 +13324,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -14097,7 +14107,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
           "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
@@ -14885,7 +14895,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -15663,7 +15673,7 @@
         "repo:docs/wiki/mechanisms/protocol/client-state-flow.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -15960,7 +15970,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -16581,7 +16591,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -16629,20 +16639,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -16657,8 +16655,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -16667,6 +16669,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -16700,7 +16710,7 @@
         "repo:docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -16855,7 +16865,7 @@
         "repo:docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -16942,7 +16952,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -16990,20 +17000,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -17018,8 +17016,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -17028,6 +17030,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -17068,7 +17078,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17199,7 +17209,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17351,7 +17361,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17484,7 +17494,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17640,7 +17650,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17793,7 +17803,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17897,7 +17907,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18006,7 +18016,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -18116,7 +18126,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18258,7 +18268,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18348,7 +18358,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18490,7 +18500,7 @@
         "repo:crates/bbb-native/src/particle_runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -18588,7 +18598,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18738,7 +18748,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -18866,7 +18876,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -18981,7 +18991,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -19080,7 +19090,7 @@
         "repo:crates/bbb-world/src/client/local_player.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -19161,7 +19171,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -19261,7 +19271,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -19433,7 +19443,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -19557,7 +19567,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -19655,7 +19665,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -19725,7 +19735,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -19829,7 +19839,7 @@
         "repo:crates/bbb-world/src/recipe_book.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -19952,7 +19962,7 @@
         "repo:crates/bbb-world/src/client/ui.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -20085,7 +20095,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -20210,7 +20220,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -20335,7 +20345,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -20452,7 +20462,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -20557,7 +20567,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -20731,7 +20741,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -20871,7 +20881,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -20949,7 +20959,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -21043,7 +21053,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -21144,7 +21154,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -21249,7 +21259,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -21327,7 +21337,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -21421,7 +21431,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -21556,7 +21566,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -22230,7 +22240,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -22902,7 +22912,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -23714,7 +23724,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -24102,7 +24112,7 @@
         "repo:docs/evidence/vanilla-26.1/particle-provider-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -24354,7 +24364,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs"
         ],
@@ -24884,7 +24894,7 @@
         "repo:crates/bbb-world/src/client/hud_camera_player.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -25099,7 +25109,7 @@
         "repo:crates/bbb-renderer/src/hud/layout.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -25235,7 +25245,7 @@
         "repo:crates/bbb-renderer/src/vignette.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -25414,7 +25424,7 @@
         "repo:crates/bbb-world/src/client/scoreboard/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -25638,7 +25648,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -25886,7 +25896,7 @@
         "repo:crates/bbb-world/src/entities/tests/name_tag_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -26127,7 +26137,7 @@
         "repo:crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -26405,7 +26415,7 @@
         "repo:crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -26715,7 +26725,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -26847,7 +26857,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -27027,7 +27037,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -27231,7 +27241,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -27434,7 +27444,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -27551,7 +27561,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -27662,7 +27672,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -27758,7 +27768,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -27833,7 +27843,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-renderer/src/terrain.rs"
         ],
@@ -27904,7 +27914,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -27975,7 +27985,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/camera_pose.rs"
         ],
@@ -28040,6 +28050,7 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/inventory.rs",
         "repo:crates/bbb-native/src/input/inventory/menu_screens_26_1.rs",
@@ -28047,33 +28058,47 @@
         "repo:crates/bbb-world/src/client/inventory/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
-          "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs",
-          "crates/bbb-native/src/runtime/tests.rs",
-          "crates/bbb-world/src/client/inventory/tests.rs"
+          "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
+          "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_a_native_surface",
+          "crates/bbb-world/src/client/inventory/tests.rs#every_generated_menu_type_uses_the_same_open_replace_close_lifecycle"
         ],
         "owner": "native screen/menu presentation"
       },
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-native/src/input/inventory/menu_screens_26_1.rs",
+            "repo:crates/bbb-native/src/runtime/tests.rs",
+            "repo:crates/bbb-world/src/client/inventory/tests.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-menu-screen-registration",
-          "status": "invalid"
+          "scenario_id": "focused-ui-menu-screen-registration",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-native menu_screen_catalog_exactly_covers_generated_menu_registry",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native all_generated_open_screen_menu_types_project_a_native_surface",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_a_native_surface",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-world every_generated_menu_type_uses_the_same_open_replace_close_lifecycle",
+          "ignored": false,
+          "reference": "crates/bbb-world/src/client/inventory/tests.rs#every_generated_menu_type_uses_the_same_open_replace_close_lifecycle",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -28086,7 +28111,6 @@
       "mechanism_id": "ui-menu-screen-registration",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -28133,6 +28157,7 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input.rs",
         "repo:crates/bbb-native/src/input/tests.rs",
@@ -28142,12 +28167,14 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
-          "crates/bbb-native/src/input/tests.rs",
+          "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
+          "crates/bbb-native/src/input/tests.rs#chat_key_opens_chat_entry_and_submits_unsigned_message",
+          "crates/bbb-native/src/input/tests.rs#recent_chat_is_bounded_deduplicated_and_history_restores_the_edit_buffer",
           "crates/bbb-native/src/runtime/render_extract.rs",
-          "crates/bbb-native/src/runtime/tests.rs",
+          "crates/bbb-native/src/runtime/tests.rs#rich_chat_projection_retains_click_hover_and_revalidates_canonical_target",
           "docs/wiki/mechanisms/ui/font-and-text.md",
           "scripts/playable_gate.py"
         ],
@@ -28156,21 +28183,40 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-native/src/input/tests.rs",
+            "repo:crates/bbb-native/src/runtime/tests.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-chat-screen-surface",
-          "status": "invalid"
+          "scenario_id": "focused-ui-chat-screen-surface",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-native chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native chat_key_opens_chat_entry_and_submits_unsigned_message",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/input/tests.rs#chat_key_opens_chat_entry_and_submits_unsigned_message",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native recent_chat_is_bounded_deduplicated_and_history_restores_the_edit_buffer",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/input/tests.rs#recent_chat_is_bounded_deduplicated_and_history_restores_the_edit_buffer",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native rich_chat_projection_retains_click_hover_and_revalidates_canonical_target",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/tests.rs#rich_chat_projection_retains_click_hover_and_revalidates_canonical_target",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -28183,7 +28229,6 @@
       "mechanism_id": "ui-chat-screen-surface",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -28235,19 +28280,24 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/death_screen.rs",
         "repo:crates/bbb-native/src/runtime/render_extract.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs",
         "repo:crates/bbb-renderer/src/offscreen.rs",
         "repo:docs/wiki/architecture/client-boundaries.md",
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
+          "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
+          "crates/bbb-native/src/input/death_screen.rs#draft_discard_escape_continues_normal_and_hardcore_exit_paths",
           "crates/bbb-native/src/runtime/render_extract.rs",
-          "crates/bbb-renderer/src/offscreen.rs",
+          "crates/bbb-native/src/runtime/tests.rs#hud_death_screen_projection_and_narration_track_main_draft_and_quit_focus",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur",
           "docs/wiki/architecture/client-boundaries.md",
           "scripts/playable_gate.py"
         ],
@@ -28256,21 +28306,41 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-native/src/input/death_screen.rs",
+            "repo:crates/bbb-native/src/runtime/tests.rs",
+            "repo:crates/bbb-renderer/src/offscreen.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-death-screen-surface",
-          "status": "invalid"
+          "scenario_id": "focused-ui-death-screen-surface",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-native death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native draft_discard_escape_continues_normal_and_hardcore_exit_paths",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/input/death_screen.rs#draft_discard_escape_continues_normal_and_hardcore_exit_paths",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native hud_death_screen_projection_and_narration_track_main_draft_and_quit_focus",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/tests.rs#hud_death_screen_projection_and_narration_track_main_draft_and_quit_focus",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-renderer offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur",
+          "ignored": false,
+          "reference": "crates/bbb-renderer/src/offscreen.rs#offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -28283,7 +28353,6 @@
       "mechanism_id": "ui-death-screen-surface",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -28321,21 +28390,22 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
-        "repo:crates/bbb-native/src/input/disconnected_screen.rs",
         "repo:crates/bbb-native/src/network_runtime.rs",
         "repo:crates/bbb-native/src/runtime.rs",
-        "repo:crates/bbb-renderer/src/hud/disconnected_screen.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs",
         "repo:scripts/lifecycle_soak.py",
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
-          "crates/bbb-native/src/input/disconnected_screen.rs",
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
-          "crates/bbb-renderer/src/hud/disconnected_screen.rs",
+          "crates/bbb-native/src/runtime/tests.rs#disconnected_screen_projection_preserves_style_focus_and_narration",
+          "crates/bbb-native/src/runtime/tests.rs#disconnected_screen_title_tracks_vanilla_listener_phase",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
           "scripts/lifecycle_soak.py",
           "scripts/playable_gate.py"
         ],
@@ -28344,21 +28414,33 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-native/src/runtime/tests.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-disconnected-screen-surface",
-          "status": "invalid"
+          "scenario_id": "focused-ui-disconnected-screen-surface",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-native disconnected_screen_projection_preserves_style_focus_and_narration",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-native/src/runtime/tests.rs#disconnected_screen_projection_preserves_style_focus_and_narration",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native disconnected_screen_title_tracks_vanilla_listener_phase",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/tests.rs#disconnected_screen_title_tracks_vanilla_listener_phase",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -28371,7 +28453,6 @@
       "mechanism_id": "ui-disconnected-screen-surface",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -28408,7 +28489,7 @@
         "repo:crates/bbb-renderer/src/hud.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -28512,7 +28593,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -28594,47 +28675,61 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
-        "repo:crates/bbb-native/src/component_text.rs"
+        "repo:crates/bbb-render-types/src/text_visual_order.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
-          "crates/bbb-native/src/component_text.rs"
+          "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
+          "crates/bbb-render-types/src/text_visual_order.rs#visual_order_carries_utf16_metadata_like_vanilla_substring_source",
+          "crates/bbb-render-types/src/text_visual_order.rs#visual_order_matches_icu_mixed_direction_and_mirroring_vectors"
         ],
-        "owner": "native text layout"
+        "owner": "`bbb-render-types::text_visual_order`→native text layout"
       },
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-render-types/src/text_visual_order.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-bidirectional-shaping",
-          "status": "invalid"
+          "scenario_id": "focused-ui-bidirectional-shaping",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-render-types arabic_shaping_matches_icu4j_77_1_fixed_vectors",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-render-types visual_order_carries_utf16_metadata_like_vanilla_substring_source",
+          "ignored": false,
+          "reference": "crates/bbb-render-types/src/text_visual_order.rs#visual_order_carries_utf16_metadata_like_vanilla_substring_source",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-render-types visual_order_matches_icu_mixed_direction_and_mirroring_vectors",
+          "ignored": false,
+          "reference": "crates/bbb-render-types/src/text_visual_order.rs#visual_order_matches_icu_mixed_direction_and_mirroring_vectors",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
         "domain": "ui/text",
         "line": 110,
-        "required_state_projection": "bidi runs、shaped glyph order",
-        "route_reopen_condition": "shaping owner 变化时重开；[ledger](../../unsupported-features.md)",
+        "required_state_projection": "ICU4J Arabic shaping option 8、default LTR/RTL paragraph level、visual bidi runs、mirroring、UTF-16 style metadata",
+        "route_reopen_condition": "shaping owner、ICU version、paragraph level、run/mirroring 或 UTF-16 metadata 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "partial"
       },
       "mechanism_id": "ui-bidirectional-shaping",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -28642,67 +28737,23 @@
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-        "matrix_owner": "language/font shaping pipeline",
+        "matrix_owner": "`Language.getVisualOrder`→`ClientLanguage`→`FormattedBidiReorder`/`SubStringSource`",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           }
         ]
       }
@@ -28725,7 +28776,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -28934,7 +28985,7 @@
         "repo:crates/bbb-native/src/runtime/dialog_screen.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -29026,14 +29077,18 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
         "repo:crates/bbb-item-model/src/item_runtime/local_time.rs",
+        "repo:crates/bbb-item-model/src/item_runtime/tests.rs",
         "repo:scripts/local_time_tables.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
-          "crates/bbb-item-model/src/item_runtime/local_time.rs",
+          "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
+          "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_local_time_select_property",
           "scripts/local_time_tables.py"
         ],
         "owner": "local-time item property"
@@ -29041,21 +29096,34 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-item-model/src/item_runtime/local_time.rs",
+            "repo:crates/bbb-item-model/src/item_runtime/tests.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-local-time-icu",
-          "status": "invalid"
+          "scenario_id": "focused-ui-local-time-icu",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model goldens_match_vanilla_icu4j_output",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model local_time_english_week_data_locale_aliases",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model native_item_runtime_resolves_local_time_select_property",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_local_time_select_property",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -29068,7 +29136,6 @@
       "mechanism_id": "ui-local-time-icu",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -29089,36 +29156,51 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
-        "repo:crates/bbb-native/src/item_models/dropped.rs",
-        "repo:crates/bbb-renderer/src/entity_models/held_item.rs"
+        "repo:crates/bbb-native/src/item_models/tests.rs",
+        "repo:crates/bbb-renderer/src/entity_models/tests/player.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
-          "crates/bbb-native/src/item_models/dropped.rs",
-          "crates/bbb-renderer/src/entity_models/held_item.rs"
+          "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
+          "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
+          "crates/bbb-renderer/src/entity_models/tests/player.rs#player_using_a_spyglass_raises_it_to_the_eye"
         ],
         "owner": "item model consumers"
       },
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-native/src/item_models/tests.rs",
+            "repo:crates/bbb-renderer/src/entity_models/tests/player.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-ui-context-entity-type",
-          "status": "invalid"
+          "scenario_id": "focused-ui-context-entity-type",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-native held_generated_item_context_entity_type_select_uses_owner_kind",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native non_living_item_billboards_use_null_context_entity_type_select",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-renderer player_using_a_spyglass_raises_it_to_the_eye",
+          "ignored": false,
+          "reference": "crates/bbb-renderer/src/entity_models/tests/player.rs#player_using_a_spyglass_raises_it_to_the_eye",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -29131,7 +29213,6 @@
       "mechanism_id": "ui-context-entity-type",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -29166,7 +29247,7 @@
         "repo:crates/bbb-native/src/simulation/commands.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -29367,7 +29448,7 @@
         "repo:crates/bbb-native/src/runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -29556,7 +29637,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -29779,7 +29860,7 @@
         "repo:crates/bbb-native/src/runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -30000,7 +30081,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs"
         ],
@@ -30154,7 +30235,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30307,7 +30388,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30507,7 +30588,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30627,7 +30708,7 @@
         "repo:scripts/tests/test_client_options_catalog_extractor.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -30763,7 +30844,7 @@
         "repo:crates/bbb-renderer/src/render.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -30930,7 +31011,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -31203,7 +31284,7 @@
         "repo:scripts/tests/test_client_options_catalog_extractor.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -31294,7 +31375,7 @@
         "repo:crates/bbb-native/src/startup.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -31395,7 +31476,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -31463,16 +31544,20 @@
       "artifact_ids": [
         "client-owner-inventory",
         "feature-ledger",
+        "full-gate",
         "parity-matrix",
         "repo:crates/bbb-item-model/src/item_runtime/tests.rs",
         "repo:crates/bbb-item-model/src/skin_runtime.rs",
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
-          "crates/bbb-item-model/src/item_runtime/tests.rs",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
           "crates/bbb-item-model/src/skin_runtime.rs",
+          "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_property_trust_matches_services_signature_states",
+          "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_url_and_cache_identity_match_authlib_and_guava",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "owner": "`bbb-item-model::skin_runtime`→native→renderer"
@@ -31480,21 +31565,40 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
-            "parity-matrix",
-            "client-owner-inventory"
+            "full-gate",
+            "repo:crates/bbb-item-model/src/item_runtime/tests.rs",
+            "repo:crates/bbb-item-model/src/skin_runtime.rs"
           ],
           "kind": "state-trace",
-          "scenario_id": "missing-identity-skin-presentation",
-          "status": "invalid"
+          "scenario_id": "focused-identity-skin-presentation",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model profile_presentation_revision_tracks_skin_failure_after_success",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model profile_texture_property_trust_matches_services_signature_states",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_property_trust_matches_services_signature_states",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-item-model profile_texture_url_and_cache_identity_match_authlib_and_guava",
+          "ignored": false,
+          "reference": "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_url_and_cache_identity_match_authlib_and_guava",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
@@ -31507,7 +31611,6 @@
       "mechanism_id": "identity-skin-presentation",
       "valid": false,
       "validity_reasons": [
-        "focused decision evidence is missing",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -31560,7 +31663,7 @@
         "repo:crates/bbb-world/src/client/social.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -31902,7 +32005,7 @@
         "repo:crates/bbb-native/src/simulation/thread.rs"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -32043,7 +32146,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
@@ -32166,7 +32269,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/tests/test_gpu_duration_capture.py"
@@ -32355,7 +32458,7 @@
         "repo:scripts/platform_acceptance.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "scripts/platform_acceptance.py"
         ],
@@ -32432,7 +32535,7 @@
         "repo:scripts/cross_check.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/cross_check.py"
@@ -32481,20 +32584,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -32509,8 +32600,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -32519,6 +32614,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -32551,7 +32654,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32599,20 +32702,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -32627,8 +32718,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -32637,6 +32732,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -32669,7 +32772,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32757,7 +32860,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32880,7 +32983,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33043,7 +33146,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33133,7 +33236,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33197,7 +33300,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33282,7 +33385,7 @@
         "repo:scripts/client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -33606,7 +33709,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33670,7 +33773,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33718,20 +33821,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -33746,8 +33837,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -33756,6 +33851,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -33788,7 +33891,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33836,20 +33939,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -33864,8 +33955,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -33874,6 +33969,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -33906,7 +34009,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33954,20 +34057,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -33982,8 +34073,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -33992,6 +34087,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34024,7 +34127,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34072,20 +34175,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -34100,8 +34191,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -34110,6 +34205,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34142,7 +34245,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34200,7 +34303,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34248,20 +34351,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -34276,8 +34367,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -34286,6 +34381,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34318,7 +34421,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34366,20 +34469,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -34394,8 +34485,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -34404,6 +34499,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34436,7 +34539,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34484,20 +34587,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -34512,8 +34603,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -34522,6 +34617,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34554,7 +34657,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34614,7 +34717,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34662,20 +34765,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
-            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
@@ -34690,8 +34781,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -34700,6 +34795,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34737,7 +34840,7 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -34857,16 +34960,8 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/PeriodicNotificationManager.java",
-            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
-          },
-          {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
-            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
@@ -34885,8 +34980,12 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
-            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
             "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
@@ -34895,6 +34994,14 @@
           {
             "path": "net/minecraft/client/resources/server/ServerPackManager.java",
             "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
           },
           {
             "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
@@ -34925,7 +35032,7 @@
         "repo:scripts/tests/test_docs_lint.py"
       ],
       "bbb": {
-        "evidence_commit": "8ffa16bc1f56ff8872d79c82b3df25e4913efac0",
+        "evidence_commit": "28f2b8994d17ebf5d03603966b525e9f9bcab572",
         "evidence_references": [
           "scripts/docs_wiki_lint.py",
           "scripts/parity_acceptance.py",
@@ -35427,6 +35534,19 @@
         "hud-text-and-lists"
       ],
       "scenario_id": "focused-hud-text-and-lists",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-item-model/src/item_runtime/tests.rs",
+        "repo:crates/bbb-item-model/src/skin_runtime.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "identity-skin-presentation"
+      ],
+      "scenario_id": "focused-identity-skin-presentation",
       "status": "passed"
     },
     {
@@ -38005,6 +38125,31 @@
     {
       "artifact_ids": [
         "full-gate",
+        "repo:crates/bbb-render-types/src/text_visual_order.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-bidirectional-shaping"
+      ],
+      "scenario_id": "focused-ui-bidirectional-shaping",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-native/src/input/tests.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-chat-screen-surface"
+      ],
+      "scenario_id": "focused-ui-chat-screen-surface",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
         "repo:crates/bbb-native/src/input/tests.rs",
         "repo:crates/bbb-native/src/runtime/dialog_screen.rs"
       ],
@@ -38013,6 +38158,98 @@
         "ui-clipboard-surface"
       ],
       "scenario_id": "focused-ui-clipboard-surface",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-native/src/item_models/tests.rs",
+        "repo:crates/bbb-renderer/src/entity_models/tests/player.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-context-entity-type"
+      ],
+      "scenario_id": "focused-ui-context-entity-type",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-native/src/input/death_screen.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs",
+        "repo:crates/bbb-renderer/src/offscreen.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-death-screen-surface"
+      ],
+      "scenario_id": "focused-ui-death-screen-surface",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-native/src/runtime/tests.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-disconnected-screen-surface"
+      ],
+      "scenario_id": "focused-ui-disconnected-screen-surface",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-item-model/src/font.rs",
+        "repo:crates/bbb-item-model/src/font/providers.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-font-manager"
+      ],
+      "scenario_id": "focused-ui-font-manager",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-item-model/src/font.rs",
+        "repo:crates/bbb-item-model/src/font/providers.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-font-provider-pipeline"
+      ],
+      "scenario_id": "focused-ui-font-provider-pipeline",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-item-model/src/item_runtime/local_time.rs",
+        "repo:crates/bbb-item-model/src/item_runtime/tests.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-local-time-icu"
+      ],
+      "scenario_id": "focused-ui-local-time-icu",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-native/src/input/inventory/menu_screens_26_1.rs",
+        "repo:crates/bbb-native/src/runtime/tests.rs",
+        "repo:crates/bbb-world/src/client/inventory/tests.rs"
+      ],
+      "kind": "state-trace",
+      "mechanism_ids": [
+        "ui-menu-screen-registration"
+      ],
+      "scenario_id": "focused-ui-menu-screen-registration",
       "status": "passed"
     },
     {
@@ -38174,126 +38411,6 @@
       ],
       "scenario_id": "focused-world-client-session-services",
       "status": "passed"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "identity-skin-presentation"
-      ],
-      "scenario_id": "missing-identity-skin-presentation",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-bidirectional-shaping"
-      ],
-      "scenario_id": "missing-ui-bidirectional-shaping",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-chat-screen-surface"
-      ],
-      "scenario_id": "missing-ui-chat-screen-surface",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-context-entity-type"
-      ],
-      "scenario_id": "missing-ui-context-entity-type",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-death-screen-surface"
-      ],
-      "scenario_id": "missing-ui-death-screen-surface",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-disconnected-screen-surface"
-      ],
-      "scenario_id": "missing-ui-disconnected-screen-surface",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-font-manager"
-      ],
-      "scenario_id": "missing-ui-font-manager",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-font-provider-pipeline"
-      ],
-      "scenario_id": "missing-ui-font-provider-pipeline",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-local-time-icu"
-      ],
-      "scenario_id": "missing-ui-local-time-icu",
-      "status": "invalid"
-    },
-    {
-      "artifact_ids": [
-        "client-owner-inventory",
-        "parity-matrix"
-      ],
-      "kind": "state-trace",
-      "mechanism_ids": [
-        "ui-menu-screen-registration"
-      ],
-      "scenario_id": "missing-ui-menu-screen-registration",
-      "status": "invalid"
     },
     {
       "artifact_ids": [
