@@ -517,8 +517,8 @@ census 登记的其余 runtime/crash 与 input/accessibility/window 证据缺口
 archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload 与共同 draw evidence；configuration finish ordering 修复后的
 visual/workload/OpenGL+Vulkan draw、两轮 ABBA 与 GPU-duration 已在 capture commit
-`6c16fda0` 重采通过，并以 `elf-load-image-v1` 执行映像 identity 绑定到 full-gated evidence
-commit `bfcc657cf` 后关闭 matrix；安全预算、bounded runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。per-client GPU execution
+`fa73aed19` 重采通过，并以 `elf-load-image-v1` 执行映像 identity 绑定到 full-gated evidence
+commit `5f6e3336c` 后关闭两个 performance matrix 行；lifecycle/Linux/真实 ALSA receipts 仍开放。per-client GPU execution
 duration 的 amdgpu 提交链已具备（radeonsi/RADV 共用路径、compositor 按进程排除），
 current association/overhead receipt 有效；
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
