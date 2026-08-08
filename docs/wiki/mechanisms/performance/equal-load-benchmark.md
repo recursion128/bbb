@@ -73,21 +73,27 @@ CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、pe
 low、hitch、per-frame normalization、invalid reason 与 cleanup。
 
 历史 receipt 只保留回归背景，不再冒充 current-binary 证据。configuration finish ordering
-修复后的 current capture commit 是 `6c16fda010ac5b5ec42396db00e24cdb5b22ceac`；它已通过
-full gate、Linux Wayland/Vulkan platform gate 和五轮 lifecycle soak。冻结 release binary
-SHA-256 为 `93547b9b279edf1987f95ce8fb47921b46ea4d093ae971656de5820a6bfc2c0f`。
-本轮先完成 capture，再由后续已门禁 evidence commit 的独立 byte-identical rebuild 建立
-provenance bridge；bridge 完成前 matrix 保持 `partial`，不得仅凭本页文字宣称关闭。
+修复后的 capture commit 是 `6c16fda010ac5b5ec42396db00e24cdb5b22ceac`；其冻结 release
+binary SHA-256 为 `93547b9b279edf1987f95ce8fb47921b46ea4d093ae971656de5820a6bfc2c0f`。
+证据 commit `0bfd97ae0d7818e97fa8a097b61b22188f6fbbdf` 的独立 rebuild SHA-256 为
+`2af84597c83cb5a0787308e565a4041202ba88600c3c63bab07d93a9b7a6630c`；两者原始字节不同，
+差异只落在未加载 symbol/section string table 与 GNU build-id。`elf-load-image-v1` 独立解析
+并锁定 ELF entry、全部 program headers、四个 `PT_LOAD` 段和非 build-id notes，得到相同
+执行映像 identity `50a5881a70129e7abaa84225fdd882f2eeaf19f78e9fc8b6bc597b44bbad97a5`。
+bridge 位于 `/tmp/bbb-parity-0bfd97ae0/provenance/6c16-to-0bfd.json`，SHA-256 为
+`b8123a02b4c7c23dceec16c3444d4d9d054143079bd92121f1e4f1c5307c2e83`；当前 evidence
+commit 已通过 full gate；本页的 current receipt 通过 checkpoint full gate 后，矩阵据此
+关闭而不声称原始 ELF byte-identical。
 
 current-binary 一致性前置门禁已按 Vanilla→Vanilla→BBB→BBB 顺序重采：三场景双侧重复
 噪声标定后冻结既有 ROI 阈值，637 resident/selected chunks、15,288 resident/selected
-sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。workload summary
-位于 `/tmp/bbb-parity-6c16fda01/visual/workload-summary.json`，SHA-256 为
-`7866ba59a8b8cdfaf24168473dbb50756b70f38b223058a808687390aea5b9d2`；draw summary 位于
-`/tmp/bbb-parity-6c16fda01/renderdoc/summary.json`，SHA-256 为
-`e9f4d6ead1c54b6424e94775bf271c2d16135e58835ec93af8a9ebe2bbd47f31`。正式性能摘要位于
-`/tmp/bbb-parity-6c16fda01/formal-summary.json`，SHA-256 为
-`1616e4734a2df006763db5b247a0b91d0b2db6942dcacb244905059ff217f3ea`。
+sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。经 bridge 重建的
+workload summary 位于 `/tmp/bbb-parity-0bfd97ae0/visual/workload-summary.json`，SHA-256
+为 `f48e81f3ce9f7a42cde3f55e97bf8b9ee4f3a20a418c6367f2bb8f61b92790f8`；draw summary
+位于 `/tmp/bbb-parity-0bfd97ae0/renderdoc/summary.json`，SHA-256 为
+`dc734dbc1f1290df20c4d9f5eef7c6133a320d8565883e88a53a6dfb976217b2`。正式性能摘要位于
+`/tmp/bbb-parity-0bfd97ae0/formal-summary.json`，SHA-256 为
+`cf591d2605b65478ee0239deb6ae489015cc8c9056cb23b6adf4d764d745ed01`。
 
 | Contract/evidence | SHA-256 |
 | --- | --- |
@@ -97,11 +103,11 @@ sections、结构审查和六份 OpenGL/Vulkan RenderDoc capture 全部通过。
 | settings | `5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd` |
 | scene | `6f77811b5deafacea3c7666414cc1705c396a987b015e2a5f1f4832e872f73bc` |
 | server camera log | `f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a` |
-| visual/workload gate | `7866ba59a8b8cdfaf24168473dbb50756b70f38b223058a808687390aea5b9d2` |
-| RenderDoc anchor summary | `e9f4d6ead1c54b6424e94775bf271c2d16135e58835ec93af8a9ebe2bbd47f31` |
-| formal ABBA summary | `1616e4734a2df006763db5b247a0b91d0b2db6942dcacb244905059ff217f3ea` |
-| lifecycle soak | `4125220f7fdf6a79e67fd5b1e9d872a81e7cfeaaf61697074eb30f97bbc98588` |
-| Linux platform acceptance | `634ce1f58d3a7043d540f511305c594580ecdaf1863a96809a65554a0b3ca8a5` |
+| visual/workload gate | `f48e81f3ce9f7a42cde3f55e97bf8b9ee4f3a20a418c6367f2bb8f61b92790f8` |
+| RenderDoc anchor summary | `dc734dbc1f1290df20c4d9f5eef7c6133a320d8565883e88a53a6dfb976217b2` |
+| formal ABBA summary | `cf591d2605b65478ee0239deb6ae489015cc8c9056cb23b6adf4d764d745ed01` |
+| lifecycle soak | `3cf9085c4259595ba84966fe08a19be33da10d62bc72a2d7da513d0ef4199c73` |
+| Linux platform acceptance | `e4e72ddf3cabd507d45483304bf800d3a0ee60e3bfa2668dd54859df4dbedb89` |
 
 MangoHud application-frame 结果如下；1% low 来自尾部分布，不能从 p99 直接推导：
 
@@ -179,15 +185,16 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 ## 当前差异
 
 capture commit `6c16fda0` 的视觉/workload/draw、正式两轮 ABBA、MangoHud/perf、
-GPU-duration association 与 overhead 已全部通过；本 receipt 文档及其 provenance bridge
-在 full-gate 前仍保持 matrix/ledger active。frame interval、进程 CPU 均值与 GPU
-execution duration 是三个各自独立测得的量，
+GPU-duration association 与 overhead 已全部通过，并由 full-gated `0bfd97ae0` 的
+`elf-load-image-v1` bridge 和 exact-HEAD Linux/lifecycle receipt 收口；本页更新通过
+checkpoint full gate 后关闭矩阵。frame interval、
+进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
 任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，同样不能作为
 等负载或性能倍数。
 
 ## 账本/goal 路由
 
-等负载比较与 GPU duration 在本 receipt full-gated 后关闭 active 账本项。非 Linux 发布行等相邻平台状态只取
+等负载比较与 GPU duration 在本页通过 checkpoint full gate 后关闭账本项。非 Linux 发布行等相邻平台状态只取
 [`unsupported-features.md`](../../../unsupported-features.md)。
 
 ## 精确重开条件
