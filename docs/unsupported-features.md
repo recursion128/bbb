@@ -56,8 +56,6 @@ Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-ho
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `rendering-level-section-lifecycle`
-Matrix routes: `player-local-client-status-options`, `player-local-world-edit-ui`
-
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
   artifact/scenario mappings validate without a false `equivalent`: capture commit
   `6c16fda0` is bound to gated evidence commit `bfcc657cf` by the independently
@@ -87,15 +85,10 @@ Matrix routes: `player-local-client-status-options`, `player-local-world-edit-ui
   work if `FilePackResources`, JDK `ZipFile` lookup/enumeration, resource filter,
   overlay or reload ownership changes.
 - The server-pack runtime/net/world/HUD implementation and per-owner evidence
-  also remain open until the final implementation commit passes full gate and a
-  current live receipt; shared rows affected after `bfcc657cf` stay reopened
-  meanwhile. Reopen runtime identity/order if `packIdSerialNumber`, repository
+  remain open until a current-HEAD live receipt is captured. Reopen runtime
+  identity/order if `packIdSerialNumber`, repository
   sorting, required-top insertion, `ToastManager.update`, toast height/slot,
   notifier callback or diagnostics ownership changes.
-- The ToastManager lifecycle correction changes the shared `WorldStore` level
-  owner file used by the otherwise unchanged client-status and world-edit UI
-  mechanisms. Those two rows stay reopened until this implementation commit
-  passes full gate and their exact-file evidence is rebound.
 - The generated HUD/toast census now covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in
@@ -108,9 +101,6 @@ Matrix routes: `player-local-client-status-options`, `player-local-world-edit-ui
   construction-time width/message lines stay frozen. Close those mechanisms or
   retain a reproducible external-platform blocker; do not restore the former
   default-only or string-freeze equivalence claims.
-- The reachable SOCKS proxy/cache correction also changed nine shared startup,
-  window, UI and persistence evidence owners; those rows remain temporarily
-  reopened until the same full-gate/rebind checkpoint completes.
 - Advancing the evidence commit beyond `bfcc657cf` also expires nine
   lifecycle/visual/draw/performance receipts; they stay open until exact-commit
   soak and formal differential recapture replace those artifacts.
