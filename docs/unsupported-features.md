@@ -57,7 +57,8 @@ Matrix routes: `coverage-external-client-census`, `persistence-options-derived`,
 Matrix routes: `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
 Matrix routes: `docs-chinese-mechanism-wiki`, `lifecycle-client-runtime`, `lifecycle-client-task-handoff`, `lifecycle-session-replacement`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `persistence-options-file`, `persistence-options-unconsumed`, `platform-linux-seat-matrix`, `player-local-inventory-actions`, `resources-server-pack-lifecycle`
-- Close the 113 records that remain `partial` in the current parity acceptance
+Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`, `player-local-vitals-status`, `registries-built-in-catalogs`, `registries-synchronized-data`, `rendering-client-particle-routing`, `rendering-particle-provider-registration`
+- Close the 121 records that remain `partial` in the current parity acceptance
   report. The current staging report contains all 147 records and reverse
   artifact/scenario mappings, uses gated evidence commit `38bc40741`, and keeps
   every owner touched after that commit open rather than retaining a false
