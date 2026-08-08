@@ -88,6 +88,45 @@ class PlayableGateEvidenceTests(unittest.TestCase):
         self.assertEqual(state["language_entry_count"], 1)
         self.assertRegex(state["sha256"], r"^[0-9a-f]{64}$")
 
+    def test_collect_live_parser_carries_the_artifact_local_game_directory(self):
+        args = playable_gate._build_parser().parse_args(
+            [
+                "collect-live",
+                "--control",
+                "127.0.0.1:1",
+                "--status",
+                "status.json",
+                "--client-log",
+                "client.log",
+                "--server-log",
+                "server.log",
+                "--transfer-server-log",
+                "transfer.log",
+                "--transfer-server-port",
+                "2",
+                "--packet-ledger",
+                "ledger.json",
+                "--protocol-source",
+                "protocol.rs",
+                "--output",
+                "evidence.json",
+                "--client-game-dir",
+                "client-game",
+                "--timeout",
+                "3",
+                "--server-command",
+                "server-command",
+                "--profile-id",
+                "0" * 32,
+                "--server-pack-id",
+                "1" * 32,
+                "--client-locale",
+                "zh_cn",
+            ]
+        )
+
+        self.assertEqual(args.client_game_dir, Path("client-game"))
+
 
 class PlayableGateHeadlessProbeTests(unittest.TestCase):
     def probe(self):

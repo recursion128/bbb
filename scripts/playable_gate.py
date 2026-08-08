@@ -5490,6 +5490,7 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--packet-ledger", type=Path, required=True)
     collect.add_argument("--protocol-source", type=Path, required=True)
     collect.add_argument("--output", type=Path, required=True)
+    collect.add_argument("--client-game-dir", type=Path, required=True)
     collect.add_argument("--timeout", type=float, required=True)
     collect.add_argument("--server-command", type=Path, required=True)
     collect.add_argument("--profile-id", required=True)
