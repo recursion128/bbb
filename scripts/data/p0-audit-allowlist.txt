@@ -145,6 +145,11 @@
 ^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
 ^crates/bbb-native/src/input/.*[.]rs$	fallback
+# Startup reproduces Vanilla's stored `startedCleanly` fullscreen safety and
+# `Window.<init>` preferred-mode fallback. The inline test name is evidence for
+# that exact branch; none of these lines introduces a generic runtime fallback.
+^crates/bbb-native/src/client_options[.]rs$	prior startup, which preserves Vanilla's safe fullscreen fallback
+^crates/bbb-native/src/startup[.]rs$	`Window[.]<init>` constructs this fallback only when both launch|fn vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only
 # A missing/uncompiled section-occlusion result deliberately keeps every
 # resident terrain owner visible; this is a conservative visibility state, not
 # a renderer placeholder or unsupported canonical-state fallback.
