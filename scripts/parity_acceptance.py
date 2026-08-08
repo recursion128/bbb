@@ -871,6 +871,12 @@ def build_report(
         for reference in refs:
             path = repo / reference_path(reference)
             if path.is_file() and path.suffix == ".md":
+                # The ledger is a shared routing document. Feeding the whole file to
+                # one mechanism makes unrelated section edits silently replace that
+                # mechanism's Vanilla source hashes. `ledger_basis` below is already
+                # restricted to the sections that name this Mechanism ID.
+                if path.resolve() == ledger_path.resolve():
+                    continue
                 evidence_basis_parts.append(path.read_text(encoding="utf-8"))
         source_hashes = matched_source_hashes(
             row=row,
@@ -1197,17 +1203,25 @@ def validate_report(
         issues.append("unsupported parity acceptance schema")
     if report.get("vanilla_version") != "26.1":
         issues.append("parity acceptance report is not Vanilla 26.1")
-    rows = parse_matrix(repo / MATRIX_PATH)
+    matrix_path = repo / MATRIX_PATH
+    ledger_path = repo / LEDGER_PATH
+    rows = parse_matrix(matrix_path)
     rows_by_id = {row["mechanism_id"]: row for row in rows}
     matrix_ids = [row["mechanism_id"] for row in rows]
     inventory = json.loads((repo / INVENTORY_PATH).read_text(encoding="utf-8"))
+    inventory_mechanisms = inventory.get("mechanisms", {})
     inventory_owners = inventory.get("owners", [])
     inventory_source_files = inventory.get("source_files", [])
-    if not isinstance(inventory_owners, list) or not isinstance(
-        inventory_source_files, list
+    if (
+        not isinstance(inventory_mechanisms, dict)
+        or not isinstance(inventory_owners, list)
+        or not isinstance(inventory_source_files, list)
     ):
         return [*issues, "client mechanism inventory is malformed"]
     inventory_owner_ids: dict[str, list[str]] = defaultdict(list)
+    inventory_owners_by_mechanism: dict[str, list[dict[str, object]]] = defaultdict(
+        list
+    )
     for owner in inventory_owners:
         if (
             isinstance(owner, dict)
@@ -1215,12 +1229,19 @@ def validate_report(
             and isinstance(owner.get("owner_id"), str)
         ):
             inventory_owner_ids[owner["mechanism_id"]].append(owner["owner_id"])
+            inventory_owners_by_mechanism[owner["mechanism_id"]].append(owner)
     for owner_ids in inventory_owner_ids.values():
         owner_ids.sort()
+    inventory_hashes = {
+        item["path"]: item["sha256"]
+        for item in inventory_source_files
+        if isinstance(item, dict)
+        and isinstance(item.get("path"), str)
+        and isinstance(item.get("sha256"), str)
+    }
     corpus_source_sha256 = canonical_sha256(inventory_source_files)
-    ledger_by_id, ledger_ids = ledger_sections(
-        (repo / LEDGER_PATH).read_text(encoding="utf-8")
-    )
+    ledger_by_id, ledger_ids = ledger_sections(ledger_path.read_text(encoding="utf-8"))
+    class_sources = source_index(source_root)
     evidence_commit = report.get("bbb_evidence_commit")
     if not isinstance(evidence_commit, str) or not re.fullmatch(
         r"[0-9a-f]{40}", evidence_commit
@@ -1323,6 +1344,38 @@ def validate_report(
                 expected_owner_ids
             ):
                 issues.append(f"stale Vanilla owner-set hash for {mechanism_id}")
+            references = evidence_references(
+                repo,
+                matrix_path,
+                row,
+                inventory_mechanisms.get(mechanism_id)
+                if isinstance(inventory_mechanisms.get(mechanism_id), dict)
+                else None,
+            )
+            evidence_basis_parts = [row["evidence"]]
+            for reference in references:
+                path = repo / reference_path(reference)
+                if (
+                    path.is_file()
+                    and path.suffix == ".md"
+                    and path.resolve() != ledger_path.resolve()
+                ):
+                    evidence_basis_parts.append(path.read_text(encoding="utf-8"))
+            try:
+                expected_source_hashes = matched_source_hashes(
+                    row=row,
+                    owners=inventory_owners_by_mechanism.get(mechanism_id, []),
+                    inventory_hashes=inventory_hashes,
+                    class_sources=class_sources,
+                    source_root=source_root,
+                    ledger_basis=ledger_by_id.get(mechanism_id, ""),
+                    evidence_basis="\n".join(evidence_basis_parts),
+                )
+            except AcceptanceError as error:
+                issues.append(f"invalid Vanilla source mapping for {mechanism_id}: {error}")
+            else:
+                if vanilla.get("source_hashes") != expected_source_hashes:
+                    issues.append(f"stale Vanilla source mapping for {mechanism_id}")
             if (
                 not vanilla.get("source_hashes")
                 and not mechanism_id.startswith(("coverage-", "docs-"))

@@ -48,11 +48,11 @@ Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_
 
 Owner: `scripts` + the matrix-declared BBB owners
 
-Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-login-handler-decisions`, `protocol-client-state-flow`
+Matrix routes: `startup-client-bootstrap`, `startup-session-identity`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-login-handler-decisions`, `protocol-client-state-flow`
 Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`
 Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`, `player-local-world-edit-ui`
-Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
+Matrix routes: `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
@@ -64,7 +64,8 @@ Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycl
   `FormattedBidiReorder`, and `SubStringSource` instead of a prose-derived source
   fallback. Current visual/draw/performance receipts are rebound from capture
   `fa73aed19` by identical `elf-load-image-v1`; acceptance schema v2 binds the
-  selected clean full-gate line as an immutable `gate-receipt-line-v1` artifact.
+  selected clean full-gate line as an immutable `gate-receipt-line-v1` artifact;
+  per-Mechanism ledger source-hash scoping awaits its current full gate.
   Remaining closure requires an
   exact-commit real ALSA host-device receipt plus per-mechanism matrix review. Exact-commit
   lifecycle and Linux platform receipts are now present; the platform seat,
@@ -72,30 +73,6 @@ Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycl
   Preserve invalid receipts until replaced; the user-waived
   macOS `deferred-external` row is not a closure blocker but retains its source
   basis and reopen condition.
-- The server-pack lifecycle census now covers all 68 reachable/helper owners in
-  `DownloadedPackSource`, `ServerPackManager`, `DownloadQueue`,
-  `DownloadCacheCleaner`, the `HttpUtil` download chain and the Minecraft clear
-  call. Download/cache/log/vacuum ordering, one DownloadQueue batch per external
-  push, cross-batch failure propagation and per-batch five-slot progress toasts
-  now have decision-level tests. All 68 owners have implementation/test or
-  explicit scope evidence; `createDownloadNotifier` is bound to the shared
-  mixed-family five-slot manager, exact callback mutation actions and notifier
-  generation. The pack provider now
-  retains the downloaded ZIP as its canonical source, indexes the central
-  directory without eager extraction, resolves duplicate lookup using the final
-  central entry, preserves central-order overlay/list decisions, and materializes
-  only consumed resources into a flat temporary cache. Focused tests cover
-  duplicate entries, file/directory collisions, overlays, long paths, high-ratio
-  content, lazy listing and persistent archive ownership. Runtime pack ids now
-  use the per-load-attempt `server/%08X/%UUID` serial and the repository retains
-  Vanilla's reverse-push ordering. Reopen the provider
-  work if `FilePackResources`, JDK `ZipFile` lookup/enumeration, resource filter,
-  overlay or reload ownership changes.
-- The server-pack runtime/net/world/HUD implementation and per-owner evidence
-  remain open until a current-HEAD live receipt is captured. Reopen runtime
-  identity/order if `packIdSerialNumber`, repository
-  sorting, required-top insertion, `ToastManager.update`, toast height/slot,
-  notifier callback or diagnostics ownership changes.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in

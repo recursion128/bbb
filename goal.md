@@ -518,7 +518,7 @@ archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同
 锚点、可见 workload 与共同 draw evidence；configuration finish ordering 修复后的
 visual/workload/OpenGL+Vulkan draw、两轮 ABBA 与 GPU-duration 已在 capture commit
 `fa73aed19` 重采通过，并以 `elf-load-image-v1` 执行映像 identity 绑定到 full-gated evidence
-commit `5f6e3336c` 后关闭两个 performance matrix 行；full-gated `553d02405` 又完成 5× lifecycle soak 及 Linux Wayland/Vulkan/真实 `wl_seat` 验收并关闭 platform seat/session replacement/task handoff/client-runtime 行；只余真实 ALSA receipt 仍开放。per-client GPU execution
+commit `5f6e3336c` 后关闭两个 performance matrix 行；full-gated `553d02405` 又完成 5× lifecycle soak 及 Linux Wayland/Vulkan/真实 `wl_seat` 验收并关闭 platform seat/session replacement/task handoff/client-runtime 行；full-gated `9696953d3` 的 current-HEAD live receipt 关闭 server-pack lifecycle 行；acceptance ledger source-hash scoping 等待 current full-gate rebind，audio 工程只余真实 ALSA receipt 仍开放。per-client GPU execution
 duration 的 amdgpu 提交链已具备（radeonsi/RADV 共用路径、compositor 按进程排除），
 current association/overhead receipt 有效；
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其

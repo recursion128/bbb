@@ -237,6 +237,7 @@
         "debug-integrated-server-mirrors",
         "diagnostics-client-level-report",
         "diagnostics-client-only-inspection-exclusions",
+        "docs-chinese-mechanism-wiki",
         "entities-fixed-type-surface",
         "hud-frame-extract-order",
         "hud-hotbar-selection",
@@ -322,7 +323,6 @@
         "resources-reload-listeners",
         "resources-reload-recovery",
         "resources-runtime-mipmap-update",
-        "resources-server-pack-lifecycle",
         "resources-window-icons",
         "resources-world-list-favicons",
         "scope-client-level-noop-hooks",
@@ -361,7 +361,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "663d3cd6b9e535e9defe1215a279a221c09ba93d71863d6b880423daba506d0f",
+      "sha256": "e8088a1d56988d6e14f311cd897db8e7ad0c79f68026991ef9b75cfae4cdf0c7",
       "valid": true
     },
     {
@@ -733,7 +733,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "6511865c77c0fcc1257224195369be10e8beb247bdcbfe1cf88e1d7632131750",
+      "sha256": "537a36aae89b5441a397e31d7d0d048522aef74eaa4f4de9a6bca427f5014b77",
       "valid": true
     },
     {
@@ -7666,7 +7666,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "663d3cd6b9e535e9defe1215a279a221c09ba93d71863d6b880423daba506d0f",
+      "sha256": "e8088a1d56988d6e14f311cd897db8e7ad0c79f68026991ef9b75cfae4cdf0c7",
       "valid": true
     },
     {
@@ -7996,7 +7996,7 @@
       ],
       "path": "scripts/parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "aea1506c4a6c734c76e9e5ce7353ba58eeb8b67652f5aeff1b0d626935895719",
+      "sha256": "767c392361181c084366014c4032dd9311bf08c7912eb41ce0b9190430ec4b15",
       "valid": true
     },
     {
@@ -8178,7 +8178,7 @@
       ],
       "path": "scripts/tests/test_parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "a50aa82f42e9024a18b6320a3ccf255a171cb66e9ba2e685caf7be2fa2e30d81",
+      "sha256": "be6df347d8c2564c93029f462fc70734a5bf004636f29948364e467bed740158",
       "valid": true
     },
     {
@@ -8253,7 +8253,7 @@
   "generator_inputs": [
     {
       "path": "scripts/parity_acceptance.py",
-      "sha256": "aea1506c4a6c734c76e9e5ce7353ba58eeb8b67652f5aeff1b0d626935895719"
+      "sha256": "767c392361181c084366014c4032dd9311bf08c7912eb41ce0b9190430ec4b15"
     },
     {
       "path": "scripts/bbb_tools/executable_identity.py",
@@ -8261,7 +8261,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "6511865c77c0fcc1257224195369be10e8beb247bdcbfe1cf88e1d7632131750"
+      "sha256": "537a36aae89b5441a397e31d7d0d048522aef74eaa4f4de9a6bca427f5014b77"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8269,7 +8269,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "663d3cd6b9e535e9defe1215a279a221c09ba93d71863d6b880423daba506d0f"
+      "sha256": "e8088a1d56988d6e14f311cd897db8e7ad0c79f68026991ef9b75cfae4cdf0c7"
     }
   ],
   "mechanisms": [
@@ -9505,7 +9505,6 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -9594,7 +9593,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native accepted_pack_runs_download_apply_pop_restore_lifecycle",
@@ -9817,14 +9816,12 @@
         "domain": "resources/network",
         "line": 21,
         "required_state_projection": "packet offer/response、每次 external push 的顺序 singleton batch、跨 batch failure、每 batch独立 toast identity、共享五槽 mixed-family admission/multi-slot reservation/单次 visibility sound、250 MiB/SHA-1/headers/SOCKS、`<gameDir>/downloads/<UUID>/<SHA1>` cache、JSONL receipt、20-file vacuum、直接/lazy ZIP provider、`server/%08X/%UUID` identity/reverse-push repository order、reload/recovery、pop/transfer/terminal cleanup",
-        "route_reopen_condition": "ZIP provider 已按 Vanilla/JDK owner 改为 central-directory 索引、最终同名 lookup、central-order list/overlay 与按消费惰性扁平缓存；下载 notifier 逐 callback 的 addOrUpdate/保留 message/失败清空/forceHide、construction-time width/lines、五槽 mixed-family FIFO、多高度 reservation、单次 visibility sound、respawn 保留及 disconnect/configuration clear 已有决策级实现与 focused tests。剩余开放项是 current-HEAD live receipt；任一 owner/source hash、batch/cache/provider/toast/reload/scope ruling 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "任一 owner/source hash、batch/cache/provider/toast/reload/response order、pack identity、scope ruling 或 live receipt 合同变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "resources-server-pack-lifecycle",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 68,
@@ -16775,68 +16772,28 @@
         "matrix_owner": "bundle delimiter/framing owners",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/telemetry/WorldSessionTelemetryManager.java",
+            "sha256": "f610633c19e1132b2017aa21921486d60f1facfed9022816b018b0037a368385"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/telemetry/events/WorldLoadEvent.java",
+            "sha256": "bc08d8a4499483116b85bf7659846d813aae54f42656b14e848591ec7a879b1c"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/network/PacketBundlePacker.java",
+            "sha256": "8f0e74bf28321b677d7586ef2bfd646afbf155cfec6182672f59d99e2696b7bd"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/network/protocol/BundlerInfo.java",
+            "sha256": "7b8c1c3d9026c2c910415652904827dd58477391cfcccff79aa38e4e01184c7b"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/network/protocol/Packet.java",
+            "sha256": "fb2157c9353263bedcd162b61af369ecbefef92984723305b62efa0859ae8c75"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/network/protocol/game/ClientboundBundleDelimiterPacket.java",
+            "sha256": "c8834eb71d24ed8d0d2bfe63fd8794028805e410e25dbfc1ecabafea4268b2a1"
           }
         ]
       }
@@ -17136,68 +17093,12 @@
         "matrix_owner": "fixed `BLOCK`/`ENTITY_TYPE` registries",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/resources/RegistryDataLoader.java",
+            "sha256": "48e36df8e652face1c29b76d22585564c0123f28c6121f22aaedbd48f6ec651e"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/server/packs/resources/Resource.java",
+            "sha256": "4d35705bab60ddb256d618f7f68646fd84cd9dac6472925817a0e94a6a384434"
           }
         ]
       }
@@ -33190,68 +33091,16 @@
         "matrix_owner": "native platform backends",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "com/mojang/blaze3d/platform/Window.java",
+            "sha256": "8878ed11ca73f28ba934e51209e9d05729df1407b6119b6708c3614d71c69458"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/Options.java",
+            "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/util/Util.java",
+            "sha256": "2ad9698040428ab235d9d5c19c18b36ba0cce36365dddca81a717ca7e15c9cfd"
           }
         ]
       }
@@ -33308,68 +33157,16 @@
         "matrix_owner": "native platform backends",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "com/mojang/blaze3d/platform/Window.java",
+            "sha256": "8878ed11ca73f28ba934e51209e9d05729df1407b6119b6708c3614d71c69458"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/Options.java",
+            "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/util/Util.java",
+            "sha256": "2ad9698040428ab235d9d5c19c18b36ba0cce36365dddca81a717ca7e15c9cfd"
           }
         ]
       }
@@ -34431,64 +34228,64 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/renderer/debug/ChunkDebugRenderer.java",
+            "sha256": "046f340666f543e5cb4ff53cea3982654033e10ce87fb569f174722280a057f2"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/client/renderer/debug/EntityHitboxDebugRenderer.java",
+            "sha256": "0c28f66129fd70594c5272aafffa7d3cceb0c701fbc23cbb3e008692880e1ac9"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/client/server/IntegratedServer.java",
+            "sha256": "e9cd2ecc9db733ea539c58571d532d80858e05d2a3550fdaa6f59a6e8385ba9c"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/resources/RegistryFixedCodec.java",
+            "sha256": "0662dd7b251bc4650bccac50991021362d3ec97af99c392be48d493b4cabcaa0"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+            "path": "net/minecraft/server/level/ServerChunkCache.java",
+            "sha256": "b6c9e0bf7c6e15248b50c0fc894e26e146c26ebae29ea265e9bfe01a4180b72d"
           },
           {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+            "path": "net/minecraft/server/level/ServerLevel.java",
+            "sha256": "5af86e2455769ee93d7d1c0934fc270cc2ec592212e6351e15afe423816f8e5c"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+            "path": "net/minecraft/world/entity/Entity.java",
+            "sha256": "edab245cb1e08da374ec16551382787184301959c62bd3296ee495c70e897a7f"
           },
           {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+            "path": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
+            "sha256": "d349be65896e7639c273fcaba5000b929a09def21195b50e5c20d22494e964f2"
           },
           {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+            "path": "net/minecraft/world/entity/item/PrimedTnt.java",
+            "sha256": "175f13d7fe30c0dae2cf7bf6536ed8c0783953c507f6ee2c137b759af57815fa"
           },
           {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
+            "path": "net/minecraft/world/item/JukeboxSong.java",
+            "sha256": "96b25bf9c40377067603d1962baf7bfc910c6e03a242a2be2e4bda696e1d6596"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
+            "path": "net/minecraft/world/level/NaturalSpawner.java",
+            "sha256": "d04524d3976017bde72a091b0dca8491af853d2cefa44310e0ca2b252be91131"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
+            "path": "net/minecraft/world/level/SpawnData.java",
+            "sha256": "308c97bea1bdc0a3599948f99398208a2c2b67408731b67837597c0b587c22b0"
           },
           {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
+            "path": "net/minecraft/world/level/biome/BiomeSource.java",
+            "sha256": "486c52f9a3f0e8a234c3f2da4f0e9aaecfad47d2a6fc228c6d61a291dae336c8"
           },
           {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
+            "path": "net/minecraft/world/level/chunk/ChunkGenerator.java",
+            "sha256": "18243a6aa099a2f4d382dc896ea5a4d537c5fba13234b8d4af3baf3bed8e3228"
           },
           {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/level/levelgen/RandomState.java",
+            "sha256": "c42fd57cce313c5b8c152dda321356ff88a23bdb481e7e5eded7f5e36fa35494"
           }
         ]
       }
@@ -34545,68 +34342,44 @@
         "matrix_owner": "server/world-list screens",
         "source_hashes": [
           {
+            "path": "com/mojang/realmsclient/gui/screens/AddRealmPopupScreen.java",
+            "sha256": "7aee5c16f921e4803ca9e9ad6834f7acdbd31659407b9639494fb7e1bd937047"
+          },
+          {
             "path": "net/minecraft/client/Minecraft.java",
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/gui/screens/TitleScreen.java",
+            "sha256": "c7d5b42dd301c907a4f87983c07a776fd66718fe0b12fa443ddcfeccc0a7af5e"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/client/gui/screens/multiplayer/JoinMultiplayerScreen.java",
+            "sha256": "2e07a65deae0df5bfc5dbb14fa5ba40f1e5cf8b53005cc193b573e3e3c1952f3"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/client/gui/screens/multiplayer/ServerSelectionList.java",
+            "sha256": "ba2b42b526ea6aef98fa5a6265a1bf06a0e13e9df28ed988e2d78f88d69ff93b"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/client/multiplayer/ServerList.java",
+            "sha256": "9406fdd5600d99fa2770850dcae90797f6cfb8a3d94cf3c75e8e8c216cd85e80"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+            "path": "net/minecraft/client/quickplay/QuickPlay.java",
+            "sha256": "d01c20b26e4e962b69a0e092d4b10f6dd75c4922b571eca325e1095428a8cc54"
           },
           {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+            "path": "net/minecraft/client/resources/ClientPackSource.java",
+            "sha256": "f4fcc1b6752cf1646dcfd63bf2407d0a57309636ec7646657d42ae2843efe841"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+            "path": "net/minecraft/client/resources/SplashManager.java",
+            "sha256": "320e15f2394c6a1c607eda8074561b470c8721e5c866fa0bdd5e9a588625e95a"
           },
           {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/server/packs/resources/Resource.java",
+            "sha256": "4d35705bab60ddb256d618f7f68646fd84cd9dac6472925817a0e94a6a384434"
           }
         ]
       }
@@ -34667,64 +34440,36 @@
             "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/renderer/debug/ChunkDebugRenderer.java",
+            "sha256": "046f340666f543e5cb4ff53cea3982654033e10ce87fb569f174722280a057f2"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/client/renderer/debug/EntityHitboxDebugRenderer.java",
+            "sha256": "0c28f66129fd70594c5272aafffa7d3cceb0c701fbc23cbb3e008692880e1ac9"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/client/server/IntegratedServer.java",
+            "sha256": "e9cd2ecc9db733ea539c58571d532d80858e05d2a3550fdaa6f59a6e8385ba9c"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/server/level/ServerChunkCache.java",
+            "sha256": "b6c9e0bf7c6e15248b50c0fc894e26e146c26ebae29ea265e9bfe01a4180b72d"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+            "path": "net/minecraft/server/level/ServerLevel.java",
+            "sha256": "5af86e2455769ee93d7d1c0934fc270cc2ec592212e6351e15afe423816f8e5c"
           },
           {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+            "path": "net/minecraft/world/entity/Entity.java",
+            "sha256": "edab245cb1e08da374ec16551382787184301959c62bd3296ee495c70e897a7f"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+            "path": "net/minecraft/world/entity/LivingEntity.java",
+            "sha256": "29dacae3c7cff10f82ee3b4dc4ae34de06e525fecf4762dd4777c323f759da0a"
           },
           {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/level/block/SweetBerryBushBlock.java",
+            "sha256": "4adfff2eddb9acc5ef0aa797e3cfb4730fd0eaacc5730974f832bcc3abd76f73"
           }
         ]
       }
@@ -34781,68 +34526,60 @@
         "matrix_owner": "server-only prediction/effect branches",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/Options.java",
+            "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/gui/screens/inventory/AbstractContainerScreen.java",
+            "sha256": "499d58fd435283695eeb90dc22af31be2f3174579a936137d3dac74340240f18"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/client/multiplayer/ClientLevel.java",
+            "sha256": "5c62b34f694d875e40af714bfe8436129d078a4f5987507c886c914277692a60"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/client/resources/sounds/Sound.java",
+            "sha256": "17bc57b69fdb6facda48aa0138b2c874353db8cd6b3a55e11ebaff83e7565d93"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/network/protocol/game/ClientboundAddEntityPacket.java",
+            "sha256": "d32fb1a3cf07acf6752ab08b235be5c8a1a8cde84c1bcaa737e3585ffffb1238"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+            "path": "net/minecraft/server/dialog/Input.java",
+            "sha256": "1af52b2da15bd1d219eca036266f7fc6a2fcf8b3d93c0dbaadaa7c41086f8061"
           },
           {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+            "path": "net/minecraft/server/level/ServerLevel.java",
+            "sha256": "5af86e2455769ee93d7d1c0934fc270cc2ec592212e6351e15afe423816f8e5c"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+            "path": "net/minecraft/world/entity/AreaEffectCloud.java",
+            "sha256": "68445d4d43691d9386e00721013ebb9b14e98d3f6a4ce9bab9bfcdce80659fc1"
           },
           {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+            "path": "net/minecraft/world/entity/Entity.java",
+            "sha256": "edab245cb1e08da374ec16551382787184301959c62bd3296ee495c70e897a7f"
           },
           {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+            "path": "net/minecraft/world/entity/ai/behavior/Mount.java",
+            "sha256": "15b7a8c42536f3a63217492c7f82a8cb4b7524d378056952c0d3e63fd37a35b4"
           },
           {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
+            "path": "net/minecraft/world/entity/monster/breeze/Breeze.java",
+            "sha256": "6d14fdbc4ab82dd0d01aa4ff7058d5f1190103d49aa0424f2e8b14812f9f67e2"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
+            "path": "net/minecraft/world/entity/player/Input.java",
+            "sha256": "7f94625e79040a0dbb063c8019550301221e82236e1a734a673805d9db4b2a5e"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
+            "path": "net/minecraft/world/entity/projectile/FishingHook.java",
+            "sha256": "41141ef0339bed10294fdd59682339680287f3fd389b19ee6bd6d9370e2ab65f"
           },
           {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/level/Level.java",
+            "sha256": "62d1c7b256167c428a6f4f6deb79bf5f5e7b935adbba30b447de74edee8cb980"
           }
         ]
       }
@@ -34957,68 +34694,68 @@
         "matrix_owner": "noop entity/BE/particle/debug branches",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/model/Model.java",
+            "sha256": "1a221cd87bebfc25d296952d047927cd02925e35cef19bc51f90d9ebed2dc70a"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/model/animal/frog/FrogModel.java",
+            "sha256": "f334a1edfe0ec2d21dd46352692036bfb33108e83539fdee9452f6a492d0cb64"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/client/renderer/entity/ArmorStandRenderer.java",
+            "sha256": "317eac949b905239c9724c3d26e0950ce6e5b12bc524fb498b1ec9018e8720cd"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/client/renderer/entity/FrogRenderer.java",
+            "sha256": "2389dbe8accc0ca1981d8a8a3cab875107c37faa91225c37c1d8d931ac8b3fcc"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/client/renderer/entity/NoopRenderer.java",
+            "sha256": "84d09108bc1fa6040b1569fbb8d9431c4d53c4c749842362aa1dbdbabbaee348"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+            "path": "net/minecraft/client/renderer/entity/state/FrogRenderState.java",
+            "sha256": "e1dc4693c625d3c29495e7c2ae51eb8cadead767110bd208e863b84af1bbf8ce"
           },
           {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+            "path": "net/minecraft/core/Rotations.java",
+            "sha256": "92c474db1c2f2534d94c0e9a6cc3a248cc03599dc3e504ec9a68408dca73dd4f"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+            "path": "net/minecraft/util/Mth.java",
+            "sha256": "49aa630c3c6aca969678cea88ec91f4970fca1dacac141c23d345a40f36b9aa8"
           },
           {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+            "path": "net/minecraft/world/entity/AnimationState.java",
+            "sha256": "3cb01aa4874eb2f61d1b2a407c9a91be9c934323dd0af4fc549c0d51fcdf244b"
           },
           {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+            "path": "net/minecraft/world/entity/Entity.java",
+            "sha256": "edab245cb1e08da374ec16551382787184301959c62bd3296ee495c70e897a7f"
           },
           {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
+            "path": "net/minecraft/world/entity/animal/chicken/Chicken.java",
+            "sha256": "db8cb72fca2939df38bc517ab2a9ff985b761b27b2d3fd72ef42c1e8d6d7802b"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
+            "path": "net/minecraft/world/entity/animal/frog/Frog.java",
+            "sha256": "00f452699fd56cf3c7126f25a9070c4e9d7896a7307aa3cb2a4de37bc281a85e"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
+            "path": "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
+            "sha256": "d24075d94b4771b1dc5d28ea0536db6791b10b000ed2fde9ad13dcfe5336f48c"
           },
           {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
+            "path": "net/minecraft/world/entity/vehicle/minecart/Minecart.java",
+            "sha256": "7a2a5e9891acb1ed14292c48fd10a3721fe282b57dfbf700e658d7c5afd0f94f"
           },
           {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
+            "path": "net/minecraft/world/entity/vehicle/minecart/MinecartSpawner.java",
+            "sha256": "c6d4501ec394c4b9b2d65f27f460bf692f6cf836afe3c60865832adc5b997d45"
           },
           {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/level/BaseSpawner.java",
+            "sha256": "7c8bc9ed1aa45a7093163b38bc0a96facc730a1701c3aefdd95bd6ac92e51f23"
           }
         ]
       }
@@ -35075,68 +34812,12 @@
         "matrix_owner": "server-side enchantment/item effect owners",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/server/level/ServerLevel.java",
+            "sha256": "5af86e2455769ee93d7d1c0934fc270cc2ec592212e6351e15afe423816f8e5c"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/item/Item.java",
+            "sha256": "8d9fd78fe5fb8ccda4ae996452402b551e8d058ba99ec5e4ff411b63d88afb94"
           }
         ]
       }
@@ -35193,68 +34874,12 @@
         "matrix_owner": "26.1 item-model property bootstraps",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/renderer/item/properties/numeric/RangeSelectItemModelProperties.java",
+            "sha256": "63a8394272bec58f9a67553f1b61225df9c29c4dd736fbf4f2f1971fa9052448"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
-          },
-          {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
-          },
-          {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
-          },
-          {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
-          },
-          {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/level/pathfinder/Target.java",
+            "sha256": "2198bed9652520e344348eb99ee630ceaf64f5f5e3c824fc1fbe3871b48be548"
           }
         ]
       }
@@ -35371,68 +34996,68 @@
         "matrix_owner": "F3/F3+I client-visible owners",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/KeyMapping.java",
+            "sha256": "566688dbeebece984aba0e5da61be5712487f620cc5341ce0e56643ac6eee0d2"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
-            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+            "path": "net/minecraft/client/Options.java",
+            "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
-            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+            "path": "net/minecraft/client/gui/screens/debug/GameModeSwitcherScreen.java",
+            "sha256": "64338a63aa6dd3b70efa9d88a9978fe62bb1251cfc550acd579216bcd3076fd6"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
-            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+            "path": "net/minecraft/resources/RegistryFixedCodec.java",
+            "sha256": "0662dd7b251bc4650bccac50991021362d3ec97af99c392be48d493b4cabcaa0"
           },
           {
-            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
-            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+            "path": "net/minecraft/tags/EntityTypeTags.java",
+            "sha256": "d5f352dc4f23f68d2bf98dffaaaf050c45841fe0c1057ec5054bf7e03b7df9f9"
           },
           {
-            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
-            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+            "path": "net/minecraft/world/Container.java",
+            "sha256": "7cb27101950f870ebb966dde4ae2866d02248c295f0818f92f9f8f1bf64292fe"
           },
           {
-            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
-            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+            "path": "net/minecraft/world/entity/EntityType.java",
+            "sha256": "65a82eb4e1b3d3219b8714c506d254a243bd866dfd29e6a3f4441292b9cbf257"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
+            "path": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
+            "sha256": "d349be65896e7639c273fcaba5000b929a09def21195b50e5c20d22494e964f2"
           },
           {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
+            "path": "net/minecraft/world/entity/item/PrimedTnt.java",
+            "sha256": "175f13d7fe30c0dae2cf7bf6536ed8c0783953c507f6ee2c137b759af57815fa"
           },
           {
-            "path": "net/minecraft/locale/Language.java",
-            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+            "path": "net/minecraft/world/entity/projectile/FishingHook.java",
+            "sha256": "41141ef0339bed10294fdd59682339680287f3fd389b19ee6bd6d9370e2ab65f"
           },
           {
-            "path": "net/minecraft/network/chat/SubStringSource.java",
-            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
+            "path": "net/minecraft/world/entity/projectile/Projectile.java",
+            "sha256": "764b101bb5cfd8d018c74bad24fee915748df13a8eea3414b1e56d6d1ad79947"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
+            "path": "net/minecraft/world/entity/projectile/arrow/SpectralArrow.java",
+            "sha256": "08474b39109de2c42f576db214b6a6893725546960c5a3957c690e14f822bb79"
           },
           {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
+            "path": "net/minecraft/world/item/JukeboxSong.java",
+            "sha256": "96b25bf9c40377067603d1962baf7bfc910c6e03a242a2be2e4bda696e1d6596"
           },
           {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
+            "path": "net/minecraft/world/item/component/SeededContainerLoot.java",
+            "sha256": "1da58c156a6e2240fd5c7ab02d7e2710c4091188cb716820bab37623f1f14505"
           },
           {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
+            "path": "net/minecraft/world/level/SpawnData.java",
+            "sha256": "308c97bea1bdc0a3599948f99398208a2c2b67408731b67837597c0b587c22b0"
           },
           {
-            "path": "net/minecraft/world/level/levelgen/feature/Feature.java",
-            "sha256": "f4d63aaeb76a48abfad0652f930bbabb6aca4479acdf38df959244a20343f65b"
+            "path": "net/minecraft/world/level/chunk/Configuration.java",
+            "sha256": "0d7d586c2ebea5e2ac6cac787702eec7c466fd35003059409e1e8395c226a7d6"
           }
         ]
       }
@@ -35518,6 +35143,12 @@
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_ledger_source_hashes_are_scoped_to_the_mechanism_section",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_open_matrix_status_cannot_publish_closed_conclusion",
           "result": "passed-via-full-gate"
         },
@@ -35578,12 +35209,16 @@
         "matrix_owner": "selected Vanilla external-client owner corpus",
         "source_hashes": [
           {
-            "path": "net/minecraft/client/Minecraft.java",
-            "sha256": "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8"
+            "path": "net/minecraft/client/PeriodicNotificationManager.java",
+            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
             "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
+            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
           },
           {
             "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
@@ -35602,6 +35237,10 @@
             "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
           },
           {
+            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
+            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+          },
+          {
             "path": "net/minecraft/client/resources/language/ClientLanguage.java",
             "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
           },
@@ -35610,36 +35249,12 @@
             "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
           },
           {
-            "path": "net/minecraft/client/resources/server/DownloadedPackSource.java",
-            "sha256": "25a34dd346baae96730c3dfd50ddacba827ffb1213100a2cf16b07badbe50522"
-          },
-          {
-            "path": "net/minecraft/client/resources/server/ServerPackManager.java",
-            "sha256": "a1e6dc1e9908ce3f4eadb2ec8a3c92e64be9eb6d9f22061097e80ade1874f42b"
-          },
-          {
             "path": "net/minecraft/locale/Language.java",
             "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
           },
           {
             "path": "net/minecraft/network/chat/SubStringSource.java",
             "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadCacheCleaner.java",
-            "sha256": "c531b888294a5c009379a582ef1065b0050d8f93b46a3f9a3a4b5c592b558194"
-          },
-          {
-            "path": "net/minecraft/server/packs/DownloadQueue.java",
-            "sha256": "3d90a23998edeee56afd8e193adb3bb378f9e0427d536704881e4493341c4aa9"
-          },
-          {
-            "path": "net/minecraft/server/packs/FilePackResources.java",
-            "sha256": "48598b645677c5dd175f605323c85bc47b820ac919f5f440d2b15039d4656498"
-          },
-          {
-            "path": "net/minecraft/util/HttpUtil.java",
-            "sha256": "407d66c3d6cee6f288aa8d17bc89963ff8e952c39c2c823e7316fbe543dcad94"
           }
         ]
       }
@@ -35647,6 +35262,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:scripts/docs_wiki_lint.py",
@@ -35673,7 +35289,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/dev test python --suite all",
@@ -35920,19 +35536,70 @@
         "domain": "workflow",
         "line": 156,
         "required_state_projection": "IDs、routes、source/BBB evidence、stale output",
-        "route_reopen_condition": "目标版本、canonical owner、blocker artifact、receipt framing/identity 或 acceptance schema 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "ledger source-hash scoping 等待 current full-gate rebind；目标版本、canonical owner、blocker artifact、receipt framing/identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "docs-chinese-mechanism-wiki",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "matrix_owner": "local Vanilla source corpus",
-        "source_hashes": []
+        "source_hashes": [
+          {
+            "path": "net/minecraft/client/PeriodicNotificationManager.java",
+            "sha256": "9992ebec6788628c0e777e2223196361cdf3aed410ae3ad24dd70b83170b0062"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/AdvancementToast.java",
+            "sha256": "6e721aa7ea614d9243738583731347781371ac764e7a3eda993ecf7831f4404f"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/NowPlayingToast.java",
+            "sha256": "656649b238e8e7e901372da9f3694f8adaa34a7b142c7781f00683b36b707012"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/RecipeToast.java",
+            "sha256": "1756496627f4f913e663a6e65cc94def0ae4ab1cfb8e35f088cf40096ca482b7"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/SystemToast.java",
+            "sha256": "946e3d63e0932dcf50488efdf2c79fa5556e994306d7b4f91ffd6579862bebd0"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/Toast.java",
+            "sha256": "df67ed58bfe768534d09aa5aac298e2049dbabd323ad79463630fa96e5de5c00"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/ToastManager.java",
+            "sha256": "d194fc98e9e5bf58a7d1b7004d7e4030996ed777c0645cc90ec5907380b669ad"
+          },
+          {
+            "path": "net/minecraft/client/gui/components/toasts/TutorialToast.java",
+            "sha256": "526da8198735e3ca593619d8c72d0a43f180033498b9e0418829a9c1efd49011"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/ClientLanguage.java",
+            "sha256": "198cb3e37827ec1bdb3039b0acaf5bf917713efabd0dd5df0904caa7429be536"
+          },
+          {
+            "path": "net/minecraft/client/resources/language/FormattedBidiReorder.java",
+            "sha256": "b2bc07e1748a9a8a7f62dffd22526fb1c89a94017dc38938cea67fbab6596988"
+          },
+          {
+            "path": "net/minecraft/locale/Language.java",
+            "sha256": "dcd1e9c719e9bf485d88d76cc2cf39957c016fa11a80fa35f437ebca4017909e"
+          },
+          {
+            "path": "net/minecraft/network/chat/SubStringSource.java",
+            "sha256": "7ae224b3c8179ca59193c6402f12c155f3996b4bd6481ed70a101ec07b345639"
+          }
+        ]
       }
     }
   ],
@@ -39644,6 +39311,7 @@
       "audio-sound-manager-engine",
       "coverage-external-client-census",
       "diagnostics-client-level-report",
+      "docs-chinese-mechanism-wiki",
       "entities-fixed-type-surface",
       "hud-frame-extract-order",
       "hud-hotbar-selection",
@@ -39715,7 +39383,6 @@
       "resources-offline-asset-trust",
       "resources-reload-listeners",
       "resources-reload-recovery",
-      "resources-server-pack-lifecycle",
       "resources-window-icons",
       "security-secure-chat-reporting",
       "startup-client-bootstrap",

@@ -193,6 +193,75 @@ mod tests {
             )
             self.assertEqual(scenario["mechanism_ids"], ["fixture-equivalent"])
 
+    def test_ledger_source_hashes_are_scoped_to_the_mechanism_section(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, source_root = self.make_fixture(Path(temporary))
+            matrix = repo / "docs/wiki/parity/vanilla-26.1-matrix.md"
+            matrix.write_text(
+                matrix.read_text(encoding="utf-8").replace(
+                    "`Example.unreachable` | none | no effect",
+                    "external owner | none | no effect",
+                ),
+                encoding="utf-8",
+            )
+            ledger = repo / "docs/unsupported-features.md"
+            ledger.write_text(
+                """\
+# Feature Gap TODO List
+
+# Not needed
+
+## Unrelated ruling
+
+Matrix route: `unrelated-mechanism`
+
+- Vanilla `UnrelatedOwner` is unreachable.
+
+## Fixture ruling
+
+Matrix route: `fixture-not-needed`
+
+- Vanilla `ScopedOwner` is unreachable. Reopen when the caller exists.
+""",
+                encoding="utf-8",
+            )
+            unrelated = source_root / "example/UnrelatedOwner.java"
+            scoped = source_root / "example/ScopedOwner.java"
+            unrelated.parent.mkdir(parents=True, exist_ok=True)
+            unrelated.write_text("class UnrelatedOwner {}\n", encoding="utf-8")
+            scoped.write_text("class ScopedOwner {}\n", encoding="utf-8")
+
+            report = self.build_fixture_report(repo, source_root)
+            mechanism = next(
+                item
+                for item in report["mechanisms"]
+                if item["mechanism_id"] == "fixture-not-needed"
+            )
+            self.assertEqual(
+                mechanism["vanilla"]["source_hashes"],
+                [
+                    {
+                        "path": "example/ScopedOwner.java",
+                        "sha256": hashlib.sha256(scoped.read_bytes()).hexdigest(),
+                    }
+                ],
+            )
+            mechanism["vanilla"]["source_hashes"] = [
+                {
+                    "path": "example/UnrelatedOwner.java",
+                    "sha256": hashlib.sha256(unrelated.read_bytes()).hexdigest(),
+                }
+            ]
+            self.assertIn(
+                "stale Vanilla source mapping for fixture-not-needed",
+                validate_report(
+                    report,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+            )
+
     def test_false_equivalent_is_machine_detectable(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, source_root = self.make_fixture(Path(temporary))
