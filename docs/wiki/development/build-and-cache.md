@@ -11,6 +11,12 @@
 `RUST_MIN_STACK`。deny-warnings 已在 workspace lints 中，禁止临时切换
 `RUSTFLAGS='-D warnings'` 导致共享 cache 全量失效。
 
+Linux 正式 capture 的跨提交 provenance 优先要求 release 文件 SHA-256 完全相同；若
+GNU linker 只改变非加载的 section/symbol/string table 或 build-id，则用
+`elf-load-image-v1` 机械校验替代：保留两份原始文件 SHA-256，并解析锁定 ELF 入口、全部
+program header、每个 `PT_LOAD` 字节及 build-id 以外的 note。任一执行映像字节、布局或
+入口变化都拒绝 bridge；源码相同、文件大小接近或人工 `strip` 对比不能代替该校验。
+
 Python 开发工具由仓库根的 `.python-version`、`pyproject.toml` 与 `uv.lock` 共同
 锁定；`.venv/` 是 ignored 的工作树本地 cache。`scripts/bootstrap` 是唯一允许下载
 Python 解释器和 Python/Rust 依赖的初始化入口；Rust 只预取本机 target 与既有

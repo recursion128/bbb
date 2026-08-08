@@ -13,12 +13,14 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from parity_acceptance import (
     AcceptanceError,
+    artifact_binary_provenance,
     artifact_scenario_ids,
     build_report,
     external_artifact,
     parse_matrix,
     validate_report,
 )
+from bbb_tools.executable_identity import elf_load_image_identity
 
 
 class ParityAcceptanceTests(unittest.TestCase):
@@ -32,9 +34,19 @@ class ParityAcceptanceTests(unittest.TestCase):
         ledger = repo / "docs/unsupported-features.md"
         rust = repo / "crates/example/src/lib.rs"
         tool = repo / "scripts/parity_acceptance.py"
+        executable_identity = repo / "scripts/bbb_tools/executable_identity.py"
         gate = repo / ".git/bbb/gate-log.tsv"
         vanilla = source_root / "net/minecraft/client/Example.java"
-        for path in (matrix, inventory, ledger, rust, tool, gate, vanilla):
+        for path in (
+            matrix,
+            inventory,
+            ledger,
+            rust,
+            tool,
+            executable_identity,
+            gate,
+            vanilla,
+        ):
             path.parent.mkdir(parents=True, exist_ok=True)
         matrix.write_text(
             """\
@@ -76,6 +88,7 @@ mod tests {
             encoding="utf-8",
         )
         tool.write_text("# fixture generator\n", encoding="utf-8")
+        executable_identity.write_text("# fixture executable identity\n", encoding="utf-8")
         vanilla.write_text("package net.minecraft.client; class Example {}\n", encoding="utf-8")
         vanilla_hash = hashlib.sha256(vanilla.read_bytes()).hexdigest()
         inventory.write_text(
@@ -333,6 +346,76 @@ mod tests {
             self.assertIn(
                 "BBB evidence binary SHA-256 is stale", stale["invalid_reasons"]
             )
+
+    def test_external_visual_receipt_accepts_ancestor_elf_load_image(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = root / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            tracked = repo / "tracked"
+            tracked.write_text("capture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "capture"], cwd=repo, check=True)
+            capture_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            tracked.write_text("evidence\n", encoding="utf-8")
+            subprocess.run(["git", "commit", "-qam", "evidence"], cwd=repo, check=True)
+            evidence_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            capture_binary = root / "bbb-capture"
+            evidence_binary = root / "bbb-evidence"
+            capture_binary.write_bytes(Path(sys.executable).read_bytes())
+            evidence_binary.write_bytes(
+                capture_binary.read_bytes() + b"non-loaded-linker-metadata"
+            )
+            capture_sha256 = hashlib.sha256(capture_binary.read_bytes()).hexdigest()
+            evidence_sha256 = hashlib.sha256(evidence_binary.read_bytes()).hexdigest()
+            runtime_sha256 = elf_load_image_identity(capture_binary)["sha256"]
+            provenance = {
+                "capture_commit": capture_commit,
+                "evidence_commit": evidence_commit,
+                "binary_sha256": capture_sha256,
+                "binary_identical": False,
+                "runtime_image_identical": True,
+                "identity_kind": "elf-load-image-v1",
+                "runtime_image_sha256": runtime_sha256,
+                "capture_binary": {
+                    "path": str(capture_binary),
+                    "sha256": capture_sha256,
+                },
+                "evidence_binary": {
+                    "path": str(evidence_binary),
+                    "sha256": evidence_sha256,
+                },
+            }
+
+            normalized, reasons = artifact_binary_provenance(
+                repo, {"bbb_provenance": provenance}
+            )
+
+            self.assertEqual(reasons, [])
+            self.assertIsNotNone(normalized)
+            self.assertTrue(normalized["runtime_image_identical"])
+            self.assertEqual(normalized["runtime_image_sha256"], runtime_sha256)
 
     def test_unknown_or_one_way_artifact_mapping_fails_lint(self):
         with tempfile.TemporaryDirectory() as temporary:

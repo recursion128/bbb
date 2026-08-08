@@ -38,6 +38,11 @@ from typing import Any, Iterable, Mapping, Sequence
 from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_workspace
 from bbb_tools.vanilla.lockfile import load_lock
 from bbb_tools.execution.process import ManagedProcess, ProcessFailure
+from bbb_tools.executable_identity import (
+    ELF_LOAD_IMAGE_ALGORITHM,
+    ExecutableIdentityError,
+    elf_load_image_identity,
+)
 
 
 BENCHMARK_SCHEMA = 1
@@ -703,12 +708,13 @@ def validate_bbb_binary_provenance(
     expected_capture_commit: str | None,
     expected_capture_sha256: str,
 ) -> dict[str, Any]:
-    """Validate that a later evidence commit rebuilds the captured BBB binary.
+    """Validate that a later evidence commit rebuilds the captured BBB image.
 
     Formal captures remain attributable to the exact commit that produced them.
     Evidence-only tooling or documentation may advance afterwards, but only an
-    independently rebuilt byte-identical binary may bind those captures to the
-    later evidence commit.  Both identities stay explicit in the receipt.
+    independently rebuilt byte-identical binary or ELF load-image-identical
+    executable may bind those captures to the later evidence commit.  Raw-file
+    hashes and the execution identity both stay explicit in the receipt.
     """
     if provenance.get("schema") != BENCHMARK_SCHEMA:
         raise BenchmarkFailure("BBB binary provenance schema mismatch")
@@ -752,20 +758,61 @@ def validate_bbb_binary_provenance(
         }
     if binaries["capture"]["sha256"] != expected_capture_sha256:
         raise BenchmarkFailure("BBB captured binary does not match the capture receipt")
-    if binaries["capture"]["sha256"] != binaries["evidence"]["sha256"]:
-        raise BenchmarkFailure("BBB evidence commit binary is not byte-identical to capture")
-    return {
+    byte_identical = binaries["capture"]["sha256"] == binaries["evidence"]["sha256"]
+    runtime_identity: dict[str, object] | None = None
+    if not byte_identical:
+        identity_kind = provenance.get("identity_kind")
+        declared_runtime_sha256 = provenance.get("runtime_image_sha256")
+        if identity_kind != ELF_LOAD_IMAGE_ALGORITHM:
+            raise BenchmarkFailure(
+                "BBB non-byte-identical provenance lacks the ELF load-image identity"
+            )
+        if not isinstance(declared_runtime_sha256, str) or re.fullmatch(
+            r"[0-9a-f]{64}", declared_runtime_sha256
+        ) is None:
+            raise BenchmarkFailure("BBB runtime image SHA-256 is invalid")
+        try:
+            capture_identity = elf_load_image_identity(
+                Path(str(binaries["capture"]["path"]))
+            )
+            evidence_identity = elf_load_image_identity(
+                Path(str(binaries["evidence"]["path"]))
+            )
+        except (OSError, ExecutableIdentityError) as error:
+            raise BenchmarkFailure(f"cannot validate BBB ELF load image: {error}") from error
+        if capture_identity["sha256"] != declared_runtime_sha256:
+            raise BenchmarkFailure("BBB captured runtime image identity is stale")
+        if evidence_identity["sha256"] != declared_runtime_sha256:
+            raise BenchmarkFailure(
+                "BBB evidence commit runtime image is not identical to capture"
+            )
+        runtime_identity = capture_identity
+        for label, identity in (
+            ("capture", capture_identity),
+            ("evidence", evidence_identity),
+        ):
+            binaries[label]["runtime_image_sha256"] = identity["sha256"]
+
+    result = {
         "capture_commit": capture_commit,
         "evidence_commit": evidence_commit,
         "binary_sha256": binaries["capture"]["sha256"],
-        "binary_identical": True,
+        "binary_identical": byte_identical,
+        "runtime_image_identical": byte_identical or runtime_identity is not None,
+        "identity_kind": (
+            "sha256" if byte_identical else ELF_LOAD_IMAGE_ALGORITHM
+        ),
         "capture_binary": binaries["capture"],
         "evidence_binary": binaries["evidence"],
         "scope": (
             "captures belong to capture_commit; evidence_commit is accepted only "
-            "because its independently rebuilt bbb-native binary is byte-identical"
+            "because its independently rebuilt bbb-native execution image is identical"
         ),
     }
+    if runtime_identity is not None:
+        result["runtime_image_sha256"] = runtime_identity["sha256"]
+        result["runtime_image"] = runtime_identity
+    return result
 
 
 def _rule_matches(

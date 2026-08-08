@@ -89,4 +89,7 @@
 - **2026-08-07（Options DataFix 工程）**：启动 raw map 在 current decode 前执行 source-derived
   `DataFixTypes.OPTIONS` 全链；17 个 registration、14 个 fix hash、112 个 LWJGL2 键码与 1/1 owner evidence 进入 generated gate。
 
+- **2026-08-08（工作流 v9）**：跨提交 capture provenance 在原始 SHA 不同时改用
+  `elf-load-image-v1` 锁定 Linux 执行映像，排除非加载 symbol/section table 与 GNU build-id 漂移。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

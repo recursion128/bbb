@@ -23,6 +23,11 @@ import sys
 from typing import Iterable
 
 from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+from bbb_tools.executable_identity import (
+    ELF_LOAD_IMAGE_ALGORITHM,
+    ExecutableIdentityError,
+    elf_load_image_identity,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -467,8 +472,19 @@ def artifact_binary_provenance(
     ):
         if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
             reasons.append(f"BBB {label} commit is not exact")
-    if provenance.get("binary_identical") is not True:
-        reasons.append("BBB capture/evidence binaries are not declared byte-identical")
+    binary_identical = provenance.get("binary_identical") is True
+    runtime_image_identical = provenance.get("runtime_image_identical") is True
+    identity_kind = provenance.get("identity_kind")
+    runtime_image_sha256 = provenance.get("runtime_image_sha256")
+    if not binary_identical and not runtime_image_identical:
+        reasons.append("BBB capture/evidence execution images are not declared identical")
+    if not binary_identical:
+        if identity_kind != ELF_LOAD_IMAGE_ALGORITHM:
+            reasons.append("BBB non-byte-identical provenance lacks ELF load-image identity")
+        if not isinstance(runtime_image_sha256, str) or re.fullmatch(
+            r"[0-9a-f]{64}", runtime_image_sha256
+        ) is None:
+            reasons.append("BBB runtime image provenance has no valid SHA-256")
     if not isinstance(binary_sha256, str) or re.fullmatch(
         r"[0-9a-f]{64}", binary_sha256
     ) is None:
@@ -493,12 +509,27 @@ def artifact_binary_provenance(
         if declared != actual:
             reasons.append(f"BBB {label} binary SHA-256 is stale")
         if binary_sha256 != actual:
-            reasons.append(f"BBB {label} binary differs from captured binary identity")
+            if label == "capture":
+                reasons.append("BBB capture binary differs from captured binary identity")
+            elif binary_identical:
+                reasons.append("BBB evidence binary differs from captured binary identity")
         normalized_binaries[label] = {
             "path": str(path),
             "sha256": actual,
             "bytes": path.stat().st_size,
         }
+        if not binary_identical and identity_kind == ELF_LOAD_IMAGE_ALGORITHM:
+            try:
+                runtime_identity = elf_load_image_identity(path)
+            except (OSError, ExecutableIdentityError) as error:
+                reasons.append(f"BBB {label} runtime image is invalid: {error}")
+            else:
+                actual_runtime_sha256 = runtime_identity["sha256"]
+                if actual_runtime_sha256 != runtime_image_sha256:
+                    reasons.append(f"BBB {label} runtime image identity is stale")
+                normalized_binaries[label]["runtime_image_sha256"] = (
+                    actual_runtime_sha256
+                )
     if (
         isinstance(capture_commit, str)
         and isinstance(evidence_commit, str)
@@ -519,7 +550,10 @@ def artifact_binary_provenance(
         "capture_commit": capture_commit,
         "evidence_commit": evidence_commit,
         "binary_sha256": binary_sha256,
-        "binary_identical": provenance.get("binary_identical"),
+        "binary_identical": binary_identical,
+        "runtime_image_identical": runtime_image_identical,
+        "identity_kind": identity_kind,
+        "runtime_image_sha256": runtime_image_sha256,
         "capture_binary": normalized_binaries.get("capture"),
         "evidence_binary": normalized_binaries.get("evidence"),
     }
@@ -1085,6 +1119,7 @@ def build_report(
     generator_inputs = []
     for relative in (
         "scripts/parity_acceptance.py",
+        "scripts/bbb_tools/executable_identity.py",
         MATRIX_PATH.as_posix(),
         INVENTORY_PATH.as_posix(),
         LEDGER_PATH.as_posix(),

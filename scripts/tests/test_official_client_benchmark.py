@@ -254,6 +254,85 @@ class LaunchPlanTests(unittest.TestCase):
                     expected_capture_sha256=identity["binary_sha256"],
                 )
 
+    def test_bbb_provenance_accepts_identical_elf_load_images(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            capture = root / "bbb-capture"
+            evidence = root / "bbb-evidence"
+            capture.write_bytes(Path(sys.executable).read_bytes())
+            evidence.write_bytes(capture.read_bytes() + b"non-loaded-linker-metadata")
+            capture_sha256 = benchmark.file_digest(capture, "sha256")
+            evidence_sha256 = benchmark.file_digest(evidence, "sha256")
+            runtime_identity = benchmark.elf_load_image_identity(capture)
+            provenance = {
+                "schema": 1,
+                "capture_commit": "1" * 40,
+                "evidence_commit": "2" * 40,
+                "identity_kind": benchmark.ELF_LOAD_IMAGE_ALGORITHM,
+                "runtime_image_sha256": runtime_identity["sha256"],
+                "capture_binary": {
+                    "path": str(capture),
+                    "sha256": capture_sha256,
+                },
+                "evidence_binary": {
+                    "path": str(evidence),
+                    "sha256": evidence_sha256,
+                },
+            }
+
+            validated = benchmark.validate_bbb_binary_provenance(
+                provenance,
+                expected_capture_commit="1" * 40,
+                expected_capture_sha256=capture_sha256,
+            )
+
+            self.assertFalse(validated["binary_identical"])
+            self.assertTrue(validated["runtime_image_identical"])
+            self.assertEqual(
+                validated["runtime_image_sha256"], runtime_identity["sha256"]
+            )
+            self.assertNotEqual(
+                validated["capture_binary"]["sha256"],
+                validated["evidence_binary"]["sha256"],
+            )
+
+    def test_bbb_provenance_rejects_different_elf_load_images(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            capture = root / "bbb-capture"
+            evidence = root / "bbb-evidence"
+            capture.write_bytes(Path(sys.executable).read_bytes())
+            changed = bytearray(capture.read_bytes())
+            changed[24] ^= 1
+            evidence.write_bytes(changed)
+            capture_sha256 = benchmark.file_digest(capture, "sha256")
+            runtime_identity = benchmark.elf_load_image_identity(capture)
+            provenance = {
+                "schema": 1,
+                "capture_commit": "1" * 40,
+                "evidence_commit": "2" * 40,
+                "identity_kind": benchmark.ELF_LOAD_IMAGE_ALGORITHM,
+                "runtime_image_sha256": runtime_identity["sha256"],
+                "capture_binary": {
+                    "path": str(capture),
+                    "sha256": capture_sha256,
+                },
+                "evidence_binary": {
+                    "path": str(evidence),
+                    "sha256": benchmark.file_digest(evidence, "sha256"),
+                },
+            }
+
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure,
+                "runtime image is not identical",
+            ):
+                benchmark.validate_bbb_binary_provenance(
+                    provenance,
+                    expected_capture_commit="1" * 40,
+                    expected_capture_sha256=capture_sha256,
+                )
+
     def audit(self) -> object:
         verified = benchmark.VerifiedFile("/tmp/client.jar", "a" * 40, 1)
         return benchmark.DistributionAudit(

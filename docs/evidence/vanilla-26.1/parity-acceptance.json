@@ -195,7 +195,10 @@
           "path": "/tmp/bbb-parity-6c16fda01/provenance/bbb-native-6c16fda01",
           "sha256": "93547b9b279edf1987f95ce8fb47921b46ea4d093ae971656de5820a6bfc2c0f"
         },
-        "evidence_commit": "6c16fda010ac5b5ec42396db00e24cdb5b22ceac"
+        "evidence_commit": "6c16fda010ac5b5ec42396db00e24cdb5b22ceac",
+        "identity_kind": null,
+        "runtime_image_identical": false,
+        "runtime_image_sha256": null
       },
       "exists": true,
       "invalid_reasons": [],
@@ -230,9 +233,11 @@
       "mechanism_ids": [
         "audio-client-level-sound-routing",
         "audio-sound-manager-engine",
+        "coverage-external-client-census",
         "debug-integrated-server-mirrors",
         "diagnostics-client-level-report",
         "diagnostics-client-only-inspection-exclusions",
+        "docs-chinese-mechanism-wiki",
         "entities-fixed-type-surface",
         "identity-profile-key-lifecycle",
         "identity-skin-presentation",
@@ -329,7 +334,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "5e5c55d0e621e2c59d00a1b22cd1d3d71a8874f6b60dcf9c08c2b282e6fb9b18",
+      "sha256": "9d30f42c6a9b05540b67352a2d9a8866fbf0d20c6014b0ec22eb36fda8060bdd",
       "valid": true
     },
     {
@@ -436,7 +441,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-08T00:12:46Z\t6c16fda010ac5b5ec42396db00e24cdb5b22ceac\tclean\ttotal:175s,vanilla-verify:1s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:0s,scripts-tests:69s,diff-check:0s,check:11s,cross-check:29s,test:56s",
-      "sha256": "bf2c3a20f74478d2b961c08c022bdd7f1fdfa6af65c70e484d3171e369fe8093",
+      "sha256": "58449740d5c4750f65a77864e7b2a90b71075ab035defa8df5604b9781f7121f",
       "valid": true
     },
     {
@@ -685,7 +690,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "4f80cd1508a30dac9eed3e9c1547e059a072c5362ba1187d7a2683184a087ef6",
+      "sha256": "d870f13cbc0f83eb0b5590f17cf4337ebe46a3eb93cc08ec0c7f3a3d1bc2a7c3",
       "valid": true
     },
     {
@@ -705,7 +710,10 @@
           "path": "/tmp/bbb-parity-6c16fda01/provenance/bbb-native-6c16fda01",
           "sha256": "93547b9b279edf1987f95ce8fb47921b46ea4d093ae971656de5820a6bfc2c0f"
         },
-        "evidence_commit": "6c16fda010ac5b5ec42396db00e24cdb5b22ceac"
+        "evidence_commit": "6c16fda010ac5b5ec42396db00e24cdb5b22ceac",
+        "identity_kind": null,
+        "runtime_image_identical": false,
+        "runtime_image_sha256": null
       },
       "exists": true,
       "invalid_reasons": [],
@@ -7507,7 +7515,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "5e5c55d0e621e2c59d00a1b22cd1d3d71a8874f6b60dcf9c08c2b282e6fb9b18",
+      "sha256": "9d30f42c6a9b05540b67352a2d9a8866fbf0d20c6014b0ec22eb36fda8060bdd",
       "valid": true
     },
     {
@@ -7839,7 +7847,7 @@
       ],
       "path": "scripts/parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "d998f586edcf5f683c116c3f839e77fec2c1d189088da57a0bd5494aa14e0efe",
+      "sha256": "b76a9c105aeb90d9fbc601190c80285fec0d25a700b30f54b7c7efafb3105a74",
       "valid": true
     },
     {
@@ -8006,7 +8014,7 @@
       ],
       "path": "scripts/tests/test_parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "6e0aa9bedd04b196daf8b8c23b5dc4738af0b6b8b61af52c1550527860d21ddd",
+      "sha256": "6499be30f8d0318fd6b76280a7d19cf52ee0fb8ed6ebec11e865f3cb8b633989",
       "valid": true
     },
     {
@@ -8040,7 +8048,10 @@
           "path": "/tmp/bbb-parity-6c16fda01/provenance/bbb-native-6c16fda01",
           "sha256": "93547b9b279edf1987f95ce8fb47921b46ea4d093ae971656de5820a6bfc2c0f"
         },
-        "evidence_commit": "6c16fda010ac5b5ec42396db00e24cdb5b22ceac"
+        "evidence_commit": "6c16fda010ac5b5ec42396db00e24cdb5b22ceac",
+        "identity_kind": null,
+        "runtime_image_identical": false,
+        "runtime_image_sha256": null
       },
       "exists": true,
       "invalid_reasons": [],
@@ -8076,11 +8087,15 @@
   "generator_inputs": [
     {
       "path": "scripts/parity_acceptance.py",
-      "sha256": "d998f586edcf5f683c116c3f839e77fec2c1d189088da57a0bd5494aa14e0efe"
+      "sha256": "b76a9c105aeb90d9fbc601190c80285fec0d25a700b30f54b7c7efafb3105a74"
+    },
+    {
+      "path": "scripts/bbb_tools/executable_identity.py",
+      "sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576"
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "4f80cd1508a30dac9eed3e9c1547e059a072c5362ba1187d7a2683184a087ef6"
+      "sha256": "d870f13cbc0f83eb0b5590f17cf4337ebe46a3eb93cc08ec0c7f3a3d1bc2a7c3"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8088,7 +8103,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "5e5c55d0e621e2c59d00a1b22cd1d3d71a8874f6b60dcf9c08c2b282e6fb9b18"
+      "sha256": "9d30f42c6a9b05540b67352a2d9a8866fbf0d20c6014b0ec22eb36fda8060bdd"
     }
   ],
   "mechanisms": [
@@ -33917,6 +33932,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:scripts/client_mechanism_inventory.py",
@@ -33945,12 +33961,18 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_duplicate_matrix_id_is_rejected",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_external_visual_receipt_accepts_ancestor_elf_load_image",
           "result": "passed-via-full-gate"
         },
         {
@@ -34018,12 +34040,14 @@
         "domain": "workflow",
         "line": 155,
         "required_state_projection": "owner mapping、evidence、bilateral routes、stale checks",
-        "route_reopen_condition": "Vanilla owner corpus、census 或 acceptance schema 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "本 provenance validator 提交经 full gate 后关闭；Vanilla owner corpus、census 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "coverage-external-client-census",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 0,
@@ -34036,6 +34060,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:scripts/docs_wiki_lint.py",
@@ -34062,7 +34087,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/dev test python --suite all",
@@ -34303,12 +34328,14 @@
         "domain": "workflow",
         "line": 156,
         "required_state_projection": "IDs、routes、source/BBB evidence、stale output",
-        "route_reopen_condition": "目标版本、canonical owner 或 acceptance schema 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "本 provenance validator 提交经 full gate 后关闭；目标版本、canonical owner 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "docs-chinese-mechanism-wiki",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 0,
@@ -37933,7 +37960,9 @@
     "invalid_ids": [
       "audio-client-level-sound-routing",
       "audio-sound-manager-engine",
+      "coverage-external-client-census",
       "diagnostics-client-level-report",
+      "docs-chinese-mechanism-wiki",
       "entities-fixed-type-surface",
       "identity-skin-presentation",
       "input-debug-key-actions",
@@ -38007,11 +38036,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 49,
+      "equivalent": 47,
       "not-needed": 25,
-      "partial": 72
+      "partial": 74
     },
-    "valid_count": 75
+    "valid_count": 73
   },
   "vanilla_version": "26.1"
 }
