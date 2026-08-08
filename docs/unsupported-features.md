@@ -63,6 +63,8 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   mappings, derives `implementation-gap` / `focused-evidence-pending` /
   `formal-receipt-pending` / `external-blocker`, and hashes each mechanism's BBB
   owner/path closure, focused-test contract, Vanilla source and capture identity.
+  Code freeze remains fail-closed until its derived `implementation_blocking_ids`
+  is empty; formal-receipt-only rows do not block the freeze.
   `scripts/python python scripts/parity_acceptance.py plan` maps changed paths to affected Mechanism IDs and
   validation classes, so implementation batches reuse only unaffected intermediate
   evidence; full gate remains a repository regression gate and never launches formal

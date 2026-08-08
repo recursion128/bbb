@@ -508,7 +508,7 @@ diff review/check，并在既有 checkpoint 批次 full gate。planner 从 owner
 中央 owner、测试、capture schema/settings/input 或 binary/load identity 变化只失效对应域。
 实现完成但未正式 sweep 的行保持 `partial`，开放原因只由 acceptance report 派生。
 
-已知中央差异清完后形成 clean、full-gated code freeze，再串行运行 protocol/world/lifecycle、
+只有 acceptance 的 `implementation_blocking_ids` 为空，才形成 clean、full-gated code freeze；再串行运行 protocol/world/lifecycle、
 resources/platform、rendering 三类 domain evidence sweep。共享 artifact 可以覆盖多个 Mechanism ID，
 但必须双向列出 ID；失败证据保留，失败只重跑该域。正式两轮 ABBA 只能在 camera/world/workload、
 冻结 ROI、结构与 draw gate 全过后集中执行。最终 `check --require-artifacts --require-complete

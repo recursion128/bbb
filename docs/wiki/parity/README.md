@@ -20,6 +20,8 @@ owner inventory、ledger、full-gate 与外部 receipts 派生 147 条记录；�
 scenario 反向列出覆盖的 Mechanism ID。报告按 `implementation`→`checkpoint`→
 `code-freeze`→`evidence-sweep`→`final-performance`→`final` 排序；`partial` 的开放原因、
 BBB owner/path 与 focused-test hash、capture contract/binary identity 都由 generator 派生。
+`implementation-gap` 或 `focused-evidence-pending` 仍存在时，generator/lint 强制
+`implementation_ready=false`、`code_freeze_ready=false`，禁止提前进入正式 sweep。
 `scripts/python python scripts/parity_acceptance.py plan --base-commit <commit>` 给出 changed-path→Mechanism ID→
 validation class，不相关修改不会在开发阶段作废别的 owner receipt；中央 owner 或采集输入变化
 仍精确失效其依赖闭包。full gate 只证明整仓回归，不隐式启动 live/visual/RenderDoc/ABBA。

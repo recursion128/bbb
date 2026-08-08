@@ -268,6 +268,10 @@ mod tests {
             self.assertEqual(
                 mechanism["open_reasons"], ["formal-receipt-pending"]
             )
+            self.assertTrue(report["workflow"]["implementation_ready"])
+            self.assertEqual(
+                report["workflow"]["implementation_blocking_ids"], []
+            )
             broken = copy.deepcopy(report)
             broken["mechanisms"][0]["open_reasons"] = []
             issues = validate_report(
@@ -314,6 +318,28 @@ mod tests {
                 )
             )
             self.assertEqual(mechanism["focused_tests"][0]["result"], "ignored")
+            self.assertFalse(report["workflow"]["implementation_ready"])
+            self.assertFalse(report["workflow"]["code_freeze_ready"])
+            self.assertEqual(
+                report["workflow"]["implementation_blocking_ids"],
+                ["fixture-equivalent"],
+            )
+            premature = build_report(
+                repo=repo,
+                source_root=source_root,
+                evidence_commit=self.commit,
+                gate_log=repo / ".git/bbb/gate-log.tsv",
+                workflow_stage="code-freeze",
+            )
+            self.assertIn(
+                "workflow stage advanced before a clean gated code freeze",
+                validate_report(
+                    premature,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+            )
 
     def test_change_plan_scopes_direct_central_and_unrelated_paths(self):
         with tempfile.TemporaryDirectory() as temporary:

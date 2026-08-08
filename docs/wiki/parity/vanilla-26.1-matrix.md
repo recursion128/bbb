@@ -7,6 +7,7 @@
 实现提交保持 `partial`，直到当前 focused contract、owner/source hash 与正式 domain receipt
 全部有效；full gate 不会自动触发 live、视觉、RenderDoc 或 ABBA。共享 receipt 可覆盖多个
 Mechanism ID，但 artifact 与机制必须双向映射，失效范围由 acceptance report 的依赖闭包派生。
+任一行仍派生 `implementation-gap` 或 `focused-evidence-pending` 时，code freeze 必须保持关闭。
 
 | Mechanism ID | 领域 | Vanilla owner/class | BBB owner/module | Required state/projection | 状态 | Focused test/evidence | Route / reopen condition |
 | --- | --- | --- | --- | --- | --- | --- | --- |

@@ -56,6 +56,9 @@ OPEN_REASON_CODES = frozenset(
         "external-blocker",
     }
 )
+IMPLEMENTATION_BLOCKING_REASONS = frozenset(
+    {"implementation-gap", "focused-evidence-pending"}
+)
 FORMAL_BINARY_IDENTITY_KINDS = frozenset(
     {"performance", "workload", "draw", "platform", "lifecycle"}
 )
@@ -565,6 +568,20 @@ def parity_semantic_contract_sha256(records: Iterable[dict[str, object]]) -> str
             }
         )
     return canonical_sha256(values)
+
+
+def implementation_blocking_ids(
+    records: Iterable[dict[str, object]],
+) -> list[str]:
+    return sorted(
+        str(record["mechanism_id"])
+        for record in records
+        if isinstance(record.get("matrix"), dict)
+        and record["matrix"].get("status") != "deferred-external"
+        and isinstance(record.get("open_reasons"), list)
+        and IMPLEMENTATION_BLOCKING_REASONS
+        & {str(reason) for reason in record["open_reasons"]}
+    )
 
 
 def parse_matrix(path: Path) -> list[dict[str, str]]:
@@ -2028,8 +2045,11 @@ def build_report(
         path = repo / relative
         generator_inputs.append({"path": relative, "sha256": sha256_file(path)})
     semantic_contract_sha256 = parity_semantic_contract_sha256(records)
+    blocking_ids = implementation_blocking_ids(records)
+    implementation_ready = not blocking_ids
     code_freeze_ready = (
-        artifacts["full-gate"]["valid"] is True
+        implementation_ready
+        and artifacts["full-gate"]["valid"] is True
         and not change_impact["functional_changed_paths"]
         and not change_impact["functional_affected_mechanism_ids"]
     )
@@ -2063,6 +2083,8 @@ def build_report(
             "formal_performance_allowed": consistency_gate_passed
             and workflow_stage_index(workflow_stage)
             >= workflow_stage_index("final-performance"),
+            "implementation_blocking_ids": blocking_ids,
+            "implementation_ready": implementation_ready,
             "semantic_contract_sha256": semantic_contract_sha256,
             "stage": workflow_stage,
             "stage_order": list(WORKFLOW_STAGES),
@@ -2821,8 +2843,13 @@ def validate_report(
         )
     )
     head, clean = current_head_and_clean(repo, evidence_commit)
+    blocking_ids = implementation_blocking_ids(
+        record for record in records if isinstance(record, dict)
+    )
+    implementation_ready = not blocking_ids
     code_freeze_ready = (
-        isinstance(full_gate, dict)
+        implementation_ready
+        and isinstance(full_gate, dict)
         and full_gate.get("valid") is True
         and not expected_impact["functional_changed_paths"]
         and not expected_impact["functional_affected_mechanism_ids"]
@@ -2832,6 +2859,10 @@ def validate_report(
     ) >= workflow_stage_index("final-performance")
     if workflow.get("consistency_gate_passed") is not consistency_gate_passed:
         issues.append("stale consistency-gate workflow result")
+    if workflow.get("implementation_blocking_ids") != blocking_ids:
+        issues.append("stale implementation-blocker workflow result")
+    if workflow.get("implementation_ready") is not implementation_ready:
+        issues.append("stale implementation-readiness workflow result")
     if workflow.get("code_freeze_ready") is not code_freeze_ready:
         issues.append("stale code-freeze workflow result")
     if workflow.get("formal_performance_allowed") is not formal_performance_allowed:
