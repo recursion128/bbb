@@ -53,6 +53,8 @@ Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `wo
 Matrix routes: `rendering-client-biome-tint`, `rendering-level-backend-lifecycle`
 Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-registration`, `ui-chat-screen-surface`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-pause-screen-surface`, `ui-bidirectional-shaping`, `ui-local-time-icu`, `ui-context-entity-type`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `identity-skin-presentation`
 Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `lifecycle-client-runtime`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
+Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
+Matrix routes: `lifecycle-client-task-handoff`, `performance-gpu-execution-duration`, `performance-official-equal-load`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 
 - Produce a current-HEAD parity acceptance report whose 147 records and reverse
   artifact/scenario mappings validate without a false `equivalent`: capture commit
@@ -67,6 +69,12 @@ Matrix routes: `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-ho
   evidence after `bfcc657cf`; the 27 affected `equivalent` rows are temporarily
   reopened until the implementation commit passes the full gate and the report
   is rebound. This is evidence invalidation, not a new behavior-gap checklist.
+- The reachable SOCKS proxy/cache correction also changed nine shared startup,
+  window, UI and persistence evidence owners; those rows remain temporarily
+  reopened until the same full-gate/rebind checkpoint completes.
+- Advancing the evidence commit beyond `bfcc657cf` also expires nine
+  lifecycle/visual/draw/performance receipts; they stay open until exact-commit
+  soak and formal differential recapture replace those artifacts.
 
 ## Render-step and HUD presentation closure
 

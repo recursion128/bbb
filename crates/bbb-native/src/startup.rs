@@ -1,9 +1,12 @@
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, thread, time::Duration};
+use std::{
+    convert::Infallible, fmt, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc, thread,
+    time::Duration,
+};
 
 use anyhow::{ensure, Context, Result};
 use bbb_audio::AudioVolumeSettings;
 use bbb_control::ControlState;
-use bbb_net::{ConnectionOptions, ServerResourcePackPolicy};
+use bbb_net::{ConnectionOptions, ServerPackDownloadProxy, ServerResourcePackPolicy};
 use bbb_pack::{KnownPacksManager, PackRoots};
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
@@ -46,6 +49,29 @@ use crate::{
 };
 
 pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
+
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct RedactedString(String);
+
+impl RedactedString {
+    fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Debug for RedactedString {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("[REDACTED]")
+    }
+}
+
+impl FromStr for RedactedString {
+    type Err = Infallible;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(Self(value.to_string()))
+    }
+}
 
 #[derive(Debug, Parser)]
 #[command(name = "bbb-native")]
@@ -111,6 +137,21 @@ pub(crate) struct Args {
     pub(crate) server_resource_pack_policy: ServerResourcePackPolicyArg,
     #[arg(long = "server-resource-pack-cache-dir", value_name = "PATH")]
     pub(crate) server_resource_pack_cache_dir: Option<PathBuf>,
+    /// Vanilla `Main --proxyHost`; server-pack HTTP uses an explicit SOCKS5
+    /// proxy only when this is present.
+    #[arg(long = "proxy-host", alias = "proxyHost", value_name = "HOST")]
+    pub(crate) proxy_host: Option<String>,
+    #[arg(
+        long = "proxy-port",
+        alias = "proxyPort",
+        value_name = "PORT",
+        default_value_t = 8080
+    )]
+    pub(crate) proxy_port: i32,
+    #[arg(long = "proxy-user", alias = "proxyUser", value_name = "USER")]
+    pub(crate) proxy_user: Option<String>,
+    #[arg(long = "proxy-pass", alias = "proxyPass", value_name = "PASSWORD")]
+    pub(crate) proxy_pass: Option<RedactedString>,
     #[arg(long = "player-skin-cache-dir", value_name = "PATH")]
     pub(crate) player_skin_cache_dir: Option<PathBuf>,
     #[arg(long = "client-locale", default_value = "en_us")]
@@ -1531,6 +1572,18 @@ fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
     Ok(options)
 }
 
+pub(crate) fn server_resource_pack_proxy_from_args(args: &Args) -> Option<ServerPackDownloadProxy> {
+    let host = args.proxy_host.as_ref()?;
+    ServerPackDownloadProxy::from_vanilla_args(
+        host.clone(),
+        args.proxy_port,
+        args.proxy_user.clone(),
+        args.proxy_pass
+            .as_ref()
+            .map(|password| password.expose().to_string()),
+    )
+}
+
 pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
     ensure!(
         args.client_locale.len() <= 16,
@@ -2167,6 +2220,9 @@ mod tests {
             ServerResourcePackPolicyArg::Decline
         );
         assert_eq!(defaults.server_resource_pack_cache_dir, None);
+        assert_eq!(defaults.proxy_host, None);
+        assert_eq!(defaults.proxy_port, 8080);
+        assert!(server_resource_pack_proxy_from_args(&defaults).is_none());
         assert_eq!(
             connection_options_from_args(&defaults)
                 .unwrap()
@@ -2196,6 +2252,39 @@ mod tests {
                 .server_resource_pack_policy,
             ServerResourcePackPolicy::Accept
         );
+    }
+
+    #[test]
+    fn args_project_vanilla_socks_proxy_without_exposing_password() {
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--proxyHost",
+            "proxy.example",
+            "--proxyPort",
+            "1080",
+            "--proxyUser",
+            "proxy-user",
+            "--proxyPass",
+            "proxy-password",
+        ])
+        .unwrap();
+
+        assert_eq!(args.proxy_host.as_deref(), Some("proxy.example"));
+        assert_eq!(args.proxy_port, 1080);
+        assert!(server_resource_pack_proxy_from_args(&args).is_some());
+        let debug = format!("{args:?}");
+        assert!(debug.contains("[REDACTED]"));
+        assert!(!debug.contains("proxy-password"));
+
+        let invalid_port = Args::try_parse_from([
+            "bbb-native",
+            "--proxy-host",
+            "proxy.example",
+            "--proxy-port",
+            "65536",
+        ])
+        .unwrap();
+        assert!(server_resource_pack_proxy_from_args(&invalid_port).is_none());
     }
 
     #[test]

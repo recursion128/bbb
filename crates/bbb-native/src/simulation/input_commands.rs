@@ -3348,6 +3348,7 @@ mod tests {
             std::env::temp_dir(),
             "window-surface-focus-test",
             Uuid::nil(),
+            None,
         );
         let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
         let mut particle_runtime = None;
@@ -3466,6 +3467,7 @@ mod tests {
             std::env::temp_dir(),
             "ime-preedit-handoff-test",
             Uuid::nil(),
+            None,
         );
         let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
         let mut particle_runtime = None;

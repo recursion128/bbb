@@ -1,6 +1,8 @@
 use std::{
+    fmt,
     fs::{File, OpenOptions},
     io::{Read, Write},
+    net::Ipv6Addr,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
     time::Duration,
@@ -21,6 +23,68 @@ pub const VANILLA_MAX_SERVER_PACK_DOWNLOAD_BYTES: u64 = 250 * 1024 * 1024;
 const DEFAULT_SERVER_PACK_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
 static DOWNLOAD_SERIAL: AtomicU64 = AtomicU64::new(0);
 
+#[derive(Clone, PartialEq, Eq)]
+pub struct ServerPackDownloadProxy {
+    host: String,
+    port: u16,
+    credentials: Option<ServerPackProxyCredentials>,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct ServerPackProxyCredentials {
+    username: String,
+    password: String,
+}
+
+impl ServerPackDownloadProxy {
+    /// Mirrors `Main`'s SOCKS proxy construction. Invalid ports fall back to
+    /// `Proxy.NO_PROXY`, and credentials are installed only when both values
+    /// are non-empty.
+    pub fn from_vanilla_args(
+        host: impl Into<String>,
+        port: i32,
+        username: Option<String>,
+        password: Option<String>,
+    ) -> Option<Self> {
+        let port = u16::try_from(port).ok()?;
+        let credentials = match (username, password) {
+            (Some(username), Some(password)) if !username.is_empty() && !password.is_empty() => {
+                Some(ServerPackProxyCredentials { username, password })
+            }
+            _ => None,
+        };
+        Some(Self {
+            host: host.into(),
+            port,
+            credentials,
+        })
+    }
+
+    fn reqwest_proxy(&self) -> Option<reqwest::Proxy> {
+        let host = if self.host.parse::<Ipv6Addr>().is_ok() {
+            format!("[{}]", self.host)
+        } else {
+            self.host.clone()
+        };
+        let mut proxy = reqwest::Proxy::all(format!("socks5h://{host}:{}", self.port)).ok()?;
+        if let Some(credentials) = &self.credentials {
+            proxy = proxy.basic_auth(&credentials.username, &credentials.password);
+        }
+        Some(proxy)
+    }
+}
+
+impl fmt::Debug for ServerPackDownloadProxy {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ServerPackDownloadProxy")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("has_credentials", &self.credentials.is_some())
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerPackDownloadRequest {
     pub url: String,
@@ -30,6 +94,7 @@ pub struct ServerPackDownloadRequest {
     pub profile_id: Uuid,
     pub timeout: Duration,
     pub max_bytes: u64,
+    pub proxy: Option<ServerPackDownloadProxy>,
 }
 
 impl ServerPackDownloadRequest {
@@ -48,7 +113,13 @@ impl ServerPackDownloadRequest {
             profile_id,
             timeout: DEFAULT_SERVER_PACK_DOWNLOAD_TIMEOUT,
             max_bytes: VANILLA_MAX_SERVER_PACK_DOWNLOAD_BYTES,
+            proxy: None,
         }
+    }
+
+    pub fn with_proxy(mut self, proxy: Option<ServerPackDownloadProxy>) -> Self {
+        self.proxy = proxy;
+        self
     }
 }
 
@@ -128,6 +199,7 @@ fn download_server_pack_blocking(
     if let Some(expected_sha1) = expected_sha1.as_deref() {
         let cached_path = cached_archive_path(&request.cache_dir, expected_sha1);
         if let Ok(bytes) = validate_cached_archive(&cached_path, expected_sha1, request.max_bytes) {
+            touch_cached_archive(&cached_path);
             return Ok(ServerPackDownload {
                 archive_path: cached_path,
                 sha1: expected_sha1.to_string(),
@@ -144,8 +216,18 @@ fn download_server_pack_blocking(
         .create_new(true)
         .open(&partial_path)
         .with_context(|| format!("create server pack download {}", partial_path.display()))?;
-    let client = Client::builder()
-        .timeout(request.timeout)
+    // Vanilla uses `Proxy.NO_PROXY` unless `Main --proxyHost` created an
+    // explicit SOCKS proxy. Disable reqwest's environment proxy discovery so
+    // ambient HTTP_PROXY/HTTPS_PROXY cannot silently change that contract.
+    let mut client_builder = Client::builder().timeout(request.timeout).no_proxy();
+    if let Some(proxy) = request
+        .proxy
+        .as_ref()
+        .and_then(ServerPackDownloadProxy::reqwest_proxy)
+    {
+        client_builder = client_builder.proxy(proxy);
+    }
+    let client = client_builder
         .build()
         .context("build server pack HTTP client")?;
     let headers = download_headers(&request.username, request.profile_id)?;
@@ -234,7 +316,10 @@ fn download_headers(username: &str, profile_id: Uuid) -> Result<HeaderMap> {
             "x-minecraft-version-id",
             bbb_protocol::MC_VERSION.to_string(),
         ),
-        ("x-minecraft-pack-format", "84.0".to_string()),
+        (
+            "x-minecraft-pack-format",
+            bbb_protocol::MC_RESOURCE_PACK_FORMAT.to_vanilla_string(),
+        ),
     ] {
         headers.insert(
             reqwest::header::HeaderName::from_bytes(name.as_bytes())?,
@@ -255,9 +340,14 @@ fn parse_expected_sha1(value: &str) -> Option<String> {
 }
 
 fn cached_archive_path(cache_dir: &Path, sha1: &str) -> PathBuf {
-    cache_dir.join(format!("{sha1}.zip"))
+    cache_dir.join(sha1)
 }
 
+fn touch_cached_archive(path: &Path) {
+    if let Ok(file) = OpenOptions::new().write(true).open(path) {
+        let _ = file.set_modified(std::time::SystemTime::now());
+    }
+}
 fn validate_cached_archive(path: &Path, expected_sha1: &str, max_bytes: u64) -> Result<u64> {
     let mut file =
         File::open(path).with_context(|| format!("open cached server pack {}", path.display()))?;
@@ -486,16 +576,91 @@ mod tests {
         assert_eq!(downloaded.sha1, expected_sha1);
         assert_eq!(downloaded.bytes, body.len() as u64);
         assert!(!downloaded.cache_hit);
+        assert_eq!(
+            downloaded.archive_path.file_name().unwrap(),
+            expected_sha1.as_str()
+        );
         assert_eq!(std::fs::read(&downloaded.archive_path).unwrap(), body);
         assert!(request_headers.contains("x-minecraft-username: bbb-client"));
         assert!(request_headers.contains("x-minecraft-version: 26.1"));
         assert!(request_headers.contains("x-minecraft-pack-format: 84.0"));
         assert!(request_headers.contains("user-agent: Minecraft Java/26.1"));
 
+        File::options()
+            .write(true)
+            .open(&downloaded.archive_path)
+            .unwrap()
+            .set_modified(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap();
         let cached = download_server_pack(request).await.unwrap();
         assert!(cached.cache_hit);
         assert_eq!(cached.archive_path, downloaded.archive_path);
+        assert!(
+            std::fs::metadata(&cached.archive_path)
+                .unwrap()
+                .modified()
+                .unwrap()
+                > std::time::SystemTime::UNIX_EPOCH
+        );
         std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials() {
+        let body = b"server-pack-through-socks".to_vec();
+        let cache_dir = unique_temp_dir("socks-proxy");
+        let (proxy_host, proxy_port, server) = serve_socks5_once(body.clone());
+        let proxy = ServerPackDownloadProxy::from_vanilla_args(
+            proxy_host,
+            i32::from(proxy_port),
+            Some("proxy-user".to_string()),
+            Some("proxy-password".to_string()),
+        )
+        .unwrap();
+        let debug = format!("{proxy:?}");
+        assert!(debug.contains("has_credentials: true"));
+        assert!(!debug.contains("proxy-user"));
+        assert!(!debug.contains("proxy-password"));
+
+        let request = ServerPackDownloadRequest::new(
+            "http://pack.example.invalid/lifecycle.zip",
+            None,
+            &cache_dir,
+            "bbb-client",
+            Uuid::nil(),
+        )
+        .with_proxy(Some(proxy));
+        let downloaded = download_server_pack(request).await.unwrap();
+        let receipt = server.join().unwrap();
+
+        assert_eq!(std::fs::read(downloaded.archive_path).unwrap(), body);
+        assert_eq!(receipt.username, "proxy-user");
+        assert_eq!(receipt.password, "proxy-password");
+        assert_eq!(receipt.target_host, "pack.example.invalid");
+        assert_eq!(receipt.target_port, 80);
+        assert!(receipt
+            .request
+            .starts_with("GET /lifecycle.zip HTTP/1.1\r\n"));
+        std::fs::remove_dir_all(cache_dir).unwrap();
+    }
+
+    #[test]
+    fn vanilla_proxy_arguments_fall_back_and_require_both_credentials() {
+        assert!(
+            ServerPackDownloadProxy::from_vanilla_args("proxy.example", -1, None, None,).is_none()
+        );
+        assert!(
+            ServerPackDownloadProxy::from_vanilla_args("proxy.example", 65536, None, None,)
+                .is_none()
+        );
+        let proxy = ServerPackDownloadProxy::from_vanilla_args(
+            "proxy.example",
+            8080,
+            Some("user".to_string()),
+            Some(String::new()),
+        )
+        .unwrap();
+        assert!(format!("{proxy:?}").contains("has_credentials: false"));
     }
 
     #[tokio::test]
@@ -621,6 +786,98 @@ mod tests {
             String::from_utf8(request).unwrap()
         });
         (format!("http://{address}/pack.zip"), server)
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct SocksReceipt {
+        username: String,
+        password: String,
+        target_host: String,
+        target_port: u16,
+        request: String,
+    }
+
+    fn serve_socks5_once(body: Vec<u8>) -> (String, u16, thread::JoinHandle<SocksReceipt>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+
+            let mut greeting = [0_u8; 2];
+            stream.read_exact(&mut greeting).unwrap();
+            assert_eq!(greeting[0], 5);
+            let mut methods = vec![0_u8; usize::from(greeting[1])];
+            stream.read_exact(&mut methods).unwrap();
+            assert!(methods.contains(&2));
+            stream.write_all(&[5, 2]).unwrap();
+
+            let mut auth = [0_u8; 2];
+            stream.read_exact(&mut auth).unwrap();
+            assert_eq!(auth[0], 1);
+            let mut username = vec![0_u8; usize::from(auth[1])];
+            stream.read_exact(&mut username).unwrap();
+            let mut password_len = [0_u8; 1];
+            stream.read_exact(&mut password_len).unwrap();
+            let mut password = vec![0_u8; usize::from(password_len[0])];
+            stream.read_exact(&mut password).unwrap();
+            stream.write_all(&[1, 0]).unwrap();
+
+            let mut connect = [0_u8; 4];
+            stream.read_exact(&mut connect).unwrap();
+            assert_eq!(&connect[..3], &[5, 1, 0]);
+            let target_host = match connect[3] {
+                1 => {
+                    let mut address = [0_u8; 4];
+                    stream.read_exact(&mut address).unwrap();
+                    std::net::Ipv4Addr::from(address).to_string()
+                }
+                3 => {
+                    let mut length = [0_u8; 1];
+                    stream.read_exact(&mut length).unwrap();
+                    let mut host = vec![0_u8; usize::from(length[0])];
+                    stream.read_exact(&mut host).unwrap();
+                    String::from_utf8(host).unwrap()
+                }
+                4 => {
+                    let mut address = [0_u8; 16];
+                    stream.read_exact(&mut address).unwrap();
+                    std::net::Ipv6Addr::from(address).to_string()
+                }
+                address_type => panic!("unexpected SOCKS address type {address_type}"),
+            };
+            let mut target_port = [0_u8; 2];
+            stream.read_exact(&mut target_port).unwrap();
+            stream.write_all(&[5, 0, 0, 1, 127, 0, 0, 1, 0, 0]).unwrap();
+
+            let mut request = Vec::new();
+            let mut buffer = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                let read = stream.read(&mut buffer).unwrap();
+                if read == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..read]);
+            }
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .unwrap();
+            stream.write_all(&body).unwrap();
+
+            SocksReceipt {
+                username: String::from_utf8(username).unwrap(),
+                password: String::from_utf8(password).unwrap(),
+                target_host,
+                target_port: u16::from_be_bytes(target_port),
+                request: String::from_utf8(request).unwrap(),
+            }
+        });
+        (address.ip().to_string(), address.port(), server)
     }
 
     fn sha1_hex(bytes: &[u8]) -> String {

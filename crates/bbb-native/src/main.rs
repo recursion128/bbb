@@ -714,9 +714,10 @@ fn run_client(args: startup::Args) -> Result<()> {
         runtime.handle().clone(),
         args.server_resource_pack_cache_dir
             .clone()
-            .unwrap_or_else(default_server_resource_pack_cache_dir),
+            .unwrap_or_else(|| default_server_resource_pack_cache_dir(&args.game_dir)),
         args.username.clone(),
         profile_id,
+        startup::server_resource_pack_proxy_from_args(&args),
     );
     start_control_api(&runtime, args.control, &control);
     let force_no_audio_device = {

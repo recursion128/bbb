@@ -10,7 +10,7 @@ use std::{
 
 use bbb_net::{
     download_server_pack_with_progress, NetCommand, ServerPackDownloadProgress,
-    ServerPackDownloadRequest,
+    ServerPackDownloadProxy, ServerPackDownloadRequest,
 };
 use bbb_pack::{
     materialize_server_pack_archive, SelectedClientPack, ServerPackArchiveLimits,
@@ -27,8 +27,8 @@ use uuid::Uuid;
 
 static SESSION_SERIAL: AtomicU64 = AtomicU64::new(0);
 
-pub(crate) fn default_server_resource_pack_cache_dir() -> PathBuf {
-    std::env::temp_dir().join("bbb-native-server-packs")
+pub(crate) fn default_server_resource_pack_cache_dir(game_dir: &Path) -> PathBuf {
+    game_dir.join("downloads")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -168,6 +168,7 @@ pub(crate) struct ServerResourcePackRuntime {
     materialized_session_dir: PathBuf,
     username: String,
     profile_id: Uuid,
+    download_proxy: Option<ServerPackDownloadProxy>,
     task_tx: std_mpsc::Sender<PackTaskEvent>,
     task_rx: std_mpsc::Receiver<PackTaskEvent>,
     packs: Vec<TrackedPack>,
@@ -192,8 +193,15 @@ impl ServerResourcePackRuntime {
         cache_dir: impl Into<PathBuf>,
         username: impl Into<String>,
         profile_id: Uuid,
+        download_proxy: Option<ServerPackDownloadProxy>,
     ) -> Self {
-        Self::with_optional_runtime(Some(runtime), cache_dir.into(), username.into(), profile_id)
+        Self::with_optional_runtime(
+            Some(runtime),
+            cache_dir.into(),
+            username.into(),
+            profile_id,
+            download_proxy,
+        )
     }
 
     fn with_optional_runtime(
@@ -201,6 +209,7 @@ impl ServerResourcePackRuntime {
         cache_dir: PathBuf,
         username: String,
         profile_id: Uuid,
+        download_proxy: Option<ServerPackDownloadProxy>,
     ) -> Self {
         let session_serial = SESSION_SERIAL.fetch_add(1, Ordering::Relaxed);
         let session_nonce = SystemTime::now()
@@ -218,6 +227,7 @@ impl ServerResourcePackRuntime {
             materialized_session_dir,
             username,
             profile_id,
+            download_proxy,
             task_tx,
             task_rx,
             packs: Vec::new(),
@@ -543,6 +553,7 @@ impl ServerResourcePackRuntime {
         let materialized_session_dir = self.materialized_session_dir.clone();
         let username = self.username.clone();
         let profile_id = self.profile_id;
+        let download_proxy = self.download_proxy.clone();
         let task_tx = self.task_tx.clone();
         let session_alive = Arc::clone(&self.session_alive);
         runtime.spawn(async move {
@@ -560,10 +571,11 @@ impl ServerResourcePackRuntime {
                 let request = ServerPackDownloadRequest::new(
                     request_spec.url,
                     expected_sha1,
-                    download_cache_dir.clone(),
+                    download_cache_dir.join(key.id.to_string()),
                     username.clone(),
                     profile_id,
-                );
+                )
+                .with_proxy(download_proxy.clone());
                 let result = download_server_pack_with_progress(request, move |progress| {
                     let _ = progress_tx.send(PackTaskEvent::DownloadProgress {
                         batch_id,
@@ -1185,7 +1197,16 @@ mod tests {
             unique_temp_dir(label),
             "bbb-client".to_string(),
             Uuid::nil(),
+            None,
         )
+    }
+
+    #[test]
+    fn default_server_pack_cache_uses_vanilla_game_directory_downloads() {
+        assert_eq!(
+            default_server_resource_pack_cache_dir(Path::new("/game")),
+            PathBuf::from("/game/downloads")
+        );
     }
 
     fn push_accepted(world: &mut WorldStore, id: Uuid, url: &str) -> PackKey {
