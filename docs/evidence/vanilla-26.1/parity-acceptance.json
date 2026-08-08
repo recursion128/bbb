@@ -272,7 +272,6 @@
         "protocol-framing-no-world-state",
         "protocol-listener-contracts",
         "protocol-login-handler-decisions",
-        "protocol-play-handler-decisions",
         "protocol-serverbound-call-sites",
         "registries-unsynchronized-fixed-identities",
         "rendering-client-biome-tint",
@@ -327,7 +326,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "24527b00691b4fac6123246703a47dd590645963b6cfe3c417871891aa64f18b",
+      "sha256": "ffac603725d30bb486af87758d3d5c0c699bdd7ac019dbd2438209b820a413d4",
       "valid": true
     },
     {
@@ -434,7 +433,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-08T02:04:51Z\tbfcc657cf93001265e748fcf53223f723ad0f57c\tclean\ttotal:23s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:12s",
-      "sha256": "5005814373c2a83f2e4279cdcde9e18fa5c7d3778c0ee5f713fd4d331515716c",
+      "sha256": "8e18af57a4f313a4bec2389f1e16f91c515ee144dd8973faa52b6970fe22134c",
       "valid": true
     },
     {
@@ -683,7 +682,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "a17bbc0f270c65038e2d5e95a9171ac110e1360b24b7be0166ffdca608ddd2e8",
+      "sha256": "b6a6737475b4eee2d917cce09526ead9b12624ba43caf8234d909b823870c3fb",
       "valid": true
     },
     {
@@ -7510,7 +7509,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "24527b00691b4fac6123246703a47dd590645963b6cfe3c417871891aa64f18b",
+      "sha256": "ffac603725d30bb486af87758d3d5c0c699bdd7ac019dbd2438209b820a413d4",
       "valid": true
     },
     {
@@ -7722,7 +7721,8 @@
       "kind": "repo-evidence",
       "mechanism_ids": [
         "protocol-configuration-handler-decisions",
-        "protocol-packet-tables"
+        "protocol-packet-tables",
+        "protocol-play-handler-decisions"
       ],
       "path": "scripts/cargo-dev.sh",
       "scenario_ids": [],
@@ -8106,7 +8106,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "a17bbc0f270c65038e2d5e95a9171ac110e1360b24b7be0166ffdca608ddd2e8"
+      "sha256": "b6a6737475b4eee2d917cce09526ead9b12624ba43caf8234d909b823870c3fb"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8114,7 +8114,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "24527b00691b4fac6123246703a47dd590645963b6cfe3c417871891aa64f18b"
+      "sha256": "ffac603725d30bb486af87758d3d5c0c699bdd7ac019dbd2438209b820a413d4"
     }
   ],
   "mechanisms": [
@@ -14020,7 +14020,6 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -14252,6 +14251,7 @@
         "repo:crates/bbb-world/src/tutorial.rs",
         "repo:docs/evidence/vanilla-26.1/packet-coverage.json",
         "repo:docs/wiki/mechanisms/protocol/client-state-flow.md",
+        "repo:scripts/cargo-dev.sh",
         "repo:scripts/tests/test_block_registry_catalog_extractor.py",
         "repo:scripts/tests/test_entity_catalog.py",
         "repo:scripts/tests/test_entity_coverage_ledger.py",
@@ -14262,7 +14262,8 @@
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
-          "docs/wiki/mechanisms/protocol/client-state-flow.md"
+          "docs/wiki/mechanisms/protocol/client-state-flow.md",
+          "scripts/cargo-dev.sh"
         ],
         "owner": "`WorldStore::apply_play_packet`、native effects"
       },
@@ -14514,7 +14515,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -14760,14 +14761,12 @@
         "domain": "protocol/world",
         "line": 34,
         "required_state_projection": "canonical apply、runtime effect、ack/diagnostics",
-        "route_reopen_condition": "play handler/table 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "play handler/source hash、owner set、packet table、canonical apply/runtime effect 或 ack/diagnostics ordering 变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "protocol-play-handler-decisions",
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "797b946860282dda36835bf590981ed1d2027952ec42917a79af9ddc518abc39",
         "inventory_owner_count": 238,
@@ -37973,7 +37972,6 @@
       "protocol-client-state-flow",
       "protocol-listener-contracts",
       "protocol-login-handler-decisions",
-      "protocol-play-handler-decisions",
       "protocol-serverbound-call-sites",
       "rendering-client-biome-tint",
       "rendering-client-block-entity-tracking",
@@ -38013,11 +38011,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 56,
+      "equivalent": 57,
       "not-needed": 25,
-      "partial": 65
+      "partial": 64
     },
-    "valid_count": 82
+    "valid_count": 83
   },
   "vanilla_version": "26.1"
 }
