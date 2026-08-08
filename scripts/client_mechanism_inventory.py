@@ -9245,6 +9245,204 @@ RECIPE_BOOK_LANGUAGE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CAMERA_FLUID_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/camera_fov.rs#camera_fluid_in_camera",
+        "crates/bbb-native/src/runtime.rs#camera_environment_colors_from_attributes",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sampler_uses_water_priority_viewport_base_fov_and_inclusive_lava_surface",
+        "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+    ),
+)
+
+CAMERA_FOV_OWNER_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-native/src/camera_fov.rs#CameraFovTickState",),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane",
+        "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+    ),
+)
+
+FOG_COLOR_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+        "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+        "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+        "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present",
+    ),
+)
+
+FOG_DISTANCE_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+        "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+        "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+        "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor",
+    ),
+)
+
+FOG_SELECTION_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime.rs#camera_environment_colors_from_cached_sample",
+        "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+        "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass",
+        "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+        "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+    ),
+)
+
+ATMOSPHERIC_FOG_COLOR_OWNER_EVIDENCE = OwnerEvidence(
+    FOG_COLOR_OWNER_EVIDENCE.implementation,
+    (
+        "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+        "crates/bbb-native/src/runtime/tests.rs#clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun",
+    ),
+)
+
+ATMOSPHERIC_FOG_DISTANCE_OWNER_EVIDENCE = OwnerEvidence(
+    ("crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_clamps_atmospheric_distance_for_boss_world_fog",
+    ),
+)
+
+WATER_FOG_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+        "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#clear_color_brightens_water_fog_with_vanilla_water_vision",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_water_fog_distances_when_eye_is_in_water",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_biome_water_fog_end_distance_modifier",
+    ),
+)
+
+LAVA_FOG_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+        "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+        "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence",
+        "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass",
+    ),
+)
+
+POWDER_SNOW_FOG_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+        "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+        "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+        "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+    ),
+)
+
+BLINDNESS_FOG_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+        "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment",
+        "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+        "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+    ),
+)
+
+DARKNESS_FOG_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+        "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor",
+        "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present",
+    ),
+)
+
+CAMERA_OWNER_EVIDENCE = _owner_evidence(
+    (CAMERA_FLUID_OWNER_EVIDENCE, ("getFluidInCamera",)),
+    (CAMERA_FOV_OWNER_EVIDENCE, ("modifyFovBasedOnDeathOrFluid",)),
+)
+
+FOG_RENDERER_OWNER_EVIDENCE = _owner_evidence(
+    (FOG_COLOR_OWNER_EVIDENCE, ("computeFogColor",)),
+    (FOG_DISTANCE_OWNER_EVIDENCE, ("setupFog",)),
+    (FOG_SELECTION_OWNER_EVIDENCE, ("getFogType",)),
+)
+
+FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (FOG_DISTANCE_OWNER_EVIDENCE, ("setupFog",)),
+    (
+        FOG_COLOR_OWNER_EVIDENCE,
+        ("providesColor", "getBaseColor", "modifiesDarkness", "getModifiedDarkness"),
+    ),
+    (FOG_SELECTION_OWNER_EVIDENCE, ("isApplicable",)),
+)
+
+MOB_EFFECT_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (FOG_DISTANCE_OWNER_EVIDENCE, ("getMobEffect", "isApplicable")),
+    (FOG_COLOR_OWNER_EVIDENCE, ("providesColor", "modifiesDarkness")),
+)
+
+ATMOSPHERIC_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (ATMOSPHERIC_FOG_COLOR_OWNER_EVIDENCE, ("getBaseColor", "applyWeatherDarken")),
+    (ATMOSPHERIC_FOG_DISTANCE_OWNER_EVIDENCE, ("setupFog", "updateRainFogState")),
+    (FOG_SELECTION_OWNER_EVIDENCE, ("isApplicable",)),
+)
+
+WATER_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (WATER_FOG_OWNER_EVIDENCE, ("setupFog", "isApplicable", "getBaseColor")),
+)
+
+LAVA_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (LAVA_FOG_OWNER_EVIDENCE, ("getBaseColor", "setupFog", "isApplicable")),
+)
+
+POWDER_SNOW_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (POWDER_SNOW_FOG_OWNER_EVIDENCE, ("getBaseColor", "setupFog", "isApplicable")),
+)
+
+BLINDNESS_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (BLINDNESS_FOG_OWNER_EVIDENCE, ("getMobEffect", "setupFog", "getModifiedDarkness")),
+)
+
+DARKNESS_FOG_ENVIRONMENT_OWNER_EVIDENCE = _owner_evidence(
+    (DARKNESS_FOG_OWNER_EVIDENCE, ("getMobEffect", "setupFog", "getModifiedDarkness")),
+)
+
+CAMERA_FOG_OWNER_EVIDENCE_BY_SOURCE = {
+    "net/minecraft/client/Camera.java": CAMERA_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/FogRenderer.java": FOG_RENDERER_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/FogEnvironment.java": FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java": MOB_EFFECT_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java": ATMOSPHERIC_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java": WATER_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java": LAVA_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java": POWDER_SNOW_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java": BLINDNESS_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java": DARKNESS_FOG_ENVIRONMENT_OWNER_EVIDENCE,
+}
+
 AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
     "com/mojang/blaze3d/audio/Library.java": AUDIO_LIBRARY_OWNER_EVIDENCE,
     "com/mojang/blaze3d/audio/Channel.java": AUDIO_CHANNEL_OWNER_EVIDENCE,
@@ -9257,6 +9455,7 @@ AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
 
 METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **AUDIO_OWNER_EVIDENCE_BY_SOURCE,
+    **CAMERA_FOG_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
     "net/minecraft/client/MusicToastDisplayState.java": MUSIC_TOAST_DISPLAY_OWNER_EVIDENCE,
@@ -9280,6 +9479,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-extract-surface": RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE,
     "rendering-level-pass": RENDERING_LEVEL_PASS_OWNER_EVIDENCE,
     "rendering-effects-screenshot": RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE,
+    "rendering-camera-fluid-fog": {},
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
     "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
     "input-mouse-routing": INPUT_MOUSE_ROUTING_OWNER_EVIDENCE,
@@ -9641,6 +9841,94 @@ METHOD_SURFACES = (
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/PeriodicNotificationManager.java"),
     MethodSurface("render-step", "rendering", "rendering-frame-order", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/Camera.java",
+        selected_methods=("getFluidInCamera", "modifyFovBasedOnDeathOrFluid"),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/FogRenderer.java",
+        selected_methods=("computeFogColor", "setupFog", "getFogType"),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/FogEnvironment.java",
+        selected_methods=(
+            "setupFog",
+            "providesColor",
+            "getBaseColor",
+            "modifiesDarkness",
+            "getModifiedDarkness",
+            "isApplicable",
+        ),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java",
+        selected_methods=(
+            "getMobEffect",
+            "providesColor",
+            "modifiesDarkness",
+            "isApplicable",
+        ),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java",
+        selected_methods=(
+            "getBaseColor",
+            "applyWeatherDarken",
+            "setupFog",
+            "updateRainFogState",
+            "isApplicable",
+        ),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java",
+        selected_methods=("setupFog", "isApplicable", "getBaseColor"),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java",
+        selected_methods=("getBaseColor", "setupFog", "isApplicable"),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java",
+        selected_methods=("getBaseColor", "setupFog", "isApplicable"),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java",
+        selected_methods=("getMobEffect", "setupFog", "getModifiedDarkness"),
+    ),
+    MethodSurface(
+        "camera-fog",
+        "rendering",
+        "rendering-camera-fluid-fog",
+        "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java",
+        selected_methods=("getMobEffect", "setupFog", "getModifiedDarkness"),
+    ),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/ClientLanguage.java"),
     MethodSurface(
@@ -9959,6 +10247,20 @@ MECHANISM_EVIDENCE = {
     "rendering-effects-screenshot": (
         "crates/bbb-renderer/src/camera_post_effect.rs",
         "crates/bbb-native/src/screen_effects.rs",
+    ),
+    "rendering-camera-fluid-fog": (
+        "crates/bbb-native/src/camera_fov.rs",
+        "crates/bbb-native/src/runtime.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-renderer/src/camera.rs",
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sampler_uses_water_priority_viewport_base_fov_and_inclusive_lava_surface",
+        "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_water_fog_distances_when_eye_is_in_water",
+        "crates/bbb-native/src/runtime/tests.rs#lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence",
+        "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+        "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+        "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present",
     ),
     "rendering-level-backend-lifecycle": (
         "crates/bbb-renderer/src/resource_reload.rs",

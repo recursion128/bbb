@@ -170,6 +170,49 @@ public class Owner {
             "0651995cc1cac7928dc01737dd98150ee3001eb9e377c5179452125d6ba46da6",
         )
 
+    def test_camera_fog_owner_census_is_exact_and_has_per_owner_evidence(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "rendering-camera-fluid-fog"
+        ]
+        expected_by_source = Counter(
+            {
+                "net/minecraft/client/Camera.java": 2,
+                "net/minecraft/client/renderer/fog/FogRenderer.java": 3,
+                "net/minecraft/client/renderer/fog/environment/FogEnvironment.java": 6,
+                "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java": 4,
+                "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java": 5,
+                "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java": 3,
+                "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java": 3,
+                "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java": 3,
+                "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java": 3,
+                "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java": 3,
+            }
+        )
+
+        self.assertEqual(len(owners), 35)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            expected_by_source,
+        )
+        mechanism = value["mechanisms"]["rendering-camera-fluid-fog"]
+        self.assertEqual(mechanism["owner_count"], 35)
+        self.assertEqual(mechanism["owner_evidence_count"], 35)
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+
     def test_audio_owner_census_has_complete_evidence_and_explicit_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT

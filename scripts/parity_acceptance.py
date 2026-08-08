@@ -679,13 +679,21 @@ def matched_source_hashes(
 
     def add_matching_tokens(text: str, maximum: int | None = None) -> None:
         for token in CLASS_TOKEN_RE.findall(text):
+            if any(Path(relative).stem == token for relative in paths):
+                continue
             for path in class_sources.get(token, []):
                 paths.add(relative_source(source_root, path))
                 if maximum is not None and len(paths) >= maximum:
                     return
 
-    if not paths:
-        add_matching_tokens(" ".join((row["vanilla_owner"], row["required_state"])))
+    had_inventory_paths = bool(paths)
+    # Inventory owners are the bounded census, while a matrix row may also name
+    # a shared owner that is canonically inventoried under another mechanism.
+    # Hash every explicit matrix owner in addition to this mechanism's census;
+    # otherwise the presence of one inventory owner would hide shared owners.
+    add_matching_tokens(row["vanilla_owner"])
+    if not had_inventory_paths:
+        add_matching_tokens(row["required_state"])
     if not paths:
         add_matching_tokens(evidence_basis, maximum=16)
     if not paths:

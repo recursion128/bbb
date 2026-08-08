@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "1d6367d91968b3856702cb9fd4c30301d779bf074452a6927b3921180010e502"
+      "sha256": "3eda1c473150b6fa9149c163d97552c96e54ca0c7907669bf176a095802dda05"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -483,6 +483,24 @@
       ],
       "owner_count": 27,
       "owner_evidence_count": 27
+    },
+    "rendering-camera-fluid-fog": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/camera_fov.rs",
+        "crates/bbb-native/src/runtime.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-renderer/src/camera.rs",
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sampler_uses_water_priority_viewport_base_fov_and_inclusive_lava_surface",
+        "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+        "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+        "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_water_fog_distances_when_eye_is_in_water",
+        "crates/bbb-native/src/runtime/tests.rs#lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence",
+        "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+        "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+        "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+      ],
+      "owner_count": 35,
+      "owner_evidence_count": 35
     },
     "rendering-client-biome-tint": {
       "bbb_evidence": [
@@ -9519,6 +9537,54 @@
         "path": "net/minecraft/CrashReport.java"
       },
       "vanilla_owner": "net.minecraft.CrashReport#saveToFile(final Path saveFile,final ReportType reportType,final List <String> extraComments)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/camera_fov.rs#camera_fluid_in_camera",
+          "crates/bbb-native/src/runtime.rs#camera_environment_colors_from_attributes"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sampler_uses_water_priority_viewport_base_fov_and_inclusive_lava_surface",
+          "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+          "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.Camera#getFluidInCamera()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 428,
+        "path": "net/minecraft/client/Camera.java"
+      },
+      "vanilla_owner": "net.minecraft.client.Camera#getFluidInCamera()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/camera_fov.rs#CameraFovTickState"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane",
+          "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.Camera#modifyFovBasedOnDeathOrFluid(final float partialTicks,float fov)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 225,
+        "path": "net/minecraft/client/Camera.java"
+      },
+      "vanilla_owner": "net.minecraft.client.Camera#modifyFovBasedOnDeathOrFluid(final float partialTicks,float fov)"
     },
     {
       "bbb_evidence": {
@@ -37623,6 +37689,831 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer.BrightnessGetter#packedBrightness(BlockAndLightGetter level,BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.FogRenderer#computeFogColor(final Camera camera,final float partialTicks,final ClientLevel level,final int renderDistance,final float darkenWorldAmount,final Vector4f dest)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 82,
+        "path": "net/minecraft/client/renderer/fog/FogRenderer.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.FogRenderer#computeFogColor(final Camera camera,final float partialTicks,final ClientLevel level,final int renderDistance,final float darkenWorldAmount,final Vector4f dest)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#camera_environment_colors_from_cached_sample",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass",
+          "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.FogRenderer#getFogType(final Camera camera)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 190,
+        "path": "net/minecraft/client/renderer/fog/FogRenderer.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.FogRenderer#getFogType(final Camera camera)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.FogRenderer#setupFog(final Camera camera,final int renderDistanceInChunks,final DeltaTracker deltaTracker,final float darkenWorldAmount,final ClientLevel level)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 159,
+        "path": "net/minecraft/client/renderer/fog/FogRenderer.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.FogRenderer#setupFog(final Camera camera,final int renderDistanceInChunks,final DeltaTracker deltaTracker,final float darkenWorldAmount,final ClientLevel level)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#applyWeatherDarken(int color,final float rainLevel,final float thunderLevel)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 50,
+        "path": "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#applyWeatherDarken(int color,final float rainLevel,final float thunderLevel)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 25,
+        "path": "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#camera_environment_colors_from_cached_sample",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass",
+          "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 96,
+        "path": "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_clamps_atmospheric_distance_for_boss_world_fog"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 64,
+        "path": "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_clamps_atmospheric_distance_for_boss_world_fog"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#updateRainFogState(final Camera camera,final ClientLevel level,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 85,
+        "path": "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.AtmosphericFogEnvironment#updateRainFogState(final Camera camera,final ClientLevel level,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.BlindnessFogEnvironment#getMobEffect()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 15,
+        "path": "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.BlindnessFogEnvironment#getMobEffect()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.BlindnessFogEnvironment#getModifiedDarkness(final LivingEntity entity,float darkness,final float partialTickTime)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 34,
+        "path": "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.BlindnessFogEnvironment#getModifiedDarkness(final LivingEntity entity,float darkness,final float partialTickTime)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.BlindnessFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 20,
+        "path": "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.BlindnessFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.DarknessFogEnvironment#getMobEffect()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 15,
+        "path": "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.DarknessFogEnvironment#getMobEffect()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.DarknessFogEnvironment#getModifiedDarkness(final LivingEntity entity,final float darkness,final float partialTickTime)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 34,
+        "path": "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.DarknessFogEnvironment#getModifiedDarkness(final LivingEntity entity,final float darkness,final float partialTickTime)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.DarknessFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 20,
+        "path": "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.DarknessFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.FogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 19,
+        "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.FogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.FogEnvironment#getModifiedDarkness(final LivingEntity entity,final float darkness,final float partialTickTime)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 27,
+        "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.FogEnvironment#getModifiedDarkness(final LivingEntity entity,final float darkness,final float partialTickTime)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#camera_environment_colors_from_cached_sample",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass",
+          "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.FogEnvironment#isApplicable(@Nullable FogType fogType,Entity entity)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 31,
+        "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.FogEnvironment#isApplicable(@Nullable FogType fogType,Entity entity)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.FogEnvironment#modifiesDarkness()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 23,
+        "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.FogEnvironment#modifiesDarkness()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.FogEnvironment#providesColor()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 15,
+        "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.FogEnvironment#providesColor()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.FogEnvironment#setupFog(FogData fog,Camera camera,ClientLevel level,float renderDistance,DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 13,
+        "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.FogEnvironment#setupFog(FogData fog,Camera camera,ClientLevel level,float renderDistance,DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence",
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.LavaFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 16,
+        "path": "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.LavaFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence",
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.LavaFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 38,
+        "path": "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.LavaFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence",
+          "crates/bbb-native/src/runtime/tests.rs#lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.LavaFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 21,
+        "path": "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.LavaFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#getMobEffect()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 11,
+        "path": "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#getMobEffect()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#camera_mob_effect_fog_environment"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_vanilla_rain_fog_distance_multiplier",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_takes_fog_precedence_over_darkness_and_blocks_sky",
+          "crates/bbb-native/src/runtime/tests.rs#darkness_fog_uses_canonical_blend_factor"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 23,
+        "path": "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#modifiesDarkness()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 18,
+        "path": "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#modifiesDarkness()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_samples_camera_biome_fog_and_sky_color_attributes",
+          "crates/bbb-native/src/runtime/tests.rs#blindness_overrides_atmospheric_fog_and_darkens_its_color",
+          "crates/bbb-native/src/runtime/tests.rs#night_vision_brightens_atmospheric_fog_unless_darkness_is_present"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#providesColor()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 13,
+        "path": "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.MobEffectFogEnvironment#providesColor()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+          "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.PowderedSnowFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 14,
+        "path": "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.PowderedSnowFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+          "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.PowderedSnowFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 33,
+        "path": "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.PowderedSnowFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors",
+          "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling",
+          "crates/bbb-native/src/runtime/tests.rs#powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.PowderedSnowFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 19,
+        "path": "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.PowderedSnowFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_brightens_water_fog_with_vanilla_water_vision",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_water_fog_distances_when_eye_is_in_water",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_biome_water_fog_end_distance_modifier"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 32,
+        "path": "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#getBaseColor(final ClientLevel level,final Camera camera,final int renderDistance,final float partialTicks)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_brightens_water_fog_with_vanilla_water_vision",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_water_fog_distances_when_eye_is_in_water",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_biome_water_fog_end_distance_modifier"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 27,
+        "path": "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#isApplicable(final @Nullable FogType fogType,final Entity entity)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_for_world_with_environment_colors_and_water_vision",
+          "crates/bbb-native/src/runtime/render_extract.rs#fog_environment_for_world_with_environment_colors"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_brightens_water_fog_with_vanilla_water_vision",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_uses_water_fog_distances_when_eye_is_in_water",
+          "crates/bbb-native/src/runtime/tests.rs#fog_environment_applies_biome_water_fog_end_distance_modifier"
+        ]
+      },
+      "category": "camera-fog",
+      "domain": "rendering",
+      "kind": "method",
+      "mechanism_id": "rendering-camera-fluid-fog",
+      "owner_id": "method:net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 14,
+        "path": "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
       "category": "resources",
       "domain": "resources",
       "kind": "constructor",
@@ -55747,6 +56638,7 @@
       "rendering-extract-surface",
       "rendering-level-pass",
       "rendering-effects-screenshot",
+      "rendering-camera-fluid-fog",
       "input-keyboard-routing",
       "input-debug-key-actions",
       "input-mouse-routing",
@@ -55860,6 +56752,10 @@
     {
       "path": "net/minecraft/CrashReport.java",
       "sha256": "cbed37a79c30f57960ed709eacf815ab3f3e38ecafece700f5029fa625f9b9b1"
+    },
+    {
+      "path": "net/minecraft/client/Camera.java",
+      "sha256": "2101fae783cb5277b8a68440c11520d041262792e48b4f2890235e1d0d814f58"
     },
     {
       "path": "net/minecraft/client/GameNarrator.java",
@@ -57190,6 +58086,42 @@
       "sha256": "feabe3cd02809d722a99704e33bb194e0ab47fb80b1a874d7ccfad010e763996"
     },
     {
+      "path": "net/minecraft/client/renderer/fog/FogRenderer.java",
+      "sha256": "bcc5ddd31a05cced3dd4a21d37b0e31e69fb3cb7380a6b50ffad8aefbdc87cc3"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/AtmosphericFogEnvironment.java",
+      "sha256": "8db15152ca309240de0fd2aad3c9ac831a2481650bd05ec81630da99d62811c7"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/BlindnessFogEnvironment.java",
+      "sha256": "495af686b7072f832adb47d6651b79084c408b241a954846789137fa4291ad07"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/DarknessFogEnvironment.java",
+      "sha256": "e36eb67713ae983fbcc4e267187f452aa7df86af1466a96d806185f27910fbbb"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/FogEnvironment.java",
+      "sha256": "477bf4c3c2786ea78a84b8f1679f270ace7194f63994719c09b9e6a7ba50efc4"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/LavaFogEnvironment.java",
+      "sha256": "16556f9727b30d46690b03658cfe06b65be1a60f0e05db9357fd10f85cc5cf22"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/MobEffectFogEnvironment.java",
+      "sha256": "8d800af5bb6b8ba8895d92a5abca717833ea05937ded17efe6bae85c8fd55805"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/PowderedSnowFogEnvironment.java",
+      "sha256": "65bb5c37b6dd480ac57df4fc6d324d4bbdac99c1e3d0c32fb23393b5d3c8a4ac"
+    },
+    {
+      "path": "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java",
+      "sha256": "90692f151e3c9f3e508dd030cf43d56d8174195d0dc4aa7bfff445a416bc0e3c"
+    },
+    {
       "path": "net/minecraft/client/resources/ClientPackSource.java",
       "sha256": "f4fcc1b6752cf1646dcfd63bf2407d0a57309636ec7646657d42ae2843efe841"
     },
@@ -57422,6 +58354,7 @@
       "block-entity-renderer": 27,
       "block-prediction": 4,
       "built-in-registry": 95,
+      "camera-fog": 35,
       "carried-slot": 2,
       "chunk-light-lifecycle": 5,
       "client-noop": 5,
@@ -57504,7 +58437,7 @@
       "protocol": 747,
       "realms": 100,
       "registries": 123,
-      "rendering": 287,
+      "rendering": 322,
       "resources": 144,
       "security": 30,
       "singleplayer": 52,
@@ -57516,12 +58449,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1538,
+      "decision": 1573,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3185,
-    "owner_count": 3185,
+    "mapped_owner_count": 3220,
+    "owner_count": 3220,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

@@ -24,6 +24,7 @@ from parity_acceptance import (
     external_artifact_ids,
     focused_test_references,
     main,
+    matched_source_hashes,
     parse_args,
     parse_matrix,
     performance_prerequisite_reasons,
@@ -35,6 +36,72 @@ from bbb_tools.executable_identity import elf_load_image_identity
 
 class ParityAcceptanceTests(unittest.TestCase):
     commit = "1" * 40
+
+    def test_matrix_shared_owner_is_hashed_alongside_inventory_owners(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source_root = Path(temporary)
+            example = source_root / "net/minecraft/client/Example.java"
+            shared = source_root / "net/minecraft/client/Shared.java"
+            unrelated_example = source_root / "other/Example.java"
+            example.parent.mkdir(parents=True)
+            unrelated_example.parent.mkdir(parents=True)
+            example.write_text("class Example {}\n", encoding="utf-8")
+            shared.write_text("class Shared {}\n", encoding="utf-8")
+            unrelated_example.write_text("class Example {}\n", encoding="utf-8")
+            hashes = {
+                "net/minecraft/client/Example.java": hashlib.sha256(
+                    example.read_bytes()
+                ).hexdigest(),
+                "net/minecraft/client/Shared.java": hashlib.sha256(
+                    shared.read_bytes()
+                ).hexdigest(),
+            }
+
+            result = matched_source_hashes(
+                row={
+                    "vanilla_owner": "`Example.run`、`Shared.finish`",
+                    "required_state": "state",
+                },
+                owners=[
+                    {
+                        "source": {
+                            "path": "net/minecraft/client/Example.java",
+                        }
+                    }
+                ],
+                inventory_hashes=hashes,
+                class_sources={
+                    "Example": [example, unrelated_example],
+                    "Shared": [shared],
+                },
+                source_root=source_root,
+                ledger_basis="",
+                evidence_basis="",
+            )
+
+        self.assertEqual(
+            [item["path"] for item in result],
+            [
+                "net/minecraft/client/Example.java",
+                "net/minecraft/client/Shared.java",
+            ],
+        )
+        without_inventory = matched_source_hashes(
+            row={
+                "vanilla_owner": "unmatched owner",
+                "required_state": "`Shared` projection",
+            },
+            owners=[],
+            inventory_hashes=hashes,
+            class_sources={"Shared": [shared]},
+            source_root=source_root,
+            ledger_basis="",
+            evidence_basis="",
+        )
+        self.assertEqual(
+            [item["path"] for item in without_inventory],
+            ["net/minecraft/client/Shared.java"],
+        )
 
     def make_fixture(self, root: Path) -> tuple[Path, Path]:
         repo = root / "repo"
