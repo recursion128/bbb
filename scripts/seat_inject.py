@@ -515,10 +515,11 @@ class UinputDriver:
         seat_device.request(self.socket_path, "ping")
         self._require_current_key_table()
         window = self._wlroots.probe()
-        self._require_no_key_repeat()
+        keyboard = self._zero_key_repeat_receipt(configure=True)
         pointer = self._flat_pointer_profile_receipt(configure=True)
         return {
             **window,
+            **keyboard,
             **pointer,
             "driver": self.name,
             "device_socket": self.socket_path,
@@ -543,31 +544,64 @@ class UinputDriver:
                 f"{seat_device.__file__} so it picks up the current key table"
             )
 
-    def _require_no_key_repeat(self) -> None:
-        """Refuse to drive a seat whose keyboards auto-repeat.
+    def _zero_key_repeat_receipt(self, configure: bool) -> dict[str, object]:
+        """Keep held gate presses from turning into repeated toggles.
 
         The gate holds keys deliberately, long enough for a client rendering
         slowly to sample them.  Under the usual 600ms/25Hz repeat that one hold
         becomes twenty-odd presses, which leaves a toggle such as the pause
-        screen back where it started -- a failure that reads as "the key never
-        arrived".  So the dependency is checked rather than assumed.
+        screen back where it started.  The gate owns its virtual keyboard, so
+        apply the no-repeat setting to that exact compositor identifier and
+        read it back instead of relying on when an external sway config ran.
         """
 
-        raw = _run(["swaymsg", "-t", "get_inputs", "-r"])
-        try:
-            devices = json.loads(raw)
-        except json.JSONDecodeError as error:
-            raise InjectError(f"could not read the compositor inputs: {error}") from error
-        repeating = [
-            device.get("identifier")
-            for device in devices
-            if device.get("type") == "keyboard" and device.get("repeat_rate")
-        ]
-        if repeating:
+        device_name = seat_device.DEVICE_NAME.decode("ascii")
+
+        def read_devices() -> list[dict]:
+            raw = _run(["swaymsg", "-t", "get_inputs", "-r"])
+            try:
+                devices = json.loads(raw)
+            except json.JSONDecodeError as error:
+                raise InjectError(f"could not read the compositor inputs: {error}") from error
+            if not isinstance(devices, list):
+                raise InjectError("the compositor input inventory was not a list")
+            return [
+                device
+                for device in devices
+                if device.get("type") == "keyboard" and device.get("name") == device_name
+            ]
+
+        devices = read_devices()
+        if not devices:
             raise InjectError(
-                f"these seat keyboards still auto-repeat: {repeating}; set "
-                "`input type:keyboard repeat_rate 0` on the gate's compositor"
+                f"the compositor has no {device_name!r} keyboard from the held-open seat"
             )
+        identifiers = sorted(
+            {
+                identifier
+                for device in devices
+                if isinstance((identifier := device.get("identifier")), str)
+                and identifier
+            }
+        )
+        if not identifiers:
+            raise InjectError(f"the compositor did not identify its {device_name!r} keyboard")
+
+        if configure and any(device.get("repeat_rate") != 0 for device in devices):
+            for identifier in identifiers:
+                _run(["swaymsg", "input", identifier, "repeat_rate", "0"])
+            devices = read_devices()
+
+        repeat_rates = {device.get("repeat_rate") for device in devices}
+        if repeat_rates != {0}:
+            raise InjectError(
+                f"the {device_name!r} keyboard needs repeat_rate 0 for held gate "
+                f"presses, got {sorted(str(rate) for rate in repeat_rates)}"
+            )
+        return {
+            "keyboard_repeat_rate": 0,
+            "keyboard_identifiers": identifiers,
+        }
 
     def _flat_pointer_profile_receipt(self, configure: bool) -> dict[str, object]:
         """Make relative uinput deltas map to reproducible logical pixels.
@@ -666,6 +700,7 @@ class UinputDriver:
     def window(self) -> dict[str, object]:
         return {
             **self._wlroots.window(),
+            **self._zero_key_repeat_receipt(configure=False),
             **self._flat_pointer_profile_receipt(configure=False),
             "driver": self.name,
         }

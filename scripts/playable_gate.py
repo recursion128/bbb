@@ -430,6 +430,22 @@ def _validate_language_transition(
         raise GateFailure(
             "language transition pointer receipt did not freeze libinput acceleration"
         )
+    if compositor.get("keyboard_repeat_rate") != 0:
+        raise GateFailure(
+            "language transition keyboard receipt did not disable held-key repeat"
+        )
+    keyboard_identifiers = compositor.get("keyboard_identifiers")
+    if (
+        not isinstance(keyboard_identifiers, list)
+        or not keyboard_identifiers
+        or any(
+            not isinstance(identifier, str) or not identifier
+            for identifier in keyboard_identifiers
+        )
+    ):
+        raise GateFailure(
+            "language transition keyboard receipt did not identify its uinput device"
+        )
     pointer_identifiers = compositor.get("pointer_identifiers")
     if (
         not isinstance(pointer_identifiers, list)

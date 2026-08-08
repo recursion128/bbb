@@ -133,23 +133,78 @@ class SeatKeyRepeatTests(unittest.TestCase):
     def inputs(self, *devices: dict) -> str:
         return json.dumps(list(devices))
 
-    def test_a_repeating_keyboard_is_refused_by_name(self):
+    def test_a_repeating_keyboard_is_refused_by_name_without_configuration(self):
         driver = seat_inject.UinputDriver(driver_args())
         raw = self.inputs(
-            {"identifier": "0:0:virtual", "type": "keyboard", "repeat_rate": 25},
+            {
+                "identifier": "4660:22136:bbb-seat-virtual",
+                "name": "bbb-seat-virtual",
+                "type": "keyboard",
+                "repeat_rate": 25,
+            },
             {"identifier": "1:1:pointer", "type": "pointer"},
         )
         with mock.patch.object(seat_inject, "_run", return_value=raw):
-            with self.assertRaisesRegex(seat_inject.InjectError, "0:0:virtual"):
-                driver._require_no_key_repeat()
+            with self.assertRaisesRegex(seat_inject.InjectError, "repeat_rate 0"):
+                driver._zero_key_repeat_receipt(configure=False)
 
-    def test_a_silenced_keyboard_passes(self):
+    def test_a_silenced_keyboard_passes_with_a_receipt(self):
         driver = seat_inject.UinputDriver(driver_args())
         raw = self.inputs(
-            {"identifier": "0:0:virtual", "type": "keyboard", "repeat_rate": 0}
+            {
+                "identifier": "4660:22136:bbb-seat-virtual",
+                "name": "bbb-seat-virtual",
+                "type": "keyboard",
+                "repeat_rate": 0,
+            }
         )
         with mock.patch.object(seat_inject, "_run", return_value=raw):
-            driver._require_no_key_repeat()
+            receipt = driver._zero_key_repeat_receipt(configure=False)
+
+        self.assertEqual(receipt["keyboard_repeat_rate"], 0)
+        self.assertEqual(
+            receipt["keyboard_identifiers"], ["4660:22136:bbb-seat-virtual"]
+        )
+
+    def test_probe_configures_and_reads_back_zero_repeat(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        repeated = self.inputs(
+            {
+                "identifier": "4660:22136:bbb-seat-virtual",
+                "name": "bbb-seat-virtual",
+                "type": "keyboard",
+                "repeat_rate": 25,
+            }
+        )
+        silenced = self.inputs(
+            {
+                "identifier": "4660:22136:bbb-seat-virtual",
+                "name": "bbb-seat-virtual",
+                "type": "keyboard",
+                "repeat_rate": 0,
+            }
+        )
+        calls = []
+        responses = iter([repeated, '[{"success":true}]', silenced])
+
+        def run(command):
+            calls.append(command)
+            return next(responses)
+
+        with mock.patch.object(seat_inject, "_run", side_effect=run):
+            receipt = driver._zero_key_repeat_receipt(configure=True)
+
+        self.assertEqual(receipt["keyboard_repeat_rate"], 0)
+        self.assertIn(
+            [
+                "swaymsg",
+                "input",
+                "4660:22136:bbb-seat-virtual",
+                "repeat_rate",
+                "0",
+            ],
+            calls,
+        )
 
 
 class SeatPointerProfileTests(unittest.TestCase):

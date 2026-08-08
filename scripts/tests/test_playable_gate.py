@@ -986,6 +986,8 @@ class PlayableGateLifecycleTests(unittest.TestCase):
                 "fullscreen": False,
                 "floating": False,
                 "output_scale": 1.0,
+                "keyboard_repeat_rate": 0,
+                "keyboard_identifiers": ["4660:22136:bbb-seat-virtual"],
                 "pointer_accel_profile": "flat",
                 "pointer_identifiers": ["4660:22136:bbb-seat-virtual"],
             },
