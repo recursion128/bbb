@@ -160,9 +160,9 @@ fn load_end_sky_image(roots: &PackRoots) -> Result<SpriteImage> {
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing End sky texture minecraft:{END_SKY_TEXTURE}"))?;
-    SpriteImage::from_png_file_with_resource_stack(
+    SpriteImage::from_pack_resource(
         "minecraft:textures/environment/end_sky",
-        resource.path,
+        &resource,
         &resources,
     )
 }
@@ -173,9 +173,9 @@ fn load_cloud_image(roots: &PackRoots) -> Result<CloudTextureImage> {
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing cloud texture minecraft:{CLOUD_TEXTURE}"))?;
-    let image = SpriteImage::from_png_file_with_resource_stack(
+    let image = SpriteImage::from_pack_resource(
         "minecraft:textures/environment/clouds",
-        resource.path,
+        &resource,
         &resources,
     )?;
     Ok(CloudTextureImage {
@@ -213,7 +213,7 @@ fn load_weather_image(
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing weather texture minecraft:{path}"))?;
-    let image = SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)?;
+    let image = SpriteImage::from_pack_resource(id, &resource, &resources)?;
     Ok(WeatherTextureImage {
         kind,
         width: image.width,
@@ -237,11 +237,7 @@ fn load_world_border_image(roots: &PackRoots) -> Result<SpriteImage> {
     let resource = resources.get_resource(&location).with_context(|| {
         format!("missing world border texture minecraft:{WORLD_BORDER_FORCEFIELD_TEXTURE_PATH}")
     })?;
-    SpriteImage::from_png_file_with_resource_stack(
-        "minecraft:textures/misc/forcefield",
-        resource.path,
-        &resources,
-    )
+    SpriteImage::from_pack_resource("minecraft:textures/misc/forcefield", &resource, &resources)
 }
 
 fn load_celestial_images(roots: &PackRoots) -> Result<Vec<CelestialTextureImage>> {
@@ -262,7 +258,7 @@ fn load_celestial_image(
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing celestial texture minecraft:{path}"))?;
-    let image = SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)?;
+    let image = SpriteImage::from_pack_resource(id, &resource, &resources)?;
     Ok(CelestialTextureImage {
         kind,
         width: image.width,

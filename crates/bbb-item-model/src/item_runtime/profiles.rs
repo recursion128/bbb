@@ -359,12 +359,8 @@ pub(super) fn load_local_dynamic_player_skin(
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing player profile body resource texture {texture_path}"))?;
-    let image = SpriteImage::from_png_file_with_resource_stack(
-        source_id.to_string(),
-        resource.path,
-        resources,
-    )
-    .with_context(|| format!("load player profile body resource texture {texture_path}"))?;
+    let image = SpriteImage::from_pack_resource(source_id.to_string(), &resource, resources)
+        .with_context(|| format!("load player profile body resource texture {texture_path}"))?;
     let [width, height] = DynamicPlayerSkinImage::SIZE;
     anyhow::ensure!(
         image.width == width && image.height == height,

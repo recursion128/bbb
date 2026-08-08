@@ -8265,18 +8265,6 @@ SERVER_PACK_SCOPE_TEST = (
     "#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
 )
 
-SERVER_PACK_ZIP_PROVIDER_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
-    reason=(
-        "Vanilla retains the downloaded archive behind FilePackResources/ZipFile, while BBB "
-        "still eagerly extracts it with extra entry, path, ratio, and expanded-size limits."
-    ),
-    close_condition=(
-        "Replace eager extraction with direct/lazy ZIP lookup and enumeration that preserves "
-        "Vanilla duplicate-entry and file/directory-collision behavior."
-    ),
-)
-
 SERVER_PACK_SHARED_TOAST_GAP = OwnerOpenGap(
     ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
     reason=(
@@ -8367,7 +8355,7 @@ SERVER_PACK_RELOAD_EVIDENCE = OwnerEvidence(
     (
         "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn take_reload",
         "crates/bbb-native/src/resource_pack_runtime.rs#pub(crate) fn finish_reload",
-        "crates/bbb-pack/src/server_pack.rs#pub fn materialize_server_pack_archive",
+        "crates/bbb-pack/src/server_pack.rs#pub fn prepare_pack_archive",
     ),
     (
         "crates/bbb-native/src/resource_pack_runtime.rs"
@@ -8378,11 +8366,32 @@ SERVER_PACK_RELOAD_EVIDENCE = OwnerEvidence(
         "#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
         "crates/bbb-native/src/resource_pack_runtime.rs"
         "#one_preparation_failure_fails_every_new_pack_across_queued_batches",
-        "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory",
+        "crates/bbb-pack/src/server_pack.rs#prepares_archive_provider_without_eager_extraction",
     ),
 )
 
-SERVER_PACK_PROVIDER_EVIDENCE = SERVER_PACK_ZIP_PROVIDER_GAP
+SERVER_PACK_PROVIDER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/server_pack.rs#pub fn prepare_pack_archive",
+        "crates/bbb-pack/src/zip_pack.rs#impl ZipPackResources",
+        "crates/bbb-pack/src/resources.rs#impl PackEntry",
+        "crates/bbb-pack/src/selected_packs.rs#pub fn server_archive",
+    ),
+    (
+        "crates/bbb-pack/src/server_pack.rs"
+        "#prepares_archive_provider_without_eager_extraction",
+        "crates/bbb-pack/src/zip_pack.rs"
+        "#duplicate_lookup_uses_last_entry_while_listing_keeps_central_order",
+        "crates/bbb-pack/src/zip_pack.rs"
+        "#materialization_is_flat_lazy_and_preserves_useful_extension",
+        "crates/bbb-pack/src/selected_packs.rs"
+        "#options_zip_is_indexed_directly_and_materializes_only_consumed_entries",
+        "crates/bbb-pack/src/selected_packs.rs"
+        "#server_packs_follow_vanilla_reverse_push_repository_order",
+        "crates/bbb-native/src/resource_pack_runtime.rs"
+        "#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+    ),
+)
 
 SERVER_PACK_SHUTDOWN_EVIDENCE = OwnerEvidence(
     (
@@ -9031,8 +9040,8 @@ MECHANISM_EVIDENCE = {
         "docs/unsupported-features.md",
     ),
     "resources-server-pack-lifecycle": (
-        "crates/bbb-pack/src/server_pack.rs#materializes_valid_pack_into_atomic_directory",
-        "crates/bbb-pack/src/server_pack.rs#rejects_parent_traversal_and_removes_staging_directory",
+        "crates/bbb-pack/src/server_pack.rs#prepares_archive_provider_without_eager_extraction",
+        "crates/bbb-pack/src/selected_packs.rs#options_zip_is_indexed_directly_and_materializes_only_consumed_entries",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
         "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
         "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",

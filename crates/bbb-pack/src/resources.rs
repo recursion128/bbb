@@ -19,6 +19,7 @@ use crate::{
         ResourceDataGenerationBudget, ResourceDataMemoryObservation, ResourceListingAdmission,
         MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
     },
+    zip_pack::{ZipEntrySource, ZipPackResources},
     ClientPackSource, SelectedClientPack,
 };
 
@@ -68,6 +69,8 @@ pub struct PackResource {
     pub metadata_path: Option<PathBuf>,
     pub integrity: Option<ResourceIntegrity>,
     pub metadata_integrity: Option<ResourceIntegrity>,
+    archive_source: Option<ZipEntrySource>,
+    metadata_archive_source: Option<ZipEntrySource>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +78,32 @@ pub struct PackRootResource {
     pub pack_id: String,
     pub path: PathBuf,
     pub integrity: Option<ResourceIntegrity>,
+    archive_source: Option<ZipEntrySource>,
+}
+
+impl PackResource {
+    pub fn materialized_path(&self) -> Result<&Path> {
+        match &self.archive_source {
+            Some(source) => source.materialize(),
+            None => Ok(&self.path),
+        }
+    }
+
+    pub fn materialized_metadata_path(&self) -> Result<Option<&Path>> {
+        match &self.metadata_archive_source {
+            Some(source) => source.materialize().map(Some),
+            None => Ok(self.metadata_path.as_deref()),
+        }
+    }
+}
+
+impl PackRootResource {
+    pub fn materialized_path(&self) -> Result<&Path> {
+        match &self.archive_source {
+            Some(source) => source.materialize(),
+            None => Ok(&self.path),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -262,7 +291,7 @@ impl PackResourceStack {
         label: &str,
     ) -> Result<T> {
         self.validate_resource(resource, label)?;
-        self.read_json_file(&resource.path, label)
+        self.read_json_file(resource.materialized_path()?, label)
     }
 
     pub fn read_json_file<T: DeserializeOwned>(&self, path: &Path, label: &str) -> Result<T> {
@@ -275,20 +304,21 @@ impl PackResourceStack {
 
     pub fn read_text_resource(&self, resource: &PackResource, label: &str) -> Result<String> {
         self.validate_resource(resource, label)?;
-        self.read_text_file(&resource.path, label)
+        self.read_text_file(resource.materialized_path()?, label)
     }
 
     pub fn validate_resource(&self, resource: &PackResource, label: &str) -> Result<()> {
         if let Some(integrity) = &resource.integrity {
-            integrity.verify(&resource.path, label)?;
+            integrity.verify(resource.materialized_path()?, label)?;
         }
         Ok(())
     }
 
     pub fn validate_resource_metadata(&self, resource: &PackResource, label: &str) -> Result<()> {
-        if let (Some(path), Some(integrity)) =
-            (&resource.metadata_path, &resource.metadata_integrity)
-        {
+        if let (Some(path), Some(integrity)) = (
+            resource.materialized_metadata_path()?,
+            &resource.metadata_integrity,
+        ) {
             integrity.verify(path, label)?;
         }
         Ok(())
@@ -309,9 +339,9 @@ impl PackResourceStack {
         label: &str,
     ) -> Result<T> {
         if let Some(integrity) = &resource.integrity {
-            integrity.verify(&resource.path, label)?;
+            integrity.verify(resource.materialized_path()?, label)?;
         }
-        self.read_json_file(&resource.path, label)
+        self.read_json_file(resource.materialized_path()?, label)
     }
 
     pub fn vanilla_asset_index_observation(&self) -> Option<crate::VanillaAssetIndexObservation> {
@@ -408,6 +438,21 @@ impl PackResourceStack {
                     namespaces.insert(namespace.clone(), namespace);
                 }
             }
+            if let Some(archive) = &pack.archive_content {
+                for prefix in archive.content_prefixes(domain) {
+                    let type_prefix = add_archive_prefix(prefix, &format!("{domain}/"));
+                    for name in archive.resources.names() {
+                        let namespace = extract_archive_namespace(&type_prefix, name);
+                        if validate_resource_namespace(namespace).is_err() {
+                            continue;
+                        }
+                        if !namespaces.contains_key(namespace) {
+                            admission.admit(namespace, &format!("{domain} namespaces"))?;
+                        }
+                        namespaces.insert(namespace.to_owned(), namespace.to_owned());
+                    }
+                }
+            }
         }
         Ok(namespaces.into_values().collect())
     }
@@ -429,6 +474,7 @@ impl PackResourceStack {
                 {
                     resource.metadata_path = Some(metadata.path);
                     resource.metadata_integrity = metadata.integrity;
+                    resource.metadata_archive_source = metadata.archive_source;
                 }
                 return Some(resource);
             }
@@ -464,6 +510,7 @@ impl PackResourceStack {
                     {
                         resource.metadata_path = Some(metadata.path);
                         resource.metadata_integrity = metadata.integrity;
+                        resource.metadata_archive_source = metadata.archive_source;
                     }
                 }
                 resources.push(resource);
@@ -530,6 +577,7 @@ impl PackResourceStack {
                 {
                     resource.metadata_path = Some(metadata.path);
                     resource.metadata_integrity = metadata.integrity;
+                    resource.metadata_archive_source = metadata.archive_source;
                 }
                 resource
             })
@@ -567,6 +615,7 @@ impl PackResourceStack {
                         for resource in stack {
                             resource.metadata_path = None;
                             resource.metadata_integrity = None;
+                            resource.metadata_archive_source = None;
                         }
                     }
                     true
@@ -581,6 +630,7 @@ impl PackResourceStack {
                 {
                     resource.metadata_path = Some(metadata.path);
                     resource.metadata_integrity = metadata.integrity;
+                    resource.metadata_archive_source = metadata.archive_source;
                 }
                 resources.entry(location).or_default().push(resource);
             }
@@ -648,6 +698,8 @@ fn collect_resources(
                 metadata_path: None,
                 integrity: None,
                 metadata_integrity: None,
+                archive_source: None,
+                metadata_archive_source: None,
             },
         );
     }
@@ -686,11 +738,29 @@ struct PackEntry {
     filter: Option<PackFilter>,
     indexed_assets: Option<Arc<VanillaAssetIndex>>,
     vanilla_namespaces: bool,
+    archive_content: Option<ArchivePackContent>,
+}
+
+#[derive(Debug)]
+struct ArchivePackContent {
+    resources: ZipPackResources,
+    asset_prefixes: Vec<String>,
+    data_prefixes: Vec<String>,
+}
+
+impl ArchivePackContent {
+    fn content_prefixes(&self, domain: &str) -> &[String] {
+        match domain {
+            "data" => &self.data_prefixes,
+            _ => &self.asset_prefixes,
+        }
+    }
 }
 
 struct ResourceFile {
     path: PathBuf,
     integrity: Option<ResourceIntegrity>,
+    archive_source: Option<ZipEntrySource>,
 }
 
 impl PackEntry {
@@ -702,7 +772,7 @@ impl PackEntry {
         let metadata = read_pack_resource_metadata(&root, &data_budget)
             .ok()
             .flatten();
-        Self::from_metadata(pack_id, root, metadata, false, None, false)
+        Self::from_metadata(pack_id, root, metadata, false, None, false, None)
             .expect("lenient unmanaged pack metadata cannot fail")
     }
 
@@ -735,6 +805,14 @@ impl PackEntry {
         if let Some(index) = &pack.indexed_vanilla_assets {
             data_budget.reserve_indexed_assets_once(index.observation().retained_logical_bytes)?;
         }
+        let archive = pack
+            .archive
+            .as_ref()
+            .map(|archive| {
+                ZipPackResources::open(&archive.archive_path, &archive.cache_root)
+                    .context("open selected client pack ZIP")
+            })
+            .transpose()?;
         Self::from_metadata(
             pack.id.clone(),
             pack.root.clone(),
@@ -742,6 +820,7 @@ impl PackEntry {
             !matches!(pack.source, ClientPackSource::Unmanaged),
             pack.indexed_vanilla_assets.as_ref().map(Arc::clone),
             matches!(pack.source, ClientPackSource::Vanilla),
+            archive,
         )
     }
 
@@ -752,6 +831,7 @@ impl PackEntry {
         strict: bool,
         indexed_assets: Option<Arc<VanillaAssetIndex>>,
         vanilla_namespaces: bool,
+        archive: Option<ZipPackResources>,
     ) -> Result<Self> {
         let filter = match metadata
             .as_ref()
@@ -760,14 +840,33 @@ impl PackEntry {
             Some(filter) => PackFilter::prepare(filter, strict)?,
             None => None,
         };
-        let asset_content_roots = content_roots(
-            &root,
-            metadata.as_ref(),
-            CLIENT_RESOURCE_PACK_FORMAT,
-            strict,
-        )?;
-        let data_content_roots =
-            content_roots(&root, metadata.as_ref(), SERVER_DATA_PACK_FORMAT, strict)?;
+        let (asset_content_roots, data_content_roots, archive_content) = match archive {
+            Some(resources) => {
+                let asset_prefixes =
+                    content_prefixes(metadata.as_ref(), CLIENT_RESOURCE_PACK_FORMAT, strict)?;
+                let data_prefixes =
+                    content_prefixes(metadata.as_ref(), SERVER_DATA_PACK_FORMAT, strict)?;
+                (
+                    Vec::new(),
+                    Vec::new(),
+                    Some(ArchivePackContent {
+                        resources,
+                        asset_prefixes,
+                        data_prefixes,
+                    }),
+                )
+            }
+            None => (
+                content_roots(
+                    &root,
+                    metadata.as_ref(),
+                    CLIENT_RESOURCE_PACK_FORMAT,
+                    strict,
+                )?,
+                content_roots(&root, metadata.as_ref(), SERVER_DATA_PACK_FORMAT, strict)?,
+                None,
+            ),
+        };
         Ok(Self {
             pack_id,
             root,
@@ -776,6 +875,7 @@ impl PackEntry {
             filter,
             indexed_assets,
             vanilla_namespaces,
+            archive_content,
         })
     }
 
@@ -801,6 +901,8 @@ impl PackEntry {
                 metadata_path: None,
                 integrity: file.integrity,
                 metadata_integrity: None,
+                archive_source: file.archive_source,
+                metadata_archive_source: None,
             })
     }
 
@@ -817,11 +919,27 @@ impl PackEntry {
                 return Some(resource_file_from_indexed(indexed));
             }
         }
+        if let Some(archive) = &self.archive_content {
+            for prefix in archive.content_prefixes(domain).iter().rev() {
+                let name = add_archive_prefix(
+                    prefix,
+                    &format!("{domain}/{}/{}", location.namespace(), location.path()),
+                );
+                if let Some(source) = archive.resources.entry(&name) {
+                    return Some(ResourceFile {
+                        path: source.target().to_path_buf(),
+                        integrity: None,
+                        archive_source: Some(source),
+                    });
+                }
+            }
+        }
         self.content_roots(domain).iter().rev().find_map(|root| {
             let path = resource_path_in(root, domain, location);
             path.is_file().then_some(ResourceFile {
                 path,
                 integrity: None,
+                archive_source: None,
             })
         })
     }
@@ -836,6 +954,16 @@ impl PackEntry {
                 pack_id: self.pack_id.clone(),
                 path: indexed.path,
                 integrity: Some(indexed.integrity),
+                archive_source: None,
+            });
+        }
+        if let Some(archive) = &self.archive_content {
+            let source = archive.resources.entry(path)?;
+            return Some(PackRootResource {
+                pack_id: self.pack_id.clone(),
+                path: source.target().to_path_buf(),
+                integrity: None,
+                archive_source: Some(source),
             });
         }
         let path = self.root.join(path);
@@ -843,6 +971,7 @@ impl PackEntry {
             pack_id: self.pack_id.clone(),
             path,
             integrity: None,
+            archive_source: None,
         })
     }
 
@@ -854,6 +983,50 @@ impl PackEntry {
         admission: &mut ResourceListingAdmission,
     ) -> Result<BTreeMap<ResourceLocation, PackResource>> {
         let mut resources = BTreeMap::new();
+        if let Some(archive) = &self.archive_content {
+            for content_prefix in archive.content_prefixes(domain) {
+                let root = add_archive_prefix(content_prefix, &format!("{domain}/"));
+                for name in archive.resources.names() {
+                    let namespace = extract_archive_namespace(&root, name);
+                    if validate_resource_namespace(namespace).is_err() {
+                        continue;
+                    }
+                    let namespace_root = format!("{root}{namespace}/");
+                    let prefix = if path_prefix.is_empty() {
+                        namespace_root.clone()
+                    } else {
+                        format!("{namespace_root}{path_prefix}/")
+                    };
+                    if !name.starts_with(&prefix) || name.ends_with('/') {
+                        continue;
+                    }
+                    let resource_path = &name[namespace_root.len()..];
+                    if !resource_path.ends_with(extension) {
+                        continue;
+                    }
+                    let Ok(location) = ResourceLocation::new(namespace, resource_path) else {
+                        continue;
+                    };
+                    let Some(source) = archive.resources.entry(name) else {
+                        continue;
+                    };
+                    admission.admit(&location.id(), &format!("{namespace}:{extension}"))?;
+                    resources.insert(
+                        location.clone(),
+                        PackResource {
+                            pack_id: self.pack_id.clone(),
+                            location,
+                            path: source.target().to_path_buf(),
+                            metadata_path: None,
+                            integrity: None,
+                            metadata_integrity: None,
+                            archive_source: Some(source),
+                            metadata_archive_source: None,
+                        },
+                    );
+                }
+            }
+        }
         for root in self.content_roots(domain) {
             let domain_root = root.join(domain);
             if !domain_root.is_dir() {
@@ -912,6 +1085,8 @@ impl PackEntry {
                             metadata_path: None,
                             integrity: Some(indexed.integrity),
                             metadata_integrity: None,
+                            archive_source: None,
+                            metadata_archive_source: None,
                         },
                     );
                 }
@@ -925,6 +1100,7 @@ fn resource_file_from_indexed(indexed: IndexedAsset) -> ResourceFile {
     ResourceFile {
         path: indexed.path,
         integrity: Some(indexed.integrity),
+        archive_source: None,
     }
 }
 
@@ -1177,6 +1353,42 @@ fn content_roots(
         }
     }
     Ok(roots)
+}
+
+fn content_prefixes(
+    metadata: Option<&RawPackMetadata>,
+    current_format: PackFormat,
+    strict: bool,
+) -> Result<Vec<String>> {
+    let mut prefixes = vec![String::new()];
+    let overlays = metadata
+        .and_then(|metadata| metadata.overlays.as_ref())
+        .map(|overlays| overlays.entries.as_slice())
+        .unwrap_or_default();
+    for overlay in overlays {
+        if overlay.applies_to(current_format, strict)? {
+            prefixes.push(overlay.directory.clone());
+        }
+    }
+    Ok(prefixes)
+}
+
+fn add_archive_prefix(prefix: &str, path: &str) -> String {
+    if prefix.is_empty() {
+        path.to_owned()
+    } else {
+        format!("{prefix}/{path}")
+    }
+}
+
+fn extract_archive_namespace<'a>(prefix: &str, name: &'a str) -> &'a str {
+    let Some(remainder) = name.strip_prefix(prefix) else {
+        return "";
+    };
+    remainder
+        .split_once('/')
+        .map(|(namespace, _)| namespace)
+        .unwrap_or(remainder)
 }
 
 fn is_valid_overlay_directory(directory: &str) -> bool {

@@ -505,7 +505,8 @@ fn sound_ogg_resource(
 ) -> Result<Option<(PathBuf, Option<ResourceIntegrity>)>> {
     let sound_location = sound_resource_location(location)?;
     if let Some(resource) = stack.and_then(|stack| stack.get_resource(&sound_location)) {
-        return Ok(Some((resource.path, resource.integrity)));
+        let path = resource.materialized_path()?.to_path_buf();
+        return Ok(Some((path, resource.integrity)));
     }
 
     if stack.is_some() {

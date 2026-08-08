@@ -115,8 +115,12 @@ fn load_standard_icons(
             bail!("window icon {path} exceeds the {MAX_RESOURCE_PNG_FILE_BYTES} byte PNG limit");
         }
         verify_root_resource(&resource, "window icon")?;
-        let image = decode_png_file_rgba_with_budget(&resource.path, "window icon", &mut budget)
-            .with_context(|| format!("decode Vanilla window icon {path}"))?;
+        let image = decode_png_file_rgba_with_budget(
+            resource.materialized_path()?,
+            "window icon",
+            &mut budget,
+        )
+        .with_context(|| format!("decode Vanilla window icon {path}"))?;
         icons.push(StandardWindowIcon {
             requested_size: size,
             width: image.width(),
@@ -139,7 +143,7 @@ fn load_macos_icon(resources: &PackResourceStack, set: WindowIconSet) -> Result<
     }
     verify_root_resource(&resource, "window icon ICNS")?;
     let bytes = resources.data_budget().read_optional_binary(
-        &resource.path,
+        resource.materialized_path()?,
         MAX_WINDOW_ICON_ICNS_BYTES,
         "window icon ICNS",
     )?;
@@ -160,7 +164,7 @@ fn vanilla_root_resource(resources: &PackResourceStack, path: &str) -> Result<Pa
 
 fn verify_root_resource(resource: &PackRootResource, label: &str) -> Result<()> {
     if let Some(integrity) = &resource.integrity {
-        integrity.verify(&resource.path, label)?;
+        integrity.verify(resource.materialized_path()?, label)?;
     }
     Ok(())
 }

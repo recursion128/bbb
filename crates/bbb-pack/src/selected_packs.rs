@@ -10,8 +10,8 @@ use anyhow::{bail, Context, Result};
 use sha1::{Digest, Sha1};
 
 use crate::{
-    materialize_server_pack_archive, read_client_resource_pack_metadata, ClientPackMetadata,
-    PackResourceStack, PackRoots, ServerPackArchiveLimits, ServerPackFormatRange,
+    prepare_pack_archive, read_client_resource_pack_metadata, ClientPackMetadata,
+    PackResourceStack, PackRoots, PreparedPackArchive, ServerPackFormatRange,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,6 +65,7 @@ pub struct SelectedClientPack {
     pub selection: ClientPackSelection,
     pub metadata: Option<ClientPackMetadata>,
     pub(crate) indexed_vanilla_assets: Option<Arc<crate::asset_index::VanillaAssetIndex>>,
+    pub(crate) archive: Option<PreparedPackArchive>,
 }
 
 impl SelectedClientPack {
@@ -86,6 +87,7 @@ impl SelectedClientPack {
             },
             metadata: None,
             indexed_vanilla_assets: roots.indexed_vanilla_assets(),
+            archive: None,
         }
     }
 
@@ -107,6 +109,7 @@ impl SelectedClientPack {
             },
             metadata: Some(metadata),
             indexed_vanilla_assets: None,
+            archive: None,
         })
     }
 
@@ -135,12 +138,34 @@ impl SelectedClientPack {
             },
             metadata: Some(metadata),
             indexed_vanilla_assets: None,
+            archive: None,
+        })
+    }
+
+    fn options_repository_archive(file_name: String, archive: PreparedPackArchive) -> Result<Self> {
+        let metadata = archive.metadata.clone();
+        let supported_formats = metadata.supported_formats;
+        Ok(Self {
+            id: format!("file/{file_name}"),
+            source: ClientPackSource::OptionsRepository { file_name },
+            root: archive.archive_path.clone(),
+            supported_formats,
+            compatibility: ClientPackCompatibility::for_supported_formats(supported_formats),
+            selection: ClientPackSelection {
+                required: false,
+                default_position: ClientPackPosition::Top,
+                fixed_position: false,
+            },
+            metadata: Some(metadata),
+            indexed_vanilla_assets: None,
+            archive: Some(archive),
         })
     }
 
     pub fn server(
         pack_id: impl Into<String>,
         push_sequence: u64,
+        load_serial: u32,
         root: impl Into<PathBuf>,
         metadata: ClientPackMetadata,
     ) -> Result<Self> {
@@ -151,7 +176,7 @@ impl SelectedClientPack {
         }
         let supported_formats = metadata.supported_formats;
         Ok(Self {
-            id: format!("server/{push_sequence:020}/{pack_id}"),
+            id: format!("server/{load_serial:08X}/{pack_id}"),
             source: ClientPackSource::Server {
                 pack_id,
                 push_sequence,
@@ -166,6 +191,39 @@ impl SelectedClientPack {
             },
             metadata: Some(metadata),
             indexed_vanilla_assets: None,
+            archive: None,
+        })
+    }
+
+    pub fn server_archive(
+        pack_id: impl Into<String>,
+        push_sequence: u64,
+        load_serial: u32,
+        archive: PreparedPackArchive,
+    ) -> Result<Self> {
+        let pack_id = pack_id.into();
+        if pack_id.is_empty() {
+            bail!("server client pack id cannot be empty");
+        }
+        let metadata = archive.metadata.clone();
+        let supported_formats = metadata.supported_formats;
+        Ok(Self {
+            id: format!("server/{load_serial:08X}/{pack_id}"),
+            source: ClientPackSource::Server {
+                pack_id,
+                push_sequence,
+            },
+            root: archive.archive_path.clone(),
+            supported_formats,
+            compatibility: ClientPackCompatibility::for_supported_formats(supported_formats),
+            selection: ClientPackSelection {
+                required: true,
+                default_position: ClientPackPosition::Top,
+                fixed_position: true,
+            },
+            metadata: Some(metadata),
+            indexed_vanilla_assets: None,
+            archive: Some(archive),
         })
     }
 
@@ -187,6 +245,7 @@ impl SelectedClientPack {
             },
             metadata: None,
             indexed_vanilla_assets: None,
+            archive: None,
         }
     }
 }
@@ -287,8 +346,7 @@ impl SelectedClientPackStack {
     /// Discover selected file packs from the Vanilla `resourcepacks` repository
     /// and replay `Options.loadSelectedResourcePacks` against the two stored
     /// lists. Invalid repository entries are unavailable, matching
-    /// `Pack.readMetaAndCreate` returning null. Selected ZIPs are materialized
-    /// through the same bounded, atomic path used by downloaded server packs;
+    /// `Pack.readMetaAndCreate` returning null. Selected ZIPs remain the canonical backing store;
     /// their repository id remains `file/<archive-name>`.
     pub fn from_options_repository(
         roots: &PackRoots,
@@ -328,13 +386,9 @@ impl SelectedClientPackStack {
             let pack = if file_type.is_dir() {
                 SelectedClientPack::options_repository(file_name, path)
             } else if file_type.is_file() && file_name.ends_with(".zip") {
-                materialize_options_repository_archive(&path, &archive_cache).and_then(
-                    |(root, metadata)| {
-                        SelectedClientPack::options_repository_with_metadata(
-                            file_name, root, metadata,
-                        )
-                    },
-                )
+                prepare_options_repository_archive(&path, &archive_cache).and_then(|archive| {
+                    SelectedClientPack::options_repository_archive(file_name, archive)
+                })
             } else {
                 continue;
             };
@@ -403,7 +457,7 @@ impl SelectedClientPackStack {
 
     pub fn with_server_packs(
         &self,
-        server_packs_in_push_order: impl IntoIterator<Item = SelectedClientPack>,
+        server_packs_in_repository_order: impl IntoIterator<Item = SelectedClientPack>,
     ) -> Result<Self> {
         let mut packs = self
             .packs
@@ -413,7 +467,7 @@ impl SelectedClientPackStack {
             .collect::<Vec<_>>();
         let mut previous_push_sequence = None;
         let mut server_ids = std::collections::BTreeSet::new();
-        for pack in server_packs_in_push_order {
+        for pack in server_packs_in_repository_order {
             let ClientPackSource::Server {
                 ref pack_id,
                 push_sequence,
@@ -421,8 +475,8 @@ impl SelectedClientPackStack {
             else {
                 bail!("non-server pack {} supplied as a server pack", pack.id);
             };
-            if previous_push_sequence.is_some_and(|previous| previous >= push_sequence) {
-                bail!("server client packs are not in strict push order");
+            if previous_push_sequence.is_some_and(|previous| previous <= push_sequence) {
+                bail!("server client packs are not in strict reverse-push repository order");
             }
             if !server_ids.insert(pack_id.clone()) {
                 bail!("duplicate active server client pack id {pack_id}");
@@ -484,20 +538,10 @@ impl SelectedClientPackStack {
     }
 }
 
-fn materialize_options_repository_archive(
+fn prepare_options_repository_archive(
     archive: &Path,
     cache_root: &Path,
-) -> Result<(PathBuf, ClientPackMetadata)> {
-    let limits = ServerPackArchiveLimits::default();
-    let archive_bytes = fs::metadata(archive)
-        .with_context(|| format!("read options resource pack archive {}", archive.display()))?
-        .len();
-    if archive_bytes > limits.max_archive_bytes {
-        bail!(
-            "options resource pack archive is {archive_bytes} bytes, exceeding the {} byte limit",
-            limits.max_archive_bytes
-        );
-    }
+) -> Result<PreparedPackArchive> {
     let mut file = fs::File::open(archive)
         .with_context(|| format!("open options resource pack archive {}", archive.display()))?;
     let mut sha1 = Sha1::new();
@@ -512,24 +556,7 @@ fn materialize_options_repository_archive(
         sha1.update(&buffer[..read]);
     }
     let output = cache_root.join(format!("{:x}", sha1.finalize()));
-    if output.is_dir() {
-        let metadata = read_client_resource_pack_metadata(&output)?;
-        return Ok((output, metadata));
-    }
-    fs::create_dir_all(cache_root).with_context(|| {
-        format!(
-            "create options resource pack cache {}",
-            cache_root.display()
-        )
-    })?;
-    match materialize_server_pack_archive(archive, &output, limits) {
-        Ok(materialized) => Ok((materialized.root, materialized.metadata)),
-        Err(_error) if output.is_dir() => {
-            let metadata = read_client_resource_pack_metadata(&output)?;
-            Ok((output, metadata))
-        }
-        Err(error) => Err(error),
-    }
+    prepare_pack_archive(archive, &output)
 }
 
 fn validate_pack_root(root: &Path) -> Result<()> {
@@ -875,8 +902,106 @@ mod tests {
             ClientPackCompatibility::TooOld
         );
         let archive = reconciliation.selected_packs.packs().last().unwrap();
-        assert_ne!(archive.root, repository.join("archive.zip"));
-        assert!(archive.root.join("pack.mcmeta").is_file());
+        assert_eq!(archive.root, repository.join("archive.zip"));
+        let archive = archive.archive.as_ref().unwrap();
+        assert!(!archive.cache_root.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn options_zip_is_indexed_directly_and_materializes_only_consumed_entries() {
+        let root = unique_temp_dir("options-zip-lazy");
+        std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
+        let repository = root.join("resourcepacks");
+        std::fs::create_dir_all(&repository).unwrap();
+        let archive_path = repository.join("lazy.zip");
+        let file = File::create(&archive_path).unwrap();
+        let mut archive = ZipWriter::new(file);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+        let metadata = br#"{
+          "pack":{"description":"test","min_format":[84,0],"max_format":[84,0]},
+          "overlays":{"entries":[{"directory":"overlay","formats":84}]}
+        }"#;
+        for (name, bytes) in [
+            ("pack.mcmeta".to_owned(), metadata.as_slice()),
+            (
+                "assets/minecraft/test/value.txt".to_owned(),
+                b"primary".as_slice(),
+            ),
+            (
+                "overlay/assets/minecraft/test/value.txt".to_owned(),
+                b"overlay".as_slice(),
+            ),
+            ("assets/minecraft/collision".to_owned(), b"file".as_slice()),
+            (
+                "assets/minecraft/collision/child.txt".to_owned(),
+                b"child".as_slice(),
+            ),
+            (
+                format!("assets/minecraft/{}.txt", "a".repeat(1_100)),
+                b"long".as_slice(),
+            ),
+        ] {
+            archive.start_file(name, options).unwrap();
+            archive.write_all(bytes).unwrap();
+        }
+        archive
+            .start_file("assets/minecraft/unused.txt", options)
+            .unwrap();
+        archive.write_all(&vec![0_u8; 128 * 1024]).unwrap();
+        archive.finish().unwrap();
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let reconciliation = SelectedClientPackStack::from_options_repository(
+            &roots,
+            &repository,
+            &["file/lazy.zip".to_owned()],
+            &[],
+        )
+        .unwrap();
+        let selected_archive = reconciliation.selected_packs.packs()[1]
+            .archive
+            .as_ref()
+            .unwrap();
+        let cache_root = selected_archive.cache_root.clone();
+        assert_eq!(selected_archive.archive_path, archive_path);
+        assert!(!cache_root.exists());
+
+        let generation =
+            ClientResourceGeneration::prepare(1, reconciliation.selected_packs.clone()).unwrap();
+        let resources = generation.resources();
+        let all_text = resources.list_resources("", ".txt").unwrap();
+        assert_eq!(all_text.len(), 4);
+        let listed = resources.list_resources("test", ".txt").unwrap();
+        assert_eq!(listed.len(), 1);
+        assert!(!cache_root.exists(), "listing must retain lazy suppliers");
+
+        let value = resources
+            .get_resource(&ResourceLocation::parse("test/value.txt").unwrap())
+            .unwrap();
+        assert_eq!(
+            resources
+                .read_text_resource(&value, "overlay value")
+                .unwrap(),
+            "overlay"
+        );
+        assert_eq!(std::fs::read_dir(&cache_root).unwrap().count(), 1);
+
+        for (id, expected) in [
+            ("collision", "file"),
+            ("collision/child.txt", "child"),
+            (&format!("{}.txt", "a".repeat(1_100)), "long"),
+        ] {
+            let resource = resources
+                .get_resource(&ResourceLocation::parse(id).unwrap())
+                .unwrap();
+            assert_eq!(
+                resources.read_text_resource(&resource, id).unwrap(),
+                expected
+            );
+        }
+        assert_eq!(std::fs::read_dir(&cache_root).unwrap().count(), 4);
+        assert!(!cache_root.join("assets").exists());
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -930,7 +1055,7 @@ mod tests {
     }
 
     #[test]
-    fn server_packs_follow_startup_packs_in_push_order() {
+    fn server_packs_follow_vanilla_reverse_push_repository_order() {
         let root = unique_temp_dir("server-order");
         std::fs::create_dir_all(root.join("sources/26.1/assets/minecraft")).unwrap();
         let first_root = root.join("first");
@@ -943,8 +1068,8 @@ mod tests {
 
         let stack = base
             .with_server_packs([
-                SelectedClientPack::server("first", 4, &first_root, metadata.clone()).unwrap(),
-                SelectedClientPack::server("second", 9, &second_root, metadata).unwrap(),
+                SelectedClientPack::server("second", 9, 0, &second_root, metadata.clone()).unwrap(),
+                SelectedClientPack::server("first", 4, 1, &first_root, metadata).unwrap(),
             ])
             .unwrap();
 
@@ -956,8 +1081,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 roots.sources_dir.as_path(),
-                first_root.as_path(),
-                second_root.as_path()
+                second_root.as_path(),
+                first_root.as_path()
             ]
         );
         std::fs::remove_dir_all(root).unwrap();
@@ -976,17 +1101,17 @@ mod tests {
         let metadata = current_metadata();
 
         let non_monotonic = base.with_server_packs([
-            SelectedClientPack::server("first", 2, &first_root, metadata.clone()).unwrap(),
-            SelectedClientPack::server("second", 1, &second_root, metadata.clone()).unwrap(),
+            SelectedClientPack::server("first", 1, 0, &first_root, metadata.clone()).unwrap(),
+            SelectedClientPack::server("second", 2, 1, &second_root, metadata.clone()).unwrap(),
         ]);
         assert!(non_monotonic
             .unwrap_err()
             .to_string()
-            .contains("strict push order"));
+            .contains("strict reverse-push repository order"));
 
         let reused = base.with_server_packs([
-            SelectedClientPack::server("same", 1, &first_root, metadata.clone()).unwrap(),
-            SelectedClientPack::server("same", 2, &second_root, metadata).unwrap(),
+            SelectedClientPack::server("same", 2, 2, &second_root, metadata.clone()).unwrap(),
+            SelectedClientPack::server("same", 1, 3, &first_root, metadata).unwrap(),
         ]);
         assert!(reused
             .unwrap_err()

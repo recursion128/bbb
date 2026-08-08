@@ -153,12 +153,16 @@ impl<'a> AtlasTextureLoader<'a> {
         let texture_prefix = resource_texture_prefix(source_path);
         for resource in self.stack.list_resources(&texture_prefix, ".png")? {
             let id = directory_sprite_id(&resource.location, source_path, prefix)?;
+            let path = resource.materialized_path()?.to_path_buf();
+            let metadata_path = resource
+                .materialized_metadata_path()?
+                .map(Path::to_path_buf);
             append_or_replace_entry(
                 entries,
                 AtlasTextureEntry::File {
                     id,
-                    path: resource.path,
-                    metadata_path: resource.metadata_path,
+                    path,
+                    metadata_path,
                 },
             );
         }
@@ -172,12 +176,16 @@ impl<'a> AtlasTextureLoader<'a> {
         sprite: &ResourceLocation,
     ) -> Result<()> {
         if let Some(resource) = self.texture_resource(resource)? {
+            let path = resource.materialized_path()?.to_path_buf();
+            let metadata_path = resource
+                .materialized_metadata_path()?
+                .map(Path::to_path_buf);
             append_or_replace_entry(
                 entries,
                 AtlasTextureEntry::File {
                     id: sprite.id(),
-                    path: resource.path,
-                    metadata_path: resource.metadata_path,
+                    path,
+                    metadata_path,
                 },
             );
         }
@@ -245,7 +253,8 @@ impl<'a> AtlasTextureLoader<'a> {
     }
 
     fn required_texture_path(&self, location: &ResourceLocation) -> Result<PathBuf> {
-        Ok(self.required_texture_resource(location)?.path)
+        let resource = self.required_texture_resource(location)?;
+        Ok(resource.materialized_path()?.to_path_buf())
     }
 
     fn required_texture_resource(&self, location: &ResourceLocation) -> Result<PackResource> {
@@ -260,7 +269,7 @@ impl<'a> AtlasTextureLoader<'a> {
 
     fn required_raw_texture_image(&mut self, location: &ResourceLocation) -> Result<SpriteImage> {
         let resource = self.required_texture_resource(location)?;
-        let (width, height, rgba) = read_raw_png(resource.path, self.budget)?;
+        let (width, height, rgba) = read_raw_png(resource.materialized_path()?, self.budget)?;
         SpriteImage::new(location.id(), width, height, rgba)
     }
 }

@@ -273,7 +273,7 @@ impl SpriteImage {
         )
     }
 
-    pub(crate) fn from_pack_resource(
+    pub fn from_pack_resource(
         id: impl Into<String>,
         resource: &PackResource,
         resources: &PackResourceStack,
@@ -281,10 +281,12 @@ impl SpriteImage {
         let id = id.into();
         resources.validate_resource(resource, &format!("sprite image {id}"))?;
         resources.validate_resource_metadata(resource, &format!("sprite metadata {id}"))?;
+        let path = resource.materialized_path()?;
+        let metadata_path = resource.materialized_metadata_path()?;
         Self::from_png_file_with_metadata_path_and_budget(
             id,
-            &resource.path,
-            resource.metadata_path.as_deref(),
+            path,
+            metadata_path,
             &mut resources.single_image_png_decode_budget(),
             Some(resources),
         )

@@ -157,7 +157,7 @@ public class Owner {
         mechanism = value["mechanisms"]["resources-server-pack-lifecycle"]
         self.assertEqual(mechanism["owner_count"], 68)
         self.assertEqual(mechanism["owner_evidence_count"], 68)
-        self.assertEqual(mechanism.get("owner_gap_count", 0), 4)
+        self.assertEqual(mechanism.get("owner_gap_count", 0), 1)
         self.assertEqual(
             Counter(owner["source"]["path"] for owner in owners),
             Counter(
@@ -190,9 +190,6 @@ public class Owner {
             set(open_gaps),
             {
                 "net.minecraft.client.resources.server.DownloadedPackSource#createDownloadNotifier(final int totalCount)",
-                "net.minecraft.client.resources.server.DownloadedPackSource#loadRequestedPacks(final List <PackReloadConfig.IdAndPath> packsToLoad)",
-                "net.minecraft.client.resources.server.DownloadedPackSource#createRepositorySource()",
-                "net.minecraft.client.resources.server.DownloadedPackSource#configureSource(final List <Pack> packs)",
             },
         )
         self.assertTrue(

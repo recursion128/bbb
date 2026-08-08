@@ -41,6 +41,7 @@ mod tags;
 mod waypoint_styles;
 mod win_screen;
 mod window_icons;
+mod zip_pack;
 
 pub use exports::*;
 pub(crate) use exports::{rgba_len, rgba_offset};

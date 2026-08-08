@@ -83,8 +83,9 @@ impl PostEffectCatalog {
         let mut retained_counts = RetainedCounts::default();
         for resource in resources {
             let graph_id = graph_id_from_resource(&resource.location)?;
+            let path = resource.materialized_path()?;
             let value = stack
-                .read_json_value_file(&resource.path, "post-effect graph")
+                .read_json_value_file(path, "post-effect graph")
                 .with_context(|| format!("parse post-effect graph {}", resource.location.id()))?;
             validate_graph_shape(stack, &graph_id, &value)?;
             let raw: RawPostEffectGraph = serde_json::from_value(value)
@@ -627,7 +628,7 @@ fn load_effect_texture(
         .get_resource(&resource_location)
         .with_context(|| format!("missing post-effect texture {}", resource_location.id()))?;
     let image = decode_png_file_rgba_with_budget(
-        &resource.path,
+        resource.materialized_path()?,
         "post-effect texture",
         &mut stack.single_image_png_decode_budget(),
     )?;

@@ -71,16 +71,18 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   `DownloadCacheCleaner`, the `HttpUtil` download chain and the Minecraft clear
   call. Download/cache/log/vacuum ordering, one DownloadQueue batch per external
   push, cross-batch failure propagation and per-batch five-slot progress toasts
-  now have decision-level tests. Inventory keeps four affected owners explicitly
-  machine-routed as open gaps (one shared-toast owner and three ZIP-provider
-  owners). The pack provider remains open: Vanilla passes
-  the downloaded ZIP directly to `FilePackResources`/`ZipFile`, while BBB still
-  eagerly extracts it and imposes non-Vanilla archive-entry, path-length,
-  per-entry, expansion-ratio and expanded-size limits. Replace that materializer
-  with direct/lazy ZIP resource semantics, including duplicate entries and
-  file/directory collision behavior, before closing this mechanism. Reopen the
-  provider work if `FilePackResources`, `ZipFile` lookup/enumeration, resource
-  filter or reload ownership changes.
+  now have decision-level tests. Inventory keeps one affected owner explicitly
+  machine-routed as an open gap: the shared-toast owner. The pack provider now
+  retains the downloaded ZIP as its canonical source, indexes the central
+  directory without eager extraction, resolves duplicate lookup using the final
+  central entry, preserves central-order overlay/list decisions, and materializes
+  only consumed resources into a flat temporary cache. Focused tests cover
+  duplicate entries, file/directory collisions, overlays, long paths, high-ratio
+  content, lazy listing and persistent archive ownership. Runtime pack ids now
+  use the per-load-attempt `server/%08X/%UUID` serial and the repository retains
+  Vanilla's reverse-push ordering. Reopen the provider
+  work if `FilePackResources`, JDK `ZipFile` lookup/enumeration, resource filter,
+  overlay or reload ownership changes.
 - Server-pack batches now retain distinct toast identity and standard-height
   slot placement, but all toast families still need one shared `ToastManager`
   admission/occupied-slot queue. Today narrator, warning and server-pack paths
@@ -91,8 +93,8 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
 - The server-pack runtime/net/world/HUD implementation and per-owner evidence
   also remain open until the final implementation commit passes full gate and a
   current live receipt; shared rows affected after `bfcc657cf` stay reopened
-  meanwhile. Preserve the official `server/%08X/%UUID` runtime identity/order in
-  any provider replacement when that identity reaches diagnostics or receipts.
+  meanwhile. Reopen runtime identity/order if `packIdSerialNumber`, repository
+  sorting, required-top insertion or diagnostics ownership changes.
 - The reachable SOCKS proxy/cache correction also changed nine shared startup,
   window, UI and persistence evidence owners; those rows remain temporarily
   reopened until the same full-gate/rebind checkpoint completes.

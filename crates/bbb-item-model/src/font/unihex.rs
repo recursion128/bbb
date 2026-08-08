@@ -56,20 +56,21 @@ pub(super) fn load_unihex_atlas_page(
         .get_resource(&location)
         .with_context(|| format!("missing unihex archive {}", location.id()))?;
     stack.validate_resource(&resource, "unihex archive")?;
-    let file = File::open(&resource.path)
-        .with_context(|| format!("open unihex archive {}", resource.path.display()))?;
+    let resource_path = resource.materialized_path()?;
+    let file = File::open(resource_path)
+        .with_context(|| format!("open unihex archive {}", resource_path.display()))?;
     let size = file
         .metadata()
-        .with_context(|| format!("read unihex archive metadata {}", resource.path.display()))?
+        .with_context(|| format!("read unihex archive metadata {}", resource_path.display()))?
         .len();
     if size > MAX_UNIHEX_ARCHIVE_BYTES {
         bail!(
             "unihex archive {} is {size} bytes, exceeding the {MAX_UNIHEX_ARCHIVE_BYTES} byte limit",
-            resource.path.display()
+            resource_path.display()
         );
     }
     let page = parse_unihex_archive(file, definition)
-        .with_context(|| format!("load unihex archive {}", resource.path.display()))?;
+        .with_context(|| format!("load unihex archive {}", resource_path.display()))?;
     let retained_bytes = u64::try_from(page.glyphs.len())
         .context("unihex glyph count overflow")?
         .checked_mul(96)

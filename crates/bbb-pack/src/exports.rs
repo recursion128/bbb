@@ -70,9 +70,9 @@ pub use crate::selected_packs::{
     SelectedClientPackStack,
 };
 pub use crate::server_pack::{
-    materialize_server_pack_archive, read_client_resource_pack_format_range,
-    read_client_resource_pack_metadata, ClientPackMetadata, ServerPackArchiveLimits,
-    ServerPackFormat, ServerPackFormatRange, ServerPackMaterialization,
+    prepare_pack_archive, read_client_resource_pack_format_range,
+    read_client_resource_pack_metadata, ClientPackMetadata, PreparedPackArchive, ServerPackFormat,
+    ServerPackFormatRange,
 };
 pub use crate::shader_sources::ShaderSourceCatalog;
 pub use crate::sound_event_registry::SoundEventRegistry;

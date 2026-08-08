@@ -2019,7 +2019,7 @@ fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing GUI texture minecraft:{path}"))?;
-    SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)
+    SpriteImage::from_pack_resource(id, &resource, &resources)
 }
 
 fn standalone_sampling(image: &SpriteImage) -> StandaloneTextureSampling {

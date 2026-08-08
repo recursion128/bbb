@@ -13,10 +13,7 @@ use bbb_net::{
     initialize_server_pack_download_cache, NetCommand, ServerPackDownloadProgress,
     ServerPackDownloadProxy, ServerPackDownloadRequest,
 };
-use bbb_pack::{
-    materialize_server_pack_archive, SelectedClientPack, ServerPackArchiveLimits,
-    ServerPackMaterialization,
-};
+use bbb_pack::{prepare_pack_archive, PreparedPackArchive, SelectedClientPack};
 use bbb_protocol::packets::ResourcePackResponseAction;
 use bbb_world::{
     ResourcePackDownloadPhase, ResourcePackDownloadState, ResourcePackFailureStage,
@@ -50,7 +47,7 @@ impl PackKey {
 #[derive(Debug)]
 enum PackDownloadState {
     Pending,
-    Ready(ServerPackMaterialization),
+    Ready(PreparedPackArchive),
     Failed,
 }
 
@@ -103,7 +100,7 @@ enum PackTaskEvent {
     },
     Ready {
         key: PackKey,
-        materialization: ServerPackMaterialization,
+        materialization: PreparedPackArchive,
     },
     Failed {
         key: PackKey,
@@ -157,7 +154,7 @@ pub(crate) enum ResourcePackReloadFinish {
     RecoveryFailed,
 }
 
-/// Owns server-pack downloads and archive materialization for one connection session.
+/// Owns server-pack downloads, archive preparation, and lazy entry caching for one connection.
 ///
 /// Canonical push/pop and response state stays in `WorldStore`. This runtime keys asynchronous
 /// work by both UUID and monotonic push sequence so a late result from a popped or replaced pack
@@ -175,6 +172,7 @@ pub(crate) struct ServerResourcePackRuntime {
     packs: Vec<TrackedPack>,
     responses: VecDeque<DeferredResponse>,
     last_reported_ready_roots: Vec<PathBuf>,
+    pack_id_serial_number: u32,
     next_reload_generation: u64,
     reload: Option<ReloadTransaction>,
     force_reload_requested: bool,
@@ -220,7 +218,7 @@ impl ServerResourcePackRuntime {
             .unwrap_or_default()
             .as_nanos();
         let materialized_session_dir = std::env::temp_dir()
-            .join("bbb-native-server-pack-materialized")
+            .join("bbb-native-server-pack-cache")
             .join(format!(
                 "session-{}-{session_serial}-{session_nonce}",
                 std::process::id()
@@ -238,6 +236,7 @@ impl ServerResourcePackRuntime {
             packs: Vec::new(),
             responses: VecDeque::new(),
             last_reported_ready_roots: Vec::new(),
+            pack_id_serial_number: 0,
             next_reload_generation: 1,
             reload: None,
             force_reload_requested: false,
@@ -307,28 +306,44 @@ impl ServerResourcePackRuntime {
             return None;
         }
         self.blocked_failed_stack = None;
-        let server_packs = desired
-            .iter()
-            .map(|key| {
-                self.packs
-                    .iter()
-                    .find(|pack| pack.key == *key)
-                    .and_then(|pack| match &pack.state {
-                        PackDownloadState::Ready(materialization) => Some(materialization),
-                        PackDownloadState::Pending | PackDownloadState::Failed => None,
-                    })
-                    .ok_or_else(|| format!("ready server pack {:?} disappeared", key))
-                    .and_then(|materialization| {
-                        SelectedClientPack::server(
-                            key.id.to_string(),
-                            key.push_sequence,
-                            materialization.root.clone(),
-                            materialization.metadata.clone(),
-                        )
-                        .map_err(|error| format!("{error:#}"))
-                    })
-            })
-            .collect::<Result<Vec<_>, _>>();
+        let mut server_packs = Vec::with_capacity(desired.len());
+        let mut server_pack_error = None;
+        // Vanilla `loadRequestedPacks` reverses the manager's push-order list, then assigns one
+        // `%08X` serial per load attempt. Repository discovery sorts those ids, preserving this
+        // reverse-push order and making the oldest active server pack highest priority.
+        for key in desired.iter().rev() {
+            let load_serial = self.pack_id_serial_number;
+            self.pack_id_serial_number = self.pack_id_serial_number.wrapping_add(1);
+            let result = self
+                .packs
+                .iter()
+                .find(|pack| pack.key == *key)
+                .and_then(|pack| match &pack.state {
+                    PackDownloadState::Ready(materialization) => Some(materialization),
+                    PackDownloadState::Pending | PackDownloadState::Failed => None,
+                })
+                .ok_or_else(|| format!("ready server pack {:?} disappeared", key))
+                .and_then(|materialization| {
+                    SelectedClientPack::server_archive(
+                        key.id.to_string(),
+                        key.push_sequence,
+                        load_serial,
+                        materialization.clone(),
+                    )
+                    .map_err(|error| format!("{error:#}"))
+                });
+            match result {
+                Ok(pack) => server_packs.push(pack),
+                Err(error) => {
+                    server_pack_error = Some(error);
+                    break;
+                }
+            }
+        }
+        let server_packs = match server_pack_error {
+            Some(error) => Err(error),
+            None => Ok(server_packs),
+        };
         let server_packs = match server_packs {
             Ok(packs) => packs,
             Err(error) => {
@@ -408,7 +423,7 @@ impl ServerResourcePackRuntime {
             for pack in &mut self.packs {
                 if reload.desired.contains(&pack.key) && !reload.previous.contains(&pack.key) {
                     if let PackDownloadState::Ready(materialization) = &pack.state {
-                        remove_materialized_root(&materialization.root);
+                        remove_materialized_root(&materialization.cache_root);
                     }
                     pack.removed = true;
                     pack.state = PackDownloadState::Failed;
@@ -619,17 +634,13 @@ impl ServerResourcePackRuntime {
                 let task_session_dir = materialized_session_dir.clone();
                 let materialized = tokio::task::spawn_blocking(move || {
                     std::fs::create_dir_all(&task_session_dir).map_err(anyhow::Error::from)?;
-                    materialize_server_pack_archive(
-                        &download.archive_path,
-                        &output_dir,
-                        ServerPackArchiveLimits::default(),
-                    )
+                    prepare_pack_archive(&download.archive_path, &output_dir)
                 })
                 .await;
                 match materialized {
                     Ok(Ok(materialization)) => {
                         if !session_alive.load(Ordering::Acquire) {
-                            remove_materialized_root(&materialization.root);
+                            remove_materialized_root(&materialization.cache_root);
                             break;
                         }
                         if let Err(error) = task_tx.send(PackTaskEvent::Ready {
@@ -640,7 +651,7 @@ impl ServerResourcePackRuntime {
                                 materialization, ..
                             } = error.0
                             {
-                                remove_materialized_root(&materialization.root);
+                                remove_materialized_root(&materialization.cache_root);
                             }
                             break;
                         }
@@ -664,7 +675,7 @@ impl ServerResourcePackRuntime {
                         break;
                     }
                     Err(error) => {
-                        let message = format!("join server pack materialization worker: {error}");
+                        let message = format!("join server pack preparation worker: {error}");
                         let _ = task_tx.send(PackTaskEvent::Failed {
                             key,
                             action: ResourcePackResponseAction::FailedReload,
@@ -728,7 +739,7 @@ impl ServerResourcePackRuntime {
                 materialization, ..
             } = event
             {
-                remove_materialized_root(&materialization.root);
+                remove_materialized_root(&materialization.cache_root);
             }
             return;
         };
@@ -740,7 +751,7 @@ impl ServerResourcePackRuntime {
                 PackTaskEvent::Ready {
                     materialization, ..
                 } => {
-                    remove_materialized_root(&materialization.root);
+                    remove_materialized_root(&materialization.cache_root);
                     pack.state = PackDownloadState::Failed;
                 }
                 PackTaskEvent::Failed { .. } => pack.state = PackDownloadState::Failed,
@@ -935,7 +946,7 @@ impl ServerResourcePackRuntime {
                     }
                     let key = pack.key;
                     if let PackDownloadState::Ready(materialization) = &pack.state {
-                        remove_materialized_root(&materialization.root);
+                        remove_materialized_root(&materialization.cache_root);
                     }
                     pack.removed = true;
                     pack.state = PackDownloadState::Failed;
@@ -983,7 +994,7 @@ impl ServerResourcePackRuntime {
             }
             let key = pack.key;
             if let PackDownloadState::Ready(materialization) = &pack.state {
-                remove_materialized_root(&materialization.root);
+                remove_materialized_root(&materialization.cache_root);
             }
             pack.removed = true;
             pack.state = PackDownloadState::Failed;
@@ -1018,7 +1029,7 @@ impl ServerResourcePackRuntime {
             match &pack.state {
                 PackDownloadState::Pending => true,
                 PackDownloadState::Ready(materialization) => {
-                    remove_materialized_root(&materialization.root);
+                    remove_materialized_root(&materialization.cache_root);
                     false
                 }
                 PackDownloadState::Failed => false,
@@ -1123,7 +1134,9 @@ impl ServerResourcePackRuntime {
             .iter()
             .filter(|pack| !pack.removed)
             .filter_map(|pack| match &pack.state {
-                PackDownloadState::Ready(materialization) => Some(materialization.root.clone()),
+                PackDownloadState::Ready(materialization) => {
+                    Some(materialization.cache_root.clone())
+                }
                 PackDownloadState::Pending | PackDownloadState::Failed => None,
             })
             .collect::<Vec<_>>();
@@ -1146,7 +1159,7 @@ impl Drop for ServerResourcePackRuntime {
                 tracing::warn!(
                     ?error,
                     path = %self.materialized_session_dir.display(),
-                    "failed to remove materialized server pack session"
+                    "failed to remove server pack entry-cache session"
                 );
             }
         }
@@ -1172,7 +1185,7 @@ fn failed_runtime_state(
 fn remove_materialized_root(root: &Path) {
     if let Err(error) = std::fs::remove_dir_all(root) {
         if error.kind() != std::io::ErrorKind::NotFound {
-            tracing::warn!(?error, path = %root.display(), "failed to remove materialized server pack");
+            tracing::warn!(?error, path = %root.display(), "failed to remove server pack entry cache");
         }
     }
 }
@@ -1181,7 +1194,12 @@ fn remove_materialized_root(root: &Path) {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{ResourcePackPop, ResourcePackPush};
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::{
+        fs::File,
+        io::Write,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
     fn test_runtime(label: &str) -> ServerResourcePackRuntime {
         ServerResourcePackRuntime::with_optional_runtime(
@@ -1585,7 +1603,7 @@ mod tests {
         runtime.resolve_download_batches();
 
         let reload = runtime.take_reload().unwrap();
-        assert_eq!(selected_roots(&reload), vec![root]);
+        assert_eq!(selected_roots(&reload), vec![ready_archive_path(&root)]);
         assert!(runtime
             .responses
             .iter()
@@ -1872,7 +1890,14 @@ mod tests {
         let reload = runtime.take_reload().unwrap();
         assert_eq!(
             selected_roots(&reload),
-            vec![old_root.clone(), new_root.clone()]
+            vec![ready_archive_path(&new_root), ready_archive_path(&old_root),]
+        );
+        assert_eq!(
+            selected_ids(&reload),
+            vec![
+                format!("server/00000001/{new_id}"),
+                format!("server/00000002/{}", old_key.id),
+            ]
         );
 
         assert_eq!(
@@ -1927,7 +1952,14 @@ mod tests {
         assert_eq!(runtime.packs.len(), 1);
         assert_eq!(runtime.packs[0].key, old_key);
         let recovery = runtime.take_reload().expect("fallback recovery reload");
-        assert_eq!(selected_roots(&recovery), vec![old_root]);
+        assert_eq!(
+            selected_roots(&recovery),
+            vec![ready_archive_path(&old_root)]
+        );
+        assert_eq!(
+            selected_ids(&recovery),
+            vec![format!("server/00000003/{}", old_key.id)]
+        );
         assert!(runtime.reload.as_ref().unwrap().is_recovery);
         assert_eq!(
             runtime.finish_reload(recovery.generation, Ok(())),
@@ -1960,7 +1992,7 @@ mod tests {
 
         runtime.request_reload();
         let forced = runtime.take_reload().unwrap();
-        assert_eq!(selected_roots(&forced), vec![root]);
+        assert_eq!(selected_roots(&forced), vec![ready_archive_path(&root)]);
         assert_eq!(
             runtime.finish_reload(forced.generation, Ok(())),
             Some(ResourcePackReloadFinish::Accepted)
@@ -2092,18 +2124,27 @@ mod tests {
         root
     }
 
-    fn ready_materialization(root: PathBuf) -> ServerPackMaterialization {
-        ServerPackMaterialization {
-            root,
-            archive_bytes: 0,
-            entries: 0,
-            files: 0,
-            uncompressed_bytes: 0,
-            metadata: bbb_pack::ClientPackMetadata::parse(
+    fn ready_materialization(root: PathBuf) -> PreparedPackArchive {
+        let archive_path = ready_archive_path(&root);
+        let file = File::create(&archive_path).unwrap();
+        let mut archive = ZipWriter::new(file);
+        archive
+            .start_file(
+                "pack.mcmeta",
+                SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+            )
+            .unwrap();
+        archive
+            .write_all(
                 br#"{"pack":{"description":"test","min_format":[84,0],"max_format":[84,0]}}"#,
             )
-            .unwrap(),
-        }
+            .unwrap();
+        archive.finish().unwrap();
+        prepare_pack_archive(&archive_path, &root).unwrap()
+    }
+
+    fn ready_archive_path(root: &Path) -> PathBuf {
+        root.with_extension("zip")
     }
 
     fn selected_roots(reload: &ServerResourcePackReload) -> Vec<PathBuf> {
@@ -2111,6 +2152,14 @@ mod tests {
             .server_packs
             .iter()
             .map(|pack| pack.root.clone())
+            .collect()
+    }
+
+    fn selected_ids(reload: &ServerResourcePackReload) -> Vec<String> {
+        reload
+            .server_packs
+            .iter()
+            .map(|pack| pack.id.clone())
             .collect()
     }
 

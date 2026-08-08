@@ -218,9 +218,10 @@ fn load_registry_elements(
                 continue;
             };
             let resource_id = format!("{}:{element_path}", resource.location.namespace());
+            let resource_path = resource.materialized_path()?;
             let (bytes, _) = resources
-                .read_json_bytes_and_value(&resource.path, "registry element")
-                .with_context(|| format!("parse registry element {}", resource.path.display()))?;
+                .read_json_bytes_and_value(resource_path, "registry element")
+                .with_context(|| format!("parse registry element {}", resource_path.display()))?;
             elements.insert(
                 (registry.resource_id.to_string(), resource_id),
                 Arc::from(bytes),

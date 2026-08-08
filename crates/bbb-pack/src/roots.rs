@@ -490,7 +490,7 @@ fn load_terrain_colormap(stack: &PackResourceStack, name: &str) -> Result<ColorM
     let resource = stack
         .get_resource(&location)
         .ok_or_else(|| anyhow::anyhow!("missing terrain colormap {}", location.id()))?;
-    ColorMapImage::from_png_file_with_resource_stack(resource.path, stack)
+    ColorMapImage::from_png_file_with_resource_stack(resource.materialized_path()?, stack)
 }
 
 #[cfg(test)]

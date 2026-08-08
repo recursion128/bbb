@@ -29,7 +29,7 @@ impl PackRoots {
         let resource = resources
             .get_resource(&texture)
             .with_context(|| format!("missing resource texture {}", texture.id()))?;
-        let path = resource.path;
+        let path = resource.materialized_path()?.to_path_buf();
         let texture_metadata = read_texture_metadata(&path, &resources)?;
         let image = decode_png_file_rgba_with_budget(
             &path,

@@ -173,11 +173,8 @@ fn load_owned_equipment_texture(
         let resource = resources
             .get_resource(&location)
             .with_context(|| format!("missing equipment layer texture {path}"))?;
-        let image = SpriteImage::from_png_file_with_resource_stack(
-            entity_texture_id(path),
-            resource.path,
-            &resources,
-        )?;
+        let image =
+            SpriteImage::from_pack_resource(entity_texture_id(path), &resource, &resources)?;
         if image.width == 0 || image.height == 0 {
             bail!("equipment layer texture {path} has zero-sized dimensions");
         }
@@ -237,9 +234,9 @@ fn load_special_item_texture_images(
             let resource = resources
                 .get_resource(&location)
                 .with_context(|| format!("missing special item texture {}", descriptor.path))?;
-            let image = SpriteImage::from_png_file_with_resource_stack(
+            let image = SpriteImage::from_pack_resource(
                 entity_texture_id(&descriptor.path),
-                resource.path,
+                &resource,
                 &resources,
             )?;
             if image.width == 0 || image.height == 0 {
@@ -329,9 +326,9 @@ fn load_entity_shadow_texture_image(roots: &PackRoots) -> Result<SpriteImage> {
     let resource = resources.get_resource(&location).with_context(|| {
         format!("missing entity shadow texture minecraft:{ENTITY_SHADOW_TEXTURE_PATH}")
     })?;
-    SpriteImage::from_png_file_with_resource_stack(
+    SpriteImage::from_pack_resource(
         entity_texture_id(ENTITY_SHADOW_TEXTURE_PATH),
-        resource.path,
+        &resource,
         &resources,
     )
 }
@@ -353,11 +350,8 @@ fn load_entity_model_texture_image(
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing entity texture minecraft:{}", texture.path))?;
-    let image = SpriteImage::from_png_file_with_resource_stack(
-        entity_texture_id(texture.path),
-        resource.path,
-        &resources,
-    )?;
+    let image =
+        SpriteImage::from_pack_resource(entity_texture_id(texture.path), &resource, &resources)?;
     if image.width == 0 || image.height == 0 {
         bail!("entity texture {} has zero-sized dimensions", texture.path);
     }

@@ -141,11 +141,7 @@ fn load_map_background_textures(roots: &PackRoots) -> Result<Vec<FirstPersonMapB
         let resource = resources
             .get_resource(&location)
             .with_context(|| format!("missing map background texture {}", kind.vanilla_path()))?;
-        let image = SpriteImage::from_png_file_with_resource_stack(
-            kind.vanilla_path(),
-            resource.path,
-            &resources,
-        )?;
+        let image = SpriteImage::from_pack_resource(kind.vanilla_path(), &resource, &resources)?;
         Ok(FirstPersonMapBackgroundTexture {
             kind,
             width: image.width,
@@ -294,12 +290,8 @@ fn load_local_dynamic_player_texture(
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing player profile resource texture {texture_path}"))?;
-    let image = SpriteImage::from_png_file_with_resource_stack(
-        source_id.to_string(),
-        resource.path,
-        resources,
-    )
-    .with_context(|| format!("load player profile resource texture {texture_path}"))?;
+    let image = SpriteImage::from_pack_resource(source_id.to_string(), &resource, resources)
+        .with_context(|| format!("load player profile resource texture {texture_path}"))?;
     let handle = profile_texture_handle(source_id);
     Ok((
         EntityDynamicPlayerTexture { handle, kind },

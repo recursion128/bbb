@@ -1395,7 +1395,7 @@ mod tests {
     };
 
     #[test]
-    fn server_resource_pack_roots_follow_startup_dirs_in_push_order() {
+    fn server_resource_pack_roots_follow_vanilla_repository_order() {
         let temp = unique_temp_dir("pack-priority");
         let sources = temp.join("sources");
         let startup_base = temp.join("startup/base");
@@ -1423,8 +1423,9 @@ mod tests {
             &None,
             7,
             vec![
-                SelectedClientPack::server("first", 1, &server_first, first_metadata).unwrap(),
-                SelectedClientPack::server("second", 2, &server_second, second_metadata).unwrap(),
+                SelectedClientPack::server("second", 2, 0, &server_second, second_metadata)
+                    .unwrap(),
+                SelectedClientPack::server("first", 1, 1, &server_first, first_metadata).unwrap(),
             ],
         )
         .unwrap();
@@ -1434,14 +1435,14 @@ mod tests {
             vec![
                 startup_base,
                 startup_top,
-                server_first,
-                server_second.clone(),
+                server_second,
+                server_first.clone(),
             ]
         );
         let location = bbb_pack::ResourceLocation::parse("minecraft:test/value.txt").unwrap();
         let resolved = composed.resource_stack().get_resource(&location).unwrap();
-        assert_eq!(std::fs::read(&resolved.path).unwrap(), b"second");
-        assert_eq!(resolved.pack_id, "server/00000000000000000002/second");
+        assert_eq!(std::fs::read(&resolved.path).unwrap(), b"first");
+        assert_eq!(resolved.pack_id, "server/00000001/first");
         assert_eq!(
             composed.client_resource_generation().unwrap().generation(),
             7
@@ -1482,16 +1483,16 @@ mod tests {
                     },
                     ClientResourcePackDiagnostic {
                         priority: 3,
-                        id: "server/00000000000000000001/first".to_string(),
-                        source: "server:first@1".to_string(),
+                        id: "server/00000000/second".to_string(),
+                        source: "server:second@2".to_string(),
                         compatibility: "compatible".to_string(),
                         required: true,
                         fixed_position: true,
                     },
                     ClientResourcePackDiagnostic {
                         priority: 4,
-                        id: "server/00000000000000000002/second".to_string(),
-                        source: "server:second@2".to_string(),
+                        id: "server/00000001/first".to_string(),
+                        source: "server:first@1".to_string(),
                         compatibility: "compatible".to_string(),
                         required: true,
                         fixed_position: true,
