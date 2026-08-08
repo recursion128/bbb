@@ -56,15 +56,16 @@ Matrix routes: `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `hu
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
 Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
-- Close the 101 records that remain `partial` in the current parity acceptance
+- Close the 102 records that remain `partial` in the current parity acceptance
   report. All 147 records and reverse artifact/scenario mappings validate against
   gated evidence commit `553d02405` with zero false `equivalent`, zero missing
   focused-decision evidence, and current Vanilla owner source hashes; the
   bidirectional-text owner is specifically bound to `Language`, `ClientLanguage`,
   `FormattedBidiReorder`, and `SubStringSource` instead of a prose-derived source
   fallback. Current visual/draw/performance receipts are rebound from capture
-  `fa73aed19` by identical `elf-load-image-v1`; remaining closure requires exact-commit
-  real ALSA host-device receipt plus per-mechanism matrix review. Exact-commit
+  `fa73aed19` by identical `elf-load-image-v1`; remaining closure requires the
+  acceptance schema v2 selected-gate-receipt change to pass and bind its current
+  full gate, an exact-commit real ALSA host-device receipt, plus per-mechanism matrix review. Exact-commit
   lifecycle and Linux platform receipts are now present; the platform seat,
   session-replacement, task-handoff and client-runtime rows completed independent owner/focused review.
   Preserve invalid receipts until replaced; the user-waived

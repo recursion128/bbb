@@ -237,6 +237,7 @@
         "debug-integrated-server-mirrors",
         "diagnostics-client-level-report",
         "diagnostics-client-only-inspection-exclusions",
+        "docs-chinese-mechanism-wiki",
         "entities-fixed-type-surface",
         "hud-frame-extract-order",
         "hud-hotbar-selection",
@@ -361,12 +362,13 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "722f266398f5c37fdeddc5c554dbf2a3395dcaf3c916948138ba79f6849b2445",
+      "sha256": "3019fcbe2f81f9cb53602197eed21d008dfc33844ce2d5ce16848c7b2dfe7e83",
       "valid": true
     },
     {
       "artifact_id": "full-gate",
       "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
+      "digest_kind": "gate-receipt-line-v1",
       "exists": true,
       "invalid_reasons": [],
       "kind": "gate",
@@ -483,7 +485,7 @@
       ],
       "path": ".git/bbb/gate-log.tsv",
       "receipt": "2026-08-08T11:27:19Z\t553d0240519b65498af2ba36e0226b9832eaeb21\tclean\ttotal:93s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:0s,scripts-tests:69s,diff-check:0s,check:1s,cross-check:skip,test:12s",
-      "sha256": "c96e5c1d8f29e8e038fc518563bfa915029fbe556aa284686a211b60cbf7545a",
+      "sha256": "854b4601bfcd77655a7a2c6983ad5429d2e8b1e23c97a97501211ea7f66c446c",
       "valid": true
     },
     {
@@ -732,7 +734,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "6f99ce73da52fe9e0785cd2a4f51786d881f5651515fdd334b6d9cbc6ec0fe59",
+      "sha256": "da1877990b297b77b00839b1c4227bc3de7eb5fd8ba45eeb3cd0a98f3d1a6cf4",
       "valid": true
     },
     {
@@ -7665,7 +7667,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "722f266398f5c37fdeddc5c554dbf2a3395dcaf3c916948138ba79f6849b2445",
+      "sha256": "3019fcbe2f81f9cb53602197eed21d008dfc33844ce2d5ce16848c7b2dfe7e83",
       "valid": true
     },
     {
@@ -7995,7 +7997,7 @@
       ],
       "path": "scripts/parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "b76a9c105aeb90d9fbc601190c80285fec0d25a700b30f54b7c7efafb3105a74",
+      "sha256": "aea1506c4a6c734c76e9e5ce7353ba58eeb8b67652f5aeff1b0d626935895719",
       "valid": true
     },
     {
@@ -8177,7 +8179,7 @@
       ],
       "path": "scripts/tests/test_parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "6499be30f8d0318fd6b76280a7d19cf52ee0fb8ed6ebec11e865f3cb8b633989",
+      "sha256": "a50aa82f42e9024a18b6320a3ccf255a171cb66e9ba2e685caf7be2fa2e30d81",
       "valid": true
     },
     {
@@ -8252,7 +8254,7 @@
   "generator_inputs": [
     {
       "path": "scripts/parity_acceptance.py",
-      "sha256": "b76a9c105aeb90d9fbc601190c80285fec0d25a700b30f54b7c7efafb3105a74"
+      "sha256": "aea1506c4a6c734c76e9e5ce7353ba58eeb8b67652f5aeff1b0d626935895719"
     },
     {
       "path": "scripts/bbb_tools/executable_identity.py",
@@ -8260,7 +8262,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "6f99ce73da52fe9e0785cd2a4f51786d881f5651515fdd334b6d9cbc6ec0fe59"
+      "sha256": "da1877990b297b77b00839b1c4227bc3de7eb5fd8ba45eeb3cd0a98f3d1a6cf4"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8268,7 +8270,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "722f266398f5c37fdeddc5c554dbf2a3395dcaf3c916948138ba79f6849b2445"
+      "sha256": "3019fcbe2f81f9cb53602197eed21d008dfc33844ce2d5ce16848c7b2dfe7e83"
     }
   ],
   "mechanisms": [
@@ -35505,6 +35507,18 @@
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_gate_receipt_hash_rejects_removed_or_tampered_receipt",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_gate_receipt_hash_survives_append_only_log_growth",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_open_matrix_status_cannot_publish_closed_conclusion",
           "result": "passed-via-full-gate"
         },
@@ -35634,6 +35648,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:scripts/docs_wiki_lint.py",
@@ -35660,7 +35675,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/dev test python --suite all",
@@ -35907,12 +35922,14 @@
         "domain": "workflow",
         "line": 156,
         "required_state_projection": "IDs、routes、source/BBB evidence、stale output",
-        "route_reopen_condition": "目标版本、canonical owner、blocker artifact 或 acceptance schema 变化时重开",
-        "status": "equivalent"
+        "route_reopen_condition": "acceptance schema v2 的 immutable gate receipt 等待 current full-gate rebind；目标版本、canonical owner、blocker artifact 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md)",
+        "status": "partial"
       },
       "mechanism_id": "docs-chinese-mechanism-wiki",
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
@@ -39687,7 +39704,7 @@
       "status": "passed"
     }
   ],
-  "schema_version": 1,
+  "schema_version": 2,
   "summary": {
     "declared_scope_complete": false,
     "false_equivalent_ids": [],
@@ -39696,6 +39713,7 @@
       "audio-sound-manager-engine",
       "coverage-external-client-census",
       "diagnostics-client-level-report",
+      "docs-chinese-mechanism-wiki",
       "entities-fixed-type-surface",
       "hud-frame-extract-order",
       "hud-hotbar-selection",
@@ -39797,11 +39815,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 20,
+      "equivalent": 19,
       "not-needed": 25,
-      "partial": 101
+      "partial": 102
     },
-    "valid_count": 46
+    "valid_count": 45
   },
   "vanilla_version": "26.1"
 }

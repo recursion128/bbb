@@ -38,7 +38,8 @@ INVENTORY_PATH = Path(
 LEDGER_PATH = Path("docs/unsupported-features.md")
 REPORT_PATH = Path("docs/evidence/vanilla-26.1/parity-acceptance.json")
 GATE_LOG_PATH = Path(".git/bbb/gate-log.tsv")
-SCHEMA_VERSION = 1
+GATE_RECEIPT_DIGEST_KIND = "gate-receipt-line-v1"
+SCHEMA_VERSION = 2
 OPEN_STATUSES = frozenset(
     {"partial", "missing", "active", "unverified", "deferred-external"}
 )
@@ -398,11 +399,17 @@ def focused_test_references(repo: Path, initial: Iterable[str]) -> list[dict[str
     return tests
 
 
+def gate_receipt_sha256(receipt: str) -> str:
+    """Hash one UTF-8/LF framed gate receipt, not its append-only container."""
+    return sha256_bytes(f"{receipt}\n".encode("utf-8"))
+
+
 def gate_receipt(repo: Path, gate_log: Path, commit: str) -> dict[str, object]:
     if not gate_log.is_file():
         return {
             "artifact_id": "full-gate",
             "bbb_commit": commit,
+            "digest_kind": GATE_RECEIPT_DIGEST_KIND,
             "exists": False,
             "invalid_reasons": ["gate log is absent"],
             "kind": "gate",
@@ -421,6 +428,7 @@ def gate_receipt(repo: Path, gate_log: Path, commit: str) -> dict[str, object]:
     return {
         "artifact_id": "full-gate",
         "bbb_commit": commit,
+        "digest_kind": GATE_RECEIPT_DIGEST_KIND,
         "exists": True,
         "invalid_reasons": reasons,
         "kind": "gate",
@@ -428,9 +436,34 @@ def gate_receipt(repo: Path, gate_log: Path, commit: str) -> dict[str, object]:
         if gate_log.is_relative_to(repo)
         else str(gate_log),
         "receipt": selected,
-        "sha256": sha256_file(gate_log),
+        "sha256": gate_receipt_sha256(selected) if selected is not None else None,
         "valid": not reasons,
     }
+
+
+def current_gate_receipt_issues(
+    artifact: dict[str, object], path: Path, artifact_id: str
+) -> list[str]:
+    """Validate the immutable selected line inside an append-only gate log."""
+    issues: list[str] = []
+    receipt = artifact.get("receipt")
+    if artifact.get("digest_kind") != GATE_RECEIPT_DIGEST_KIND:
+        issues.append(f"external gate receipt digest kind is stale: {artifact_id}")
+    if not isinstance(receipt, str):
+        issues.append(f"external gate receipt is absent: {artifact_id}")
+        return issues
+    if artifact.get("sha256") != gate_receipt_sha256(receipt):
+        issues.append(f"external gate receipt hash is stale: {artifact_id}")
+    cells = receipt.split("\t")
+    if (
+        len(cells) < 4
+        or cells[1] != artifact.get("bbb_commit")
+        or cells[2] != "clean"
+    ):
+        issues.append(f"external gate receipt identity is stale: {artifact_id}")
+    if receipt not in path.read_text(encoding="utf-8").splitlines():
+        issues.append(f"external gate receipt is absent: {artifact_id}")
+    return issues
 
 
 def artifact_commit(kind: str, value: object, path: Path) -> str | None:
@@ -1408,6 +1441,7 @@ def validate_report(
             if not path.is_file() or sha256_file(path) != digest:
                 issues.append(f"stale repo artifact hash: {artifact_id}")
         if require_artifacts and artifact.get("kind") != "repo-evidence":
+            artifact_kind = artifact.get("kind")
             if not isinstance(path_value, str):
                 issues.append(f"external artifact path is absent: {artifact_id}")
             else:
@@ -1416,6 +1450,10 @@ def validate_report(
                     path = repo / path
                 if not path.is_file():
                     issues.append(f"external artifact is absent: {artifact_id}")
+                elif artifact_kind == "gate":
+                    issues.extend(
+                        current_gate_receipt_issues(artifact, path, str(artifact_id))
+                    )
                 elif not isinstance(digest, str) or sha256_file(path) != digest:
                     issues.append(f"external artifact hash is stale: {artifact_id}")
             provenance = artifact.get("bbb_provenance")
@@ -1442,7 +1480,7 @@ def validate_report(
                         issues.append(
                             f"external artifact {artifact_id} {label} binary hash is stale"
                         )
-            if isinstance(path_value, str) and artifact.get("kind") != "gate":
+            if isinstance(path_value, str) and artifact_kind != "gate":
                 artifact_path = Path(path_value)
                 if not artifact_path.is_absolute():
                     artifact_path = repo / artifact_path

@@ -220,6 +220,78 @@ mod tests {
             )
             self.assertIn("false equivalent: fixture-equivalent", issues)
 
+    def test_gate_receipt_hash_survives_append_only_log_growth(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, source_root = self.make_fixture(Path(temporary))
+            report = self.build_fixture_report(repo, source_root)
+            artifact = next(
+                item
+                for item in report["artifacts"]
+                if item["artifact_id"] == "full-gate"
+            )
+            receipt = artifact["receipt"]
+            self.assertEqual(artifact["digest_kind"], "gate-receipt-line-v1")
+            self.assertEqual(
+                artifact["sha256"],
+                hashlib.sha256(f"{receipt}\n".encode("utf-8")).hexdigest(),
+            )
+
+            gate_log = repo / ".git/bbb/gate-log.tsv"
+            with gate_log.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    f"2026-08-07T00:00:01Z\t{'2' * 40}\tclean\ttotal:2s,test:2s\n"
+                )
+                handle.write(
+                    f"2026-08-07T00:00:02Z\t{self.commit}\tclean\ttotal:3s,test:3s\n"
+                )
+
+            issues = validate_report(
+                report,
+                repo=repo,
+                source_root=source_root,
+                enforce_current=True,
+                require_artifacts=True,
+            )
+            self.assertFalse(any("full-gate" in issue for issue in issues), issues)
+
+    def test_gate_receipt_hash_rejects_removed_or_tampered_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, source_root = self.make_fixture(Path(temporary))
+            report = self.build_fixture_report(repo, source_root)
+            gate_log = repo / ".git/bbb/gate-log.tsv"
+            gate_log.write_text(
+                f"2026-08-07T00:00:01Z\t{'2' * 40}\tclean\ttotal:2s,test:2s\n",
+                encoding="utf-8",
+            )
+            issues = validate_report(
+                report,
+                repo=repo,
+                source_root=source_root,
+                enforce_current=True,
+                require_artifacts=True,
+            )
+            self.assertIn("external gate receipt is absent: full-gate", issues)
+
+            gate_log.write_text(
+                f"2026-08-07T00:00:00Z\t{self.commit}\tclean\ttotal:1s,test:1s\n",
+                encoding="utf-8",
+            )
+            tampered = copy.deepcopy(report)
+            artifact = next(
+                item
+                for item in tampered["artifacts"]
+                if item["artifact_id"] == "full-gate"
+            )
+            artifact["sha256"] = "0" * 64
+            issues = validate_report(
+                tampered,
+                repo=repo,
+                source_root=source_root,
+                enforce_current=True,
+                require_artifacts=True,
+            )
+            self.assertIn("external gate receipt hash is stale: full-gate", issues)
+
     def test_owner_mapping_and_unrouted_status_are_rederived(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, source_root = self.make_fixture(Path(temporary))
