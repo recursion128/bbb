@@ -8,9 +8,10 @@ use std::{
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::packets::{AdvancementFrameType, ItemStackSummary};
 use bbb_renderer::{
-    hud_wrap_styled_text, HudAdvancementToast, HudFontGlyphMap, HudRecipeToast, HudStyledTextRun,
-    HudSystemToast, HudSystemToastInstance, HudTextStyle, HudToast, HudTutorialToast,
-    HudTutorialToastIcon, HUD_TOAST_SLOTS,
+    hud_wrap_styled_text, HudAdvancementToast, HudFontGlyphMap, HudNowPlayingToast,
+    HudNowPlayingToastPlacement, HudPauseScreen, HudRecipeToast, HudStyledTextRun, HudSystemToast,
+    HudSystemToastInstance, HudTextStyle, HudToast, HudTutorialToast, HudTutorialToastIcon,
+    HUD_TOAST_SLOTS,
 };
 use bbb_world::{
     ClientSystemToastEvent, ClientToastEvent, ClientTutorialToastState, LocalSoundEventState,
@@ -29,6 +30,231 @@ use super::{
 const MAX_NATIVE_TOASTS: usize = bbb_world::MAX_CLIENT_TOAST_EVENTS;
 const TOAST_SLIDE_DURATION: Duration = Duration::from_millis(600);
 const TOAST_VISIBLE_DURATION: Duration = Duration::from_millis(5_000);
+const MUSIC_NOTE_COLOR_CHANGE_FREQUENCY: Duration = Duration::from_millis(25);
+const MUSIC_NOTE_COLOR_DURATION_TICKS: i32 = 30;
+
+#[derive(Debug)]
+pub(super) struct NowPlayingToastRuntime {
+    last_mutation_sequence: u64,
+    animation_started_at: Option<Instant>,
+    became_fully_visible_at: Option<Instant>,
+    showing: bool,
+    wanted_showing: bool,
+    visible_portion: f32,
+    fully_visible_ms: u64,
+    finished: bool,
+    update_toast: bool,
+    notification_display_time: f32,
+    last_note_color_change: Option<Instant>,
+    note_color_tick: i32,
+    note_color_argb: u32,
+}
+
+impl Default for NowPlayingToastRuntime {
+    fn default() -> Self {
+        Self {
+            last_mutation_sequence: 0,
+            animation_started_at: None,
+            became_fully_visible_at: None,
+            showing: false,
+            wanted_showing: false,
+            visible_portion: 0.0,
+            fully_visible_ms: 0,
+            finished: false,
+            update_toast: false,
+            notification_display_time: 1.0,
+            last_note_color_change: None,
+            note_color_tick: 0,
+            note_color_argb: u32::MAX,
+        }
+    }
+}
+
+impl NowPlayingToastRuntime {
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn update_and_project(
+        &mut self,
+        world: &WorldStore,
+        item_runtime: Option<&NativeItemRuntime>,
+        display_state: crate::startup::MusicToastDisplayStateArg,
+        final_music_volume: f32,
+        notification_display_time: f32,
+        pause_screen: Option<&HudPauseScreen>,
+        client_tick: u64,
+        now: Instant,
+    ) -> Option<HudNowPlayingToast> {
+        if !display_state.renders_pause() {
+            return None;
+        }
+
+        let canonical = world.now_playing_toast();
+        if canonical.mutation_sequence != self.last_mutation_sequence {
+            self.last_mutation_sequence = canonical.mutation_sequence;
+            if canonical.wanted_visible {
+                self.reset_for_show(notification_display_time);
+            } else {
+                self.wanted_showing = false;
+            }
+        }
+        let renders_in_pause =
+            pause_screen.is_some_and(|screen| screen.show_pause_menu) && final_music_volume > 0.0;
+        if canonical.sound_name.is_some() && (self.update_toast || renders_in_pause) {
+            self.tick_music_note_color(now);
+        }
+        if self.animation_started_at.is_some() || canonical.mutation_sequence > 0 {
+            self.update_animation(now);
+        }
+
+        let sound_name = canonical.sound_name.as_deref()?;
+        let text = localized_gui_text(
+            item_runtime,
+            &now_playing_translation_key(sound_name),
+            &now_playing_translation_key(sound_name),
+        );
+        let placement = if renders_in_pause {
+            HudNowPlayingToastPlacement::PauseScreen
+        } else if display_state.renders_toast() && pause_screen.is_none() && !self.finished {
+            HudNowPlayingToastPlacement::SlidingToast
+        } else {
+            return None;
+        };
+        Some(HudNowPlayingToast {
+            text,
+            visible_portion: if placement == HudNowPlayingToastPlacement::PauseScreen {
+                1.0
+            } else {
+                self.visible_portion
+            },
+            note_color_argb: self.note_color_argb,
+            client_tick,
+            placement,
+        })
+    }
+
+    fn reset_for_show(&mut self, notification_display_time: f32) {
+        self.animation_started_at = None;
+        self.became_fully_visible_at = None;
+        self.showing = false;
+        self.wanted_showing = true;
+        self.visible_portion = 0.0;
+        self.fully_visible_ms = 0;
+        self.finished = false;
+        self.update_toast = true;
+        self.notification_display_time = notification_display_time;
+    }
+
+    fn update_animation(&mut self, now: Instant) {
+        let animation_started_at = *self.animation_started_at.get_or_insert_with(|| {
+            self.showing = true;
+            now
+        });
+        if self.showing
+            && now.saturating_duration_since(animation_started_at) <= TOAST_SLIDE_DURATION
+        {
+            self.became_fully_visible_at = Some(now);
+        }
+        let became_fully_visible_at = self.became_fully_visible_at.unwrap_or(now);
+        self.fully_visible_ms = now
+            .saturating_duration_since(became_fully_visible_at)
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        let progress = (now
+            .saturating_duration_since(animation_started_at)
+            .as_secs_f32()
+            / TOAST_SLIDE_DURATION.as_secs_f32())
+        .clamp(0.0, 1.0)
+        .powi(2);
+        self.visible_portion = if self.showing {
+            progress
+        } else {
+            1.0 - progress
+        };
+        if self.update_toast {
+            self.wanted_showing = display_time_remaining(
+                self.fully_visible_ms,
+                TOAST_VISIBLE_DURATION.as_millis() as u64,
+                self.notification_display_time,
+            );
+        }
+        if self.wanted_showing != self.showing {
+            let reverse_ms =
+                ((1.0 - self.visible_portion) * TOAST_SLIDE_DURATION.as_millis() as f32) as u64;
+            self.animation_started_at = Some(now - Duration::from_millis(reverse_ms));
+            self.showing = self.wanted_showing;
+        }
+        let was_finished = self.finished;
+        self.finished = !self.showing
+            && now.saturating_duration_since(
+                self.animation_started_at
+                    .expect("now-playing animation start is initialized"),
+            ) > TOAST_SLIDE_DURATION;
+        if self.finished && !was_finished {
+            self.update_toast = false;
+        }
+    }
+
+    fn tick_music_note_color(&mut self, now: Instant) {
+        if self.last_note_color_change.is_none_or(|previous| {
+            now.saturating_duration_since(previous) > MUSIC_NOTE_COLOR_CHANGE_FREQUENCY
+        }) {
+            self.note_color_tick = self.note_color_tick.saturating_add(1);
+            self.last_note_color_change = Some(now);
+            self.note_color_argb = music_note_color(self.note_color_tick);
+        }
+    }
+}
+
+fn now_playing_translation_key(sound_name: &str) -> String {
+    let (namespace, path) = sound_name
+        .split_once(':')
+        .unwrap_or(("minecraft", sound_name));
+    let short = if namespace == "minecraft" {
+        path.to_string()
+    } else {
+        format!("{namespace}.{path}")
+    };
+    short.replace('/', ".")
+}
+
+fn music_note_color(tick: i32) -> u32 {
+    const COLORS: [bbb_render_types::VanillaDyeColor; 12] = [
+        bbb_render_types::VanillaDyeColor::White,
+        bbb_render_types::VanillaDyeColor::LightGray,
+        bbb_render_types::VanillaDyeColor::LightBlue,
+        bbb_render_types::VanillaDyeColor::Blue,
+        bbb_render_types::VanillaDyeColor::Cyan,
+        bbb_render_types::VanillaDyeColor::Green,
+        bbb_render_types::VanillaDyeColor::Lime,
+        bbb_render_types::VanillaDyeColor::Yellow,
+        bbb_render_types::VanillaDyeColor::Orange,
+        bbb_render_types::VanillaDyeColor::Pink,
+        bbb_render_types::VanillaDyeColor::Red,
+        bbb_render_types::VanillaDyeColor::Magenta,
+    ];
+    let value = tick.div_euclid(MUSIC_NOTE_COLOR_DURATION_TICKS);
+    let color_count = i32::try_from(COLORS.len()).expect("music note color count fits i32");
+    let first = COLORS[value.rem_euclid(color_count) as usize];
+    let second = COLORS[(value + 1).rem_euclid(color_count) as usize];
+    let sub_step = tick.rem_euclid(MUSIC_NOTE_COLOR_DURATION_TICKS) as f32
+        / MUSIC_NOTE_COLOR_DURATION_TICKS as f32;
+    super::argb_srgb_lerp(
+        sub_step,
+        modified_music_note_color(first) as i32,
+        modified_music_note_color(second) as i32,
+    ) as u32
+}
+
+fn modified_music_note_color(color: bbb_render_types::VanillaDyeColor) -> u32 {
+    if color == bbb_render_types::VanillaDyeColor::White {
+        return 0xFFE6_E6E6;
+    }
+    let diffuse = color.texture_diffuse_color();
+    let brighten = |channel: u32| ((channel as f32 * 1.25).floor() as u32) & 0xff;
+    0xFF00_0000
+        | (brighten((diffuse >> 16) & 0xff) << 16)
+        | (brighten((diffuse >> 8) & 0xff) << 8)
+        | brighten(diffuse & 0xff)
+}
 
 #[derive(Debug, Default)]
 pub(super) struct ClientToastRuntime {
@@ -1261,6 +1487,32 @@ fn ui_sound(location: &str) -> LocalSoundEventState {
 mod tests {
     use super::*;
 
+    fn pause_screen(show_pause_menu: bool) -> HudPauseScreen {
+        HudPauseScreen {
+            title: "Game Menu".to_string(),
+            show_pause_menu,
+            feedback_subscreen: false,
+            return_to_game_hovered: false,
+            advancements_hovered: false,
+            stats_hovered: false,
+            send_feedback_hovered: false,
+            report_bugs_hovered: false,
+            report_bugs_enabled: true,
+            custom_dialog_label: None,
+            custom_dialog_hovered: false,
+            custom_dialog_tooltip: None,
+            feedback_back_hovered: false,
+            options_hovered: false,
+            options_enabled: true,
+            player_reporting_hovered: false,
+            player_reporting_enabled: true,
+            disconnect_hovered: false,
+            disconnect_enabled: true,
+            has_draft_report: false,
+            draft_confirmation: None,
+        }
+    }
+
     #[test]
     fn tutorial_localized_arguments_preserve_bold_positional_runs_and_escaped_percent() {
         let bold = HudTextStyle {
@@ -1298,6 +1550,131 @@ mod tests {
                     color: None,
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn now_playing_uses_actual_sound_key_independent_timing_and_pause_projection() {
+        let mut world = WorldStore::new();
+        world.show_now_playing_music("minecraft:music/game/creative/creative1".to_string());
+        let start = Instant::now();
+        let mut runtime = NowPlayingToastRuntime::default();
+
+        let first = runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::PauseAndToast,
+                1.0,
+                1.0,
+                None,
+                10,
+                start,
+            )
+            .expect("sliding now-playing toast");
+        assert_eq!(first.text, "music.game.creative.creative1");
+        assert_eq!(first.placement, HudNowPlayingToastPlacement::SlidingToast);
+        assert_eq!(first.visible_portion, 0.0);
+
+        let fully_visible = runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::PauseAndToast,
+                1.0,
+                9.0,
+                None,
+                22,
+                start + Duration::from_millis(600),
+            )
+            .expect("fully visible toast");
+        assert_eq!(fully_visible.visible_portion, 1.0);
+
+        assert!(runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::PauseAndToast,
+                1.0,
+                9.0,
+                None,
+                123,
+                start + Duration::from_millis(5_601),
+            )
+            .is_some());
+        assert!(runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::PauseAndToast,
+                1.0,
+                9.0,
+                None,
+                124,
+                start + Duration::from_millis(6_202),
+            )
+            .is_none());
+
+        let color_after_toast = runtime.note_color_argb;
+        assert!(runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::PauseAndToast,
+                1.0,
+                9.0,
+                None,
+                125,
+                start + Duration::from_millis(7_000),
+            )
+            .is_none());
+        assert_eq!(runtime.note_color_argb, color_after_toast);
+
+        let pause = pause_screen(true);
+        let paused = runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::Pause,
+                1.0,
+                1.0,
+                Some(&pause),
+                126,
+                start + Duration::from_millis(7_001),
+            )
+            .expect("static pause-screen now-playing surface");
+        assert_eq!(paused.placement, HudNowPlayingToastPlacement::PauseScreen);
+        assert_eq!(paused.visible_portion, 1.0);
+        assert_ne!(runtime.note_color_argb, color_after_toast);
+        assert!(runtime
+            .update_and_project(
+                &world,
+                None,
+                crate::startup::MusicToastDisplayStateArg::Pause,
+                0.0,
+                1.0,
+                Some(&pause),
+                127,
+                start + Duration::from_millis(7_002),
+            )
+            .is_none());
+    }
+
+    #[test]
+    fn now_playing_translation_and_music_note_palette_match_vanilla() {
+        assert_eq!(
+            now_playing_translation_key("minecraft:music/game/end/boss1"),
+            "music.game.end.boss1"
+        );
+        assert_eq!(
+            now_playing_translation_key("example:music/custom/song"),
+            "example.music.custom.song"
+        );
+        assert_eq!(music_note_color(0), 0xFFE6_E6E6);
+        assert_eq!(music_note_color(30), 0xFFC4_C4BC);
+        assert_eq!(
+            modified_music_note_color(bbb_render_types::VanillaDyeColor::Yellow),
+            0xFF3D_0E4C
         );
     }
 }

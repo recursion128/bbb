@@ -90,12 +90,12 @@ public class Owner {
             if owner["mechanism_id"] == "audio-sound-manager-engine"
         ]
 
-        self.assertEqual(len(owners), 144)
+        self.assertEqual(len(owners), 159)
         self.assertEqual(
             value["mechanisms"]["audio-sound-manager-engine"][
                 "owner_evidence_count"
             ],
-            144,
+            159,
         )
         self.assertEqual(
             value["mechanisms"]["audio-sound-manager-engine"].get("owner_gap_count", 0),
@@ -115,7 +115,7 @@ public class Owner {
             for owner in owners
             if "scope_ruling" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(rulings), 9)
+        self.assertEqual(len(rulings), 12)
         hashed_sources = {source["path"] for source in value["source_files"]}
         self.assertTrue(
             {
@@ -125,6 +125,7 @@ public class Owner {
                 "com/mojang/blaze3d/audio/SoundBuffer.java",
                 "net/minecraft/client/sounds/ChannelAccess.java",
                 "net/minecraft/client/sounds/SoundBufferLibrary.java",
+                "net/minecraft/client/sounds/MusicManager.java",
             }.issubset(hashed_sources)
         )
         self.assertTrue(
@@ -261,7 +262,7 @@ public class Owner {
             for owner in owners
             if "open_gap" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(gaps), 32)
+        self.assertEqual(len(gaps), 7)
         self.assertTrue(
             all(
                 gap["ledger"]
@@ -276,7 +277,7 @@ public class Owner {
             for owner in owners
             if "scope_ruling" in owner["bbb_evidence"]
         ]
-        self.assertEqual(len(scoped), 5)
+        self.assertEqual(len(scoped), 6)
         self.assertTrue(
             all(
                 ruling["conclusion"] == "not-reachable-in-current-scope"
@@ -289,8 +290,36 @@ public class Owner {
         mechanism = value["mechanisms"]["hud-frame-extract-order"]
         self.assertEqual(mechanism["owner_count"], 118)
         self.assertEqual(mechanism["owner_evidence_count"], 118)
-        self.assertEqual(mechanism["owner_gap_count"], 32)
+        self.assertEqual(mechanism["owner_gap_count"], 7)
 
+    def test_music_toast_display_state_is_hashed_and_routed_to_startup_consumption(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"]
+            == "net/minecraft/client/MusicToastDisplayState.java"
+        ]
+
+        self.assertEqual(len(owners), 6)
+        self.assertTrue(
+            all(owner["mechanism_id"] == "persistence-options-apply" for owner in owners)
+        )
+        self.assertTrue(
+            all(
+                owner["bbb_evidence"].get("implementation")
+                and owner["bbb_evidence"].get("tests")
+                for owner in owners
+            )
+        )
+        self.assertEqual(
+            sum("scope_ruling" in owner["bbb_evidence"] for owner in owners),
+            2,
+        )
     def test_minecraft_method_partition_is_total_and_homogeneous(self) -> None:
         generated = (
             inventory.REPO_ROOT

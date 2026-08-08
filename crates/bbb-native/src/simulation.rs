@@ -135,6 +135,8 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) attack_indicator: AttackIndicatorOption,
     pub(crate) screen_effect_scale: f32,
     pub(crate) notification_display_time: f32,
+    pub(crate) music_toast_display: crate::startup::MusicToastDisplayStateArg,
+    pub(crate) final_music_volume: f32,
     pub(crate) entity_shadows: bool,
     pub(crate) high_contrast_block_outline: bool,
     pub(crate) improved_transparency: bool,

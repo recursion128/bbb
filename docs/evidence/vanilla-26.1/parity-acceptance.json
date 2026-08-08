@@ -173,7 +173,7 @@
       ],
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
       "scenario_ids": [],
-      "sha256": "9f845f5a9a1d8cf914862d7531288f999731cbc7700a40b127c4e3d0992261f9",
+      "sha256": "a5db202572882411e392b92741400e90acf2695cd88c34fa43b45efaeaa221c3",
       "valid": true
     },
     {
@@ -346,12 +346,12 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "6a1d6d29ee482a407f92d698a8428518b7a6016869ff9deec4a57c644d3725a3",
+      "sha256": "8f46e4946f318c85775ad54cf5674595ea9b1af03e3638c0d8a1fde81f9158f9",
       "valid": true
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+      "bbb_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
       "exists": true,
       "invalid_reasons": [],
       "kind": "gate",
@@ -454,8 +454,8 @@
         "world-client-session-services"
       ],
       "path": ".git/bbb/gate-log.tsv",
-      "receipt": "2026-08-08T07:20:16Z\t281721d1fe1454e980811fe91408455ccdd396fe\tclean\ttotal:156s,vanilla-verify:1s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:0s,scripts-tests:70s,diff-check:0s,check:10s,cross-check:35s,test:31s",
-      "sha256": "9ac5cbb175f422243847ac6f4921010f676b6316406c90aeec7b9e3adbd9d2f0",
+      "receipt": "2026-08-08T07:22:36Z\t0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9\tclean\ttotal:23s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:12s",
+      "sha256": "e0358d1fe95323cd085605c5ea16ba7c27084139fefdfc50250a405cb4dcad42",
       "valid": true
     },
     {
@@ -706,7 +706,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "9070607c18222399096769b57c226043fe0c00d1dc5e07d8ace1150b5d076788",
+      "sha256": "2af0c5de55ea5b77f5d1158d72eca6d9484b81f8ac6b9a5e2d561676f36aa123",
       "valid": true
     },
     {
@@ -807,6 +807,7 @@
       "mechanism_ids": [
         "audio-client-level-sound-routing",
         "audio-sound-manager-engine",
+        "hud-frame-extract-order",
         "protocol-configuration-handler-decisions",
         "protocol-listener-contracts",
         "protocol-login-handler-decisions",
@@ -816,7 +817,7 @@
       ],
       "path": "crates/bbb-audio/src/runtime.rs",
       "scenario_ids": [],
-      "sha256": "6404f84700a21337cdb022a1b5166753f1d9fdae6bbbb168264a5e50813e30b1",
+      "sha256": "d8520e87bed8a84e44d6ee82dd2fec795816ecbc8eebdfa1e56265f432e8dd9e",
       "valid": true
     },
     {
@@ -932,7 +933,7 @@
       ],
       "path": "crates/bbb-native/src/audio_runtime.rs",
       "scenario_ids": [],
-      "sha256": "bb48996bed9e92ae08aec03cbc4ad336e28a7a764df493799b7d87a7c622b47c",
+      "sha256": "d2863cc015553f3efdd57bbbf11c011d940c86918ada7995d21278cedf1cc60b",
       "valid": true
     },
     {
@@ -1446,7 +1447,7 @@
       ],
       "path": "crates/bbb-native/src/hud_assets.rs",
       "scenario_ids": [],
-      "sha256": "0ef061fe8cafef8face1ff3b9aad75c447fdf63e87d8887f9a04a53242d55c9d",
+      "sha256": "bd8bb09054103b585faba028dcda4631b4bc8e236ac869a95d0ad0a203d6f29a",
       "valid": true
     },
     {
@@ -2013,7 +2014,7 @@
       ],
       "path": "crates/bbb-native/src/main.rs",
       "scenario_ids": [],
-      "sha256": "5cd369fed9f8a37094f4470924c9b73916e374d9c5476bac4eda6ae691a5d07b",
+      "sha256": "16ba64a492173d65fee98ee8e7e0b9878703de99310bae7309812d0c2d2bb45a",
       "valid": true
     },
     {
@@ -2024,6 +2025,7 @@
       "kind": "repo-evidence",
       "mechanism_ids": [
         "audio-sound-manager-engine",
+        "hud-frame-extract-order",
         "protocol-configuration-handler-decisions",
         "protocol-listener-contracts",
         "protocol-login-handler-decisions",
@@ -2033,7 +2035,7 @@
       ],
       "path": "crates/bbb-native/src/music_runtime.rs",
       "scenario_ids": [],
-      "sha256": "96f5b9192b8e613c363c129028a5df8da42f6400aa5c35928d4a390b8bd7bb25",
+      "sha256": "bcb3ee384b6334c2044966b7d219987100dfc2ebddac371c94f006194896cc69",
       "valid": true
     },
     {
@@ -2213,7 +2215,7 @@
       ],
       "path": "crates/bbb-native/src/runtime.rs",
       "scenario_ids": [],
-      "sha256": "98c3ac1bb0d50c808d4663cf01470a3dd30cb244adcd132dae96a50f88a1c84e",
+      "sha256": "ac5d01aed6c95fd495d6f0859ebba0c5a9852840e6ecc1bed535811d62cfeb2d",
       "valid": true
     },
     {
@@ -2557,7 +2559,7 @@
       ],
       "path": "crates/bbb-native/src/runtime/render_extract.rs",
       "scenario_ids": [],
-      "sha256": "3e3bb7cf71e0e5313d8ad3c895970ed69027c20c3ed248e3c9e8aa4a4616bf78",
+      "sha256": "6cef8a3e99ef9b79a6c89714a248c60987d4dbdea5eb55400921fab3cb4d2dd1",
       "valid": true
     },
     {
@@ -2611,6 +2613,21 @@
       "path": "crates/bbb-native/src/runtime/tests.rs",
       "scenario_ids": [],
       "sha256": "0b5a5eba612558f00c4443d6e396eed0350685c00275b4aac1cd6e674c052d8a",
+      "valid": true
+    },
+    {
+      "artifact_id": "repo:crates/bbb-native/src/runtime/toast.rs",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "persistence-options-apply"
+      ],
+      "path": "crates/bbb-native/src/runtime/toast.rs",
+      "scenario_ids": [],
+      "sha256": "c7552707500cfa10c9784973b09724d3846aab7e09be3c34402cc4399b48b0de",
       "valid": true
     },
     {
@@ -2758,7 +2775,7 @@
       ],
       "path": "crates/bbb-native/src/simulation.rs",
       "scenario_ids": [],
-      "sha256": "8133c1df6cd9c51e41854b9ac4364742ea20c3b07ed1bf37e1b29832773a7d7d",
+      "sha256": "6ddb5f82b9978187b22f77b6196c855590ffcc555adcd24da5c6ae7e3c8b0395",
       "valid": true
     },
     {
@@ -2877,6 +2894,7 @@
       "kind": "repo-evidence",
       "mechanism_ids": [
         "audio-sound-manager-engine",
+        "hud-frame-extract-order",
         "persistence-options-apply",
         "persistence-options-derived",
         "persistence-server-list",
@@ -2899,7 +2917,7 @@
       ],
       "path": "crates/bbb-native/src/startup.rs",
       "scenario_ids": [],
-      "sha256": "1bc5fc55cd688bbcc32b47b554d18b48bb03715c28f1a20b8dccd25ea868d327",
+      "sha256": "a0ec7be1fd04a4031d580825ae85004166c44498d85ab7949de8b0c4311dc088",
       "valid": true
     },
     {
@@ -3462,6 +3480,20 @@
       "path": "crates/bbb-pack/src/zip_pack.rs",
       "scenario_ids": [],
       "sha256": "6bf11c70062779b8ca0f3b32e2fbe65140048111ec4966cdcb37835a5f120b52",
+      "valid": true
+    },
+    {
+      "artifact_id": "repo:crates/bbb-pack/tests/vanilla_gui_music_assets.rs",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "hud-frame-extract-order"
+      ],
+      "path": "crates/bbb-pack/tests/vanilla_gui_music_assets.rs",
+      "scenario_ids": [],
+      "sha256": "14632340855ca5ac249aa3fde475f49f1b513d03126d2be733a0610727105f73",
       "valid": true
     },
     {
@@ -4761,7 +4793,7 @@
       ],
       "path": "crates/bbb-renderer/src/hud.rs",
       "scenario_ids": [],
-      "sha256": "e5b34432d48dcb53d7a58d331e6efcb2721bacacf61fb8eb99100e903e8e276f",
+      "sha256": "fd3524154e7e621e61e923f9e061d38f7a3d10a7aa6a2733860997adf8658ecf",
       "valid": true
     },
     {
@@ -5086,7 +5118,7 @@
       ],
       "path": "crates/bbb-renderer/src/renderer.rs",
       "scenario_ids": [],
-      "sha256": "a49dcb3cdce08d575383defd9756a6e2b17d65a98a98267f6561d87eaca7f5e5",
+      "sha256": "9e0296da0d8d0d59d742633a0b24f05d9de05f78a767687bc0c9b5028643aa4c",
       "valid": true
     },
     {
@@ -5107,7 +5139,7 @@
       ],
       "path": "crates/bbb-renderer/src/resource_reload.rs",
       "scenario_ids": [],
-      "sha256": "4198deb20e1c8563597a8822fd547fe167356a1a8ef9dc0e49589642b7720b69",
+      "sha256": "64d8951b0cea0a4b52390f488368c9295c81e00e4542697dbaf116882978be5f",
       "valid": true
     },
     {
@@ -7459,7 +7491,7 @@
       ],
       "path": "crates/bbb-world/src/toasts.rs",
       "scenario_ids": [],
-      "sha256": "73bd2b79f6b756e815debac93b9e9af5e2450994da25f66be844da6deaafed80",
+      "sha256": "4e6355cd6be2c0a3287ceee8236e79d47f3945caa00943fe5d29fca557110487",
       "valid": true
     },
     {
@@ -7594,7 +7626,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "6a1d6d29ee482a407f92d698a8428518b7a6016869ff9deec4a57c644d3725a3",
+      "sha256": "8f46e4946f318c85775ad54cf5674595ea9b1af03e3638c0d8a1fde81f9158f9",
       "valid": true
     },
     {
@@ -7619,24 +7651,18 @@
         "interaction-prediction-sequence",
         "interaction-primary-action-routing",
         "player-local-camera-targeting",
-        "player-local-client-status-options",
         "player-local-environment-effects",
         "player-local-input-movement",
-        "player-local-inventory-actions",
         "player-local-item-use-state",
         "player-local-movement-reporting",
         "player-local-permission-chat-state",
         "player-local-session-respawn",
         "player-local-vehicle-control",
-        "player-local-vitals-status",
-        "player-local-world-edit-ui",
         "rendering-block-entity-registration",
         "rendering-client-biome-tint",
         "rendering-client-block-entity-tracking",
         "rendering-client-level-dirty-handoff",
-        "rendering-client-particle-routing",
         "ui-death-screen-surface",
-        "ui-pause-screen-surface",
         "ui-screen-lifecycle",
         "world-client-ambient-animation",
         "world-client-chunk-light-lifecycle",
@@ -7650,7 +7676,7 @@
       ],
       "path": "docs/wiki/architecture/client-boundaries.md",
       "scenario_ids": [],
-      "sha256": "0f81a0254838f092f226bd6aeca4933fa9415cfc2f38256df4004e4f4056c236",
+      "sha256": "8a8a9220717bbc0f416b2bf762ef14a4d4f89dbd87e6ff6c031f1291b9ff5e89",
       "valid": true
     },
     {
@@ -7829,7 +7855,7 @@
       ],
       "path": "scripts/client_mechanism_inventory.py",
       "scenario_ids": [],
-      "sha256": "97213d30ec16dc67245c9d07d10f3ed05792d2b8e656a5183edf9cc333f23e8d",
+      "sha256": "4618f27bb99f9b43854c25af256b7a6dbd63d7c59536dd9ec4ebfd819e1c2978",
       "valid": true
     },
     {
@@ -8012,7 +8038,7 @@
       ],
       "path": "scripts/tests/test_client_mechanism_inventory.py",
       "scenario_ids": [],
-      "sha256": "a6df2422225c654217aba95fdb6505ad43d4a69fc551cebd7264b72027a771bc",
+      "sha256": "7b3ba72483c5b40a8a34fd94fb24cc099febcd953f4032a02775851ee74e6521",
       "valid": true
     },
     {
@@ -8169,7 +8195,7 @@
       "valid": false
     }
   ],
-  "bbb_evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+  "bbb_evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
   "commands": {
     "portable_check": "scripts/python python scripts/parity_acceptance.py check",
     "strict_artifact_check": "scripts/python python scripts/parity_acceptance.py check --require-artifacts --require-complete"
@@ -8186,15 +8212,15 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "9070607c18222399096769b57c226043fe0c00d1dc5e07d8ace1150b5d076788"
+      "sha256": "2af0c5de55ea5b77f5d1158d72eca6d9484b81f8ac6b9a5e2d561676f36aa123"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
-      "sha256": "9f845f5a9a1d8cf914862d7531288f999731cbc7700a40b127c4e3d0992261f9"
+      "sha256": "a5db202572882411e392b92741400e90acf2695cd88c34fa43b45efaeaa221c3"
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "6a1d6d29ee482a407f92d698a8428518b7a6016869ff9deec4a57c644d3725a3"
+      "sha256": "8f46e4946f318c85775ad54cf5674595ea9b1af03e3638c0d8a1fde81f9158f9"
     }
   ],
   "mechanisms": [
@@ -8208,7 +8234,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/startup.rs",
           "scripts/playable_gate.py"
@@ -8248,7 +8274,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 12,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#Minecraft(final GameConfig gameConfig)",
@@ -8288,7 +8314,7 @@
         "repo:docs/wiki/architecture/offline-runtime.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-net/src/types/connection.rs",
           "docs/wiki/architecture/offline-runtime.md"
@@ -8328,7 +8354,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#createUserApiService(final YggdrasilAuthenticationService authService,final GameConfig config)",
@@ -8370,7 +8396,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
           "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_tracks_normal_world_tick_rate",
@@ -8445,7 +8471,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#close()",
@@ -8485,7 +8511,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -8576,7 +8602,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 12,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#clearClientLevel(final Screen screen)",
@@ -8614,7 +8640,7 @@
         "repo:crates/bbb-native/src/simulation/thread.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input",
@@ -8701,7 +8727,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#getRunningThread()",
@@ -8727,7 +8753,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -8766,7 +8792,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -8792,7 +8818,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -8831,7 +8857,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -8863,7 +8889,7 @@
         "repo:scripts/cargo-dev.sh"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
           "crates/bbb-pack/src/resources.rs",
@@ -8967,7 +8993,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 46,
         "inventory_owner_ids": [
           "method:net.minecraft.client.resources.ClientPackSource#ClientPackSource(final Path externalAssetSource,final DirectoryValidator validator)",
@@ -9049,7 +9075,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -9089,7 +9115,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 20,
         "inventory_owner_ids": [
           "registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0",
@@ -9136,7 +9162,7 @@
         "repo:crates/bbb-native/src/simulation.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -9237,7 +9263,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#abortResourcePackRecovery()",
@@ -9271,7 +9297,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -9319,7 +9345,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 1,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#updateMaxMipLevel(final int mipmapLevels)"
@@ -9356,7 +9382,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -9659,7 +9685,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 68,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#clearDownloadedResourcePacks()",
@@ -9771,7 +9797,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-pack/src/language.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -9811,7 +9837,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 7,
         "inventory_owner_ids": [
           "method:net.minecraft.client.resources.language.LanguageManager#LanguageManager(final String languageCode,final Consumer <ClientLanguage> reloadCallback)",
@@ -9841,7 +9867,7 @@
         "repo:docs/wiki/mechanisms/ui/font-and-text.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "docs/wiki/mechanisms/ui/font-and-text.md"
@@ -9882,7 +9908,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 35,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#isEnforceUnicode()",
@@ -9943,7 +9969,7 @@
         "repo:docs/wiki/mechanisms/ui/font-and-text.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/ui/font-and-text.md"
         ],
@@ -9983,7 +10009,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -10033,7 +10059,7 @@
         "repo:scripts/capture-vanilla-audio-receipt.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -10367,6 +10393,18 @@
           "result": "passed-via-full-gate"
         },
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-native confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "result": "passed-via-full-gate"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-native gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
           "ignored": false,
           "reference": "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
@@ -10376,6 +10414,12 @@
           "command": "scripts/cargo-dev.sh test -p bbb-native music_effects_enter_fifo_before_entity_sound_position_tick",
           "ignored": false,
           "reference": "crates/bbb-native/src/music_runtime.rs#music_effects_enter_fifo_before_entity_sound_position_tick",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native silently_started_music_retains_identity_without_showing_now_playing",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "result": "passed-via-full-gate"
         },
         {
@@ -10430,6 +10474,12 @@
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_directional_audio_reaches_startup_and_explicit_cli_wins",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_directional_audio_reaches_startup_and_explicit_cli_wins",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native stored_music_options_reach_startup_and_explicit_cli_wins",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
           "result": "passed-via-full-gate"
         },
         {
@@ -10496,7 +10546,7 @@
       "matrix": {
         "domain": "audio/resources",
         "line": 25,
-        "required_state_projection": "144/144 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop 9 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；生产启动从已验证 26.1 manifest 校验并内容寻址提取官方 OpenAL native，`directionalAudio` 直达 `ALC_SOFT_HRTF` supported fallback，pool capacity 来自 `ALC_MONO_SOURCES`；static/streaming 独立池、source create/play/stop/state/position/pitch/gain/relative、per-source none/linear distance model、mono/stereo PCM16、bounded generation-keyed static buffer LRU、四个一秒 streaming buffer pump/unqueue/delete、listener transform、`SOFT_system_events` 三事件全支持才 callback 否则 1000ms poll、reload/reset、stopped native channel 当 tick 释放与 instance tick 20 删除均由 BBB 直接拥有；Vanilla 与 BBB null-driver executable receipt 通过但只属 non-formal，2026-08-07 default-driver 重采集仍因 UID 1000 不在 audio gid 29、`/dev/snd/*` 全为 `root:audio crw-rw----` 而在 Vanilla `openDeviceOrFallback` 失败，故真实 host-device differential receipt 仍开放",
+        "required_state_projection": "159/159 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop/runtime options 12 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；`MusicManager` 现消费 startup `musicFrequency`，按实际解析的 sound resource（非 event id）发布曲名，并区分 STARTED/STARTED_SILENTLY 与显式 hide；其余 OpenAL pool/source/streaming/listener/device lifecycle 保持直接拥有。Vanilla 与 BBB null-driver executable receipt 通过但只属 non-formal，2026-08-07 default-driver 重采集仍因 UID 1000 不在 audio gid 29、`/dev/snd/*` 全为 `root:audio crw-rw----` 而在 Vanilla `openDeviceOrFallback` 失败，故真实 host-device differential receipt 仍开放",
         "route_reopen_condition": "host audio 权限可用后重跑 Vanilla/BBB default-driver 双分支 receipt；源码、OpenAL artifact 或 owner set 变化时重开",
         "status": "partial"
       },
@@ -10507,8 +10557,8 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
-        "inventory_owner_count": 144,
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
+        "inventory_owner_count": 159,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.audio.Channel#Channel(final int src)",
           "method:com.mojang.blaze3d.audio.Channel#attachBufferStream(final AudioStream stream)",
@@ -10579,6 +10629,21 @@
           "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#execute(final Consumer <Channel> action)",
           "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#isStopped()",
           "method:net.minecraft.client.sounds.ChannelAccess.ChannelHandle#release()",
+          "method:net.minecraft.client.sounds.MusicManager#MusicManager(final Minecraft minecraft)",
+          "method:net.minecraft.client.sounds.MusicManager#canReplace(final Music music,final SoundInstance currentMusic)",
+          "method:net.minecraft.client.sounds.MusicManager#fadePlaying(final float volume)",
+          "method:net.minecraft.client.sounds.MusicManager#getCurrentMusicTranslationKey()",
+          "method:net.minecraft.client.sounds.MusicManager#isPlayingMusic(final Music music)",
+          "method:net.minecraft.client.sounds.MusicManager#setMinutesBetweenSongs(final MusicManager.MusicFrequency musicFrequency)",
+          "method:net.minecraft.client.sounds.MusicManager#showNowPlayingToastIfNeeded()",
+          "method:net.minecraft.client.sounds.MusicManager#startPlaying(final Music music)",
+          "method:net.minecraft.client.sounds.MusicManager#stopPlaying()",
+          "method:net.minecraft.client.sounds.MusicManager#stopPlaying(final Music music)",
+          "method:net.minecraft.client.sounds.MusicManager#tick()",
+          "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#MusicFrequency(final String name,final String translationKey,final int maxFrequencyMinutes)",
+          "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#caption()",
+          "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#getNextSongDelay(final @Nullable Music music,final RandomSource random)",
+          "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#getSerializedName()",
           "method:net.minecraft.client.sounds.SoundBufferLibrary#SoundBufferLibrary(final ResourceProvider resourceProvider)",
           "method:net.minecraft.client.sounds.SoundBufferLibrary#clear()",
           "method:net.minecraft.client.sounds.SoundBufferLibrary#enumerate(final SoundBufferLibrary.DebugOutput debugOutput)",
@@ -10655,8 +10720,8 @@
           "method:net.minecraft.client.sounds.SoundManager.Preparations#handleRegistration(final Identifier eventLocation,final SoundEventRegistration soundEventRegistration)",
           "method:net.minecraft.client.sounds.SoundManager.Preparations#listResources(final ResourceManager resourceManager)"
         ],
-        "inventory_owner_set_sha256": "601499a985da9b41717426af7e016fb2aa1e86997b498ae432b8b62af717bb54",
-        "matrix_owner": "`SoundManager`、`SoundEngine`、`Library`、`Channel`、`Listener`、`SoundBuffer`、`ChannelAccess`、`SoundBufferLibrary` 及 Minecraft music 144 owner",
+        "inventory_owner_set_sha256": "60ee47f061e8f5edb5f41473e01a413ab81089f1dad1139de580ee7e4980ae42",
+        "matrix_owner": "`SoundManager`、`SoundEngine`、`MusicManager`、`Library`、`Channel`、`Listener`、`SoundBuffer`、`ChannelAccess`、`SoundBufferLibrary` 及 Minecraft music 159 owner",
         "source_hashes": [
           {
             "path": "com/mojang/blaze3d/audio/Channel.java",
@@ -10681,6 +10746,10 @@
           {
             "path": "net/minecraft/client/sounds/ChannelAccess.java",
             "sha256": "66e976a748084cdc3c0d80b037139447b1841a7748775ad270f708ca68bd2b88"
+          },
+          {
+            "path": "net/minecraft/client/sounds/MusicManager.java",
+            "sha256": "c50a72f02ee926c10d9020130319f01912f9dbd0cd1c70a67cb1d9241def075b"
           },
           {
             "path": "net/minecraft/client/sounds/SoundBufferLibrary.java",
@@ -10708,7 +10777,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-pack/src/window_icons.rs",
@@ -10749,7 +10818,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -10782,7 +10851,7 @@
         "repo:scripts/lifecycle_soak.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-renderer/src/offscreen.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -10832,7 +10901,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -10865,7 +10934,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -10902,7 +10971,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -10923,7 +10992,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -10960,7 +11029,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -11220,7 +11289,7 @@
         "repo:scripts/vanilla-source-tools.sh"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -11734,7 +11803,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 256,
         "inventory_owner_ids": [
           "packet:configuration:clientbound:minecraft:clear_dialog",
@@ -12262,7 +12331,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -12777,7 +12846,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 155,
         "inventory_owner_ids": [
           "listener:net.minecraft.network.protocol.common.ClientCommonPacketListener#handleClearDialog(ClientboundClearDialogPacket packet)",
@@ -13211,7 +13280,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -13723,7 +13792,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 15,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl#ClientHandshakePacketListenerImpl(final Connection connection,final Minecraft minecraft,final @Nullable ServerData serverData,final @Nullable Screen parent,final boolean newWorld,final @Nullable Duration worldLoadDuration,final Consumer <Component> updateStatus,final LevelLoadTracker levelLoadTracker,final @Nullable TransferState transferState)",
@@ -13994,7 +14063,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
           "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
@@ -14510,7 +14579,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 16,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl#ClientConfigurationPacketListenerImpl(final Minecraft minecraft,final Connection connection,final CommonListenerCookie cookie)",
@@ -14782,7 +14851,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -15295,7 +15364,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 238,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl#ClientCommonPacketListenerImpl(final Minecraft minecraft,final Connection connection,final CommonListenerCookie cookie)",
@@ -15560,7 +15629,7 @@
         "repo:docs/wiki/mechanisms/protocol/client-state-flow.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -15599,7 +15668,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -15857,7 +15926,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -16373,7 +16442,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 67,
         "inventory_owner_ids": [
           "serverbound-call:net/minecraft/client/KeyboardHandler.java:10148:ServerboundChangeGameModePacket",
@@ -16478,7 +16547,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -16515,7 +16584,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -16597,7 +16666,7 @@
         "repo:docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -16634,7 +16703,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 95,
         "inventory_owner_ids": [
           "registry:built-in:ACTIVITY",
@@ -16752,7 +16821,7 @@
         "repo:docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -16789,7 +16858,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 28,
         "inventory_owner_ids": [
           "registry:synchronized:0:new RegistryDataLoader.RegistryData <> (Registries.BIOME, Biome.NETWORK_CODEC)",
@@ -16839,7 +16908,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -16876,7 +16945,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -16965,7 +17034,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17067,7 +17136,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#ClientLevel(final ClientPacketListener connection,final ClientLevel.ClientLevelData levelData,final ResourceKey <Level> dimension,final Holder <DimensionType> dimensionType,final int serverChunkRadius,final int serverSimulationDistance,final LevelRenderer levelRenderer,final boolean isDebug,final long biomeZoomSeed,final int seaLevel)",
@@ -17096,7 +17165,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17212,7 +17281,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 8,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#addEnvironmentAttributeLayers(final EnvironmentAttributeSystem.Builder environmentAttributes)",
@@ -17248,7 +17317,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17347,7 +17416,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 5,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#onChunkLoaded(final ChunkPos pos)",
@@ -17381,7 +17450,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17493,7 +17562,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 17,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#addEntity(final Entity entity)",
@@ -17537,7 +17606,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17654,7 +17723,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#addBreakingBlockEffect(final BlockPos pos,final Direction direction)",
@@ -17690,7 +17759,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17758,7 +17827,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 8,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#enabledFeatures()",
@@ -17794,7 +17863,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17870,7 +17939,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#addMapData(final Map <MapId, MapItemSavedData> mapData)",
@@ -17903,7 +17972,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -17980,7 +18049,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#globalLevelEvent(final int type,final BlockPos pos,final int data)",
@@ -18013,7 +18082,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18121,7 +18190,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#getRespawnData()",
@@ -18155,7 +18224,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18216,7 +18285,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 1,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#onBlockEntityAdded(final BlockEntity blockEntity)"
@@ -18245,7 +18314,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18357,7 +18426,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#destroyBlockProgress(final int id,final BlockPos blockPos,final int progress)",
@@ -18384,14 +18453,12 @@
         "parity-matrix",
         "repo:crates/bbb-native/src/environment_animate_runtime.rs",
         "repo:crates/bbb-native/src/particle_runtime.rs",
-        "repo:crates/bbb-native/src/particle_runtime/tests.rs",
-        "repo:docs/wiki/architecture/client-boundaries.md"
+        "repo:crates/bbb-native/src/particle_runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
-          "crates/bbb-native/src/particle_runtime.rs",
-          "docs/wiki/architecture/client-boundaries.md"
+          "crates/bbb-native/src/particle_runtime.rs"
         ],
         "owner": "particle runtime 单一准入 gate（catalog override+packet flag 合成）"
       },
@@ -18451,7 +18518,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final boolean overrideLimiter,final double x,final double y,final double z,final double xd,final double yd,final double zd)",
@@ -18487,7 +18554,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18602,7 +18669,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#calculateBlockTint(final BlockPos pos,final ColorResolver colorResolver)",
@@ -18637,7 +18704,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -18732,7 +18799,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final Entity sourceEntity,final SoundEvent sound,final SoundSource source,final float volume,final float pitch)",
@@ -18765,7 +18832,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -18847,7 +18914,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#fillReportDetails(final CrashReport report)",
@@ -18880,7 +18947,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -18951,7 +19018,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#LocalPlayer(final Minecraft minecraft,final ClientLevel level,final ClientPacketListener connection,final StatsCounter stats,final ClientRecipeBook recipeBook,final Input lastSentInput,final boolean wasSprinting,final ChatAbilities chatAbilities)",
@@ -18976,14 +19043,12 @@
         "parity-matrix",
         "repo:crates/bbb-native/src/runtime/waypoint_locator.rs",
         "repo:crates/bbb-world/src/client/inventory/use_prediction.rs",
-        "repo:crates/bbb-world/src/client/local_player.rs",
-        "repo:docs/wiki/architecture/client-boundaries.md"
+        "repo:crates/bbb-world/src/client/local_player.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
-          "crates/bbb-world/src/client/local_player.rs",
-          "docs/wiki/architecture/client-boundaries.md"
+          "crates/bbb-world/src/client/local_player.rs"
         ],
         "owner": "world local-player state → HUD"
       },
@@ -19032,7 +19097,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#heal(final float heal)",
@@ -19062,7 +19127,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -19130,7 +19195,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#onUpdateAbilities()",
@@ -19162,7 +19227,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -19285,7 +19350,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 20,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#aiStep()",
@@ -19334,7 +19399,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -19423,7 +19488,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 7,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#jumpableVehicle()",
@@ -19458,7 +19523,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -19526,7 +19591,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#handleEntityEvent(final byte id)",
@@ -19553,15 +19618,13 @@
         "parity-matrix",
         "repo:crates/bbb-native/src/input/death_screen.rs",
         "repo:crates/bbb-world/src/client/local_player.rs",
-        "repo:crates/bbb-world/src/level.rs",
-        "repo:docs/wiki/architecture/client-boundaries.md"
+        "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
-          "crates/bbb-world/src/client/local_player.rs",
-          "docs/wiki/architecture/client-boundaries.md"
+          "crates/bbb-world/src/client/local_player.rs"
         ],
         "owner": "world options/status → native consumers"
       },
@@ -19596,7 +19659,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#onGameModeChanged(final GameType gameType)",
@@ -19628,7 +19691,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -19699,7 +19762,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#getUsedItemHand()",
@@ -19729,15 +19792,13 @@
         "repo:crates/bbb-native/src/input/tests.rs",
         "repo:crates/bbb-world/src/client/inventory.rs",
         "repo:crates/bbb-world/src/client/inventory/tests.rs",
-        "repo:crates/bbb-world/src/recipe_book.rs",
-        "repo:docs/wiki/architecture/client-boundaries.md"
+        "repo:crates/bbb-world/src/recipe_book.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
-          "crates/bbb-world/src/client/inventory.rs",
-          "docs/wiki/architecture/client-boundaries.md"
+          "crates/bbb-world/src/client/inventory.rs"
         ],
         "owner": "native input → world inventory/net commands"
       },
@@ -19823,7 +19884,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#canDropItems()",
@@ -19854,14 +19915,12 @@
         "repo:crates/bbb-native/src/input.rs",
         "repo:crates/bbb-native/src/input/book/tests.rs",
         "repo:crates/bbb-native/src/input/tests.rs",
-        "repo:crates/bbb-world/src/client/ui.rs",
-        "repo:docs/wiki/architecture/client-boundaries.md"
+        "repo:crates/bbb-world/src/client/ui.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
-          "crates/bbb-native/src/input.rs",
-          "docs/wiki/architecture/client-boundaries.md"
+          "crates/bbb-native/src/input.rs"
         ],
         "owner": "world packet state → native reachable screens"
       },
@@ -19952,7 +20011,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#openCommandBlock(final CommandBlockEntity commandBlock)",
@@ -19992,7 +20051,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -20080,7 +20139,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 8,
         "inventory_owner_ids": [
           "method:net.minecraft.client.player.LocalPlayer#crit(final Entity entity)",
@@ -20117,7 +20176,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -20200,7 +20259,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#pick(final float partialTicks)",
@@ -20242,7 +20301,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -20319,7 +20378,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 7,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#canSwitchGameMode()",
@@ -20359,7 +20418,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -20430,7 +20489,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 5,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#canHurtPlayer()",
@@ -20464,7 +20523,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -20602,7 +20661,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#continueDestroyBlock(final BlockPos pos,final Direction direction)",
@@ -20638,7 +20697,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -20742,7 +20801,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 5,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#handleBlockChangedAck(final int sequence)",
@@ -20778,7 +20837,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -20828,7 +20887,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 2,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#ensureHasSentCarriedItem()",
@@ -20856,7 +20915,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -20919,7 +20978,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#performUseItemOn(final LocalPlayer player,final InteractionHand hand,final BlockHitResult blockHit)",
@@ -20950,7 +21009,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -21019,7 +21078,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#attack(final Player player,final Entity entity)",
@@ -21051,7 +21110,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -21126,7 +21185,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleContainerInput(final int containerId,final int slotNum,final int buttonNum,final ContainerInput containerInput,final Player player)",
@@ -21156,7 +21215,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -21206,7 +21265,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 2,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleCreativeModeItemAdd(final ItemStack clicked,final int slot)",
@@ -21234,7 +21293,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -21296,7 +21355,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#pickBlockOrEntity()",
@@ -21328,7 +21387,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -21407,7 +21466,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#continueAttack(final boolean down)",
@@ -21463,7 +21522,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -21927,7 +21986,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 157,
         "inventory_owner_ids": [
           "entity-type:ACACIA_BOAT",
@@ -22137,7 +22196,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -22601,7 +22660,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 155,
         "inventory_owner_ids": [
           "registration:entity-renderer:net.minecraft.client.renderer.entity.EntityRenderers#register:0",
@@ -22809,7 +22868,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -23273,7 +23332,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 90,
         "inventory_owner_ids": [
           "registration:entity-layer:net.minecraft.client.renderer.entity.AbstractSkeletonRenderer:0",
@@ -23621,7 +23680,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -23955,7 +24014,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 27,
         "inventory_owner_ids": [
           "registration:block-entity-renderer:net.minecraft.client.renderer.blockentity.BlockEntityRenderers#register:0",
@@ -24009,7 +24068,7 @@
         "repo:docs/evidence/vanilla-26.1/particle-provider-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -24104,7 +24163,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 117,
         "inventory_owner_ids": [
           "registration:particle-provider:net.minecraft.client.particle.ParticleResources#register:0",
@@ -24241,10 +24300,15 @@
         "feature-ledger",
         "full-gate",
         "parity-matrix",
+        "repo:crates/bbb-audio/src/runtime.rs",
         "repo:crates/bbb-native/src/input/tests.rs",
+        "repo:crates/bbb-native/src/music_runtime.rs",
         "repo:crates/bbb-native/src/runtime/periodic_notifications.rs",
         "repo:crates/bbb-native/src/runtime/render_extract.rs",
         "repo:crates/bbb-native/src/runtime/tests.rs",
+        "repo:crates/bbb-native/src/runtime/toast.rs",
+        "repo:crates/bbb-native/src/startup.rs",
+        "repo:crates/bbb-pack/tests/vanilla_gui_music_assets.rs",
         "repo:crates/bbb-renderer/src/hud.rs",
         "repo:crates/bbb-world/src/client/hud.rs",
         "repo:crates/bbb-world/src/client/hud_camera_player.rs",
@@ -24252,19 +24316,24 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs"
         ],
-        "owner": "`bbb-native::runtime::render_extract` + shared toast runtime + renderer `HudToast`"
+        "owner": "`bbb-native::runtime::render_extract` + shared toast runtime + independent NowPlaying runtime + renderer"
       },
       "differential_scenarios": [
         {
           "artifact_ids": [
             "full-gate",
+            "repo:crates/bbb-audio/src/runtime.rs",
             "repo:crates/bbb-native/src/input/tests.rs",
+            "repo:crates/bbb-native/src/music_runtime.rs",
             "repo:crates/bbb-native/src/runtime/periodic_notifications.rs",
             "repo:crates/bbb-native/src/runtime/tests.rs",
+            "repo:crates/bbb-native/src/runtime/toast.rs",
+            "repo:crates/bbb-native/src/startup.rs",
+            "repo:crates/bbb-pack/tests/vanilla_gui_music_assets.rs",
             "repo:crates/bbb-renderer/src/hud.rs",
             "repo:crates/bbb-world/src/client/hud.rs",
             "repo:crates/bbb-world/src/client/hud_camera_player.rs",
@@ -24279,9 +24348,27 @@
       "final_conclusion": "open",
       "focused_tests": [
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-audio stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "ignored": false,
+          "reference": "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "result": "passed-via-full-gate"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-native show_only_reduced_info_ors_the_reduced_debug_info_option_with_the_player_flag",
           "ignored": false,
           "reference": "crates/bbb-native/src/input/tests.rs#show_only_reduced_info_ors_the_reduced_debug_info_option_with_the_player_flag",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native silently_started_music_retains_identity_without_showing_now_playing",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
           "result": "passed-via-full-gate"
         },
         {
@@ -24387,6 +24474,30 @@
           "result": "passed-via-full-gate"
         },
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-native now_playing_translation_and_music_note_palette_match_vanilla",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native stored_music_options_reach_startup_and_explicit_cli_wins",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-pack vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "ignored": true,
+          "reference": "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "result": "ignored"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-renderer camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures",
           "ignored": false,
           "reference": "crates/bbb-renderer/src/hud.rs#camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures",
@@ -24396,6 +24507,12 @@
           "command": "scripts/cargo-dev.sh test -p bbb-renderer multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position",
           "ignored": false,
           "reference": "crates/bbb-renderer/src/hud.rs#multiline_system_toast_uses_frozen_lines_and_height_scaled_slot_position",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-renderer now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "ignored": false,
+          "reference": "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
           "result": "passed-via-full-gate"
         },
         {
@@ -24468,8 +24585,8 @@
       "matrix": {
         "domain": "ui/rendering",
         "line": 84,
-        "required_state_projection": "每帧 HUD 抽取顺序由单一 `renderer_frame` 路径承担；toast 由同一五槽 mixed-family FIFO、multi-slot reservation、单次 visibility sound 和统一 draw/extract order 拥有；camera/reduced-debug/hide-gui/loading/断线门控仍在同一处收敛",
-        "route_reopen_condition": "共享五槽核心已实现；仍缺 startup non-`NEVER` musicToast/NowPlaying、8000ms social tutorial、failed file-drop count receipt 和 language-reload title Component。任一 owner/source hash、抽取顺序、slot/visibility sound 或门控变化时重开；[ledger](../../unsupported-features.md)",
+        "required_state_projection": "每帧 HUD 抽取顺序由单一 `renderer_frame` 路径承担；五槽 mixed-family FIFO 与独立 `NowPlayingToast` 分离拥有。NowPlaying 消费实际 sound key、冻结 notification multiplier、5s/600ms 动画、25ms 门控音符色、动画 sprite、hideGui、PauseScreen/static/draft-icon 顺序均有决策测试",
+        "route_reopen_condition": "仍缺 8000ms social tutorial、failed file-drop count receipt和 language-reload title Component；任一 owner/source hash、抽取顺序、slot/visibility sound 或门控变化时重开；[ledger](../../unsupported-features.md)",
         "status": "partial"
       },
       "mechanism_id": "hud-frame-extract-order",
@@ -24478,7 +24595,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 118,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#getDebugOverlay()",
@@ -24659,7 +24776,7 @@
         "repo:crates/bbb-world/src/client/hud_camera_player.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -24827,7 +24944,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 19,
         "inventory_owner_ids": [
           "method:net.minecraft.client.gui.Gui#extractAirBubbles(final GuiGraphicsExtractor graphics,final Player player,final int vehicleHearts,int yLineAir,final int xRight)",
@@ -24874,7 +24991,7 @@
         "repo:crates/bbb-renderer/src/hud/layout.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -24977,7 +25094,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:net.minecraft.client.gui.Gui#canRenderCrosshairForSpectator(final @Nullable HitResult hitResult)",
@@ -25010,7 +25127,7 @@
         "repo:crates/bbb-renderer/src/vignette.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -25149,7 +25266,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 10,
         "inventory_owner_ids": [
           "method:net.minecraft.client.gui.Gui#extractConfusionOverlay(final GuiGraphicsExtractor graphics,final float strength)",
@@ -25189,7 +25306,7 @@
         "repo:crates/bbb-world/src/client/scoreboard/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -25361,7 +25478,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 19,
         "inventory_owner_ids": [
           "method:net.minecraft.client.gui.Gui#clearTitles()",
@@ -25413,7 +25530,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -25613,7 +25730,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 10,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#renderFrame(final boolean advanceGameTime)",
@@ -25661,7 +25778,7 @@
         "repo:crates/bbb-world/src/entities/tests/name_tag_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -25854,7 +25971,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 11,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#getEntityModels()",
@@ -25902,7 +26019,7 @@
         "repo:crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -26119,7 +26236,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 14,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#getCameraEntity()",
@@ -26180,7 +26297,7 @@
         "repo:crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -26444,7 +26561,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 17,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.GameRenderer#checkEntityPostEffect(final @Nullable Entity cameraEntity)",
@@ -26490,7 +26607,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -26585,7 +26702,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#LevelRenderer(final Minecraft minecraft,final EntityRenderDispatcher entityRenderDispatcher,final BlockEntityRenderDispatcher blockEntityRenderDispatcher,final RenderBuffers renderBuffers,final GameRenderState gameRenderState,final FeatureRenderDispatcher featureRenderDispatcher)",
@@ -26622,7 +26739,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -26744,7 +26861,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 29,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#addRecentlyCompiledSection(final SectionRenderDispatcher.RenderSection section)",
@@ -26802,7 +26919,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -26959,7 +27076,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 14,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#addCloudsPass(final FrameGraphBuilder frame,final CloudStatus cloudStatus,final Vec3 cameraPosition,final long gameTime,final float partialTicks,final int cloudColor,final float cloudHeight,final int cloudRange)",
@@ -27006,7 +27123,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -27167,7 +27284,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 15,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#checkPoseStack(final PoseStack poseStack)",
@@ -27209,7 +27326,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -27294,7 +27411,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 4,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#destroyBlockProgress(final int id,final BlockPos pos,final int progress)",
@@ -27326,7 +27443,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -27405,7 +27522,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#collectPerFrameGizmos()",
@@ -27437,7 +27554,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -27506,7 +27623,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.renderer.LevelRenderer#getLightCoords(final BlockAndLightGetter level,final BlockPos pos)",
@@ -27533,7 +27650,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -27581,7 +27698,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -27608,7 +27725,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-renderer/src/terrain.rs"
         ],
@@ -27656,7 +27773,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -27679,7 +27796,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -27727,7 +27844,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -27750,7 +27867,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/camera_pose.rs"
         ],
@@ -27798,7 +27915,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -27822,7 +27939,7 @@
         "repo:crates/bbb-world/src/client/inventory/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs",
@@ -27865,7 +27982,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 25,
         "inventory_owner_ids": [
           "registration:menu-screen:net.minecraft.client.gui.screens.MenuScreens#register:0",
@@ -27917,7 +28034,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs",
@@ -27962,7 +28079,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 26,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#openChatScreen(final ChatComponent.ChatMethod chatMethod)",
@@ -28018,7 +28135,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -28062,7 +28179,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 16,
         "inventory_owner_ids": [
           "method:net.minecraft.client.gui.screens.DeathScreen#DeathScreen(final @Nullable Component causeOfDeath,final boolean hardcore,final LocalPlayer player)",
@@ -28105,7 +28222,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/disconnected_screen.rs",
           "crates/bbb-native/src/network_runtime.rs",
@@ -28150,7 +28267,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 8,
         "inventory_owner_ids": [
           "method:net.minecraft.client.gui.screens.DisconnectedScreen#DisconnectedScreen(final Screen parent,final Component title,final Component reason)",
@@ -28178,15 +28295,13 @@
         "feature-ledger",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/pause_screen.rs",
-        "repo:crates/bbb-native/src/runtime/render_extract.rs",
-        "repo:docs/wiki/architecture/client-boundaries.md"
+        "repo:crates/bbb-native/src/runtime/render_extract.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
-          "crates/bbb-native/src/runtime/render_extract.rs",
-          "docs/wiki/architecture/client-boundaries.md"
+          "crates/bbb-native/src/runtime/render_extract.rs"
         ],
         "owner": "native pause input/render extract/renderer"
       },
@@ -28213,8 +28328,8 @@
       "matrix": {
         "domain": "ui",
         "line": 108,
-        "required_state_projection": "菜单网格/feedback 两页/custom-additions 三分支路由、链接确认、disconnect 经 draftReportHandled(quitToTitle) 确认（Edit→草稿编辑屏并回 pause、Discard/Esc→丢草稿断开）、draft-report sprite、F3+Esc 与 Esc 共走 with-menu；stored startup `musicToast` 的 `pause`、`pause_and_toast` 仍缺 separate NowPlayingToast 消费/呈现",
-        "route_reopen_condition": "实现非 `NEVER` startup musicToast 与 NowPlaying music/pause 生命周期；PauseScreen 决策面或 draftReportHandled 语义变化时重开；[ledger](../../unsupported-features.md)",
+        "required_state_projection": "菜单网格/feedback/custom-additions、链接确认与 draftReportHandled 保持；startup `musicToast=pause`/`pause_and_toast` 仅在真实 PauseScreen+show-menu+final music volume>0 时左上静态呈现，feedback/confirm 子屏按非 PauseScreen 路由，normal toast 被 PauseScreen 抑制，NowPlaying 在 tooltip 后、draft-report sprite 前提交",
+        "route_reopen_condition": "当前实现等待 final full-gated evidence commit 后方可升为 equivalent；PauseScreen screen-type、`rendersNowPlayingToast`、draftReportHandled 或 draw order 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "partial"
       },
       "mechanism_id": "ui-pause-screen-surface",
@@ -28224,7 +28339,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 18,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#pauseGame(final boolean suppressPauseMenuIfWeReallyArePausing)",
@@ -28274,7 +28389,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -28335,7 +28450,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 3,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#canInterruptScreen()",
@@ -28360,7 +28475,7 @@
         "repo:crates/bbb-native/src/component_text.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/component_text.rs"
         ],
@@ -28400,7 +28515,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -28491,7 +28606,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -28653,7 +28768,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 17,
         "inventory_owner_ids": [
           "method:net.minecraft.client.GameNarrator#GameNarrator(final Minecraft minecraft)",
@@ -28700,7 +28815,7 @@
         "repo:crates/bbb-native/src/runtime/dialog_screen.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -28765,7 +28880,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 5,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.platform.ClipboardManager#getClipboard(final Window window,final GLFWErrorCallbackI errorCallback)",
@@ -28797,7 +28912,7 @@
         "repo:scripts/local_time_tables.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs",
           "scripts/local_time_tables.py"
@@ -28838,7 +28953,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -28860,7 +28975,7 @@
         "repo:crates/bbb-renderer/src/entity_models/held_item.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/item_models/dropped.rs",
           "crates/bbb-renderer/src/entity_models/held_item.rs"
@@ -28901,7 +29016,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -28931,7 +29046,7 @@
         "repo:crates/bbb-native/src/simulation/commands.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -29083,7 +29198,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 12,
         "inventory_owner_ids": [
           "method:net.minecraft.client.KeyboardHandler#KeyboardHandler(final Minecraft minecraft)",
@@ -29125,7 +29240,7 @@
         "repo:crates/bbb-native/src/runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -29270,7 +29385,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 13,
         "inventory_owner_ids": [
           "method:net.minecraft.client.KeyboardHandler#copyCreateBlockCommand(final BlockState state,final BlockPos blockPos,final @Nullable CompoundTag entityTag)",
@@ -29314,7 +29429,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -29489,7 +29604,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 19,
         "inventory_owner_ids": [
           "method:net.minecraft.client.MouseHandler#MouseHandler(final Minecraft minecraft)",
@@ -29537,7 +29652,7 @@
         "repo:crates/bbb-native/src/runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -29698,7 +29813,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 30,
         "inventory_owner_ids": [
           "method:net.minecraft.client.KeyMapping#KeyMapping(final String name,final InputConstants.Type type,final int value,final KeyMapping.Category category)",
@@ -29758,7 +29873,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs"
         ],
@@ -29869,7 +29984,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 16,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.platform.Window#Window(final WindowEventHandler eventHandler,final DisplayData displayData,final @Nullable String fullscreenVideoModeString,final String title,final GpuBackend backend)",
@@ -29912,7 +30027,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30022,7 +30137,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 11,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.platform.Window#changeFullscreenVideoMode()",
@@ -30065,7 +30180,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30218,7 +30333,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 17,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.platform.Window#calculateScale(final int maxScale,final boolean enforceUnicode)",
@@ -30265,7 +30380,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30350,7 +30465,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 6,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.platform.Window#selectCursor(final CursorType cursor)",
@@ -30385,7 +30500,7 @@
         "repo:scripts/tests/test_client_options_catalog_extractor.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -30479,7 +30594,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 14,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Options#Options(final Minecraft minecraft,final File workingDirectory)",
@@ -30521,7 +30636,7 @@
         "repo:crates/bbb-renderer/src/render.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -30631,7 +30746,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 15,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Options#getBackgroundColor(final float defaultOpacity)",
@@ -30679,6 +30794,7 @@
         "repo:crates/bbb-native/src/resource_reload.rs",
         "repo:crates/bbb-native/src/runtime/render_extract.rs",
         "repo:crates/bbb-native/src/runtime/tests.rs",
+        "repo:crates/bbb-native/src/runtime/toast.rs",
         "repo:crates/bbb-native/src/startup.rs",
         "repo:crates/bbb-native/src/terrain_runtime.rs",
         "repo:crates/bbb-native/src/terrain_runtime/textures.rs",
@@ -30688,7 +30804,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -30716,6 +30832,7 @@
             "repo:crates/bbb-native/src/main.rs",
             "repo:crates/bbb-native/src/resource_reload.rs",
             "repo:crates/bbb-native/src/runtime/tests.rs",
+            "repo:crates/bbb-native/src/runtime/toast.rs",
             "repo:crates/bbb-native/src/startup.rs",
             "repo:crates/bbb-native/src/terrain_runtime.rs",
             "repo:crates/bbb-native/src/terrain_runtime/textures/tests.rs",
@@ -30815,6 +30932,12 @@
           "result": "passed-via-full-gate"
         },
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-native now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "result": "passed-via-full-gate"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-native a_typed_fullscreen_resolution_wins_over_the_stored_line",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#a_typed_fullscreen_resolution_wins_over_the_stored_line",
@@ -30827,9 +30950,21 @@
           "result": "passed-via-full-gate"
         },
         {
+          "command": "scripts/cargo-dev.sh test -p bbb-native startup_music_options_use_vanilla_defaults_and_cli_names",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "result": "passed-via-full-gate"
+        },
+        {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_graphics_presets_overwrite_every_owned_value_after_load",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_graphics_presets_overwrite_every_owned_value_after_load",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native stored_music_options_reach_startup_and_explicit_cli_wins",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
           "result": "passed-via-full-gate"
         },
         {
@@ -30890,8 +31025,8 @@
       "matrix": {
         "domain": "persistence",
         "line": 125,
-        "required_state_projection": "既有 player-info/broadcast/crash/fullscreen/font/graphics/pack/sound-device 消费链保留；stored startup `musicToast` 虽已 datafix/read，`pause`、`pause_and_toast` 尚未进入 ToastManager/NowPlaying 消费，`simulationDistance` 只影响已裁决不需要的 integrated-server surface",
-        "route_reopen_condition": "实现 startup musicToast 消费；这八个 owner、preset、pack/audio/resource reload 或 adapter filtering 规则变化时重开；[ledger](../../unsupported-features.md)",
+        "required_state_projection": "既有 player-info/broadcast/crash/fullscreen/font/graphics/pack/sound-device 消费链保留；stored/CLI startup `musicToast` 与 `musicFrequency` 使用 Vanilla enum 编码、默认值及显式 CLI 优先级，分别进入独立 NowPlaying runtime 与 MusicManager schedule；仅 in-game widget captions/callbacks 有带源码依据的 scope ruling",
+        "route_reopen_condition": "当前实现等待 final full-gated evidence commit 后方可升为 equivalent；这些 owner、enum codec/default、runtime callback 可达性、preset、pack/audio/resource reload 或 adapter filtering 规则变化时重开；[ledger](../../unsupported-features.md)",
         "status": "partial"
       },
       "mechanism_id": "persistence-options-apply",
@@ -30900,9 +31035,15 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
-        "inventory_owner_count": 8,
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
+        "inventory_owner_count": 14,
         "inventory_owner_ids": [
+          "method:net.minecraft.client.MusicToastDisplayState#MusicToastDisplayState(final String name,final String translationKey)",
+          "method:net.minecraft.client.MusicToastDisplayState#getSerializedName()",
+          "method:net.minecraft.client.MusicToastDisplayState#renderInPauseScreen()",
+          "method:net.minecraft.client.MusicToastDisplayState#renderToast()",
+          "method:net.minecraft.client.MusicToastDisplayState#text()",
+          "method:net.minecraft.client.MusicToastDisplayState#tooltip()",
           "method:net.minecraft.client.Options#applyGraphicsPreset(final GraphicsPreset value)",
           "method:net.minecraft.client.Options#broadcastOptions()",
           "method:net.minecraft.client.Options#buildPlayerInformation()",
@@ -30912,9 +31053,13 @@
           "method:net.minecraft.client.Options#loadSelectedResourcePacks(final PackRepository repository)",
           "method:net.minecraft.client.Options#updateFontOptions()"
         ],
-        "inventory_owner_set_sha256": "628c7d91eaaecff4cb18491fc48350214f9af557b27fdfc6569aeb80173ffad6",
-        "matrix_owner": "`Options` 8 apply/broadcast owner",
+        "inventory_owner_set_sha256": "f17c98c5cc8b7441d39a1542ac175817fdf40b6558bcfa3258e2a40366f4371c",
+        "matrix_owner": "`Options` 8 apply/broadcast owner + `MusicToastDisplayState` 6 owner",
         "source_hashes": [
+          {
+            "path": "net/minecraft/client/MusicToastDisplayState.java",
+            "sha256": "4fe43d5b3d0ccd48c780e7ed1fd3f9ad8f7595591ac07c994587ed3fbf4c8e75"
+          },
           {
             "path": "net/minecraft/client/Options.java",
             "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
@@ -30934,7 +31079,7 @@
         "repo:scripts/tests/test_client_options_catalog_extractor.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -30999,7 +31144,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 1,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Options#dataFix(final CompoundTag tag)"
@@ -31025,7 +31170,7 @@
         "repo:crates/bbb-native/src/startup.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -31096,7 +31241,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 8,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ServerList#ServerList(final Minecraft minecraft)",
@@ -31126,7 +31271,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -31163,7 +31308,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 9,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#prepareForMultiplayer()",
@@ -31200,7 +31345,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs",
           "crates/bbb-item-model/src/skin_runtime.rs",
@@ -31242,7 +31387,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 8,
         "inventory_owner_ids": [
           "method:net.minecraft.client.resources.SkinManager#SkinManager(final Path skinsDirectory,final Services services,final SkinTextureDownloader skinTextureDownloader,final Executor mainThreadExecutor)",
@@ -31291,7 +31436,7 @@
         "repo:crates/bbb-world/src/client/social.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -31571,7 +31716,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 30,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#allowsMultiplayer()",
@@ -31633,7 +31778,7 @@
         "repo:crates/bbb-native/src/simulation/thread.rs"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -31707,7 +31852,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 38,
         "inventory_owner_ids": [
           "method:net.minecraft.CrashReport#CrashReport(final String title,final Throwable t)",
@@ -31774,7 +31919,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
@@ -31831,7 +31976,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -31897,7 +32042,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/tests/test_gpu_duration_capture.py"
@@ -32024,7 +32169,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -32086,7 +32231,7 @@
         "repo:scripts/platform_acceptance.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "scripts/platform_acceptance.py"
         ],
@@ -32125,7 +32270,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -32163,7 +32308,7 @@
         "repo:scripts/cross_check.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/cross_check.py"
@@ -32201,7 +32346,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -32282,7 +32427,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32319,7 +32464,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -32400,7 +32545,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32437,7 +32582,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 25,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#addInitialScreens(final List <Function <Runnable, Screen>> screens)",
@@ -32488,7 +32633,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32525,7 +32670,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 52,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#createWorldOpenFlows()",
@@ -32611,7 +32756,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32648,7 +32793,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 100,
         "inventory_owner_ids": [
           "method:com.mojang.realmsclient.RealmsMainScreen#RealmsMainScreen(final Screen lastScreen)",
@@ -32774,7 +32919,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32811,7 +32956,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 27,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Options#createSoundSliderOptionInstance(final String captionId,final SoundSource category)",
@@ -32864,7 +33009,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32901,7 +33046,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 5,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ServerList#remove(final ServerData thing)",
@@ -32928,7 +33073,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32965,7 +33110,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 17,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#allowsTelemetry()",
@@ -33013,7 +33158,7 @@
         "repo:scripts/client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -33051,7 +33196,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 228,
         "inventory_owner_ids": [
           "method:com.mojang.blaze3d.platform.Window#backend()",
@@ -33337,7 +33482,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33374,7 +33519,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 5,
         "inventory_owner_ids": [
           "method:net.minecraft.client.multiplayer.ClientLevel#explode(final @Nullable Entity source,final @Nullable DamageSource damageSource,final @Nullable ExplosionDamageCalculator damageCalculator,final double x,final double y,final double z,final float r,final boolean fire,final Level.ExplosionInteraction interactionType,final ParticleOptions smallExplosionParticles,final ParticleOptions largeExplosionParticles,final WeightedList <ExplosionParticleInfo> secondaryParticles,final Holder <SoundEvent> explosionSound)",
@@ -33401,7 +33546,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33438,7 +33583,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -33519,7 +33664,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33556,7 +33701,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -33637,7 +33782,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33674,7 +33819,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -33755,7 +33900,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33792,7 +33937,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -33873,7 +34018,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33910,7 +34055,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -33931,7 +34076,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33968,7 +34113,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -34049,7 +34194,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34086,7 +34231,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -34167,7 +34312,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34204,7 +34349,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -34285,7 +34430,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34322,7 +34467,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 1,
         "inventory_owner_ids": [
           "method:net.minecraft.client.Minecraft#grabPanoramixScreenshot(final File folder)"
@@ -34345,7 +34490,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34382,7 +34527,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -34468,7 +34613,7 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -34577,7 +34722,7 @@
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -34660,7 +34805,7 @@
         "repo:scripts/tests/test_docs_lint.py"
       ],
       "bbb": {
-        "evidence_commit": "281721d1fe1454e980811fe91408455ccdd396fe",
+        "evidence_commit": "0dac0243ea2c61f8caaaaabbeb4e01502bdbfec9",
         "evidence_references": [
           "scripts/docs_wiki_lint.py",
           "scripts/parity_acceptance.py",
@@ -34927,7 +35072,7 @@
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
-        "corpus_source_sha256": "2068e414f4ac5b1adb7a540d9b547db008d53d72aae7b020d4e2d7617d34a128",
+        "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
         "inventory_owner_ids": [],
         "inventory_owner_set_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -35077,9 +35222,14 @@
     {
       "artifact_ids": [
         "full-gate",
+        "repo:crates/bbb-audio/src/runtime.rs",
         "repo:crates/bbb-native/src/input/tests.rs",
+        "repo:crates/bbb-native/src/music_runtime.rs",
         "repo:crates/bbb-native/src/runtime/periodic_notifications.rs",
         "repo:crates/bbb-native/src/runtime/tests.rs",
+        "repo:crates/bbb-native/src/runtime/toast.rs",
+        "repo:crates/bbb-native/src/startup.rs",
+        "repo:crates/bbb-pack/tests/vanilla_gui_music_assets.rs",
         "repo:crates/bbb-renderer/src/hud.rs",
         "repo:crates/bbb-world/src/client/hud.rs",
         "repo:crates/bbb-world/src/client/hud_camera_player.rs",
@@ -35434,6 +35584,7 @@
         "repo:crates/bbb-native/src/main.rs",
         "repo:crates/bbb-native/src/resource_reload.rs",
         "repo:crates/bbb-native/src/runtime/tests.rs",
+        "repo:crates/bbb-native/src/runtime/toast.rs",
         "repo:crates/bbb-native/src/startup.rs",
         "repo:crates/bbb-native/src/terrain_runtime.rs",
         "repo:crates/bbb-native/src/terrain_runtime/textures/tests.rs",

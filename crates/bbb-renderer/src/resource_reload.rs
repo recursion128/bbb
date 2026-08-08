@@ -1510,6 +1510,8 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_stats_sprites);
         $take_owner!(hud_stats_scrollbar_sprites);
         $take_owner!(hud_system_toast_background);
+        $take_owner!(hud_now_playing_background);
+        $take_owner!(hud_music_notes);
         $take_owner!(hud_advancement_toast_background);
         $take_owner!(hud_recipe_toast_background);
         $take_owner!(hud_tutorial_toast_background);

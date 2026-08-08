@@ -19,21 +19,21 @@ use bbb_renderer::{
     HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
     HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen,
     HudHotbarAttackIndicator, HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen,
-    HudMapPreviewSurface, HudMobEffect, HudOffhandSlot, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudPlayerReportingControl,
-    HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
-    HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
-    HudPortalOverlay, HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen,
-    HudSleepOverlay, HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
-    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpectatorGui,
-    HudSpectatorGuiSlot, HudSpectatorIcon, HudSpyglassScope, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudToast, HudVehicleHealth,
-    HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh,
-    ItemModelResidencyFrame, Renderer, RendererCameraFrame, SelectionOutline,
-    SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
+    HudMapPreviewSurface, HudMobEffect, HudNowPlayingToast, HudOffhandSlot, HudPauseScreen,
+    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
+    HudPlayerReportingControl, HudPlayerReportingControlKind, HudPlayerReportingControlPlacement,
+    HudPlayerReportingFocus, HudPlayerReportingRow, HudPlayerReportingScreen,
+    HudPlayerReportingScreenKind, HudPortalOverlay, HudScoreboardSidebar,
+    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
+    HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
+    HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText,
+    HudToast, HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, RendererCameraFrame,
+    SelectionOutline, SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -2903,6 +2903,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_player_reporting_screen: Option<HudPlayerReportingScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_toasts: Vec<HudToast>,
+    pub(crate) hud_now_playing_toast: Option<HudNowPlayingToast>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_selected_item_name: Option<bbb_renderer::HudSelectedItemName>,
@@ -3381,6 +3382,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_player_reporting_screen(frame.hud_player_reporting_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_toasts(frame.hud_toasts);
+    renderer.set_hud_now_playing_toast(frame.hud_now_playing_toast);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_selected_item_name(frame.hud_selected_item_name);

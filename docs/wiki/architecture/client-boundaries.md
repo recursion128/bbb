@@ -234,8 +234,11 @@ confirmation layout 的 Edit/Discard 确认页（Edit 打开草稿编辑屏、�
 pause，Discard/Esc 丢草稿并断开），draft sprite 投影在 disconnect 按钮右上。
 F3+Esc 与 Esc 共走 with-menu 打开（vanilla 外部客户端 `canGameReallyBePaused`
 恒 false）；no-menu 变体是 singleplayer-only 分支，仅保留渲染契约；
-`rendersNowPlayingToast` 因 `musicToast` 默认 `NEVER` 且 options UI
-out-of-scope 恒 false。不得另建 pause 打开入口或第二条 disconnect 路径。
+`rendersNowPlayingToast` 消费 startup `musicToast` 与 final music volume，只在真实
+PauseScreen、show-menu 且模式非 `NEVER` 时投影独立 NowPlaying owner；其 draw
+位于 screen/tooltip 之后、draft-report sprite 之前。in-game options callback 仍因
+无 options UI 不可达。不得另建 pause 打开入口、第二条 disconnect 路径或把
+NowPlaying 塞入共享五槽 toast queue。
 
 ## UI screen-lifecycle owner
 

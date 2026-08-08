@@ -638,6 +638,18 @@ pub(crate) struct HudNineSliceSprite {
     pub(crate) scaling: HudNineSliceScaling,
 }
 
+pub(crate) struct HudAnimatedSprite {
+    pub(crate) frames: Vec<HudSpriteGpu>,
+    pub(crate) animation: bbb_render_types::SpriteAnimation,
+}
+
+impl HudAnimatedSprite {
+    fn frame_at_tick(&self, tick: u64) -> Option<&HudSpriteGpu> {
+        let index = self.animation.frame_index_at_tick(tick)?;
+        self.frames.get(usize::try_from(index).ok()?)
+    }
+}
+
 pub(crate) struct HudGuiSprite {
     pub(crate) gpu: HudSpriteGpu,
     pub(crate) scaling: HudGuiSpriteScaling,
@@ -1122,6 +1134,23 @@ pub enum HudToast {
     Advancement(HudAdvancementToast),
     Recipe(HudRecipeToast),
     Tutorial(HudTutorialToast),
+}
+
+/// Vanilla's independent `NowPlayingToast`; unlike `HudToast`, this never
+/// occupies one of the shared five slots.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudNowPlayingToast {
+    pub text: String,
+    pub visible_portion: f32,
+    pub note_color_argb: u32,
+    pub client_tick: u64,
+    pub placement: HudNowPlayingToastPlacement,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudNowPlayingToastPlacement {
+    SlidingToast,
+    PauseScreen,
 }
 
 /// One visible Vanilla advancement toast. Native owns queue/slot/timing and
@@ -4553,6 +4582,45 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_now_playing_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_now_playing_background = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
+        Ok(())
+    }
+
+    pub fn upload_hud_music_notes(
+        &mut self,
+        width: u32,
+        height: u32,
+        animation: bbb_render_types::SpriteAnimation,
+        frames_rgba: &[Vec<u8>],
+    ) -> Result<()> {
+        if frames_rgba.is_empty() {
+            bail!("music-notes sprite animation has no frames");
+        }
+        let frames = frames_rgba
+            .iter()
+            .map(|rgba| self.upload_hud_sprite(width, height, rgba))
+            .collect::<Result<Vec<_>>>()?;
+        if animation.frames.iter().any(|frame| {
+            usize::try_from(frame.index)
+                .ok()
+                .is_none_or(|index| index >= frames.len())
+        }) {
+            bail!("music-notes sprite animation references an absent frame");
+        }
+        self.hud_music_notes = Some(HudAnimatedSprite { frames, animation });
+        Ok(())
+    }
+
     pub fn upload_hud_advancement_toast_background(
         &mut self,
         width: u32,
@@ -6415,6 +6483,10 @@ impl Renderer {
             .collect();
     }
 
+    pub fn set_hud_now_playing_toast(&mut self, toast: Option<HudNowPlayingToast>) {
+        self.hud_now_playing_toast = toast.and_then(sanitize_hud_now_playing_toast);
+    }
+
     pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
         self.set_hud_system_toasts(
             toast
@@ -7142,6 +7214,9 @@ impl Renderer {
         commands: &mut Vec<HudDrawCommand<'a>>,
         post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
     ) {
+        if self.hide_gui {
+            return;
+        }
         let surface_size = self.gui_surface_size();
         for toast in &self.hud_toasts {
             match toast {
@@ -7205,6 +7280,25 @@ impl Renderer {
                     std::slice::from_ref(toast),
                 ),
             }
+        }
+        if let Some(toast) = self
+            .hud_now_playing_toast
+            .as_ref()
+            .filter(|toast| toast.placement == HudNowPlayingToastPlacement::SlidingToast)
+        {
+            push_hud_now_playing_toast(
+                vertices,
+                post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_now_playing_background.as_ref(),
+                self.hud_music_notes.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                toast,
+            );
         }
     }
 
@@ -8775,12 +8869,17 @@ impl Renderer {
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_draft_report_icon.as_ref(),
+                self.hud_now_playing_background.as_ref(),
+                self.hud_music_notes.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
                 self.counters.frame_index,
                 surface_size,
                 screen,
+                self.hud_now_playing_toast
+                    .as_ref()
+                    .filter(|toast| toast.placement == HudNowPlayingToastPlacement::PauseScreen),
             );
         }
 
@@ -11826,12 +11925,15 @@ fn push_hud_pause_screen<'a>(
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     draft_report_icon: Option<&'a HudSpriteGpu>,
+    now_playing_background: Option<&'a HudNineSliceSprite>,
+    music_notes: Option<&'a HudAnimatedSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudPauseScreen,
+    now_playing: Option<&HudNowPlayingToast>,
 ) {
     if hud_pause_screen_draws_background(screen) {
         push_hud_pause_background(vertices, commands, white_pixel, surface_size);
@@ -12073,21 +12175,6 @@ fn push_hud_pause_screen<'a>(
             screen.disconnect_hovered,
             screen.disconnect_enabled,
         );
-        if let (true, Some(icon)) = (screen.has_draft_report, draft_report_icon) {
-            let (x, y, width, _) = hud_pause_disconnect_button_rect(surface_size);
-            push_hud_draw(
-                vertices,
-                commands,
-                icon,
-                surface_size,
-                absolute_hud_rect(
-                    x.saturating_add(width).saturating_sub(17) as f32,
-                    y.saturating_add(3) as f32,
-                    15,
-                    15,
-                ),
-            );
-        }
     }
     if let Some(tooltip) = screen.custom_dialog_tooltip.as_ref() {
         push_hud_rich_tooltip(
@@ -12106,6 +12193,125 @@ fn push_hud_pause_screen<'a>(
             tooltip.y,
         );
     }
+    if let Some(toast) = now_playing {
+        push_hud_now_playing_toast(
+            vertices,
+            commands,
+            white_pixel,
+            now_playing_background,
+            music_notes,
+            Some(font_atlas),
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            toast,
+        );
+    }
+    if let (true, Some(icon)) = (screen.has_draft_report, draft_report_icon) {
+        let (x, y, width, _) = hud_pause_disconnect_button_rect(surface_size);
+        push_hud_draw(
+            vertices,
+            commands,
+            icon,
+            surface_size,
+            absolute_hud_rect(
+                x.saturating_add(width).saturating_sub(17) as f32,
+                y.saturating_add(3) as f32,
+                15,
+                15,
+            ),
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_now_playing_toast<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    background: Option<&'a HudNineSliceSprite>,
+    music_notes: Option<&'a HudAnimatedSprite>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    toast: &HudNowPlayingToast,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let (rect, x) = hud_now_playing_toast_layout(toast, glyphs);
+    if let Some(background) = background {
+        for segment in nine_slice_segments(rect, background.scaling) {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                &background.gpu,
+                surface_size,
+                segment.rect,
+                segment.uv,
+                HUD_TINT_WHITE,
+            );
+        }
+    } else {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            rect,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            [0.15, 0.15, 0.15, 0.95],
+        );
+    }
+    if let Some(notes) = music_notes.and_then(|notes| notes.frame_at_tick(toast.client_tick)) {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            notes,
+            surface_size,
+            absolute_hud_rect(x + 7.0, 7.0, 16, 16),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            hud_argb_to_tint(toast.note_color_argb),
+        );
+    }
+    push_hud_plain_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &toast.text,
+        (x + 30.0, 11.0),
+        hud_argb_to_tint(0xFFD3_D3D3),
+        1.0,
+        true,
+    );
+}
+
+fn hud_now_playing_toast_layout(
+    toast: &HudNowPlayingToast,
+    glyphs: &HudFontGlyphMap,
+) -> (HudRect, f32) {
+    let width = 37u32.saturating_add(hud_plain_text_width(&toast.text, glyphs));
+    let x = match toast.placement {
+        HudNowPlayingToastPlacement::SlidingToast => {
+            width as f32 * toast.visible_portion - width as f32
+        }
+        HudNowPlayingToastPlacement::PauseScreen => 0.0,
+    };
+    (absolute_hud_rect(x, 0.0, width, 30), x)
 }
 
 fn hud_pause_screen_draws_background(screen: &HudPauseScreen) -> bool {
@@ -22297,6 +22503,20 @@ fn sanitize_hud_toast(toast: HudToast, occupied: &mut [bool; HUD_TOAST_SLOTS]) -
     Some(toast)
 }
 
+fn sanitize_hud_now_playing_toast(toast: HudNowPlayingToast) -> Option<HudNowPlayingToast> {
+    if !toast.visible_portion.is_finite() {
+        return None;
+    }
+    let text = sanitize_hud_text_line(toast.text)?;
+    (!text.is_empty()).then_some(HudNowPlayingToast {
+        text,
+        visible_portion: toast.visible_portion.clamp(0.0, 1.0),
+        note_color_argb: toast.note_color_argb,
+        client_tick: toast.client_tick,
+        placement: toast.placement,
+    })
+}
+
 fn sanitize_hud_advancement_toast(toast: HudAdvancementToast) -> Option<HudAdvancementToast> {
     if !toast.visible_portion.is_finite() || usize::from(toast.slot) >= HUD_TOAST_SLOTS {
         return None;
@@ -22958,6 +23178,45 @@ mod tests {
         for (actual, expected) in actual.into_iter().zip(expected) {
             assert!((actual - expected).abs() < 1e-6);
         }
+    }
+
+    #[test]
+    fn now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width() {
+        let mut glyphs = HudFontGlyphMap::default();
+        for character in "Song".chars() {
+            glyphs.insert_first_wins(
+                character,
+                HudAsciiGlyph {
+                    advance: 6,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        let text_width = hud_plain_text_width("Song", &glyphs);
+        let toast = HudNowPlayingToast {
+            text: "Song".to_string(),
+            visible_portion: 0.5,
+            note_color_argb: 0xFF12_3456,
+            client_tick: 7,
+            placement: HudNowPlayingToastPlacement::SlidingToast,
+        };
+        let (rect, x) = hud_now_playing_toast_layout(&toast, &glyphs);
+        assert_eq!(rect.width, 37 + text_width);
+        assert_eq!(rect.height, 30);
+        assert_eq!(x, -(rect.width as f32) / 2.0);
+
+        let paused = HudNowPlayingToast {
+            placement: HudNowPlayingToastPlacement::PauseScreen,
+            ..toast
+        };
+        let (_, paused_x) = hud_now_playing_toast_layout(&paused, &glyphs);
+        assert_eq!(paused_x, 0.0);
+        assert_eq!(
+            sanitize_hud_now_playing_toast(paused)
+                .expect("valid now-playing projection")
+                .visible_portion,
+            0.5
+        );
     }
 
     fn test_hud_block_item_identity() -> crate::item_models::ItemModelAssetIdentity {

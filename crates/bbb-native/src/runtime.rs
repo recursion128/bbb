@@ -640,7 +640,7 @@ pub(crate) use events::LevelEventSoundRandomState;
 use periodic_notifications::{PeriodicNotificationRuntime, PeriodicNotificationSchedule};
 #[cfg(test)]
 use toast::ClientToast;
-use toast::ClientToastRuntime;
+use toast::{ClientToastRuntime, NowPlayingToastRuntime};
 
 const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
@@ -686,6 +686,7 @@ pub(crate) struct ClientAnimationTickState {
 pub(crate) struct HudRenderRuntime {
     periodic_notifications: PeriodicNotificationRuntime,
     client_toasts: ClientToastRuntime,
+    now_playing_toast: NowPlayingToastRuntime,
     debug_options_screen_narration: Option<ScreenNarrationFrame>,
     stats_screen_narration: Option<ScreenNarrationFrame>,
     recipe_book_narration: Option<ScreenNarrationFrame>,
@@ -3249,6 +3250,8 @@ pub(crate) fn update_renderer_from_publication(
         attack_indicator,
         screen_effect_scale,
         notification_display_time,
+        music_toast_display,
+        final_music_volume,
         entity_shadows,
         high_contrast_block_outline,
         improved_transparency,
@@ -3846,6 +3849,19 @@ pub(crate) fn update_renderer_from_publication(
         terrain_textures,
         item_model_keybind_context,
         entity_partial_tick,
+    );
+    let actual_pause_screen = hud_pause_screen
+        .as_ref()
+        .filter(|screen| !screen.feedback_subscreen && screen.draft_confirmation.is_none());
+    let hud_now_playing_toast = hud_render_runtime.now_playing_toast.update_and_project(
+        world,
+        item_runtime,
+        music_toast_display,
+        final_music_volume,
+        notification_display_time,
+        actual_pause_screen,
+        publication.client_tick_index,
+        now,
     );
     let toasts_duration = optional_profile_elapsed(toasts_started_at);
     let hud_sign_editor_screen = if exclusive_game_screen_present
@@ -4919,6 +4935,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_player_reporting_screen,
             hud_stats_screen,
             hud_toasts,
+            hud_now_playing_toast,
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,

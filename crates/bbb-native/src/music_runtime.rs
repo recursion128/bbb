@@ -12,7 +12,6 @@ const END_MUSIC_EVENT: &str = "minecraft:music.end";
 const DRAGON_MUSIC_EVENT: &str = "minecraft:music.dragon";
 const CREDITS_MUSIC_EVENT: &str = "minecraft:music.credits";
 const STARTING_DELAY_TICKS: i32 = 100;
-const DEFAULT_MAX_FREQUENCY_TICKS: i32 = 20 * 1_200;
 const MIN_GAIN_STEP: f32 = 0.0005;
 const MAX_GAIN_STEP: f32 = 0.005;
 const STOP_GAIN_THRESHOLD: f32 = 0.0001;
@@ -22,11 +21,14 @@ const STOP_GAIN_THRESHOLD: f32 = 0.0001;
 pub(crate) struct MusicRuntime {
     connection_generation: Option<u64>,
     current_music: Option<String>,
+    current_sound_name: Option<String>,
     current_gain: f32,
     next_song_delay: i32,
+    max_frequency_ticks: i32,
+    final_music_volume: f32,
     random: LevelEventSoundRandomState,
     pending_start: Option<AudioCommandObservation>,
-    pending_stop: Option<AudioCommandObservation>,
+    pending_stop: Option<PendingMusicStop>,
     active_win_generation: Option<u64>,
 }
 
@@ -35,6 +37,12 @@ struct AudioCommandObservation {
     commands_submitted: u64,
     resolve_failures: u64,
     submit_failures: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingMusicStop {
+    observation: AudioCommandObservation,
+    event_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,8 +58,11 @@ impl Default for MusicRuntime {
         Self {
             connection_generation: None,
             current_music: None,
+            current_sound_name: None,
             current_gain: 1.0,
             next_song_delay: STARTING_DELAY_TICKS,
+            max_frequency_ticks: crate::startup::MusicFrequencyArg::Default.max_frequency_ticks(),
+            final_music_volume: 1.0,
             random: LevelEventSoundRandomState::default(),
             pending_start: None,
             pending_stop: None,
@@ -61,6 +72,17 @@ impl Default for MusicRuntime {
 }
 
 impl MusicRuntime {
+    pub(crate) fn configured(
+        frequency: crate::startup::MusicFrequencyArg,
+        final_music_volume: f32,
+    ) -> Self {
+        Self {
+            max_frequency_ticks: frequency.max_frequency_ticks(),
+            final_music_volume: final_music_volume.clamp(0.0, 1.0),
+            ..Self::default()
+        }
+    }
+
     pub(crate) fn advance_for_ticks(
         &mut self,
         world: &mut WorldStore,
@@ -71,14 +93,16 @@ impl MusicRuntime {
         if self.connection_generation != Some(connection_generation) {
             let previous_win_generation = self.active_win_generation.take();
             self.connection_generation = Some(connection_generation);
-            self.current_music = audio.counters().active_music_event_id;
+            let counters = audio.counters();
+            self.current_music = counters.active_music_event_id;
+            self.current_sound_name = counters.active_music_sound_name;
             self.pending_start = None;
             self.pending_stop = None;
             if previous_win_generation.is_some()
                 && self.current_music.as_deref() == Some(CREDITS_MUSIC_EVENT)
             {
                 let observation = AudioCommandObservation::from(&audio.counters());
-                self.stop_current(observation, audio);
+                self.stop_current(world, observation, audio, true);
             }
             if self.current_music.is_none() {
                 self.next_song_delay = self.next_song_delay.max(STARTING_DELAY_TICKS);
@@ -90,7 +114,7 @@ impl MusicRuntime {
         }
     }
 
-    fn synchronize_win_screen(&mut self, world: &WorldStore, audio: &mut dyn AudioEventSink) {
+    fn synchronize_win_screen(&mut self, world: &mut WorldStore, audio: &mut dyn AudioEventSink) {
         let generation = match world.game_event_screen() {
             Some(ClientGameEventScreenState::Win { generation }) => Some(generation),
             Some(ClientGameEventScreenState::DemoHelp { .. }) | None => None,
@@ -102,7 +126,7 @@ impl MusicRuntime {
             && self.current_music.as_deref() == Some(CREDITS_MUSIC_EVENT)
         {
             let observation = AudioCommandObservation::from(&audio.counters());
-            self.stop_current(observation, audio);
+            self.stop_current(world, observation, audio, true);
         }
         self.active_win_generation = generation;
         if generation.is_some() {
@@ -114,11 +138,13 @@ impl MusicRuntime {
         let counters = audio.counters();
         let observation = AudioCommandObservation::from(&counters);
         let active_music = counters.active_music_event_id.as_deref();
-        let backend_ended = self.observe_backend(active_music, observation);
+        let active_sound_name = counters.active_music_sound_name.as_deref();
+        let backend_ended =
+            self.observe_backend(world, active_music, active_sound_name, observation);
 
         let target_gain = music_volume(world);
         if self.current_music.is_some() && self.current_gain != target_gain {
-            if !self.fade_playing(target_gain, observation, audio) {
+            if !self.fade_playing(world, target_gain, observation, audio) {
                 return;
             }
         }
@@ -130,22 +156,26 @@ impl MusicRuntime {
         };
 
         if backend_ended {
-            self.next_song_delay = self
-                .next_song_delay
-                .min(next_song_delay(&selected, &mut self.random));
+            self.next_song_delay = self.next_song_delay.min(next_song_delay(
+                &selected,
+                self.max_frequency_ticks,
+                &mut self.random,
+            ));
         }
 
         if let Some(current_music) = self.current_music.as_deref() {
             if can_replace(&selected, current_music) {
-                self.stop_current(observation, audio);
+                self.stop_current(world, observation, audio, false);
                 self.next_song_delay =
                     next_int_inclusive(&mut self.random, 0, selected.min_delay / 2);
             }
         }
 
-        self.next_song_delay = self
-            .next_song_delay
-            .min(next_song_delay(&selected, &mut self.random));
+        self.next_song_delay = self.next_song_delay.min(next_song_delay(
+            &selected,
+            self.max_frequency_ticks,
+            &mut self.random,
+        ));
         if self.current_music.is_none() {
             let should_start = self.next_song_delay <= 0;
             self.next_song_delay = self.next_song_delay.saturating_sub(1);
@@ -157,38 +187,57 @@ impl MusicRuntime {
 
     fn observe_backend(
         &mut self,
+        world: &mut WorldStore,
         active_music: Option<&str>,
+        active_sound_name: Option<&str>,
         observation: AudioCommandObservation,
     ) -> bool {
-        let stop_is_pending = self.pending_stop == Some(observation);
-        if self.pending_stop.is_some() && !stop_is_pending {
-            self.pending_stop = None;
-        }
-
         if let Some(pending) = self.pending_start {
             if pending == observation {
                 return false;
             }
             self.pending_start = None;
             if active_music == self.current_music.as_deref() {
+                self.pending_stop = None;
+                self.current_sound_name = active_sound_name.map(str::to_string);
+                if let Some(sound_name) = self.current_sound_name.clone() {
+                    if self.final_music_volume > 0.0 {
+                        world.show_now_playing_music(sound_name);
+                    } else {
+                        world.clear_now_playing_music();
+                    }
+                }
                 return false;
             }
             self.current_music = None;
+            self.current_sound_name = None;
+            world.clear_now_playing_music();
             return true;
         }
 
-        if stop_is_pending {
-            return false;
+        if let Some(pending) = self.pending_stop.as_ref() {
+            let command_is_unobserved = pending.observation == observation;
+            let stopped_instance_is_retained = pending
+                .event_id
+                .as_deref()
+                .is_some_and(|event_id| active_music == Some(event_id));
+            if command_is_unobserved || stopped_instance_is_retained {
+                return false;
+            }
+            self.pending_stop = None;
         }
 
         match (self.current_music.as_deref(), active_music) {
             (Some(current), Some(active)) if current == active => false,
             (Some(_), None) => {
                 self.current_music = None;
+                self.current_sound_name = None;
+                world.clear_now_playing_music();
                 true
             }
             (_, Some(active)) => {
                 self.current_music = Some(active.to_string());
+                self.current_sound_name = active_sound_name.map(str::to_string);
                 false
             }
             (None, None) => false,
@@ -197,6 +246,7 @@ impl MusicRuntime {
 
     fn fade_playing(
         &mut self,
+        world: &mut WorldStore,
         target_gain: f32,
         observation: AudioCommandObservation,
         audio: &mut dyn AudioEventSink,
@@ -214,7 +264,7 @@ impl MusicRuntime {
         }
         self.current_gain = self.current_gain.clamp(0.0, 1.0);
         if self.current_gain <= STOP_GAIN_THRESHOLD {
-            self.stop_current(observation, audio);
+            self.stop_current(world, observation, audio, true);
             self.next_song_delay = self.next_song_delay.saturating_add(STARTING_DELAY_TICKS);
             false
         } else {
@@ -225,13 +275,25 @@ impl MusicRuntime {
 
     fn stop_current(
         &mut self,
+        world: &mut WorldStore,
         observation: AudioCommandObservation,
         audio: &mut dyn AudioEventSink,
+        hide_toast: bool,
     ) {
+        let stopped_event_id = self.current_music.clone();
         audio.stop_music();
         self.current_music = None;
+        self.current_sound_name = None;
         self.pending_start = None;
-        self.pending_stop = Some(observation);
+        self.pending_stop = Some(PendingMusicStop {
+            observation,
+            event_id: stopped_event_id,
+        });
+        if hide_toast {
+            world.hide_now_playing_music();
+        } else {
+            world.clear_now_playing_music();
+        }
     }
 
     fn start_playing(
@@ -392,11 +454,18 @@ fn selected_music(music: &ClientMusic) -> SelectedMusic {
     }
 }
 
-fn next_song_delay(selected: &SelectedMusic, random: &mut LevelEventSoundRandomState) -> i32 {
+fn next_song_delay(
+    selected: &SelectedMusic,
+    max_frequency_ticks: i32,
+    random: &mut LevelEventSoundRandomState,
+) -> i32 {
+    if max_frequency_ticks == 0 {
+        return STARTING_DELAY_TICKS;
+    }
     next_int_inclusive(
         random,
-        selected.min_delay.min(DEFAULT_MAX_FREQUENCY_TICKS),
-        selected.max_delay.min(DEFAULT_MAX_FREQUENCY_TICKS),
+        selected.min_delay.min(max_frequency_ticks),
+        selected.max_delay.min(max_frequency_ticks),
     )
 }
 
@@ -602,6 +671,70 @@ mod tests {
     }
 
     #[test]
+    fn confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide() {
+        let mut world = world_in_dimension("minecraft:overworld", 0);
+        let mut runtime = MusicRuntime::configured(crate::startup::MusicFrequencyArg::Default, 1.0);
+        let mut audio = RecordingAudio::default();
+        world.apply_game_event(GameEvent {
+            event_id: 4,
+            param: 0.0,
+        });
+
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        assert_eq!(world.now_playing_toast().mutation_sequence, 0);
+
+        audio.counters.active_music_event_id = Some(CREDITS_MUSIC_EVENT.to_string());
+        audio.counters.active_music_sound_name =
+            Some("minecraft:music/game/end/credits1".to_string());
+        audio.counters.commands_submitted = 1;
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        assert_eq!(
+            world.now_playing_toast().sound_name.as_deref(),
+            Some("minecraft:music/game/end/credits1")
+        );
+        assert!(world.now_playing_toast().wanted_visible);
+        assert_eq!(world.now_playing_toast().mutation_sequence, 1);
+
+        world.clear_client_level();
+        runtime.advance_for_ticks(&mut world, 1, 0, &mut audio);
+        assert_eq!(world.now_playing_toast().sound_name, None);
+        assert!(!world.now_playing_toast().wanted_visible);
+        assert_eq!(world.now_playing_toast().mutation_sequence, 2);
+
+        audio.counters.commands_submitted = 2;
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        assert_eq!(runtime.current_music, None);
+        assert_eq!(runtime.current_sound_name, None);
+        assert_eq!(world.now_playing_toast().mutation_sequence, 2);
+
+        audio.counters.active_music_event_id = None;
+        audio.counters.active_music_sound_name = None;
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        assert_eq!(runtime.pending_stop, None);
+    }
+
+    #[test]
+    fn silently_started_music_retains_identity_without_showing_now_playing() {
+        let mut world = world_in_dimension(END_DIMENSION, 2);
+        add_music_boss_bar(&mut world);
+        let mut runtime = MusicRuntime::configured(crate::startup::MusicFrequencyArg::Default, 0.0);
+        let mut audio = RecordingAudio::default();
+
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+        audio.counters.active_music_event_id = Some(DRAGON_MUSIC_EVENT.to_string());
+        audio.counters.active_music_sound_name = Some("minecraft:music/game/end/boss1".to_string());
+        audio.counters.commands_submitted = 1;
+        runtime.advance_for_ticks(&mut world, 1, 1, &mut audio);
+
+        assert_eq!(
+            runtime.current_sound_name.as_deref(),
+            Some("minecraft:music/game/end/boss1")
+        );
+        assert_eq!(world.now_playing_toast().sound_name, None);
+        assert_eq!(world.now_playing_toast().mutation_sequence, 0);
+    }
+
+    #[test]
     fn clearing_boss_flag_uses_selected_background_replacement_policy() {
         let mut world = world_in_dimension(END_DIMENSION, 2);
         add_music_boss_bar(&mut world);
@@ -741,9 +874,10 @@ mod tests {
             ..MusicRuntime::default()
         };
         let mut audio = RecordingAudio::default();
+        let mut world = WorldStore::new();
         let observation = AudioCommandObservation::from(&audio.counters);
 
-        assert!(runtime.fade_playing(0.0, observation, &mut audio));
+        assert!(runtime.fade_playing(&mut world, 0.0, observation, &mut audio));
         assert!((runtime.current_gain - 0.97).abs() < 0.0001);
         assert_eq!(
             audio.effects.last(),
@@ -751,11 +885,11 @@ mod tests {
         );
 
         runtime.current_gain = 0.001;
-        assert!(runtime.fade_playing(1.0, observation, &mut audio));
+        assert!(runtime.fade_playing(&mut world, 1.0, observation, &mut audio));
         assert!((runtime.current_gain - 0.002).abs() < 0.0001);
 
         runtime.current_gain = 0.0001;
-        assert!(!runtime.fade_playing(0.0, observation, &mut audio));
+        assert!(!runtime.fade_playing(&mut world, 0.0, observation, &mut audio));
         assert_eq!(runtime.current_music, None);
         assert_eq!(audio.effects.last(), Some(&RecordedAudioEffect::StopMusic));
     }
@@ -769,7 +903,11 @@ mod tests {
             max_delay: 20,
             replace_current_music: false,
         };
-        let delay = next_song_delay(&bounded, &mut random);
+        let delay = next_song_delay(
+            &bounded,
+            crate::startup::MusicFrequencyArg::Default.max_frequency_ticks(),
+            &mut random,
+        );
         assert!((10..=20).contains(&delay));
 
         let clamped = SelectedMusic {
@@ -779,10 +917,30 @@ mod tests {
             replace_current_music: false,
         };
         assert_eq!(
-            next_song_delay(&clamped, &mut random),
-            DEFAULT_MAX_FREQUENCY_TICKS
+            next_song_delay(
+                &clamped,
+                crate::startup::MusicFrequencyArg::Default.max_frequency_ticks(),
+                &mut random,
+            ),
+            crate::startup::MusicFrequencyArg::Default.max_frequency_ticks()
         );
         assert_eq!(next_int_inclusive(&mut random, 9, 3), 9);
+        assert_eq!(
+            next_song_delay(
+                &clamped,
+                crate::startup::MusicFrequencyArg::Frequent.max_frequency_ticks(),
+                &mut random,
+            ),
+            12_000
+        );
+        assert_eq!(
+            next_song_delay(
+                &bounded,
+                crate::startup::MusicFrequencyArg::Constant.max_frequency_ticks(),
+                &mut random,
+            ),
+            STARTING_DELAY_TICKS
+        );
     }
 
     #[test]

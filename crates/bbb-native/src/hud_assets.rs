@@ -399,6 +399,24 @@ pub(crate) fn try_load_hud_textures(
         &system_toast.rgba,
         system_toast_scaling,
     )?;
+    let now_playing = hud_sprite(&sprites, "toast/now_playing")?;
+    renderer.upload_hud_now_playing_background(
+        now_playing.width,
+        now_playing.height,
+        &now_playing.rgba,
+        hud_nine_slice_scaling(now_playing)?,
+    )?;
+    let music_notes = hud_sprite(&sprites, "icon/music_notes")?;
+    let music_notes_animation = music_notes
+        .animation
+        .clone()
+        .context("music-notes HUD sprite is missing Vanilla animation metadata")?;
+    renderer.upload_hud_music_notes(
+        music_notes.width,
+        music_notes.height,
+        music_notes_animation,
+        &music_notes.animation_frames_rgba,
+    )?;
     let advancement_toast = hud_sprite(&sprites, "toast/advancement")?;
     renderer.upload_hud_advancement_toast_background(
         advancement_toast.width,

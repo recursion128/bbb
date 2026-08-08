@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "97213d30ec16dc67245c9d07d10f3ed05792d2b8e656a5183edf9cc333f23e8d"
+      "sha256": "4618f27bb99f9b43854c25af256b7a6dbd63d7c59536dd9ec4ebfd819e1c2978"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -36,8 +36,8 @@
         "crates/bbb-audio/src/runtime.rs",
         "crates/bbb-native/src/audio_runtime.rs"
       ],
-      "owner_count": 144,
-      "owner_evidence_count": 144
+      "owner_count": 159,
+      "owner_evidence_count": 159
     },
     "diagnostics-client-level-report": {
       "bbb_evidence": [
@@ -70,7 +70,7 @@
       ],
       "owner_count": 118,
       "owner_evidence_count": 118,
-      "owner_gap_count": 32
+      "owner_gap_count": 7
     },
     "hud-hotbar-selection": {
       "bbb_evidence": [
@@ -272,8 +272,8 @@
         "crates/bbb-renderer/src/renderer.rs",
         "crates/bbb-pack/src/selected_packs.rs"
       ],
-      "owner_count": 8,
-      "owner_evidence_count": 8
+      "owner_count": 14,
+      "owner_evidence_count": 14
     },
     "persistence-options-derived": {
       "bbb_evidence": [
@@ -14702,6 +14702,176 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+          "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection"
+        ]
+      },
+      "category": "persistence",
+      "domain": "persistence",
+      "kind": "constructor",
+      "mechanism_id": "persistence-options-apply",
+      "owner_id": "method:net.minecraft.client.MusicToastDisplayState#MusicToastDisplayState(final String name,final String translationKey)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 17,
+        "path": "net/minecraft/client/MusicToastDisplayState.java"
+      },
+      "vanilla_owner": "net.minecraft.client.MusicToastDisplayState#MusicToastDisplayState(final String name,final String translationKey)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+          "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection"
+        ]
+      },
+      "category": "persistence",
+      "domain": "persistence",
+      "kind": "method",
+      "mechanism_id": "persistence-options-apply",
+      "owner_id": "method:net.minecraft.client.MusicToastDisplayState#getSerializedName()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 31,
+        "path": "net/minecraft/client/MusicToastDisplayState.java"
+      },
+      "vanilla_owner": "net.minecraft.client.MusicToastDisplayState#getSerializedName()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+          "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection"
+        ]
+      },
+      "category": "persistence",
+      "domain": "persistence",
+      "kind": "method",
+      "mechanism_id": "persistence-options-apply",
+      "owner_id": "method:net.minecraft.client.MusicToastDisplayState#renderInPauseScreen()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 36,
+        "path": "net/minecraft/client/MusicToastDisplayState.java"
+      },
+      "vanilla_owner": "net.minecraft.client.MusicToastDisplayState#renderInPauseScreen()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+          "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection"
+        ]
+      },
+      "category": "persistence",
+      "domain": "persistence",
+      "kind": "method",
+      "mechanism_id": "persistence-options-apply",
+      "owner_id": "method:net.minecraft.client.MusicToastDisplayState#renderToast()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 40,
+        "path": "net/minecraft/client/MusicToastDisplayState.java"
+      },
+      "vanilla_owner": "net.minecraft.client.MusicToastDisplayState#renderToast()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+          "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "These callbacks and captions are reached only through the in-game sound/options widgets. BBB intentionally exposes configuration at startup and consumes music frequency, toast mode, and final music volume before constructing their runtime owners.",
+          "reopen_condition": "BBB gains an in-game options UI or another runtime music-option mutator.",
+          "vanilla_basis": [
+            "net/minecraft/client/Options.java:909-924,1248-1260",
+            "net/minecraft/client/sounds/MusicManager.java:83-88,152-155,187-189",
+            "net/minecraft/client/MusicToastDisplayState.java:23-29"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection"
+        ]
+      },
+      "category": "persistence",
+      "domain": "persistence",
+      "kind": "method",
+      "mechanism_id": "persistence-options-apply",
+      "owner_id": "method:net.minecraft.client.MusicToastDisplayState#text()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 23,
+        "path": "net/minecraft/client/MusicToastDisplayState.java"
+      },
+      "vanilla_owner": "net.minecraft.client.MusicToastDisplayState#text()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+          "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "These callbacks and captions are reached only through the in-game sound/options widgets. BBB intentionally exposes configuration at startup and consumes music frequency, toast mode, and final music volume before constructing their runtime owners.",
+          "reopen_condition": "BBB gains an in-game options UI or another runtime music-option mutator.",
+          "vanilla_basis": [
+            "net/minecraft/client/Options.java:909-924,1248-1260",
+            "net/minecraft/client/sounds/MusicManager.java:83-88,152-155,187-189",
+            "net/minecraft/client/MusicToastDisplayState.java:23-29"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection"
+        ]
+      },
+      "category": "persistence",
+      "domain": "persistence",
+      "kind": "method",
+      "mechanism_id": "persistence-options-apply",
+      "owner_id": "method:net.minecraft.client.MusicToastDisplayState#tooltip()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 27,
+        "path": "net/minecraft/client/MusicToastDisplayState.java"
+      },
+      "vanilla_owner": "net.minecraft.client.MusicToastDisplayState#tooltip()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
           "scripts/client_options_catalog_extractor.py#client_option_entries",
           "scripts/generate-client-options-catalog.py#render_rust_catalog",
@@ -19164,11 +19334,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19185,11 +19366,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19206,11 +19398,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19227,11 +19430,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19248,11 +19462,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19269,11 +19494,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19290,11 +19526,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19311,11 +19558,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19332,11 +19590,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19353,11 +19622,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19374,11 +19654,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19395,11 +19686,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19416,11 +19718,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19437,11 +19750,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19458,11 +19782,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -19479,11 +19814,22 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20645,11 +20991,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20724,11 +21090,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20890,11 +21276,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20911,11 +21317,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20932,11 +21358,32 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "The runtime state setter is invoked by the in-game options callback; BBB intentionally has no in-game options UI and consumes the same value once at command-line startup.",
+          "reopen_condition": "BBB gains an in-game options surface or another runtime musicToast mutator.",
+          "vanilla_basis": [
+            "net/minecraft/client/gui/components/toasts/ToastManager.java:174-187",
+            "net/minecraft/client/Options.java:909-924"
+          ]
+        },
+        "tests": [
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20953,11 +21400,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -20974,11 +21441,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -21053,11 +21540,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -21161,11 +21668,31 @@
     },
     {
       "bbb_evidence": {
-        "open_gap": {
-          "close_condition": "Consume the startup musicToast value and implement the separate NowPlayingToast music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable.",
-          "ledger": "docs/unsupported-features.md#Machine-readable parity acceptance closure",
-          "reason": "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does not yet consume that option or project ToastManager's separate NowPlayingToast instance."
-        }
+        "implementation": [
+          "crates/bbb-world/src/toasts.rs#pub enum ClientToastEventKind",
+          "crates/bbb-native/src/runtime/toast.rs#impl ClientToastRuntime",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+          "crates/bbb-renderer/src/hud.rs#pub enum HudToast",
+          "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+          "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+          "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast"
+        ],
+        "tests": [
+          "crates/bbb-world/src/toasts.rs#all_toast_families_share_one_call_site_order",
+          "crates/bbb-native/src/runtime/tests.rs#shared_toast_projection_preserves_mixed_family_insertion_order",
+          "crates/bbb-native/src/runtime/tests.rs#mixed_system_toasts_share_fifo_and_multiline_contiguous_slots",
+          "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing",
+          "crates/bbb-renderer/src/hud.rs#unified_toast_sanitizer_preserves_mixed_order_and_rejects_overlap",
+          "crates/bbb-pack/tests/vanilla_gui_music_assets.rs#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+          "crates/bbb-audio/src/runtime.rs#stopped_instance_shell_remains_projected_until_twentieth_tick",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+          "crates/bbb-native/src/runtime/toast.rs#now_playing_translation_and_music_note_palette_match_vanilla",
+          "crates/bbb-renderer/src/hud.rs#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width"
+        ]
       },
       "category": "render-step",
       "domain": "ui",
@@ -39334,6 +39861,474 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#MusicManager(final Minecraft minecraft)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 27,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#MusicManager(final Minecraft minecraft)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#canReplace(final Music music,final SoundInstance currentMusic)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 64,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#canReplace(final Music music,final SoundInstance currentMusic)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#fadePlaying(final float volume)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 106,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#fadePlaying(final float volume)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#getCurrentMusicTranslationKey()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 141,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#getCurrentMusicTranslationKey()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#isPlayingMusic(final Music music)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 137,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#isPlayingMusic(final Music music)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "These callbacks and captions are reached only through the in-game sound/options widgets. BBB intentionally exposes configuration at startup and consumes music frequency, toast mode, and final music volume before constructing their runtime owners.",
+          "reopen_condition": "BBB gains an in-game options UI or another runtime music-option mutator.",
+          "vanilla_basis": [
+            "net/minecraft/client/Options.java:909-924,1248-1260",
+            "net/minecraft/client/sounds/MusicManager.java:83-88,152-155,187-189",
+            "net/minecraft/client/MusicToastDisplayState.java:23-29"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#setMinutesBetweenSongs(final MusicManager.MusicFrequency musicFrequency)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 152,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#setMinutesBetweenSongs(final MusicManager.MusicFrequency musicFrequency)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "These callbacks and captions are reached only through the in-game sound/options widgets. BBB intentionally exposes configuration at startup and consumes music frequency, toast mode, and final music volume before constructing their runtime owners.",
+          "reopen_condition": "BBB gains an in-game options UI or another runtime music-option mutator.",
+          "vanilla_basis": [
+            "net/minecraft/client/Options.java:909-924,1248-1260",
+            "net/minecraft/client/sounds/MusicManager.java:83-88,152-155,187-189",
+            "net/minecraft/client/MusicToastDisplayState.java:23-29"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#showNowPlayingToastIfNeeded()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 83,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#showNowPlayingToastIfNeeded()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#startPlaying(final Music music)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 68,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#startPlaying(final Music music)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#stopPlaying()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 96,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#stopPlaying()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#stopPlaying(final Music music)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 90,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#stopPlaying(final Music music)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager#tick()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 32,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager#tick()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "constructor",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#MusicFrequency(final String name,final String translationKey,final int maxFrequencyMinutes)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 167,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager.MusicFrequency#MusicFrequency(final String name,final String translationKey,final int maxFrequencyMinutes)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "scope_ruling": {
+          "conclusion": "not-reachable-in-current-scope",
+          "current_scope_reason": "These callbacks and captions are reached only through the in-game sound/options widgets. BBB intentionally exposes configuration at startup and consumes music frequency, toast mode, and final music volume before constructing their runtime owners.",
+          "reopen_condition": "BBB gains an in-game options UI or another runtime music-option mutator.",
+          "vanilla_basis": [
+            "net/minecraft/client/Options.java:909-924,1248-1260",
+            "net/minecraft/client/sounds/MusicManager.java:83-88,152-155,187-189",
+            "net/minecraft/client/MusicToastDisplayState.java:23-29"
+          ]
+        },
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing",
+          "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#caption()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 187,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager.MusicFrequency#caption()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#getNextSongDelay(final @Nullable Music music,final RandomSource random)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 173,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager.MusicFrequency#getNextSongDelay(final @Nullable Music music,final RandomSource random)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+          "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+          "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+          "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music"
+        ],
+        "tests": [
+          "crates/bbb-native/src/music_runtime.rs#background_selection_prefers_underwater_then_creative_then_default",
+          "crates/bbb-native/src/music_runtime.rs#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+          "crates/bbb-native/src/music_runtime.rs#default_frequency_clamps_ranges_and_mth_inclusive_order",
+          "crates/bbb-native/src/music_runtime.rs#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+          "crates/bbb-native/src/music_runtime.rs#silently_started_music_retains_identity_without_showing_now_playing"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "audio",
+      "kind": "method",
+      "mechanism_id": "audio-sound-manager-engine",
+      "owner_id": "method:net.minecraft.client.sounds.MusicManager.MusicFrequency#getSerializedName()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 191,
+        "path": "net/minecraft/client/sounds/MusicManager.java"
+      },
+      "vanilla_owner": "net.minecraft.client.sounds.MusicManager.MusicFrequency#getSerializedName()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-pack/src/sounds.rs#pub fn preload_files",
           "crates/bbb-audio/src/preload.rs#pub(crate) fn submit",
           "crates/bbb-native/src/audio_runtime.rs#fn audio_preload_requests"
@@ -54457,6 +55452,10 @@
       "sha256": "abd50aa0ac3bb6d01ab6e25ed3f72483862d1c928d0587f33b3e1b75162fc696"
     },
     {
+      "path": "net/minecraft/client/MusicToastDisplayState.java",
+      "sha256": "4fe43d5b3d0ccd48c780e7ed1fd3f9ad8f7595591ac07c994587ed3fbf4c8e75"
+    },
+    {
       "path": "net/minecraft/client/Options.java",
       "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
     },
@@ -55837,6 +56836,10 @@
       "sha256": "66e976a748084cdc3c0d80b037139447b1841a7748775ad270f708ca68bd2b88"
     },
     {
+      "path": "net/minecraft/client/sounds/MusicManager.java",
+      "sha256": "c50a72f02ee926c10d9020130319f01912f9dbd0cd1c70a67cb1d9241def075b"
+    },
+    {
       "path": "net/minecraft/client/sounds/SoundBufferLibrary.java",
       "sha256": "eaf1420a122084168266b01d675c03e80b68bd78a5f3d13648c1578c2295a193"
     },
@@ -56013,7 +57016,7 @@
       "packet-table": 256,
       "particle-provider": 117,
       "particle-routing": 6,
-      "persistence": 46,
+      "persistence": 52,
       "pick-action": 3,
       "platform": 50,
       "player-lifecycle": 4,
@@ -56029,7 +57032,7 @@
       "render-scene": 15,
       "render-section": 29,
       "render-step": 238,
-      "resource-consumer": 105,
+      "resource-consumer": 120,
       "resources": 124,
       "respawn-data": 9,
       "screen-open": 9,
@@ -56047,7 +57050,7 @@
     },
     "by_domain": {
       "accessibility": 21,
-      "audio": 158,
+      "audio": 173,
       "diagnostics": 42,
       "effects": 18,
       "entities": 402,
@@ -56058,7 +57061,7 @@
       "lifecycle": 24,
       "movement": 39,
       "options": 27,
-      "persistence": 46,
+      "persistence": 52,
       "platform": 50,
       "protocol": 747,
       "realms": 100,
@@ -56075,12 +57078,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1508,
+      "decision": 1529,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3155,
-    "owner_count": 3155,
+    "mapped_owner_count": 3176,
+    "owner_count": 3176,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

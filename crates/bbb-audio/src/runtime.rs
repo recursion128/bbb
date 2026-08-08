@@ -122,6 +122,7 @@ struct KiraDelayedPositionedSound {
 
 struct KiraPlayingSound {
     event_id: String,
+    sound_name: String,
     category: AudioCategory,
     entity_id: Option<i32>,
     jukebox_pos: Option<[i32; 3]>,
@@ -586,11 +587,22 @@ impl KiraAudioRuntime {
     /// the Vanilla-compatible lifetime owner. A stopped backend handle remains
     /// active to simulation until its minimum delete tick is processed.
     pub fn active_music_event_id(&self) -> Option<&str> {
-        latest_retained_music_event_id(
-            self.playing
-                .iter()
-                .map(|sound| (sound.event_id.as_str(), &sound.category)),
-        )
+        self.latest_retained_music()
+            .map(|sound| sound.event_id.as_str())
+    }
+
+    /// Returns the actual resolved file identity from the same retained music
+    /// instance as `active_music_event_id`.
+    pub fn active_music_sound_name(&self) -> Option<&str> {
+        self.latest_retained_music()
+            .map(|sound| sound.sound_name.as_str())
+    }
+
+    fn latest_retained_music(&self) -> Option<&KiraPlayingSound> {
+        self.playing
+            .iter()
+            .rev()
+            .find(|sound| sound.category == AudioCategory::Music)
     }
 
     pub fn drain_playback_events(&mut self) -> impl Iterator<Item = AudioPlaybackEvent> + '_ {
@@ -792,6 +804,7 @@ impl KiraAudioRuntime {
         };
         self.playing.push(KiraPlayingSound {
             event_id: sound.event_id.clone(),
+            sound_name: sound.sound_name.clone(),
             category,
             entity_id: None,
             jukebox_pos: None,
@@ -975,6 +988,7 @@ impl KiraAudioRuntime {
         };
         self.playing.push(KiraPlayingSound {
             event_id: sound.event_id.clone(),
+            sound_name: sound.sound_name.clone(),
             category,
             entity_id,
             jukebox_pos,
@@ -1377,6 +1391,7 @@ fn stop_command_is_stop_all(command: &StopSoundCommand) -> bool {
     command.category.is_none() && command.name.is_none()
 }
 
+#[cfg(test)]
 fn latest_retained_music_event_id<'a>(
     sounds: impl DoubleEndedIterator<Item = (&'a str, &'a AudioCategory)>,
 ) -> Option<&'a str> {
@@ -1869,6 +1884,7 @@ mod tests {
         runtime.manager.as_mut().unwrap().backend_mut().process();
         runtime.playing.push(KiraPlayingSound {
             event_id: "minecraft:music.test".to_owned(),
+            sound_name: "minecraft:music/game/test1".to_owned(),
             category: AudioCategory::Music,
             entity_id: None,
             jukebox_pos: None,
@@ -1904,10 +1920,15 @@ mod tests {
                 runtime.active_music_event_id(),
                 Some("minecraft:music.test")
             );
+            assert_eq!(
+                runtime.active_music_sound_name(),
+                Some("minecraft:music/game/test1")
+            );
         }
         runtime.tick_entity_sound_positions(&empty_tick).unwrap();
         assert_eq!(runtime.tick_count, MINIMUM_SOURCE_LIFETIME_TICKS);
         assert_eq!(runtime.active_music_event_id(), None);
+        assert_eq!(runtime.active_music_sound_name(), None);
         assert!(runtime.playing.is_empty());
 
         let stop_all_handle = runtime.manager.as_mut().unwrap().play(data).unwrap();
@@ -1920,6 +1941,7 @@ mod tests {
         runtime.manager.as_mut().unwrap().backend_mut().process();
         runtime.playing.push(KiraPlayingSound {
             event_id: "minecraft:music.stop_all".to_owned(),
+            sound_name: "minecraft:music/game/stop_all1".to_owned(),
             category: AudioCategory::Music,
             entity_id: None,
             jukebox_pos: None,

@@ -89,16 +89,18 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   identity/order if `packIdSerialNumber`, repository
   sorting, required-top insertion, `ToastManager.update`, toast height/slot,
   notifier callback or diagnostics ownership changes.
-- The generated HUD/toast census now covers all 107 methods in `Toast`,
+- The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in
   addition to the existing 11 `hud-frame-extract-order` owners. All 118 have
-  machine-routed evidence; 32 owners remain honestly open across four root
-  gaps: startup-consumed non-`NEVER` `musicToast` plus the separate
-  `NowPlayingToast` lifecycle, the 8000 ms social-interactions tutorial toast,
-  failed OS file-drop counts unavailable from the current winit event surface,
-  and `SystemToast` title `Component` re-resolution after language reload while
-  construction-time width/message lines stay frozen. Close those mechanisms or
+  machine-routed evidence; the startup-consumed non-`NEVER` `musicToast` and
+  separate `NowPlayingToast` lifecycle are closed with actual resolved sound
+  identity, STARTED/STARTED_SILENTLY, timing, pause/static, palette, animated
+  sprite and draw-order tests. Seven owners remain honestly open across three
+  root gaps: the 8000 ms social-interactions tutorial toast, failed OS file-drop
+  counts unavailable from the current winit event surface, and `SystemToast`
+  title `Component` re-resolution after language reload while construction-time
+  width/message lines stay frozen. Close those mechanisms or
   retain a reproducible external-platform blocker; do not restore the former
   default-only or string-freeze equivalence claims.
 - Advancing the evidence commit beyond `bfcc657cf` also expires nine
@@ -149,9 +151,9 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 - Produce the formal Vanilla↔BBB default/ALSA host-device differential receipt
   for `audio-sound-manager-engine`, exercising both HRTF requests, device-derived
   pool capacity, static/streaming source state, buffer lifecycle, listener state,
-  device reload and stopped-channel release. The 144-owner generated census has
-  implementation/focused-test evidence; its nine unreachable integrated-pause/
-  manual-loop owners retain caller basis and reopen conditions. `--driver null`
+  device reload and stopped-channel release. The 159-owner generated census has
+  implementation/focused-test evidence; its twelve unreachable integrated-pause/
+  manual-loop/runtime-options owners retain caller basis and reopen conditions. `--driver null`
   remains diagnostic only. The 2026-08-07 default-driver recapture is invalid:
   both HRTF branches fail in Vanilla `Library.openDeviceOrFallback`; UID 1000 is
   not in device group 29 and every `/dev/snd` character node is `crw-rw----`

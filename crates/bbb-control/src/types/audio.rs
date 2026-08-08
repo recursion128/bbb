@@ -9,6 +9,11 @@ pub struct AudioCounters {
     /// instances remain visible through Vanilla's minimum delete lifetime.
     #[serde(default)]
     pub active_music_event_id: Option<String>,
+    /// Actual selected music file identity (`Sound.getLocation()` in
+    /// Vanilla), paired with `active_music_event_id` from the same retained
+    /// playback instance.
+    #[serde(default)]
+    pub active_music_sound_name: Option<String>,
     #[serde(default)]
     pub catalog_events: usize,
     #[serde(default)]
@@ -154,6 +159,7 @@ mod tests {
         assert_eq!(counters.sound_native_static_evictions, 0);
         assert_eq!(counters.sound_channel_capacity_origin, None);
         assert_eq!(counters.active_music_event_id, None);
+        assert_eq!(counters.active_music_sound_name, None);
         assert_eq!(counters.preferred_device, None);
         assert_eq!(counters.available_device_count, 0);
         assert_eq!(counters.device_reloads, 0);

@@ -15,6 +15,24 @@ pub struct ClientToastState {
     pub next_sequence: u64,
     #[serde(default)]
     pub generation: u64,
+    /// Canonical handoff for Vanilla's independent `NowPlayingToast` instance.
+    /// This is deliberately not part of the bounded five-slot event queue:
+    /// `ToastManager.clear()` leaves the music instance intact.
+    #[serde(default)]
+    pub now_playing: ClientNowPlayingToastState,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClientNowPlayingToastState {
+    /// Actual resolved sound resource selected by `SoundManager.play`, not the
+    /// music event id. `NowPlayingToast` derives its translation key from this
+    /// identity in Vanilla.
+    #[serde(default)]
+    pub sound_name: Option<String>,
+    #[serde(default)]
+    pub wanted_visible: bool,
+    #[serde(default)]
+    pub mutation_sequence: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -113,6 +131,40 @@ impl WorldStore {
         &self.client_toasts.events
     }
 
+    pub fn now_playing_toast(&self) -> &ClientNowPlayingToastState {
+        &self.client_toasts.now_playing
+    }
+
+    /// Publish a successfully started music instance and reset the independent
+    /// Now Playing toast animation, matching `ToastManager.showNowPlayingToast`.
+    pub fn show_now_playing_music(&mut self, sound_name: String) {
+        let state = &mut self.client_toasts.now_playing;
+        state.sound_name = Some(sound_name);
+        state.wanted_visible = true;
+        state.mutation_sequence = state
+            .mutation_sequence
+            .checked_add(1)
+            .expect("now-playing mutation sequence overflow");
+    }
+
+    /// Natural completion removes `MusicManager.currentMusic`, so extraction
+    /// stops drawing the song without forcing the toast visibility state.
+    pub fn clear_now_playing_music(&mut self) {
+        self.client_toasts.now_playing.sound_name = None;
+    }
+
+    /// `MusicManager.stopPlaying()` explicitly asks the independent toast to
+    /// slide out in addition to clearing the current sound identity.
+    pub fn hide_now_playing_music(&mut self) {
+        let state = &mut self.client_toasts.now_playing;
+        state.sound_name = None;
+        state.wanted_visible = false;
+        state.mutation_sequence = state
+            .mutation_sequence
+            .checked_add(1)
+            .expect("now-playing mutation sequence overflow");
+    }
+
     pub(crate) fn push_advancement_toast_event(
         &mut self,
         advancement_id: String,
@@ -149,8 +201,10 @@ impl WorldStore {
     }
 
     pub(crate) fn clear_client_toasts_for_disconnect(&mut self) {
+        let now_playing = std::mem::take(&mut self.client_toasts.now_playing);
         self.client_toasts = ClientToastState {
             generation: self.client_toasts.generation.saturating_add(1),
+            now_playing,
             ..ClientToastState::default()
         };
     }
@@ -293,6 +347,34 @@ mod tests {
                 .0,
             "minecraft:test/last"
         );
+    }
+
+    #[test]
+    fn now_playing_is_independent_from_the_bounded_queue_and_normal_clear() {
+        let mut store = WorldStore::new();
+        store.show_now_playing_music("minecraft:music/game/creative/creative1".to_string());
+        assert_eq!(
+            store.now_playing_toast(),
+            &ClientNowPlayingToastState {
+                sound_name: Some("minecraft:music/game/creative/creative1".to_string()),
+                wanted_visible: true,
+                mutation_sequence: 1,
+            }
+        );
+
+        store.clear_client_toasts_for_disconnect();
+        assert_eq!(
+            store.now_playing_toast().sound_name.as_deref(),
+            Some("minecraft:music/game/creative/creative1")
+        );
+        assert!(store.now_playing_toast().wanted_visible);
+
+        store.clear_now_playing_music();
+        assert_eq!(store.now_playing_toast().sound_name, None);
+        assert_eq!(store.now_playing_toast().mutation_sequence, 1);
+        store.hide_now_playing_music();
+        assert!(!store.now_playing_toast().wanted_visible);
+        assert_eq!(store.now_playing_toast().mutation_sequence, 2);
     }
 
     fn advancement_display() -> AdvancementDisplaySummary {

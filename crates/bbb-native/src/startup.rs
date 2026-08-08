@@ -247,6 +247,14 @@ pub(crate) struct Args {
     /// `Options.getFinalSoundSourceVolume` does in Vanilla.
     #[arg(skip)]
     pub(crate) client_audio_volumes: AudioVolumeSettings,
+    /// Vanilla `Options.musicToast`, startup-only because BBB deliberately has
+    /// no in-game options UI.
+    #[arg(long = "client-music-toast", value_enum, default_value = "never")]
+    pub(crate) client_music_toast: MusicToastDisplayStateArg,
+    /// Vanilla `Options.musicFrequency`, consumed by the native
+    /// `MusicManager` schedule.
+    #[arg(long = "client-music-frequency", value_enum, default_value = "default")]
+    pub(crate) client_music_frequency: MusicFrequencyArg,
     #[arg(long = "high-contrast-block-outline")]
     pub(crate) high_contrast_block_outline: bool,
     #[arg(
@@ -570,6 +578,40 @@ pub(crate) enum ClientNarratorArg {
     All,
     Chat,
     System,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum MusicToastDisplayStateArg {
+    Never,
+    Pause,
+    PauseAndToast,
+}
+
+impl MusicToastDisplayStateArg {
+    pub(crate) fn renders_pause(self) -> bool {
+        matches!(self, Self::Pause | Self::PauseAndToast)
+    }
+
+    pub(crate) fn renders_toast(self) -> bool {
+        self == Self::PauseAndToast
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum MusicFrequencyArg {
+    Default,
+    Frequent,
+    Constant,
+}
+
+impl MusicFrequencyArg {
+    pub(crate) const fn max_frequency_ticks(self) -> i32 {
+        match self {
+            Self::Default => 20 * 1_200,
+            Self::Frequent => 10 * 1_200,
+            Self::Constant => 0,
+        }
+    }
 }
 
 impl From<ClientNarratorArg> for NarratorStatus {
@@ -937,6 +979,20 @@ fn bind_stored_client_options(
         "client_directional_audio",
         "directionalAudio",
         client_directional_audio
+    );
+    parsed!(
+        "client_music_toast",
+        "musicToast",
+        EnumName,
+        client_music_toast,
+        parse_stored_music_toast
+    );
+    parsed!(
+        "client_music_frequency",
+        "musicFrequency",
+        EnumName,
+        client_music_frequency,
+        parse_stored_music_frequency
     );
     flag!(
         "client_save_chat_drafts",
@@ -1713,6 +1769,28 @@ fn parse_stored_attack_indicator(
     }
 }
 
+fn parse_stored_music_toast(value: &str) -> std::result::Result<MusicToastDisplayStateArg, String> {
+    match value.trim_matches('"') {
+        "never" => Ok(MusicToastDisplayStateArg::Never),
+        "pause" => Ok(MusicToastDisplayStateArg::Pause),
+        "pause_and_toast" => Ok(MusicToastDisplayStateArg::PauseAndToast),
+        other => Err(format!(
+            "music toast must be never, pause or pause_and_toast, got {other}"
+        )),
+    }
+}
+
+fn parse_stored_music_frequency(value: &str) -> std::result::Result<MusicFrequencyArg, String> {
+    match value.trim_matches('"') {
+        "DEFAULT" => Ok(MusicFrequencyArg::Default),
+        "FREQUENT" => Ok(MusicFrequencyArg::Frequent),
+        "CONSTANT" => Ok(MusicFrequencyArg::Constant),
+        other => Err(format!(
+            "music frequency must be DEFAULT, FREQUENT or CONSTANT, got {other}"
+        )),
+    }
+}
+
 fn parse_client_unit_double(value: &str) -> std::result::Result<f64, String> {
     let parsed: f64 = value
         .parse()
@@ -2364,6 +2442,72 @@ mod tests {
                     .is_err()
             );
         }
+    }
+
+    #[test]
+    fn startup_music_options_use_vanilla_defaults_and_cli_names() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            defaults.client_music_toast,
+            MusicToastDisplayStateArg::Never
+        );
+        assert_eq!(defaults.client_music_frequency, MusicFrequencyArg::Default);
+
+        let configured = Args::try_parse_from([
+            "bbb-native",
+            "--client-music-toast",
+            "pause-and-toast",
+            "--client-music-frequency",
+            "constant",
+        ])
+        .unwrap();
+        assert_eq!(
+            configured.client_music_toast,
+            MusicToastDisplayStateArg::PauseAndToast
+        );
+        assert_eq!(
+            configured.client_music_frequency,
+            MusicFrequencyArg::Constant
+        );
+    }
+
+    #[test]
+    fn stored_music_options_reach_startup_and_explicit_cli_wins() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("musicToast", r#""pause_and_toast""#);
+        options.set_raw_for_test("musicFrequency", r#""FREQUENT""#);
+
+        let mut stored_args = Args::parse_from(["bbb-native"]);
+        bind_stored_client_options(
+            &mut stored_args,
+            StoredOptions::without_command_line(&options),
+        );
+        assert_eq!(
+            stored_args.client_music_toast,
+            MusicToastDisplayStateArg::PauseAndToast
+        );
+        assert_eq!(
+            stored_args.client_music_frequency,
+            MusicFrequencyArg::Frequent
+        );
+
+        let matches = Args::command().get_matches_from([
+            "bbb-native",
+            "--client-music-toast",
+            "pause",
+            "--client-music-frequency",
+            "constant",
+        ]);
+        let mut explicit_args = Args::from_arg_matches(&matches).unwrap();
+        bind_stored_client_options(&mut explicit_args, StoredOptions::new(&options, &matches));
+        assert_eq!(
+            explicit_args.client_music_toast,
+            MusicToastDisplayStateArg::Pause
+        );
+        assert_eq!(
+            explicit_args.client_music_frequency,
+            MusicFrequencyArg::Constant
+        );
     }
 
     #[test]

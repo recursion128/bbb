@@ -1255,7 +1255,11 @@ fn run_client(args: startup::Args) -> Result<()> {
             client_particle_status,
             args.client_weather_radius,
         ),
-        music: MusicRuntime::default(),
+        music: MusicRuntime::configured(
+            args.client_music_frequency,
+            args.client_audio_volumes
+                .final_source_volume(&bbb_audio::AudioCategory::Music),
+        ),
         win_screen_resources,
         particle_runtime,
         terrain_textures: terrain_textures.clone(),
@@ -1693,6 +1697,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                             attack_indicator: args.client_attack_indicator.into(),
                             screen_effect_scale: args.client_screen_effect_scale,
                             notification_display_time: args.notification_display_time,
+                            music_toast_display: args.client_music_toast,
+                            final_music_volume: args
+                                .client_audio_volumes
+                                .final_source_volume(&bbb_audio::AudioCategory::Music),
                             entity_shadows: args.entity_shadows,
                             high_contrast_block_outline: args.high_contrast_block_outline,
                             improved_transparency: args.improved_transparency,

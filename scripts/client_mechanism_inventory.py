@@ -7546,6 +7546,109 @@ AUDIO_MANUAL_LOOP_SCOPE = OwnerScopeRuling(
     ),
 )
 
+MUSIC_OPTIONS_RUNTIME_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/Options.java:909-924,1248-1260",
+        "net/minecraft/client/sounds/MusicManager.java:83-88,152-155,187-189",
+        "net/minecraft/client/MusicToastDisplayState.java:23-29",
+    ),
+    current_scope_reason=(
+        "These callbacks and captions are reached only through the in-game sound/options widgets. "
+        "BBB intentionally exposes configuration at startup and consumes music frequency, toast "
+        "mode, and final music volume before constructing their runtime owners."
+    ),
+    reopen_condition="BBB gains an in-game options UI or another runtime music-option mutator.",
+)
+
+MUSIC_MANAGER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+        "crates/bbb-native/src/audio_runtime.rs#pub(crate) fn counters",
+        "crates/bbb-audio/src/runtime.rs#pub fn active_music_sound_name",
+        "crates/bbb-world/src/toasts.rs#pub fn show_now_playing_music",
+    ),
+    (
+        "crates/bbb-native/src/music_runtime.rs"
+        "#background_selection_prefers_underwater_then_creative_then_default",
+        "crates/bbb-native/src/music_runtime.rs"
+        "#gain_fades_follow_vanilla_rise_fall_and_zero_stop_rules",
+        "crates/bbb-native/src/music_runtime.rs"
+        "#default_frequency_clamps_ranges_and_mth_inclusive_order",
+        "crates/bbb-native/src/music_runtime.rs"
+        "#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+        "crates/bbb-native/src/music_runtime.rs"
+        "#silently_started_music_retains_identity_without_showing_now_playing",
+    ),
+)
+
+MUSIC_MANAGER_RUNTIME_OPTION_EVIDENCE = OwnerEvidence(
+    MUSIC_MANAGER_EVIDENCE.implementation,
+    MUSIC_MANAGER_EVIDENCE.tests
+    + (
+        "crates/bbb-native/src/startup.rs"
+        "#stored_music_options_reach_startup_and_explicit_cli_wins",
+    ),
+    MUSIC_OPTIONS_RUNTIME_SCOPE,
+)
+
+MUSIC_MANAGER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        MUSIC_MANAGER_EVIDENCE,
+        (
+            "MusicManager",
+            "tick",
+            "canReplace",
+            "startPlaying",
+            "stopPlaying",
+            "fadePlaying",
+            "isPlayingMusic",
+            "getCurrentMusicTranslationKey",
+            "MusicFrequency",
+            "getNextSongDelay",
+            "getSerializedName",
+        ),
+    ),
+    (
+        MUSIC_MANAGER_RUNTIME_OPTION_EVIDENCE,
+        ("showNowPlayingToastIfNeeded", "setMinutesBetweenSongs", "caption"),
+    ),
+)
+
+MUSIC_TOAST_DISPLAY_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/startup.rs#pub(crate) enum MusicToastDisplayStateArg",
+        "crates/bbb-native/src/runtime/toast.rs#impl NowPlayingToastRuntime",
+    ),
+    (
+        "crates/bbb-native/src/startup.rs"
+        "#startup_music_options_use_vanilla_defaults_and_cli_names",
+        "crates/bbb-native/src/startup.rs"
+        "#stored_music_options_reach_startup_and_explicit_cli_wins",
+        "crates/bbb-native/src/runtime/toast.rs"
+        "#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+    ),
+)
+
+MUSIC_TOAST_DISPLAY_UI_EVIDENCE = OwnerEvidence(
+    MUSIC_TOAST_DISPLAY_EVIDENCE.implementation,
+    MUSIC_TOAST_DISPLAY_EVIDENCE.tests,
+    MUSIC_OPTIONS_RUNTIME_SCOPE,
+)
+
+MUSIC_TOAST_DISPLAY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        MUSIC_TOAST_DISPLAY_EVIDENCE,
+        (
+            "MusicToastDisplayState",
+            "getSerializedName",
+            "renderInPauseScreen",
+            "renderToast",
+        ),
+    ),
+    (MUSIC_TOAST_DISPLAY_UI_EVIDENCE, ("text", "tooltip")),
+)
+
 AUDIO_SOUND_MANAGER_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -8380,16 +8483,58 @@ HUD_PERIODIC_TOAST_EVIDENCE = OwnerEvidence(
     ),
 )
 
-HUD_NOW_PLAYING_TOAST_GAP = OwnerOpenGap(
-    ledger="docs/unsupported-features.md#Machine-readable parity acceptance closure",
-    reason=(
-        "Stored startup options can select musicToast=pause or pause_and_toast, but BBB does "
-        "not yet consume that option or project ToastManager's separate NowPlayingToast instance."
+HUD_NOW_PLAYING_TOAST_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-world/src/toasts.rs#pub struct ClientNowPlayingToastState",
+        "crates/bbb-native/src/music_runtime.rs#pub(crate) struct MusicRuntime",
+        "crates/bbb-native/src/runtime/toast.rs#pub(super) struct NowPlayingToastRuntime",
+        "crates/bbb-native/src/hud_assets.rs#toast/now_playing",
+        "crates/bbb-renderer/src/hud.rs#pub struct HudNowPlayingToast",
     ),
-    close_condition=(
-        "Consume the startup musicToast value and implement the separate NowPlayingToast "
-        "music/pause/update/extract lifecycle, or prove every non-NEVER value unreachable."
+    (
+        "crates/bbb-pack/tests/vanilla_gui_music_assets.rs"
+        "#vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
+        "crates/bbb-audio/src/runtime.rs"
+        "#stopped_instance_shell_remains_projected_until_twentieth_tick",
+        "crates/bbb-native/src/music_runtime.rs"
+        "#confirmed_resolved_music_identity_drives_now_playing_show_and_explicit_hide",
+        "crates/bbb-native/src/music_runtime.rs"
+        "#silently_started_music_retains_identity_without_showing_now_playing",
+        "crates/bbb-native/src/runtime/toast.rs"
+        "#now_playing_uses_actual_sound_key_independent_timing_and_pause_projection",
+        "crates/bbb-native/src/runtime/toast.rs"
+        "#now_playing_translation_and_music_note_palette_match_vanilla",
+        "crates/bbb-renderer/src/hud.rs"
+        "#now_playing_uses_left_slide_static_pause_and_dynamic_vanilla_width",
     ),
+)
+
+HUD_TOAST_MANAGER_WITH_NOW_PLAYING_EVIDENCE = OwnerEvidence(
+    HUD_TOAST_SHARED_EVIDENCE.implementation + HUD_NOW_PLAYING_TOAST_EVIDENCE.implementation,
+    HUD_TOAST_SHARED_EVIDENCE.tests + HUD_NOW_PLAYING_TOAST_EVIDENCE.tests,
+)
+
+MUSIC_TOAST_RUNTIME_OPTION_SCOPE = OwnerScopeRuling(
+    conclusion="not-reachable-in-current-scope",
+    vanilla_basis=(
+        "net/minecraft/client/gui/components/toasts/ToastManager.java:174-187",
+        "net/minecraft/client/Options.java:909-924",
+    ),
+    current_scope_reason=(
+        "The runtime state setter is invoked by the in-game options callback; BBB intentionally "
+        "has no in-game options UI and consumes the same value once at command-line startup."
+    ),
+    reopen_condition="BBB gains an in-game options surface or another runtime musicToast mutator.",
+)
+
+HUD_NOW_PLAYING_RUNTIME_OPTION_EVIDENCE = OwnerEvidence(
+    HUD_NOW_PLAYING_TOAST_EVIDENCE.implementation,
+    HUD_NOW_PLAYING_TOAST_EVIDENCE.tests
+    + (
+        "crates/bbb-native/src/startup.rs"
+        "#stored_music_options_reach_startup_and_explicit_cli_wins",
+    ),
+    MUSIC_TOAST_RUNTIME_OPTION_SCOPE,
 )
 
 HUD_TIMED_TUTORIAL_TOAST_GAP = OwnerOpenGap(
@@ -8756,7 +8901,7 @@ TOAST_OWNER_EVIDENCE = _owner_evidence(
 
 TOAST_MANAGER_OWNER_EVIDENCE = _owner_evidence(
     (
-        HUD_NOW_PLAYING_TOAST_GAP,
+        HUD_TOAST_MANAGER_WITH_NOW_PLAYING_EVIDENCE,
         (
             "ToastManager",
             "update",
@@ -8764,9 +8909,9 @@ TOAST_MANAGER_OWNER_EVIDENCE = _owner_evidence(
             "showNowPlayingToast",
             "hideNowPlayingToast",
             "initializeMusicToast",
-            "setMusicToastDisplayState",
         ),
     ),
+    (HUD_NOW_PLAYING_RUNTIME_OPTION_EVIDENCE, ("setMusicToastDisplayState",)),
     (
         HUD_TOAST_SHARED_EVIDENCE,
         (
@@ -8869,7 +9014,7 @@ TUTORIAL_TOAST_OWNER_EVIDENCE = _owner_evidence(
 
 NOW_PLAYING_TOAST_OWNER_EVIDENCE = _owner_evidence(
     (
-        HUD_NOW_PLAYING_TOAST_GAP,
+        HUD_NOW_PLAYING_TOAST_EVIDENCE,
         (
             "NowPlayingToast",
             "extractToast",
@@ -8939,12 +9084,14 @@ AUDIO_OWNER_EVIDENCE_BY_SOURCE = {
     "com/mojang/blaze3d/audio/SoundBuffer.java": AUDIO_SOUND_BUFFER_OWNER_EVIDENCE,
     "net/minecraft/client/sounds/ChannelAccess.java": AUDIO_CHANNEL_ACCESS_OWNER_EVIDENCE,
     "net/minecraft/client/sounds/SoundBufferLibrary.java": AUDIO_SOUND_BUFFER_LIBRARY_OWNER_EVIDENCE,
+    "net/minecraft/client/sounds/MusicManager.java": MUSIC_MANAGER_OWNER_EVIDENCE,
 }
 
 METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **AUDIO_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
+    "net/minecraft/client/MusicToastDisplayState.java": MUSIC_TOAST_DISPLAY_OWNER_EVIDENCE,
 }
 
 
@@ -9320,6 +9467,7 @@ METHOD_SURFACES = (
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),
     MethodSurface("resource-consumer", "text", "ui-font-manager", "net/minecraft/client/gui/font/FontManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundManager.java"),
+    MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/MusicManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundEngine.java"),
     MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "com/mojang/blaze3d/audio/Library.java"),
     MethodSurface("audio-backend", "audio", "audio-sound-manager-engine", "com/mojang/blaze3d/audio/Channel.java"),
@@ -9338,6 +9486,7 @@ METHOD_SURFACES = (
     MethodSurface("ui", "ui", "ui-disconnected-screen-surface", "net/minecraft/client/gui/screens/DisconnectedScreen.java"),
     MethodSurface("ui", "ui", "ui-pause-screen-surface", "net/minecraft/client/gui/screens/PauseScreen.java"),
     MethodSurface("persistence", "persistence", "persistence-options-file", "net/minecraft/client/Options.java"),
+    MethodSurface("persistence", "persistence", "persistence-options-apply", "net/minecraft/client/MusicToastDisplayState.java"),
     MethodSurface("persistence", "persistence", "persistence-server-list", "net/minecraft/client/multiplayer/ServerList.java"),
     MethodSurface("identity", "identity", "identity-skin-presentation", "net/minecraft/client/resources/SkinManager.java"),
     MethodSurface("identity", "identity", "identity-profile-key-lifecycle", "net/minecraft/client/multiplayer/AccountProfileKeyPairManager.java"),
