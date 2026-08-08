@@ -7529,7 +7529,7 @@
       ],
       "path": "docs/evidence/vanilla-26.1/packet-coverage.json",
       "scenario_ids": [],
-      "sha256": "587ad39f5ac2cfc83bd1e7ba4b167a6fea8e30611f03942be6809bca95933e4c",
+      "sha256": "67f9a6f641a161597144d861ae68ef2f2391e320d0c3e2e44157109562f3658c",
       "valid": true
     },
     {
@@ -11484,8 +11484,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1324,
-          "evidence_set_sha256": "0f1f6aa7c591fed71d8f8460c006820e2ce9266c20af8fb056a4ea1db7630e6f",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "996674b5a1ac0ff1ca32a83269f589c72844d8545d6f4c62a0f943ff499488a1",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -12527,8 +12527,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1324,
-          "evidence_set_sha256": "0f1f6aa7c591fed71d8f8460c006820e2ce9266c20af8fb056a4ea1db7630e6f",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "996674b5a1ac0ff1ca32a83269f589c72844d8545d6f4c62a0f943ff499488a1",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -13473,8 +13473,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1324,
-          "evidence_set_sha256": "0f1f6aa7c591fed71d8f8460c006820e2ce9266c20af8fb056a4ea1db7630e6f",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "996674b5a1ac0ff1ca32a83269f589c72844d8545d6f4c62a0f943ff499488a1",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -14260,8 +14260,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1324,
-          "evidence_set_sha256": "0f1f6aa7c591fed71d8f8460c006820e2ce9266c20af8fb056a4ea1db7630e6f",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "996674b5a1ac0ff1ca32a83269f589c72844d8545d6f4c62a0f943ff499488a1",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -15045,8 +15045,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1324,
-          "evidence_set_sha256": "0f1f6aa7c591fed71d8f8460c006820e2ce9266c20af8fb056a4ea1db7630e6f",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "996674b5a1ac0ff1ca32a83269f589c72844d8545d6f4c62a0f943ff499488a1",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -16123,8 +16123,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 1324,
-          "evidence_set_sha256": "0f1f6aa7c591fed71d8f8460c006820e2ce9266c20af8fb056a4ea1db7630e6f",
+          "evidence_set_count": 1328,
+          "evidence_set_sha256": "996674b5a1ac0ff1ca32a83269f589c72844d8545d6f4c62a0f943ff499488a1",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
