@@ -435,8 +435,27 @@ def direct_dependency_validation_classes(
     return {"acceptance-contract", "bbb-owner", "vanilla-owner"}
 
 
+def artifact_input_validation_classes(
+    record: dict[str, object], artifact_id: str
+) -> set[str]:
+    classes = {"acceptance-contract", "full-gate"}
+    if artifact_id == "client-owner-inventory":
+        classes.update({"bbb-owner", "vanilla-owner"})
+    focused_tests = record.get("focused_tests", [])
+    if isinstance(focused_tests, list) and any(
+        artifact_id in test.get("source_artifact_ids", [])
+        for test in focused_tests
+        if isinstance(test, dict)
+    ):
+        classes.add("focused-evidence")
+    return classes
+
+
 def change_impact_plan(
-    records: list[dict[str, object]], changed_paths: Iterable[str], base_commit: str
+    records: list[dict[str, object]],
+    changed_paths: Iterable[str],
+    base_commit: str,
+    artifacts: Iterable[dict[str, object]] = (),
 ) -> dict[str, object]:
     impacts: list[dict[str, object]] = []
     all_ids = sorted(
@@ -444,6 +463,38 @@ def change_impact_plan(
         for record in records
         if isinstance(record, dict) and isinstance(record.get("mechanism_id"), str)
     )
+    records_by_id = {
+        str(record["mechanism_id"]): record
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("mechanism_id"), str)
+    }
+    artifact_inputs: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for artifact in artifacts:
+        if not isinstance(artifact, dict) or not isinstance(
+            artifact.get("artifact_id"), str
+        ):
+            continue
+        artifact_id = str(artifact["artifact_id"])
+        mechanism_ids = artifact.get("mechanism_ids", [])
+        generator_inputs = artifact.get("generator_inputs", [])
+        if not isinstance(mechanism_ids, list) or not isinstance(
+            generator_inputs, list
+        ):
+            continue
+        known_ids = [
+            mechanism_id
+            for mechanism_id in mechanism_ids
+            if isinstance(mechanism_id, str) and mechanism_id in records_by_id
+        ]
+        for generator_input in generator_inputs:
+            if not isinstance(generator_input, dict) or not isinstance(
+                generator_input.get("path"), str
+            ):
+                continue
+            for mechanism_id in known_ids:
+                artifact_inputs[str(generator_input["path"])].append(
+                    (artifact_id, mechanism_id)
+                )
     affected_ids: set[str] = set()
     required_classes: set[str] = set()
     for path in sorted(set(changed_paths)):
@@ -470,6 +521,13 @@ def change_impact_plan(
                         direct_dependency_validation_classes(record, dependency)
                     )
                 reasons.add("direct-dependency")
+        for artifact_id, mechanism_id in artifact_inputs.get(path, []):
+            record = records_by_id[mechanism_id]
+            path_ids.add(mechanism_id)
+            path_classes.update(
+                artifact_input_validation_classes(record, artifact_id)
+            )
+            reasons.add("artifact-input")
         for tokens, classes in CENTRAL_PATH_VALIDATION_CLASSES:
             if not any(path_matches_rule(path, token) for token in tokens):
                 continue
@@ -1474,19 +1532,93 @@ def external_artifact(
     }
 
 
+def repo_artifact_generator_inputs(
+    repo: Path, path: Path, artifact_id: str
+) -> tuple[list[dict[str, str]] | None, list[str]]:
+    if path.suffix != ".json" or not path.is_file():
+        return None, []
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None, []
+    if not isinstance(value, dict) or "generator_inputs" not in value:
+        return None, []
+    raw_inputs = value.get("generator_inputs")
+    if not isinstance(raw_inputs, list):
+        return [], [f"repo artifact generator inputs are malformed: {artifact_id}"]
+    inputs: list[dict[str, str]] = []
+    reasons: list[str] = []
+    seen_paths: set[str] = set()
+    for item in raw_inputs:
+        relative = item.get("path") if isinstance(item, dict) else None
+        digest = item.get("sha256") if isinstance(item, dict) else None
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        ):
+            reasons.append(f"repo artifact generator input is malformed: {artifact_id}")
+            continue
+        if relative in seen_paths:
+            reasons.append(
+                f"repo artifact generator input is duplicated: {artifact_id}: {relative}"
+            )
+            continue
+        seen_paths.add(relative)
+        inputs.append({"path": relative, "sha256": digest})
+        candidate = repo / relative
+        if not candidate.is_file() or sha256_file(candidate) != digest:
+            reasons.append(
+                f"repo artifact generator input is stale: {artifact_id}: {relative}"
+            )
+    return sorted(inputs, key=lambda item: item["path"]), sorted(set(reasons))
+
+
 def repo_artifact(repo: Path, artifact_id: str, relative: str) -> dict[str, object]:
     path = repo / relative
-    return {
+    generator_inputs, generator_reasons = repo_artifact_generator_inputs(
+        repo, path, artifact_id
+    )
+    exists = path.is_file()
+    reasons = [] if exists else [f"missing repo evidence: {relative}"]
+    reasons.extend(generator_reasons)
+    artifact: dict[str, object] = {
         "artifact_id": artifact_id,
         "bbb_commit": None,
-        "exists": path.is_file(),
-        "invalid_reasons": [] if path.is_file() else [f"missing repo evidence: {relative}"],
+        "exists": exists,
+        "invalid_reasons": reasons,
         "kind": "repo-evidence",
         "path": relative,
         "scenario_ids": [],
-        "sha256": sha256_file(path) if path.is_file() else None,
-        "valid": path.is_file(),
+        "sha256": sha256_file(path) if exists else None,
+        "valid": not reasons,
     }
+    if generator_inputs is not None:
+        artifact["generator_inputs"] = generator_inputs
+    return artifact
+
+
+def artifacts_with_current_repo_inputs(
+    repo: Path, artifacts: Iterable[dict[str, object]]
+) -> list[dict[str, object]]:
+    values: list[dict[str, object]] = []
+    for artifact in artifacts:
+        if (
+            artifact.get("kind") != "repo-evidence"
+            or not isinstance(artifact.get("artifact_id"), str)
+            or not isinstance(artifact.get("path"), str)
+        ):
+            values.append(artifact)
+            continue
+        refreshed = repo_artifact(
+            repo, str(artifact["artifact_id"]), str(artifact["path"])
+        )
+        refreshed["mechanism_ids"] = artifact.get("mechanism_ids", [])
+        values.append(refreshed)
+    return values
 
 
 def external_artifact_ids(row: dict[str, str]) -> list[str]:
@@ -1925,6 +2057,17 @@ def build_report(
         )
         if missing_refs:
             reasons.append("missing BBB evidence references: " + ", ".join(missing_refs))
+        invalid_repo_artifacts = sorted(
+            artifact_id
+            for artifact_id in artifact_ids
+            if artifacts[artifact_id].get("kind") == "repo-evidence"
+            and artifacts[artifact_id].get("valid") is not True
+        )
+        if invalid_repo_artifacts:
+            reasons.append(
+                "required repo evidence is invalid: "
+                + ", ".join(invalid_repo_artifacts)
+            )
         for artifact_id in external_ids:
             if not artifacts[artifact_id]["valid"]:
                 reasons.append(
@@ -2051,7 +2194,15 @@ def build_report(
             scenario_kinds[scenario_id].add(str(scenario["kind"]))
             scenario_statuses[scenario_id].add(str(scenario["status"]))
 
-    change_impact = change_impact_plan(records, changed_paths, evidence_commit)
+    artifact_values = []
+    for artifact_id in sorted(artifacts):
+        artifact = dict(artifacts[artifact_id])
+        artifact["mechanism_ids"] = sorted(artifact_mechanisms.get(artifact_id, set()))
+        artifact_values.append(artifact)
+
+    change_impact = change_impact_plan(
+        records, changed_paths, evidence_commit, artifact_values
+    )
     affected_by_change = set(change_impact["functional_affected_mechanism_ids"])
     for record in records:
         if (
@@ -2064,11 +2215,6 @@ def build_report(
             record["valid"] = False
             record["final_conclusion"] = "invalid-equivalent"
 
-    artifact_values = []
-    for artifact_id in sorted(artifacts):
-        artifact = dict(artifacts[artifact_id])
-        artifact["mechanism_ids"] = sorted(artifact_mechanisms.get(artifact_id, set()))
-        artifact_values.append(artifact)
     scenario_values = []
     for scenario_id, mechanism_ids in sorted(scenario_mechanisms.items()):
         kinds = scenario_kinds[scenario_id]
@@ -2588,7 +2734,19 @@ def validate_report(
                 and artifact_map[artifact_id].get("evidence_class") == "formal"
                 for artifact_id in required_external
             )
-            if not passing_focused or not passing_formal or record.get("valid") is not True:
+            passing_repo_evidence = all(
+                isinstance(artifact_map.get(artifact_id), dict)
+                and artifact_map[artifact_id].get("valid") is True
+                for artifact_id in record_artifacts
+                if isinstance(artifact_map.get(artifact_id), dict)
+                and artifact_map[artifact_id].get("kind") == "repo-evidence"
+            )
+            if (
+                not passing_focused
+                or not passing_formal
+                or not passing_repo_evidence
+                or record.get("valid") is not True
+            ):
                 issues.append(f"false equivalent: {mechanism_id}")
         elif status == "not-needed":
             if "Reopen" not in ledger_by_id.get(mechanism_id, ""):
@@ -2685,6 +2843,46 @@ def validate_report(
             path = repo / path_value
             if not path.is_file() or sha256_file(path) != digest:
                 issues.append(f"stale repo artifact hash: {artifact_id}")
+            refreshed = repo_artifact(repo, str(artifact_id), path_value)
+            if artifact.get("generator_inputs") != refreshed.get(
+                "generator_inputs"
+            ):
+                issues.append(
+                    f"stale repo artifact generator-input projection: {artifact_id}"
+                )
+            if artifact.get("invalid_reasons") != refreshed.get("invalid_reasons"):
+                issues.append(f"stale repo artifact validity: {artifact_id}")
+            if path.is_file() and path.suffix == ".json":
+                try:
+                    repo_value = json.loads(path.read_text(encoding="utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    repo_value = None
+                declared_ids = (
+                    repo_value.get("mechanism_ids")
+                    if isinstance(repo_value, dict)
+                    else None
+                )
+                if declared_ids is not None:
+                    if not isinstance(declared_ids, list) or any(
+                        not isinstance(mechanism_id, str)
+                        for mechanism_id in declared_ids
+                    ):
+                        issues.append(
+                            f"malformed declared Mechanism-ID mapping for artifact {artifact_id}"
+                        )
+                    else:
+                        unknown_ids = sorted(set(declared_ids) - set(matrix_ids))
+                        if unknown_ids:
+                            issues.append(
+                                f"unknown declared Mechanism ID for artifact {artifact_id}: "
+                                + ", ".join(unknown_ids)
+                            )
+                        if sorted(set(declared_ids)) != sorted(
+                            reverse_artifacts.get(str(artifact_id), set())
+                        ):
+                            issues.append(
+                                f"declared/reverse Mechanism-ID mismatch for artifact {artifact_id}"
+                            )
         if require_artifacts and artifact.get("kind") != "repo-evidence":
             if not isinstance(path_value, str):
                 issues.append(f"external artifact path is absent: {artifact_id}")
@@ -2862,6 +3060,7 @@ def validate_report(
         [record for record in records if isinstance(record, dict)],
         changed_paths,
         evidence_commit,
+        [artifact for artifact in artifacts if isinstance(artifact, dict)],
     )
     if report.get("change_impact") != expected_impact:
         issues.append("stale changed-path impact plan")
@@ -3120,12 +3319,24 @@ def main() -> int:
             args.repo_root, base_commit
         )
         paths.discard(REPORT_PATH.as_posix())
+        report_artifacts = report.get("artifacts", [])
+        planning_artifacts = artifacts_with_current_repo_inputs(
+            args.repo_root,
+            [
+                artifact
+                for artifact in report_artifacts
+                if isinstance(artifact, dict)
+            ]
+            if isinstance(report_artifacts, list)
+            else [],
+        )
         print(
             json.dumps(
                 change_impact_plan(
                     [record for record in records if isinstance(record, dict)],
                     paths,
                     base_commit,
+                    planning_artifacts,
                 ),
                 ensure_ascii=False,
                 indent=2,

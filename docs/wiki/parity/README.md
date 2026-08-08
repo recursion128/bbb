@@ -28,7 +28,9 @@ Rust focused contract 必须是可解析到真实 `#[test]` 或 `#[tokio::test]`
 focused refs；其他行必须使用自己的 owner/test evidence，禁止跨机制污染。
 `scripts/python python scripts/parity_acceptance.py plan --base-commit <commit>` 给出 changed-path→Mechanism ID→
 validation class，不相关修改不会在开发阶段作废别的 owner receipt；中央 owner 或采集输入变化
-仍精确失效其依赖闭包。full gate 只证明整仓回归，不隐式启动 live/visual/RenderDoc/ABBA。
+仍精确失效其依赖闭包。repo-owned JSON evidence 的既有 `generator_inputs` 也由 artifact 的反向
+Mechanism ID 自动纳入规划；lint 同时核对输入 hash 与 artifact 自声明 ID，禁止 generator 修改被
+误判为无关。full gate 只证明整仓回归，不隐式启动 live/visual/RenderDoc/ABBA。
 
 `scripts/python python scripts/parity_acceptance.py check` 是 portable 结构/source-hash lint；
 正式交付追加 `--require-artifacts --require-complete --require-final-head`，在最终 clean、full-gated

@@ -621,6 +621,102 @@ mod tests {
                 metadata_plan["functional_affected_mechanism_ids"], []
             )
 
+            artifact_input_plan = change_impact_plan(
+                report["mechanisms"],
+                ["scripts/generate-fixture-evidence.py"],
+                self.commit,
+                [
+                    {
+                        "artifact_id": "repo:docs/evidence/fixture.json",
+                        "generator_inputs": [
+                            {
+                                "path": "scripts/generate-fixture-evidence.py",
+                                "sha256": "0" * 64,
+                            }
+                        ],
+                        "kind": "repo-evidence",
+                        "mechanism_ids": ["fixture-equivalent"],
+                    }
+                ],
+            )
+            artifact_input = artifact_input_plan["path_impacts"][0]
+            self.assertEqual(
+                artifact_input["mechanism_ids"], ["fixture-equivalent"]
+            )
+            self.assertEqual(artifact_input["reasons"], ["artifact-input"])
+            self.assertEqual(
+                artifact_input["required_validation_classes"],
+                ["acceptance-contract", "full-gate"],
+            )
+
+    def test_repo_artifact_generator_inputs_drive_scoped_plan_and_lint(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, source_root = self.make_fixture(Path(temporary))
+            generator = repo / "scripts/generate-inventory.py"
+            generator.write_text("# inventory generator\n", encoding="utf-8")
+            inventory_path = (
+                repo
+                / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+            )
+            inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+            inventory["generator_inputs"] = [
+                {
+                    "path": "scripts/generate-inventory.py",
+                    "sha256": hashlib.sha256(generator.read_bytes()).hexdigest(),
+                }
+            ]
+            inventory_path.write_text(
+                json.dumps(inventory, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            report = self.build_fixture_report(repo, source_root)
+            artifact = next(
+                item
+                for item in report["artifacts"]
+                if item["artifact_id"] == "client-owner-inventory"
+            )
+            self.assertEqual(
+                artifact["generator_inputs"], inventory["generator_inputs"]
+            )
+            plan = change_impact_plan(
+                report["mechanisms"],
+                ["scripts/generate-inventory.py"],
+                self.commit,
+                report["artifacts"],
+            )
+            self.assertEqual(
+                plan["affected_mechanism_ids"],
+                ["fixture-equivalent", "fixture-not-needed"],
+            )
+            self.assertEqual(plan["path_impacts"][0]["reasons"], ["artifact-input"])
+            self.assertEqual(
+                plan["required_validation_classes"],
+                [
+                    "acceptance-contract",
+                    "bbb-owner",
+                    "full-gate",
+                    "vanilla-owner",
+                ],
+            )
+            self.assertEqual(
+                validate_report(
+                    report,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+                [],
+            )
+
+            generator.write_text("# changed inventory generator\n", encoding="utf-8")
+            issues = validate_report(
+                report, repo=repo, source_root=source_root, enforce_current=True
+            )
+            self.assertIn(
+                "stale repo artifact validity: client-owner-inventory", issues
+            )
+
     def test_changed_owner_dependency_cannot_reuse_old_focused_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, source_root = self.make_fixture(Path(temporary))
@@ -1368,6 +1464,27 @@ Matrix route: `fixture-not-needed`
             )
             self.assertIn(
                 "stale reverse Mechanism-ID mapping for artifact repo:crates/example/src/lib.rs",
+                issues,
+            )
+            inventory_path = (
+                repo
+                / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+            )
+            inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+            inventory["mechanism_ids"] = ["fixture-equivalent", "fixture-unknown"]
+            inventory_path.write_text(
+                json.dumps(inventory, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            issues = validate_report(
+                report, repo=repo, source_root=source_root, enforce_current=True
+            )
+            self.assertIn(
+                "unknown declared Mechanism ID for artifact client-owner-inventory: fixture-unknown",
+                issues,
+            )
+            self.assertIn(
+                "declared/reverse Mechanism-ID mismatch for artifact client-owner-inventory",
                 issues,
             )
 
