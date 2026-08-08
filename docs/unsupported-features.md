@@ -87,7 +87,14 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   `ui-bidirectional-shaping`. Its implementation now carries attributable
   pointer, physical KeyT, screen-focus, reload, options-save and broadcast
   receipts, but remains partial until a clean full gate and exact-HEAD
-  language/platform receipt close those rows.
+  language/platform receipt close those rows. The indexed panorama path now
+  derives 14/14 parseable GameRenderer/GuiRenderer/CubeMap/CubeMapTexture/
+  Panorama owners with per-owner implementation and focused evidence; the
+  record-pattern-bearing `Screen.extractBackground` owner remains bound by its
+  exact source hash plus the same cube→overlay→blur→menu offscreen decision
+  test. Its remaining open reason after the implementation commit is the
+  code-freeze resource/platform/lifecycle formal receipt, not a missing owner
+  implementation.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in

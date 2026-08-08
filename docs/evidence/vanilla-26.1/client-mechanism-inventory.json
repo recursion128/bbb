@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "7c4f233d705cac4514f7bc4f78c2bb712c8b5238e3d81804db0cab35630e218c"
+      "sha256": "c9d2ed7d98e6eff23d6836e1449bcdcf4957615726a0b986181d7205ee97c79c"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -553,8 +553,8 @@
         "crates/bbb-renderer/src/camera_post_effect.rs",
         "crates/bbb-native/src/screen_effects.rs"
       ],
-      "owner_count": 17,
-      "owner_evidence_count": 17
+      "owner_count": 15,
+      "owner_evidence_count": 15
     },
     "rendering-entity-layer-registration": {
       "bbb_evidence": [
@@ -667,6 +667,20 @@
         "docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "owner_count": 42
+    },
+    "resources-indexed-panorama": {
+      "bbb_evidence": [
+        "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+        "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+        "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+        "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+        "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+        "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence",
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md"
+      ],
+      "owner_count": 14,
+      "owner_evidence_count": 14
     },
     "resources-indexed-vanilla-provider": {
       "bbb_evidence": [
@@ -23059,6 +23073,90 @@
       "vanilla_owner": "net.minecraft.client.gui.font.FontManager.UnresolvedBuilderBundle#visitRequiredDependencies(final Consumer <Identifier> output)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+          "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+          "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+          "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+          "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.gui.render.GuiRenderer#GuiRenderer(final GuiRenderState renderState,final MultiBufferSource.BufferSource bufferSource,final SubmitNodeCollector submitNodeCollector,final FeatureRenderDispatcher featureRenderDispatcher,final List <PictureInPictureRenderer <?>> pictureInPictureRenderers)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 110,
+        "path": "net/minecraft/client/gui/render/GuiRenderer.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.render.GuiRenderer#GuiRenderer(final GuiRenderState renderState,final MultiBufferSource.BufferSource bufferSource,final SubmitNodeCollector submitNodeCollector,final FeatureRenderDispatcher featureRenderDispatcher,final List <PictureInPictureRenderer <?>> pictureInPictureRenderers)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+          "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+          "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+          "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+          "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.gui.render.GuiRenderer#registerPanoramaTextures(final TextureManager textureManager)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 560,
+        "path": "net/minecraft/client/gui/render/GuiRenderer.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.render.GuiRenderer#registerPanoramaTextures(final TextureManager textureManager)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+          "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+          "crates/bbb-renderer/src/hud/disconnected_screen.rs#pub(super) fn push_panorama_overlay"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/panorama.rs#uniform_preserves_vanilla_fov_aspect_and_rotation_order",
+          "crates/bbb-renderer/src/panorama.rs#shader_uses_one_cube_texture_and_fullscreen_perspective_ray",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.gui.render.GuiRenderer#render(final GpuBufferSlice fogBuffer)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 136,
+        "path": "net/minecraft/client/gui/render/GuiRenderer.java"
+      },
+      "vanilla_owner": "net.minecraft.client.gui.render.GuiRenderer#render(final GpuBufferSlice fogBuffer)"
+    },
+    {
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
@@ -35472,6 +35570,143 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+          "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+          "crates/bbb-renderer/src/hud/disconnected_screen.rs#pub(super) fn push_panorama_overlay"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/panorama.rs#uniform_preserves_vanilla_fov_aspect_and_rotation_order",
+          "crates/bbb-renderer/src/panorama.rs#shader_uses_one_cube_texture_and_fullscreen_perspective_ray",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.CubeMap#CubeMap(final Identifier base)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 39,
+        "path": "net/minecraft/client/renderer/CubeMap.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.CubeMap#CubeMap(final Identifier base)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+          "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.CubeMap#close()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 118,
+        "path": "net/minecraft/client/renderer/CubeMap.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.CubeMap#close()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+          "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+          "crates/bbb-renderer/src/hud/disconnected_screen.rs#pub(super) fn push_panorama_overlay"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/panorama.rs#uniform_preserves_vanilla_fov_aspect_and_rotation_order",
+          "crates/bbb-renderer/src/panorama.rs#shader_uses_one_cube_texture_and_fullscreen_perspective_ray",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.CubeMap#initializeVertices()",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 80,
+        "path": "net/minecraft/client/renderer/CubeMap.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.CubeMap#initializeVertices()"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+          "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+          "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+          "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+          "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.CubeMap#registerTextures(final TextureManager textureManager)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 114,
+        "path": "net/minecraft/client/renderer/CubeMap.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.CubeMap#registerTextures(final TextureManager textureManager)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+          "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+          "crates/bbb-renderer/src/hud/disconnected_screen.rs#pub(super) fn push_panorama_overlay"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/panorama.rs#uniform_preserves_vanilla_fov_aspect_and_rotation_order",
+          "crates/bbb-renderer/src/panorama.rs#shader_uses_one_cube_texture_and_fullscreen_perspective_ray",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.CubeMap#render(final float rotXInDegrees,final float rotYInDegrees)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 46,
+        "path": "net/minecraft/client/renderer/CubeMap.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.CubeMap#render(final float rotXInDegrees,final float rotYInDegrees)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-renderer/src/renderer.rs#pub async fn new_with_vsync_and_terrain_filtering",
           "crates/bbb-renderer/src/renderer.rs#pub(super) fn with_gpu"
         ],
@@ -35985,10 +36220,10 @@
           "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back"
         ]
       },
-      "category": "render-step",
-      "domain": "rendering",
+      "category": "resource-consumer",
+      "domain": "resources",
       "kind": "method",
-      "mechanism_id": "rendering-effects-screenshot",
+      "mechanism_id": "resources-indexed-panorama",
       "owner_id": "method:net.minecraft.client.renderer.GameRenderer#getPanorama()",
       "role": "decision",
       "scope": "external-client",
@@ -36196,14 +36431,14 @@
           "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama"
         ],
         "tests": [
-          "crates/bbb-pack/src/panorama.rs#loads_real_index_30_panorama_through_the_default_pack",
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
           "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back"
         ]
       },
-      "category": "render-step",
-      "domain": "rendering",
+      "category": "resource-consumer",
+      "domain": "resources",
       "kind": "method",
-      "mechanism_id": "rendering-effects-screenshot",
+      "mechanism_id": "resources-indexed-panorama",
       "owner_id": "method:net.minecraft.client.renderer.GameRenderer#registerPanoramaTextures(final TextureManager textureManager)",
       "role": "decision",
       "scope": "external-client",
@@ -38342,6 +38577,33 @@
     {
       "bbb_evidence": {
         "implementation": [
+          "crates/bbb-native/src/runtime.rs#fn panorama_rotation_degrees",
+          "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn hud_disconnected_screen",
+          "crates/bbb-renderer/src/render.rs#fn panorama_pass"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#panorama_rotation_scales_with_the_scroll_speed_option",
+          "crates/bbb-native/src/runtime/tests.rs#panorama_spin_uses_realtime_ticks_only_while_visible_and_vanilla_wrap",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.Panorama#extractRenderState(final GuiGraphicsExtractor graphics,final int width,final int height,final boolean shouldSpin)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 13,
+        "path": "net/minecraft/client/renderer/Panorama.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.Panorama#extractRenderState(final GuiGraphicsExtractor graphics,final int width,final int height,final boolean shouldSpin)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
           "crates/bbb-renderer/src/terrain.rs#build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera",
           "crates/bbb-renderer/src/terrain/mesh.rs#build_chunk_section_subset_mesh_layers_with_lookup"
         ],
@@ -39245,6 +39507,90 @@
         "path": "net/minecraft/client/renderer/fog/environment/WaterFogEnvironment.java"
       },
       "vanilla_owner": "net.minecraft.client.renderer.fog.environment.WaterFogEnvironment#setupFog(final FogData fog,final Camera camera,final ClientLevel level,final float renderDistance,final DeltaTracker deltaTracker)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+          "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+          "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+          "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+          "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "constructor",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.texture.CubeMapTexture#CubeMapTexture(final Identifier resourceId)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 15,
+        "path": "net/minecraft/client/renderer/texture/CubeMapTexture.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.texture.CubeMapTexture#CubeMapTexture(final Identifier resourceId)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+          "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+          "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+          "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+          "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.texture.CubeMapTexture#doLoad(final NativeImage image)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 56,
+        "path": "net/minecraft/client/renderer/texture/CubeMapTexture.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.texture.CubeMapTexture#doLoad(final NativeImage image)"
+    },
+    {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+          "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+          "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama"
+        ],
+        "tests": [
+          "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+          "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+          "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+          "scripts/tests/test_client_mechanism_inventory.py#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+        ]
+      },
+      "category": "resource-consumer",
+      "domain": "resources",
+      "kind": "method",
+      "mechanism_id": "resources-indexed-panorama",
+      "owner_id": "method:net.minecraft.client.renderer.texture.CubeMapTexture#loadContents(final ResourceManager resourceManager)",
+      "role": "decision",
+      "scope": "external-client",
+      "source": {
+        "line": 19,
+        "path": "net/minecraft/client/renderer/texture/CubeMapTexture.java"
+      },
+      "vanilla_owner": "net.minecraft.client.renderer.texture.CubeMapTexture#loadContents(final ResourceManager resourceManager)"
     },
     {
       "bbb_evidence": {
@@ -58280,6 +58626,7 @@
       "rendering-extract-surface",
       "rendering-level-pass",
       "rendering-effects-screenshot",
+      "resources-indexed-panorama",
       "rendering-camera-fluid-fog",
       "rendering-chunk-layer-routing",
       "input-keyboard-routing",
@@ -58482,6 +58829,10 @@
       "sha256": "fbcaa8f6a756be976247ea43bb0e97d196a394e5f36c61ab3b5629d71b19994b"
     },
     {
+      "path": "net/minecraft/client/gui/render/GuiRenderer.java",
+      "sha256": "3993aedc9c693481686975c6bd5649ac8dc6558ad8119aef0231a02b759bebd6"
+    },
+    {
       "path": "net/minecraft/client/gui/screens/ChatScreen.java",
       "sha256": "af1118f43447dc0292959a5ede03687ed59e862c2b44ca65af8ebc1c2f0bf3a5"
     },
@@ -58590,6 +58941,10 @@
       "sha256": "590c33c717b79b088a585dbb22fb83068eac0fc67404ee0bb73105fb27810034"
     },
     {
+      "path": "net/minecraft/client/renderer/CubeMap.java",
+      "sha256": "a340126e7d32b253232ff684789440f6c422ce988e8b61ed8dd673f9cd38180b"
+    },
+    {
       "path": "net/minecraft/client/renderer/GameRenderer.java",
       "sha256": "8c8147c9235fc7ef461808c01fcece1ee0cbbd057e3d299e39f043aac05503a4"
     },
@@ -58600,6 +58955,10 @@
     {
       "path": "net/minecraft/client/renderer/LevelRenderer.java",
       "sha256": "869f0978ec690576c2a82e993e9778bdcdbd3654c1ca3ceca5fea913c537ad72"
+    },
+    {
+      "path": "net/minecraft/client/renderer/Panorama.java",
+      "sha256": "b66bfa05efa7845e1f282e954f6fc95a9d3336324b7ba5e927f4af2fdbd60c2c"
     },
     {
       "path": "net/minecraft/client/renderer/blockentity/BlockEntityRenderers.java",
@@ -59794,6 +60153,10 @@
       "sha256": "90692f151e3c9f3e508dd030cf43d56d8174195d0dc4aa7bfff445a416bc0e3c"
     },
     {
+      "path": "net/minecraft/client/renderer/texture/CubeMapTexture.java",
+      "sha256": "3f94659ed528c32563412dbd803b6da5b425f94f3ca2233186a8af085216b03f"
+    },
+    {
       "path": "net/minecraft/client/resources/ClientPackSource.java",
       "sha256": "f4fcc1b6752cf1646dcfd63bf2407d0a57309636ec7646657d42ae2843efe841"
     },
@@ -60087,8 +60450,8 @@
       "render-light": 3,
       "render-scene": 15,
       "render-section": 29,
-      "render-step": 238,
-      "resource-consumer": 129,
+      "render-step": 236,
+      "resource-consumer": 143,
       "resource-provider": 21,
       "resources": 122,
       "respawn-data": 9,
@@ -60123,8 +60486,8 @@
       "protocol": 747,
       "realms": 100,
       "registries": 123,
-      "rendering": 332,
-      "resources": 163,
+      "rendering": 330,
+      "resources": 177,
       "security": 30,
       "singleplayer": 52,
       "startup": 16,
@@ -60135,12 +60498,12 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1602,
+      "decision": 1614,
       "out-of-scope": 227,
       "support-non-decision": 228
     },
-    "mapped_owner_count": 3249,
-    "owner_count": 3249,
+    "mapped_owner_count": 3261,
+    "owner_count": 3261,
     "unmapped_owner_count": 0
   },
   "vanilla_version": "26.1"

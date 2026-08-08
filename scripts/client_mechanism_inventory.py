@@ -669,9 +669,11 @@ GAME_RENDERER_METHOD_ROUTES = _method_routes(
             "overlayTexture",
             "getGlobalSettingsUniform",
             "getLighting",
-            "getPanorama",
-            "registerPanoramaTextures",
         ),
+    ),
+    (
+        MethodRoute("resource-consumer", "resources", "resources-indexed-panorama"),
+        ("getPanorama", "registerPanoramaTextures"),
     ),
 )
 
@@ -6974,6 +6976,37 @@ RENDERING_LEVEL_PASS_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+PANORAMA_GAME_RENDERER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#fn panorama_rotation_degrees",
+                "crates/bbb-renderer/src/panorama.rs#fn panorama_uniform",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#panorama_rotation_scales_with_the_scroll_speed_option",
+                "crates/bbb-native/src/runtime/tests.rs#panorama_spin_uses_realtime_ticks_only_while_visible_and_vanilla_wrap",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+            ),
+        ),
+        ("getPanorama",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/hud_assets.rs#pub(crate) fn load_panorama",
+                "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+            ),
+            (
+                "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+            ),
+        ),
+        ("registerPanoramaTextures",),
+    ),
+)
+
+
 RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -7159,33 +7192,6 @@ RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE = _owner_evidence(
             ),
         ),
         ("getLighting",),
-    ),
-    (
-        OwnerEvidence(
-            (
-                "crates/bbb-native/src/runtime.rs#fn panorama_rotation_degrees",
-                "crates/bbb-renderer/src/panorama.rs#fn panorama_uniform",
-            ),
-            (
-                "crates/bbb-native/src/runtime/tests.rs#panorama_rotation_scales_with_the_scroll_speed_option",
-                "crates/bbb-native/src/runtime/tests.rs#panorama_spin_uses_realtime_ticks_only_while_visible_and_vanilla_wrap",
-                "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
-            ),
-        ),
-        ("getPanorama",),
-    ),
-    (
-        OwnerEvidence(
-            (
-                "crates/bbb-native/src/hud_assets.rs#pub(crate) fn load_panorama",
-                "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
-            ),
-            (
-                "crates/bbb-pack/src/panorama.rs#loads_real_index_30_panorama_through_the_default_pack",
-                "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
-            ),
-        ),
-        ("registerPanoramaTextures",),
     ),
 )
 
@@ -9563,6 +9569,89 @@ STARTUP_IDENTITY_OWNER_CENSUS_TEST = (
     "#test_startup_identity_owner_census_is_exact_and_has_per_owner_evidence"
 )
 
+PANORAMA_OWNER_CENSUS_TEST = (
+    "scripts/tests/test_client_mechanism_inventory.py"
+    "#test_panorama_owner_census_is_exact_and_has_per_owner_evidence"
+)
+
+PANORAMA_RESOURCE_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+        "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+        "crates/bbb-renderer/src/panorama.rs#pub fn upload_hud_panorama",
+    ),
+    (
+        "crates/bbb-pack/src/panorama.rs#loads_vanilla_layer_order_and_selected_override",
+        "crates/bbb-pack/src/panorama.rs#filter_missing_corrupt_and_mismatched_faces_reject_the_whole_catalog",
+        "crates/bbb-pack/src/panorama.rs#indexed_objects_are_lazy_but_each_consumed_object_is_integrity_checked",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+        PANORAMA_OWNER_CENSUS_TEST,
+    ),
+)
+
+PANORAMA_RENDER_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+        "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+        "crates/bbb-renderer/src/hud/disconnected_screen.rs#pub(super) fn push_panorama_overlay",
+    ),
+    (
+        "crates/bbb-renderer/src/panorama.rs#uniform_preserves_vanilla_fov_aspect_and_rotation_order",
+        "crates/bbb-renderer/src/panorama.rs#shader_uses_one_cube_texture_and_fullscreen_perspective_ray",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+        PANORAMA_OWNER_CENSUS_TEST,
+    ),
+)
+
+PANORAMA_SCREEN_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/runtime.rs#fn panorama_rotation_degrees",
+        "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn hud_disconnected_screen",
+        "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+    ),
+    (
+        "crates/bbb-native/src/runtime/tests.rs#panorama_rotation_scales_with_the_scroll_speed_option",
+        "crates/bbb-native/src/runtime/tests.rs#panorama_spin_uses_realtime_ticks_only_while_visible_and_vanilla_wrap",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+        PANORAMA_OWNER_CENSUS_TEST,
+    ),
+)
+
+PANORAMA_RELOAD_OWNER_EVIDENCE = OwnerEvidence(
+    (
+        "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+        "crates/bbb-renderer/src/resource_reload.rs#pub(crate) fn transactional_resource_reload",
+    ),
+    (
+        "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+        PANORAMA_OWNER_CENSUS_TEST,
+    ),
+)
+
+PANORAMA_GUI_RENDERER_OWNER_EVIDENCE = _owner_evidence(
+    (PANORAMA_RESOURCE_OWNER_EVIDENCE, ("GuiRenderer", "registerPanoramaTextures")),
+    (PANORAMA_RENDER_OWNER_EVIDENCE, ("render",)),
+)
+
+PANORAMA_CUBE_MAP_OWNER_EVIDENCE = _owner_evidence(
+    (PANORAMA_RENDER_OWNER_EVIDENCE, ("CubeMap", "render", "initializeVertices")),
+    (PANORAMA_RESOURCE_OWNER_EVIDENCE, ("registerTextures",)),
+    (PANORAMA_RELOAD_OWNER_EVIDENCE, ("close",)),
+)
+
+PANORAMA_CUBE_TEXTURE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        PANORAMA_RESOURCE_OWNER_EVIDENCE,
+        ("CubeMapTexture", "loadContents", "doLoad"),
+    ),
+)
+
+PANORAMA_STATE_OWNER_EVIDENCE = _owner_evidence(
+    (PANORAMA_SCREEN_OWNER_EVIDENCE, ("extractRenderState",)),
+)
+
 STARTUP_ARGUMENT_IMPLEMENTATION = (
     "crates/bbb-native/src/startup.rs#pub(crate) fn parse_args",
     "crates/bbb-native/src/startup.rs#fn apply_vanilla_bootstrap_arguments",
@@ -9904,6 +9993,10 @@ METHOD_OWNER_EVIDENCE_BY_SOURCE = {
     **CAMERA_FOG_OWNER_EVIDENCE_BY_SOURCE,
     **SERVER_PACK_OWNER_EVIDENCE_BY_SOURCE,
     **HUD_TOAST_OWNER_EVIDENCE_BY_SOURCE,
+    "net/minecraft/client/gui/render/GuiRenderer.java": PANORAMA_GUI_RENDERER_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/CubeMap.java": PANORAMA_CUBE_MAP_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/texture/CubeMapTexture.java": PANORAMA_CUBE_TEXTURE_OWNER_EVIDENCE,
+    "net/minecraft/client/renderer/Panorama.java": PANORAMA_STATE_OWNER_EVIDENCE,
     "net/minecraft/client/main/Main.java": {
         **MAIN_STARTUP_OWNER_EVIDENCE,
         **MAIN_IDENTITY_OWNER_EVIDENCE,
@@ -9953,6 +10046,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-extract-surface": RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE,
     "rendering-level-pass": RENDERING_LEVEL_PASS_OWNER_EVIDENCE,
     "rendering-effects-screenshot": RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE,
+    "resources-indexed-panorama": PANORAMA_GAME_RENDERER_OWNER_EVIDENCE,
     "rendering-camera-fluid-fog": {},
     "rendering-chunk-layer-routing": RENDERING_CHUNK_LAYER_OWNER_EVIDENCE,
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
@@ -10655,6 +10749,40 @@ METHOD_SURFACES = (
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/TutorialToast.java"),
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/components/toasts/NowPlayingToast.java"),
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/PeriodicNotificationManager.java"),
+    MethodSurface(
+        "resource-consumer",
+        "resources",
+        "resources-indexed-panorama",
+        "net/minecraft/client/gui/render/GuiRenderer.java",
+        selected_methods=("GuiRenderer", "render", "registerPanoramaTextures"),
+    ),
+    MethodSurface(
+        "resource-consumer",
+        "resources",
+        "resources-indexed-panorama",
+        "net/minecraft/client/renderer/CubeMap.java",
+        selected_methods=(
+            "CubeMap",
+            "render",
+            "initializeVertices",
+            "registerTextures",
+            "close",
+        ),
+    ),
+    MethodSurface(
+        "resource-consumer",
+        "resources",
+        "resources-indexed-panorama",
+        "net/minecraft/client/renderer/texture/CubeMapTexture.java",
+        selected_methods=("CubeMapTexture", "loadContents", "doLoad"),
+    ),
+    MethodSurface(
+        "resource-consumer",
+        "resources",
+        "resources-indexed-panorama",
+        "net/minecraft/client/renderer/Panorama.java",
+        selected_methods=("extractRenderState",),
+    ),
     MethodSurface("render-step", "rendering", "rendering-frame-order", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
     MethodSurface(
@@ -10902,6 +11030,16 @@ MECHANISM_EVIDENCE = {
     "resources-indexed-vanilla-provider": (
         *INDEXED_VANILLA_PROVIDER_IMPLEMENTATION,
         *INDEXED_VANILLA_PROVIDER_TESTS,
+        "docs/wiki/mechanisms/resources/offline-asset-trust.md",
+    ),
+    "resources-indexed-panorama": (
+        "crates/bbb-pack/src/panorama.rs#pub struct PanoramaCatalog",
+        "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+        "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
+        "crates/bbb-renderer/src/panorama.rs#struct PanoramaGpu",
+        "crates/bbb-renderer/src/render.rs#fn panorama_pass",
+        "crates/bbb-renderer/src/offscreen.rs#offscreen_panorama_preserves_vanilla_face_row_orientation",
+        PANORAMA_OWNER_CENSUS_TEST,
         "docs/wiki/mechanisms/resources/offline-asset-trust.md",
     ),
     "resources-reload-listeners": ("crates/bbb-native/src/resource_reload.rs",),

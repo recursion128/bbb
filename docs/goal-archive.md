@@ -93,5 +93,8 @@
   `elf-load-image-v1` 锁定 Linux 执行映像，排除非加载 symbol/section table 与 GNU build-id 漂移。
 - **2026-08-08（工作流 v11）**：parity acceptance 采用阶段化 code freeze/domain sweep、
   owner/test/capture hash 依赖闭包与 changed-path 局部失效，formal ABBA 固定为最后阶段。
+- **2026-08-08（indexed panorama owner closure）**：14 个可解析的 GameRenderer/GuiRenderer/
+  CubeMap/CubeMapTexture/Panorama owner 进入 generated inventory；非对称 cube face 像素测试锁定
+  WGPU 对 Vanilla 最终显示行方向的后端补偿，正式 receipt 仍留在 code-freeze resource sweep。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

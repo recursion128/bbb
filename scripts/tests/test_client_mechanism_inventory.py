@@ -557,6 +557,77 @@ public class Owner {
             "b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8",
         )
 
+    def test_panorama_owner_census_is_exact_and_has_per_owner_evidence(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "resources-indexed-panorama"
+        ]
+
+        self.assertEqual(len(owners), 14)
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in owners),
+            Counter(
+                {
+                    "net/minecraft/client/gui/render/GuiRenderer.java": 3,
+                    "net/minecraft/client/renderer/CubeMap.java": 5,
+                    "net/minecraft/client/renderer/GameRenderer.java": 2,
+                    "net/minecraft/client/renderer/Panorama.java": 1,
+                    "net/minecraft/client/renderer/texture/CubeMapTexture.java": 3,
+                }
+            ),
+        )
+        mechanism = value["mechanisms"]["resources-indexed-panorama"]
+        self.assertEqual(mechanism["owner_count"], 14)
+        self.assertEqual(mechanism["owner_evidence_count"], 14)
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        rendering_effect_owners = [
+            owner["vanilla_owner"]
+            for owner in value["owners"]
+            if owner["mechanism_id"] == "rendering-effects-screenshot"
+        ]
+        self.assertFalse(
+            any("Panorama" in owner for owner in rendering_effect_owners),
+            "panorama bridge owners must not remain routed to screenshot effects",
+        )
+        source_hashes = {
+            source["path"]: source["sha256"] for source in value["source_files"]
+        }
+        self.assertEqual(
+            source_hashes["net/minecraft/client/gui/render/GuiRenderer.java"],
+            "3993aedc9c693481686975c6bd5649ac8dc6558ad8119aef0231a02b759bebd6",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/client/renderer/CubeMap.java"],
+            "a340126e7d32b253232ff684789440f6c422ce988e8b61ed8dd673f9cd38180b",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/client/renderer/GameRenderer.java"],
+            "8c8147c9235fc7ef461808c01fcece1ee0cbbd057e3d299e39f043aac05503a4",
+        )
+        self.assertEqual(
+            source_hashes["net/minecraft/client/renderer/Panorama.java"],
+            "b66bfa05efa7845e1f282e954f6fc95a9d3336324b7ba5e927f4af2fdbd60c2c",
+        )
+        self.assertEqual(
+            source_hashes[
+                "net/minecraft/client/renderer/texture/CubeMapTexture.java"
+            ],
+            "3f94659ed528c32563412dbd803b6da5b425f94f3ca2233186a8af085216b03f",
+        )
+
     def test_reload_listener_owner_census_has_complete_evidence_and_scope_rulings(self) -> None:
         generated = (
             inventory.REPO_ROOT

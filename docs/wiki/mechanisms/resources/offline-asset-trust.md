@@ -71,7 +71,12 @@ catalog 和 sound catalog/audio decoder 只拥有各自派生状态，不重新�
   filter、lazy integrity、PNG budget 与同尺寸约束。native 只在 resource transaction 中编排
   GPU apply，并以 realtime tick 推进 screen-local rotation；renderer 独占 cube/overlay GPU
   generation，按 cube→overlay→blur→menu background→widgets 提交。失败 reload 回滚上一完整
-  generation；startup 无可用 catalog 时只保留现有 menu-background fallback，不建立第二 resolver。
+  generation。Vanilla 的 OpenGL `CubeMapTexture` 在 stack upload 前纵向翻转每面；WGPU 的 copy/
+  sampling 原点已保持 decoded PNG 的 top-to-bottom 显示方向，因此 BBB 不再额外翻转，并由非对称
+  face pixel test 锁定最终显示结果。generated inventory 覆盖可解析的 14 个 GameRenderer/
+  GuiRenderer/CubeMap/CubeMapTexture/Panorama 决策 owner；`Screen.extractBackground` 的
+  panorama→blur→menu 顺序另由精确 source hash 和同一 offscreen order test 绑定。startup 无可用
+  catalog 时只保留现有 menu-background fallback，不建立第二 resolver。
 
 ## Indexed object 消费矩阵
 
@@ -85,7 +90,7 @@ index 30 的 4749 个 object 全部可由 provider 枚举；“物理存在”�
 | `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | 当前范围消费；closure 见 matrix/acceptance |
 | root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | 当前范围消费；closure 见 matrix/acceptance |
 | window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | vanilla-only catalog→native startup platform apply | 当前范围消费；closure 见 matrix/acceptance |
-| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama`, `Screen.extractBackground` | 是，`minecraft` | `PanoramaCatalog`→native generation→断线状态页 cube/overlay GPU consumer | 当前范围消费；closure 见 matrix/acceptance |
+| title panorama | 7 | generated 14-owner GameRenderer/GuiRenderer/CubeMap/CubeMapTexture/Panorama census + source-hashed `Screen.extractBackground` | 是，`minecraft` | `PanoramaCatalog`→native generation→断线状态页 cube/overlay GPU consumer | 当前范围消费；closure 见 matrix/acceptance |
 | built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | scope ruling 见 matrix/ledger；增加内置 pack id 选择或对应 UI/CLI 时重开 |
 | Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | scope ruling 见 matrix/ledger；Realms service/screen 进入范围时重开 |
 

@@ -1659,6 +1659,68 @@ mod tests {
     }
 
     #[test]
+    fn offscreen_panorama_preserves_vanilla_face_row_orientation() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let face_size = 16_u32;
+        let face_bytes = usize::try_from(face_size * face_size * 4).unwrap();
+        let mut faces: [Vec<u8>; 6] = std::array::from_fn(|_| vec![0; face_bytes]);
+        let front = &mut faces[4];
+        for y in 0..face_size {
+            let color = if y < face_size / 2 {
+                [255, 0, 0, 255]
+            } else {
+                [0, 0, 255, 255]
+            };
+            for x in 0..face_size {
+                let offset = usize::try_from((y * face_size + x) * 4).unwrap();
+                front[offset..offset + 4].copy_from_slice(&color);
+            }
+        }
+        renderer
+            .upload_hud_panorama(
+                face_size,
+                face_size,
+                std::array::from_fn(|index| faces[index].as_slice()),
+                1,
+                1,
+                &[0, 0, 0, 0],
+                StandaloneTextureSampling::NEAREST_REPEAT,
+            )
+            .expect("oriented panorama");
+        renderer
+            .upload_hud_menu_background(1, 1, &[0, 0, 0, 0])
+            .expect("transparent menu background");
+        renderer.set_hud_screen_blur(false);
+        renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+            generation: 4,
+            panorama_rotation_degrees: 0.0,
+            title: String::new(),
+            reason_runs: Vec::new(),
+            report_to_server_label: None,
+            open_report_directory_label: None,
+            back_label: String::new(),
+            focused: HudDisconnectedScreenButton::Back,
+            hovered: None,
+        }));
+
+        let frame = renderer
+            .render_offscreen_frame()
+            .expect("oriented panorama frame");
+        let top = frame.pixel(WIDTH / 4, HEIGHT / 4);
+        let bottom = frame.pixel(WIDTH / 4, HEIGHT * 3 / 4);
+        assert!(
+            top[0] > 220 && top[2] < 20,
+            "the PNG top rows must remain at the displayed cubemap top, got {top:?}"
+        );
+        assert!(
+            bottom[2] > 220 && bottom[0] < 20,
+            "the PNG bottom rows must remain at the displayed cubemap bottom, got {bottom:?}"
+        );
+    }
+
+    #[test]
     fn offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back() {
         let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
             return;

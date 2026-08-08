@@ -117,6 +117,12 @@ impl PanoramaGpu {
             view_formats: &[],
         });
         for (layer, rgba) in faces.into_iter().enumerate() {
+            // Vanilla flips each PNG while packing `CubeMapTexture` because its
+            // OpenGL cube upload addresses the first row from the opposite
+            // texture origin. WGPU's copy and sampling convention already
+            // preserves decoded top-to-bottom rows, so flipping here would
+            // invert every displayed face. The asymmetric offscreen test owns
+            // this backend compensation rather than a source-string guard.
             queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &texture,
