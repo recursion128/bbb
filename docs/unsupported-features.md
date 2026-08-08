@@ -55,16 +55,18 @@ Matrix routes: `ui-font-manager`, `ui-font-provider-pipeline`, `ui-menu-screen-r
 Matrix routes: `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `hud-frame-extract-order`, `hud-hotbar-selection`, `hud-overlay-effects`, `hud-player-vitals`, `hud-text-and-lists`, `lifecycle-client-runtime`, `persistence-options-apply`, `platform-window-surface-state`, `player-local-environment-effects`, `protocol-configuration-handler-decisions`, `protocol-listener-contracts`, `protocol-packet-tables`, `protocol-play-handler-decisions`, `protocol-serverbound-call-sites`, `rendering-effects-screenshot`, `rendering-entity-layer-registration`, `rendering-entity-renderer-registration`, `rendering-extract-surface`, `rendering-frame-order`, `rendering-level-diagnostics-gizmos`, `rendering-level-effect-lifecycle`, `rendering-level-light-query`, `rendering-level-pass`, `rendering-level-scene-projection`, `security-secure-chat-reporting`, `ui-accessibility-surface`
 Matrix routes: `coverage-external-client-census`, `persistence-options-derived`, `persistence-server-list`, `platform-window-chrome`, `platform-window-display-mode`, `platform-window-lifecycle`, `player-local-permission-chat-state`, `ui-clipboard-surface`, `ui-screen-lifecycle`
 Matrix routes: `lifecycle-client-task-handoff`, `rendering-block-entity-registration`, `rendering-block-model-pipeline`, `rendering-camera-fluid-fog`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-level-frame-graph`
-Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `rendering-level-section-lifecycle`
-- Close the 105 records that remain `partial` in the current parity acceptance
+Matrix routes: `resources-default-pack-stack`, `rendering-level-section-lifecycle`
+- Close the 104 records that remain `partial` in the current parity acceptance
   report. All 147 records and reverse artifact/scenario mappings validate against
-  gated evidence commit `5f6e3336c` with zero false `equivalent`, zero missing
+  gated evidence commit `553d02405` with zero false `equivalent`, zero missing
   focused-decision evidence, and current Vanilla owner source hashes; the
   bidirectional-text owner is specifically bound to `Language`, `ClientLanguage`,
   `FormattedBidiReorder`, and `SubStringSource` instead of a prose-derived source
   fallback. Current visual/draw/performance receipts are rebound from capture
   `fa73aed19` by identical `elf-load-image-v1`; remaining closure requires exact-commit
-  Linux/lifecycle and real ALSA host-device receipts plus per-mechanism matrix review.
+  real ALSA host-device receipt plus per-mechanism matrix review. Exact-commit
+  lifecycle and Linux platform receipts are now present; only the platform seat
+  row has completed its independent owner/focused-evidence review in this slice.
   Preserve invalid receipts until replaced; the user-waived
   macOS `deferred-external` row is not a closure blocker but retains its source
   basis and reopen condition.
@@ -123,12 +125,6 @@ Matrix routes: `resources-default-pack-stack`, `platform-linux-seat-matrix`, `re
   event/backend contract or supported-platform scope changes. This external
   blocker remains recorded even though macOS-only deferred work is not a
   delivery blocker.
-- Lifecycle and Linux platform receipts still predate evidence `5f6e3336c`; they stay
-  open until exact-commit soak/platform recapture replaces those artifacts. The
-  current visual/draw/performance artifacts do not stand in for either receipt.
-- The default-pack-stack and Linux seat rows also require a current-HEAD live
-  receipt; the last valid receipt is `f08443e67` and is retained as stale
-  evidence until the final server-pack implementation HEAD is captured.
 
 ## Render-step and HUD presentation closure
 

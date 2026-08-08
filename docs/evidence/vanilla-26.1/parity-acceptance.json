@@ -178,7 +178,7 @@
     },
     {
       "artifact_id": "draw-evidence",
-      "bbb_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+      "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
       "bbb_provenance": {
         "binary_identical": false,
         "binary_sha256": "6d7ce00a65368a97535ac9024dfbc22a4bca2fbc48978e92ff68491416e5b071",
@@ -191,11 +191,11 @@
         "capture_commit": "fa73aed19ad54b9f501c1a0ab55db52a5aebe132",
         "evidence_binary": {
           "bytes": 79427776,
-          "path": "/tmp/bbb-parity-5f6e3336c/provenance/bbb-native-5f6e3336c",
+          "path": "/tmp/bbb-parity-553d02405/provenance/bbb-native-553d02405",
           "runtime_image_sha256": "dd4042ef9aeae404ec725c6220df7e48db977d41f8c85be64650ddca8e516589",
-          "sha256": "0f09ccb6efb7d90ce85e3d81e059f0df0c526fea2d7048584062609eb1154309"
+          "sha256": "1c7de6980ce7ab8dd0a842aa77f5eeb56e41209bd05867a932d87db3fc22dd3a"
         },
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "identity_kind": "elf-load-image-v1",
         "runtime_image_identical": true,
         "runtime_image_sha256": "dd4042ef9aeae404ec725c6220df7e48db977d41f8c85be64650ddca8e516589"
@@ -215,13 +215,13 @@
         "rendering-level-frame-graph",
         "rendering-level-scene-projection"
       ],
-      "path": "/tmp/bbb-parity-5f6e3336c/renderdoc/summary.json",
+      "path": "/tmp/bbb-parity-553d02405/renderdoc/summary.json",
       "scenario_ids": [
         "chunk_boundary_crossing",
         "preloaded_flight",
         "static_orbit"
       ],
-      "sha256": "d12afafc39f1fca062e299aea750faab20eac3b028760c267cbe4b5bd41bfa71",
+      "sha256": "5cfa68dd2d2a190fe003ecd4fbdfbbd84b46fc451fd9538b67b94933b3fb1c48",
       "valid": true
     },
     {
@@ -269,7 +269,6 @@
         "movement-remote-type-exceptions",
         "persistence-options-derived",
         "persistence-server-list",
-        "platform-linux-seat-matrix",
         "platform-macos-release",
         "platform-window-chrome",
         "platform-window-display-mode",
@@ -365,12 +364,12 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "2b3f1f563b681219d2350b081daf6715226a1576968a1dfb7f2fba425a2b0f0c",
+      "sha256": "5eb752b76bd486d1c260076980ec0b005c5a85ac8172960ce29ab8ef2b454ebf",
       "valid": true
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+      "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
       "exists": true,
       "invalid_reasons": [],
       "kind": "gate",
@@ -412,6 +411,7 @@
         "persistence-options-file",
         "persistence-options-unconsumed",
         "persistence-server-list",
+        "platform-linux-seat-matrix",
         "platform-window-chrome",
         "platform-window-display-mode",
         "platform-window-lifecycle",
@@ -485,17 +485,16 @@
         "world-client-session-services"
       ],
       "path": ".git/bbb/gate-log.tsv",
-      "receipt": "2026-08-08T11:08:53Z\t5f6e3336c41aab59bc6574615f7c9ccdc6923003\tclean\ttotal:25s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:14s",
-      "sha256": "eab758d36455254a6d59e8a8e4776a1c4023820db1cb05cfbfbac0c24775bfc7",
+      "receipt": "2026-08-08T11:27:19Z\t553d0240519b65498af2ba36e0226b9832eaeb21\tclean\ttotal:93s,vanilla-verify:2s,host-doctor:0s,docs-lint:3s,fmt:6s,scripts-lint:0s,scripts-tests:69s,diff-check:0s,check:1s,cross-check:skip,test:12s",
+      "sha256": "c96e5c1d8f29e8e038fc518563bfa915029fbe556aa284686a211b60cbf7545a",
       "valid": true
     },
     {
       "artifact_id": "lifecycle-soak",
-      "bbb_commit": null,
-      "exists": false,
-      "invalid_reasons": [
-        "lifecycle artifact was not supplied"
-      ],
+      "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
+      "bbb_provenance": null,
+      "exists": true,
+      "invalid_reasons": [],
       "kind": "lifecycle",
       "mechanism_ids": [
         "lifecycle-client-runtime",
@@ -503,18 +502,17 @@
         "lifecycle-session-replacement",
         "resources-indexed-panorama"
       ],
-      "path": null,
+      "path": "/tmp/bbb-lifecycle-soak-553d02405/report.json",
       "scenario_ids": [],
-      "sha256": null,
-      "valid": false
+      "sha256": "525f8b79b97883a2db7ab71da4841adde36c4bf4cd6fe0a5ca996fcbd2759097",
+      "valid": true
     },
     {
       "artifact_id": "linux-platform",
-      "bbb_commit": null,
-      "exists": false,
-      "invalid_reasons": [
-        "platform artifact was not supplied"
-      ],
+      "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
+      "bbb_provenance": null,
+      "exists": true,
+      "invalid_reasons": [],
       "kind": "platform",
       "mechanism_ids": [
         "audio-client-level-sound-routing",
@@ -575,10 +573,10 @@
         "world-client-respawn-data",
         "world-client-session-services"
       ],
-      "path": null,
+      "path": "/tmp/bbb-linux-platform-553d02405/report.json",
       "scenario_ids": [],
-      "sha256": null,
-      "valid": false
+      "sha256": "71dff304d4fe2ad16ff93764f35c8a80e35421e6ed5c62c566c940a0699f9c9c",
+      "valid": true
     },
     {
       "artifact_id": "parity-matrix",
@@ -737,12 +735,12 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "6e0d2271ffbcbfb0fbb519ee5fd5bf725fa5995d9f5923aac75b4d25558fad9e",
+      "sha256": "0181ba90b6a430ffb6009b5f00ae3911351302ffd105b98e07454da96a89f799",
       "valid": true
     },
     {
       "artifact_id": "performance-abba",
-      "bbb_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+      "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
       "bbb_provenance": {
         "binary_identical": false,
         "binary_sha256": "6d7ce00a65368a97535ac9024dfbc22a4bca2fbc48978e92ff68491416e5b071",
@@ -755,11 +753,11 @@
         "capture_commit": "fa73aed19ad54b9f501c1a0ab55db52a5aebe132",
         "evidence_binary": {
           "bytes": 79427776,
-          "path": "/tmp/bbb-parity-5f6e3336c/provenance/bbb-native-5f6e3336c",
+          "path": "/tmp/bbb-parity-553d02405/provenance/bbb-native-553d02405",
           "runtime_image_sha256": "dd4042ef9aeae404ec725c6220df7e48db977d41f8c85be64650ddca8e516589",
-          "sha256": "0f09ccb6efb7d90ce85e3d81e059f0df0c526fea2d7048584062609eb1154309"
+          "sha256": "1c7de6980ce7ab8dd0a842aa77f5eeb56e41209bd05867a932d87db3fc22dd3a"
         },
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "identity_kind": "elf-load-image-v1",
         "runtime_image_identical": true,
         "runtime_image_sha256": "dd4042ef9aeae404ec725c6220df7e48db977d41f8c85be64650ddca8e516589"
@@ -771,9 +769,9 @@
         "performance-gpu-execution-duration",
         "performance-official-equal-load"
       ],
-      "path": "/tmp/bbb-parity-5f6e3336c/formal-summary.json",
+      "path": "/tmp/bbb-parity-553d02405/formal-summary.json",
       "scenario_ids": [],
-      "sha256": "fa0ce766ac4c8a0621892862fb4c615200734581093b794d3bbd756d3eeba045",
+      "sha256": "073b375a17adcf71fa66d46633ecdb5c926392954dfcb639c84923438d84cf6e",
       "valid": true
     },
     {
@@ -1756,6 +1754,7 @@
       "mechanism_ids": [
         "input-mouse-routing",
         "interaction-game-mode-lifecycle",
+        "platform-linux-seat-matrix",
         "player-local-environment-effects",
         "player-local-input-movement",
         "player-local-movement-reporting",
@@ -1875,6 +1874,7 @@
         "interaction-game-mode-guards",
         "interaction-game-mode-lifecycle",
         "persistence-options-apply",
+        "platform-linux-seat-matrix",
         "platform-window-display-mode",
         "platform-window-surface-state",
         "player-local-inventory-actions",
@@ -2821,7 +2821,8 @@
       "mechanism_ids": [
         "input-keyboard-routing",
         "input-mouse-routing",
-        "lifecycle-client-task-handoff"
+        "lifecycle-client-task-handoff",
+        "platform-linux-seat-matrix"
       ],
       "path": "crates/bbb-native/src/simulation/commands.rs",
       "scenario_ids": [],
@@ -2835,6 +2836,7 @@
       "invalid_reasons": [],
       "kind": "repo-evidence",
       "mechanism_ids": [
+        "platform-linux-seat-matrix",
         "platform-window-lifecycle",
         "platform-window-surface-state",
         "protocol-configuration-handler-decisions",
@@ -7664,7 +7666,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "2b3f1f563b681219d2350b081daf6715226a1576968a1dfb7f2fba425a2b0f0c",
+      "sha256": "5eb752b76bd486d1c260076980ec0b005c5a85ac8172960ce29ab8ef2b454ebf",
       "valid": true
     },
     {
@@ -8209,7 +8211,7 @@
     },
     {
       "artifact_id": "visual-workload",
-      "bbb_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+      "bbb_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
       "bbb_provenance": {
         "binary_identical": false,
         "binary_sha256": "6d7ce00a65368a97535ac9024dfbc22a4bca2fbc48978e92ff68491416e5b071",
@@ -8222,11 +8224,11 @@
         "capture_commit": "fa73aed19ad54b9f501c1a0ab55db52a5aebe132",
         "evidence_binary": {
           "bytes": 79427776,
-          "path": "/tmp/bbb-parity-5f6e3336c/provenance/bbb-native-5f6e3336c",
+          "path": "/tmp/bbb-parity-553d02405/provenance/bbb-native-553d02405",
           "runtime_image_sha256": "dd4042ef9aeae404ec725c6220df7e48db977d41f8c85be64650ddca8e516589",
-          "sha256": "0f09ccb6efb7d90ce85e3d81e059f0df0c526fea2d7048584062609eb1154309"
+          "sha256": "1c7de6980ce7ab8dd0a842aa77f5eeb56e41209bd05867a932d87db3fc22dd3a"
         },
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "identity_kind": "elf-load-image-v1",
         "runtime_image_identical": true,
         "runtime_image_sha256": "dd4042ef9aeae404ec725c6220df7e48db977d41f8c85be64650ddca8e516589"
@@ -8246,17 +8248,17 @@
         "rendering-level-frame-graph",
         "rendering-level-scene-projection"
       ],
-      "path": "/tmp/bbb-parity-5f6e3336c/visual/workload-summary.json",
+      "path": "/tmp/bbb-parity-553d02405/visual/workload-summary.json",
       "scenario_ids": [
         "chunk_boundary_crossing",
         "preloaded_flight",
         "static_orbit"
       ],
-      "sha256": "7563c53f81a9e02a5014e25c725c5af39b1139b336f882aa6574f07b8abed760",
+      "sha256": "264547f40d3abe1ee9f820b9a2763af75f22b92b878bb0f4db78bee8e4c4b32e",
       "valid": true
     }
   ],
-  "bbb_evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+  "bbb_evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
   "commands": {
     "portable_check": "scripts/python python scripts/parity_acceptance.py check",
     "strict_artifact_check": "scripts/python python scripts/parity_acceptance.py check --require-artifacts --require-complete"
@@ -8273,7 +8275,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "6e0d2271ffbcbfb0fbb519ee5fd5bf725fa5995d9f5923aac75b4d25558fad9e"
+      "sha256": "0181ba90b6a430ffb6009b5f00ae3911351302ffd105b98e07454da96a89f799"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -8281,7 +8283,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "2b3f1f563b681219d2350b081daf6715226a1576968a1dfb7f2fba425a2b0f0c"
+      "sha256": "5eb752b76bd486d1c260076980ec0b005c5a85ac8172960ce29ab8ef2b454ebf"
     }
   ],
   "mechanisms": [
@@ -8295,7 +8297,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/startup.rs",
           "scripts/playable_gate.py"
@@ -8309,7 +8311,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8331,7 +8333,6 @@
       "mechanism_id": "startup-client-bootstrap",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8375,7 +8376,7 @@
         "repo:docs/wiki/architecture/offline-runtime.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-net/src/types/connection.rs",
           "docs/wiki/architecture/offline-runtime.md"
@@ -8389,7 +8390,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8411,7 +8412,6 @@
       "mechanism_id": "startup-session-identity",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8457,7 +8457,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
           "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_tracks_normal_world_tick_rate",
@@ -8486,7 +8486,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "invalid"
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -8494,7 +8494,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8534,8 +8534,6 @@
       "mechanism_id": "lifecycle-client-runtime",
       "valid": false,
       "validity_reasons": [
-        "required lifecycle-soak receipt is invalid: lifecycle artifact was not supplied",
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8579,7 +8577,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -8611,7 +8609,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "invalid"
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -8619,7 +8617,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8665,8 +8663,6 @@
       "mechanism_id": "lifecycle-session-replacement",
       "valid": false,
       "validity_reasons": [
-        "required lifecycle-soak receipt is invalid: lifecycle artifact was not supplied",
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8708,7 +8704,7 @@
         "repo:crates/bbb-native/src/simulation/thread.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input",
@@ -8736,7 +8732,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "invalid"
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -8744,7 +8740,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8790,8 +8786,6 @@
       "mechanism_id": "lifecycle-client-task-handoff",
       "valid": false,
       "validity_reasons": [
-        "required lifecycle-soak receipt is invalid: lifecycle artifact was not supplied",
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8821,7 +8815,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -8834,7 +8828,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8856,7 +8850,6 @@
       "mechanism_id": "resources-offline-asset-trust",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8886,7 +8879,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -8899,7 +8892,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -8921,7 +8914,6 @@
       "mechanism_id": "resources-indexed-vanilla-provider",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -8957,7 +8949,7 @@
         "repo:scripts/cargo-dev.sh"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
           "crates/bbb-pack/src/resources.rs",
@@ -8993,7 +8985,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -9057,7 +9049,6 @@
       "mechanism_id": "resources-default-pack-stack",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -9143,7 +9134,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -9157,7 +9148,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -9179,7 +9170,6 @@
       "mechanism_id": "resources-reload-listeners",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -9230,7 +9220,7 @@
         "repo:crates/bbb-native/src/simulation.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -9263,7 +9253,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -9327,7 +9317,6 @@
       "mechanism_id": "resources-reload-recovery",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -9365,7 +9354,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -9450,7 +9439,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -9517,7 +9506,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -9749,7 +9738,6 @@
       "mechanism_id": "resources-server-pack-lifecycle",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -9867,7 +9855,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime/tests.rs#system_toast_title_arguments_relocalize_without_rebuilding_download_content",
           "crates/bbb-native/src/runtime/tests.rs#system_toast_title_relocalizes_while_message_lines_and_width_stay_frozen",
@@ -9892,7 +9880,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -9920,7 +9908,6 @@
       "mechanism_id": "resources-language-manager",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -9956,7 +9943,7 @@
         "repo:docs/wiki/mechanisms/ui/font-and-text.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
@@ -10076,7 +10063,7 @@
         "repo:docs/wiki/mechanisms/ui/font-and-text.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
@@ -10181,7 +10168,7 @@
         "repo:scripts/capture-vanilla-audio-receipt.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -10899,7 +10886,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-pack/src/window_icons.rs",
@@ -10914,7 +10901,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -10936,7 +10923,6 @@
       "mechanism_id": "resources-window-icons",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -10973,7 +10959,7 @@
         "repo:scripts/lifecycle_soak.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-renderer/src/offscreen.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -10988,7 +10974,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "invalid"
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -10996,7 +10982,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -11018,8 +11004,6 @@
       "mechanism_id": "resources-indexed-panorama",
       "valid": false,
       "validity_reasons": [
-        "required lifecycle-soak receipt is invalid: lifecycle artifact was not supplied",
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -11056,7 +11040,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -11114,7 +11098,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -11411,7 +11395,7 @@
         "repo:scripts/vanilla-source-tools.sh"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -11666,7 +11650,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -11921,7 +11905,6 @@
       "mechanism_id": "protocol-packet-tables",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -12453,7 +12436,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -12709,7 +12692,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -12964,7 +12947,6 @@
       "mechanism_id": "protocol-listener-contracts",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -13402,7 +13384,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -13655,7 +13637,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -13910,7 +13892,6 @@
       "mechanism_id": "protocol-login-handler-decisions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -14185,7 +14166,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
           "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
@@ -14442,7 +14423,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -14697,7 +14678,6 @@
       "mechanism_id": "protocol-configuration-handler-decisions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -14973,7 +14953,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -15227,7 +15207,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -15482,7 +15462,6 @@
       "mechanism_id": "protocol-play-handler-decisions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -15751,7 +15730,7 @@
         "repo:docs/wiki/mechanisms/protocol/client-state-flow.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -15764,7 +15743,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -15786,7 +15765,6 @@
       "mechanism_id": "protocol-client-state-flow",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -16048,7 +16026,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -16305,7 +16283,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -16560,7 +16538,6 @@
       "mechanism_id": "protocol-serverbound-call-sites",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -16669,7 +16646,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -16788,7 +16765,7 @@
         "repo:docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -16943,7 +16920,7 @@
         "repo:docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -17030,7 +17007,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -17156,7 +17133,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17184,7 +17161,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -17254,7 +17231,6 @@
       "mechanism_id": "world-client-level-lifecycle",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -17287,7 +17263,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17311,7 +17287,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -17399,7 +17375,6 @@
       "mechanism_id": "world-client-clock-weather",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -17439,7 +17414,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17464,7 +17439,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -17534,7 +17509,6 @@
       "mechanism_id": "world-client-chunk-light-lifecycle",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -17572,7 +17546,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17598,7 +17572,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -17680,7 +17654,6 @@
       "mechanism_id": "world-client-entity-lifecycle",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -17728,7 +17701,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17753,7 +17726,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -17841,7 +17814,6 @@
       "mechanism_id": "world-client-ambient-animation",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -17881,7 +17853,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -17905,7 +17877,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -17945,7 +17917,6 @@
       "mechanism_id": "world-client-session-services",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -17985,7 +17956,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18011,7 +17982,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -18057,7 +18028,6 @@
       "mechanism_id": "world-client-map-data",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -18094,7 +18064,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -18121,7 +18091,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -18167,7 +18137,6 @@
       "mechanism_id": "world-client-level-events",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -18204,7 +18173,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18232,7 +18201,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -18308,7 +18277,6 @@
       "mechanism_id": "world-client-respawn-data",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -18346,7 +18314,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18369,7 +18337,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -18403,7 +18371,6 @@
       "mechanism_id": "rendering-client-block-entity-tracking",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -18436,7 +18403,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18462,7 +18429,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -18544,7 +18511,6 @@
       "mechanism_id": "rendering-client-level-dirty-handoff",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -18578,7 +18544,7 @@
         "repo:crates/bbb-native/src/particle_runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -18676,7 +18642,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -18872,7 +18838,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -18899,7 +18865,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -18963,7 +18929,6 @@
       "mechanism_id": "audio-client-level-sound-routing",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19000,7 +18965,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -19026,7 +18991,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -19078,7 +19043,6 @@
       "mechanism_id": "diagnostics-client-level-report",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19115,7 +19079,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -19142,7 +19106,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -19182,7 +19146,6 @@
       "mechanism_id": "player-local-session-respawn",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19214,7 +19177,7 @@
         "repo:crates/bbb-world/src/client/local_player.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -19295,7 +19258,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -19319,7 +19282,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -19359,7 +19322,6 @@
       "mechanism_id": "player-local-movement-reporting",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19395,7 +19357,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -19420,7 +19382,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -19514,7 +19476,6 @@
       "mechanism_id": "player-local-input-movement",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19567,7 +19528,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -19594,7 +19555,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -19652,7 +19613,6 @@
       "mechanism_id": "player-local-vehicle-control",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19691,7 +19651,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -19789,7 +19749,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -19859,7 +19819,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -19886,7 +19846,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -19926,7 +19886,6 @@
       "mechanism_id": "player-local-item-use-state",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -19963,7 +19922,7 @@
         "repo:crates/bbb-world/src/recipe_book.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -20086,7 +20045,7 @@
         "repo:crates/bbb-world/src/client/ui.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -20219,7 +20178,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -20344,7 +20303,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -20371,7 +20330,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -20423,7 +20382,6 @@
       "mechanism_id": "player-local-camera-targeting",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -20469,7 +20427,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -20496,7 +20454,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -20542,7 +20500,6 @@
       "mechanism_id": "interaction-game-mode-lifecycle",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -20586,7 +20543,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -20613,7 +20570,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -20653,7 +20610,6 @@
       "mechanism_id": "interaction-game-mode-guards",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -20691,7 +20647,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -20719,7 +20675,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -20825,7 +20781,6 @@
       "mechanism_id": "interaction-block-breaking",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -20865,7 +20820,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -20895,7 +20850,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -20965,7 +20920,6 @@
       "mechanism_id": "interaction-prediction-sequence",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21005,7 +20959,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -21029,7 +20983,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21051,7 +21005,6 @@
       "mechanism_id": "interaction-carried-slot-sync",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21083,7 +21036,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -21108,7 +21061,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21142,7 +21095,6 @@
       "mechanism_id": "interaction-item-use",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21177,7 +21129,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -21202,7 +21154,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21242,7 +21194,6 @@
       "mechanism_id": "interaction-entity-actions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21278,7 +21229,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -21303,7 +21254,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21349,7 +21300,6 @@
       "mechanism_id": "interaction-container-actions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21383,7 +21333,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -21407,7 +21357,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21429,7 +21379,6 @@
       "mechanism_id": "interaction-creative-actions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21461,7 +21410,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -21485,7 +21434,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21519,7 +21468,6 @@
       "mechanism_id": "interaction-pick-actions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21555,7 +21503,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -21578,7 +21526,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -21630,7 +21578,6 @@
       "mechanism_id": "interaction-primary-action-routing",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -21690,7 +21637,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -22364,7 +22311,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -23036,7 +22983,7 @@
         "repo:docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -23848,7 +23795,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -24282,7 +24229,7 @@
         "repo:docs/evidence/vanilla-26.1/particle-provider-coverage.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -24535,7 +24482,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -25066,7 +25013,7 @@
         "repo:crates/bbb-world/src/client/hud_camera_player.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -25281,7 +25228,7 @@
         "repo:crates/bbb-renderer/src/hud/layout.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -25417,7 +25364,7 @@
         "repo:crates/bbb-renderer/src/vignette.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -25596,7 +25543,7 @@
         "repo:crates/bbb-world/src/client/scoreboard/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -25820,7 +25767,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -26068,7 +26015,7 @@
         "repo:crates/bbb-world/src/entities/tests/name_tag_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -26309,7 +26256,7 @@
         "repo:crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -26587,7 +26534,7 @@
         "repo:crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -26897,7 +26844,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -26924,7 +26871,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -26988,7 +26935,6 @@
       "mechanism_id": "rendering-level-backend-lifecycle",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -27029,7 +26975,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -27209,7 +27155,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -27459,7 +27405,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -27708,7 +27654,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -27825,7 +27771,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -27936,7 +27882,7 @@
         "repo:docs/wiki/mechanisms/rendering/block-rendering.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -28032,7 +27978,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -28153,7 +28099,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-renderer/src/terrain.rs"
         ],
@@ -28270,7 +28216,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -28387,7 +28333,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/camera_pose.rs"
         ],
@@ -28506,7 +28452,7 @@
         "repo:crates/bbb-world/src/client/inventory/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
@@ -28615,7 +28561,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -28738,7 +28684,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -28847,7 +28793,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -28937,7 +28883,7 @@
         "repo:crates/bbb-renderer/src/hud.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -29041,7 +28987,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -29128,7 +29074,7 @@
         "repo:crates/bbb-render-types/src/text_visual_order.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
           "crates/bbb-render-types/src/text_visual_order.rs#visual_order_carries_utf16_metadata_like_vanilla_substring_source",
@@ -29224,7 +29170,7 @@
         "repo:crates/bbb-world/src/level.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -29433,7 +29379,7 @@
         "repo:crates/bbb-native/src/runtime/dialog_screen.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -29532,7 +29478,7 @@
         "repo:scripts/local_time_tables.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
           "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
@@ -29610,7 +29556,7 @@
         "repo:crates/bbb-renderer/src/entity_models/tests/player.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
           "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
@@ -29695,7 +29641,7 @@
         "repo:crates/bbb-native/src/simulation/commands.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -29720,7 +29666,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -29850,7 +29796,6 @@
       "mechanism_id": "input-keyboard-routing",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -29896,7 +29841,7 @@
         "repo:crates/bbb-native/src/runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -29919,7 +29864,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -30037,7 +29982,6 @@
       "mechanism_id": "input-debug-key-actions",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -30085,7 +30029,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -30114,7 +30058,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -30256,7 +30200,6 @@
       "mechanism_id": "input-mouse-routing",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -30308,7 +30251,7 @@
         "repo:crates/bbb-native/src/runtime/tests.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -30335,7 +30278,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -30465,7 +30408,6 @@
       "mechanism_id": "input-key-mapping",
       "valid": false,
       "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -30530,7 +30472,7 @@
         "repo:docs/evidence/vanilla-26.1/file-drop-capability.json"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -30685,7 +30627,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -30838,7 +30780,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -31038,7 +30980,7 @@
         "repo:crates/bbb-native/src/window_surface.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -31158,7 +31100,7 @@
         "repo:scripts/tests/test_client_options_catalog_extractor.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -31294,7 +31236,7 @@
         "repo:crates/bbb-renderer/src/render.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -31461,7 +31403,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -31734,7 +31676,7 @@
         "repo:scripts/tests/test_client_options_catalog_extractor.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -31825,7 +31767,7 @@
         "repo:crates/bbb-native/src/startup.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -31926,7 +31868,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32001,7 +31943,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
@@ -32113,7 +32055,7 @@
         "repo:crates/bbb-world/src/client/social.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -32455,7 +32397,7 @@
         "repo:crates/bbb-native/src/simulation/thread.rs"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -32595,7 +32537,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
@@ -32760,7 +32702,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/tests/test_gpu_duration_capture.py"
@@ -32986,14 +32928,24 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
-        "feature-ledger",
+        "full-gate",
         "linux-platform",
         "parity-matrix",
+        "repo:crates/bbb-native/src/input/movement.rs",
+        "repo:crates/bbb-native/src/input/tests.rs",
+        "repo:crates/bbb-native/src/simulation/commands.rs",
+        "repo:crates/bbb-native/src/simulation/input_commands.rs",
         "repo:scripts/platform_acceptance.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
+          "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
+          "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
+          "crates/bbb-native/src/input/tests.rs#shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback",
+          "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+          "crates/bbb-native/src/simulation/commands.rs#saturated_mailbox_never_drops_key_mouse_or_control_releases",
+          "crates/bbb-native/src/simulation/input_commands.rs#network_terminal_shutdown_is_idempotent_and_requests_disconnect",
           "scripts/platform_acceptance.py"
         ],
         "owner": "seat-backed compositor run"
@@ -33001,35 +32953,74 @@
       "differential_scenarios": [
         {
           "artifact_ids": [
+            "full-gate",
+            "repo:crates/bbb-native/src/input/movement.rs",
+            "repo:crates/bbb-native/src/input/tests.rs",
+            "repo:crates/bbb-native/src/simulation/commands.rs",
+            "repo:crates/bbb-native/src/simulation/input_commands.rs"
+          ],
+          "kind": "platform-receipt",
+          "scenario_id": "focused-platform-linux-seat-matrix",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
             "linux-platform"
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
-          "command": null,
+          "command": "scripts/cargo-dev.sh test -p bbb-native local_input_projection_includes_focus_keys_and_mouse_delta",
           "ignored": false,
-          "reference": null,
-          "result": "missing"
+          "reference": "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/input/tests.rs#shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native saturated_mailbox_never_drops_key_mouse_or_control_releases",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/simulation/commands.rs#saturated_mailbox_never_drops_key_mouse_or_control_releases",
+          "result": "passed-via-full-gate"
+        },
+        {
+          "command": "scripts/cargo-dev.sh test -p bbb-native network_terminal_shutdown_is_idempotent_and_requests_disconnect",
+          "ignored": false,
+          "reference": "crates/bbb-native/src/simulation/input_commands.rs#network_terminal_shutdown_is_idempotent_and_requests_disconnect",
+          "result": "passed-via-full-gate"
         }
       ],
       "matrix": {
         "domain": "platform",
         "line": 134,
         "required_state_projection": "interactive event matrix",
-        "route_reopen_condition": "seat 链路、receipts 判据或声明行变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "route_reopen_condition": "seat 链路、platform manifest、focused 决策、receipt 判据或声明行变化时重开",
+        "status": "equivalent"
       },
       "mechanism_id": "platform-linux-seat-matrix",
-      "valid": false,
-      "validity_reasons": [
-        "required linux-platform receipt is invalid: platform artifact was not supplied",
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "13b48e1bf322927cff2d1de543a18dc78bdb240673fa0566ef2f8895eacc7227",
         "inventory_owner_count": 0,
@@ -33069,7 +33060,7 @@
         "repo:scripts/cross_check.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/cross_check.py"
@@ -33188,7 +33179,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33306,7 +33297,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33394,7 +33385,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33517,7 +33508,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33680,7 +33671,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33770,7 +33761,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33834,7 +33825,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33919,7 +33910,7 @@
         "repo:scripts/client_mechanism_inventory.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -34243,7 +34234,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34307,7 +34298,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34425,7 +34416,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34543,7 +34534,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34661,7 +34652,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34779,7 +34770,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34837,7 +34828,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -34955,7 +34946,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -35073,7 +35064,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -35191,7 +35182,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -35251,7 +35242,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -35374,7 +35365,7 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -35566,7 +35557,7 @@
         "repo:scripts/tests/test_docs_lint.py"
       ],
       "bbb": {
-        "evidence_commit": "5f6e3336c41aab59bc6574615f7c9ccdc6923003",
+        "evidence_commit": "553d0240519b65498af2ba36e0226b9832eaeb21",
         "evidence_references": [
           "scripts/docs_wiki_lint.py",
           "scripts/parity_acceptance.py",
@@ -36506,6 +36497,21 @@
         "persistence-server-list"
       ],
       "scenario_id": "focused-persistence-server-list",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "full-gate",
+        "repo:crates/bbb-native/src/input/movement.rs",
+        "repo:crates/bbb-native/src/input/tests.rs",
+        "repo:crates/bbb-native/src/simulation/commands.rs",
+        "repo:crates/bbb-native/src/simulation/input_commands.rs"
+      ],
+      "kind": "platform-receipt",
+      "mechanism_ids": [
+        "platform-linux-seat-matrix"
+      ],
+      "scenario_id": "focused-platform-linux-seat-matrix",
       "status": "passed"
     },
     {
@@ -39120,7 +39126,7 @@
         "resources-indexed-panorama"
       ],
       "scenario_id": "receipt-lifecycle-soak",
-      "status": "invalid"
+      "status": "passed"
     },
     {
       "artifact_ids": [
@@ -39187,7 +39193,7 @@
         "world-client-session-services"
       ],
       "scenario_id": "receipt-linux-platform",
-      "status": "invalid"
+      "status": "passed"
     },
     {
       "artifact_ids": [
@@ -39630,7 +39636,6 @@
       "lifecycle-session-replacement",
       "persistence-options-derived",
       "persistence-server-list",
-      "platform-linux-seat-matrix",
       "platform-window-chrome",
       "platform-window-display-mode",
       "platform-window-lifecycle",
@@ -39708,11 +39713,11 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 16,
+      "equivalent": 17,
       "not-needed": 25,
-      "partial": 105
+      "partial": 104
     },
-    "valid_count": 42
+    "valid_count": 43
   },
   "vanilla_version": "26.1"
 }
