@@ -22,6 +22,7 @@ from parity_acceptance import (
     change_impact_plan,
     external_artifact,
     external_artifact_ids,
+    focused_test_references,
     main,
     parse_args,
     parse_matrix,
@@ -368,6 +369,36 @@ mod tests {
                 ["crates/example/src/lib.rs#decision_matches_vanilla"],
             )
             self.assertEqual(focused[0]["result"], "passed-via-full-gate")
+
+    def test_nested_mechanism_page_tests_are_scoped_to_its_declared_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo, _source_root = self.make_fixture(Path(temporary))
+            mechanism_page = repo / "docs/wiki/mechanisms/fixture.md"
+            mechanism_page.parent.mkdir(parents=True, exist_ok=True)
+            mechanism_page.write_text(
+                """\
+# Fixture mechanism
+
+机制 ID：`fixture-equivalent`
+
+`crates/example/src/lib.rs#decision_matches_vanilla`
+""",
+                encoding="utf-8",
+            )
+            reference = mechanism_page.relative_to(repo).as_posix()
+
+            matching = focused_test_references(
+                repo, [reference], "fixture-equivalent"
+            )
+            unrelated = focused_test_references(
+                repo, [reference], "fixture-unrelated"
+            )
+
+            self.assertEqual(
+                [test["reference"] for test in matching],
+                ["crates/example/src/lib.rs#decision_matches_vanilla"],
+            )
+            self.assertEqual(unrelated, [])
 
     def test_change_plan_scopes_direct_central_and_unrelated_paths(self):
         with tempfile.TemporaryDirectory() as temporary:

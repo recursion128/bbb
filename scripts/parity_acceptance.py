@@ -242,6 +242,9 @@ RUST_EXECUTABLE_TEST_ATTR_RE = re.compile(
     r"#\[\s*(?:test|tokio::test)(?:\s*\([^\]]*\))?\s*\]"
 )
 PYTHON_TEST_RE = re.compile(r"^\s*(?:async\s+)?def\s+(test_[A-Za-z0-9_]+)\s*\(", re.MULTILINE)
+MECHANISM_ID_DECLARATION_RE = re.compile(
+    r"^机制\s+ID[:：]\s*`([a-z0-9]+(?:-[a-z0-9]+)*)`\s*$", re.MULTILINE
+)
 
 
 class AcceptanceError(RuntimeError):
@@ -756,6 +759,15 @@ def nested_document_references(path: Path) -> Iterable[str]:
     yield from nested_code_references(text)
 
 
+@lru_cache(maxsize=None)
+def declared_document_mechanism_ids(path: Path) -> frozenset[str]:
+    if path.suffix != ".md":
+        return frozenset()
+    return frozenset(
+        MECHANISM_ID_DECLARATION_RE.findall(path.read_text(encoding="utf-8"))
+    )
+
+
 def reference_path(reference: str) -> str:
     return reference.split("#", 1)[0]
 
@@ -781,7 +793,9 @@ def test_symbols(path: Path) -> dict[str, bool]:
     return result
 
 
-def focused_test_references(repo: Path, initial: Iterable[str]) -> list[dict[str, object]]:
+def focused_test_references(
+    repo: Path, initial: Iterable[str], mechanism_id: str
+) -> list[dict[str, object]]:
     queue = list(initial)
     visited: set[str] = set()
     candidates: set[str] = set()
@@ -807,7 +821,9 @@ def focused_test_references(repo: Path, initial: Iterable[str]) -> list[dict[str
                 except json.JSONDecodeError:
                     pass
             elif path.suffix == ".md":
-                queue.extend(nested_document_references(path))
+                declared_ids = declared_document_mechanism_ids(path)
+                if not declared_ids or mechanism_id in declared_ids:
+                    queue.extend(nested_document_references(path))
             elif path.name.startswith("test_"):
                 candidates.update(f"{relative}#{name}" for name in symbols)
     tests: list[dict[str, object]] = []
@@ -1684,7 +1700,9 @@ def build_report(
             ledger_basis=ledger_basis,
             evidence_basis="\n".join(evidence_basis_parts),
         )
-        tests = focused_test_references(repo, [*refs, *owner_tests])
+        tests = focused_test_references(
+            repo, [*refs, *owner_tests], row["mechanism_id"]
+        )
         test_source_artifact_ids = sorted(
             {
                 f"repo:{reference_path(str(test['reference']))}"

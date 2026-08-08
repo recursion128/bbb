@@ -246,6 +246,29 @@ renderer mesh tests 覆盖内部面、shape、AO、方向光照、邻 chunk 和�
 在 `static_orbit`、`preloaded_flight`、`chunk_boundary_crossing` 保存同 tick ROI 与
 RenderDoc 非空 draw evidence。
 
+本机制的可执行 focused contract 精确绑定下列行为测试，不以 source-string guard
+代替 world/mesh 结果：
+
+- `crates/bbb-world/src/chunks/tests/terrain.rs#extracted_terrain_carries_exact_render_occlusion_facts`
+  锁定 stone/glass/leaves 的 solid、occlusion、view-blocking、light-dampening、shade 与 face-shape facts；
+- `crates/bbb-world/src/chunks/tests/terrain.rs#terrain_skip_rendering_uses_current_session_bars_tag_membership`
+  锁定 `skipRendering` 的 current-session tag 输入，禁止名字或固定 ordinal 代替；
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#box_model_culls_only_faces_marked_by_cullface`
+  执行 full-neighbor 与 partial own-shape 的非对称 cull 结果；
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#face_culling_consumes_vanilla_face_shape_palette_not_render_cuboids`
+  执行 empty/full/partial shape palette 的 `ONLY_FIRST` 方向性；
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#cross_chunk_slab_neighbor_keeps_partial_face`
+  验证 chunk 边界邻居查询不会把 partial face 误剪掉；
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#ambient_occlusion_queries_corner_blockers_beyond_side_brightness_samples`
+  验证 AO 对角 blocker 与 side brightness 为独立输入；
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#terrain_diffuse_vertices_carry_vanilla_default_cardinal_shade`
+  锁定六面 default cardinal shade；
+- `crates/bbb-renderer/src/terrain/mesh/tests.rs#section_layer_builder_reuses_texture_layer_routing_without_changing_meshes`
+  验证 solid/cutout/translucent 只按 material 路由且不改写 mesh。
+
+这些 focused tests 只关闭实现阶段的决策合同；冻结的 stone/glowstone/leaves/glass
+ROI、三个 replay 的结构断言和 draw receipt 仍必须在最终 rendering domain sweep 中重新采集。
+
 section lifecycle 由 native 的 near/previously-empty、far 0→0.3→1、recompile、level
 replacement、stale generation 和三个 consumer 共享阈值测试，以及 renderer 的 uniform
 layout、旧 bridge reverse guard、translucent resort 和 offscreen pixel fade 测试覆盖；本地
