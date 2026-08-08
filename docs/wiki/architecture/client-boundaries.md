@@ -383,7 +383,7 @@ dimension/yaw/pitch 保留。
 below-horizon dark disc（`buildSkyDisc(-16)`+translate(0,12,0) 烘焙为 y=−4 黑盘，sky pass
 最后绘制，门=player eye−horizon<0）；`client_void_darkness_onset_range`（is_flat?1:32）作
 fog 颜色的 void darkness 基值（clamp((range+minY−camera.y)/range)，效果环境以 max() 抬升后
-(1−darkness)² 应用；bbb 无 POWDER_SNOW camera fog 变体，排除面即 LAVA）。不得另建第二个
+(1−darkness)² 应用，LAVA/POWDER_SNOW 保持 Vanilla 的颜色暗化排除）。不得另建第二个
 difficulty/spawn 存储或 renderer 侧 horizon 判定。
 
 ### ClientLevel session-services owner

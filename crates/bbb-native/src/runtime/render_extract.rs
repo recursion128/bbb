@@ -1223,6 +1223,7 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
                 .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
         )),
         CameraFogType::Lava => clear_color_from_argb(VANILLA_LAVA_FOG_COLOR),
+        CameraFogType::PowderSnow => clear_color_from_argb(VANILLA_POWDER_SNOW_FOG_COLOR),
     };
     let clear = if hide_lightning_flash
         || world.sky_flash_time() == 0
@@ -1274,7 +1275,7 @@ fn apply_camera_mob_effect_fog_color(
         },
     );
     let mut color = clear_color_to_argb(clear);
-    if darkness > 0.0 && fog_type != CameraFogType::Lava {
+    if darkness > 0.0 && !matches!(fog_type, CameraFogType::Lava | CameraFogType::PowderSnow) {
         let brightness = (1.0 - darkness.clamp(0.0, 1.0)).powi(2);
         color = argb_scale_rgb(color, brightness, brightness, brightness);
     }
@@ -1287,12 +1288,14 @@ fn apply_camera_mob_effect_fog_color(
                 1.0
             }
         }
-        CameraFogType::Atmospheric | CameraFogType::Lava if darkness_effect.is_none() => {
+        CameraFogType::Atmospheric | CameraFogType::Lava | CameraFogType::PowderSnow
+            if darkness_effect.is_none() =>
+        {
             camera_entity_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID)
                 .map(|effect| vanilla_night_vision_scale(effect, partial_tick))
                 .unwrap_or(0.0)
         }
-        CameraFogType::Atmospheric | CameraFogType::Lava => 0.0,
+        CameraFogType::Atmospheric | CameraFogType::Lava | CameraFogType::PowderSnow => 0.0,
     };
     clear_color_from_argb(apply_fog_brightening(color, brighten_factor))
 }
@@ -1320,9 +1323,11 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     // suppresses the sky pass; atmospheric fog and End-flash light remain
     // separate consumers of the same aggregate property.
     // `LevelRenderer.addSkyPass` keeps underwater sky visible but rejects
-    // Lava before scheduling any skybox pass.
-    if colors.fog_type == CameraFogType::Lava
-        || world.boss_overlay_should_create_world_fog()
+    // Lava and powder snow before scheduling any skybox pass.
+    if matches!(
+        colors.fog_type,
+        CameraFogType::Lava | CameraFogType::PowderSnow
+    ) || world.boss_overlay_should_create_world_fog()
         || camera_mob_effect_blocks_sky(world)
     {
         return SkyEnvironment::disabled();
@@ -1890,8 +1895,30 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
                 environmental_end,
             )
         }
+        CameraFogType::PowderSnow => {
+            // Vanilla 26.1 `PowderedSnowFogEnvironment.setupFog`: the camera
+            // entity's spectator state selects the wide range; otherwise the
+            // environment ends two blocks from the camera.
+            let render_distance_blocks = render_distance_chunks as f32 * 16.0;
+            let (environmental_start, environmental_end) = if camera_entity_is_spectator(world) {
+                (-8.0, render_distance_blocks * 0.5)
+            } else {
+                (0.0, 2.0)
+            };
+            FogEnvironment::world_with_visibility_ends(
+                color,
+                environmental_start,
+                environmental_end,
+                render_distance_chunks,
+                environmental_end,
+                environmental_end,
+            )
+        }
     };
-    if colors.fog_type == CameraFogType::Lava {
+    if matches!(
+        colors.fog_type,
+        CameraFogType::Lava | CameraFogType::PowderSnow
+    ) {
         base
     } else {
         camera_mob_effect_fog_environment(

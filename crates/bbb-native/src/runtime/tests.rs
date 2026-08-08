@@ -3910,6 +3910,38 @@ fn camera_fluid_sampler_uses_water_priority_viewport_base_fov_and_inclusive_lava
 }
 
 #[test]
+fn camera_powder_snow_near_plane_matches_vanilla_sample_order_without_fov_scaling() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.97, 0.0, 0.97], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let powder_snow = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:powder_snow", &BTreeMap::new())
+        .expect("vanilla powder snow state");
+    let source_lava = world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:lava",
+            &BTreeMap::from([("level".to_string(), "0".to_string())]),
+        )
+        .expect("vanilla source lava state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 1, z: 1 }, powder_snow);
+    set_lightmap_test_block(&mut world, BlockPos { x: 1, y: 1, z: 1 }, source_lava);
+    let camera = camera_pose_from_world(&world).unwrap();
+
+    let medium = camera_fluid_in_camera(&world, camera, [1920, 1080], 70.0);
+    assert_eq!(
+        medium,
+        CameraFluid::PowderSnow,
+        "the center sample returns powder snow before a later corner reaches lava"
+    );
+    let frame = CameraFovTickState::default().frame(None, medium, 1.0);
+    assert_eq!(frame.world_degrees, 70.0);
+    assert_eq!(frame.culling_degrees, 70.0);
+    assert_eq!(frame.hud_degrees, 70.0);
+}
+
+#[test]
 fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
     let runtime = include_str!("../runtime.rs");
     let camera_pose = runtime
@@ -10436,6 +10468,44 @@ fn lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass() {
         sky_environment_for_world_with_environment_colors(&world, colors, false),
         SkyEnvironment::disabled()
     );
+}
+
+#[test]
+fn powder_snow_fog_precedes_mob_effect_distances_preserves_color_and_suppresses_sky() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_BLINDNESS_ID, -1,)));
+    let colors = CameraEnvironmentColors {
+        fog_type: CameraFogType::PowderSnow,
+        ..CameraEnvironmentColors::default()
+    };
+
+    let normal =
+        fog_environment_for_world_with_environment_colors(&world, colors, 12, 0.0, 0.0, false);
+    assert_eq!(normal.environmental_start, 0.0);
+    assert_eq!(normal.environmental_end, 2.0);
+    assert_eq!(normal.sky_end, 2.0);
+    assert_eq!(normal.cloud_end, 2.0);
+    assert_eq!(
+        normal.color,
+        clear_color_to_fog_color(clear_color_from_argb(VANILLA_POWDER_SNOW_FOG_COLOR)),
+        "powder snow excludes the blindness darkness multiplier"
+    );
+    assert_eq!(
+        sky_environment_for_world_with_environment_colors(&world, colors, false),
+        SkyEnvironment::disabled()
+    );
+
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    let spectator =
+        fog_environment_for_world_with_environment_colors(&world, colors, 12, 0.0, 0.0, false);
+    assert_eq!(spectator.environmental_start, -8.0);
+    assert_eq!(spectator.environmental_end, 96.0);
+    assert_eq!(spectator.sky_end, 96.0);
+    assert_eq!(spectator.cloud_end, 96.0);
 }
 
 #[test]

@@ -331,6 +331,7 @@ const VANILLA_OVERWORLD_FOG_COLOR: [u8; 3] = [0xc0, 0xd8, 0xff];
 const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];
 const VANILLA_DEFAULT_WATER_FOG_COLOR: [u8; 3] = [0x05, 0x05, 0x33];
 const VANILLA_LAVA_FOG_COLOR: i32 = argb_color(255, 0x99, 0x19, 0x00);
+const VANILLA_POWDER_SNOW_FOG_COLOR: i32 = argb_color(255, 0x9f, 0xbb, 0xcc);
 const VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 127, 127, 153);
 const VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 63, 63, 76);
 const VANILLA_WEATHER_RAIN_CLOUD_GRAY_BRIGHTNESS: f32 = 0.24;
@@ -19150,6 +19151,7 @@ enum CameraFogType {
     Atmospheric,
     Water,
     Lava,
+    PowderSnow,
 }
 
 fn apply_weather_cloud_color_layers(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
@@ -19831,6 +19833,7 @@ fn camera_environment_colors_from_attributes(
             CameraFluid::None => CameraFogType::Atmospheric,
             CameraFluid::Water => CameraFogType::Water,
             CameraFluid::Lava => CameraFogType::Lava,
+            CameraFluid::PowderSnow => CameraFogType::PowderSnow,
         },
     }
 }

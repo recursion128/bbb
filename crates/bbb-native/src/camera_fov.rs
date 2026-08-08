@@ -12,14 +12,14 @@ const VANILLA_FLUID_FOV_SCALE: f32 = 0.857_142_87;
 const VANILLA_MAX_DEATH_FOV_TICKS: f32 = 20.0;
 const VANILLA_DEATH_FOV_OFFSET: f32 = 500.0;
 
-/// Vanilla `FogType` subset produced by `Camera.getFluidInCamera` for the
-/// native client's currently supported camera media.
+/// Vanilla `FogType` values produced by `Camera.getFluidInCamera`.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CameraFluid {
     #[default]
     None,
     Water,
     Lava,
+    PowderSnow,
 }
 
 impl CameraFluid {
@@ -146,7 +146,7 @@ fn modify_fov_for_death_and_fluid(
 }
 
 /// Mirrors Vanilla 26.1 `Camera.getFluidInCamera`: Water is tested only at
-/// the eye, then Lava is tested at the base-FOV near-plane center and corners.
+/// the eye, then each base-FOV near-plane point tests Lava before powder snow.
 pub(crate) fn camera_fluid_in_camera(
     world: &WorldStore,
     camera: CameraPose,
@@ -186,20 +186,35 @@ pub(crate) fn camera_fluid_in_camera(
     let near_forward = forward * VANILLA_CAMERA_NEAR_PLANE;
     let near_left = -right * plane_width;
     let near_up = up * plane_height;
-    if [
+    for offset in [
         near_forward,
         near_forward + near_up + near_left,
         near_forward + near_up - near_left,
         near_forward - near_up + near_left,
         near_forward - near_up - near_left,
-    ]
-    .into_iter()
-    .any(|offset| camera_point_in_fluid(world, eye + offset, TerrainFluidKind::Lava, true))
-    {
-        CameraFluid::Lava
-    } else {
-        CameraFluid::None
+    ] {
+        let point = eye + offset;
+        if camera_point_in_fluid(world, point, TerrainFluidKind::Lava, true) {
+            return CameraFluid::Lava;
+        }
+        if camera_point_is_powder_snow(world, point) {
+            return CameraFluid::PowderSnow;
+        }
     }
+    CameraFluid::None
+}
+
+fn camera_point_is_powder_snow(world: &WorldStore, point: Vec3) -> bool {
+    if !point.is_finite() {
+        return false;
+    }
+    world
+        .probe_block(BlockPos {
+            x: point.x.floor() as i32,
+            y: point.y.floor() as i32,
+            z: point.z.floor() as i32,
+        })
+        .is_some_and(|block| block.block_name.as_deref() == Some("minecraft:powder_snow"))
 }
 
 fn camera_point_in_fluid(
