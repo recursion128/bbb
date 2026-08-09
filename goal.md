@@ -498,9 +498,9 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。matrix 当前所有实现机制都保持 `partial`，直到 schema-v3 acceptance 在
-code freeze 后逐机制验证 focused contract、Vanilla/BBB owner hash 与 formal receipt；不得用
-旧截图、测试数量、历史 ABBA 或 full gate 单独恢复 `equivalent`。
+状态：`active`。matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
+Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；未完成 sweep 的行保持
+`partial`，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独恢复 `equivalent`。
 
 实现阶段仍一次关闭一个有界 slice；每提交只跑 affected focused/integration、fmt、lint、
 diff review/check，并在既有 checkpoint 批次 full gate。planner 从 owner/path
