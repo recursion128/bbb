@@ -1730,6 +1730,286 @@ def external_artifact(
     }
 
 
+def reuse_external_artifact_projection(
+    *,
+    repo: Path,
+    kind: str,
+    artifact_id: str,
+    prior: object,
+    evidence_commit: str,
+    source: dict[str, str],
+) -> dict[str, object]:
+    """Reuse a committed formal projection without claiming its file still exists."""
+
+    if (
+        not isinstance(prior, dict)
+        or prior.get("artifact_id") != artifact_id
+        or prior.get("kind") != kind
+        or prior.get("valid") is not True
+        or prior.get("evidence_class") != "formal"
+    ):
+        return external_artifact(
+            repo=repo,
+            kind=kind,
+            artifact_id=artifact_id,
+            path=None,
+            evidence_commit=evidence_commit,
+        )
+    artifact = json.loads(json.dumps(prior))
+    contract = artifact.get("capture_contract")
+    reasons: list[str] = []
+    changed_capture_paths: dict[str, list[str]] = {"tools": [], "inputs": []}
+    if not isinstance(contract, dict):
+        reasons.append("reused formal artifact lacks a capture contract")
+    else:
+        for role in ("tools", "inputs"):
+            identities = contract.get(role)
+            if not isinstance(identities, list):
+                reasons.append(f"reused formal artifact has malformed capture {role}")
+                continue
+            for identity in identities:
+                if not isinstance(identity, dict) or not isinstance(
+                    identity.get("path"), str
+                ):
+                    reasons.append(f"reused formal artifact has malformed capture {role}")
+                    continue
+                path = repo / identity["path"]
+                identity["current_sha256"] = (
+                    sha256_file(path) if path.is_file() else None
+                )
+                if identity.get("capture_sha256") != identity.get("current_sha256"):
+                    changed_capture_paths[role].append(str(identity["path"]))
+        contract["sha256"] = canonical_sha256(
+            {key: value for key, value in contract.items() if key != "sha256"}
+        )
+    if changed_capture_paths["tools"]:
+        reasons.append(
+            "capture tool changed after the artifact: "
+            + ", ".join(changed_capture_paths["tools"])
+        )
+    if changed_capture_paths["inputs"]:
+        reasons.append(
+            "capture input changed after the artifact: "
+            + ", ".join(changed_capture_paths["inputs"])
+        )
+
+    commit = artifact.get("bbb_commit")
+    scoped_reuse = None
+    if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        reasons.append("reused artifact does not identify the BBB commit")
+    elif commit != evidence_commit:
+        ancestry = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", commit, evidence_commit],
+            cwd=repo,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", commit, evidence_commit, "--"],
+            cwd=repo,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        changed_paths = (
+            sorted(set(changed.stdout.splitlines()))
+            if changed.returncode == 0
+            else []
+        )
+        disallowed_paths = [
+            path
+            for path in changed_paths
+            if not is_closure_metadata_path(path)
+            and path not in SCOPED_FORMAL_RECEIPT_REUSE_PATHS
+        ]
+        if (
+            ancestry.returncode == 0
+            and changed.returncode == 0
+            and not disallowed_paths
+            and not changed_capture_paths["tools"]
+            and not changed_capture_paths["inputs"]
+        ):
+            scoped_reuse = {
+                "artifact_commit": commit,
+                "changed_paths": changed_paths,
+                "evidence_commit": evidence_commit,
+                "rule": "closure-or-acceptance-metadata-only",
+            }
+        else:
+            reasons.append(
+                f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
+            )
+
+    artifact["capture_contract"] = contract
+    artifact["invalid_reasons"] = reasons
+    artifact_path_value = artifact.get("path")
+    artifact_path = (
+        Path(artifact_path_value)
+        if isinstance(artifact_path_value, str)
+        else None
+    )
+    if artifact_path is not None and not artifact_path.is_absolute():
+        artifact_path = repo / artifact_path
+    file_present = artifact_path is not None and artifact_path.is_file()
+    file_sha256 = sha256_file(artifact_path) if file_present else None
+    if file_sha256 is not None and file_sha256 != artifact.get("sha256"):
+        reasons.append("reused projection artifact file hash is stale")
+    artifact["projection_reuse"] = {
+        **source,
+        "artifact_id": artifact_id,
+        "artifact_file_present_at_generation": file_present,
+        "artifact_file_sha256_at_generation": file_sha256,
+        "rule": "committed-projection-only; final-requires-artifact",
+    }
+    artifact["scoped_reuse"] = scoped_reuse
+    artifact["valid"] = not reasons
+    return artifact
+
+
+def projection_reuse_reasons(
+    repo: Path, artifact: dict[str, object], evidence_commit: str
+) -> list[str]:
+    """Verify a reused projection against its exact committed report artifact."""
+
+    metadata = artifact.get("projection_reuse")
+    if metadata is None:
+        return []
+    if not isinstance(metadata, dict):
+        return ["external artifact projection reuse metadata is malformed"]
+    required = {
+        "artifact_id",
+        "artifact_file_present_at_generation",
+        "artifact_file_sha256_at_generation",
+        "rule",
+        "source_report_blob_sha1",
+        "source_report_commit",
+        "source_report_path",
+        "source_report_sha256",
+    }
+    if set(metadata) != required or metadata.get("rule") != (
+        "committed-projection-only; final-requires-artifact"
+    ):
+        return ["external artifact projection reuse contract is malformed"]
+    source_commit = metadata.get("source_report_commit")
+    blob_sha1 = metadata.get("source_report_blob_sha1")
+    report_sha256 = metadata.get("source_report_sha256")
+    if (
+        not isinstance(source_commit, str)
+        or re.fullmatch(r"[0-9a-f]{40}", source_commit) is None
+        or not isinstance(blob_sha1, str)
+        or re.fullmatch(r"[0-9a-f]{40}", blob_sha1) is None
+        or not isinstance(report_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", report_sha256) is None
+        or metadata.get("source_report_path") != REPORT_PATH.as_posix()
+        or metadata.get("artifact_id") != artifact.get("artifact_id")
+        or not isinstance(metadata.get("artifact_file_present_at_generation"), bool)
+        or (
+            metadata.get("artifact_file_sha256_at_generation") is not None
+            and (
+                not isinstance(
+                    metadata.get("artifact_file_sha256_at_generation"), str
+                )
+                or re.fullmatch(
+                    r"[0-9a-f]{64}",
+                    str(metadata.get("artifact_file_sha256_at_generation")),
+                )
+                is None
+            )
+        )
+        or (
+            metadata.get("artifact_file_present_at_generation")
+            is (metadata.get("artifact_file_sha256_at_generation") is None)
+        )
+    ):
+        return ["external artifact projection reuse identity is malformed"]
+    ancestry = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", source_commit, evidence_commit],
+        cwd=repo,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    show = subprocess.run(
+        ["git", "show", f"{source_commit}:{REPORT_PATH.as_posix()}"],
+        cwd=repo,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    blob = subprocess.run(
+        ["git", "rev-parse", f"{source_commit}:{REPORT_PATH.as_posix()}"],
+        cwd=repo,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if (
+        ancestry.returncode != 0
+        or show.returncode != 0
+        or blob.returncode != 0
+        or blob.stdout.strip() != blob_sha1
+        or hashlib.sha256(show.stdout).hexdigest() != report_sha256
+    ):
+        return ["external artifact projection source report is stale"]
+    try:
+        source_report = json.loads(show.stdout.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ["external artifact projection source report is malformed"]
+    source_values = source_report.get("artifacts") if isinstance(source_report, dict) else None
+    if not isinstance(source_values, list):
+        return ["external artifact projection source report lacks artifacts"]
+    source_artifact = next(
+        (
+            item
+            for item in source_values
+            if isinstance(item, dict)
+            and item.get("artifact_id") == artifact.get("artifact_id")
+        ),
+        None,
+    )
+    if (
+        not isinstance(source_artifact, dict)
+        or source_artifact.get("valid") is not True
+        or source_artifact.get("evidence_class") != "formal"
+    ):
+        return ["external artifact projection source was not a valid formal receipt"]
+    immutable_keys = (
+        "artifact_id",
+        "bbb_commit",
+        "bbb_provenance",
+        "evidence_class",
+        "exists",
+        "kind",
+        "path",
+        "scenario_ids",
+        "sha256",
+    )
+    if any(artifact.get(key) != source_artifact.get(key) for key in immutable_keys):
+        return ["external artifact projection diverges from its committed source"]
+
+    def capture_basis(value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        result = json.loads(json.dumps(value))
+        result.pop("sha256", None)
+        for role in ("tools", "inputs"):
+            identities = result.get(role)
+            if isinstance(identities, list):
+                for identity in identities:
+                    if isinstance(identity, dict):
+                        identity.pop("current_sha256", None)
+        return result
+
+    if capture_basis(artifact.get("capture_contract")) != capture_basis(
+        source_artifact.get("capture_contract")
+    ):
+        return ["external artifact projection capture contract was rewritten"]
+    return []
+
+
 def repo_artifact_generator_inputs(
     repo: Path, path: Path, artifact_id: str
 ) -> tuple[list[dict[str, str]] | None, list[str]]:
@@ -1894,6 +2174,8 @@ def build_report(
     platform_report: Path | None = None,
     lifecycle_report: Path | None = None,
     audio_report: Path | None = None,
+    reused_external_artifacts: dict[str, dict[str, object]] | None = None,
+    projection_source: dict[str, str] | None = None,
 ) -> dict[str, object]:
     workflow_stage_index(workflow_stage)
     repo = repo.resolve()
@@ -1929,6 +2211,31 @@ def build_report(
     changed_paths = changed_repo_paths(repo, evidence_commit)
     changed_paths.discard(REPORT_PATH.as_posix())
 
+    def external_or_reused(
+        *, kind: str, artifact_id: str, path: Path | None
+    ) -> dict[str, object]:
+        if (
+            path is None
+            and reused_external_artifacts is not None
+            and projection_source is not None
+            and artifact_id in reused_external_artifacts
+        ):
+            return reuse_external_artifact_projection(
+                repo=repo,
+                kind=kind,
+                artifact_id=artifact_id,
+                prior=reused_external_artifacts[artifact_id],
+                evidence_commit=evidence_commit,
+                source=projection_source,
+            )
+        return external_artifact(
+            repo=repo,
+            kind=kind,
+            artifact_id=artifact_id,
+            path=path,
+            evidence_commit=evidence_commit,
+        )
+
     artifacts: dict[str, dict[str, object]] = {
         "parity-matrix": repo_artifact(repo, "parity-matrix", MATRIX_PATH.as_posix()),
         "client-owner-inventory": repo_artifact(
@@ -1936,47 +2243,35 @@ def build_report(
         ),
         "feature-ledger": repo_artifact(repo, "feature-ledger", LEDGER_PATH.as_posix()),
         "full-gate": gate_receipt(repo, gate_log, evidence_commit),
-        "performance-abba": external_artifact(
-            repo=repo,
+        "performance-abba": external_or_reused(
             kind="performance",
             artifact_id="performance-abba",
             path=performance_summary,
-            evidence_commit=evidence_commit,
         ),
-        "visual-workload": external_artifact(
-            repo=repo,
+        "visual-workload": external_or_reused(
             kind="workload",
             artifact_id="visual-workload",
             path=workload_summary,
-            evidence_commit=evidence_commit,
         ),
-        "draw-evidence": external_artifact(
-            repo=repo,
+        "draw-evidence": external_or_reused(
             kind="draw",
             artifact_id="draw-evidence",
             path=draw_summary,
-            evidence_commit=evidence_commit,
         ),
-        "linux-platform": external_artifact(
-            repo=repo,
+        "linux-platform": external_or_reused(
             kind="platform",
             artifact_id="linux-platform",
             path=platform_report,
-            evidence_commit=evidence_commit,
         ),
-        "lifecycle-soak": external_artifact(
-            repo=repo,
+        "lifecycle-soak": external_or_reused(
             kind="lifecycle",
             artifact_id="lifecycle-soak",
             path=lifecycle_report,
-            evidence_commit=evidence_commit,
         ),
-        "audio-host-device": external_artifact(
-            repo=repo,
+        "audio-host-device": external_or_reused(
             kind="audio",
             artifact_id="audio-host-device",
             path=audio_report,
-            evidence_commit=evidence_commit,
         ),
     }
     consistency_rows = [
@@ -2960,6 +3255,8 @@ def validate_report(
             issues.append(f"malformed artifact validity for {artifact_id}")
         elif artifact.get("valid") is not (not invalid_reasons):
             issues.append(f"inconsistent artifact validity for {artifact_id}")
+        for reason in projection_reuse_reasons(repo, artifact, evidence_commit):
+            issues.append(f"{reason}: {artifact_id}")
         artifact_kind = artifact.get("kind")
         if artifact_kind not in {"repo-evidence", "gate"}:
             if artifact.get("evidence_class") not in {
@@ -3373,6 +3670,23 @@ def validate_report(
         and artifact.get("evidence_class") == "formal"
         and artifact.get("scoped_reuse") is not None
     )
+    projection_only_artifact_ids = sorted(
+        str(artifact.get("artifact_id"))
+        for artifact in artifacts
+        if isinstance(artifact, dict)
+        and artifact.get("evidence_class") == "formal"
+        and artifact.get("projection_reuse") is not None
+    )
+    if (
+        workflow_stage_index(str(stage))
+        >= workflow_stage_index("evidence-sweep")
+        and projection_only_artifact_ids
+    ):
+        issues.append(
+            "evidence-sweep stage requires explicitly supplied formal artifacts; "
+            "projection-only reuse remains: "
+            + ", ".join(projection_only_artifact_ids)
+        )
     scoped_consistency_artifact_ids = [
         artifact_id
         for artifact_id in scoped_formal_artifact_ids
@@ -3425,6 +3739,48 @@ def validate_report(
     return issues
 
 
+def committed_report_artifacts(
+    repo: Path, output: Path
+) -> tuple[dict[str, dict[str, object]], dict[str, str]]:
+    """Load reusable external projections from the committed canonical report."""
+
+    expected = (repo / REPORT_PATH).resolve()
+    if output.resolve() != expected:
+        raise AcceptanceError(
+            "--reuse-report-artifacts requires the canonical parity acceptance output"
+        )
+    commit = git(repo, "rev-parse", "HEAD")
+    relative = REPORT_PATH.as_posix()
+    show = subprocess.run(
+        ["git", "show", f"{commit}:{relative}"],
+        cwd=repo,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if show.returncode != 0:
+        raise AcceptanceError("committed parity acceptance report is unavailable")
+    try:
+        report = json.loads(show.stdout.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise AcceptanceError(f"committed parity acceptance report is malformed: {error}") from error
+    values = report.get("artifacts") if isinstance(report, dict) else None
+    if not isinstance(values, list):
+        raise AcceptanceError("committed parity acceptance report lacks artifacts")
+    artifacts = {
+        str(item["artifact_id"]): item
+        for item in values
+        if isinstance(item, dict) and isinstance(item.get("artifact_id"), str)
+    }
+    blob = git(repo, "rev-parse", f"{commit}:{relative}")
+    return artifacts, {
+        "source_report_blob_sha1": blob,
+        "source_report_commit": commit,
+        "source_report_path": relative,
+        "source_report_sha256": hashlib.sha256(show.stdout).hexdigest(),
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("generate", "check", "plan"))
@@ -3442,6 +3798,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--platform-report", type=Path)
     parser.add_argument("--lifecycle-report", type=Path)
     parser.add_argument("--audio-report", type=Path)
+    parser.add_argument(
+        "--reuse-report-artifacts",
+        action="store_true",
+        help=(
+            "reuse missing external artifact projections from the committed "
+            "canonical report; final --require-artifacts still requires every file"
+        ),
+    )
     parser.add_argument("--allow-false-equivalent", action="store_true")
     parser.add_argument("--require-artifacts", action="store_true")
     parser.add_argument("--require-complete", action="store_true")
@@ -3465,6 +3829,16 @@ def main() -> int:
             return 2
         assert isinstance(args.source_root, Path)
         evidence_commit = args.evidence_commit or git(args.repo_root, "rev-parse", "HEAD")
+        reused_external_artifacts = None
+        projection_source = None
+        if args.reuse_report_artifacts:
+            try:
+                reused_external_artifacts, projection_source = committed_report_artifacts(
+                    args.repo_root, args.output
+                )
+            except AcceptanceError as error:
+                print(f"parity acceptance: {error}", file=sys.stderr)
+                return 2
         report = build_report(
             repo=args.repo_root,
             source_root=args.source_root,
@@ -3477,6 +3851,8 @@ def main() -> int:
             platform_report=args.platform_report,
             lifecycle_report=args.lifecycle_report,
             audio_report=args.audio_report,
+            reused_external_artifacts=reused_external_artifacts,
+            projection_source=projection_source,
         )
         issues = validate_report(
             report,

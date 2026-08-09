@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -7,8 +8,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -92,6 +93,7 @@ class VanillaAudioReceiptTests(unittest.TestCase):
         self.assertEqual(
             contract,
             {
+                "current_device": "OpenAL Soft on Fixture",
                 "mono_sources": 256,
                 "static_capacity": 248,
                 "streaming_capacity": 8,
@@ -139,6 +141,135 @@ class VanillaAudioReceiptTests(unittest.TestCase):
         self.assertEqual(receipt.vanilla_channel_limits(30), (25, 5))
         self.assertEqual(receipt.vanilla_channel_limits(2), (8, 2))
         self.assertEqual(receipt.vanilla_channel_limits(1024), (255, 8))
+
+    def test_alsa_pci_config_is_an_exact_hardware_route(self) -> None:
+        config = receipt.alsa_pci_config_text("Generic", 3)
+        self.assertIn("pcm.bbb_formal_hardware_dmix", config)
+        self.assertIn('pcm "hw:Generic,3"', config)
+        self.assertIn("type dmix", config)
+        self.assertIn("type plug", config)
+        self.assertNotIn("null", config)
+        with self.assertRaises(ValueError):
+            receipt.alsa_pci_config_text("Generic;null", 3)
+        with self.assertRaises(ValueError):
+            receipt.alsa_pci_config_text("Generic", -1)
+
+    def test_openal_environment_discards_ambient_overrides(self) -> None:
+        config = Path("/tmp/formal-alsa.conf")
+        with mock.patch.dict(
+            receipt.os.environ,
+            {
+                "KEEP_ME": "yes",
+                "ALSA_CONFIG_PATH": "/tmp/ambient-alsa.conf",
+                "ALSOFT_CONF": "/tmp/ambient-alsoft.conf",
+                "ALSOFT_DRIVERS": "null",
+                "__ALSOFT_SUSPEND_CONTEXT": "trap",
+            },
+            clear=True,
+        ):
+            environment = receipt.openal_environment("alsa", config)
+        self.assertEqual(environment["KEEP_ME"], "yes")
+        self.assertEqual(environment["ALSOFT_DRIVERS"], "alsa")
+        self.assertEqual(environment["ALSOFT_LOGLEVEL"], "3")
+        self.assertEqual(environment["ALSA_CONFIG_PATH"], str(config.resolve()))
+        self.assertNotIn("ALSOFT_CONF", environment)
+        self.assertNotIn("__ALSOFT_SUSPEND_CONTEXT", environment)
+
+    def test_prepares_and_hashes_a_pci_backed_alsa_endpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "artifact"
+            artifact.mkdir()
+            device_root = root / "dev" / "snd"
+            device_root.mkdir(parents=True)
+            pcm_node = device_root / "pcmC0D3p"
+            pcm_node.write_bytes(b"")
+
+            card_root = root / "proc" / "asound" / "card0"
+            pcm_root = card_root / "pcm3p"
+            pcm_root.mkdir(parents=True)
+            (card_root / "id").write_text("Generic\n", encoding="utf-8")
+            (pcm_root / "info").write_text(
+                "card: 0\ndevice: 3\nsubdevice: 0\nstream: PLAYBACK\n"
+                "id: HDMI 0\nname: HDMI 0\n",
+                encoding="utf-8",
+            )
+            (card_root / "eld#0.0").write_text(
+                "monitor_present 0\neld_valid 0\n", encoding="utf-8"
+            )
+
+            sys_root = root / "sys"
+            pci = sys_root / "devices" / "pci0000:00" / "0000:04:00.1"
+            pcm_target = pci / "sound" / "card0" / "pcmC0D3p"
+            pcm_target.mkdir(parents=True)
+            for name, value in (
+                ("vendor", "0x1002\n"),
+                ("device", "0x1640\n"),
+                ("subsystem_vendor", "0x1002\n"),
+                ("subsystem_device", "0x1640\n"),
+            ):
+                (pci / name).write_text(value, encoding="utf-8")
+            driver = sys_root / "bus" / "pci" / "drivers" / "snd_hda_intel"
+            driver.mkdir(parents=True)
+            (pci / "driver").symlink_to(driver, target_is_directory=True)
+            (pcm_target / "dev").write_text("0:0\n", encoding="utf-8")
+            class_root = sys_root / "class" / "sound"
+            class_root.mkdir(parents=True)
+            (class_root / "pcmC0D3p").symlink_to(
+                pcm_target, target_is_directory=True
+            )
+
+            base_config = root / "alsa.conf"
+            base_config.write_text("# fixture\n", encoding="utf-8")
+            with mock.patch.object(receipt.stat, "S_ISCHR", return_value=True):
+                endpoint = receipt.prepare_alsa_pci_endpoint(
+                    card_index=0,
+                    card_id="Generic",
+                    device_index=3,
+                    artifact_dir=artifact,
+                    device_root=device_root,
+                    proc_root=root / "proc" / "asound",
+                    sys_sound_root=class_root,
+                    base_config=base_config,
+                )
+
+            self.assertEqual(endpoint["kind"], "alsa-pci-pcm")
+            self.assertEqual(endpoint["sysfs"]["pci_address"], "0000:04:00.1")
+            self.assertEqual(endpoint["alsa_config"]["route"], ["plug", "dmix", "hw"])
+            self.assertEqual(endpoint["alsa_config"]["hardware_pcm"], "hw:Generic,3")
+            contract = dict(endpoint)
+            contract.pop("contract_sha256")
+            self.assertEqual(
+                endpoint["contract_sha256"],
+                hashlib.sha256(receipt.canonical_json_bytes(contract)).hexdigest(),
+            )
+            self.assertTrue((artifact / "alsa-eld#0.0.txt").is_file())
+
+    def test_rejects_mismatched_alsa_card_id(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            device_root = root / "dev" / "snd"
+            device_root.mkdir(parents=True)
+            (device_root / "pcmC0D3p").write_bytes(b"")
+            card_root = root / "proc" / "asound" / "card0"
+            card_root.mkdir(parents=True)
+            (card_root / "id").write_text("Different\n", encoding="utf-8")
+            base_config = root / "alsa.conf"
+            base_config.write_text("# fixture\n", encoding="utf-8")
+            with (
+                mock.patch.object(receipt.stat, "S_ISCHR", return_value=True),
+                self.assertRaisesRegex(receipt.AudioReceiptFailure, "card id mismatch"),
+            ):
+                receipt.prepare_alsa_pci_endpoint(
+                    card_index=0,
+                    card_id="Generic",
+                    device_index=3,
+                    artifact_dir=root / "artifact",
+                    device_root=device_root,
+                    proc_root=root / "proc" / "asound",
+                    sys_sound_root=root / "sys" / "class" / "sound",
+                    base_config=base_config,
+                )
 
     def test_host_audio_access_records_exact_node_permissions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

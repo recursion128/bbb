@@ -41,6 +41,14 @@ full-gate log receipt；`evidence-sweep` 冻结的 matrix owner、required proje
 owner/source、not-needed/deferred scope ruling 与 validation class 语义 hash 必须和 final 相同。
 报告发现 false `equivalent` 时必须先降级并路由，不能放宽 checker。
 
+重建开发期报告时，`generate --reuse-report-artifacts` 可从已提交的 canonical report
+复用没有显式新路径的 formal artifact 投影。每项复用都绑定来源 report commit、Git blob 与
+SHA-256，重新计算当前 capture tool/input hash 和 commit scoped-reuse；这解决重启或换机后
+checkout 没有旧临时目录时的无关域重复采集，但不声称外部文件仍在。`check --require-artifacts`
+仍要求原始 artifact、binary/load-image 与哈希文件实际存在；`evidence-sweep` 起即拒绝
+projection-only 记录，`final-performance`/`final` 还拒绝 scoped receipt，所以该选项不能
+冒充最终证据。
+
 正式 ABBA 的每个 Vanilla/BBB run 还必须携带同一个已提交、clean、stage 为
 `evidence-sweep` 且 consistency gate 通过的 acceptance receipt identity；summary 和 lint
 同时核对 receipt commit/blob hash，不能在 ABBA 跑完后补写阶段文字冒充前置门禁。

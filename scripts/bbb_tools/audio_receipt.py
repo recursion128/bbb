@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-AUDIO_RECEIPT_SCHEMA = 2
+AUDIO_RECEIPT_SCHEMA = 3
 AUDIO_MECHANISM_IDS = ("audio-sound-manager-engine",)
 BBB_AUDIO_TEST_IDS = (
     "openal::tests::verified_openal_library_executes_both_hrtf_context_branches",
@@ -20,6 +20,12 @@ BBB_AUDIO_TEST_IDS = (
     "device::tests::verified_device_tracker_runs_selected_mode_and_forced_refresh",
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_ALSA_CARD_ID = re.compile(r"[A-Za-z0-9_-]+\Z")
+_PCI_ADDRESS = re.compile(
+    r"(?:[0-9a-f]{4}:)?[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]\Z"
+)
+_PCI_ID = re.compile(r"0x[0-9a-f]{4}\Z")
+ALSA_DMIX_IPC_KEY = 1111638596
 
 
 def _has_sha256(value: object) -> bool:
@@ -32,6 +38,42 @@ def canonical_sha256(value: object) -> str:
         + "\n"
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def alsa_pci_config_text(card_id: str, device_index: int) -> str:
+    """Return the exact plug -> dmix -> PCI-hardware ALSA capture route."""
+
+    if _ALSA_CARD_ID.fullmatch(card_id) is None:
+        raise ValueError(f"invalid ALSA card id: {card_id!r}")
+    if device_index < 0:
+        raise ValueError("ALSA device index cannot be negative")
+    return (
+        "</usr/share/alsa/alsa.conf>\n"
+        "\n"
+        "pcm.bbb_formal_hardware_dmix {\n"
+        "    type dmix\n"
+        f"    ipc_key {ALSA_DMIX_IPC_KEY}\n"
+        "    ipc_perm 0660\n"
+        "    slave {\n"
+        f'        pcm "hw:{card_id},{device_index}"\n'
+        "        format S32_LE\n"
+        "        rate 48000\n"
+        "        channels 2\n"
+        "        period_size 1024\n"
+        "        buffer_size 16384\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "pcm.!default {\n"
+        "    type plug\n"
+        '    slave.pcm "bbb_formal_hardware_dmix"\n'
+        "}\n"
+        "\n"
+        "ctl.!default {\n"
+        "    type hw\n"
+        f"    card {card_id}\n"
+        "}\n"
+    )
 
 
 def _file_sha256(path: Path) -> str:
@@ -50,9 +92,23 @@ def _file_identity_reason(label: str, value: object) -> str | None:
     if not isinstance(path_value, str) or not _has_sha256(digest):
         return f"audio receipt has malformed {label} file identity"
     path = Path(path_value)
-    if not path.is_file() or _file_sha256(path) != digest:
+    try:
+        current = _file_sha256(path) if path.is_file() else None
+    except OSError:
+        current = None
+    if current != digest:
         return f"audio receipt {label} file identity is stale"
     return None
+
+
+def _verified_text(value: object) -> str | None:
+    if _file_identity_reason("verified text", value) is not None:
+        return None
+    assert isinstance(value, Mapping)
+    try:
+        return Path(value["path"]).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
 def _bbb_test_run_passed(item: Mapping[str, Any], binary_path: object) -> bool:
@@ -73,6 +129,120 @@ def _bbb_test_run_passed(item: Mapping[str, Any], binary_path: object) -> bool:
     )
 
 
+def _formal_alsa_endpoint_reasons(value: object) -> list[str]:
+    reasons: list[str] = []
+    if not isinstance(value, Mapping):
+        return ["formal audio receipt lacks an ALSA PCI endpoint contract"]
+    if value.get("schema") != 1 or value.get("kind") != "alsa-pci-pcm":
+        reasons.append("formal audio receipt ALSA endpoint kind is invalid")
+    card_index = value.get("card_index")
+    card_id = value.get("card_id")
+    device_index = value.get("device_index")
+    if (
+        not isinstance(card_index, int)
+        or isinstance(card_index, bool)
+        or card_index < 0
+        or not isinstance(device_index, int)
+        or isinstance(device_index, bool)
+        or device_index < 0
+        or not isinstance(card_id, str)
+        or _ALSA_CARD_ID.fullmatch(card_id) is None
+    ):
+        reasons.append("formal audio receipt ALSA endpoint indexes/id are malformed")
+
+    pcm_node = value.get("pcm_node")
+    if (
+        not isinstance(pcm_node, Mapping)
+        or pcm_node.get("path")
+        != f"/dev/snd/pcmC{card_index}D{device_index}p"
+        or pcm_node.get("character_device") is not True
+        or pcm_node.get("read_write") is not True
+        or not isinstance(pcm_node.get("major"), int)
+        or isinstance(pcm_node.get("major"), bool)
+        or pcm_node.get("major") < 0
+        or not isinstance(pcm_node.get("minor"), int)
+        or isinstance(pcm_node.get("minor"), bool)
+        or pcm_node.get("minor") < 0
+    ):
+        reasons.append("formal audio receipt lacks an accessible ALSA PCM character device")
+
+    proc = value.get("proc")
+    pcm_info = proc.get("pcm_info") if isinstance(proc, Mapping) else None
+    eld_snapshots = proc.get("eld_snapshots") if isinstance(proc, Mapping) else None
+    if (
+        not isinstance(proc, Mapping)
+        or proc.get("card_id") != card_id
+        or not isinstance(pcm_info, Mapping)
+        or pcm_info.get("card") != str(card_index)
+        or pcm_info.get("device") != str(device_index)
+        or pcm_info.get("stream") != "PLAYBACK"
+        or not isinstance(pcm_info.get("name"), str)
+        or not pcm_info.get("name")
+        or not isinstance(eld_snapshots, list)
+    ):
+        reasons.append("formal audio receipt ALSA proc identity is inconsistent")
+
+    sysfs = value.get("sysfs")
+    if (
+        not isinstance(sysfs, Mapping)
+        or not isinstance(sysfs.get("pci_address"), str)
+        or _PCI_ADDRESS.fullmatch(sysfs.get("pci_address", "")) is None
+        or any(
+            not isinstance(sysfs.get(key), str)
+            or _PCI_ID.fullmatch(sysfs.get(key, "")) is None
+            for key in ("vendor", "device", "subsystem_vendor", "subsystem_device")
+        )
+        or not isinstance(sysfs.get("driver"), str)
+        or not sysfs.get("driver")
+        or not isinstance(pcm_node, Mapping)
+        or sysfs.get("pcm_dev")
+        != f"{pcm_node.get('major')}:{pcm_node.get('minor')}"
+    ):
+        reasons.append("formal audio receipt lacks a consistent PCI/sysfs backing device")
+
+    config = value.get("alsa_config")
+    expected_config_sha256 = None
+    if isinstance(card_id, str) and isinstance(device_index, int):
+        try:
+            expected_config_sha256 = hashlib.sha256(
+                alsa_pci_config_text(card_id, device_index).encode("utf-8")
+            ).hexdigest()
+        except ValueError:
+            pass
+    if (
+        not isinstance(config, Mapping)
+        or config.get("sha256") != expected_config_sha256
+        or config.get("route") != ["plug", "dmix", "hw"]
+        or config.get("default_pcm") != "default"
+        or config.get("dmix_pcm") != "bbb_formal_hardware_dmix"
+        or config.get("hardware_pcm") != f"hw:{card_id},{device_index}"
+        or config.get("ipc_key") != ALSA_DMIX_IPC_KEY
+        or not isinstance(config.get("base_config"), Mapping)
+        or config["base_config"].get("path") != "/usr/share/alsa/alsa.conf"
+        or not _has_sha256(config["base_config"].get("sha256"))
+    ):
+        reasons.append("formal audio receipt ALSA plug/dmix/hardware route is invalid")
+
+    controlled = value.get("controlled_environment")
+    if (
+        not isinstance(controlled, Mapping)
+        or not isinstance(config, Mapping)
+        or controlled
+        != {
+            "ALSOFT_DRIVERS": "alsa",
+            "ALSOFT_LOGLEVEL": "3",
+            "ALSA_CONFIG_PATH": config.get("path"),
+        }
+    ):
+        reasons.append("formal audio receipt did not freeze the OpenAL/ALSA environment")
+
+    contract = dict(value)
+    contract.pop("contract_sha256", None)
+    if value.get("contract_sha256") != canonical_sha256(contract):
+        reasons.append("formal audio receipt ALSA endpoint contract hash is stale")
+    return reasons
+
+
 def formal_audio_receipt_reasons(value: Mapping[str, Any]) -> list[str]:
     """Return fail-closed reasons for an alleged formal host-device receipt."""
 
@@ -83,10 +253,19 @@ def formal_audio_receipt_reasons(value: Mapping[str, Any]) -> list[str]:
         )
     if value.get("mechanism_ids") != list(AUDIO_MECHANISM_IDS):
         reasons.append("audio receipt Mechanism-ID mapping is incomplete")
-    if value.get("driver") not in {"default", "alsa"}:
-        reasons.append("formal audio receipt does not use a real host driver")
-    if value.get("device_evidence") != "host-device":
-        reasons.append("formal audio receipt lacks host-device evidence")
+    if value.get("driver") != "alsa":
+        reasons.append("formal audio receipt does not use the ALSA host driver")
+    if value.get("device_evidence") != "alsa-pci-pcm":
+        reasons.append("formal audio receipt lacks ALSA PCI hardware evidence")
+    reasons.extend(_formal_alsa_endpoint_reasons(value.get("alsa_endpoint")))
+    endpoint = value.get("alsa_endpoint")
+    expected_environment = (
+        endpoint.get("controlled_environment")
+        if isinstance(endpoint, Mapping)
+        else None
+    )
+    if value.get("capture_environment") != expected_environment:
+        reasons.append("audio receipt top-level capture environment diverges from its endpoint")
     if value.get("evidence_class") != "formal":
         reasons.append("audio receipt evidence class is not formal")
     if value.get("valid") is not True or value.get("formal_valid") is not True:
@@ -107,8 +286,20 @@ def formal_audio_receipt_reasons(value: Mapping[str, Any]) -> list[str]:
         )
     ):
         reasons.append("audio receipt lacks both passing Vanilla HRTF branches")
-    if not isinstance(value.get("frozen_contract"), Mapping):
+    frozen_contract = value.get("frozen_contract")
+    if not isinstance(frozen_contract, Mapping):
         reasons.append("audio receipt lacks the validated Vanilla pool/HRTF contract")
+    elif (
+        not isinstance(frozen_contract.get("current_device"), str)
+        or not frozen_contract.get("current_device")
+        or not isinstance(observations, list)
+        or any(
+            not isinstance(item, Mapping)
+            or item.get("current_device") != frozen_contract.get("current_device")
+            for item in observations
+        )
+    ):
+        reasons.append("audio receipt Vanilla observations do not match the frozen device")
 
     bbb = value.get("bbb")
     if not isinstance(bbb, Mapping):
@@ -189,10 +380,13 @@ def formal_audio_receipt_reasons(value: Mapping[str, Any]) -> list[str]:
 
 
 def audio_receipt_file_reasons(value: Mapping[str, Any]) -> list[str]:
-    """Verify every external file identity carried by a schema-2 audio receipt."""
+    """Verify every external file identity carried by a schema-3 audio receipt."""
 
     identities: list[tuple[str, object]] = []
-    for index, observation in enumerate(value.get("observations", [])):
+    observations = value.get("observations")
+    if not isinstance(observations, list):
+        observations = []
+    for index, observation in enumerate(observations):
         if isinstance(observation, Mapping):
             identities.extend(
                 (
@@ -217,7 +411,10 @@ def audio_receipt_file_reasons(value: Mapping[str, Any]) -> list[str]:
                     ("BBB build stderr", binary["build"].get("stderr")),
                 )
             )
-        for index, test in enumerate(bbb.get("tests", [])):
+        tests = bbb.get("tests")
+        if not isinstance(tests, list):
+            tests = []
+        for index, test in enumerate(tests):
             if isinstance(test, Mapping):
                 identities.extend(
                     (
@@ -225,8 +422,146 @@ def audio_receipt_file_reasons(value: Mapping[str, Any]) -> list[str]:
                         (f"BBB test[{index}] stderr", test.get("stderr")),
                     )
                 )
-    return [
+    endpoint = value.get("alsa_endpoint")
+    if isinstance(endpoint, Mapping):
+        config = endpoint.get("alsa_config")
+        proc = endpoint.get("proc")
+        sysfs = endpoint.get("sysfs")
+        identities.extend(
+            (
+                ("ALSA generated config", config),
+                (
+                    "ALSA base config",
+                    config.get("base_config") if isinstance(config, Mapping) else None,
+                ),
+                (
+                    "ALSA card-id snapshot",
+                    proc.get("card_id_snapshot") if isinstance(proc, Mapping) else None,
+                ),
+                (
+                    "ALSA PCM-info snapshot",
+                    proc.get("pcm_info_snapshot") if isinstance(proc, Mapping) else None,
+                ),
+                (
+                    "ALSA PCI sysfs snapshot",
+                    sysfs.get("snapshot") if isinstance(sysfs, Mapping) else None,
+                ),
+            )
+        )
+        if isinstance(proc, Mapping):
+            identities.extend(
+                (f"ALSA ELD[{index}] snapshot", identity)
+                for index, identity in enumerate(proc.get("eld_snapshots", []))
+            )
+    reasons = [
         reason
         for label, identity in identities
         if (reason := _file_identity_reason(label, identity)) is not None
     ]
+    for index, observation in enumerate(observations):
+        if not isinstance(observation, Mapping):
+            continue
+        stdout_payload = _verified_text(observation.get("stdout"))
+        if stdout_payload is None:
+            continue
+        raw_objects = []
+        for line in stdout_payload.splitlines():
+            if not line.strip().startswith("{"):
+                continue
+            try:
+                raw_value = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(raw_value, Mapping):
+                raw_objects.append(dict(raw_value))
+        expected = {
+            key: field_value
+            for key, field_value in observation.items()
+            if key not in {"process_returncode", "stdout", "stderr"}
+        }
+        if raw_objects != [expected]:
+            reasons.append(
+                f"audio receipt Vanilla HRTF[{index}] stdout disagrees with its observation"
+            )
+    if isinstance(bbb, Mapping):
+        tests = bbb.get("tests")
+        if not isinstance(tests, list):
+            tests = []
+        for index, test in enumerate(tests):
+            if not isinstance(test, Mapping):
+                continue
+            stdout_payload = _verified_text(test.get("stdout"))
+            test_id = test.get("test_id")
+            if stdout_payload is None or not isinstance(test_id, str):
+                continue
+            if not all(
+                marker in stdout_payload
+                for marker in (
+                    "running 1 test",
+                    f"test {test_id} ... ok",
+                    "test result: ok. 1 passed; 0 failed",
+                )
+            ):
+                reasons.append(
+                    f"audio receipt BBB test[{index}] stdout lacks its exact pass markers"
+                )
+    if isinstance(endpoint, Mapping):
+        proc = endpoint.get("proc")
+        sysfs = endpoint.get("sysfs")
+        if isinstance(proc, Mapping):
+            card_snapshot = proc.get("card_id_snapshot")
+            if (
+                _file_identity_reason("ALSA card-id snapshot", card_snapshot) is None
+                and isinstance(card_snapshot, Mapping)
+            ):
+                try:
+                    card_snapshot_value = (
+                        Path(card_snapshot["path"])
+                        .read_text(encoding="utf-8")
+                        .strip()
+                    )
+                except (OSError, UnicodeDecodeError):
+                    card_snapshot_value = None
+                if card_snapshot_value != proc.get("card_id"):
+                    reasons.append(
+                        "audio receipt ALSA card-id snapshot disagrees with its contract"
+                    )
+            pcm_snapshot = proc.get("pcm_info_snapshot")
+            if (
+                _file_identity_reason("ALSA PCM-info snapshot", pcm_snapshot) is None
+                and isinstance(pcm_snapshot, Mapping)
+            ):
+                snapshot_fields = {}
+                try:
+                    snapshot_payload = Path(pcm_snapshot["path"]).read_text(
+                        encoding="utf-8"
+                    )
+                except (OSError, UnicodeDecodeError):
+                    snapshot_payload = ""
+                for line in snapshot_payload.splitlines():
+                    key, separator, field_value = line.partition(":")
+                    if separator:
+                        snapshot_fields[key.strip()] = field_value.strip()
+                if snapshot_fields != proc.get("pcm_info"):
+                    reasons.append(
+                        "audio receipt ALSA PCM-info snapshot disagrees with its contract"
+                    )
+        if isinstance(sysfs, Mapping):
+            pci_snapshot = sysfs.get("snapshot")
+            if (
+                _file_identity_reason("ALSA PCI sysfs snapshot", pci_snapshot) is None
+                and isinstance(pci_snapshot, Mapping)
+            ):
+                try:
+                    snapshot_value = json.loads(
+                        Path(pci_snapshot["path"]).read_text(encoding="utf-8")
+                    )
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                    snapshot_value = None
+                expected = dict(sysfs)
+                expected.pop("snapshot", None)
+                if snapshot_value != expected:
+                    reasons.append(
+                        "audio receipt ALSA PCI sysfs snapshot disagrees with its contract"
+                    )
+    return reasons

@@ -2,190 +2,20 @@
   "artifacts": [
     {
       "artifact_id": "audio-host-device",
-      "bbb_commit": "4578667e7d50d861a38401e0a7b20a602cf62915",
-      "bbb_provenance": null,
-      "capture_contract": {
-        "binary_load_identity": {
-          "binary": "/tmp/bbb-target-main/debug/deps/bbb_audio-4f295a9eb1efad7f",
-          "binary_sha256": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af",
-          "identity_kind": "file-sha256"
-        },
-        "evidence_class": "diagnostic",
-        "hash_inputs": [
-          {
-            "field": "bbb.contract.openal_library_sha256",
-            "value": "bc1f0de819f5d86a25af2128e4b5014e242d26a628135b9d19c8d0773fc66ae7"
-          },
-          {
-            "field": "bbb.contract.sound_asset_sha256",
-            "value": "086721797a2ddcf6ba4b75cb9787a5340f10a5f73190f1310e4d80b3c7d29fb7"
-          },
-          {
-            "field": "bbb.contract.test_binary_sha256",
-            "value": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af"
-          },
-          {
-            "field": "bbb.openal_library.sha256",
-            "value": "bc1f0de819f5d86a25af2128e4b5014e242d26a628135b9d19c8d0773fc66ae7"
-          },
-          {
-            "field": "bbb.sound_asset.sha256",
-            "value": "086721797a2ddcf6ba4b75cb9787a5340f10a5f73190f1310e4d80b3c7d29fb7"
-          },
-          {
-            "field": "bbb.test_binary.build.stderr.sha256",
-            "value": "bdb1f4164ffa3d6dfbfb7468995405905a14e1603aa3454875b33a4bdd8b6700"
-          },
-          {
-            "field": "bbb.test_binary.build.stdout.sha256",
-            "value": "39c383d1fc1eea003de26fd0198229f91dd8e5066ad1d8c5d8d7f53e11fd5045"
-          },
-          {
-            "field": "bbb.test_binary.sha256",
-            "value": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af"
-          },
-          {
-            "field": "bbb.tests[0].stderr.sha256",
-            "value": "c3b19e6d0e40a68e81afdaa79295f842209db3686c53e20c01826a28b7b0b8ca"
-          },
-          {
-            "field": "bbb.tests[0].stdout.sha256",
-            "value": "3b19baa9d46747409219d8a164f40460ae6947718dc2906c067484a0b527abce"
-          },
-          {
-            "field": "bbb.tests[1].stderr.sha256",
-            "value": "7e4ea01d71326c7da12c5d578e2d55afcb39568101e689e94c250b92bcd448ce"
-          },
-          {
-            "field": "bbb.tests[1].stdout.sha256",
-            "value": "25a6b1cdc62e5547b6f7e0b10045372b5bb2cf4a1e97257b98ca3ba3c7d883e8"
-          },
-          {
-            "field": "bbb.tests[2].stderr.sha256",
-            "value": "5d4d09bcd5d4829b3a9d3602487c898c6c8292a3ea6b76601d54710ac6b48308"
-          },
-          {
-            "field": "bbb.tests[2].stdout.sha256",
-            "value": "5ae4755be13879ed3bcc50afdb7f0efc8c1fff8ff53e7947ba04b08d24fb145d"
-          },
-          {
-            "field": "bbb.tests[3].stderr.sha256",
-            "value": "44e9a8a5a401c486e4e8ada4030a2c55333c66c0616e1b98bb546566af122147"
-          },
-          {
-            "field": "bbb.tests[3].stdout.sha256",
-            "value": "7e3c005bea99ed0e2ee122b526f9ebef482f20d652db68ea729f41b1eaff9fd8"
-          },
-          {
-            "field": "bbb.tests[4].stderr.sha256",
-            "value": "30908e60cb52c9b16c086f949bf237ad22299e3bab09dd6a592bbd5306bdc49f"
-          },
-          {
-            "field": "bbb.tests[4].stdout.sha256",
-            "value": "e2c8d77d54c9553fa3167d2b1103c451629c06de436ba9c87c25787c96c173fb"
-          },
-          {
-            "field": "bbb.tests[5].stderr.sha256",
-            "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-          },
-          {
-            "field": "bbb.tests[5].stdout.sha256",
-            "value": "610e004396e745609f2a2a7d4b8610c8b1083e1fd3329ed847e69fdd9297029a"
-          },
-          {
-            "field": "client_binary_sha256",
-            "value": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af"
-          },
-          {
-            "field": "differential.bbb_test_contract_sha256",
-            "value": "4128c199460c43e43999e01f5d002c8cd4ce33ddace0291c93177f8bdc264030"
-          },
-          {
-            "field": "observations[0].stderr.sha256",
-            "value": "38127e176998f32bf114c590320fb25bab4bfade9d98097c9ed6c18bb3755399"
-          },
-          {
-            "field": "observations[0].stdout.sha256",
-            "value": "9438a00a8a3ed7b8ea05cbbfd9083d3f558e4d2605a0035ec18f1cdcef7da797"
-          },
-          {
-            "field": "observations[1].stderr.sha256",
-            "value": "38127e176998f32bf114c590320fb25bab4bfade9d98097c9ed6c18bb3755399"
-          },
-          {
-            "field": "observations[1].stdout.sha256",
-            "value": "8d027a66cac9ed9917088414ad1f083cc0dfa4027a04fc8ef511bca972102cd1"
-          },
-          {
-            "field": "vanilla.probe.sha256",
-            "value": "f686ab819597292b06cd3d36b53277fc6fdf124ca6d977b0cf788cb49b3bb192"
-          },
-          {
-            "field": "vanilla.source_owners[0].sha256",
-            "value": "7571e27e78f6098bb52deb04c382ec457f2c4e2efb874f60a4815b56041791fe"
-          },
-          {
-            "field": "vanilla.source_owners[1].sha256",
-            "value": "66e976a748084cdc3c0d80b037139447b1841a7748775ad270f708ca68bd2b88"
-          },
-          {
-            "field": "vanilla.source_owners[2].sha256",
-            "value": "3247a8dda1ed5293c2def5d114443801a4fc19a7e51ca5ae2bdc7b70dad5184d"
-          }
-        ],
-        "inputs": [],
-        "kind": "audio",
-        "selected_contract": {
-          "schema": 2
-        },
-        "sha256": "181bb1d1f0e8f8d224eb75d67b0fa8484ddcdf592be5fa2a09001387b1cdf0d9",
-        "tools": [
-          {
-            "capture_sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd",
-            "current_sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd",
-            "path": "scripts/capture-vanilla-audio-receipt.py"
-          },
-          {
-            "capture_sha256": "fdf5dc3d33fb496a7970f2b54b37a5c27f9eb838cf23ac883e01c5afd94d07da",
-            "current_sha256": "fdf5dc3d33fb496a7970f2b54b37a5c27f9eb838cf23ac883e01c5afd94d07da",
-            "path": "scripts/bbb_tools/audio_receipt.py"
-          }
-        ]
-      },
-      "evidence_class": "diagnostic",
-      "exists": true,
+      "bbb_commit": null,
+      "capture_contract": null,
+      "evidence_class": "absent",
+      "exists": false,
       "invalid_reasons": [
-        "formal host-device audio receipt is invalid",
-        "audio receipt evidence class is not formal",
-        "audio differential receipt did not pass",
-        "audio receipt lacks both passing Vanilla HRTF branches",
-        "audio receipt lacks the validated Vanilla pool/HRTF contract",
-        "BBB audio executable contract did not pass",
-        "BBB audio receipt contains a failed or unhashed executable test",
-        "audio receipt lacks a passing Vanilla/BBB differential contract",
-        "diagnostic smoke cannot satisfy a formal receipt"
+        "audio artifact was not supplied"
       ],
       "kind": "audio",
       "mechanism_ids": [
         "audio-sound-manager-engine"
       ],
-      "path": "/tmp/bbb-audio-schema2-alsa.wbNba0/vanilla-audio-receipt.json",
+      "path": null,
       "scenario_ids": [],
-      "scoped_reuse": {
-        "artifact_commit": "4578667e7d50d861a38401e0a7b20a602cf62915",
-        "changed_paths": [
-          "docs/evidence/vanilla-26.1/parity-acceptance.json",
-          "docs/unsupported-features.md",
-          "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
-          "docs/wiki/parity/vanilla-26.1-matrix.md",
-          "goal.md",
-          "scripts/parity_acceptance.py",
-          "scripts/tests/test_parity_acceptance.py"
-        ],
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
-        "rule": "closure-or-acceptance-metadata-only"
-      },
-      "sha256": "d55f21a550227610795edcc9b6dbca1b162cfbca555d2fb32c60fd2b63958923",
+      "sha256": null,
       "valid": false
     },
     {
@@ -500,12 +330,33 @@
         "rendering-particle-provider-registration"
       ],
       "path": "/tmp/bbb-parity-675cbfc53-final/renderdoc/summary.json",
+      "projection_reuse": {
+        "artifact_file_present_at_generation": false,
+        "artifact_file_sha256_at_generation": null,
+        "artifact_id": "draw-evidence",
+        "rule": "committed-projection-only; final-requires-artifact",
+        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
+        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+      },
       "scenario_ids": [
         "chunk_boundary_crossing",
         "preloaded_flight",
         "static_orbit"
       ],
-      "scoped_reuse": null,
+      "scoped_reuse": {
+        "artifact_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "changed_paths": [
+          "docs/evidence/vanilla-26.1/parity-acceptance.json",
+          "docs/unsupported-features.md",
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+          "docs/wiki/parity/vanilla-26.1-matrix.md",
+          "goal.md"
+        ],
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "rule": "closure-or-acceptance-metadata-only"
+      },
       "sha256": "50a268cb0f48b518ece6bd95e2676172320708219fa05dbae99de9501d3be63d",
       "valid": true
     },
@@ -546,12 +397,12 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843",
+      "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b",
       "valid": true
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+      "bbb_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
       "digest_kind": "gate-receipt-line-v1",
       "exists": true,
       "invalid_reasons": [],
@@ -681,8 +532,8 @@
         "world-client-session-services"
       ],
       "path": ".git/bbb/gate-log.tsv",
-      "receipt": "2026-08-09T06:14:52Z\t675cbfc53e7b8e9047e0367751fb714bb673e4a6\tclean\ttotal:25s,vanilla-verify:2s,host-doctor:0s,docs-lint:4s,fmt:6s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:13s",
-      "sha256": "1a87df50a86033eac65d08b4318ea797756202c945df8acfaf11480c5491cb06",
+      "receipt": "2026-08-09T07:47:42Z\t0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca\tclean\ttotal:98s,vanilla-verify:1s,host-doctor:0s,docs-lint:5s,fmt:6s,scripts-lint:0s,scripts-tests:72s,diff-check:0s,check:0s,cross-check:1s,test:13s",
+      "sha256": "2a3b8ad24b607840a5f4a32046d0bf1a589bcc60ac5ecfd4755ac9978a0de3aa",
       "valid": true
     },
     {
@@ -783,8 +634,29 @@
         "resources-indexed-panorama"
       ],
       "path": "/tmp/bbb-domain-675cbfc53/lifecycle/report.json",
+      "projection_reuse": {
+        "artifact_file_present_at_generation": false,
+        "artifact_file_sha256_at_generation": null,
+        "artifact_id": "lifecycle-soak",
+        "rule": "committed-projection-only; final-requires-artifact",
+        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
+        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+      },
       "scenario_ids": [],
-      "scoped_reuse": null,
+      "scoped_reuse": {
+        "artifact_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "changed_paths": [
+          "docs/evidence/vanilla-26.1/parity-acceptance.json",
+          "docs/unsupported-features.md",
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+          "docs/wiki/parity/vanilla-26.1-matrix.md",
+          "goal.md"
+        ],
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "rule": "closure-or-acceptance-metadata-only"
+      },
       "sha256": "e57925177f57fa53cc191b595e83e849b3daad4d35f0a4cf329861aef241c6a3",
       "valid": true
     },
@@ -1000,8 +872,29 @@
         "world-client-session-services"
       ],
       "path": "/tmp/bbb-domain-675cbfc53/platform/report.json",
+      "projection_reuse": {
+        "artifact_file_present_at_generation": false,
+        "artifact_file_sha256_at_generation": null,
+        "artifact_id": "linux-platform",
+        "rule": "committed-projection-only; final-requires-artifact",
+        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
+        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+      },
       "scenario_ids": [],
-      "scoped_reuse": null,
+      "scoped_reuse": {
+        "artifact_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "changed_paths": [
+          "docs/evidence/vanilla-26.1/parity-acceptance.json",
+          "docs/unsupported-features.md",
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+          "docs/wiki/parity/vanilla-26.1-matrix.md",
+          "goal.md"
+        ],
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "rule": "closure-or-acceptance-metadata-only"
+      },
       "sha256": "2bf698e6a90b561cc7cd2f718d1df6d9538a38fd19c6ca0b3e4d9264cfb0eb1a",
       "valid": true
     },
@@ -1162,7 +1055,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "703f82e6b2d02263ac35d3edbbfab2fe6247eb8e41723ddf5d34fa438e19f19e",
+      "sha256": "40c43097456778f09888da5c041e11fa103d369b08a731c13663a3e1e0b1ee0e",
       "valid": true
     },
     {
@@ -1342,8 +1235,29 @@
         "performance-official-equal-load"
       ],
       "path": "/tmp/bbb-parity-675cbfc53-final/final-performance/formal-summary.json",
+      "projection_reuse": {
+        "artifact_file_present_at_generation": false,
+        "artifact_file_sha256_at_generation": null,
+        "artifact_id": "performance-abba",
+        "rule": "committed-projection-only; final-requires-artifact",
+        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
+        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+      },
       "scenario_ids": [],
-      "scoped_reuse": null,
+      "scoped_reuse": {
+        "artifact_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "changed_paths": [
+          "docs/evidence/vanilla-26.1/parity-acceptance.json",
+          "docs/unsupported-features.md",
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+          "docs/wiki/parity/vanilla-26.1-matrix.md",
+          "goal.md"
+        ],
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "rule": "closure-or-acceptance-metadata-only"
+      },
       "sha256": "5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706",
       "valid": true
     },
@@ -8971,7 +8885,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843",
+      "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b",
       "valid": true
     },
     {
@@ -9151,7 +9065,7 @@
       ],
       "path": "scripts/capture-vanilla-audio-receipt.py",
       "scenario_ids": [],
-      "sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd",
+      "sha256": "682134c32be75e6271c161a9f4a69f6e7440b2333765b8303f49b55bbf45600b",
       "valid": true
     },
     {
@@ -9285,7 +9199,7 @@
       ],
       "path": "scripts/parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "a6334b777471875f2f8088f3f8388b738c980eaf3795ea1bf7b0fdd8f518af39",
+      "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39",
       "valid": true
     },
     {
@@ -9541,7 +9455,7 @@
       ],
       "path": "scripts/tests/test_parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc",
+      "sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735",
       "valid": true
     },
     {
@@ -9611,7 +9525,7 @@
       ],
       "path": "scripts/tests/test_vanilla_audio_receipt.py",
       "scenario_ids": [],
-      "sha256": "cd6b3a18795fb35202783f5142edc25425bded3542a0e2f3673cb3547b94da4b",
+      "sha256": "a6c28286d0255bf25aac05b494fdf07341ead562d7a8f0965d6b8d5dae0bf805",
       "valid": true
     },
     {
@@ -9821,17 +9735,38 @@
         "rendering-particle-provider-registration"
       ],
       "path": "/tmp/bbb-parity-675cbfc53-final/visual/workload-summary.json",
+      "projection_reuse": {
+        "artifact_file_present_at_generation": false,
+        "artifact_file_sha256_at_generation": null,
+        "artifact_id": "visual-workload",
+        "rule": "committed-projection-only; final-requires-artifact",
+        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
+        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+      },
       "scenario_ids": [
         "chunk_boundary_crossing",
         "preloaded_flight",
         "static_orbit"
       ],
-      "scoped_reuse": null,
+      "scoped_reuse": {
+        "artifact_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "changed_paths": [
+          "docs/evidence/vanilla-26.1/parity-acceptance.json",
+          "docs/unsupported-features.md",
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+          "docs/wiki/parity/vanilla-26.1-matrix.md",
+          "goal.md"
+        ],
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "rule": "closure-or-acceptance-metadata-only"
+      },
       "sha256": "dafc114e6d6f0394eec76ada60820c9415d57b3e7e59bb1e6b6833af5bcb51ef",
       "valid": true
     }
   ],
-  "bbb_evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+  "bbb_evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
   "change_impact": {
     "affected_mechanism_ids": [
       "audio-client-level-sound-routing",
@@ -9982,15 +9917,25 @@
       "world-client-respawn-data",
       "world-client-session-services"
     ],
-    "base_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+    "base_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
     "changed_paths": [
       "docs/unsupported-features.md",
-      "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+      "docs/wiki/parity/README.md",
       "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "goal.md"
+      "goal.md",
+      "scripts/bbb_tools/audio_receipt.py",
+      "scripts/capture-vanilla-audio-receipt.py",
+      "scripts/parity_acceptance.py",
+      "scripts/tests/test_parity_acceptance.py",
+      "scripts/tests/test_vanilla_audio_receipt.py"
     ],
-    "functional_affected_mechanism_ids": [],
-    "functional_changed_paths": [],
+    "functional_affected_mechanism_ids": [
+      "audio-sound-manager-engine"
+    ],
+    "functional_changed_paths": [
+      "scripts/bbb_tools/audio_receipt.py",
+      "scripts/capture-vanilla-audio-receipt.py"
+    ],
     "path_impacts": [
       {
         "mechanism_ids": [
@@ -10161,19 +10106,12 @@
         ]
       },
       {
-        "mechanism_ids": [
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load"
-        ],
-        "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+        "mechanism_ids": [],
+        "path": "docs/wiki/parity/README.md",
         "reasons": [
-          "direct-dependency"
+          "unrelated"
         ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
+        "required_validation_classes": []
       },
       {
         "mechanism_ids": [
@@ -10340,10 +10278,232 @@
           "unrelated"
         ],
         "required_validation_classes": []
+      },
+      {
+        "mechanism_ids": [
+          "audio-sound-manager-engine"
+        ],
+        "path": "scripts/bbb_tools/audio_receipt.py",
+        "reasons": [
+          "capture-tool",
+          "central-owner"
+        ],
+        "required_validation_classes": [
+          "audio-host-device",
+          "full-gate"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "audio-sound-manager-engine"
+        ],
+        "path": "scripts/capture-vanilla-audio-receipt.py",
+        "reasons": [
+          "capture-tool",
+          "central-owner",
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "acceptance-contract",
+          "audio-host-device",
+          "bbb-owner",
+          "full-gate",
+          "vanilla-owner"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "audio-client-level-sound-routing",
+          "audio-sound-manager-engine",
+          "coverage-external-client-census",
+          "debug-integrated-server-mirrors",
+          "diagnostics-client-level-report",
+          "diagnostics-client-only-inspection-exclusions",
+          "diagnostics-crash-runtime",
+          "docs-chinese-mechanism-wiki",
+          "entities-fixed-type-surface",
+          "hud-frame-extract-order",
+          "hud-hotbar-selection",
+          "hud-overlay-effects",
+          "hud-player-vitals",
+          "hud-text-and-lists",
+          "identity-profile-key-lifecycle",
+          "identity-skin-presentation",
+          "input-debug-key-actions",
+          "input-key-mapping",
+          "input-keyboard-routing",
+          "input-mouse-routing",
+          "interaction-block-breaking",
+          "interaction-carried-slot-sync",
+          "interaction-container-actions",
+          "interaction-creative-actions",
+          "interaction-entity-actions",
+          "interaction-game-mode-guards",
+          "interaction-game-mode-lifecycle",
+          "interaction-item-use",
+          "interaction-pick-actions",
+          "interaction-prediction-sequence",
+          "interaction-primary-action-routing",
+          "interaction-server-authority-exclusions",
+          "items-server-owned-effects",
+          "items-versioned-property-surface",
+          "lifecycle-client-runtime",
+          "lifecycle-client-task-handoff",
+          "lifecycle-session-replacement",
+          "movement-remote-type-exceptions",
+          "performance-gpu-execution-duration",
+          "performance-official-equal-load",
+          "persistence-options-apply",
+          "persistence-options-derived",
+          "persistence-options-file",
+          "persistence-options-unconsumed",
+          "persistence-server-list",
+          "platform-linux-seat-matrix",
+          "platform-macos-release",
+          "platform-window-chrome",
+          "platform-window-display-mode",
+          "platform-window-lifecycle",
+          "platform-window-surface-state",
+          "platform-windows-release",
+          "player-local-camera-targeting",
+          "player-local-client-status-options",
+          "player-local-environment-effects",
+          "player-local-input-movement",
+          "player-local-inventory-actions",
+          "player-local-item-use-state",
+          "player-local-movement-reporting",
+          "player-local-permission-chat-state",
+          "player-local-session-respawn",
+          "player-local-vehicle-control",
+          "player-local-vitals-status",
+          "player-local-world-edit-ui",
+          "protocol-client-state-flow",
+          "protocol-configuration-handler-decisions",
+          "protocol-framing-no-world-state",
+          "protocol-listener-contracts",
+          "protocol-login-handler-decisions",
+          "protocol-packet-tables",
+          "protocol-play-handler-decisions",
+          "protocol-serverbound-call-sites",
+          "registries-built-in-catalogs",
+          "registries-synchronized-data",
+          "registries-unsynchronized-fixed-identities",
+          "rendering-block-entity-registration",
+          "rendering-block-model-pipeline",
+          "rendering-camera-fluid-fog",
+          "rendering-chunk-layer-routing",
+          "rendering-client-biome-tint",
+          "rendering-client-block-entity-tracking",
+          "rendering-client-level-dirty-handoff",
+          "rendering-client-particle-routing",
+          "rendering-effects-screenshot",
+          "rendering-entity-layer-registration",
+          "rendering-entity-renderer-registration",
+          "rendering-extract-surface",
+          "rendering-fluid-mesh",
+          "rendering-frame-order",
+          "rendering-level-backend-lifecycle",
+          "rendering-level-diagnostics-gizmos",
+          "rendering-level-effect-lifecycle",
+          "rendering-level-frame-graph",
+          "rendering-level-light-query",
+          "rendering-level-pass",
+          "rendering-level-scene-projection",
+          "rendering-level-section-lifecycle",
+          "rendering-nondeterministic-golden-exclusions",
+          "rendering-official-noop-surfaces",
+          "rendering-particle-provider-registration",
+          "resources-default-pack-stack",
+          "resources-indexed-built-in-packs",
+          "resources-indexed-panorama",
+          "resources-indexed-realms",
+          "resources-indexed-vanilla-provider",
+          "resources-language-manager",
+          "resources-offline-asset-trust",
+          "resources-reload-listeners",
+          "resources-reload-recovery",
+          "resources-runtime-mipmap-update",
+          "resources-server-pack-lifecycle",
+          "resources-window-icons",
+          "resources-world-list-favicons",
+          "scope-client-level-noop-hooks",
+          "scope-multiplayer-server-list",
+          "scope-options-ui",
+          "scope-realms",
+          "scope-singleplayer-integrated",
+          "scope-support-accessors",
+          "scope-telemetry-upload",
+          "scope-title-screen",
+          "security-secure-chat-reporting",
+          "startup-client-bootstrap",
+          "startup-session-identity",
+          "ui-accessibility-surface",
+          "ui-bidirectional-shaping",
+          "ui-chat-screen-surface",
+          "ui-clipboard-surface",
+          "ui-container-server-authority-exclusions",
+          "ui-context-entity-type",
+          "ui-death-screen-surface",
+          "ui-disconnected-screen-surface",
+          "ui-font-manager",
+          "ui-font-provider-pipeline",
+          "ui-local-time-icu",
+          "ui-menu-screen-registration",
+          "ui-pause-screen-surface",
+          "ui-screen-lifecycle",
+          "world-client-ambient-animation",
+          "world-client-chunk-light-lifecycle",
+          "world-client-clock-weather",
+          "world-client-entity-lifecycle",
+          "world-client-level-events",
+          "world-client-level-lifecycle",
+          "world-client-map-data",
+          "world-client-respawn-data",
+          "world-client-session-services"
+        ],
+        "path": "scripts/parity_acceptance.py",
+        "reasons": [
+          "central-owner",
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "acceptance-contract",
+          "bbb-owner",
+          "vanilla-owner"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "coverage-external-client-census",
+          "docs-chinese-mechanism-wiki",
+          "performance-official-equal-load"
+        ],
+        "path": "scripts/tests/test_parity_acceptance.py",
+        "reasons": [
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "focused-evidence",
+          "full-gate"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "performance-official-equal-load"
+        ],
+        "path": "scripts/tests/test_vanilla_audio_receipt.py",
+        "reasons": [
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "focused-evidence",
+          "full-gate"
+        ]
       }
     ],
     "required_validation_classes": [
       "acceptance-contract",
+      "audio-host-device",
       "bbb-owner",
       "draw-evidence",
       "focused-evidence",
@@ -10354,7 +10514,11 @@
       "vanilla-owner",
       "visual-workload"
     ],
-    "validation_only_changed_paths": []
+    "validation_only_changed_paths": [
+      "scripts/parity_acceptance.py",
+      "scripts/tests/test_parity_acceptance.py",
+      "scripts/tests/test_vanilla_audio_receipt.py"
+    ]
   },
   "commands": {
     "change_plan": "scripts/python python scripts/parity_acceptance.py plan --base-commit <commit>",
@@ -10366,7 +10530,7 @@
   "generator_inputs": [
     {
       "path": "scripts/parity_acceptance.py",
-      "sha256": "a6334b777471875f2f8088f3f8388b738c980eaf3795ea1bf7b0fdd8f518af39"
+      "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39"
     },
     {
       "path": "scripts/bbb_tools/executable_identity.py",
@@ -10374,7 +10538,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "703f82e6b2d02263ac35d3edbbfab2fe6247eb8e41723ddf5d34fa438e19f19e"
+      "sha256": "40c43097456778f09888da5c041e11fa103d369b08a731c13663a3e1e0b1ee0e"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -10382,7 +10546,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+      "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
     }
   ],
   "mechanisms": [
@@ -10459,7 +10623,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -10479,8 +10643,8 @@
             "sha256": "9216d3b2217d91d9044e1805cfbf7de08f4c71cc282e503e0dad99748e3f357b"
           }
         ],
-        "dependency_closure_sha256": "c37605c15b5d6b8dd564ec21a5a55c5e552b666a59afbbe5eab6f9f4d865d173",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "b1e0f8c5b0be9ce9d48a605453141f2def6f551fd873a97d8b2af414da112a76",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
           "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
@@ -10494,7 +10658,7 @@
         ],
         "focused_test_contract_sha256": "23352beef19dfd2d296baadc893089646212948214c9fcec7ea5ae3bfbb1874b",
         "owner": "`bbb-native::startup/main/client_options`",
-        "owner_contract_sha256": "b592b6e1cb590421bdd8321c2b3a281966aa1bfec6143e39af39d47b70f8cc5a"
+        "owner_contract_sha256": "8b38ad23fef3257aa5c341a72a53644b8a49dca3b161b8027ee030721115ca0a"
       },
       "differential_scenarios": [
         {
@@ -10752,7 +10916,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -10764,8 +10928,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "3b4c6362ef2179e55748c1f6bb8e2e473e4ed076fe0966cc75e8636859eca150",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "bbeb40a7c83c80530f9deb3adc6415f311bdad597f8699e7816c4dec5ad7279a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/main.rs#fn run_client",
           "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
@@ -10776,7 +10940,7 @@
         ],
         "focused_test_contract_sha256": "041955730a05cd3889e3eece330e2c5a4436ef17a667b39bbb8baa2973e62e04",
         "owner": "`bbb-net::ClientIdentity` → net/world/server-pack",
-        "owner_contract_sha256": "6a9395e42e097c7c27dfa7b73662d8a2d5c5a100a41d29149572bab740e31100"
+        "owner_contract_sha256": "22ae8f0b258f415a1ba29961b20d61e895520ea01f41d0a36eee3ff44a784b66"
       },
       "differential_scenarios": [
         {
@@ -10974,7 +11138,7 @@
           }
         ],
         "dependency_closure_sha256": "c9f20959b9087036b0792c35539deaef230350bf07a91451a5e65f8ce8f559ae",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
           "crates/bbb-native/src/network_runtime.rs#idle_shutdown_is_idempotent",
@@ -11248,7 +11412,7 @@
           }
         ],
         "dependency_closure_sha256": "4e6d524ac78360397bac50e2be85e204015ad76bc71553a52cc9fd742647dd3c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -11442,7 +11606,7 @@
           }
         ],
         "dependency_closure_sha256": "999f34ef0af9c638a4b115ab5628618b7bfb9b72278519f31dbfe6862bb8103a",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
@@ -11641,7 +11805,7 @@
           }
         ],
         "dependency_closure_sha256": "4f6a8be8cced97101167382768e09ae833fcc248fef6f3890f0cfb9ec4e1a41b",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs",
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
@@ -11832,7 +11996,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -11851,8 +12015,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "764b6ef868fe308202d50b159a1dda375bc0fb477c6bd5485ad3286fd8294e22",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "253cf992c33b1a0ce473f0a10e7a579dc6bcc4c5364e3502ebc5ccb8fa216f10",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs#fn list_resources",
           "crates/bbb-pack/src/resources.rs#fn resource_file",
@@ -11868,7 +12032,7 @@
         ],
         "focused_test_contract_sha256": "c0d6c3f16bf52e2514117e010c965cf656ab27732d7b96bef81d2ace6ff0c842",
         "owner": "`bbb-pack::PackResourceStack`",
-        "owner_contract_sha256": "029782fccefa34dd43d7095e06b373ad49fa9d4151988c080d9e069062d0c873"
+        "owner_contract_sha256": "5b5883931e321a4b297b0c26fbed2607ab1a52898692c7487e42007cf20cad6e"
       },
       "differential_scenarios": [
         {
@@ -12040,7 +12204,7 @@
           }
         ],
         "dependency_closure_sha256": "f0ae48523325cac963fe5bf00e37f6f85624152e6e16528fa024838959c12b65",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs",
           "crates/bbb-pack/src/resources.rs#metadata_filter_clears_metadata_without_filtering_resource",
@@ -12441,7 +12605,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -12459,15 +12623,15 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "91a6204380586c71e38332fe3ced6e2ff7c5517f53ea5885c4d6d9fcc54081d5",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "a48ec38a9fe0ce8b0740849d8053e84f183d552f19889286ce25770b55b099f6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
         "focused_test_contract_sha256": "c8671372da44ff25d6b0036d6eb94f4ae09f9957b99c63791f72c18193c5a075",
         "owner": "pack/native/renderer/audio consumers",
-        "owner_contract_sha256": "014477a8c2e84a0a1ea42214943c69415a773d1084dc275a81b3239de5263133"
+        "owner_contract_sha256": "545af866f9d7ba02f55a6873a4d3ea048294a889be2c0c3800b2747b00b36d1e"
       },
       "differential_scenarios": [
         {
@@ -12795,7 +12959,7 @@
           }
         ],
         "dependency_closure_sha256": "a95a2c532dd4813b6ad58045337d1fab7db3092310800a9d1eafb963e7543d64",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -12972,11 +13136,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "890806c2f7c2d5c094457dd707833a5b51973232bf58ff1cd7a7de6599b9b8cd",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "144c4571c86349ec767fe41e2475af07729ade6dba62ecfcd739f1f3cc85813a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -12984,7 +13148,7 @@
         ],
         "focused_test_contract_sha256": "8a7a057109a47ca51cf4e5920fc63dcf2b9ccfee5d9d5d78f0a3e004c471f40b",
         "owner": "startup-selected native terrain-atlas generation",
-        "owner_contract_sha256": "f4a91bf0ff9639da09ae32b7f8b94553ed5cc6a7d898ad8793d7cec7ff717cdd"
+        "owner_contract_sha256": "e27fc8b5cfcce3b9b6ac324d72fc1056092dd752a93389832d9701a3896f5a20"
       },
       "differential_scenarios": [
         {
@@ -13195,7 +13359,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/playable_gate.py",
@@ -13214,8 +13378,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "9d6c553c9a0237084833c8765557bb0721dfe0feb47d4e44b475fe26f1492c3f",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "34a356405781ab3df9d00ba14e53ac11012ba945b810fbc35a2b861055343695",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -13256,7 +13420,7 @@
         ],
         "focused_test_contract_sha256": "bfc12ef207f93e6f1c3698262c149a061882482585f8ceb8b785b415d9cd5821",
         "owner": "`bbb-net::resource_pack`、native pack runtime、`bbb-pack::server_pack`",
-        "owner_contract_sha256": "ed33bce3192633ba5f0020f11cc41e6c63320468efe384c0b40f9ae7110b359e"
+        "owner_contract_sha256": "ec05d28755c94116aa9282540f4d0036202a829a7b03151b45398803fd2b9058"
       },
       "differential_scenarios": [
         {
@@ -13849,7 +14013,7 @@
           }
         ],
         "dependency_closure_sha256": "ead16222e9b80913a899f7bd6f5ce8df0ecb15b79f7f33e1ecfb45ec31a86652",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
@@ -14097,7 +14261,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
@@ -14258,7 +14422,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
@@ -14375,7 +14539,8 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "docs/unsupported-features.md"
+          "docs/unsupported-features.md",
+          "scripts/capture-vanilla-audio-receipt.py"
         ],
         "dependency_closure": [
           {
@@ -14583,18 +14748,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/capture-vanilla-audio-receipt.py",
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd"
+            "sha256": "682134c32be75e6271c161a9f4a69f6e7440b2333765b8303f49b55bbf45600b"
           }
         ],
-        "dependency_closure_sha256": "c5f6dcf1261ae72af8849400135415cc6f5060c7c30292abb6461203f1f7d8dc",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "ead8a41a0be0bf00dce0072fe797530144f9f0cc15c745e48358feb8e7a47a7c",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -14607,7 +14772,7 @@
         ],
         "focused_test_contract_sha256": "a5c68acb3916ab67b0457c6c060ff2d2a28072b642db37cee8606b7585308682",
         "owner": "pack sound catalog/native/audio",
-        "owner_contract_sha256": "644ec182fe5737ab0f00d1e436331bb982a756184315a333f7a40eea3a7ef00b"
+        "owner_contract_sha256": "1381ae12079b9045846842269cf28ffef2b6ac08d2c24d688c613206dd67f67f"
       },
       "differential_scenarios": [
         {
@@ -15155,8 +15320,8 @@
       "matrix": {
         "domain": "audio/resources",
         "line": 43,
-        "required_state_projection": "159/159 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop/runtime options 12 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；`MusicManager` 现消费 startup `musicFrequency`，按实际解析的 sound resource（非 event id）发布曲名，并区分 STARTED/STARTED_SILENTLY 与显式 hide；其余 OpenAL pool/source/streaming/listener/device lifecycle 保持直接拥有。Vanilla 与 BBB null-driver executable receipt 通过但只属 non-formal；clean `4578667e7` schema-2 ALSA capture 中 Vanilla 双分支与 BBB 四个 source/channel owner test 均无法打开设备，故真实 host-device differential receipt 仍开放",
-        "route_reopen_condition": "连接真实 playback sink 并授予启动用户 device ACL/audio group 后重跑 Vanilla/BBB ALSA 双分支 receipt；源码、OpenAL artifact 或 owner set 变化时重开",
+        "required_state_projection": "159/159 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop/runtime options 12 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；`MusicManager` 现消费 startup `musicFrequency`，按实际解析的 sound resource（非 event id）发布曲名，并区分 STARTED/STARTED_SILENTLY 与显式 hide；其余 OpenAL pool/source/streaming/listener/device lifecycle 保持直接拥有。Vanilla 与 BBB null-driver executable receipt 通过但只属 non-formal；clean `4578667e7` schema-2 ALSA capture 中 Vanilla 双分支与 BBB 四个 source/channel owner test 均无法打开设备。schema-3 现绑定实际 ALSA PCM 字符设备、`/proc/asound`、PCI/sysfs、受控环境及 plug→dmix→hw route；当前正式 receipt 仍待 clean/full-gated tooling HEAD 采集",
+        "route_reopen_condition": "在 clean/full-gated tooling HEAD 上以显式 `--alsa-card-index 0 --alsa-card-id Generic --alsa-device-index 3` 重跑并注册 receipt；ELD 未连接必须记录但不以 null/dummy 替代真实 PCI PCM；源码、OpenAL artifact、owner set、endpoint/config 或 capture schema 变化时重开",
         "status": "partial"
       },
       "mechanism_id": "audio-sound-manager-engine",
@@ -15174,7 +15339,7 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required audio-host-device receipt is invalid: formal host-device audio receipt is invalid; audio receipt evidence class is not formal; audio differential receipt did not pass; audio receipt lacks both passing Vanilla HRTF branches; audio receipt lacks the validated Vanilla pool/HRTF contract; BBB audio executable contract did not pass; BBB audio receipt contains a failed or unhashed executable test; audio receipt lacks a passing Vanilla/BBB differential contract; diagnostic smoke cannot satisfy a formal receipt",
+        "required audio-host-device receipt is invalid: audio artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -15439,7 +15604,7 @@
           }
         ],
         "dependency_closure_sha256": "99fa9d2afcfa3f1e00238fd4b574c05bd41da6e4749fc67973c24ed837810951",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
           "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
@@ -15701,7 +15866,7 @@
           }
         ],
         "dependency_closure_sha256": "e04e5f8881f1e8a28ea491f94f6dfac032143c1fe1e8d70ff0754a89dcaec82b",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
           "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
@@ -15916,7 +16081,7 @@
           }
         ],
         "dependency_closure_sha256": "b10520dfdc89998b890e77d0b6bb244652b9a255d55c4f480aa81d23718bacd1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -15994,7 +16159,7 @@
           }
         ],
         "dependency_closure_sha256": "b10520dfdc89998b890e77d0b6bb244652b9a255d55c4f480aa81d23718bacd1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -17990,7 +18155,7 @@
           }
         ],
         "dependency_closure_sha256": "e936d3aa7479060d548cb136e5f4c9bf6cfc645343d5ec4b236ce5728244e519",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -20729,7 +20894,7 @@
           }
         ],
         "dependency_closure_sha256": "ea2fc2cab86efda2e29b3b5c599bafe901700593009928cf6c3fb7c48c91325b",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -23375,7 +23540,7 @@
           }
         ],
         "dependency_closure_sha256": "9dce362e997c00947f66966a238eb5f0a4c6c1ee81752e1947ba2ef4c61a37c4",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -25857,7 +26022,7 @@
           }
         ],
         "dependency_closure_sha256": "e549715e0b8af670506936110dc5646d56cfb5ca7de4f38f79d7af6a62763fc1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
           "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
@@ -28349,7 +28514,7 @@
           }
         ],
         "dependency_closure_sha256": "ff03e2f4d1d3465bb27778a415ab4be3c72fabc4642f33d97339af8fc981d0ca",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -29183,7 +29348,7 @@
           }
         ],
         "dependency_closure_sha256": "a28e9bada65c2001a282c20056b09aceb07564565ec4418957623960b18d128d",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -31216,7 +31381,7 @@
           }
         ],
         "dependency_closure_sha256": "1aad2aa09f6c3c6ebabbcb7d322c7a27c2c507a9a929105cde859db31222a539",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -31867,17 +32032,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "net framing only",
-        "owner_contract_sha256": "6eb2ab620e9af9d1ec473cb5571fa148d7dbac40b169bf9486a89fc3b9615f63"
+        "owner_contract_sha256": "724e095712397f52287ce805c97a1671fed84fc13248bc25015d5b05d59452e7"
       },
       "differential_scenarios": [
         {
@@ -31977,7 +32142,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -32161,7 +32326,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -32268,17 +32433,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "generated fixed catalogs",
-        "owner_contract_sha256": "7fa8ea95c5afc256292c568d17db32bae2aa17d2ad489008600f409927d26055"
+        "owner_contract_sha256": "c712fe3126f1e82012e2e702e82ae042843444f4b0792d5668b91ea553e22d47"
       },
       "differential_scenarios": [
         {
@@ -32434,7 +32599,7 @@
           }
         ],
         "dependency_closure_sha256": "bf4935fb3bf539489fe166692e9c2fb4f5afa764f48279990dabdf83180751dd",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32632,7 +32797,7 @@
           }
         ],
         "dependency_closure_sha256": "bfbe64bf77507ddf4be67342e2fb6abdcdc4097313262516644df83455c3772c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32862,7 +33027,7 @@
           }
         ],
         "dependency_closure_sha256": "b8ade0fb4bc50f9ce1a3ed1dc320034c7c2e7a168e5eb18660f49dad60c2a3b6",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33084,7 +33249,7 @@
           }
         ],
         "dependency_closure_sha256": "6619cac8d1ac90bd684fc777e28a872851977d896d4f2067ed5b8cc0da89856b",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33324,7 +33489,7 @@
           }
         ],
         "dependency_closure_sha256": "1638608559d4a34e1d4485626093b140615467a6edfa643337554f9a79b95b51",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33597,7 +33762,7 @@
           }
         ],
         "dependency_closure_sha256": "548f9d430eeae6357fc6cb32b53dbc0e9da448d3ce99052cd231d63d9ee06901",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33768,7 +33933,7 @@
           }
         ],
         "dependency_closure_sha256": "0b211b4ef1187ab042afedb9e3c9c5822bfea224ce0c4af40e8090f6410777c9",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33951,7 +34116,7 @@
           }
         ],
         "dependency_closure_sha256": "db4cdea89a32a42594a3423c843d5e21d9b1d36f690afd758892da92ab37f64f",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -34150,7 +34315,7 @@
           }
         ],
         "dependency_closure_sha256": "64d351d0fa6907d257f110670ad5ebbd794ef45207450024ef465380dc1fceb8",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34333,7 +34498,7 @@
           }
         ],
         "dependency_closure_sha256": "5f63cec62f01b45e158211433d7c4aac994921bf6d7e4df22c224ce27d7b2d64",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34556,7 +34721,7 @@
           }
         ],
         "dependency_closure_sha256": "34d48dc9ebb2c66b7825c63aa578e8586d04bf95414b11101b282669d03bd227",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34827,7 +34992,7 @@
           }
         ],
         "dependency_closure_sha256": "79d2fb80eab2b8876a138264d01603a2fd9fe7a51a0bc5cb5f5e78159d54a1b9",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -35092,7 +35257,7 @@
           }
         ],
         "dependency_closure_sha256": "78e722db3897b23338d54a2f7848b1cb882f5ca62a9e6a0421594b727ba567b4",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -35362,7 +35527,7 @@
           }
         ],
         "dependency_closure_sha256": "255a7ab9e1ccf1f8482980b3b8669d08158d05c9f962cb6f34ce42a49858f6d1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -35545,7 +35710,7 @@
           }
         ],
         "dependency_closure_sha256": "29c414eb7010e5fe71a59dc515150e3deef089eee552745a87faf923b1f101df",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -35741,7 +35906,7 @@
           }
         ],
         "dependency_closure_sha256": "ebb37d994ba5b902a858b52888dda85dae53074b410cb9a32666f466c13f7f3c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -35891,7 +36056,7 @@
           }
         ],
         "dependency_closure_sha256": "cd0ab69d03dc58b40f1d5bf4d24a94f2114ef308b36e085ff3bfe7afec0cc51a",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -36020,7 +36185,7 @@
           }
         ],
         "dependency_closure_sha256": "27b4dc1006f9a3a5e60ff51fd36591bf739719e21693be3e651c9a6122b2e5de",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -36181,7 +36346,7 @@
           }
         ],
         "dependency_closure_sha256": "422eaed66b29d67831acbfef9dca43c0276ef3feb4183fee9ee7308c66e4a5ad",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -36441,7 +36606,7 @@
           }
         ],
         "dependency_closure_sha256": "64c4738b47b5cc6c888415232f826e599a84aebfd13f913857fb37555d43cde9",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -36642,7 +36807,7 @@
           }
         ],
         "dependency_closure_sha256": "c97064d067570dc07f8ebab1c6874bd3550828eb621a0b6decd86c84919e6e92",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36780,7 +36945,7 @@
           }
         ],
         "dependency_closure_sha256": "662c5e9f6452bcd5a32028507d02cd073904dae6637e46e8df20120de9b081c1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -36920,7 +37085,7 @@
           }
         ],
         "dependency_closure_sha256": "20ccc35fbb5a91f73b64de11cd6af899d9c082e650d51d1694777fcf48ac1a9b",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -37104,7 +37269,7 @@
           }
         ],
         "dependency_closure_sha256": "f185b1cb167c0e0ce18089d09fcb05b23c8cafca9e104b73dea7fd26f7168c53",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -37325,7 +37490,7 @@
           }
         ],
         "dependency_closure_sha256": "acb49301cf68d4548b9e3d56258a5220277488dc40ed1bb07b6d5a6ce5cf67b5",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -37581,7 +37746,7 @@
           }
         ],
         "dependency_closure_sha256": "d5b33b734f5442e463fb59ab4ac91868e326a439c50a319db100b3db64a75bf5",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -37777,7 +37942,7 @@
           }
         ],
         "dependency_closure_sha256": "8e9773cc1e7d974cad1b92c2ce35a00b87251f283ca2bc0e86b72977f7bea493",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -37976,7 +38141,7 @@
           }
         ],
         "dependency_closure_sha256": "736450011b28168bec9b8268121e6bad585eb16b789dad0c9b36a71d4d6a8088",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -38185,7 +38350,7 @@
           }
         ],
         "dependency_closure_sha256": "78d3d5426f715ac39840b9e3ecd7a3405edab7e16e56699e641280ecee6c72c6",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -38371,7 +38536,7 @@
           }
         ],
         "dependency_closure_sha256": "8684d0237869b4c01647da470c4d6fc72cb4b68186d44578b555545da12d0c31",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -38633,7 +38798,7 @@
           }
         ],
         "dependency_closure_sha256": "eed3c8310f363a3ef532f0b18e5ebb95080a800b4783c6f66a2581f230bd8ae0",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -38824,7 +38989,7 @@
           }
         ],
         "dependency_closure_sha256": "2646624efa3d2ffb78873b5bc46de88bc6bb56e318378650563e5d8634c57093",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -38947,7 +39112,7 @@
           }
         ],
         "dependency_closure_sha256": "e5d8e25934ca1f292a54a2d5b1a924ed29f62117a98a9146104a734ae0a0f915",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -39088,7 +39253,7 @@
           }
         ],
         "dependency_closure_sha256": "170cc4268b334359237351c6d2e3dbd8ad7d58c4f2b3ef00a7222a8904d1d94a",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -39243,7 +39408,7 @@
           }
         ],
         "dependency_closure_sha256": "a1bd9165149f6fcac11a491c7d10ec0497081e01c416546ca0eb066ed01435fb",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -39389,7 +39554,7 @@
           }
         ],
         "dependency_closure_sha256": "e60abcbf6e8df5d66d21527f714386a254c82eec9bc2643274c00303622b8c16",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -39504,7 +39669,7 @@
           }
         ],
         "dependency_closure_sha256": "966a382a02151b4b8224d6fccfa745c8d92a0e4b9a1fb2d2bb80fc69cb7dba1d",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -39630,7 +39795,7 @@
           }
         ],
         "dependency_closure_sha256": "00c66ac5cee6ea529cee6e9d8f01ecbd714a5ad51ae97fba119d75fcc1863d52",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -40000,7 +40165,7 @@
           }
         ],
         "dependency_closure_sha256": "6e6e21fbda78a26d621692eccb56ac12df3a9a1df49b3be93fa88e1d05b9b16f",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -40971,7 +41136,7 @@
           }
         ],
         "dependency_closure_sha256": "6e6e21fbda78a26d621692eccb56ac12df3a9a1df49b3be93fa88e1d05b9b16f",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -42007,7 +42172,7 @@
           }
         ],
         "dependency_closure_sha256": "6e6e21fbda78a26d621692eccb56ac12df3a9a1df49b3be93fa88e1d05b9b16f",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -43200,7 +43365,7 @@
           }
         ],
         "dependency_closure_sha256": "6c8b783bbd2a5715954a11e8915de1fdddf7e0f6fe0879cf2587140c648de6b8",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -43736,7 +43901,7 @@
           }
         ],
         "dependency_closure_sha256": "20945e2c78546812a2d510c3c2735525d9759978d242c8a0ea5342041e5eb608",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -44282,7 +44447,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -44301,15 +44466,15 @@
             "sha256": "57dd8b76eed7543f5c0e4741fa9c5ac9ef81f4c501b60e374c227d1e5c5f6193"
           }
         ],
-        "dependency_closure_sha256": "9c571be94cc856a44c2599ff514088e9ea2e1231f39b830b958ccc42a44f9c2d",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "14162c0f0e39dee1b0eac35c311eb343f4f65bfcaa3f846f4b645bd731c07574",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
         ],
         "focused_test_contract_sha256": "7584e23449db9e80c2efff002c8d221e0ed383298ddc4c500b3fd4a41b8bd86c",
         "owner": "`bbb-native::runtime::render_extract` + shared toast runtime + independent NowPlaying runtime + renderer",
-        "owner_contract_sha256": "95ad98cde311686a9452c43c0391658b1f6e7f883b90ce90d4a0f3ffafd42854"
+        "owner_contract_sha256": "e6835fff1a33359fcb0faa3480f6008f4b8d714981d08cfdf15444d026cca9df"
       },
       "differential_scenarios": [
         {
@@ -45027,7 +45192,7 @@
           }
         ],
         "dependency_closure_sha256": "5938032f5c5c1a50929202ada9faaccd47239ca5c567794d08f4194bc3448376",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -45393,7 +45558,7 @@
           }
         ],
         "dependency_closure_sha256": "dda65ae57e68201a6a98d78cb54505e21b54534b3007a556849e69f83c701fb1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -45663,7 +45828,7 @@
           }
         ],
         "dependency_closure_sha256": "1d9a3299dfc489e4b5f60af1959c1516c83c27a383763f2483c5b2d4eb765a03",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -46028,7 +46193,7 @@
           }
         ],
         "dependency_closure_sha256": "8eae3890230313b3eb8fb8863209afe11c9cb7ad3d9618ef93cb44ded2765284",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -46455,7 +46620,7 @@
           }
         ],
         "dependency_closure_sha256": "c4f6f3604723f041ced0fd0b168b52470a606b6732194e808c4d0eb4f29ae5a6",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -46930,18 +47095,18 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "1fbb5ed3e43215e092fff1952da5669b602c9cd7d70d99dc670a61e5ca7ec916",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "e9edfb0dd02998a475d007af6be6806f90415b4e86b7252a0d067c072e6adbf3",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
         ],
         "focused_test_contract_sha256": "08a3990a73a15b394841841053a1570affcd7c8365ffc016b0839546464ff184",
         "owner": "native immutable publication extract → RendererFrame",
-        "owner_contract_sha256": "15343a37c6585f5bf51bec46317ce22e1da0ee10ed65f8b2e4ee00a671e43192"
+        "owner_contract_sha256": "798617ef0e2298088933528b4db9d7f976ae2b00433ad81d784ace671a0bdc55"
       },
       "differential_scenarios": [
         {
@@ -47401,18 +47566,18 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "d4686c3d3476f18e8088055f8abbd259048541cdaa16359001bfca75b0c06680",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "089fffacba9eae5a6a369dfb0d891935fa8e052762dd3e43278e924a59b9249e",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
         ],
         "focused_test_contract_sha256": "b3b892812cb81db1fa467e7e5cf55181aa3c274b89b406284a5a59747281da01",
         "owner": "native extract + renderer level/first-person passes",
-        "owner_contract_sha256": "64930366270e103ac22d762800f72d2035defbe7984470ba343e15a086b16093"
+        "owner_contract_sha256": "19b30a62d9b56ff81b3995d1714c85d085c68428cd73611a9869264dcdcbb971"
       },
       "differential_scenarios": [
         {
@@ -47999,11 +48164,11 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "b2bc40b0554575085aa71b0df8e3b4e31a50398717325b421086e4726d4c7b0a",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "88c26c19dcc548730fa540b25cad6ed2f4974236384a7a59a5894ff0b99b410d",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -48012,7 +48177,7 @@
         ],
         "focused_test_contract_sha256": "5186840d407f4b742ca83fdb45863712f4eb7cd70084bd8cba1d84cf8e5505a3",
         "owner": "native runtime + renderer post/screen effects",
-        "owner_contract_sha256": "e72c856e84f6b308a12683f92b9e09beab7a6305b85ae15e4dbce75e7e91b873"
+        "owner_contract_sha256": "a11a0e588b0fdaeda309d26b8eb5d5e57154fb193fafd12c58ad8494bedfbcff"
       },
       "differential_scenarios": [
         {
@@ -48454,7 +48619,7 @@
           }
         ],
         "dependency_closure_sha256": "052d6911af245e23200610c23c33ba7a2249dbf7ab91c138ee45577ee4228186",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -48738,7 +48903,7 @@
           }
         ],
         "dependency_closure_sha256": "15c9ee69d01545e60ca85845f93f4988f6e2e777a92aff24cb8f9a661f193fb1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -49052,7 +49217,7 @@
           }
         ],
         "dependency_closure_sha256": "87c05dd2c02a6516cc55231efa319ee02e2754340e5b51d4ed8dfeb410d09042",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -49423,7 +49588,7 @@
           }
         ],
         "dependency_closure_sha256": "3ac2c8fcb965119909adef97d71b886968ee59d9de8abe1bd0242c7758d91bff",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -49745,7 +49910,7 @@
           }
         ],
         "dependency_closure_sha256": "bb9962a460dbcd6430a23a719db5493402e08e2b596eb9fcc486dda9717a1fb4",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -50017,7 +50182,7 @@
           }
         ],
         "dependency_closure_sha256": "123d7f44509790e814f19b3eed51859da8c0aeaea3f4729a6316b82429ddab74",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -50271,7 +50436,7 @@
           }
         ],
         "dependency_closure_sha256": "673e83e3ee76265719527c74e3d9d0db27edd4e68a62c0cd34a35093acfb907a",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -50474,7 +50639,7 @@
           }
         ],
         "dependency_closure_sha256": "048fa4aafa5cf0408941ee6d52dcb86855a6e337182fdd1eab0e3b92676a6277",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -50725,7 +50890,7 @@
           }
         ],
         "dependency_closure_sha256": "e492c819aa8e97b9ccdbf42936c1235ae1357d844c392f025bcd109048f5decf",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
           "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
@@ -50989,7 +51154,7 @@
           }
         ],
         "dependency_closure_sha256": "3a1b670abe258b94b49097de8344ca5dedd8636bdc8f0f79db44eb499bbb46f7",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -51239,7 +51404,7 @@
           }
         ],
         "dependency_closure_sha256": "43001e4450d96be32c9054564f0a3e8f6715d0bbdefbea5922d00bd62abab608",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/camera_fov.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -51626,7 +51791,7 @@
           }
         ],
         "dependency_closure_sha256": "eb2bde215742571fe70c9952a7ef865e78e0f29e7f5b3e73be85f0dae9ba020e",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
@@ -51793,7 +51958,7 @@
           }
         ],
         "dependency_closure_sha256": "1801f934882bef777140ee0917acff3e1b0e9b25e196449cca11fb9d95b387fd",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -51980,7 +52145,7 @@
           }
         ],
         "dependency_closure_sha256": "7f34ea7737397d1de18f55292e8d04c1d89f2f484c5d59df286ee343b1bf696e",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -52148,7 +52313,7 @@
           }
         ],
         "dependency_closure_sha256": "d059cb4f8b14cd386fd51c80dd807c1cbd4d1d9933809b4cdac29ce8d500a366",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -52291,7 +52456,7 @@
           }
         ],
         "dependency_closure_sha256": "1a369de62ac14d84e4db014a1cff146b5f597b2e5c7245166851c5fb76c28abf",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -52466,7 +52631,7 @@
           }
         ],
         "dependency_closure_sha256": "b5309edd69c0abb51aea8145b93b39a866d16123d62f20cc09910509b9ca53d7",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -52578,7 +52743,7 @@
           }
         ],
         "dependency_closure_sha256": "fa7f9e3e7ae61f35f3452ee996cfb5801c128eddc7380f44854f448c6701fe0c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-render-types/src/text_visual_order.rs",
           "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
@@ -52817,7 +52982,7 @@
           }
         ],
         "dependency_closure_sha256": "770ee392553c34cc4051f799041dd06dfef93e4f78fb08d5449b51aa83bc6053",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -53096,7 +53261,7 @@
           }
         ],
         "dependency_closure_sha256": "bec23b0cefcebf4f9a00945859e1c87e68624723c848e206b8091fc662fad5ba",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -53234,7 +53399,7 @@
           }
         ],
         "dependency_closure_sha256": "2fb15cc9515ce275a93106912c68d6d591b30e41d779e8a4253576aeb12004f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
           "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
@@ -53342,7 +53507,7 @@
           }
         ],
         "dependency_closure_sha256": "166657641954c5fc239e1564563f14a08224f0cf490fde9c91371fa046eb2ffc",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
           "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
@@ -53505,7 +53670,7 @@
           }
         ],
         "dependency_closure_sha256": "d587c3971071e2d71e48efc00d66c534677741fc27f67761a04debd96aedefa2",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -53783,7 +53948,7 @@
           }
         ],
         "dependency_closure_sha256": "d9fde3a483a74773a29045e7edc03c38e119cef70c0ffcd1979b694a28c21746",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -54084,7 +54249,7 @@
           }
         ],
         "dependency_closure_sha256": "6cc5f37a8b0978db60c4ab1f6aa2021861a2eb5aabdc713725e31fc80e1469ac",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -54413,7 +54578,7 @@
           }
         ],
         "dependency_closure_sha256": "6e67b24cbd5a7dd14d0c839d314059224954054df020986cf8a0386b4c3703a3",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -54750,7 +54915,7 @@
           }
         ],
         "dependency_closure_sha256": "5e9d3814ce2123a022b8932a9ba350fc2db79d7846c9a7f7eb2bfe50b15f8100",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -55006,7 +55171,7 @@
           }
         ],
         "dependency_closure_sha256": "cd2e328218705a864b7273cfcaa196aa2a9dd1d91049d7852b80740d01f725f7",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -55268,7 +55433,7 @@
           }
         ],
         "dependency_closure_sha256": "4d0d902c61d9ca68cee253b2bca1277f848e6f151ce73e9b52b1f451b92c495d",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -55558,7 +55723,7 @@
           }
         ],
         "dependency_closure_sha256": "63133b0da0c81b57850cb7512ff4348b34fc5cca7d050eabe33d4ff6131c8ee4",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -55746,7 +55911,7 @@
           }
         ],
         "dependency_closure_sha256": "d10f1f592bbc0f098c12fcaa97ffdaa2a37314cd02444fc60405fd971cbc9a63",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -56043,7 +56208,7 @@
           }
         ],
         "dependency_closure_sha256": "ffa2233a9e3d12e2dd010e605332e49b5b174f05fbece3cb0570c62129325457",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -56477,7 +56642,7 @@
           }
         ],
         "dependency_closure_sha256": "bf233e4d14cbb5676d9e3cb7d92296ca88ed69044f3161f4013dead056cb8077",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -56883,7 +57048,7 @@
           }
         ],
         "dependency_closure_sha256": "091704a83ef0363bd7213856912789434eadf116044e4fbedfe687eac3c8ee35",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -57029,7 +57194,7 @@
           }
         ],
         "dependency_closure_sha256": "02a2949533ed03d68c7def36a8204f60a90f2688db292b7f42e4ef9d5913a14e",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -57163,17 +57328,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "offline-only client；无 profile-key surface",
-        "owner_contract_sha256": "e2e1b4be1dd11b5e908e4a3f763bb78186bc3e039cce45f0a0eee1400e68a4cc"
+        "owner_contract_sha256": "118c6f254529d395a2b06379535d952bd614cfcc93a0708e3a7dc60f6b4fe5c2"
       },
       "differential_scenarios": [
         {
@@ -57209,7 +57374,7 @@
         "scope-ruling",
         "vanilla-owner"
       ],
-      "scope_ruling_sha256": "5c4af1bdf9872fc7aeb67749a4b8844330185c14521ce82a3d10790d1908422a",
+      "scope_ruling_sha256": "50f08d5251e166ed1b170b23e35b6b890ff31c036e1fe70f40fb062b56257c9f",
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
@@ -57277,7 +57442,7 @@
           }
         ],
         "dependency_closure_sha256": "8bb491e05cf5cee395bab714cb9e0e5a8c79cc12fc942505ff767b4d6b0c8aeb",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
@@ -57650,7 +57815,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "docs/wiki/architecture/offline-runtime.md",
@@ -57660,8 +57825,8 @@
             "sha256": "3459aaa5f114f59b01fb7330e9ca8aa76244738b3b35b07e4365146cde04dc7f"
           }
         ],
-        "dependency_closure_sha256": "7a4ea6a9b788a8d38ac7787cb619c8cda04f398d9472df06754f5a6aec00b7cb",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "beedb4bcaf2ce21479048be2f939d8d9361dd1c67bc644e133af23a5b051801c",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -57670,7 +57835,7 @@
         ],
         "focused_test_contract_sha256": "22c4bb32fe1eb65a6cb1a01f7e9ba05d7b179027926e660010ec1c361caf82e6",
         "owner": "`bbb-world` social/reporting state + `bbb-net` chat_session/last-seen + `bbb-native` input/runtime",
-        "owner_contract_sha256": "f0a5047c3c6969f44e8ae04c231a1808d0d1d928cd69c62a869ebfe2f7926397"
+        "owner_contract_sha256": "14e00f518dd59977e32a965e0709e8ea06056c9c87b1cab1dd3f41a9185cc80a"
       },
       "differential_scenarios": [
         {
@@ -58120,7 +58285,7 @@
           }
         ],
         "dependency_closure_sha256": "d94f6c0e7e8a459b67df72ee17e8c6afd41ca0e6449fb4b6293bd13e50c324c8",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -58654,7 +58819,8 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
+          "scripts/tests/test_parity_acceptance.py",
+          "scripts/tests/test_vanilla_audio_receipt.py"
         ],
         "dependency_closure": [
           {
@@ -61259,7 +61425,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+            "sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
           },
           {
             "path": "scripts/tests/test_platform_acceptance.py",
@@ -61294,17 +61460,17 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "cd6b3a18795fb35202783f5142edc25425bded3542a0e2f3673cb3547b94da4b"
+            "sha256": "a6c28286d0255bf25aac05b494fdf07341ead562d7a8f0965d6b8d5dae0bf805"
           }
         ],
-        "dependency_closure_sha256": "f0f562bda73615b5801485e0a1c1059b6e90998ebd4abdf27f3b4d946ebfbcfd",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "5bba5899ec719760fd48ded82e0199e916ab3b5e913575fc961b9cfda96222ff",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
-        "focused_test_contract_sha256": "081f14c73e76e3f16ef4ad28a87730b307d3d7c052c3188dd0944397b3d0779e",
+        "focused_test_contract_sha256": "18a441fc7d581404bded9e79eab750a74daade1599a90f050db2a9d33cf4273e",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "3fbeb7ff9e5c65b076c34fab119cb34a8f34079aa84b7df6e1a36db6c3acf2e2"
+        "owner_contract_sha256": "5a2800748f5a8ba04b7436bf48cd0df81fee1b18b23fd30af5fa6c878f040301"
       },
       "differential_scenarios": [
         {
@@ -61768,8 +61934,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 2909,
-          "evidence_set_sha256": "fc6d0e00d46eeded9f1cd2e0dbd55797bfde0f5ba04c5a44381a34f668054ec0",
+          "evidence_set_count": 2917,
+          "evidence_set_sha256": "64cfb547f8e17d88bba07de1645dbd62cec39cb0d5c35c921af5de896dacb8d7",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -62240,9 +62406,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
@@ -62261,7 +62425,7 @@
           }
         ],
         "dependency_closure_sha256": "2813e6b7afa72647ed36aa9cf3c6676a40d1a4cffd612c467e91dfa53270b211",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/tests/test_gpu_duration_capture.py"
@@ -62565,7 +62729,7 @@
           }
         ],
         "dependency_closure_sha256": "b4e956f7b778f26740bf497cbfc94665dd5df1c028dfea2b8711904a2ac8f023",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -62714,7 +62878,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/cross_check.py",
@@ -62724,15 +62888,15 @@
             "sha256": "437ba55db7f865d5b9cec1891294b101abfabe88c09bd9198cefe8baf5f39395"
           }
         ],
-        "dependency_closure_sha256": "ba5a8ad11e8a5f37e78f5669ac86932d0720b8fbd4bfa7a792173ec3c267b57c",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "96c6c237a27d78986e90924c8958ecf1c2b6d413a82a8450878c11e58d0ca1bb",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/cross_check.py"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no maintained macOS host",
-        "owner_contract_sha256": "ac174aa2d91d1ef185836251783b9164852c587acbc9018efeab588991989387"
+        "owner_contract_sha256": "c6604a8b75255139222e1f0515d28b8044047f3d7ecee2beacbbe9756bd9e50e"
       },
       "differential_scenarios": [
         {
@@ -62813,17 +62977,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "用户裁决非目标",
-        "owner_contract_sha256": "a2a8479b68c87c8c2e1c4f186fe4c43161cfd48800f7d96266754f1051ae4408"
+        "owner_contract_sha256": "d58bdc089b637179bc5980c35f4c9ea00fa8bfda6a90738bbadf0443c6b119f2"
       },
       "differential_scenarios": [
         {
@@ -62901,17 +63065,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no title-screen surface",
-        "owner_contract_sha256": "3daa5fb902616f01f71a583989133a5126415c9deb463ffbef3e910199809d38"
+        "owner_contract_sha256": "57a87abe9ebade9a96f147c8a3e125b85116deaf9a6e37952736b4c8fb13fad0"
       },
       "differential_scenarios": [
         {
@@ -63011,17 +63175,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no in-process server/world storage",
-        "owner_contract_sha256": "c12c7f5675ba32c8329bf662329179f7787f52eff8db9b9ee594ec01334b898f"
+        "owner_contract_sha256": "e3bf88f58c45f3c1d95fea9e67cf61097083bbb2018e99cec45e8c25e2c7ceef"
       },
       "differential_scenarios": [
         {
@@ -63156,17 +63320,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no Realms service/screen",
-        "owner_contract_sha256": "5dfa1dfb481f65496038da70f0d2e5748d3f5d744ec2563668c2972b2341cd75"
+        "owner_contract_sha256": "a4e9294ce23022de0f73defd1291f1bcd0f9c6e0d872692fce6542fce569b1a4"
       },
       "differential_scenarios": [
         {
@@ -63341,17 +63505,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "CLI configuration only",
-        "owner_contract_sha256": "65496668bdb6f8ad9a42ab2ba28d481bf6ec8ad0561ee264b5448a663ba11d90"
+        "owner_contract_sha256": "3563184c597b08a47430bcda064c0058de340b601014bfba6e38ff43ca890736"
       },
       "differential_scenarios": [
         {
@@ -63453,17 +63617,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no multiplayer server-selection screen",
-        "owner_contract_sha256": "239026fa53a3d59ec3852354640c4d2e35306785015f3033b0cbc3ec6aa3a6f5"
+        "owner_contract_sha256": "d8b7ec469f4e17fdeceac2714902c8d43e7c28c9e879158ee6b82a3dd0bce6ed"
       },
       "differential_scenarios": [
         {
@@ -63539,17 +63703,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no Mojang telemetry sender",
-        "owner_contract_sha256": "9dc26b68a35f02cce57720fd3c7e9364544cb72a7e740bf47e838e6c863472e7"
+        "owner_contract_sha256": "2b1f509e18c130a07fde2eaee62b152791ae1521ce1fb8efdeed878a7f072f5d"
       },
       "differential_scenarios": [
         {
@@ -63646,7 +63810,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           },
           {
             "path": "scripts/client_mechanism_inventory.py",
@@ -63656,15 +63820,15 @@
             "sha256": "81365cbcd0a29df880b592632e98f4fe25f5fcfb227571092bbe33a655688ebd"
           }
         ],
-        "dependency_closure_sha256": "c39eceff35acf40bfd447ee764f811990a87a746d2a621473964cffec958ee77",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "f2751cb2b90457ceb64989b68f816515caa27782cae99564794a34356eb0ee74",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no independent BBB decision owner",
-        "owner_contract_sha256": "9e2b0efcc819206f07c5fc6c177c27588c92dc88ef3682f96acd5f36a307eab2"
+        "owner_contract_sha256": "d3827c0d1f3e647cbba115f552411375b7c4bd47b1c9797a0362e62404b0120d"
       },
       "differential_scenarios": [
         {
@@ -63999,17 +64163,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no independent BBB client state/effect owner",
-        "owner_contract_sha256": "ccb3432fd6948daaf7f13af38fea36d5b26f1ab905d84b66f86cc315f58b62ea"
+        "owner_contract_sha256": "59d7d084e562a9ea451479263b2c5db23a4f4d1e217123dbae92cbf18ca1d079"
       },
       "differential_scenarios": [
         {
@@ -64085,17 +64249,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no server owner",
-        "owner_contract_sha256": "20b4c6e349f1c570268e9783f0dbbbc8fef4618df17708173df677c2096d4cf7"
+        "owner_contract_sha256": "ccb9e53c2405f78fc10c5a689b0fed8593f6d4694f61dd38d441cd67856d4028"
       },
       "differential_scenarios": [
         {
@@ -64225,17 +64389,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no current favicon consumer",
-        "owner_contract_sha256": "04c34fc371dc3e8172bfc0471b61690feec0ee842157c6b994460ed3e60df869"
+        "owner_contract_sha256": "159b79318d69a5dde4da78ef7c16801e93bdf048e5961b993f0571169f4bd45a"
       },
       "differential_scenarios": [
         {
@@ -64341,17 +64505,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "server-owned remote entities",
-        "owner_contract_sha256": "8e9394d3dde3bbce6ab80ffd4cd32d62ef3f93a98ceb1cc13a7cbf3980b6f84d"
+        "owner_contract_sha256": "9b9728cc2f5b483b6805b9f7d9292779c12fe84dcf5e65971b7ea38430496e99"
       },
       "differential_scenarios": [
         {
@@ -64453,17 +64617,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no client owner",
-        "owner_contract_sha256": "198022b8cfa697890dfc4f7cc96bb7e4e29c2cd13cab12b1bdf1b7101c577ef5"
+        "owner_contract_sha256": "ac87315eab7693b9d126df814226e093c8a1a105e52bfb8e8fb81048e29a81a4"
       },
       "differential_scenarios": [
         {
@@ -64585,17 +64749,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "current menu canonical state",
-        "owner_contract_sha256": "9200710a3b89f4cb0dcc61116e3457f8ebfbecaa9b7a0ce6d7d14d59737808d4"
+        "owner_contract_sha256": "93350ccef093ed7ee0729758d19a763c7dc92f4fc850dc947278d927e7b1f370"
       },
       "differential_scenarios": [
         {
@@ -64665,17 +64829,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no current presentation",
-        "owner_contract_sha256": "d9c9fe0fb3ff4de91e7040959f62df47c31de5efd33edb8afbc71d2b3cb65dac"
+        "owner_contract_sha256": "b8b086aa9d1d5bb09d9155f74a5857d2b765b30d59f133a9fff2ccccc98b3a98"
       },
       "differential_scenarios": [
         {
@@ -64805,17 +64969,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no client effect owner",
-        "owner_contract_sha256": "d6ce2ecd3fca770090a68290206c7e790fb7ae919c8e418d63b4ed60e77c3cc2"
+        "owner_contract_sha256": "c0c4002cd431ef2955a41bddc06c9ce83775beffff0c5746371735720d09601d"
       },
       "differential_scenarios": [
         {
@@ -64889,17 +65053,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "generated item-model catalogs",
-        "owner_contract_sha256": "0dd0aea776cff4bb56f2780542bbaebf3811f68cb850a80f420dcf0695dcde90"
+        "owner_contract_sha256": "cfd4408abffbc89e4b29ad0ffcacf22079b01fbd2969f6b25fc4f37fdb894e76"
       },
       "differential_scenarios": [
         {
@@ -64973,17 +65137,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "semantic/pixel focused evidence",
-        "owner_contract_sha256": "29d796cf048b97eafa9ba902931186f32ce3be5faf1d911a5e0f0ee11d6904a6"
+        "owner_contract_sha256": "40c249c172bc52c54a1b9aea30076bc7899ba01f88bcfb373358d1f13824bdca"
       },
       "differential_scenarios": [
         {
@@ -65055,17 +65219,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "62369f866f78a54177859aa4d0d3b447a6b3948ef3938e61a48553491886a843"
+            "sha256": "14dc73dc1a644e1d869c6ddda9d61ac57a3e6c639b32342411af15d0b03dff6b"
           }
         ],
-        "dependency_closure_sha256": "fe85fd13bf3c3caa6659f36fb86892351055c4cf9356c8ae968e25b6182d01f1",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "1b3c99130bdbc45f55304ea6e540068ad79a38b66875cd4242e919151545306a",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "protocol-backed local diagnostics",
-        "owner_contract_sha256": "73ae5e5f7829c7b8c1f986a9a460b6a95f65414501f8c25b2320c821e8b9e0b5"
+        "owner_contract_sha256": "8c44c31b031fe225a7ef3527ff62afc25489bb5cf1d924237e2161ed14fc04c2"
       },
       "differential_scenarios": [
         {
@@ -65190,7 +65354,10 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/parity_acceptance.py",
+          "scripts/tests/test_parity_acceptance.py"
+        ],
         "dependency_closure": [
           {
             "path": "scripts/bbb_tools/executable_identity.py",
@@ -65218,7 +65385,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "a6334b777471875f2f8088f3f8388b738c980eaf3795ea1bf7b0fdd8f518af39"
+            "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39"
           },
           {
             "path": "scripts/tests/test_parity_acceptance.py",
@@ -65226,11 +65393,11 @@
               "focused-test",
               "matrix-evidence"
             ],
-            "sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+            "sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
           }
         ],
-        "dependency_closure_sha256": "586e88fd9db69eca23f6443b1252500b78d099ad2509bac52bb702d9c756b643",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "544d62d1e96f4d8fa837c1202a4d84b534f582e2fbdb90bd3a98dcc254052512",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -65238,9 +65405,9 @@
           "scripts/parity_acceptance.py",
           "scripts/tests/test_parity_acceptance.py"
         ],
-        "focused_test_contract_sha256": "bcafe87408a8e2c7cb4826a2e8385efbbae3a9bbe5b16df8f09dd912239aa79a",
+        "focused_test_contract_sha256": "fbfedd6fff6a2b19733f8aa0eab81ad1edd700634a8ae6ad902e0f4f35a0f2c2",
         "owner": "generated inventory/matrix/ledger lint",
-        "owner_contract_sha256": "7f1042f3406ac17c63e13a589f10fb883a69c3f179ec3955d4e540738b9a90ed"
+        "owner_contract_sha256": "75b8f6baad3a0ecdb011c760ebd6fe4e9f960a9a347757e96dda2a617e8168d1"
       },
       "differential_scenarios": [
         {
@@ -65260,273 +65427,301 @@
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_audio_formal_receipt_requires_both_executable_clients",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_audio_receipt_cross_checks_raw_vanilla_and_bbb_logs",
+          "result": "passed-via-full-gate",
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_audio_receipt_rehashes_and_cross_checks_alsa_snapshots",
+          "result": "passed-via-full-gate",
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_audio_receipt_rehashes_every_external_executable_identity",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_capture_contract_detects_tool_changes_after_capture",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_change_plan_command_does_not_require_vanilla_workspace",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_change_plan_scopes_direct_central_and_unrelated_paths",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_changed_owner_dependency_cannot_reuse_old_focused_receipt",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_diagnostic_smoke_cannot_satisfy_a_formal_receipt",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_docs_workflow_does_not_invent_vanilla_owner_from_evidence_prose",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_duplicate_matrix_id_is_rejected",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_external_audio_artifact_cannot_accept_vanilla_only_json",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_external_visual_receipt_accepts_ancestor_elf_load_image",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_external_visual_receipt_requires_ancestor_byte_identical_binary",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_false_equivalent_cannot_be_hidden_by_editing_valid_flag",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_false_equivalent_is_machine_detectable",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_final_exact_head_requires_clean_current_full_gate",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_final_head_check_cannot_run_before_report_is_sealed",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_formal_abba_accepts_semantically_unchanged_closure_metadata",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_formal_abba_prerequisite_is_commit_sealed_and_code_free",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_formal_lifecycle_receipt_requires_binary_identity",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_gate_receipt_hash_rejects_removed_or_tampered_receipt",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_gate_receipt_hash_survives_append_only_log_growth",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_ignored_test_keeps_focused_evidence_pending",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_ledger_source_hashes_are_scoped_to_the_mechanism_section",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_matrix_shared_owner_is_hashed_alongside_inventory_owners",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_matrix_validation_classes_and_external_artifacts_cannot_diverge",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_nested_mechanism_page_tests_are_scoped_to_its_declared_id",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_open_matrix_status_cannot_publish_closed_conclusion",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_owner_mapping_and_unrouted_status_are_rederived",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_partial_reason_is_derived_from_stage_and_cannot_be_erased",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_platform_receipt_scoped_reuse_accepts_only_closure_metadata",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_repo_artifact_generator_inputs_drive_scoped_plan_and_lint",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_report_derives_matrix_rows_and_reverse_evidence_mappings",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_reused_external_projection_is_scoped_and_capture_sensitive",
+          "result": "passed-via-full-gate",
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
+        },
+        {
+          "command": "scripts/dev test python --suite all",
+          "ignored": false,
+          "reference": "scripts/tests/test_parity_acceptance.py#test_reused_projection_is_bound_to_committed_report_blob",
+          "result": "passed-via-full-gate",
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_sealed_formal_abba_is_not_invalidated_by_current_workflow_stage",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_stale_vanilla_owner_hash_and_generator_input_fail_lint",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_strict_lint_requires_external_artifacts_to_remain_available",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_tokio_async_test_is_executable_focused_evidence",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_unknown_or_one_way_artifact_mapping_fails_lint",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_unregistered_docs_prefix_still_requires_a_vanilla_owner",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_visual_artifacts_expose_named_replay_scenarios",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         }
       ],
       "matrix": {
@@ -65632,7 +65827,10 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/parity_acceptance.py",
+          "scripts/tests/test_parity_acceptance.py"
+        ],
         "dependency_closure": [
           {
             "path": "scripts/docs_wiki_lint.py",
@@ -65646,7 +65844,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "a6334b777471875f2f8088f3f8388b738c980eaf3795ea1bf7b0fdd8f518af39"
+            "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39"
           },
           {
             "path": "scripts/tests/test_docs_lint.py",
@@ -65662,11 +65860,11 @@
               "focused-test",
               "matrix-evidence"
             ],
-            "sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+            "sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
           }
         ],
-        "dependency_closure_sha256": "a8bd18bed0bffa6454700f08a67fbca9de37016ad7f81c1b3f849bab74c9c956",
-        "evidence_commit": "675cbfc53e7b8e9047e0367751fb714bb673e4a6",
+        "dependency_closure_sha256": "c748cfee2b1a763358ccc1b162f00e43aa4d651e4fe52e4ed73d9c5f6c6c244f",
+        "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
           "scripts/parity_acceptance.py#mechanism_source_hashes",
@@ -65681,9 +65879,9 @@
           "scripts/tests/test_docs_lint.py#test_valid_zero_ready_maintenance_state_passes",
           "scripts/tests/test_parity_acceptance.py#test_docs_workflow_does_not_invent_vanilla_owner_from_evidence_prose"
         ],
-        "focused_test_contract_sha256": "ccf472afa93fd5ffdcff1e4becc7b34ba5048c8e069fb1711d5aca06166cb834",
+        "focused_test_contract_sha256": "e51828ab3b8b167ad552d18e67de7326f285bb3401293cfd0083a9fe22f70e67",
         "owner": "docs Wiki/inventory/docs-lint/acceptance",
-        "owner_contract_sha256": "b4d0ac7cf1924006b072e1ac1de8eb1f10e9f5311f4ba44d6e00fd9a7f7baef2"
+        "owner_contract_sha256": "f95e2d9197e5ac6c4d565fe05bceb0d4271ebd79e3e0d8f79bff1bc018f4378e"
       },
       "differential_scenarios": [
         {
@@ -65767,7 +65965,7 @@
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_docs_workflow_does_not_invent_vanilla_owner_from_evidence_prose",
           "result": "passed-via-full-gate",
-          "source_sha256": "e8918cc7c4eec4f2893fb366ee5ac442c67e32074c46381a5832d091a5fb21cc"
+          "source_sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
         }
       ],
       "matrix": {
@@ -70312,13 +70510,13 @@
   },
   "vanilla_version": "26.1",
   "workflow": {
-    "code_freeze_ready": true,
+    "code_freeze_ready": false,
     "consistency_gate_passed": true,
-    "formal_performance_allowed": true,
+    "formal_performance_allowed": false,
     "implementation_blocking_ids": [],
     "implementation_ready": true,
-    "semantic_contract_sha256": "d008aa81fc8676b076e83b4b19608da62f1cbccd4a2b6bed921ce4d86ed80d0f",
-    "stage": "final-performance",
+    "semantic_contract_sha256": "a89d174a9b94a5ab90f975a4f07bec0462874b09d19a548921ea7c1cdeac3e03",
+    "stage": "implementation",
     "stage_order": [
       "implementation",
       "checkpoint",

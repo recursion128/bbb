@@ -7,18 +7,22 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import re
 import stat
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from bbb_tools.audio_receipt import (
+    ALSA_DMIX_IPC_KEY,
     AUDIO_MECHANISM_IDS,
     AUDIO_RECEIPT_SCHEMA,
     BBB_AUDIO_TEST_IDS,
+    alsa_pci_config_text,
 )
 from bbb_tools.vanilla.arguments import (
     add_vanilla_runtime,
@@ -32,7 +36,6 @@ from official_client_benchmark import (
     safe_extract_natives,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROBE_SOURCE = REPO_ROOT / "scripts/vanilla-runtime/VanillaAudioParityReport.java"
 PROBE_CLASS = "VanillaAudioParityReport"
@@ -44,6 +47,9 @@ SOURCE_OWNERS = (
 CHANNEL_DEBUG = re.compile(r"Sounds: 0/(?P<static>[0-9]+) \+ 0/(?P<streaming>[0-9]+)\Z")
 BBB_AUDIO_MANIFEST = REPO_ROOT / "crates/bbb-audio/Cargo.toml"
 BBB_SOUND_ASSET = "minecraft/sounds/ambient/cave/cave1.ogg"
+ALSA_BASE_CONFIG = Path("/usr/share/alsa/alsa.conf")
+ALSA_CARD_ID = re.compile(r"[A-Za-z0-9_-]+\Z")
+PCI_ADDRESS = re.compile(r"(?:[0-9a-f]{4}:)?[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]\Z")
 
 
 class AudioReceiptFailure(RuntimeError):
@@ -84,7 +90,39 @@ def parse_args() -> argparse.Namespace:
         default="default",
         help="OpenAL Soft output driver; null is diagnostic-only evidence",
     )
+    parser.add_argument(
+        "--alsa-card-index",
+        type=int,
+        help="numeric ALSA card index for a formal PCI hardware receipt",
+    )
+    parser.add_argument(
+        "--alsa-card-id",
+        help="stable ALSA card id that must match --alsa-card-index",
+    )
+    parser.add_argument(
+        "--alsa-device-index",
+        type=int,
+        help="ALSA playback device index for a formal PCI hardware receipt",
+    )
     args = parser.parse_args()
+    endpoint_values = (
+        args.alsa_card_index,
+        args.alsa_card_id,
+        args.alsa_device_index,
+    )
+    if any(value is not None for value in endpoint_values) and not all(
+        value is not None for value in endpoint_values
+    ):
+        parser.error(
+            "--alsa-card-index, --alsa-card-id and --alsa-device-index are required together"
+        )
+    if all(value is not None for value in endpoint_values):
+        if args.driver != "alsa":
+            parser.error("an explicit ALSA hardware endpoint requires --driver alsa")
+        if args.alsa_card_index < 0 or args.alsa_device_index < 0:
+            parser.error("ALSA card and device indexes cannot be negative")
+        if ALSA_CARD_ID.fullmatch(args.alsa_card_id) is None:
+            parser.error("--alsa-card-id contains unsupported characters")
     resolve_runtime_inputs(args)
     return args
 
@@ -182,6 +220,7 @@ def validate_probe_pair(
             "Vanilla HRTF-enabled context did not use the supported fallback branch"
         )
     return {
+        "current_device": disabled["current_device"],
         "mono_sources": mono_sources,
         "static_capacity": expected_static,
         "streaming_capacity": expected_streaming,
@@ -228,6 +267,211 @@ def host_audio_access(device_root: Path = Path("/dev/snd")) -> dict[str, Any]:
         "device_nodes": nodes,
         "accessible_device_nodes": sum(bool(node.get("read_write")) for node in nodes),
     }
+
+
+def openal_environment(driver: str, alsa_config: Path | None) -> dict[str, str]:
+    """Build a capture environment without ambient OpenAL/ALSA overrides."""
+
+    environment = os.environ.copy()
+    for key in list(environment):
+        if (
+            key == "ALSA_CONFIG_PATH"
+            or key.startswith("ALSOFT_")
+            or key.startswith("__ALSOFT_")
+        ):
+            environment.pop(key, None)
+    if driver != "default":
+        environment["ALSOFT_DRIVERS"] = driver
+    if alsa_config is not None:
+        environment["ALSA_CONFIG_PATH"] = str(alsa_config.resolve())
+        environment["ALSOFT_LOGLEVEL"] = "3"
+    return environment
+
+
+def snapshot_file(source: Path, destination: Path) -> dict[str, Any]:
+    payload = source.read_bytes()
+    destination.write_bytes(payload)
+    return {
+        "source_path": str(source),
+        "path": str(destination.resolve()),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size": len(payload),
+    }
+
+
+def parse_pcm_info(payload: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for line in payload.splitlines():
+        key, separator, value = line.partition(":")
+        if separator:
+            fields[key.strip()] = value.strip()
+    return fields
+
+
+def find_pci_ancestor(path: Path) -> Path:
+    for candidate in (path, *path.parents):
+        if (
+            PCI_ADDRESS.fullmatch(candidate.name) is not None
+            and (candidate / "vendor").is_file()
+            and (candidate / "device").is_file()
+        ):
+            return candidate
+    raise AudioReceiptFailure(f"ALSA PCM is not backed by a PCI function: {path}")
+
+
+def prepare_alsa_pci_endpoint(
+    *,
+    card_index: int,
+    card_id: str,
+    device_index: int,
+    artifact_dir: Path,
+    device_root: Path = Path("/dev/snd"),
+    proc_root: Path = Path("/proc/asound"),
+    sys_sound_root: Path = Path("/sys/class/sound"),
+    base_config: Path = ALSA_BASE_CONFIG,
+) -> dict[str, Any]:
+    """Validate and freeze the physical PCI PCM selected for formal capture."""
+
+    if card_index < 0 or device_index < 0:
+        raise AudioReceiptFailure("ALSA card and device indexes cannot be negative")
+    if ALSA_CARD_ID.fullmatch(card_id) is None:
+        raise AudioReceiptFailure(f"invalid ALSA card id: {card_id!r}")
+    if not base_config.is_file():
+        raise AudioReceiptFailure(f"ALSA base configuration is unavailable: {base_config}")
+
+    pcm_node = device_root / f"pcmC{card_index}D{device_index}p"
+    try:
+        metadata = pcm_node.stat()
+    except OSError as error:
+        raise AudioReceiptFailure(f"ALSA playback PCM is unavailable: {pcm_node}") from error
+    if not stat.S_ISCHR(metadata.st_mode):
+        raise AudioReceiptFailure(f"ALSA playback PCM is not a character device: {pcm_node}")
+    if not os.access(pcm_node, os.R_OK | os.W_OK):
+        raise AudioReceiptFailure(f"ALSA playback PCM is not read/write accessible: {pcm_node}")
+
+    card_root = proc_root / f"card{card_index}"
+    card_id_path = card_root / "id"
+    actual_card_id = card_id_path.read_text(encoding="utf-8").strip()
+    if actual_card_id != card_id:
+        raise AudioReceiptFailure(
+            f"ALSA card id mismatch: index {card_index} is {actual_card_id!r}, not {card_id!r}"
+        )
+    pcm_info_path = card_root / f"pcm{device_index}p" / "info"
+    pcm_info_payload = pcm_info_path.read_text(encoding="utf-8")
+    pcm_info = parse_pcm_info(pcm_info_payload)
+    if pcm_info.get("card") != str(card_index) or pcm_info.get("device") != str(
+        device_index
+    ):
+        raise AudioReceiptFailure("ALSA PCM proc identity does not match the requested endpoint")
+
+    pcm_class_path = sys_sound_root / f"pcmC{card_index}D{device_index}p"
+    try:
+        pcm_target = pcm_class_path.resolve(strict=True)
+    except OSError as error:
+        raise AudioReceiptFailure(
+            f"ALSA PCM sysfs identity is unavailable: {pcm_class_path}"
+        ) from error
+    pci_path = find_pci_ancestor(pcm_target)
+    driver_link = pci_path / "driver"
+    try:
+        driver = driver_link.resolve(strict=True).name
+    except OSError as error:
+        raise AudioReceiptFailure(
+            f"PCI audio driver identity is unavailable: {driver_link}"
+        ) from error
+    pcm_dev = (pcm_class_path / "dev").read_text(encoding="utf-8").strip()
+    expected_dev = f"{os.major(metadata.st_rdev)}:{os.minor(metadata.st_rdev)}"
+    if pcm_dev != expected_dev:
+        raise AudioReceiptFailure(
+            f"ALSA PCM device number {expected_dev} disagrees with sysfs {pcm_dev}"
+        )
+
+    proc_identity = {
+        "card_id": actual_card_id,
+        "pcm_info": pcm_info,
+        "card_id_snapshot": snapshot_file(
+            card_id_path, artifact_dir / "alsa-card-id.txt"
+        ),
+        "pcm_info_snapshot": snapshot_file(
+            pcm_info_path, artifact_dir / "alsa-pcm-info.txt"
+        ),
+        "eld_snapshots": [
+            snapshot_file(path, artifact_dir / f"alsa-{path.name}.txt")
+            for path in sorted(card_root.glob("eld*"))
+            if path.is_file()
+        ],
+    }
+    pci_identity = {
+        "pcm_class_path": str(pcm_class_path),
+        "pcm_target": str(pcm_target),
+        "pcm_dev": pcm_dev,
+        "pci_address": pci_path.name,
+        "pci_path": str(pci_path),
+        "vendor": (pci_path / "vendor").read_text(encoding="utf-8").strip(),
+        "device": (pci_path / "device").read_text(encoding="utf-8").strip(),
+        "subsystem_vendor": (pci_path / "subsystem_vendor")
+        .read_text(encoding="utf-8")
+        .strip(),
+        "subsystem_device": (pci_path / "subsystem_device")
+        .read_text(encoding="utf-8")
+        .strip(),
+        "driver": driver,
+    }
+    pci_snapshot = artifact_dir / "alsa-pci-identity.json"
+    pci_snapshot.write_bytes(canonical_json_bytes(pci_identity))
+    pci_identity["snapshot"] = {
+        "path": str(pci_snapshot.resolve()),
+        "sha256": file_digest(pci_snapshot, "sha256"),
+    }
+
+    config_path = artifact_dir / "alsa-hardware.conf"
+    config_path.write_text(
+        alsa_pci_config_text(card_id, device_index), encoding="utf-8"
+    )
+    config_identity = {
+        "path": str(config_path.resolve()),
+        "sha256": file_digest(config_path, "sha256"),
+        "base_config": {
+            "path": str(base_config.resolve()),
+            "sha256": file_digest(base_config, "sha256"),
+        },
+        "route": ["plug", "dmix", "hw"],
+        "default_pcm": "default",
+        "dmix_pcm": "bbb_formal_hardware_dmix",
+        "hardware_pcm": f"hw:{card_id},{device_index}",
+        "ipc_key": ALSA_DMIX_IPC_KEY,
+    }
+    controlled_environment = {
+        "ALSOFT_DRIVERS": "alsa",
+        "ALSOFT_LOGLEVEL": "3",
+        "ALSA_CONFIG_PATH": str(config_path.resolve()),
+    }
+    endpoint = {
+        "schema": 1,
+        "kind": "alsa-pci-pcm",
+        "kernel_release": platform.release(),
+        "card_index": card_index,
+        "card_id": card_id,
+        "device_index": device_index,
+        "pcm_node": {
+            "path": str(pcm_node),
+            "character_device": True,
+            "read_write": True,
+            "mode": stat.filemode(metadata.st_mode),
+            "uid": metadata.st_uid,
+            "gid": metadata.st_gid,
+            "major": os.major(metadata.st_rdev),
+            "minor": os.minor(metadata.st_rdev),
+        },
+        "proc": proc_identity,
+        "sysfs": pci_identity,
+        "alsa_config": config_identity,
+        "controlled_environment": controlled_environment,
+    }
+    endpoint["contract_sha256"] = hashlib.sha256(
+        canonical_json_bytes(endpoint)
+    ).hexdigest()
+    return endpoint
 
 
 def parse_bbb_test_binary(output: str) -> Path:
@@ -356,14 +600,11 @@ def run_bbb_audio_tests(
     sound_asset: Path,
     driver: str,
     artifact_dir: Path,
+    alsa_config: Path | None = None,
 ) -> list[dict[str, Any]]:
-    environment = os.environ.copy()
+    environment = openal_environment(driver, alsa_config)
     environment["BBB_TEST_OPENAL_LIBRARY"] = str(openal_library)
     environment["BBB_TEST_OPENAL_OGG"] = str(sound_asset)
-    if driver == "default":
-        environment.pop("ALSOFT_DRIVERS", None)
-    else:
-        environment["ALSOFT_DRIVERS"] = driver
     runs = []
     for index, test_id in enumerate(BBB_AUDIO_TEST_IDS, start=1):
         argv = [str(binary), test_id, "--exact", "--ignored", "--nocapture"]
@@ -410,6 +651,7 @@ def run_probe(
     requested_hrtf: bool,
     driver: str,
     artifact_dir: Path,
+    alsa_config: Path | None = None,
 ) -> dict[str, Any]:
     label = "hrtf-enabled" if requested_hrtf else "hrtf-disabled"
     argv = [
@@ -421,11 +663,7 @@ def run_probe(
         PROBE_CLASS,
         str(requested_hrtf).lower(),
     ]
-    environment = os.environ.copy()
-    if driver == "default":
-        environment.pop("ALSOFT_DRIVERS", None)
-    else:
-        environment["ALSOFT_DRIVERS"] = driver
+    environment = openal_environment(driver, alsa_config)
     result = subprocess.run(argv, check=False, text=True, capture_output=True, env=environment)
     stdout_path = artifact_dir / f"{label}.stdout"
     stderr_path = artifact_dir / f"{label}.stderr"
@@ -461,6 +699,19 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
             f"audio receipt artifact directory must be empty: {artifact_dir}"
         )
     artifact_dir.mkdir(parents=True, exist_ok=True)
+    alsa_endpoint = None
+    if args.alsa_card_index is not None:
+        alsa_endpoint = prepare_alsa_pci_endpoint(
+            card_index=args.alsa_card_index,
+            card_id=args.alsa_card_id,
+            device_index=args.alsa_device_index,
+            artifact_dir=artifact_dir,
+        )
+    alsa_config = (
+        Path(alsa_endpoint["alsa_config"]["path"])
+        if alsa_endpoint is not None
+        else None
+    )
     workspace = resolve_workspace(args)
     audit = audit_distribution(
         workspace.root, java_path=args.java, verify_asset_objects=False
@@ -508,6 +759,7 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
             requested_hrtf=requested,
             driver=args.driver,
             artifact_dir=artifact_dir,
+            alsa_config=alsa_config,
         )
         for requested in (False, True)
     ]
@@ -524,6 +776,7 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
         sound_asset=Path(sound_asset["path"]),
         driver=args.driver,
         artifact_dir=artifact_dir,
+        alsa_config=alsa_config,
     )
     bbb_valid = all(test["status"] == "passed" for test in bbb_tests)
     bbb_contract = {
@@ -533,6 +786,7 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
         "sound_asset_sha256": sound_asset["sha256"],
     }
     differential_valid = validation_error is None and bbb_valid
+    formal_valid = differential_valid and alsa_endpoint is not None
     vanilla_contract_sha256 = (
         hashlib.sha256(canonical_json_bytes(frozen_contract)).hexdigest()
         if frozen_contract is not None
@@ -557,13 +811,23 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
         "mechanism_ids": list(AUDIO_MECHANISM_IDS),
         "minecraft_version": "26.1",
         "driver": args.driver,
-        "device_evidence": "synthetic-null" if args.driver == "null" else "host-device",
-        "evidence_class": (
-            "formal" if differential_valid and args.driver != "null" else "diagnostic"
+        "device_evidence": (
+            "alsa-pci-pcm"
+            if alsa_endpoint is not None
+            else "synthetic-null"
+            if args.driver == "null"
+            else "unverified-host-default"
         ),
+        "evidence_class": "formal" if formal_valid else "diagnostic",
         "host_audio_access": host_audio_access(),
+        "alsa_endpoint": alsa_endpoint,
+        "capture_environment": {
+            key: value
+            for key, value in openal_environment(args.driver, alsa_config).items()
+            if key in {"ALSOFT_DRIVERS", "ALSOFT_LOGLEVEL", "ALSA_CONFIG_PATH"}
+        },
         "valid": differential_valid,
-        "formal_valid": differential_valid and args.driver != "null",
+        "formal_valid": formal_valid,
         "invalid_reason": (
             validation_error
             if validation_error is not None
@@ -622,7 +886,7 @@ def main() -> int:
         return 1
     if not receipt["formal_valid"]:
         print(
-            "vanilla audio receipt: synthetic null output is diagnostic only",
+            "vanilla audio receipt: a validated ALSA PCI endpoint is required for formal evidence",
             file=sys.stderr,
         )
     return 0

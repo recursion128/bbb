@@ -30,11 +30,16 @@ from parity_acceptance import (
     parse_args,
     parse_matrix,
     performance_prerequisite_reasons,
+    projection_reuse_reasons,
+    reuse_external_artifact_projection,
     validate_report,
     validation_classes,
 )
 from bbb_tools.audio_receipt import (
+    ALSA_DMIX_IPC_KEY,
+    AUDIO_RECEIPT_SCHEMA,
     BBB_AUDIO_TEST_IDS,
+    alsa_pci_config_text,
     audio_receipt_file_reasons,
     canonical_sha256,
 )
@@ -46,7 +51,65 @@ class ParityAcceptanceTests(unittest.TestCase):
 
     def formal_audio_receipt(self) -> dict[str, object]:
         digest = "a" * 64
-        frozen_contract = {"mono_sources": 256}
+        config_path = "/tmp/alsa-hardware.conf"
+        config_sha256 = hashlib.sha256(
+            alsa_pci_config_text("Generic", 3).encode("utf-8")
+        ).hexdigest()
+        environment = {
+            "ALSOFT_DRIVERS": "alsa",
+            "ALSOFT_LOGLEVEL": "3",
+            "ALSA_CONFIG_PATH": config_path,
+        }
+        endpoint = {
+            "schema": 1,
+            "kind": "alsa-pci-pcm",
+            "kernel_release": "fixture",
+            "card_index": 0,
+            "card_id": "Generic",
+            "device_index": 3,
+            "pcm_node": {
+                "path": "/dev/snd/pcmC0D3p",
+                "character_device": True,
+                "read_write": True,
+                "major": 116,
+                "minor": 2,
+            },
+            "proc": {
+                "card_id": "Generic",
+                "pcm_info": {
+                    "card": "0",
+                    "device": "3",
+                    "name": "HDMI 0",
+                    "stream": "PLAYBACK",
+                },
+                "eld_snapshots": [],
+            },
+            "sysfs": {
+                "pci_address": "0000:04:00.1",
+                "vendor": "0x1002",
+                "device": "0x1640",
+                "subsystem_vendor": "0x1002",
+                "subsystem_device": "0x1640",
+                "driver": "snd_hda_intel",
+                "pcm_dev": "116:2",
+            },
+            "alsa_config": {
+                "path": config_path,
+                "sha256": config_sha256,
+                "base_config": {
+                    "path": "/usr/share/alsa/alsa.conf",
+                    "sha256": digest,
+                },
+                "route": ["plug", "dmix", "hw"],
+                "default_pcm": "default",
+                "dmix_pcm": "bbb_formal_hardware_dmix",
+                "hardware_pcm": "hw:Generic,3",
+                "ipc_key": ALSA_DMIX_IPC_KEY,
+            },
+            "controlled_environment": environment,
+        }
+        endpoint["contract_sha256"] = canonical_sha256(endpoint)
+        frozen_contract = {"current_device": "ALSA Default", "mono_sources": 256}
         bbb_contract = {
             "test_ids": list(BBB_AUDIO_TEST_IDS),
             "test_binary_sha256": digest,
@@ -54,10 +117,12 @@ class ParityAcceptanceTests(unittest.TestCase):
             "sound_asset_sha256": digest,
         }
         return {
-            "schema": 2,
+            "schema": AUDIO_RECEIPT_SCHEMA,
             "mechanism_ids": ["audio-sound-manager-engine"],
             "driver": "alsa",
-            "device_evidence": "host-device",
+            "device_evidence": "alsa-pci-pcm",
+            "alsa_endpoint": endpoint,
+            "capture_environment": environment,
             "evidence_class": "formal",
             "valid": True,
             "formal_valid": True,
@@ -65,8 +130,16 @@ class ParityAcceptanceTests(unittest.TestCase):
             "client_binary_sha256": digest,
             "vanilla": {"source_owners": []},
             "observations": [
-                {"requested_hrtf": False, "status": "passed"},
-                {"requested_hrtf": True, "status": "passed"},
+                {
+                    "requested_hrtf": False,
+                    "status": "passed",
+                    "current_device": "ALSA Default",
+                },
+                {
+                    "requested_hrtf": True,
+                    "status": "passed",
+                    "current_device": "ALSA Default",
+                },
             ],
             "frozen_contract": frozen_contract,
             "bbb": {
@@ -148,8 +221,46 @@ class ParityAcceptanceTests(unittest.TestCase):
         diagnostic["device_evidence"] = "synthetic-null"
         diagnostic["evidence_class"] = "diagnostic"
         self.assertIn(
-            "formal audio receipt does not use a real host driver",
+            "formal audio receipt does not use the ALSA host driver",
             formal_audio_receipt_reasons(diagnostic),
+        )
+
+        wrong_device = copy.deepcopy(value)
+        wrong_device["observations"][1]["current_device"] = "Different"
+        self.assertIn(
+            "audio receipt Vanilla observations do not match the frozen device",
+            formal_audio_receipt_reasons(wrong_device),
+        )
+
+        regular_file = copy.deepcopy(value)
+        regular_file["alsa_endpoint"]["pcm_node"]["character_device"] = False
+        self.assertIn(
+            "formal audio receipt lacks an accessible ALSA PCM character device",
+            formal_audio_receipt_reasons(regular_file),
+        )
+
+        malformed_pci = copy.deepcopy(value)
+        malformed_pci["alsa_endpoint"]["sysfs"]["vendor"] = "synthetic"
+        self.assertIn(
+            "formal audio receipt lacks a consistent PCI/sysfs backing device",
+            formal_audio_receipt_reasons(malformed_pci),
+        )
+
+        null_route = copy.deepcopy(value)
+        null_route["alsa_endpoint"]["alsa_config"]["route"] = ["null"]
+        self.assertIn(
+            "formal audio receipt ALSA plug/dmix/hardware route is invalid",
+            formal_audio_receipt_reasons(null_route),
+        )
+
+        ambient_environment = copy.deepcopy(value)
+        ambient_environment["capture_environment"] = {
+            **ambient_environment["capture_environment"],
+            "ALSOFT_CONF": "/tmp/trap",
+        }
+        self.assertIn(
+            "audio receipt top-level capture environment diverges from its endpoint",
+            formal_audio_receipt_reasons(ambient_environment),
         )
 
     def test_audio_receipt_rehashes_every_external_executable_identity(self) -> None:
@@ -174,6 +285,338 @@ class ParityAcceptanceTests(unittest.TestCase):
             self.assertIn(
                 "audio receipt BBB test binary file identity is stale",
                 audio_receipt_file_reasons(value),
+            )
+
+    def test_audio_receipt_cross_checks_raw_vanilla_and_bbb_logs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+
+            def identity(path: Path) -> dict[str, str]:
+                return {
+                    "path": str(path),
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+
+            raw_observation = {
+                "schema": 1,
+                "minecraft_version": "26.1",
+                "requested_hrtf": False,
+                "status": "passed",
+                "current_device": "ALSA Default",
+            }
+            vanilla_stdout = root / "vanilla.stdout"
+            vanilla_stdout.write_text(
+                "OpenAL log\n" + json.dumps(raw_observation) + "\n",
+                encoding="utf-8",
+            )
+            empty = root / "empty.stderr"
+            empty.write_text("", encoding="utf-8")
+            test_id = BBB_AUDIO_TEST_IDS[0]
+            bbb_stdout = root / "bbb.stdout"
+            bbb_stdout.write_text(
+                "running 1 test\n"
+                f"test {test_id} ... ok\n"
+                "test result: ok. 1 passed; 0 failed; 0 ignored\n",
+                encoding="utf-8",
+            )
+            value = {
+                "observations": [
+                    {
+                        **raw_observation,
+                        "process_returncode": 0,
+                        "stdout": identity(vanilla_stdout),
+                        "stderr": identity(empty),
+                    }
+                ],
+                "bbb": {
+                    "test_binary": identity(bbb_stdout),
+                    "openal_library": identity(bbb_stdout),
+                    "sound_asset": identity(bbb_stdout),
+                    "tests": [
+                        {
+                            "test_id": test_id,
+                            "stdout": identity(bbb_stdout),
+                            "stderr": identity(empty),
+                        }
+                    ],
+                },
+            }
+            self.assertEqual(audio_receipt_file_reasons(value), [])
+
+            value["observations"][0]["current_device"] = "Tampered"
+            self.assertIn(
+                "audio receipt Vanilla HRTF[0] stdout disagrees with its observation",
+                audio_receipt_file_reasons(value),
+            )
+
+    def test_audio_receipt_rehashes_and_cross_checks_alsa_snapshots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+
+            def write_identity(name: str, payload: str) -> dict[str, str]:
+                path = root / name
+                path.write_text(payload, encoding="utf-8")
+                return {
+                    "path": str(path),
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+
+            pci_contract = {
+                "pcm_class_path": "/sys/class/sound/pcmC0D3p",
+                "pcm_target": "/sys/devices/pci0000:00/0000:04:00.1/sound/card0/pcmC0D3p",
+                "pcm_dev": "116:2",
+                "pci_address": "0000:04:00.1",
+                "pci_path": "/sys/devices/pci0000:00/0000:04:00.1",
+                "vendor": "0x1002",
+                "device": "0x1640",
+                "subsystem_vendor": "0x1002",
+                "subsystem_device": "0x1640",
+                "driver": "snd_hda_intel",
+            }
+            pci_snapshot = write_identity(
+                "alsa-pci-identity.json",
+                json.dumps(pci_contract, sort_keys=True, separators=(",", ":")) + "\n",
+            )
+            endpoint = {
+                "alsa_config": {
+                    **write_identity(
+                        "alsa-hardware.conf", alsa_pci_config_text("Generic", 3)
+                    ),
+                    "base_config": write_identity("alsa.conf", "# fixture\n"),
+                },
+                "proc": {
+                    "card_id": "Generic",
+                    "pcm_info": {"card": "0", "device": "3", "name": "HDMI 0"},
+                    "card_id_snapshot": write_identity(
+                        "alsa-card-id.txt", "Generic\n"
+                    ),
+                    "pcm_info_snapshot": write_identity(
+                        "alsa-pcm-info.txt",
+                        "card: 0\ndevice: 3\nname: HDMI 0\n",
+                    ),
+                    "eld_snapshots": [
+                        write_identity(
+                            "alsa-eld.txt", "monitor_present 0\neld_valid 0\n"
+                        )
+                    ],
+                },
+                "sysfs": {**pci_contract, "snapshot": pci_snapshot},
+            }
+            value = {"observations": [], "alsa_endpoint": endpoint}
+            self.assertEqual(audio_receipt_file_reasons(value), [])
+
+            endpoint["proc"]["card_id"] = "Tampered"
+            self.assertIn(
+                "audio receipt ALSA card-id snapshot disagrees with its contract",
+                audio_receipt_file_reasons(value),
+            )
+
+    def test_reused_external_projection_is_scoped_and_capture_sensitive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = Path(temporary)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            tool = repo / "scripts" / "capture.py"
+            tool.parent.mkdir()
+            tool.write_text("v1\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "capture"], cwd=repo, check=True)
+            capture_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            tool_sha256 = hashlib.sha256(tool.read_bytes()).hexdigest()
+            contract = {
+                "binary_load_identity": {"identity_kind": "fixture"},
+                "evidence_class": "formal",
+                "hash_inputs": [],
+                "inputs": [],
+                "kind": "platform",
+                "selected_contract": {"schema": 1},
+                "tools": [
+                    {
+                        "capture_sha256": tool_sha256,
+                        "current_sha256": tool_sha256,
+                        "path": "scripts/capture.py",
+                    }
+                ],
+            }
+            contract["sha256"] = canonical_sha256(contract)
+            artifact = {
+                "artifact_id": "linux-platform",
+                "bbb_commit": capture_commit,
+                "bbb_provenance": None,
+                "capture_contract": contract,
+                "evidence_class": "formal",
+                "exists": True,
+                "invalid_reasons": [],
+                "kind": "platform",
+                "path": "/tmp/missing-platform.json",
+                "scenario_ids": ["playable"],
+                "scoped_reuse": None,
+                "sha256": "a" * 64,
+                "valid": True,
+            }
+            note = repo / "docs" / "note.md"
+            note.parent.mkdir()
+            note.write_text("closure\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "closure"], cwd=repo, check=True)
+            closure_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            source = {
+                "source_report_blob_sha1": "b" * 40,
+                "source_report_commit": closure_commit,
+                "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+                "source_report_sha256": "c" * 64,
+            }
+            reused = reuse_external_artifact_projection(
+                repo=repo,
+                kind="platform",
+                artifact_id="linux-platform",
+                prior=artifact,
+                evidence_commit=closure_commit,
+                source=source,
+            )
+            self.assertTrue(reused["valid"])
+            self.assertEqual(
+                reused["projection_reuse"]["rule"],
+                "committed-projection-only; final-requires-artifact",
+            )
+
+            tool.write_text("v2\n", encoding="utf-8")
+            subprocess.run(["git", "commit", "-qam", "change tool"], cwd=repo, check=True)
+            changed_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            stale = reuse_external_artifact_projection(
+                repo=repo,
+                kind="platform",
+                artifact_id="linux-platform",
+                prior=artifact,
+                evidence_commit=changed_commit,
+                source=source,
+            )
+            self.assertFalse(stale["valid"])
+            self.assertTrue(
+                any("capture tool changed" in reason for reason in stale["invalid_reasons"])
+            )
+
+    def test_reused_projection_is_bound_to_committed_report_blob(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = Path(temporary)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            tool = repo / "scripts" / "capture.py"
+            tool.parent.mkdir()
+            tool.write_text("v1\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "capture"], cwd=repo, check=True)
+            capture_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            tool_sha256 = hashlib.sha256(tool.read_bytes()).hexdigest()
+            contract = {
+                "binary_load_identity": {"identity_kind": "fixture"},
+                "evidence_class": "formal",
+                "hash_inputs": [],
+                "inputs": [],
+                "kind": "platform",
+                "selected_contract": {"schema": 1},
+                "tools": [
+                    {
+                        "capture_sha256": tool_sha256,
+                        "current_sha256": tool_sha256,
+                        "path": "scripts/capture.py",
+                    }
+                ],
+            }
+            contract["sha256"] = canonical_sha256(contract)
+            artifact = {
+                "artifact_id": "linux-platform",
+                "bbb_commit": capture_commit,
+                "bbb_provenance": None,
+                "capture_contract": contract,
+                "evidence_class": "formal",
+                "exists": True,
+                "invalid_reasons": [],
+                "kind": "platform",
+                "path": "/tmp/missing-platform.json",
+                "scenario_ids": ["playable"],
+                "scoped_reuse": None,
+                "sha256": "a" * 64,
+                "valid": True,
+            }
+            report = repo / "docs" / "evidence" / "vanilla-26.1" / "parity-acceptance.json"
+            report.parent.mkdir(parents=True)
+            report.write_text(json.dumps({"artifacts": [artifact]}), encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "report"], cwd=repo, check=True)
+            report_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            blob_sha1 = subprocess.run(
+                ["git", "rev-parse", f"{report_commit}:docs/evidence/vanilla-26.1/parity-acceptance.json"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            source = {
+                "source_report_blob_sha1": blob_sha1,
+                "source_report_commit": report_commit,
+                "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+                "source_report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
+            }
+            reused = reuse_external_artifact_projection(
+                repo=repo,
+                kind="platform",
+                artifact_id="linux-platform",
+                prior=artifact,
+                evidence_commit=report_commit,
+                source=source,
+            )
+            self.assertEqual(
+                projection_reuse_reasons(repo, reused, report_commit), []
+            )
+            reused["sha256"] = "f" * 64
+            self.assertIn(
+                "external artifact projection diverges from its committed source",
+                projection_reuse_reasons(repo, reused, report_commit),
             )
 
     def test_external_audio_artifact_cannot_accept_vanilla_only_json(self) -> None:
@@ -1806,6 +2249,25 @@ Matrix route: `fixture-not-needed`
                 "scoped reuse remains: performance-abba",
                 validate_report(
                     intermediate,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+            )
+            projection_only = copy.deepcopy(report)
+            projection_only["workflow"]["stage"] = "evidence-sweep"
+            projected_artifact = next(
+                artifact
+                for artifact in projection_only["artifacts"]
+                if artifact.get("artifact_id") == "visual-workload"
+            )
+            projected_artifact["evidence_class"] = "formal"
+            projected_artifact["projection_reuse"] = {}
+            self.assertIn(
+                "evidence-sweep stage requires explicitly supplied formal artifacts; "
+                "projection-only reuse remains: visual-workload",
+                validate_report(
+                    projection_only,
                     repo=repo,
                     source_root=source_root,
                     enforce_current=True,
