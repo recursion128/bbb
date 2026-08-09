@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -150,6 +151,118 @@ class VanillaAudioReceiptTests(unittest.TestCase):
             self.assertTrue(observation["device_root_present"])
             self.assertEqual(observation["device_nodes"], [])
             self.assertEqual(observation["accessible_device_nodes"], 0)
+
+    def test_cargo_output_selects_the_exact_device_feature_test_binary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / "bbb_audio-fixture"
+            binary.write_text("fixture\n", encoding="utf-8")
+            binary.chmod(0o755)
+            output = json.dumps(
+                {
+                    "reason": "compiler-artifact",
+                    "manifest_path": str(receipt.BBB_AUDIO_MANIFEST),
+                    "target": {"name": "bbb_audio"},
+                    "profile": {"test": True},
+                    "executable": str(binary),
+                }
+            )
+            self.assertEqual(receipt.parse_bbb_test_binary(output), binary.resolve())
+            with self.assertRaisesRegex(receipt.AudioReceiptFailure, "got 0"):
+                receipt.parse_bbb_test_binary(
+                    json.dumps(
+                        {
+                            "reason": "compiler-artifact",
+                            "manifest_path": str(receipt.BBB_AUDIO_MANIFEST),
+                            "target": {"name": "bbb_audio"},
+                            "profile": {"test": False},
+                            "executable": str(binary),
+                        }
+                    )
+                )
+
+    def test_bbb_build_uses_repo_root_and_device_feature(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "bbb_audio-fixture"
+            binary.write_text("fixture\n", encoding="utf-8")
+            binary.chmod(0o755)
+            output = json.dumps(
+                {
+                    "reason": "compiler-artifact",
+                    "manifest_path": str(receipt.BBB_AUDIO_MANIFEST),
+                    "target": {"name": "bbb_audio"},
+                    "profile": {"test": True},
+                    "executable": str(binary),
+                }
+            )
+            completed = subprocess.CompletedProcess([], 0, output, "")
+            with mock.patch.object(
+                receipt.subprocess, "run", return_value=completed
+            ) as run:
+                identity = receipt.build_bbb_test_binary(root)
+            argv = run.call_args.args[0]
+            self.assertEqual(run.call_args.kwargs["cwd"], receipt.REPO_ROOT)
+            self.assertIn("bbb-audio", argv)
+            self.assertIn("device", argv)
+            self.assertIn("--message-format=json", argv)
+            self.assertEqual(identity["path"], str(binary.resolve()))
+
+    def test_bbb_runner_rejects_zero_test_success_and_records_every_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "bbb-audio"
+            openal = root / "libopenal.so"
+            sound = root / "sound.ogg"
+            for path in (binary, openal, sound):
+                path.write_bytes(b"fixture")
+            successes = []
+            for test_id in receipt.BBB_AUDIO_TEST_IDS:
+                successes.append(
+                    subprocess.CompletedProcess(
+                        [],
+                        0,
+                        stdout=(
+                            "running 1 test\n"
+                            f"test {test_id} ... ok\n"
+                            "test result: ok. 1 passed; 0 failed; 0 ignored\n"
+                        ),
+                        stderr="",
+                    )
+                )
+            with mock.patch.object(
+                receipt.subprocess, "run", side_effect=successes
+            ) as run:
+                records = receipt.run_bbb_audio_tests(
+                    binary=binary,
+                    openal_library=openal,
+                    sound_asset=sound,
+                    driver="alsa",
+                    artifact_dir=root,
+                )
+            self.assertEqual(run.call_count, len(receipt.BBB_AUDIO_TEST_IDS))
+            self.assertEqual(
+                [record["test_id"] for record in records],
+                list(receipt.BBB_AUDIO_TEST_IDS),
+            )
+            self.assertTrue(all(record["status"] == "passed" for record in records))
+
+            zero = subprocess.CompletedProcess(
+                [],
+                0,
+                stdout="running 0 tests\ntest result: ok. 0 passed; 0 failed\n",
+                stderr="",
+            )
+            zero_dir = root / "zero"
+            zero_dir.mkdir()
+            with mock.patch.object(receipt.subprocess, "run", return_value=zero):
+                failed = receipt.run_bbb_audio_tests(
+                    binary=binary,
+                    openal_library=openal,
+                    sound_asset=sound,
+                    driver="default",
+                    artifact_dir=zero_dir,
+                )
+            self.assertTrue(all(record["status"] == "failed" for record in failed))
 
 
 if __name__ == "__main__":

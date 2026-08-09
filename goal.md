@@ -519,8 +519,8 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-`audio-sound-manager-engine` 的 null output 仍仅为 diagnostic；隔离 capture 补充 gid 29 后
-真实节点可访问，但四个 HDMI ELD 均无 sink，正式 receipt 等真实 playback sink 与用户权限。
+`audio-sound-manager-engine` 的 schema-2 capture 同命令运行 Vanilla 2 个 HRTF 分支与 BBB 6 个 owner test；
+null 仍仅 diagnostic，四个 HDMI ELD 均无 sink，正式 receipt 等真实 playback sink 与用户权限。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
 步逐 crate 实测第二平台类型检查，但通过的 cross-check 是构建证据、不是发布验收。

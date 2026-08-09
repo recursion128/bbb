@@ -22,6 +22,10 @@ import subprocess
 import sys
 from typing import Iterable
 
+from bbb_tools.audio_receipt import (
+    audio_receipt_file_reasons,
+    formal_audio_receipt_reasons,
+)
 from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
 from bbb_tools.executable_identity import (
     ELF_LOAD_IMAGE_ALGORITHM,
@@ -60,13 +64,20 @@ IMPLEMENTATION_BLOCKING_REASONS = frozenset(
     {"implementation-gap", "focused-evidence-pending"}
 )
 FORMAL_BINARY_IDENTITY_KINDS = frozenset(
-    {"performance", "workload", "draw", "platform", "lifecycle"}
+    {"performance", "workload", "draw", "platform", "lifecycle", "audio"}
 )
 CLOSURE_METADATA_PREFIXES = ("docs/", "goal.md")
-SCOPED_FORMAL_RECEIPT_REUSE_PATHS = frozenset(
+VALIDATION_ONLY_PATHS = frozenset(
     {
         "scripts/parity_acceptance.py",
         "scripts/tests/test_parity_acceptance.py",
+        "scripts/tests/test_vanilla_audio_receipt.py",
+    }
+)
+SCOPED_FORMAL_RECEIPT_REUSE_PATHS = VALIDATION_ONLY_PATHS | frozenset(
+    {
+        "scripts/capture-vanilla-audio-receipt.py",
+        "scripts/bbb_tools/audio_receipt.py",
     }
 )
 OPEN_STATUSES = frozenset(
@@ -194,7 +205,10 @@ CENTRAL_PATH_VALIDATION_CLASSES = (
         frozenset({"protocol-state-receipt"}),
     ),
     (
-        ("scripts/capture-vanilla-audio-receipt.py",),
+        (
+            "scripts/capture-vanilla-audio-receipt.py",
+            "scripts/bbb_tools/audio_receipt.py",
+        ),
         frozenset({"audio-host-device"}),
     ),
 )
@@ -253,7 +267,10 @@ CAPTURE_TOOL_PATHS = {
         "scripts/lifecycle-soak-gate.sh",
         *PLAYABLE_CAPTURE_TOOL_PATHS,
     ),
-    "audio": ("scripts/capture-vanilla-audio-receipt.py",),
+    "audio": (
+        "scripts/capture-vanilla-audio-receipt.py",
+        "scripts/bbb_tools/audio_receipt.py",
+    ),
 }
 CAPTURE_INPUT_PATHS = {
     "performance": ("scripts/fixtures/official-client-benchmark/replay-26.1.json",),
@@ -651,8 +668,16 @@ def change_impact_plan(
                 "required_validation_classes": sorted(path_classes),
             }
         )
+    validation_only_changed_paths = sorted(
+        str(impact["path"])
+        for impact in impacts
+        if str(impact["path"]) in VALIDATION_ONLY_PATHS
+    )
     functional_impacts = [
-        impact for impact in impacts if not is_closure_metadata_path(str(impact["path"]))
+        impact
+        for impact in impacts
+        if not is_closure_metadata_path(str(impact["path"]))
+        and str(impact["path"]) not in VALIDATION_ONLY_PATHS
     ]
     return {
         "affected_mechanism_ids": sorted(affected_ids),
@@ -670,6 +695,7 @@ def change_impact_plan(
         ),
         "path_impacts": impacts,
         "required_validation_classes": sorted(required_classes),
+        "validation_only_changed_paths": validation_only_changed_paths,
     }
 
 
@@ -1622,6 +1648,9 @@ def external_artifact(
         reasons.append(f"platform status is {status!r}, not 'passed'")
     elif kind == "audio" and value.get("formal_valid") is not True:
         reasons.append("formal host-device audio receipt is invalid")
+    if kind == "audio":
+        reasons.extend(formal_audio_receipt_reasons(value))
+        reasons.extend(audio_receipt_file_reasons(value))
     if evidence_class != "formal":
         reasons.append("diagnostic smoke cannot satisfy a formal receipt")
     if (
@@ -1636,7 +1665,7 @@ def external_artifact(
         reasons.append("artifact BBB commit differs from binary provenance")
     scoped_reuse = None
     if commit is not None and not evidence_commit.startswith(commit) and commit != evidence_commit:
-        if kind in {"platform", "lifecycle"}:
+        if kind in CAPTURE_TOOL_PATHS:
             ancestry = subprocess.run(
                 ["git", "merge-base", "--is-ancestor", commit, evidence_commit],
                 cwd=repo,
@@ -1972,21 +2001,6 @@ def build_report(
         for row in consistency_rows
     )
     performance_artifact = artifacts["performance-abba"]
-    if performance_artifact.get("evidence_class") == "formal":
-        if workflow_stage_index(workflow_stage) < workflow_stage_index(
-            "final-performance"
-        ):
-            performance_artifact["invalid_reasons"].append(
-                "formal ABBA is not accepted before the final-performance stage"
-            )
-        if not consistency_gate_passed:
-            performance_artifact["invalid_reasons"].append(
-                "formal ABBA is not accepted before consistency gates pass"
-            )
-        performance_artifact["invalid_reasons"] = sorted(
-            set(performance_artifact["invalid_reasons"])
-        )
-        performance_artifact["valid"] = not performance_artifact["invalid_reasons"]
     artifact_mechanisms: dict[str, set[str]] = defaultdict(set)
     scenario_mechanisms: dict[str, set[str]] = defaultdict(set)
     scenario_artifacts: dict[str, set[str]] = defaultdict(set)
@@ -2072,7 +2086,7 @@ def build_report(
                 artifact_id.removeprefix("repo:")
                 for artifact_id in test_source_artifact_ids
             )
-            if path in changed_paths
+            if path in changed_paths and path not in VALIDATION_ONLY_PATHS
         )
         has_executable_tests = any(test.get("ignored") is not True for test in tests)
         focused_current = (
@@ -2249,6 +2263,7 @@ def build_report(
                 for item in dependency_closure
                 if item["path"] in changed_paths
                 and not is_closure_metadata_path(str(item["path"]))
+                and item["path"] not in VALIDATION_ONLY_PATHS
             )
             if changed_evidence:
                 reasons.append(
@@ -2429,6 +2444,7 @@ def build_report(
         and artifacts["full-gate"]["valid"] is True
         and not change_impact["functional_changed_paths"]
         and not change_impact["functional_affected_mechanism_ids"]
+        and not change_impact["validation_only_changed_paths"]
     )
     return {
         "artifacts": artifact_values,
@@ -2878,6 +2894,7 @@ def validate_report(
                 path
                 for path in dependency_paths & changed_paths
                 if not is_closure_metadata_path(path)
+                and path not in VALIDATION_ONLY_PATHS
             ):
                 issues.append(f"ungated BBB evidence for {mechanism_id}")
             passing_focused = False
@@ -3285,6 +3302,7 @@ def validate_report(
         and full_gate.get("valid") is True
         and not expected_impact["functional_changed_paths"]
         and not expected_impact["functional_affected_mechanism_ids"]
+        and not expected_impact["validation_only_changed_paths"]
     )
     formal_performance_allowed = consistency_gate_passed and workflow_stage_index(
         str(stage)
@@ -3316,19 +3334,6 @@ def validate_report(
     ):
         issues.append("workflow stage advanced to performance before consistency gates")
     performance_artifact = artifact_map.get("performance-abba")
-    if (
-        isinstance(performance_artifact, dict)
-        and performance_artifact.get("evidence_class") == "formal"
-    ):
-        reasons = performance_artifact.get("invalid_reasons", [])
-        if workflow_stage_index(str(stage)) < workflow_stage_index("final-performance") and (
-            "formal ABBA is not accepted before the final-performance stage" not in reasons
-        ):
-            issues.append("formal ABBA lacks a stage-order invalidation")
-        if not consistency_gate_passed and (
-            "formal ABBA is not accepted before consistency gates pass" not in reasons
-        ):
-            issues.append("formal ABBA lacks a consistency-gate invalidation")
     if (
         any(row["mechanism_id"].startswith("performance-") for row in rows)
         and workflow_stage_index(str(stage))

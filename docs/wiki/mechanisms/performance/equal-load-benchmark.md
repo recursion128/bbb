@@ -68,8 +68,8 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 - 不得降低 BBB resident cap、实体数、透明面或粒子获得优势。
 - draw call 数只证明非空内容；API batching 不同，不能要求数量相等或用作性能倍数。
 - 每客户端至少四次有效 capture；正式流程采用两轮完整 ABBA 并保留 machine-readable raw。
-- implementation/checkpoint full gate 不自动启动 release、视觉、RenderDoc 或 ABBA；代码冻结后
-  才集中采正式 evidence。
+- implementation/checkpoint full gate 不自动启动 release、视觉、RenderDoc 或 ABBA；当前 stage
+  只约束新采集，不作废已有 pre-capture receipt 证明且 planner 判定未受影响的 formal artifact。
 - code freeze 后 owner/path、focused contract、capture schema/settings/input 或 binary/load image
   变化时，只失效 acceptance planner 指出的机制和 validation class；最终仍在 clean gated HEAD
   运行 strict acceptance，不把 scoped reuse 当成交付证据。

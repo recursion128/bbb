@@ -182,11 +182,15 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   pool capacity, static/streaming source state, buffer lifecycle, listener state,
   device reload and stopped-channel release. The 159-owner generated census has
   implementation/focused-test evidence; its twelve unreachable integrated-pause/
-  manual-loop/runtime-options owners retain caller basis and reopen conditions. `--driver null`
-  remains diagnostic only. The 2026-08-07 default-driver recapture is invalid:
-  both HRTF branches fail in Vanilla `Library.openDeviceOrFallback`; UID 1000 is
-  not in device group 29 and every `/dev/snd` character node is `crw-rw----`
-  root:audio. Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
+  manual-loop/runtime-options owners retain caller basis and reopen conditions.
+  The schema-2 capture command runs both Vanilla HRTF branches plus BBB's exact
+  six-test OpenAL owner set, hashes its test binary/library/sound/logs, and rejects
+  zero-test or Vanilla-only JSON; `--driver null` remains diagnostic only. The
+  2026-08-09 real-device audit is invalid: isolated GID 29 access reaches every
+  `/dev/snd` node, but all four HDMI ELD records have `monitor_present=0` and
+  `eld_valid=0`, so Vanilla and BBB both fail to open ALSA Default. Connect a real
+  playback sink and grant the launching user device ACL/audio-group access.
+  Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Library.java:64-114,124-155`, `Channel.java:35-149`,
   `SoundEngine.java:101-109,215-327,402-443`, and `Sound.java:68-70`.
   Reopen the owner census if any source hash, OpenAL artifact or method set moves.

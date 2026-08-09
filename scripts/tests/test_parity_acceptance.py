@@ -23,20 +23,203 @@ from parity_acceptance import (
     external_artifact,
     external_artifact_ids,
     focused_test_references,
+    formal_audio_receipt_reasons,
     main,
     matched_source_hashes,
     mechanism_source_hashes,
     parse_args,
     parse_matrix,
     performance_prerequisite_reasons,
-    validation_classes,
     validate_report,
+    validation_classes,
+)
+from bbb_tools.audio_receipt import (
+    BBB_AUDIO_TEST_IDS,
+    audio_receipt_file_reasons,
+    canonical_sha256,
 )
 from bbb_tools.executable_identity import elf_load_image_identity
 
 
 class ParityAcceptanceTests(unittest.TestCase):
     commit = "1" * 40
+
+    def formal_audio_receipt(self) -> dict[str, object]:
+        digest = "a" * 64
+        frozen_contract = {"mono_sources": 256}
+        bbb_contract = {
+            "test_ids": list(BBB_AUDIO_TEST_IDS),
+            "test_binary_sha256": digest,
+            "openal_library_sha256": digest,
+            "sound_asset_sha256": digest,
+        }
+        return {
+            "schema": 2,
+            "mechanism_ids": ["audio-sound-manager-engine"],
+            "driver": "alsa",
+            "device_evidence": "host-device",
+            "evidence_class": "formal",
+            "valid": True,
+            "formal_valid": True,
+            "client_binary": "/tmp/bbb-audio-fixture",
+            "client_binary_sha256": digest,
+            "vanilla": {"source_owners": []},
+            "observations": [
+                {"requested_hrtf": False, "status": "passed"},
+                {"requested_hrtf": True, "status": "passed"},
+            ],
+            "frozen_contract": frozen_contract,
+            "bbb": {
+                "valid": True,
+                "test_binary": {
+                    "path": "/tmp/bbb-audio-fixture",
+                    "sha256": digest,
+                    "build": {
+                        "argv": [
+                            "scripts/cargo-dev.sh",
+                            "test",
+                            "-p",
+                            "bbb-audio",
+                            "--features",
+                            "device",
+                            "--no-run",
+                            "--message-format=json",
+                        ],
+                        "returncode": 0,
+                        "stdout": {"sha256": digest},
+                        "stderr": {"sha256": digest},
+                    },
+                },
+                "openal_library": {"sha256": digest},
+                "sound_asset": {"sha1": "b" * 40, "sha256": digest},
+                "tests": [
+                    {
+                        "test_id": test_id,
+                        "argv": [
+                            "/tmp/bbb-audio-fixture",
+                            test_id,
+                            "--exact",
+                            "--ignored",
+                            "--nocapture",
+                        ],
+                        "status": "passed",
+                        "returncode": 0,
+                        "stdout": {"sha256": digest},
+                        "stderr": {"sha256": digest},
+                    }
+                    for test_id in BBB_AUDIO_TEST_IDS
+                ],
+                "contract": bbb_contract,
+            },
+            "differential": {
+                "status": "passed",
+                "vanilla_contract_sha256": canonical_sha256(frozen_contract),
+                "bbb_test_contract_sha256": canonical_sha256(bbb_contract),
+            },
+        }
+
+    def test_audio_formal_receipt_requires_both_executable_clients(self) -> None:
+        value = self.formal_audio_receipt()
+        self.assertEqual(formal_audio_receipt_reasons(value), [])
+
+        vanilla_only = copy.deepcopy(value)
+        del vanilla_only["bbb"]
+        self.assertIn(
+            "audio receipt lacks BBB executable evidence",
+            formal_audio_receipt_reasons(vanilla_only),
+        )
+
+        zero_test = copy.deepcopy(value)
+        zero_test["bbb"]["tests"][0]["status"] = "failed"
+        self.assertIn(
+            "BBB audio receipt contains a failed or unhashed executable test",
+            formal_audio_receipt_reasons(zero_test),
+        )
+
+        wrong_binary = copy.deepcopy(value)
+        wrong_binary["bbb"]["tests"][0]["argv"][0] = "/tmp/not-the-hashed-binary"
+        self.assertIn(
+            "BBB audio receipt contains a failed or unhashed executable test",
+            formal_audio_receipt_reasons(wrong_binary),
+        )
+
+        diagnostic = copy.deepcopy(value)
+        diagnostic["driver"] = "null"
+        diagnostic["device_evidence"] = "synthetic-null"
+        diagnostic["evidence_class"] = "diagnostic"
+        self.assertIn(
+            "formal audio receipt does not use a real host driver",
+            formal_audio_receipt_reasons(diagnostic),
+        )
+
+    def test_audio_receipt_rehashes_every_external_executable_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "artifact"
+            path.write_bytes(b"audio receipt fixture")
+            identity = {
+                "path": str(path),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            value = {
+                "bbb": {
+                    "test_binary": identity,
+                    "openal_library": identity,
+                    "sound_asset": identity,
+                    "tests": [],
+                },
+                "observations": [],
+            }
+            self.assertEqual(audio_receipt_file_reasons(value), [])
+            path.write_bytes(b"changed")
+            self.assertIn(
+                "audio receipt BBB test binary file identity is stale",
+                audio_receipt_file_reasons(value),
+            )
+
+    def test_external_audio_artifact_cannot_accept_vanilla_only_json(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = Path(temporary) / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-qm", "fixture"],
+                cwd=repo,
+                check=True,
+            )
+            head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            path = repo / "vanilla-only.json"
+            value = self.formal_audio_receipt()
+            value["bbb_commit"] = head
+            value["client_binary"] = "/tmp/fixture"
+            value["client_binary_sha256"] = "a" * 64
+            del value["bbb"]
+            path.write_text(json.dumps(value), encoding="utf-8")
+            artifact = external_artifact(
+                repo=repo,
+                kind="audio",
+                artifact_id="audio-host-device",
+                path=path,
+                evidence_commit=head,
+            )
+            self.assertFalse(artifact["valid"])
+            self.assertIn(
+                "audio receipt lacks BBB executable evidence",
+                artifact["invalid_reasons"],
+            )
 
     def test_matrix_shared_owner_is_hashed_alongside_inventory_owners(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -552,6 +735,14 @@ mod tests {
                 by_path["scripts/parity_acceptance.py"]["reasons"],
                 ["central-owner"],
             )
+            self.assertEqual(
+                plan["functional_changed_paths"],
+                ["README.md", "crates/example/src/lib.rs"],
+            )
+            self.assertEqual(
+                plan["validation_only_changed_paths"],
+                ["scripts/parity_acceptance.py"],
+            )
 
             visual_records = copy.deepcopy(report["mechanisms"])
             visual_records[0]["required_validation_classes"].append(
@@ -617,6 +808,7 @@ mod tests {
                 ["fixture-equivalent", "fixture-not-needed"],
             )
             self.assertEqual(metadata_plan["functional_changed_paths"], [])
+            self.assertEqual(metadata_plan["validation_only_changed_paths"], [])
             self.assertEqual(
                 metadata_plan["functional_affected_mechanism_ids"], []
             )
@@ -1336,7 +1528,7 @@ Matrix route: `fixture-not-needed`
                 contract["inputs"][0]["current_sha256"],
             )
 
-    def test_formal_abba_is_invalidated_before_its_stage(self):
+    def test_sealed_formal_abba_is_not_invalidated_by_current_workflow_stage(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, source_root = self.make_fixture(Path(temporary))
             report = self.build_fixture_report(repo, source_root)
@@ -1348,10 +1540,11 @@ Matrix route: `fixture-not-needed`
             artifact["evidence_class"] = "formal"
             artifact["invalid_reasons"] = []
             artifact["valid"] = True
+            self.assertFalse(report["workflow"]["formal_performance_allowed"])
             issues = validate_report(
                 report, repo=repo, source_root=source_root, enforce_current=True
             )
-            self.assertIn("formal ABBA lacks a stage-order invalidation", issues)
+            self.assertNotIn("formal ABBA lacks a stage-order invalidation", issues)
 
     def test_formal_abba_prerequisite_is_commit_sealed_and_code_free(self):
         with tempfile.TemporaryDirectory() as temporary:

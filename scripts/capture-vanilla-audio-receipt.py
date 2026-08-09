@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -14,6 +15,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Mapping
 
+from bbb_tools.audio_receipt import (
+    AUDIO_MECHANISM_IDS,
+    AUDIO_RECEIPT_SCHEMA,
+    BBB_AUDIO_TEST_IDS,
+)
 from bbb_tools.vanilla.arguments import (
     add_vanilla_runtime,
     resolve_runtime_inputs,
@@ -36,6 +42,8 @@ SOURCE_OWNERS = (
     "net/minecraft/client/sounds/SoundEngine.java",
 )
 CHANNEL_DEBUG = re.compile(r"Sounds: 0/(?P<static>[0-9]+) \+ 0/(?P<streaming>[0-9]+)\Z")
+BBB_AUDIO_MANIFEST = REPO_ROOT / "crates/bbb-audio/Cargo.toml"
+BBB_SOUND_ASSET = "minecraft/sounds/ambient/cave/cave1.ogg"
 
 
 class AudioReceiptFailure(RuntimeError):
@@ -222,6 +230,177 @@ def host_audio_access(device_root: Path = Path("/dev/snd")) -> dict[str, Any]:
     }
 
 
+def parse_bbb_test_binary(output: str) -> Path:
+    executables: set[Path] = set()
+    for line in output.splitlines():
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (
+            not isinstance(value, dict)
+            or value.get("reason") != "compiler-artifact"
+            or value.get("manifest_path") != str(BBB_AUDIO_MANIFEST)
+            or not isinstance(value.get("profile"), dict)
+            or value["profile"].get("test") is not True
+            or not isinstance(value.get("executable"), str)
+        ):
+            continue
+        target = value.get("target")
+        if isinstance(target, dict) and target.get("name") == "bbb_audio":
+            executables.add(Path(value["executable"]).resolve())
+    if len(executables) != 1:
+        raise AudioReceiptFailure(
+            f"expected one bbb-audio test binary from Cargo, got {len(executables)}"
+        )
+    executable = executables.pop()
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        raise AudioReceiptFailure(f"bbb-audio test binary is unavailable: {executable}")
+    return executable
+
+
+def build_bbb_test_binary(artifact_dir: Path) -> dict[str, Any]:
+    argv = [
+        str(REPO_ROOT / "scripts/cargo-dev.sh"),
+        "test",
+        "-p",
+        "bbb-audio",
+        "--features",
+        "device",
+        "--no-run",
+        "--message-format=json",
+    ]
+    result = subprocess.run(
+        argv, cwd=REPO_ROOT, check=False, text=True, capture_output=True
+    )
+    stdout_path = artifact_dir / "bbb-build.stdout"
+    stderr_path = artifact_dir / "bbb-build.stderr"
+    stdout_path.write_text(result.stdout, encoding="utf-8")
+    stderr_path.write_text(result.stderr, encoding="utf-8")
+    if result.returncode != 0:
+        raise AudioReceiptFailure(
+            f"bbb-audio test build failed; see {stderr_path.resolve()}"
+        )
+    executable = parse_bbb_test_binary(result.stdout)
+    return {
+        "path": str(executable),
+        "sha256": file_digest(executable, "sha256"),
+        "build": {
+            "argv": argv,
+            "returncode": result.returncode,
+            "stdout": {
+                "path": str(stdout_path.resolve()),
+                "sha256": file_digest(stdout_path, "sha256"),
+            },
+            "stderr": {
+                "path": str(stderr_path.resolve()),
+                "sha256": file_digest(stderr_path, "sha256"),
+            },
+        },
+    }
+
+
+def verified_openal_library(natives: tuple[Any, ...]) -> dict[str, Any]:
+    matches = [Path(entry.path) for entry in natives if Path(entry.path).name == "libopenal.so"]
+    if len(matches) != 1:
+        raise AudioReceiptFailure(
+            f"expected one verified Vanilla libopenal.so, got {len(matches)}"
+        )
+    path = matches[0].resolve()
+    return {
+        "path": str(path),
+        "sha1": file_digest(path, "sha1"),
+        "sha256": file_digest(path, "sha256"),
+        "size": path.stat().st_size,
+    }
+
+
+def verified_bbb_sound_asset(workspace: Any, asset_index_id: str) -> dict[str, Any]:
+    index_path = workspace.indexed_assets / "indexes" / f"{asset_index_id}.json"
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        entry = index["objects"][BBB_SOUND_ASSET]
+        digest = entry["hash"]
+        size = entry["size"]
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise AudioReceiptFailure(
+            f"Vanilla sound asset index is malformed for {BBB_SOUND_ASSET}: {error}"
+        ) from error
+    if (
+        not isinstance(digest, str)
+        or re.fullmatch(r"[0-9a-f]{40}", digest) is None
+        or not isinstance(size, int)
+        or size < 0
+    ):
+        raise AudioReceiptFailure(f"Vanilla sound identity is malformed: {BBB_SOUND_ASSET}")
+    path = workspace.indexed_assets / "objects" / digest[:2] / digest
+    if (
+        not path.is_file()
+        or path.stat().st_size != size
+        or file_digest(path, "sha1") != digest
+    ):
+        raise AudioReceiptFailure(f"Vanilla sound object is stale: {BBB_SOUND_ASSET}")
+    return {
+        "logical_path": BBB_SOUND_ASSET,
+        "path": str(path.resolve()),
+        "sha1": digest,
+        "sha256": file_digest(path, "sha256"),
+        "size": size,
+    }
+
+
+def run_bbb_audio_tests(
+    *,
+    binary: Path,
+    openal_library: Path,
+    sound_asset: Path,
+    driver: str,
+    artifact_dir: Path,
+) -> list[dict[str, Any]]:
+    environment = os.environ.copy()
+    environment["BBB_TEST_OPENAL_LIBRARY"] = str(openal_library)
+    environment["BBB_TEST_OPENAL_OGG"] = str(sound_asset)
+    if driver == "default":
+        environment.pop("ALSOFT_DRIVERS", None)
+    else:
+        environment["ALSOFT_DRIVERS"] = driver
+    runs = []
+    for index, test_id in enumerate(BBB_AUDIO_TEST_IDS, start=1):
+        argv = [str(binary), test_id, "--exact", "--ignored", "--nocapture"]
+        result = subprocess.run(
+            argv, check=False, text=True, capture_output=True, env=environment
+        )
+        label = test_id.rsplit("::", 1)[-1]
+        stdout_path = artifact_dir / f"bbb-{index:02d}-{label}.stdout"
+        stderr_path = artifact_dir / f"bbb-{index:02d}-{label}.stderr"
+        stdout_path.write_text(result.stdout, encoding="utf-8")
+        stderr_path.write_text(result.stderr, encoding="utf-8")
+        exact_marker = f"test {test_id} ... ok"
+        passed = (
+            result.returncode == 0
+            and "running 1 test" in result.stdout
+            and exact_marker in result.stdout
+            and "test result: ok. 1 passed; 0 failed" in result.stdout
+        )
+        runs.append(
+            {
+                "test_id": test_id,
+                "argv": argv,
+                "returncode": result.returncode,
+                "status": "passed" if passed else "failed",
+                "stdout": {
+                    "path": str(stdout_path.resolve()),
+                    "sha256": file_digest(stdout_path, "sha256"),
+                },
+                "stderr": {
+                    "path": str(stderr_path.resolve()),
+                    "sha256": file_digest(stderr_path, "sha256"),
+                },
+            }
+        )
+    return runs
+
+
 def run_probe(
     *,
     java: Path,
@@ -243,7 +422,9 @@ def run_probe(
         str(requested_hrtf).lower(),
     ]
     environment = os.environ.copy()
-    if driver != "default":
+    if driver == "default":
+        environment.pop("ALSOFT_DRIVERS", None)
+    else:
         environment["ALSOFT_DRIVERS"] = driver
     result = subprocess.run(argv, check=False, text=True, capture_output=True, env=environment)
     stdout_path = artifact_dir / f"{label}.stdout"
@@ -288,6 +469,9 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
     natives = safe_extract_natives(
         (Path(entry.path) for entry in audit.native_classifiers), natives_dir
     )
+    openal_library = verified_openal_library(natives)
+    sound_asset = verified_bbb_sound_asset(workspace, audit.asset_index_id)
+    test_binary = build_bbb_test_binary(artifact_dir)
     classes_dir = artifact_dir / "classes"
     classes_dir.mkdir()
     classpath = os.pathsep.join(
@@ -334,6 +518,30 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
     except AudioReceiptFailure as error:
         validation_error = str(error)
 
+    bbb_tests = run_bbb_audio_tests(
+        binary=Path(test_binary["path"]),
+        openal_library=Path(openal_library["path"]),
+        sound_asset=Path(sound_asset["path"]),
+        driver=args.driver,
+        artifact_dir=artifact_dir,
+    )
+    bbb_valid = all(test["status"] == "passed" for test in bbb_tests)
+    bbb_contract = {
+        "test_ids": list(BBB_AUDIO_TEST_IDS),
+        "test_binary_sha256": test_binary["sha256"],
+        "openal_library_sha256": openal_library["sha256"],
+        "sound_asset_sha256": sound_asset["sha256"],
+    }
+    differential_valid = validation_error is None and bbb_valid
+    vanilla_contract_sha256 = (
+        hashlib.sha256(canonical_json_bytes(frozen_contract)).hexdigest()
+        if frozen_contract is not None
+        else None
+    )
+    bbb_contract_sha256 = hashlib.sha256(
+        canonical_json_bytes(bbb_contract)
+    ).hexdigest()
+
     source_owners = []
     for relative in SOURCE_OWNERS:
         path = workspace.sources / relative
@@ -344,16 +552,25 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
             }
         )
     receipt = {
-        "schema": 1,
+        "schema": AUDIO_RECEIPT_SCHEMA,
         "bbb_commit": bbb_commit,
-        "mechanism_ids": ["audio-sound-manager-engine"],
+        "mechanism_ids": list(AUDIO_MECHANISM_IDS),
         "minecraft_version": "26.1",
         "driver": args.driver,
         "device_evidence": "synthetic-null" if args.driver == "null" else "host-device",
+        "evidence_class": (
+            "formal" if differential_valid and args.driver != "null" else "diagnostic"
+        ),
         "host_audio_access": host_audio_access(),
-        "valid": validation_error is None,
-        "formal_valid": validation_error is None and args.driver != "null",
-        "invalid_reason": validation_error,
+        "valid": differential_valid,
+        "formal_valid": differential_valid and args.driver != "null",
+        "invalid_reason": (
+            validation_error
+            if validation_error is not None
+            else None if bbb_valid else "one or more BBB executable audio tests failed"
+        ),
+        "client_binary": test_binary["path"],
+        "client_binary_sha256": test_binary["sha256"],
         "vanilla": {
             "client": asdict(audit.client),
             "metadata": asdict(audit.metadata),
@@ -370,6 +587,19 @@ def capture(args: argparse.Namespace) -> tuple[Path, dict[str, Any]]:
         },
         "observations": observations,
         "frozen_contract": frozen_contract,
+        "bbb": {
+            "valid": bbb_valid,
+            "test_binary": test_binary,
+            "openal_library": openal_library,
+            "sound_asset": sound_asset,
+            "tests": bbb_tests,
+            "contract": bbb_contract,
+        },
+        "differential": {
+            "status": "passed" if differential_valid else "failed",
+            "vanilla_contract_sha256": vanilla_contract_sha256,
+            "bbb_test_contract_sha256": bbb_contract_sha256,
+        },
     }
     output = artifact_dir / "vanilla-audio-receipt.json"
     output.write_bytes(canonical_json_bytes(receipt))
