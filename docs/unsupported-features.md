@@ -186,10 +186,12 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   The schema-2 capture command runs both Vanilla HRTF branches plus BBB's exact
   six-test OpenAL owner set, hashes its test binary/library/sound/logs, and rejects
   zero-test or Vanilla-only JSON; `--driver null` remains diagnostic only. The
-  2026-08-09 real-device audit is invalid: isolated GID 29 access reaches every
-  `/dev/snd` node, but all four HDMI ELD records have `monitor_present=0` and
-  `eld_valid=0`, so Vanilla and BBB both fail to open ALSA Default. Connect a real
-  playback sink and grant the launching user device ACL/audio-group access.
+  2026-08-09 schema-2 ALSA capture at clean `4578667e7` is invalid (artifact
+  SHA-256 `d55f21a550227610795edcc9b6dbca1b162cfbca555d2fb32c60fd2b63958923`):
+  UID 1000 cannot access any of eight `/dev/snd` nodes; both Vanilla branches and
+  BBB's four source/channel tests fail. An isolated GID 29 probe reaches the nodes,
+  but all four HDMI ELD records have `monitor_present=0`/`eld_valid=0`. Connect a
+  real playback sink and grant the launching user device ACL/audio-group access.
   Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Library.java:64-114,124-155`, `Channel.java:35-149`,
   `SoundEngine.java:101-109,215-327,402-443`, and `Sound.java:68-70`.

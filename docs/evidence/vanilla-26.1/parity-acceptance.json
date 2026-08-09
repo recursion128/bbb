@@ -2,67 +2,151 @@
   "artifacts": [
     {
       "artifact_id": "audio-host-device",
-      "bbb_commit": "8cf77c32626a4f81c59c7ed834c03079fa35d066",
+      "bbb_commit": "4578667e7d50d861a38401e0a7b20a602cf62915",
       "bbb_provenance": null,
       "capture_contract": {
-        "binary_load_identity": null,
+        "binary_load_identity": {
+          "binary": "/tmp/bbb-target-main/debug/deps/bbb_audio-4f295a9eb1efad7f",
+          "binary_sha256": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af",
+          "identity_kind": "file-sha256"
+        },
         "evidence_class": "diagnostic",
         "hash_inputs": [
           {
-            "field": "bbb.device_tracker_test.stderr.sha256",
-            "value": "8d3ac0a7d1c5a99aeff40b224bfa404c19bdefd3b705b36fd99c269679dfa6ae"
+            "field": "bbb.contract.openal_library_sha256",
+            "value": "bc1f0de819f5d86a25af2128e4b5014e242d26a628135b9d19c8d0773fc66ae7"
           },
           {
-            "field": "bbb.device_tracker_test.stdout.sha256",
-            "value": "25a6b1cdc62e5547b6f7e0b10045372b5bb2cf4a1e97257b98ca3ba3c7d883e8"
+            "field": "bbb.contract.sound_asset_sha256",
+            "value": "086721797a2ddcf6ba4b75cb9787a5340f10a5f73190f1310e4d80b3c7d29fb7"
           },
           {
-            "field": "bbb.library_context_test.stderr.sha256",
-            "value": "53b656f0a69ee24741650be5e2a573b5016489560b255805248dd1218081de51"
+            "field": "bbb.contract.test_binary_sha256",
+            "value": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af"
           },
           {
-            "field": "bbb.library_context_test.stdout.sha256",
+            "field": "bbb.openal_library.sha256",
+            "value": "bc1f0de819f5d86a25af2128e4b5014e242d26a628135b9d19c8d0773fc66ae7"
+          },
+          {
+            "field": "bbb.sound_asset.sha256",
+            "value": "086721797a2ddcf6ba4b75cb9787a5340f10a5f73190f1310e4d80b3c7d29fb7"
+          },
+          {
+            "field": "bbb.test_binary.build.stderr.sha256",
+            "value": "bdb1f4164ffa3d6dfbfb7468995405905a14e1603aa3454875b33a4bdd8b6700"
+          },
+          {
+            "field": "bbb.test_binary.build.stdout.sha256",
+            "value": "39c383d1fc1eea003de26fd0198229f91dd8e5066ad1d8c5d8d7f53e11fd5045"
+          },
+          {
+            "field": "bbb.test_binary.sha256",
+            "value": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af"
+          },
+          {
+            "field": "bbb.tests[0].stderr.sha256",
+            "value": "c3b19e6d0e40a68e81afdaa79295f842209db3686c53e20c01826a28b7b0b8ca"
+          },
+          {
+            "field": "bbb.tests[0].stdout.sha256",
             "value": "3b19baa9d46747409219d8a164f40460ae6947718dc2906c067484a0b527abce"
           },
           {
-            "field": "bbb.test_binary_sha256",
-            "value": "1f660d2430bab49114d80311448ea22e2e0645b67dd524563743fd02c57a16f4"
+            "field": "bbb.tests[1].stderr.sha256",
+            "value": "7e4ea01d71326c7da12c5d578e2d55afcb39568101e689e94c250b92bcd448ce"
           },
           {
-            "field": "vanilla.observations[0].stderr.sha256",
-            "value": "ea16e49dffe0eaff1316ca7dc9622caea8b8cbfc97ff31a7b0b2af6e728e980f"
+            "field": "bbb.tests[1].stdout.sha256",
+            "value": "25a6b1cdc62e5547b6f7e0b10045372b5bb2cf4a1e97257b98ca3ba3c7d883e8"
           },
           {
-            "field": "vanilla.observations[0].stdout.sha256",
-            "value": "65d31da55445fd4b53d8f2498d3679575ba2dcd253d682904d3878c960071332"
+            "field": "bbb.tests[2].stderr.sha256",
+            "value": "5d4d09bcd5d4829b3a9d3602487c898c6c8292a3ea6b76601d54710ac6b48308"
           },
           {
-            "field": "vanilla.observations[1].stderr.sha256",
-            "value": "5328faf655ada260178f5f0c6223eacf335d18fb32954514e1da83098e47dc3f"
+            "field": "bbb.tests[2].stdout.sha256",
+            "value": "5ae4755be13879ed3bcc50afdb7f0efc8c1fff8ff53e7947ba04b08d24fb145d"
           },
           {
-            "field": "vanilla.observations[1].stdout.sha256",
-            "value": "2878975f4074a733a377be4731c216a3870d43d489281d2ec5927389e2fe9283"
+            "field": "bbb.tests[3].stderr.sha256",
+            "value": "44e9a8a5a401c486e4e8ada4030a2c55333c66c0616e1b98bb546566af122147"
           },
           {
-            "field": "vanilla.receipt_sha256",
-            "value": "66df69c0d581a88058b633aaf65444f200b24868964b0833d77dd8206d8bc408"
+            "field": "bbb.tests[3].stdout.sha256",
+            "value": "7e3c005bea99ed0e2ee122b526f9ebef482f20d652db68ea729f41b1eaff9fd8"
+          },
+          {
+            "field": "bbb.tests[4].stderr.sha256",
+            "value": "30908e60cb52c9b16c086f949bf237ad22299e3bab09dd6a592bbd5306bdc49f"
+          },
+          {
+            "field": "bbb.tests[4].stdout.sha256",
+            "value": "e2c8d77d54c9553fa3167d2b1103c451629c06de436ba9c87c25787c96c173fb"
+          },
+          {
+            "field": "bbb.tests[5].stderr.sha256",
+            "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "field": "bbb.tests[5].stdout.sha256",
+            "value": "610e004396e745609f2a2a7d4b8610c8b1083e1fd3329ed847e69fdd9297029a"
+          },
+          {
+            "field": "client_binary_sha256",
+            "value": "0e87cb71c332c5c52bf6a450135ac7ea35a01fac5155ee1f37fdaf53743041af"
+          },
+          {
+            "field": "differential.bbb_test_contract_sha256",
+            "value": "4128c199460c43e43999e01f5d002c8cd4ce33ddace0291c93177f8bdc264030"
+          },
+          {
+            "field": "observations[0].stderr.sha256",
+            "value": "38127e176998f32bf114c590320fb25bab4bfade9d98097c9ed6c18bb3755399"
+          },
+          {
+            "field": "observations[0].stdout.sha256",
+            "value": "9438a00a8a3ed7b8ea05cbbfd9083d3f558e4d2605a0035ec18f1cdcef7da797"
+          },
+          {
+            "field": "observations[1].stderr.sha256",
+            "value": "38127e176998f32bf114c590320fb25bab4bfade9d98097c9ed6c18bb3755399"
+          },
+          {
+            "field": "observations[1].stdout.sha256",
+            "value": "8d027a66cac9ed9917088414ad1f083cc0dfa4027a04fc8ef511bca972102cd1"
+          },
+          {
+            "field": "vanilla.probe.sha256",
+            "value": "f686ab819597292b06cd3d36b53277fc6fdf124ca6d977b0cf788cb49b3bb192"
+          },
+          {
+            "field": "vanilla.source_owners[0].sha256",
+            "value": "7571e27e78f6098bb52deb04c382ec457f2c4e2efb874f60a4815b56041791fe"
+          },
+          {
+            "field": "vanilla.source_owners[1].sha256",
+            "value": "66e976a748084cdc3c0d80b037139447b1841a7748775ad270f708ca68bd2b88"
+          },
+          {
+            "field": "vanilla.source_owners[2].sha256",
+            "value": "3247a8dda1ed5293c2def5d114443801a4fc19a7e51ca5ae2bdc7b70dad5184d"
           }
         ],
         "inputs": [],
         "kind": "audio",
         "selected_contract": {
-          "schema": 1
+          "schema": 2
         },
-        "sha256": "b94f01bdf65f29e972412c6aa4f80a216d3cba9f3e669c78a0e9038118dfb0d8",
+        "sha256": "181bb1d1f0e8f8d224eb75d67b0fa8484ddcdf592be5fa2a09001387b1cdf0d9",
         "tools": [
           {
-            "capture_sha256": "25c884447508fd8feb7ce0a4b59a1110e91afad79f0698a2c2206de063d7cc37",
+            "capture_sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd",
             "current_sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd",
             "path": "scripts/capture-vanilla-audio-receipt.py"
           },
           {
-            "capture_sha256": null,
+            "capture_sha256": "fdf5dc3d33fb496a7970f2b54b37a5c27f9eb838cf23ac883e01c5afd94d07da",
             "current_sha256": "fdf5dc3d33fb496a7970f2b54b37a5c27f9eb838cf23ac883e01c5afd94d07da",
             "path": "scripts/bbb_tools/audio_receipt.py"
           }
@@ -71,36 +155,25 @@
       "evidence_class": "diagnostic",
       "exists": true,
       "invalid_reasons": [
-        "capture tool changed after the artifact: scripts/capture-vanilla-audio-receipt.py, scripts/bbb_tools/audio_receipt.py",
         "formal host-device audio receipt is invalid",
-        "audio differential receipt schema is not 2",
-        "formal audio receipt lacks host-device evidence",
         "audio receipt evidence class is not formal",
         "audio differential receipt did not pass",
         "audio receipt lacks both passing Vanilla HRTF branches",
         "audio receipt lacks the validated Vanilla pool/HRTF contract",
         "BBB audio executable contract did not pass",
-        "BBB audio test binary identity is missing",
-        "BBB audio test binary build contract is missing",
-        "BBB audio OpenAL library identity is missing",
-        "BBB audio Vanilla sound identity is missing",
-        "BBB audio receipt does not cover the exact executable test set",
-        "BBB audio executable contract identity is stale",
+        "BBB audio receipt contains a failed or unhashed executable test",
         "audio receipt lacks a passing Vanilla/BBB differential contract",
-        "audio receipt lacks BBB test binary file identity",
-        "audio receipt lacks BBB OpenAL library file identity",
-        "audio receipt lacks BBB Vanilla sound file identity",
         "diagnostic smoke cannot satisfy a formal receipt",
-        "artifact BBB commit 8cf77c32626a4f81c59c7ed834c03079fa35d066 differs from evidence commit dd5890673b4cb979b1244ecf85f37cd516c79da6"
+        "artifact BBB commit 4578667e7d50d861a38401e0a7b20a602cf62915 differs from evidence commit dd5890673b4cb979b1244ecf85f37cd516c79da6"
       ],
       "kind": "audio",
       "mechanism_ids": [
         "audio-sound-manager-engine"
       ],
-      "path": "/tmp/bbb-audio-final-8cf77c326/audio-host-blocker.json",
+      "path": "/tmp/bbb-audio-schema2-alsa.wbNba0/vanilla-audio-receipt.json",
       "scenario_ids": [],
       "scoped_reuse": null,
-      "sha256": "a5f754cec63f0c31a4ffa89ce722edc642233f7111448833d430410f43e7519e",
+      "sha256": "d55f21a550227610795edcc9b6dbca1b162cfbca555d2fb32c60fd2b63958923",
       "valid": false
     },
     {
@@ -480,7 +553,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418",
+      "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24",
       "valid": true
     },
     {
@@ -1118,7 +1191,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "a590012b33f9f03f50228e65a4fae739da086f341ffe16870e0085ac59b4a519",
+      "sha256": "b719dac1df0f627242e1dce8ed8ffc419f9fb9c94d008ba7ab5462e033010ebd",
       "valid": true
     },
     {
@@ -8946,7 +9019,7 @@
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
-      "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418",
+      "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24",
       "valid": true
     },
     {
@@ -10604,7 +10677,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "a590012b33f9f03f50228e65a4fae739da086f341ffe16870e0085ac59b4a519"
+      "sha256": "b719dac1df0f627242e1dce8ed8ffc419f9fb9c94d008ba7ab5462e033010ebd"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -10612,7 +10685,7 @@
     },
     {
       "path": "docs/unsupported-features.md",
-      "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+      "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
     }
   ],
   "mechanisms": [
@@ -10689,7 +10762,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -10709,7 +10782,7 @@
             "sha256": "9216d3b2217d91d9044e1805cfbf7de08f4c71cc282e503e0dad99748e3f357b"
           }
         ],
-        "dependency_closure_sha256": "7905145e1c6fa86bb450028d9dc192543b96ce907af8c68f3545c39fe615d5e2",
+        "dependency_closure_sha256": "f47171428378c3afb4bb05e45e806498cb4b40171570e2d7c04f478795991286",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
@@ -10724,7 +10797,7 @@
         ],
         "focused_test_contract_sha256": "23352beef19dfd2d296baadc893089646212948214c9fcec7ea5ae3bfbb1874b",
         "owner": "`bbb-native::startup/main/client_options`",
-        "owner_contract_sha256": "1b5965a90d7254b877c4aadea968390f780fec60e6d1bb9a6296563edc734fc5"
+        "owner_contract_sha256": "17f163786e3f98e6b7d3acc1fab2b1cea1d194caeab42bae30426f3875111309"
       },
       "differential_scenarios": [
         {
@@ -10982,7 +11055,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -10994,7 +11067,7 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "481f0b58bee29c4c372271e480e8dbbba90fa0fa6c738e192aee378f9adcdf34",
+        "dependency_closure_sha256": "420b320adbca6d0a521304ddc6a43888691b5936099eefdfc11498ec95fea248",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/main.rs#fn run_client",
@@ -11006,7 +11079,7 @@
         ],
         "focused_test_contract_sha256": "041955730a05cd3889e3eece330e2c5a4436ef17a667b39bbb8baa2973e62e04",
         "owner": "`bbb-net::ClientIdentity` → net/world/server-pack",
-        "owner_contract_sha256": "68edd721bc4687c678d34f1e90493976bc5b46ec073494c478c970fedbaa8e90"
+        "owner_contract_sha256": "73ef4b775fb919e02389cba44ee1f51206fa0e9812851c3a444fc63e73024937"
       },
       "differential_scenarios": [
         {
@@ -12062,7 +12135,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -12081,7 +12154,7 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "8376c6829348abb3435eff78bee75a9cfcd0f77eecd3441953bb4f03be95c5ee",
+        "dependency_closure_sha256": "e52987206d26b4deeef6e37e4b1cdc6fbe76e26647012d1b233c0c45c5a50f33",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs#fn list_resources",
@@ -12098,7 +12171,7 @@
         ],
         "focused_test_contract_sha256": "c0d6c3f16bf52e2514117e010c965cf656ab27732d7b96bef81d2ace6ff0c842",
         "owner": "`bbb-pack::PackResourceStack`",
-        "owner_contract_sha256": "ffdc7a5dae5a1fd294b79b7738050a4551ad8c7177657ae6c82911d1b58f8bef"
+        "owner_contract_sha256": "4020698f3e9c7d29db830222ea8bed97a3acd52de5507ce44dc42674ac925ae4"
       },
       "differential_scenarios": [
         {
@@ -12671,7 +12744,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -12689,7 +12762,7 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "dbddeed0f0de86873861a328f5f4b7f45abbd411e73602ead4d265cc198ea03e",
+        "dependency_closure_sha256": "837cd6c4bb238ed746a00743ae11d75b35727eda874cb5be1080e925558713af",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
@@ -12697,7 +12770,7 @@
         ],
         "focused_test_contract_sha256": "c8671372da44ff25d6b0036d6eb94f4ae09f9957b99c63791f72c18193c5a075",
         "owner": "pack/native/renderer/audio consumers",
-        "owner_contract_sha256": "befdec0cae8631db75ca1b5d18630673820ff8a0523ad64a6863ee44fe2e75b5"
+        "owner_contract_sha256": "772a3a5457ec50c9cf6cc03c93fac55d62700d16c5ab77436d1b08a3f709416c"
       },
       "differential_scenarios": [
         {
@@ -13202,10 +13275,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "9758095c25e85e4a2668dc9206a3ede3d8995b34a1f156743d54f6bd35ff3457",
+        "dependency_closure_sha256": "f029be6a6380701d32ac9a7f4d437fe5c559524e30682609726a0063ec9a296b",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
@@ -13214,7 +13287,7 @@
         ],
         "focused_test_contract_sha256": "8a7a057109a47ca51cf4e5920fc63dcf2b9ccfee5d9d5d78f0a3e004c471f40b",
         "owner": "startup-selected native terrain-atlas generation",
-        "owner_contract_sha256": "64ac0fe6a16cd908041b8840d902ebf975c5254613835d18b98fd3bdc20cb19a"
+        "owner_contract_sha256": "5d93089fbdad1026b4d9cf4f6d2332aa31470533a6d757a989da42415a6a86dd"
       },
       "differential_scenarios": [
         {
@@ -13425,7 +13498,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/playable_gate.py",
@@ -13444,7 +13517,7 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "a4f7c2b3113f706c8fe328238707409a415a08adf1e8c34b95b1aef1f6d722b3",
+        "dependency_closure_sha256": "5655f4a51486931feb6361ac06c65df999b10d84154262a3a6317e42b29be7a8",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
@@ -13486,7 +13559,7 @@
         ],
         "focused_test_contract_sha256": "bfc12ef207f93e6f1c3698262c149a061882482585f8ceb8b785b415d9cd5821",
         "owner": "`bbb-net::resource_pack`、native pack runtime、`bbb-pack::server_pack`",
-        "owner_contract_sha256": "9d026fd731695633de40ef60e54761007a8eb42bd8c2b1d94bd16265c0073bf8"
+        "owner_contract_sha256": "2c3d318168c6f4eb383ba5b5198838fb3314e66b32cc00180d9b12caba6ce079"
       },
       "differential_scenarios": [
         {
@@ -14814,7 +14887,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/capture-vanilla-audio-receipt.py",
@@ -14824,7 +14897,7 @@
             "sha256": "033b1c8b53c6866cdda6212771103ef2723de92d7777e11c1b1e813c368225fd"
           }
         ],
-        "dependency_closure_sha256": "a2723e52522ee204c4ea637ff0ec81a020ab6401336c4ff5570d99f2d525c770",
+        "dependency_closure_sha256": "547fb7bbf80708e2ea9576dd9afa08db7239a560f87a51a84e81d95f1a9fc394",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
@@ -14838,7 +14911,7 @@
         ],
         "focused_test_contract_sha256": "a5c68acb3916ab67b0457c6c060ff2d2a28072b642db37cee8606b7585308682",
         "owner": "pack sound catalog/native/audio",
-        "owner_contract_sha256": "6f1a5aca3a5d3dbbe2d4f96c3b81350ec189394ddbe1f29cb18df27222194b8a"
+        "owner_contract_sha256": "b4f20c43fcf515e151e5a1558feca4f5bc0fe98f336fc7e7a7c71d6c3f5751d8"
       },
       "differential_scenarios": [
         {
@@ -15386,8 +15459,8 @@
       "matrix": {
         "domain": "audio/resources",
         "line": 29,
-        "required_state_projection": "159/159 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop/runtime options 12 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；`MusicManager` 现消费 startup `musicFrequency`，按实际解析的 sound resource（非 event id）发布曲名，并区分 STARTED/STARTED_SILENTLY 与显式 hide；其余 OpenAL pool/source/streaming/listener/device lifecycle 保持直接拥有。Vanilla 与 BBB null-driver executable receipt 通过但只属 non-formal，2026-08-07 default-driver 重采集仍因 UID 1000 不在 audio gid 29、`/dev/snd/*` 全为 `root:audio crw-rw----` 而在 Vanilla `openDeviceOrFallback` 失败，故真实 host-device differential receipt 仍开放",
-        "route_reopen_condition": "host audio 权限可用后重跑 Vanilla/BBB default-driver 双分支 receipt；源码、OpenAL artifact 或 owner set 变化时重开",
+        "required_state_projection": "159/159 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop/runtime options 12 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；`MusicManager` 现消费 startup `musicFrequency`，按实际解析的 sound resource（非 event id）发布曲名，并区分 STARTED/STARTED_SILENTLY 与显式 hide；其余 OpenAL pool/source/streaming/listener/device lifecycle 保持直接拥有。Vanilla 与 BBB null-driver executable receipt 通过但只属 non-formal；clean `4578667e7` schema-2 ALSA capture 中 Vanilla 双分支与 BBB 四个 source/channel owner test 均无法打开设备，故真实 host-device differential receipt 仍开放",
+        "route_reopen_condition": "连接真实 playback sink 并授予启动用户 device ACL/audio group 后重跑 Vanilla/BBB ALSA 双分支 receipt；源码、OpenAL artifact 或 owner set 变化时重开",
         "status": "partial"
       },
       "mechanism_id": "audio-sound-manager-engine",
@@ -15405,7 +15478,7 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required audio-host-device receipt is invalid: capture tool changed after the artifact: scripts/capture-vanilla-audio-receipt.py, scripts/bbb_tools/audio_receipt.py; formal host-device audio receipt is invalid; audio differential receipt schema is not 2; formal audio receipt lacks host-device evidence; audio receipt evidence class is not formal; audio differential receipt did not pass; audio receipt lacks both passing Vanilla HRTF branches; audio receipt lacks the validated Vanilla pool/HRTF contract; BBB audio executable contract did not pass; BBB audio test binary identity is missing; BBB audio test binary build contract is missing; BBB audio OpenAL library identity is missing; BBB audio Vanilla sound identity is missing; BBB audio receipt does not cover the exact executable test set; BBB audio executable contract identity is stale; audio receipt lacks a passing Vanilla/BBB differential contract; audio receipt lacks BBB test binary file identity; audio receipt lacks BBB OpenAL library file identity; audio receipt lacks BBB Vanilla sound file identity; diagnostic smoke cannot satisfy a formal receipt; artifact BBB commit 8cf77c32626a4f81c59c7ed834c03079fa35d066 differs from evidence commit dd5890673b4cb979b1244ecf85f37cd516c79da6",
+        "required audio-host-device receipt is invalid: formal host-device audio receipt is invalid; audio receipt evidence class is not formal; audio differential receipt did not pass; audio receipt lacks both passing Vanilla HRTF branches; audio receipt lacks the validated Vanilla pool/HRTF contract; BBB audio executable contract did not pass; BBB audio receipt contains a failed or unhashed executable test; audio receipt lacks a passing Vanilla/BBB differential contract; diagnostic smoke cannot satisfy a formal receipt; artifact BBB commit 4578667e7d50d861a38401e0a7b20a602cf62915 differs from evidence commit dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -32098,17 +32171,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "net framing only",
-        "owner_contract_sha256": "da1d848a4852031c3f20f0f23f7adaaeb133a7dba4ec98909f19461a2449d653"
+        "owner_contract_sha256": "5d58506a60111cced37a5df9777a2e93892db1c5c7bdf69523bb831034fcb0bb"
       },
       "differential_scenarios": [
         {
@@ -32499,17 +32572,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "generated fixed catalogs",
-        "owner_contract_sha256": "ddf14420ec2bf8e09a354f00af8969f3d69dfb9f2cbfde65f5f674bf235d1d22"
+        "owner_contract_sha256": "34aee66014f779564d02c6f273d7cfc691881a1057e77164cff9d8754265a191"
       },
       "differential_scenarios": [
         {
@@ -44513,7 +44586,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -44532,7 +44605,7 @@
             "sha256": "57dd8b76eed7543f5c0e4741fa9c5ac9ef81f4c501b60e374c227d1e5c5f6193"
           }
         ],
-        "dependency_closure_sha256": "6af748cf7a3c13b1eb81edede9fc2d5b89abe81cb4d0f239e5f3d997e36eabfd",
+        "dependency_closure_sha256": "6e14593bdca931b77a108facc242a790b1180273ebcbff73bd5a93d7fce3a06d",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -44540,7 +44613,7 @@
         ],
         "focused_test_contract_sha256": "7584e23449db9e80c2efff002c8d221e0ed383298ddc4c500b3fd4a41b8bd86c",
         "owner": "`bbb-native::runtime::render_extract` + shared toast runtime + independent NowPlaying runtime + renderer",
-        "owner_contract_sha256": "8ff987ad10412f9159c006bcd1110c0e172e5fe7e07079de05f15e9d53c33d39"
+        "owner_contract_sha256": "7e7f09b6927617422d7a234bd81ae1f433de418e0cbd0b9603a239eb2389026a"
       },
       "differential_scenarios": [
         {
@@ -47161,10 +47234,10 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "4922da2af2314b644fb09a69124efaafeec61743e67c4a6469c28dc0a804d6c6",
+        "dependency_closure_sha256": "b519ad7dbbeb11ac4191eaf7c1ac229cb03bbdc1563ee46ada065a0297811f15",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
@@ -47172,7 +47245,7 @@
         ],
         "focused_test_contract_sha256": "08a3990a73a15b394841841053a1570affcd7c8365ffc016b0839546464ff184",
         "owner": "native immutable publication extract → RendererFrame",
-        "owner_contract_sha256": "06c93e9dac241bdc9a58806fb5b2f884c7a9f2327f2148137ac40be1a19b2cdb"
+        "owner_contract_sha256": "8af9b277369cafd10c6751f262a579ac68d69eed1dbcd066f55103c49fd420c9"
       },
       "differential_scenarios": [
         {
@@ -47632,10 +47705,10 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "c2821b56983031bdcd5c4875cb215baa09272fccdbf29223b361480f5aab6b49",
+        "dependency_closure_sha256": "abcfee961339677994f5d28690dff246f73ee62e6219612269ffa349d21f6614",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
@@ -47643,7 +47716,7 @@
         ],
         "focused_test_contract_sha256": "b3b892812cb81db1fa467e7e5cf55181aa3c274b89b406284a5a59747281da01",
         "owner": "native extract + renderer level/first-person passes",
-        "owner_contract_sha256": "ed22964105de8aec3c2f86c7b5af9556e4a5335fa8b4bb174b9180aeb4654c8b"
+        "owner_contract_sha256": "5c51214e11b5d1c0faaed01ed6353f2fe2ff2994779c695d3860a0ddeb25da96"
       },
       "differential_scenarios": [
         {
@@ -48230,10 +48303,10 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "9010389b3e427d00115396cda34bb6adce0d116f0ca46e0b0677d08ff7d68cae",
+        "dependency_closure_sha256": "762c21ee1f38b873f6fb5db0bd25867c657614a3108354323f6faaf71b2895e7",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
@@ -48243,7 +48316,7 @@
         ],
         "focused_test_contract_sha256": "5186840d407f4b742ca83fdb45863712f4eb7cd70084bd8cba1d84cf8e5505a3",
         "owner": "native runtime + renderer post/screen effects",
-        "owner_contract_sha256": "06bc5a3b7fa5a92d7e58b7c1b2e16f00a6cd1d988c1ab2d7c9bf7839c4759567"
+        "owner_contract_sha256": "d8a2f25497c971f928a56d924d4bbc242d79f79c0bafbc216230c9fa1ac0e795"
       },
       "differential_scenarios": [
         {
@@ -57394,17 +57467,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "offline-only client；无 profile-key surface",
-        "owner_contract_sha256": "4c0bc9f605691abcafa8221213c2bc4c83f6e1f817769b6b62b17374ad2a521b"
+        "owner_contract_sha256": "21577ee3b489a5a1c94d74f7c2ea75cb39b2917f1c3529abc46ab8de56052e7d"
       },
       "differential_scenarios": [
         {
@@ -57440,7 +57513,7 @@
         "scope-ruling",
         "vanilla-owner"
       ],
-      "scope_ruling_sha256": "e8bdeb46ddc7a4dbd668a41978875b462b4a59eada02648df40b9e99922092f6",
+      "scope_ruling_sha256": "5c4af1bdf9872fc7aeb67749a4b8844330185c14521ce82a3d10790d1908422a",
       "valid": true,
       "validity_reasons": [],
       "vanilla": {
@@ -57881,7 +57954,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "docs/wiki/architecture/offline-runtime.md",
@@ -57891,7 +57964,7 @@
             "sha256": "3459aaa5f114f59b01fb7330e9ca8aa76244738b3b35b07e4365146cde04dc7f"
           }
         ],
-        "dependency_closure_sha256": "b621a9b69d2365f6388d829711d2bbc9f0389619d585a115d8af985707869de7",
+        "dependency_closure_sha256": "c67265c1ca7c3c76de919e3bb26faf08a8f3557d9b28cedc3bd77fa900f46c03",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
@@ -57901,7 +57974,7 @@
         ],
         "focused_test_contract_sha256": "22c4bb32fe1eb65a6cb1a01f7e9ba05d7b179027926e660010ec1c361caf82e6",
         "owner": "`bbb-world` social/reporting state + `bbb-net` chat_session/last-seen + `bbb-native` input/runtime",
-        "owner_contract_sha256": "99ccfadcc50bfa6f6596c1dbfd618fa6494ade44e2273dcb32bf8f09be8ea87f"
+        "owner_contract_sha256": "cd24c7b0f9f9f19b69a2b9d8fb79039be2910786abd6eca941ddad3a791e64bd"
       },
       "differential_scenarios": [
         {
@@ -62947,7 +63020,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/cross_check.py",
@@ -62957,7 +63030,7 @@
             "sha256": "437ba55db7f865d5b9cec1891294b101abfabe88c09bd9198cefe8baf5f39395"
           }
         ],
-        "dependency_closure_sha256": "4c2af1db2fb6a97f84dc2605d44fc648b2a86e9f134f0a4768723e2778eb9561",
+        "dependency_closure_sha256": "832b74757e66587ff128657c8fa3eb489ac07f8c1266721441078e5e4c08fbce",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md",
@@ -62965,7 +63038,7 @@
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no maintained macOS host",
-        "owner_contract_sha256": "6a132a20e7349b5c9b14e69944733001c98397beea09d23f2f837533fd893a86"
+        "owner_contract_sha256": "9d274e297b3e76e47d939a028802fdb9ad597debb28aef55c900cc2f3d337174"
       },
       "differential_scenarios": [
         {
@@ -63046,17 +63119,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "用户裁决非目标",
-        "owner_contract_sha256": "630f8bd464b4e020e446e33605157acaf9de08b16febb264c7862c71b4947ed1"
+        "owner_contract_sha256": "5a8a2e2c97b825b70c5c87b5ca3371579dcea99cf9cd5387a62369636d2f7331"
       },
       "differential_scenarios": [
         {
@@ -63134,17 +63207,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no title-screen surface",
-        "owner_contract_sha256": "1b6c8f219ef20f0042f3e5f3d7b15e3744c7bd600db463d9dda8da812702585d"
+        "owner_contract_sha256": "59ecdbc8aa92e4486e32e13618cf4cbaf84612eb17cb91d908b391fc1ff975bc"
       },
       "differential_scenarios": [
         {
@@ -63244,17 +63317,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no in-process server/world storage",
-        "owner_contract_sha256": "57600d4fb328d541aeba018b8e810935994d898979f2f83009ad3cd12b47b2ff"
+        "owner_contract_sha256": "6eba6ff34dff4449772f516cf00bb4abf88c5b984bc213b5454699d8739f3174"
       },
       "differential_scenarios": [
         {
@@ -63389,17 +63462,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no Realms service/screen",
-        "owner_contract_sha256": "6427ec0191651b851a6032373ff37165cafd798d2ce984be51a028aa590e51b7"
+        "owner_contract_sha256": "38b031d9f8ba0bf7c635e5481b8a79a8d60db9a6b8b1dc0a53854940546c996a"
       },
       "differential_scenarios": [
         {
@@ -63574,17 +63647,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "CLI configuration only",
-        "owner_contract_sha256": "dd2ede27d2b69cb49f9986a6e11f5615ee0f513ff8e45a2c107593a4a0e7d9b2"
+        "owner_contract_sha256": "7303fde66593ac6a697710060bbdbfda101b88785d54c085965f64449848b276"
       },
       "differential_scenarios": [
         {
@@ -63686,17 +63759,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no multiplayer server-selection screen",
-        "owner_contract_sha256": "64b37e9601dfb2f0868e00ebfba8eddc2e3bc0f31110daa946ff369aaf334407"
+        "owner_contract_sha256": "8ffe731043114f330a0f73069623db8dbe207a081d86c2dee352c5fe20f4074a"
       },
       "differential_scenarios": [
         {
@@ -63772,17 +63845,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no Mojang telemetry sender",
-        "owner_contract_sha256": "73c0fba9f8f7552177cf2d490fc9bb69c2fd6d437b6fd6f874aea7ff54291fa5"
+        "owner_contract_sha256": "603dfad05a8891538c887a55cda96ed5adee65ac822fdb37bb7124d6bbc68d1a"
       },
       "differential_scenarios": [
         {
@@ -63879,7 +63952,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           },
           {
             "path": "scripts/client_mechanism_inventory.py",
@@ -63889,7 +63962,7 @@
             "sha256": "81365cbcd0a29df880b592632e98f4fe25f5fcfb227571092bbe33a655688ebd"
           }
         ],
-        "dependency_closure_sha256": "4a20a74d4783ce354f4c6c0c34ef9f7d8172e5af4164c61b8a234f00882b4f40",
+        "dependency_closure_sha256": "c6e3d64950e1cd01c818f5bef562a742242474cd1afed06ac805c37585173297",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md",
@@ -63897,7 +63970,7 @@
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no independent BBB decision owner",
-        "owner_contract_sha256": "ee561ba37e5b25b629f65d3ced039b3334409e8ccb23d6338ab6057b305884c4"
+        "owner_contract_sha256": "42b60f23d7cccc1363468583339676657661051e0d761b5404f89aac600fc4b4"
       },
       "differential_scenarios": [
         {
@@ -64232,17 +64305,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no independent BBB client state/effect owner",
-        "owner_contract_sha256": "95c78325d6b83430efc12a66f004b03cb542299cfbbd9288e8505ec892054b08"
+        "owner_contract_sha256": "42b1478db1dd7b124a2ab83f29f2f4ce39f1c718fb21361b030f92d4ca0a8510"
       },
       "differential_scenarios": [
         {
@@ -64318,17 +64391,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no server owner",
-        "owner_contract_sha256": "65ed6a254cfb91682bb63705b8330dbe6e2ebe284e2d38c03764267554c690a4"
+        "owner_contract_sha256": "1f311583d86cdba91ec94e00dc5a7f8ba204ab276ddbd656695222faa5e17e77"
       },
       "differential_scenarios": [
         {
@@ -64458,17 +64531,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no current favicon consumer",
-        "owner_contract_sha256": "dfca97f0e96730700022ef2c5cb1642ea32b5caccda0fa3383e0955e5ef42d43"
+        "owner_contract_sha256": "d6e1f4b9d09b238eb0b9e36391d79702d7e294cfbffcb80e6859245ae9cab164"
       },
       "differential_scenarios": [
         {
@@ -64574,17 +64647,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "server-owned remote entities",
-        "owner_contract_sha256": "9c8d6180b8632e2ddafd43180c6517731c464c3dbbc75761067edd179794735b"
+        "owner_contract_sha256": "a88405afd3bae0dc81a6eace1d5b88686742450b5c7714209c1765729f838b45"
       },
       "differential_scenarios": [
         {
@@ -64686,17 +64759,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no client owner",
-        "owner_contract_sha256": "ed2c03e663b03363e7296d4d366c7fa6a280ab0ac704130621ed0234447b1f4e"
+        "owner_contract_sha256": "1e672206568d6f2268fd0d26687c8509eef770a349d314559b4b3c927ad87eaf"
       },
       "differential_scenarios": [
         {
@@ -64818,17 +64891,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "current menu canonical state",
-        "owner_contract_sha256": "2d0a4e0ae2946df3ec4c74a6548bac4fb2a7c5cb67737f12851f80c8bc7dae3f"
+        "owner_contract_sha256": "f49f06a15b6e2f9f02343f2a21a2506ac61fbc4d7f1c061366e67aa3f56552f7"
       },
       "differential_scenarios": [
         {
@@ -64898,17 +64971,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no current presentation",
-        "owner_contract_sha256": "60e7c0fb1a7b6efe9287a31d93b3b2e0000c7c549ee755d2f3ccca3626b94ed0"
+        "owner_contract_sha256": "c0f21b36cf036daccdf82eef0ec52515940603745f19aeefca8d5892eb1c88eb"
       },
       "differential_scenarios": [
         {
@@ -65038,17 +65111,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "no client effect owner",
-        "owner_contract_sha256": "52d85eb78cb33e3133fea53eaeeb59a029a9de71b311192c05b3a64e8c49313f"
+        "owner_contract_sha256": "bf738ad1177612eed261285a2998449039f99b504bf44f88908a52b0bfa20b7e"
       },
       "differential_scenarios": [
         {
@@ -65122,17 +65195,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "generated item-model catalogs",
-        "owner_contract_sha256": "69c295392bab93d2f0418db09e6d8a4daf6b6862746a717a3d4cf868e438929d"
+        "owner_contract_sha256": "85a189c4889cbb16a7a5b092cd855c7effb36631b03a974fc7f40ad946ccf8ad"
       },
       "differential_scenarios": [
         {
@@ -65206,17 +65279,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "semantic/pixel focused evidence",
-        "owner_contract_sha256": "2d300a6e529e4775c1e28b4015615363c928197574df1569164df54caf035df2"
+        "owner_contract_sha256": "564d8a7c96df5a979c0ad9227a4286b9e70210576a1720af40c05b9a21ee5f08"
       },
       "differential_scenarios": [
         {
@@ -65288,17 +65361,17 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "052350d348eda270306db6f2cd8f8b438e28762c6afb431d2c60e7e89b71b418"
+            "sha256": "25bfd5eec70d6ed3fb509be62f0a569c6a5458d1380f9588c14eb21f8a4bef24"
           }
         ],
-        "dependency_closure_sha256": "730a6ed879184e8c1d451304c110656d34531328778c2feb16c1e614f8ebcd48",
+        "dependency_closure_sha256": "377ad9812224ae8b7d0e6a980f6b542fbab3c1a90e997e7bfb979ffa6ba58cb6",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
         "focused_test_contract_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "owner": "protocol-backed local diagnostics",
-        "owner_contract_sha256": "1dec3fe7ef55f6dbeb1875af069b0140db79d38a00bb1c7f210f499efa0a5a10"
+        "owner_contract_sha256": "dcf146f19883653a48e3756989e521a22c9feb93b194de6bb9cf6587988bbfa5"
       },
       "differential_scenarios": [
         {
@@ -70556,7 +70629,7 @@
     "formal_performance_allowed": false,
     "implementation_blocking_ids": [],
     "implementation_ready": true,
-    "semantic_contract_sha256": "71dc09c2e9b5d7301ad2128919ee55e54495effda9deea97e61201be9e6c8424",
+    "semantic_contract_sha256": "d008aa81fc8676b076e83b4b19608da62f1cbccd4a2b6bed921ce4d86ed80d0f",
     "stage": "implementation",
     "stage_order": [
       "implementation",
