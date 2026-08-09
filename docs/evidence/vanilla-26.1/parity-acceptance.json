@@ -2,20 +2,82 @@
   "artifacts": [
     {
       "artifact_id": "audio-host-device",
-      "bbb_commit": null,
-      "capture_contract": null,
-      "evidence_class": "absent",
-      "exists": false,
+      "bbb_commit": "8cf77c32626a4f81c59c7ed834c03079fa35d066",
+      "bbb_provenance": null,
+      "capture_contract": {
+        "binary_load_identity": null,
+        "evidence_class": "diagnostic",
+        "hash_inputs": [
+          {
+            "field": "bbb.device_tracker_test.stderr.sha256",
+            "value": "8d3ac0a7d1c5a99aeff40b224bfa404c19bdefd3b705b36fd99c269679dfa6ae"
+          },
+          {
+            "field": "bbb.device_tracker_test.stdout.sha256",
+            "value": "25a6b1cdc62e5547b6f7e0b10045372b5bb2cf4a1e97257b98ca3ba3c7d883e8"
+          },
+          {
+            "field": "bbb.library_context_test.stderr.sha256",
+            "value": "53b656f0a69ee24741650be5e2a573b5016489560b255805248dd1218081de51"
+          },
+          {
+            "field": "bbb.library_context_test.stdout.sha256",
+            "value": "3b19baa9d46747409219d8a164f40460ae6947718dc2906c067484a0b527abce"
+          },
+          {
+            "field": "bbb.test_binary_sha256",
+            "value": "1f660d2430bab49114d80311448ea22e2e0645b67dd524563743fd02c57a16f4"
+          },
+          {
+            "field": "vanilla.observations[0].stderr.sha256",
+            "value": "ea16e49dffe0eaff1316ca7dc9622caea8b8cbfc97ff31a7b0b2af6e728e980f"
+          },
+          {
+            "field": "vanilla.observations[0].stdout.sha256",
+            "value": "65d31da55445fd4b53d8f2498d3679575ba2dcd253d682904d3878c960071332"
+          },
+          {
+            "field": "vanilla.observations[1].stderr.sha256",
+            "value": "5328faf655ada260178f5f0c6223eacf335d18fb32954514e1da83098e47dc3f"
+          },
+          {
+            "field": "vanilla.observations[1].stdout.sha256",
+            "value": "2878975f4074a733a377be4731c216a3870d43d489281d2ec5927389e2fe9283"
+          },
+          {
+            "field": "vanilla.receipt_sha256",
+            "value": "66df69c0d581a88058b633aaf65444f200b24868964b0833d77dd8206d8bc408"
+          }
+        ],
+        "inputs": [],
+        "kind": "audio",
+        "selected_contract": {
+          "schema": 1
+        },
+        "sha256": "32f4570d9cafcb5a285b3a6b024b75d3c8e4efcf0c1955ff8d92ff307d88dac2",
+        "tools": [
+          {
+            "capture_sha256": "25c884447508fd8feb7ce0a4b59a1110e91afad79f0698a2c2206de063d7cc37",
+            "current_sha256": "25c884447508fd8feb7ce0a4b59a1110e91afad79f0698a2c2206de063d7cc37",
+            "path": "scripts/capture-vanilla-audio-receipt.py"
+          }
+        ]
+      },
+      "evidence_class": "diagnostic",
+      "exists": true,
       "invalid_reasons": [
-        "audio artifact was not supplied"
+        "formal host-device audio receipt is invalid",
+        "diagnostic smoke cannot satisfy a formal receipt",
+        "artifact BBB commit 8cf77c32626a4f81c59c7ed834c03079fa35d066 differs from evidence commit dd5890673b4cb979b1244ecf85f37cd516c79da6"
       ],
       "kind": "audio",
       "mechanism_ids": [
         "audio-sound-manager-engine"
       ],
-      "path": null,
+      "path": "/tmp/bbb-audio-final-8cf77c326/audio-host-blocker.json",
       "scenario_ids": [],
-      "sha256": null,
+      "scoped_reuse": null,
+      "sha256": "a5f754cec63f0c31a4ffa89ce722edc642233f7111448833d430410f43e7519e",
       "valid": false
     },
     {
@@ -1033,7 +1095,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "f49c3ad7c7ebae318d3fcc22cb4a7ed9c10b1d1f8ac2b3aefbc894605daed821",
+      "sha256": "88d20fb4d2bca47d3050ced64e9c48a8ce898ef5ccea16dfa92ba20f7ce6df90",
       "valid": true
     },
     {
@@ -9894,7 +9956,8 @@
     "base_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
     "changed_paths": [
       "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
-      "docs/wiki/parity/vanilla-26.1-matrix.md"
+      "docs/wiki/parity/vanilla-26.1-matrix.md",
+      "goal.md"
     ],
     "functional_affected_mechanism_ids": [],
     "functional_changed_paths": [],
@@ -10071,6 +10134,14 @@
         "required_validation_classes": [
           "acceptance-contract"
         ]
+      },
+      {
+        "mechanism_ids": [],
+        "path": "goal.md",
+        "reasons": [
+          "unrelated"
+        ],
+        "required_validation_classes": []
       }
     ],
     "required_validation_classes": [
@@ -10097,7 +10168,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "f49c3ad7c7ebae318d3fcc22cb4a7ed9c10b1d1f8ac2b3aefbc894605daed821"
+      "sha256": "88d20fb4d2bca47d3050ced64e9c48a8ce898ef5ccea16dfa92ba20f7ce6df90"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -14883,7 +14954,7 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required audio-host-device receipt is invalid: audio artifact was not supplied",
+        "required audio-host-device receipt is invalid: formal host-device audio receipt is invalid; diagnostic smoke cannot satisfy a formal receipt; artifact BBB commit 8cf77c32626a4f81c59c7ed834c03079fa35d066 differs from evidence commit dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
