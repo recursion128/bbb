@@ -82,6 +82,30 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、percentile、1%
 low、hitch、per-frame normalization、invalid reason 与 cleanup。
 
+### 当前 `675cbfc53` exact-HEAD 一致性 sweep
+
+当前性能前置证据全部来自 clean/full-gated
+`675cbfc53e7b8e9047e0367751fb714bb673e4a6`，BBB release binary SHA-256 为
+`29729be9ff1f4b089a486ce9fbe2a65a465c94e4939f55be353aa450245e305a`。
+Vanilla→Vanilla→BBB→BBB 的三个共同 replay 重复 capture 保持 637 resident/selected chunks、
+15,288 resident/selected/uploaded sections，以及相同 replay/world/resources/settings/scene/camera
+hash。冻结 ROI、结构断言和六份 RenderDoc capture 均通过。机器摘要为：
+
+- lifecycle：`/tmp/bbb-domain-675cbfc53/lifecycle/report.json`，SHA-256
+  `e57925177f57fa53cc191b595e83e849b3daad4d35f0a4cf329861aef241c6a3`；
+- Linux platform：`/tmp/bbb-domain-675cbfc53/platform/report.json`，SHA-256
+  `2bf698e6a90b561cc7cd2f718d1df6d9538a38fd19c6ca0b3e4d9264cfb0eb1a`；
+- visual/workload：`/tmp/bbb-parity-675cbfc53-final/visual/workload-summary.json`，SHA-256
+  `dafc114e6d6f0394eec76ada60820c9415d57b3e7e59bb1e6b6833af5bcb51ef`；
+- draw：`/tmp/bbb-parity-675cbfc53-final/renderdoc/summary.json`，SHA-256
+  `50a268cb0f48b518ece6bd95e2676172320708219fa05dbae99de9501d3be63d`。
+
+这些 receipt 只签发当前 evidence-sweep 的一致性前置门禁，不继承下面历史 ABBA 的性能结论。
+两条 performance 机制继续保持 `partial`，直到绑定本次 sealed receipt 的两轮新 ABBA 和
+exact-commit GPU-duration evidence 完成。
+
+### 上一轮历史结果（不可关闭当前性能行）
+
 本轮正式 capture binary 属于 commit
 `20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c`，SHA-256 为
 `35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d`；独立 release

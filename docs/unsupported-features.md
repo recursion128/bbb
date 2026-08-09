@@ -84,27 +84,25 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   trigger owners with per-owner evidence; the six non-bidi `ClientLanguage`
   owners plus 7 manager owners and 2 trigger owners route to
   `resources-language-manager`, while `getVisualOrder` routes to
-  `ui-bidirectional-shaping`. Its implementation now carries attributable
-  pointer, physical KeyT, screen-focus, reload, options-save and broadcast
-  receipts, but remains partial until a clean full gate and exact-HEAD
-  language/platform receipt close those rows. The indexed panorama path now
+  `ui-bidirectional-shaping`. Its implementation carries attributable pointer,
+  physical KeyT, screen-focus, reload, options-save and broadcast receipts; the
+  clean/full-gated `675cbfc53` Linux platform receipt now closes the required
+  language/platform class. The indexed panorama path now
   derives 14/14 parseable GameRenderer/GuiRenderer/CubeMap/CubeMapTexture/
   Panorama owners with per-owner implementation and focused evidence; the
   record-pattern-bearing `Screen.extractBackground` owner remains bound by its
   exact source hash plus the same cube→overlay→blur→menu offscreen decision
-  test. Its remaining open reason after the implementation commit is the
-  code-freeze resource/platform/lifecycle formal receipt, not a missing owner
-  implementation. Window icons now derive all four `IconSet` methods plus
+  test. The same exact-HEAD resource/platform/lifecycle receipts close its formal
+  class; this was never an owner implementation gap. Window icons now derive all four `IconSet` methods plus
   `Window.setIcon` with per-owner evidence; the source-hashed Minecraft startup
   caller selects release/snapshot, and the Linux owner publishes all five
   standard sizes as one X11 ARGB CARDINAL property instead of degrading to
-  winit's single-icon API. That row likewise stays partial until the exact-HEAD
-  resource/platform sweep; user-waived macOS live validation is not substituted
-  for the required Linux receipt.
-  The documentation-workflow row now carries executable docs-lint/acceptance tests,
+  winit's single-icon API. Its exact Linux receipt passed on `675cbfc53`;
+  user-waived macOS live validation is not substituted for Linux evidence.
+  The documentation-workflow row carries executable docs-lint/acceptance tests,
   derives no Java owner from prose, and obtains generated counts only from inventory
-  and acceptance output. It remains `partial` until the clean gated code-freeze
-  acceptance sweep; this workflow change does not restore a false `equivalent`.
+  and acceptance output. The exact-HEAD sweep keeps it `equivalent` only through the
+  generated per-mechanism and reverse artifact mappings; no prose restores status.
 - The generated HUD/toast census covers all 107 methods in `Toast`,
   `ToastManager`, `SystemToast`, `AdvancementToast`, `RecipeToast`,
   `TutorialToast`, `NowPlayingToast`, and `PeriodicNotificationManager`, in

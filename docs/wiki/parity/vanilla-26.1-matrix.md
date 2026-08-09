@@ -11,6 +11,18 @@ Mechanism ID，但 artifact 与机制必须双向映射，失效范围由 accept
 开发期 scoped reuse 只用于精确失效；`final-performance` 要求 exact-commit consistency receipts，
 `final` stage lint 再要求每个 formal artifact 均为 exact-commit receipt。
 
+当前 domain sweep 绑定 clean/full-gated capture commit `675cbfc53e7b8e9047e0367751fb714bb673e4a6`。
+逐行是否已满足 formal receipt 不从表格中的叙述性“待采”文字推断，而由
+[`parity-acceptance.json`](../../evidence/vanilla-26.1/parity-acceptance.json) 的每机制
+`artifact_ids`、artifact→Mechanism ID 反向映射和 exact/scoped validity 唯一裁决；本轮
+lifecycle、Linux platform、visual/workload 与 draw summary SHA-256 分别为
+`e57925177f57fa53cc191b595e83e849b3daad4d35f0a4cf329861aef241c6a3`、
+`2bf698e6a90b561cc7cd2f718d1df6d9538a38fd19c6ca0b3e4d9264cfb0eb1a`、
+`dafc114e6d6f0394eec76ada60820c9415d57b3e7e59bb1e6b6833af5bcb51ef` 和
+`50a268cb0f48b518ece6bd95e2676172320708219fa05dbae99de9501d3be63d`。
+行内“待 code-freeze/domain sweep”仍表示该类正式证据是关闭前提，不表示 acceptance
+已判定它缺失；这样 closure commit 不改写被冻结的 route/reopen 语义合同。
+
 | Mechanism ID | 领域 | Vanilla owner/class | BBB owner/module | Required state/projection | 状态 | Focused test/evidence | Route / reopen condition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `startup-client-bootstrap` | startup | `Main` 6 + `Minecraft` 3，共 9 owner | `bbb-native::startup/main/client_options` | CLI/目录、render thread、窗口参数与全屏 fallback、quick-play 初始连接、启动 clean marker | `equivalent` | source `9e13409317a698c7d0bc0d406fef66a13fae422a08ee7ae92aa1b5f2374ffb49` / `b97f0086fec0a2c2e1cb7a7ca11705b94780477b748a1dbbab1ab494820d0dd8`、9-owner set `42fdd15a319c1f81120f1edda4e190ebba13951a187cd76243d0d8f213e1628f`；`--gameDir`、854×480 默认与 signed clamp、成对正值 `Options.overrideWidth/Height` 后置覆盖、`--fullscreen[Width/Height]` fallback、Java-unescaped `--quickPlayMultiplayer` 均归一到单一 native owner；Linux GUI owner 在 native init 前采用 OS 可见 `Render thread` 名；network tasks 可预布线但 connection future 受 activation barrier 阻挡，只有 simulation 已安装且 initial-load clean marker 写回后才发起 quick-play；`startedCleanly` 在资源/窗口前写 false、初始 renderer/simulation 完成后写 true，上次未完成则本次禁用 startup fullscreen，旧 preferred mode 仅在成功 final save 时移除；`getLauncherBrand` 仅在 JVM property 存在时装饰 crash/telemetry，repo-owned native launcher 无该入口并附 reopen condition；generated 9/9 per-owner evidence、startup/client-options/source-order/network-barrier/thread-name/benchmark argv focused tests；正式 lifecycle/platform receipt 待 code-freeze domain sweep | Main/Minecraft source hash或 owner set、参数/quick-play、activation/order、thread identity、dirty marker、window/fullscreen fallback 或 launcher contract 变化时重开；[ledger](../../unsupported-features.md) |
