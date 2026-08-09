@@ -31,7 +31,9 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import os
+from pathlib import Path
 import socket
 import socketserver
 import struct
@@ -85,6 +87,10 @@ DEVICE_NAME = b"bbb-seat-virtual"
 # The settle keeps a press visible across one frame of a client that is
 # uploading terrain; a twelve-millisecond tap can land entirely between two.
 DEFAULT_HOLD_SECONDS = 1.5
+# The daemon is deliberately long-lived.  Hash the source while the module is
+# loaded so a caller can distinguish the code actually running from a file
+# edited later on disk.
+LOADED_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 class SeatDeviceError(RuntimeError):
@@ -214,6 +220,8 @@ def _handle(device: VirtualSeatDevice, line: str) -> str:
     try:
         if action == "ping":
             return "ok"
+        if action == "identity":
+            return f"ok {LOADED_SOURCE_SHA256}"
         if action == "keys":
             # The daemon outlives edits to this file: it holds the key table it
             # was started with.  Answering with that table lets a caller refuse

@@ -1935,6 +1935,10 @@ class PlayableGateSeatInputTests(unittest.TestCase):
             "startup_focus_source": "compositor",
             "handshake": {
                 "focus_source": "compositor",
+                "injector_probe": {
+                    "driver": "uinput",
+                    "seat_device_source_sha256": "1" * 64,
+                },
                 "escape_presses": 1,
                 "world_slot_after_escape": 4,
             },
@@ -1987,7 +1991,7 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         evidence["seat_input"] = {
             **self.seat_input,
             "handshake": {
-                "focus_source": "compositor",
+                **self.seat_input["handshake"],
                 "escape_presses": 0,
                 "world_slot_after_escape": 4,
             },
@@ -1998,12 +2002,26 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         evidence = copy.deepcopy(self.fixture)
         evidence["seat_input"] = {
             **self.seat_input,
-            "handshake": {"focus_source": "compositor", "escape_presses": 1},
+            "handshake": {
+                **self.seat_input["handshake"],
+                "escape_presses": 1,
+                "world_slot_after_escape": None,
+            },
         }
 
         with self.assertRaisesRegex(
             playable_gate.GateFailure, "world_slot_after_escape"
         ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_missing_running_seat_device_identity_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = copy.deepcopy(self.seat_input)
+        evidence["seat_input"]["handshake"]["injector_probe"].pop(
+            "seat_device_source_sha256"
+        )
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "source hash"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
     def test_unmoved_view_fails_the_relative_motion_receipt(self):

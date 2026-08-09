@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import importlib.util
 import json
 import unittest
@@ -123,6 +124,78 @@ class SeatTargetTests(unittest.TestCase):
         self.assertEqual(receipt["logical_y"], 19)
         self.assertEqual(receipt["logical_width"], 1280)
         self.assertEqual(receipt["logical_height"], 720)
+
+
+class SeatWindowGeometryTests(unittest.TestCase):
+    """The display receipt must not race sway's tiled-to-floating configure."""
+
+    def test_floating_settles_before_an_exact_undecorated_resize(self):
+        driver = seat_inject.WlrootsDriver(driver_args(settle_seconds=0.25))
+        events = []
+        targets = iter(
+            [
+                {"id": 16, "type": "con"},
+                {
+                    "id": 16,
+                    "type": "floating_con",
+                    "rect": {"width": 800, "height": 480},
+                },
+            ]
+        )
+
+        def run(command):
+            events.append(("run", command))
+            return '[{"success":true}]'
+
+        def sleep(seconds):
+            events.append(("sleep", seconds))
+
+        with mock.patch.object(driver, "_target", side_effect=targets), mock.patch.object(
+            seat_inject, "_run", side_effect=run
+        ), mock.patch.object(seat_inject.time, "sleep", side_effect=sleep):
+            driver.window_geometry(800, 480)
+
+        self.assertEqual(
+            events,
+            [
+                ("run", ["swaymsg", "[con_id=16]", "border", "none"]),
+                ("run", ["swaymsg", "[con_id=16]", "floating", "enable"]),
+                ("sleep", 0.25),
+                (
+                    "run",
+                    [
+                        "swaymsg",
+                        "[con_id=16]",
+                        "resize",
+                        "set",
+                        "width",
+                        "800",
+                        "px",
+                        "height",
+                        "480",
+                        "px",
+                    ],
+                ),
+                ("sleep", 0.25),
+            ],
+        )
+
+    def test_a_compositor_size_mismatch_is_an_attributable_failure(self):
+        driver = seat_inject.WlrootsDriver(driver_args())
+        targets = iter(
+            [
+                {"id": 16, "type": "con"},
+                {
+                    "id": 16,
+                    "type": "floating_con",
+                    "rect": {"width": 800, "height": 455},
+                },
+            ]
+        )
+        with mock.patch.object(driver, "_target", side_effect=targets), mock.patch.object(
+            seat_inject, "_run", return_value='[{"success":true}]'
+        ), self.assertRaisesRegex(seat_inject.InjectError, "800, 455"):
+            driver.window_geometry(800, 480)
 
 
 class SeatKeyRepeatTests(unittest.TestCase):
@@ -290,6 +363,21 @@ class SeatStaleDaemonTests(unittest.TestCase):
         )
         with mock.patch.object(seat_inject.seat_device, "request", return_value=served):
             driver._require_current_key_table()
+
+    def test_a_daemon_loaded_from_changed_source_is_refused(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        stale = "ok " + "0" * 64
+        with mock.patch.object(seat_inject.seat_device, "request", return_value=stale):
+            with self.assertRaisesRegex(seat_inject.InjectError, "differs from this checkout"):
+                driver._require_current_device_identity()
+
+    def test_the_running_daemon_identity_is_returned_for_the_receipt(self):
+        driver = seat_inject.UinputDriver(driver_args())
+        current = hashlib.sha256(Path(seat_inject.seat_device.__file__).read_bytes()).hexdigest()
+        with mock.patch.object(
+            seat_inject.seat_device, "request", return_value=f"ok {current}"
+        ):
+            self.assertEqual(driver._require_current_device_identity(), current)
 
 
 class SeatVocabularyTests(unittest.TestCase):

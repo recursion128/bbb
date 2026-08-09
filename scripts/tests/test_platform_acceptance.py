@@ -80,6 +80,12 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
         return {
             "injector": "scripts/python python scripts/seat_inject.py",
             "startup_focus_source": "compositor",
+            "handshake": {
+                "injector_probe": {
+                    "driver": "uinput",
+                    "seat_device_source_sha256": "1" * 64,
+                }
+            },
             "from_slot": 0,
             "to_slot": 4,
             "server_confirmed": True,

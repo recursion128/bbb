@@ -164,6 +164,15 @@ def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
             "seat receipts must show the compositor granting focus, not the "
             f"control-plane stand-in (got {seat.get('startup_focus_source')!r})"
         )
+    handshake = seat.get("handshake")
+    injector_probe = handshake.get("injector_probe") if isinstance(handshake, dict) else None
+    if not isinstance(injector_probe, dict) or injector_probe.get("driver") != "uinput":
+        raise PlatformFailure("seat receipts do not identify the held-open uinput driver")
+    device_identity = injector_probe.get("seat_device_source_sha256")
+    if not isinstance(device_identity, str) or re.fullmatch(
+        r"[0-9a-f]{64}", device_identity
+    ) is None:
+        raise PlatformFailure("seat receipts lack the loaded seat-device source identity")
     if seat.get("control_input_writes") != 0:
         raise PlatformFailure(
             "seat receipts are void when the run also wrote synthetic input"
@@ -194,6 +203,7 @@ def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
         )
     return {
         "injector": seat.get("injector"),
+        "seat_device_source_sha256": device_identity,
         "startup_focus_source": "compositor",
         "keyboard": {"from_slot": from_slot, "to_slot": to_slot, "server_confirmed": True},
         "pointer": {

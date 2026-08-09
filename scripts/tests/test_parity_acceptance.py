@@ -649,6 +649,36 @@ mod tests {
                 ["acceptance-contract", "full-gate"],
             )
 
+            platform_records = copy.deepcopy(report["mechanisms"])
+            platform_records[0]["required_validation_classes"] = [
+                "bbb-owner",
+                "focused-evidence",
+                "full-gate",
+                "resource-platform-receipt",
+                "vanilla-owner",
+            ]
+            capture_tool_plan = change_impact_plan(
+                platform_records,
+                ["scripts/seat_inject.py"],
+                self.commit,
+                [
+                    {
+                        "artifact_id": "linux-platform",
+                        "kind": "platform",
+                        "mechanism_ids": ["fixture-equivalent"],
+                    }
+                ],
+            )
+            capture_tool = capture_tool_plan["path_impacts"][0]
+            self.assertEqual(
+                capture_tool["mechanism_ids"], ["fixture-equivalent"]
+            )
+            self.assertEqual(capture_tool["reasons"], ["capture-tool"])
+            self.assertEqual(
+                capture_tool["required_validation_classes"],
+                ["full-gate", "resource-platform-receipt"],
+            )
+
     def test_repo_artifact_generator_inputs_drive_scoped_plan_and_lint(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo, source_root = self.make_fixture(Path(temporary))

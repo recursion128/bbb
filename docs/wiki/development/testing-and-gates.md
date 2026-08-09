@@ -101,6 +101,10 @@ seat 设备刻意常驻，也就一直跑着它启动时的那份代码：注入
 同一个 seat 还驱动 **display transition receipts**：把窗口钉成固定逻辑尺寸后改 output
 scale（tiled 窗口的工作区会按同一倍数缩小，物理表面纹丝不动，改动不可观测），再用 seat 的
 F11 切换全屏；两侧都取证——compositor 确实换了 scale/给了全屏，客户端表面也确实跟上并回得来。
+固定尺寸动作由注入器机器化拥有：先去掉 compositor decoration，再将窗口切为 floating，等待
+Wayland 的 stateless-size configure 稳定后才发出无歧义的宽高 resize，并回读 compositor 的精确
+逻辑矩形。若把 floating 与 resize 背靠背发送，前一个异步 configure 会把后一个覆盖回启动尺寸；
+若保留标题栏，sway 的外框尺寸也不等于客户端 surface，二者都必须在客户端 surface 回执前失败。
 客户端没有 `ScaleFactorChanged` 分支是**忠实**而非缺口：vanilla 也没有 content-scale 回调，
 GUI scale 只由 framebuffer 尺寸算出，而 winit 每次 scale 变化后都跟一条 `Resized`。
 

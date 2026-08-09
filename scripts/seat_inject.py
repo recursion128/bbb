@@ -35,9 +35,11 @@ that is uploading terrain.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -329,13 +331,47 @@ class WlrootsDriver:
         the buffer by -- so the physical surface never moves and the transition
         is unobservable.  A window with a fixed logical size is the desktop
         case the transition is about: same window, denser buffer.
+
+        Floating a Wayland toplevel is asynchronous: sway first restores the
+        client's stateless window size, then the client acknowledges that
+        configure.  Sending the fixed resize immediately can race that restore
+        and be overwritten by it.  Make the two transitions distinct, and own
+        the compositor decoration policy so the requested logical rectangle is
+        the client surface rather than a title-bar-inclusive outer rectangle.
         """
 
+        if width <= 0 or height <= 0:
+            raise InjectError("window geometry must be positive")
         target = self._target()
         selector = f"[con_id={target['id']}]"
+        _run(["swaymsg", selector, "border", "none"])
         _run(["swaymsg", selector, "floating", "enable"])
-        _run(["swaymsg", selector, "resize", "set", str(width), str(height)])
         time.sleep(self.settle_seconds)
+        _run(
+            [
+                "swaymsg",
+                selector,
+                "resize",
+                "set",
+                "width",
+                str(width),
+                "px",
+                "height",
+                str(height),
+                "px",
+            ]
+        )
+        time.sleep(self.settle_seconds)
+
+        pinned = self._target()
+        rect = pinned.get("rect") or {}
+        logical_size = (rect.get("width"), rect.get("height"))
+        if pinned.get("type") != "floating_con" or logical_size != (width, height):
+            raise InjectError(
+                "the compositor did not pin the client to the requested logical "
+                f"geometry {(width, height)}: floating={pinned.get('type') == 'floating_con'} "
+                f"size={logical_size}"
+            )
 
 
 class XtestDriver:
@@ -513,6 +549,7 @@ class UinputDriver:
 
     def probe(self) -> dict[str, object]:
         seat_device.request(self.socket_path, "ping")
+        identity = self._require_current_device_identity()
         self._require_current_key_table()
         window = self._wlroots.probe()
         keyboard = self._zero_key_repeat_receipt(configure=True)
@@ -523,7 +560,26 @@ class UinputDriver:
             **pointer,
             "driver": self.name,
             "device_socket": self.socket_path,
+            "seat_device_source_sha256": identity,
         }
+
+    def _require_current_device_identity(self) -> str:
+        """Refuse a daemon whose loaded source differs from this checkout."""
+
+        answer = seat_device.request(self.socket_path, "identity").split()
+        if len(answer) != 2 or answer[0] != "ok" or not re.fullmatch(
+            r"[0-9a-f]{64}", answer[1]
+        ):
+            raise InjectError(
+                "the running seat device did not report a valid loaded-source identity"
+            )
+        current = hashlib.sha256(pathlib.Path(seat_device.__file__).read_bytes()).hexdigest()
+        if answer[1] != current:
+            raise InjectError(
+                "the running seat device source differs from this checkout; restart "
+                f"{seat_device.__file__} before taking a formal receipt"
+            )
+        return current
 
     def _require_current_key_table(self) -> None:
         """Refuse a daemon whose key table predates this injector.

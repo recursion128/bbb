@@ -1274,6 +1274,18 @@ def _validate_seat_input(seat_input: Any) -> None:
             "needed the focus stand-in cannot attest the seat delivered focus"
         )
     handshake = _object(seat_input.get("handshake"), "seat_input.handshake")
+    injector_probe = _object(
+        handshake.get("injector_probe"), "seat_input.handshake.injector_probe"
+    )
+    if injector_probe.get("driver") != "uinput":
+        raise GateFailure("seat input must identify the held-open uinput driver")
+    device_identity = injector_probe.get("seat_device_source_sha256")
+    if not isinstance(device_identity, str) or re.fullmatch(
+        r"[0-9a-f]{64}", device_identity
+    ) is None:
+        raise GateFailure(
+            "seat_input.handshake.injector_probe must carry the loaded seat-device source hash"
+        )
     # Zero presses is the healthy reading on a seat that publishes keyboard
     # capability from the start: the client was focused on map and never
     # paused, so there was nothing to reopen.
@@ -3650,10 +3662,11 @@ def seat_handshake(
     with _seat_input_only():
         # Check the injection path before anything depends on it, so a
         # misconfigured seat fails as itself rather than as a missing key.
-        _seat_inject(injector, "probe")
+        injector_probe = _seat_inject_json(injector, "probe")
         reach = _seat_reach_the_world(address, injector, started_at + timeout_seconds)
     return {
         "focus_source": "compositor",
+        "injector_probe": injector_probe,
         **reach,
         "duration_seconds": time.monotonic() - started_at,
     }

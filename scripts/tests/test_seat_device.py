@@ -107,6 +107,13 @@ class SeatCommandTests(unittest.TestCase):
         self.assertNotIn(" ", answer.split()[1:])
         self.assertEqual(self.device.calls, [])
 
+    def test_the_daemon_reports_the_source_identity_loaded_at_startup(self):
+        answer = seat_device._handle(self.device, "identity")
+
+        self.assertEqual(answer, f"ok {seat_device.LOADED_SOURCE_SHA256}")
+        self.assertRegex(seat_device.LOADED_SOURCE_SHA256, r"^[0-9a-f]{64}$")
+        self.assertEqual(self.device.calls, [])
+
     def test_typed_text_keeps_its_spaces(self):
         """The command's argument is the rest of the line, because a typed
         space is a key like any other."""

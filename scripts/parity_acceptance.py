@@ -192,27 +192,61 @@ CENTRAL_PATH_VALIDATION_CLASSES = (
         frozenset({"audio-host-device"}),
     ),
 )
+PROCESS_CAPTURE_TOOL_PATHS = (
+    "scripts/process",
+    "scripts/bbb_tools/execution/__init__.py",
+    "scripts/bbb_tools/execution/cli.py",
+    "scripts/bbb_tools/execution/deadline.py",
+    "scripts/bbb_tools/execution/process.py",
+)
+PLAYABLE_CAPTURE_TOOL_PATHS = (
+    "scripts/playable_gate.py",
+    "scripts/playable-gate.sh",
+    *PROCESS_CAPTURE_TOOL_PATHS,
+)
+PLATFORM_SEAT_CAPTURE_TOOL_PATHS = (
+    "scripts/input",
+    "scripts/bbb_tools/input/__init__.py",
+    "scripts/bbb_tools/input/cli.py",
+    "scripts/bbb_tools/input/contract.py",
+    "scripts/bbb_tools/input/linux_external.py",
+    "scripts/bbb_tools/input/macos_quartz.py",
+    "scripts/seat_device.py",
+    "scripts/seat_inject.py",
+)
+BENCHMARK_SHARED_TOOL_PATHS = (
+    "scripts/bbb_tools/executable_identity.py",
+    "scripts/bbb_tools/execution/deadline.py",
+    "scripts/bbb_tools/execution/process.py",
+)
 CAPTURE_TOOL_PATHS = {
     "performance": (
         "scripts/official_client_benchmark.py",
         "scripts/official-client-benchmark.sh",
         "scripts/gpu_duration_capture.py",
+        *BENCHMARK_SHARED_TOOL_PATHS,
     ),
     "workload": (
         "scripts/official_client_benchmark.py",
         "scripts/official-client-benchmark.sh",
+        *BENCHMARK_SHARED_TOOL_PATHS,
     ),
     "draw": (
         "scripts/official_client_benchmark.py",
         "scripts/official-client-benchmark.sh",
+        *BENCHMARK_SHARED_TOOL_PATHS,
     ),
     "platform": (
         "scripts/platform_acceptance.py",
         "scripts/platform-acceptance-gate.sh",
-        "scripts/playable_gate.py",
-        "scripts/playable-gate.sh",
+        *PLAYABLE_CAPTURE_TOOL_PATHS,
+        *PLATFORM_SEAT_CAPTURE_TOOL_PATHS,
     ),
-    "lifecycle": ("scripts/lifecycle_soak.py", "scripts/lifecycle-soak-gate.sh"),
+    "lifecycle": (
+        "scripts/lifecycle_soak.py",
+        "scripts/lifecycle-soak-gate.sh",
+        *PLAYABLE_CAPTURE_TOOL_PATHS,
+    ),
     "audio": ("scripts/capture-vanilla-audio-receipt.py",),
 }
 CAPTURE_INPUT_PATHS = {
@@ -451,6 +485,28 @@ def artifact_input_validation_classes(
     return classes
 
 
+def artifact_capture_validation_classes(
+    record: dict[str, object], artifact_id: str
+) -> set[str]:
+    artifact_classes = {
+        "audio-host-device": {"audio-host-device"},
+        "draw-evidence": {"draw-evidence"},
+        "lifecycle-soak": {"protocol-state-receipt"},
+        "linux-platform": {
+            "protocol-state-receipt",
+            "resource-platform-receipt",
+        },
+        "performance-abba": {"performance-abba"},
+        "visual-workload": {"visual-workload"},
+    }.get(artifact_id, set())
+    required = {
+        str(value)
+        for value in record.get("required_validation_classes", [])
+        if isinstance(value, str)
+    }
+    return {"full-gate", *(artifact_classes & required)}
+
+
 def change_impact_plan(
     records: list[dict[str, object]],
     changed_paths: Iterable[str],
@@ -469,6 +525,7 @@ def change_impact_plan(
         if isinstance(record, dict) and isinstance(record.get("mechanism_id"), str)
     }
     artifact_inputs: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    artifact_capture_paths: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
     for artifact in artifacts:
         if not isinstance(artifact, dict) or not isinstance(
             artifact.get("artifact_id"), str
@@ -494,6 +551,27 @@ def change_impact_plan(
             for mechanism_id in known_ids:
                 artifact_inputs[str(generator_input["path"])].append(
                     (artifact_id, mechanism_id)
+                )
+        kind = artifact.get("kind")
+        if not isinstance(kind, str):
+            continue
+        capture_contract = artifact.get("capture_contract")
+        tool_paths = set(CAPTURE_TOOL_PATHS.get(kind, ()))
+        input_paths = set(CAPTURE_INPUT_PATHS.get(kind, ()))
+        if isinstance(capture_contract, dict):
+            for item in capture_contract.get("tools", []):
+                if isinstance(item, dict) and isinstance(item.get("path"), str):
+                    tool_paths.add(str(item["path"]))
+            for item in capture_contract.get("inputs", []):
+                if isinstance(item, dict) and isinstance(item.get("path"), str):
+                    input_paths.add(str(item["path"]))
+        for dependency_path, reason in (
+            *((path, "capture-tool") for path in tool_paths),
+            *((path, "capture-input") for path in input_paths),
+        ):
+            for mechanism_id in known_ids:
+                artifact_capture_paths[dependency_path].append(
+                    (artifact_id, mechanism_id, reason)
                 )
     affected_ids: set[str] = set()
     required_classes: set[str] = set()
@@ -528,6 +606,13 @@ def change_impact_plan(
                 artifact_input_validation_classes(record, artifact_id)
             )
             reasons.add("artifact-input")
+        for artifact_id, mechanism_id, reason in artifact_capture_paths.get(path, []):
+            record = records_by_id[mechanism_id]
+            path_ids.add(mechanism_id)
+            path_classes.update(
+                artifact_capture_validation_classes(record, artifact_id)
+            )
+            reasons.add(reason)
         for tokens, classes in CENTRAL_PATH_VALIDATION_CLASSES:
             if not any(path_matches_rule(path, token) for token in tokens):
                 continue
