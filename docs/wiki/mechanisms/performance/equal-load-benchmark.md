@@ -100,9 +100,18 @@ hash。冻结 ROI、结构断言和六份 RenderDoc capture 均通过。机器�
 - draw：`/var/tmp/bbb-parity-d2f210805-final/renderdoc/summary.json`，SHA-256
   `5b4428a32833e6a52c6dd83fadda509b790c1837f4a6be88da1666b69e712813`。
 
-这些 receipt 只签发当前 evidence-sweep 的一致性前置门禁，不继承下面历史 ABBA 的性能结论。
-当前两条性能机制保持 `partial` / `formal-receipt-pending`，等待本轮 receipt 提交并
-full gate 后执行的两轮 Java→BBB→BBB→Java 与两侧 exact GPU trace。
+这些 receipt 签发 full-gated `a0781a7eb613e1dd08c1db4fc5d3770adf9105f1`
+evidence-sweep consistency receipt；随后完成的两轮 Java→BBB→BBB→Java 与两侧 exact GPU
+trace 汇总位于 `/var/tmp/bbb-parity-d2f210805-final/final-performance/formal-summary.json`，
+SHA-256 为 `c5930d19a414fad69cc1f402d5a8a3bd5ffc5094c732d643f06c74f0042bcb54`。
+
+当前 MangoHud application-frame 的 BBB/Vanilla p50 为 `2.737/3.356 ms`，p95 为
+`4.225/5.011 ms`，p99 为 `4.703/5.791 ms`，两侧均无正式帧 ≥33.333 ms hitch。
+按 presented frame 归一的 BBB task-clock/cycles/instructions 分别比 Vanilla 低
+`5.109%/0.693%/2.430%`。GPU submit→dispatch→finished-fence association 两侧均为 `1.0`；
+GPU execution p50 为 `1.505/2.656 ms`（Vanilla/BBB），p95 为 `3.192/3.004 ms`，p99 为
+`4.231/4.420 ms`，作为独立 GPU job 指标如实报告，不与 application-frame duration 混写。
+MangoHud 与 GPU trace 对两侧 Weston surface-commit p50 的影响均低于 1%。
 
 ### 历史 `675cbfc53` 性能回归基线（不关闭当前行）
 
@@ -254,10 +263,9 @@ AMDGPU 在当前受测内核上存在两种等价打印格式：旧格式给出
 
 ## 当前差异
 
-当前实现与一致性前置门禁没有已知差异，但两条同载性能机制仍开放：
-exact `d2f210805` 的三场景 camera/world/workload、冻结 ROI 和结构/draw 已通过，
-本轮两轮 ABBA、MangoHud/perf 与 GPU-duration association/overhead 尚待采集。frame interval、
-进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
+当前声明范围内没有已知一致性或同载性能差异。exact `d2f210805` 的三场景
+camera/world/workload、冻结 ROI、结构/draw、两轮 ABBA、MangoHud/perf 与 GPU-duration
+association/overhead 均通过。frame interval、进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
 任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，同样不能作为
 等负载或性能倍数。
 

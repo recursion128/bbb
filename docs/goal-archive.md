@@ -91,10 +91,9 @@
 
 - **2026-08-08（工作流 v9）**：跨提交 capture provenance 在原始 SHA 不同时改用
   `elf-load-image-v1` 锁定 Linux 执行映像，排除非加载 symbol/section table 与 GNU build-id 漂移。
-- **2026-08-08（工作流 v11）**：parity acceptance 采用阶段化 code freeze/domain sweep、owner/test/capture
-  hash 依赖闭包与局部失效、formal ABBA 最后执行；workflow 行拒绝从说明文字猜 owner，统计只取生成输出。
-- **2026-08-08（indexed presentation owner closure）**：14 个 panorama owner 及 5 个 window-icon
-  owner 进入 generated inventory；像素测试锁定 cubemap 行方向，X11 CARDINAL owner 保留完整五尺寸
-  icon family；两者的正式 receipt 仍留在 code-freeze resource/platform sweep。
+- **2026-08-09（工作流 v11 与 Vanilla 26.1 声明范围 closure）**：阶段化 code freeze/domain sweep、
+  owner/test/capture hash 局部失效与 final-only ABBA 全部机器执行；exact `d2f210805` lifecycle、Linux
+  platform、audio、三场景 visual/workload/draw 和两轮正式 ABBA/GPU receipt 通过，panorama/window-icon
+  等最后 owner 随矩阵逐项关闭，账本 active=0；仅保留用户豁免且有 reopen condition 的 macOS defer。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

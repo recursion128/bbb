@@ -425,7 +425,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: closed
 - p2-hud: closed
 - p3-resources: closed
-- p4-delivery: active
+- p4-delivery: maintenance
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -498,9 +498,9 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
-Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；未完成 sweep 的行保持
-`partial`，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独恢复 `equivalent`。
+状态：`maintenance`。matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
+Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；任一 receipt 失效时必须
+恢复真实开放状态，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独保留 `equivalent`。
 
 实现阶段仍一次关闭一个有界 slice；每提交只跑 affected focused/integration、fmt、lint、
 diff review/check，并在既有 checkpoint 批次 full gate。planner 从 owner/path
@@ -519,7 +519,7 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-clean/full-gated `d2f210805` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；两条 performance 行现保持 `partial` / `formal-receipt-pending`，必须先提交并 full-gate 本轮 evidence-sweep receipt，再集中运行两轮 ABBA/GPU。历史 `675cbfc53` 结果不关闭当前性能行。
+clean/full-gated `d2f210805` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；绑定 full-gated `a0781a7eb` consistency receipt 的两轮 Java→BBB→BBB→Java、MangoHud/perf 与双侧 GPU trace 亦通过，formal summary SHA-256 为 `c5930d19a414fad69cc1f402d5a8a3bd5ffc5094c732d643f06c74f0042bcb54`。两条 performance 行已具备逐机制关闭证据；历史 `675cbfc53` 结果仅保留为回归基线。
 audio schema-3 formal receipt 已在 clean/full-gated exact `d2f210805` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `5b6b5939304c957bb6e5a2dba3751503505ee03d2d0e9aa45c1c80b9ba44f474`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
