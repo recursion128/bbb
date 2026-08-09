@@ -1182,7 +1182,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "09cad4f47d5bedbb75d77359402973020df7f5a64b39c4052a86330f07018453",
+      "sha256": "2ed3b11020c4f27e18b14dc232078e0b37d525cee5b0e9ced1aa3896e331dfe9",
       "valid": true
     },
     {
@@ -10419,7 +10419,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "09cad4f47d5bedbb75d77359402973020df7f5a64b39c4052a86330f07018453"
+      "sha256": "2ed3b11020c4f27e18b14dc232078e0b37d525cee5b0e9ced1aa3896e331dfe9"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -10662,7 +10662,7 @@
       ],
       "matrix": {
         "domain": "startup",
-        "line": 28,
+        "line": 29,
         "required_state_projection": "CLI/目录、render thread、窗口参数与全屏 fallback、quick-play 初始连接、启动 clean marker",
         "route_reopen_condition": "Main/Minecraft source hash或 owner set、参数/quick-play、activation/order、thread identity、dirty marker、window/fullscreen fallback 或 launcher contract 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -10909,7 +10909,7 @@
       ],
       "matrix": {
         "domain": "startup/auth",
-        "line": 29,
+        "line": 30,
         "required_state_projection": "username、Vanilla-lenient optional `--uuid`、无效值 offline UUID fallback、严格 offline service",
         "route_reopen_condition": "User/Main/Minecraft source hash、owner set、`--uuid` lenient/fallback、identity consumer、offline-only 或 telemetry scope 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -11167,7 +11167,7 @@
       ],
       "matrix": {
         "domain": "lifecycle",
-        "line": 30,
+        "line": 31,
         "required_state_projection": "tick deadline、render handoff、terminal shutdown",
         "route_reopen_condition": "run/tick/terminal owner、dynamic tick target/catch-up cap、publication/wake transport 或 simulation→network→snapshot join order 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -11411,7 +11411,7 @@
       ],
       "matrix": {
         "domain": "lifecycle/session",
-        "line": 31,
+        "line": 32,
         "required_state_projection": "connection/level generation replacement、reconfiguration、Transfer carry、terminal drop",
         "route_reopen_condition": "replacement carry、generation、Transfer intent、cookie/listener state 或 teardown order 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -11592,7 +11592,7 @@
       ],
       "matrix": {
         "domain": "lifecycle/tasks",
-        "line": 32,
+        "line": 33,
         "required_state_projection": "ordered handoff、wake、close、stale task rejection",
         "route_reopen_condition": "Vanilla task scheduling、task producer、mailbox sequence/partition/barrier、output transport telemetry、wake generation 或 close contract 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -11786,7 +11786,7 @@
       ],
       "matrix": {
         "domain": "resources",
-        "line": 33,
+        "line": 34,
         "required_state_projection": "metadata/index id/hash/size、安全对象映射、lazy object integrity",
         "route_reopen_condition": "metadata/index codec、managed-cache layout、trust budget 或 object integrity owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -11977,7 +11977,7 @@
       ],
       "matrix": {
         "domain": "resources",
-        "line": 34,
+        "line": 35,
         "required_state_projection": "indexed→source vanilla、namespace/root/filter/metadata/lazy integrity",
         "route_reopen_condition": "provider 顺序、source hash/owner set、namespace/root/metadata、development config 可达性或 consumer resolver 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -12169,7 +12169,7 @@
       ],
       "matrix": {
         "domain": "resources",
-        "line": 35,
+        "line": 36,
         "required_state_projection": "vanilla/startup/selected/server priority、filter、stack",
         "route_reopen_condition": "任一 source hash、owner set、pack priority/filter/metadata/stack 合同、CLI/built-in selection scope 或 owned-read API 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -12739,7 +12739,7 @@
       ],
       "matrix": {
         "domain": "resources",
-        "line": 36,
+        "line": 37,
         "required_state_projection": "prepare/apply generation、失败保留旧代",
         "route_reopen_condition": "listener 注册、generation barrier 或 selected stage compiler owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -12939,7 +12939,7 @@
       ],
       "matrix": {
         "domain": "resources/lifecycle",
-        "line": 37,
+        "line": 38,
         "required_state_projection": "ordered apply/ack、atomic fallback、单次 recovery、toast、terminal abort、stale completion rejection",
         "route_reopen_condition": "reload barrier、recovery 或 failure presentation owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -13063,7 +13063,7 @@
       ],
       "matrix": {
         "domain": "resources/options",
-        "line": 38,
+        "line": 39,
         "required_state_projection": "`mipmapLevels` 启动值 0..4 进入 atlas stitch 并随 generation/reload 保留；无游戏内 options mutation surface，故仅 runtime callback 不需要",
         "route_reopen_condition": "新增游戏内配置 UI 或其他 runtime mip mutation surface 时重开",
         "status": "not-needed"
@@ -13667,7 +13667,7 @@
       ],
       "matrix": {
         "domain": "resources/network",
-        "line": 39,
+        "line": 40,
         "required_state_projection": "packet offer/response、每次 external push 的顺序 singleton batch、跨 batch failure、每 batch独立 toast identity、共享五槽 mixed-family admission/multi-slot reservation/单次 visibility sound、250 MiB/SHA-1/headers/SOCKS、`<gameDir>/downloads/<UUID>/<SHA1>` cache、JSONL receipt、20-file vacuum、直接/lazy ZIP provider、`server/%08X/%UUID` identity/reverse-push repository order、reload/recovery、pop/transfer/terminal cleanup",
         "route_reopen_condition": "任一 owner/source hash、batch/cache/provider/toast/reload/response order、pack identity、scope ruling 或 live receipt 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -14045,7 +14045,7 @@
       ],
       "matrix": {
         "domain": "resources/language",
-        "line": 40,
+        "line": 41,
         "required_state_projection": "pack metadata `putIfAbsent` 可用语言、en_us→selected、namespace/resource-stack 异常边界、deprecated translation、任意 fallback、bidi、override/filter；recipe-book 搜索按 `Locale.ROOT` 等价判定 `excitedze`，仅在 metadata 含 `en_pt` 且当前未选中时依次更新 locale、请求 reload、写 `lang`，写盘尝试完成后才广播新 `ClientInformation`；SystemToast title 在 extract 重解析而 message lines/初始 width 冻结",
         "route_reopen_condition": "新实现通过 full gate 并重采 exact-HEAD zh_cn platform/language receipt 后关闭；language/recipe owner、metadata/merge/fallback/bidi、save→broadcast 次序、screen/input reachability、title component 或 consumer owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -14192,7 +14192,7 @@
       ],
       "matrix": {
         "domain": "text",
-        "line": 41,
+        "line": 42,
         "required_state_projection": "provider order、glyph metrics/atlas、reload",
         "route_reopen_condition": "font provider/consumer 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -14352,7 +14352,7 @@
       ],
       "matrix": {
         "domain": "text",
-        "line": 42,
+        "line": 43,
         "required_state_projection": "provider graph、CJK atlas/metrics",
         "route_reopen_condition": "font codec/atlas owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -15198,7 +15198,7 @@
       ],
       "matrix": {
         "domain": "audio/resources",
-        "line": 43,
+        "line": 44,
         "required_state_projection": "159/159 owner 均有 implementation/focused-test evidence（其中 integrated-pause/manual-loop/runtime options 12 owner 另有结构化 Vanilla caller、当前范围理由和 reopen condition）；`MusicManager` 消费 startup `musicFrequency`，按实际解析的 sound resource 发布曲名并区分 STARTED/STARTED_SILENTLY 与显式 hide；其余 OpenAL pool/source/streaming/listener/device lifecycle 保持直接拥有。schema-3 正式证据必须绑定实际 ALSA playback PCM 字符设备、匹配的 `/proc/asound` 与 PCI/sysfs 身份、受控 OpenAL 环境及 plug→dmix→hw route；ELD 连接状态原样记录，null/dummy/unverified default 不能替代",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)；源码、OpenAL artifact、owner set、endpoint/config、capture schema 或正式硬件可达性变化时重开",
         "status": "equivalent"
@@ -15565,7 +15565,7 @@
       ],
       "matrix": {
         "domain": "resources/platform",
-        "line": 44,
+        "line": 45,
         "required_state_projection": "release/snapshot vanilla-only root、16/32/48/128/256 五图全有或全拒绝、X11 一次提交完整 ARGB family、Wayland 零读取 skip、startup apply/fallback",
         "route_reopen_condition": "任一 source hash/owner set、IconSet/root-provider、X11 CARDINAL encoding、platform target 或 startup fallback 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -15869,7 +15869,7 @@
       ],
       "matrix": {
         "domain": "resources/ui",
-        "line": 45,
+        "line": 46,
         "required_state_projection": "indexed/selected/filter 七图全有或全拒绝、Vanilla face/layer 与显示行方向、realtime spin、cube→overlay→blur→menu background、失败保留上一 GPU generation",
         "route_reopen_condition": "任一 source hash/owner set、face/layer/row convention、screen-background order、spin/options 或 GPU generation/rollback 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -15985,7 +15985,7 @@
       ],
       "matrix": {
         "domain": "resources/ui",
-        "line": 46,
+        "line": 47,
         "required_state_projection": "programmer-art/high-contrast ZIP",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -16063,7 +16063,7 @@
       ],
       "matrix": {
         "domain": "resources/ui",
-        "line": 47,
+        "line": 48,
         "required_state_projection": "Realms language/carousel assets",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -18545,7 +18545,7 @@
       ],
       "matrix": {
         "domain": "protocol",
-        "line": 48,
+        "line": 49,
         "required_state_projection": "phase/direction/id/class/resource id",
         "route_reopen_condition": "五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -21285,7 +21285,7 @@
       ],
       "matrix": {
         "domain": "protocol",
-        "line": 49,
+        "line": 50,
         "required_state_projection": "handler surface 与 phase contract",
         "route_reopen_condition": "任一 listener interface/source hash、owner set、GameProtocols clientbound table、phase dispatch 或 unknown-packet contract 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -23928,7 +23928,7 @@
       ],
       "matrix": {
         "domain": "protocol",
-        "line": 50,
+        "line": 51,
         "required_state_projection": "compression/cookie/custom-query/finish/disconnect；encryption 请求按 offline-only scope 以可归因错误拒绝（见 ledger）",
         "route_reopen_condition": "login handler 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -26414,7 +26414,7 @@
       ],
       "matrix": {
         "domain": "protocol",
-        "line": 51,
+        "line": 52,
         "required_state_projection": "registry/tags/known-pack FIFO → atomic validation/freeze → finish ACK → Play；invalid registry disconnects without ACK",
         "route_reopen_condition": "configuration handler source/owner set 或 ordering 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -28903,7 +28903,7 @@
       ],
       "matrix": {
         "domain": "protocol/world",
-        "line": 52,
+        "line": 53,
         "required_state_projection": "canonical apply、runtime effect、ack/diagnostics",
         "route_reopen_condition": "play handler/source hash、owner set、packet table、canonical apply/runtime effect 或 ack/diagnostics ordering 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -29298,7 +29298,7 @@
       ],
       "matrix": {
         "domain": "protocol/world",
-        "line": 53,
+        "line": 54,
         "required_state_projection": "ordered packet→state→consumer",
         "route_reopen_condition": "packet side-effect owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -31773,7 +31773,7 @@
       ],
       "matrix": {
         "domain": "protocol/input",
-        "line": 54,
+        "line": 55,
         "required_state_projection": "action/ack/command invocation and state guards",
         "route_reopen_condition": "任一 call-site source hash、owner set、serverbound table、action/prediction/ack ordering 或 CLI/offline scope 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -31940,7 +31940,7 @@
       ],
       "matrix": {
         "domain": "protocol",
-        "line": 55,
+        "line": 56,
         "required_state_projection": "no listener/canonical-world projection",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -32047,7 +32047,7 @@
       ],
       "matrix": {
         "domain": "registries",
-        "line": 56,
+        "line": 57,
         "required_state_projection": "id/name/bootstrap order",
         "route_reopen_condition": "built-in bootstrap 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -32231,7 +32231,7 @@
       ],
       "matrix": {
         "domain": "registries",
-        "line": 57,
+        "line": 58,
         "required_state_projection": "session order、holders/tags、fallback source",
         "route_reopen_condition": "synchronized set/codec 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -32341,7 +32341,7 @@
       ],
       "matrix": {
         "domain": "registries",
-        "line": 58,
+        "line": 59,
         "required_state_projection": "no server-remappable identity",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -32574,7 +32574,7 @@
       ],
       "matrix": {
         "domain": "world/lifecycle",
-        "line": 59,
+        "line": 60,
         "required_state_projection": "exact level identity、cache invalidation、transport delegation",
         "route_reopen_condition": "constructor/cache owner、same-dimension respawn、clear/terminal order 或 stale-work contract 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -32789,7 +32789,7 @@
       ],
       "matrix": {
         "domain": "world/environment",
-        "line": 60,
+        "line": 61,
         "required_state_projection": "runsNormally 门内 tickTime、SetTime 无条件重同步+clock handleUpdates、rain/thunder snap、skyFlash 原始 tick 衰减+hide 门+SKY_COLOR/LIGHT_FACTOR layer",
         "route_reopen_condition": "tick 序、clock rate/重同步、weather snap 语义或 flash layer 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -32999,7 +32999,7 @@
       ],
       "matrix": {
         "domain": "world/chunk",
-        "line": 61,
+        "line": 62,
         "required_state_projection": "同步 chunk 替换/丢弃、bounded 每帧 light drain、light-apply 后 terrain 失效与首次可渲染、pending 生命周期",
         "route_reopen_condition": "chunk replace/unload 顺序、drain 公式、initial-light readiness 门或 pending 生命周期变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -33236,7 +33236,7 @@
       ],
       "matrix": {
         "domain": "world/entities",
-        "line": 62,
+        "line": 63,
         "required_state_projection": "add/re-add/remove、loaded/frozen/passenger tick、id/UUID/list query、multipart/render projection、simulation-distance death tick、team/scale/override local push",
         "route_reopen_condition": "ClientLevel entity callback/tick order、generated push dispatch、bounds/team/pushability 或 entity generation owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -33482,7 +33482,7 @@
       ],
       "matrix": {
         "domain": "world/environment",
-        "line": 63,
+        "line": 64,
         "required_state_projection": "667×(16/32) 采样、block dispatch→fluid+1/10 drip→marker→full-block 门内 ambient 顺序、drip 三分支、destroy=2001/breaking/fireworks batch",
         "route_reopen_condition": "采样循环/半径、doAnimateTick 顺序、marker 物品集或 drip/destroy/firework batch 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -33706,7 +33706,7 @@
       ],
       "matrix": {
         "domain": "world/session",
-        "line": 64,
+        "line": 65,
         "required_state_projection": "respawn 全携带、listener 重置只清 scoreboard/recipes（features cookie 携带、brewing/fuel registry 重建覆盖）、block/fluid ticks 恒空（无 scheduled-tick 模拟）、无 world socket",
         "route_reopen_condition": "listener carry/reset 分界、服务归属、出站路径或 scheduled-tick 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -33878,7 +33878,7 @@
       ],
       "matrix": {
         "domain": "world/maps",
-        "line": 65,
+        "line": 66,
         "required_state_projection": "create-if-absent(scale/locked)+bounds 校验 patch merge+retained bytes、item-frame 消费、dimension-respawn 整表携带、login 空表重建",
         "route_reopen_condition": "patch merge、respawn 携带、login 清空或 map 消费路径变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -34062,7 +34062,7 @@
       ],
       "matrix": {
         "domain": "world/effects",
-        "line": 66,
+        "line": 67,
         "required_state_projection": "global 门（1023/1028/1038 camera 相对 2.0 距离、dragon death 音量 5）、非全局 jukebox/seeded 音效/粒子共享 random 链、explosion tracker 确定性 512 cap 按代清理",
         "route_reopen_condition": "global 门、random 链、explosion 交接或事件效果路径变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -34297,7 +34297,7 @@
       ],
       "matrix": {
         "domain": "world/lifecycle",
-        "line": 67,
+        "line": 68,
         "required_state_projection": "login Normal 默认+ChangeDifficulty 覆盖+respawn 携带、spawn world-border 钳制（越界→border center MOTION_BLOCKING/minY）、horizon=is_flat?minY:63 的 dark disc 门、void darkness onset=is_flat?1:32 的 fog 基值",
         "route_reopen_condition": "difficulty/spawn 生命周期、钳制公式、horizon/onset 常量或 disc 形状变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -34490,7 +34490,7 @@
       ],
       "matrix": {
         "domain": "rendering/world",
-        "line": 68,
+        "line": 69,
         "required_state_projection": "两条提取路径同址：ordinary 走 section gate + per-renderer view distance（default 64/gateway 256），`shouldRenderOffScreen` 成员（beacon beam/bounding box/test instance）绕开 section/frustum，只走各自 `shouldRender`（水平 `renderDistance*16`／球面 96／两者并集）",
         "route_reopen_condition": "新增 off-screen renderer 或两条提取路径分界变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -34772,7 +34772,7 @@
       ],
       "matrix": {
         "domain": "rendering/world",
-        "line": 69,
+        "line": 70,
         "required_state_projection": "同态 setBlock 全 no-op、±1 block/section/range 展开、destroy progress 合并、空 section occlusion 传播、player 邻近优先调度",
         "route_reopen_condition": "同态 no-op、邻域展开、destroy 合并/过期或 occlusion 派生变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -34990,7 +34990,7 @@
       ],
       "matrix": {
         "domain": "rendering/effects",
-        "line": 70,
+        "line": 71,
         "required_state_projection": "override→无条件、>1024 sqr camera 距离丢弃、MINIMAL 拒绝、always-show 1/10 升档与 DECREASED 1/3 降档共享 random 链",
         "route_reopen_condition": "override 合成、距离门、两级随机降档或粒子提交路径变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -35293,7 +35293,7 @@
       ],
       "matrix": {
         "domain": "rendering/environment",
-        "line": 71,
+        "line": 72,
         "required_state_projection": "blend 窗口（vanilla 默认 radius 2、固定 y 平面）、tint cache 折叠为按需派生+remesh 失效、未加载列诚实剔除（vs PLAINS fabricate，记录差异）、cardinal shade、leaf tint source",
         "route_reopen_condition": "blend 窗口/半径语义、tint cache 归属、PLAINS fallback 可见分歧或 leaf tint source 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -35494,7 +35494,7 @@
       ],
       "matrix": {
         "domain": "audio/world",
-        "line": 72,
+        "line": 73,
         "required_state_projection": "包驱动 seeded（except 门恒真、positioned 无 delay）、entity-bound silent 门、本地 per-call nextLong seed、私有 playSound 延迟（>100 sqr→0.5 tick/block）",
         "route_reopen_condition": "seed 链、delay 公式、silent/except 门或 audio 提交路径变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -35662,7 +35662,7 @@
       ],
       "matrix": {
         "domain": "diagnostics/world",
-        "line": 73,
+        "line": 74,
         "required_state_projection": "\"Affected level\" 九项 vanilla 顺序活值（players/chunk stats/dimension/time/spawn/brand/type/entity count/weather）、失败边界同代附加、`Chunks[C]` 行、恒 \"ClientLevel\" identity",
         "route_reopen_condition": "报告段落、chunk-stats 格式、spawn location 转写或失败边界附加路径变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -35845,7 +35845,7 @@
       ],
       "matrix": {
         "domain": "player/lifecycle",
-        "line": 74,
+        "line": 75,
         "required_state_projection": "构造器/resetPos 由 login/respawn 重建链唯一拥有（keep-data 分支）、respawn 请求经 death screen 20 tick 锁+PerformRespawn 命令单发、tickDeath 由 death 动画计数（health<=0 起递增、倒地渲染）拥有",
         "route_reopen_condition": "重建分支、respawn 命令序或 death 计数语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -35977,7 +35977,7 @@
       ],
       "matrix": {
         "domain": "player/state",
-        "line": 75,
+        "line": 76,
         "required_state_projection": "heal/hurtTo 由 health packet 应用链与 mob-interact 本地 heal 预测拥有、setExperienceValues 由 experience packet 应用链拥有、experience display start tick 由 contextual bar（locator/jump 优先级）拥有",
         "route_reopen_condition": "health flash、heal 预测或 contextual bar 优先级语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -36121,7 +36121,7 @@
       ],
       "matrix": {
         "domain": "movement/net",
-        "line": 76,
+        "line": 77,
         "required_state_projection": "per-tick 移动报文循环（position reminder 间隔、rotation-only 不重置 reminder）、sprint start/stop 转换命令（队列失败保基线重试）、abilities 命令（flying toggle 抑制重复）均经唯一命令链",
         "route_reopen_condition": "报文序、reminder 间隔或 sprint/abilities 命令语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -36346,7 +36346,7 @@
       ],
       "matrix": {
         "domain": "movement/player",
-        "line": 77,
+        "line": 78,
         "required_state_projection": "输入归一（0.98/慢速属性/unit-square）、sprint 起停链+sprint 粒子（on-pos/clamp/-4dx 速度）、squish 逃逸、minor-collision 角度门、auto-jump、ladder sneak 抑制",
         "route_reopen_condition": "输入归一、sprint 链、squish/auto-jump/minor-collision 判定或 movement tick 归属变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -36566,7 +36566,7 @@
       ],
       "matrix": {
         "domain": "movement/vehicle",
-        "line": 78,
+        "line": 79,
         "required_state_projection": "ride tick（motion 清零序）、riding jump（saddle 门+charge 释放命令）、jumpable/sprintable vehicle 判定、SetPassengers mount/dismount 链；shouldRotateWithMinecart 唯一消费点在 experimental `minecart_improvements` 移动路径——flag 判定链已有、实验乘客旋转未实现（默认服务器不可达，有界差异）",
         "route_reopen_condition": "mount 语义、jump charge 曲线变化或实现 experimental minecart 移动时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -36745,7 +36745,7 @@
       ],
       "matrix": {
         "domain": "player/identity",
-        "line": 79,
+        "line": 80,
         "required_state_projection": "permission entity event（24-28 op level→gamemaster 门）、system/overlay chat 经唯一应用链、chat visibility 过滤（hidden/system 门）、client text filtering 启动项",
         "route_reopen_condition": "permission 事件区间、chat visibility 语义或 text filtering 消费面变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -36851,7 +36851,7 @@
       ],
       "matrix": {
         "domain": "player/UI",
-        "line": 80,
+        "line": 81,
         "required_state_projection": "game event 链唯一拥有 show-death-screen/limited-crafting/game-mode（切 spectator 清零垂直速度）、reduced-debug-info 经 entity event 链",
         "route_reopen_condition": "game event 语义或 flag 消费面变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -37024,7 +37024,7 @@
       ],
       "matrix": {
         "domain": "player/interaction",
-        "line": 81,
+        "line": 82,
         "required_state_projection": "start/stop/hand 由 use-prediction 本地状态（set/take drain、hand 记录）唯一拥有、use 减速与乘子由 movement 输入归一链拥有、synced LIVING_ENTITY_FLAGS（is_using/off_hand 掩码）由 entity store 投影链 reconcile",
         "route_reopen_condition": "use 状态机、减速乘子或 flags 掩码语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -37234,7 +37234,7 @@
       ],
       "matrix": {
         "domain": "player/inventory",
-        "line": 82,
+        "line": 83,
         "required_state_projection": "drop（Q/Ctrl-Q 本地预测+swing 门+spectator 剔除）、close（Esc/E 唯一 close 命令链）、open-inventory（E 键含 server-controlled mount）、creative drop throttler（+20/1280、tick -1、仅 creative increment；creative 下普通容器 THROW 未查 throttler 为有界差异）、recipe highlight 守卫删除、tutorial hook（vanilla 26.1 空方法）挂 click 调用链",
         "route_reopen_condition": "drop 预测、throttler 语义、close 命令序或 tutorial hook 行为在 vanilla 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -37460,7 +37460,7 @@
       ],
       "matrix": {
         "domain": "player/UI",
-        "line": 83,
+        "line": 84,
         "required_state_projection": "九面各经唯一 `sync_*_editor`/screen 链打开：sign（packet→editor state→range guard 单次提交）、book（use→text rules→unsigned submission）、command/minecart-command（authoritative data 等待→exact-state 单发）、structure/jigsaw（preload→clamp/exact-set 单发）、test/test-instance（mode cycle/present-response size）、dialog（stack 挂起恢复 native screen）",
         "route_reopen_condition": "任一 editor 打开链、提交 packet 语义或 dialog stack 行为变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -37707,7 +37707,7 @@
       ],
       "matrix": {
         "domain": "player/audio",
-        "line": 84,
+        "line": 85,
         "required_state_projection": "crit/magicCrit 经 Animate 4/5 tracking-emitter（vanilla `sendToTrackingPlayersAndSelf` 含发起者，本地粒子多 1 RTT 视觉延迟）、portal transition intensity（+0.0125/-0.05/clamp、0→rising PORTAL_TRIGGER 音效、容器关闭、spinning `portal*20+nausea*7` 加权）、mood/underwater enter-exit/water-vision/local playSound 既有 owner",
         "route_reopen_condition": "crit 本地判定语义变化、portal intensity 曲线变化或 nether portal screen overlay 渲染接入时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -37895,7 +37895,7 @@
       ],
       "matrix": {
         "domain": "player/interaction",
-        "line": 85,
+        "line": 86,
         "required_state_projection": "pick/raycast/filter 经唯一 crosshair resolver（item attack-range 优先+block 距离 clamp+双 range fallback、fluid 剔除、pickable/marker 判定）、view rot 经 camera pose tick 端点、visual-rot/rope-hold 经 leash 端点链、controlled-camera 经 SetCamera follows_player 判定",
         "route_reopen_condition": "resolver 优先级、attack-range 语义、camera pose 插值或 spectate camera 判定变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -38087,7 +38087,7 @@
       ],
       "matrix": {
         "domain": "interaction/player",
-        "line": 86,
+        "line": 87,
         "required_state_projection": "game type 由 GameEvent CHANGE_GAME_MODE 唯一设置、login/respawn 玩家重建链（keep-data 分支保留 sprint/pose/attribute）、abilities 由 game_type 唯一映射、F3+F4 switcher 开门判定",
         "route_reopen_condition": "game type 事件语义、respawn keep-data 分支或 switcher 门变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -38289,7 +38289,7 @@
       ],
       "matrix": {
         "domain": "interaction/player",
-        "line": 87,
+        "line": 88,
         "required_state_projection": "canHurtPlayer/hasExperience 的 survival/adventure HUD 门在 renderer publication 提取链、miss-time 由 attack sentinel 链拥有、spectator 与 server-controlled-inventory 各有唯一 world 判定 fn",
         "route_reopen_condition": "HUD 门、miss-time 或 spectator/mount 判定语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -38553,7 +38553,7 @@
       ],
       "matrix": {
         "domain": "interaction/world",
-        "line": 88,
+        "line": 89,
         "required_state_projection": "restrict/border/item+permission gate/start/abort/progress/finish/sound/overlay、atomic queue admission/rollback",
         "route_reopen_condition": "owner/symbol、border/order、item/block membership、queue commit barrier、prediction correction 或 stage consumer 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -38775,7 +38775,7 @@
       ],
       "matrix": {
         "domain": "interaction/world",
-        "line": 89,
+        "line": 90,
         "required_state_projection": "signed allocation、predict-before-send、inclusive ack/correction、teleport/respawn lifetime、bounded rollback",
         "route_reopen_condition": "owner/source hash、permit barrier、signed ack/wrap、teleport/level lifetime 或 matching packet 顺序变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -38904,7 +38904,7 @@
       ],
       "matrix": {
         "domain": "interaction/inventory",
-        "line": 90,
+        "line": 91,
         "required_state_projection": "held-slot 命令 change-only 发送（world 基线不变则不发，即 ensureHasSentCarriedItem 语义）",
         "route_reopen_condition": "held-slot 基线或发送时序语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -39042,7 +39042,7 @@
       ],
       "matrix": {
         "domain": "interaction/item",
-        "line": 91,
+        "line": 92,
         "required_state_projection": "use/useOn 经 reserved use-item 命令与 use-prediction 链（bucket 序列先例）、release 经 ReleaseUseItem action（trident hold 阈值）",
         "route_reopen_condition": "use 命令序或预测语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -39190,7 +39190,7 @@
       ],
       "matrix": {
         "domain": "interaction/entity",
-        "line": 92,
+        "line": 93,
         "required_state_projection": "attack/piercing 经 attack-entity 命令+swing/stab、interact 经 interact-entity 命令、spectate 经 spectate-entity 命令（spectator 左键）",
         "route_reopen_condition": "命令序或 spectate 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -39352,7 +39352,7 @@
       ],
       "matrix": {
         "domain": "interaction/menu",
-        "line": 93,
+        "line": 94,
         "required_state_projection": "click/button/recipe/slot-state 各经唯一 queue 命令（slot-state 与 click 原子合发）",
         "route_reopen_condition": "命令原子性或 slot 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -39469,7 +39469,7 @@
       ],
       "matrix": {
         "domain": "interaction/creative",
-        "line": 94,
+        "line": 95,
         "required_state_projection": "add/drop 经 creative submit 链（instabuild/feature 门、drop throttler +20/1280）",
         "route_reopen_condition": "creative 提交计划或 throttler 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -39598,7 +39598,7 @@
       ],
       "matrix": {
         "domain": "interaction/pick",
-        "line": 95,
+        "line": 96,
         "required_state_projection": "中键 pick 经 crosshair 命中路由 block/entity pick 命令、include-data 由修饰键决定",
         "route_reopen_condition": "pick 路由或 include-data 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -39744,7 +39744,7 @@
       ],
       "matrix": {
         "domain": "interaction/input",
-        "line": 96,
+        "line": 97,
         "required_state_projection": "左键攻击（attack-blocked 门、entity attack+swing、miss-time sentinel）、按住持续破坏（using-item/piercing 抑制）、右键 use（bucket 预测/instrument/equippable 优先级）均经 mouse.rs 唯一路由链",
         "route_reopen_condition": "路由优先级、miss-time 或 use 预测语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -40561,7 +40561,7 @@
       ],
       "matrix": {
         "domain": "entities",
-        "line": 97,
+        "line": 98,
         "required_state_projection": "fixed ids、spawn/schema/behavior coverage",
         "route_reopen_condition": "entity registry 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -41596,7 +41596,7 @@
       ],
       "matrix": {
         "domain": "entities/rendering",
-        "line": 98,
+        "line": 99,
         "required_state_projection": "entity type→renderer/state/model",
         "route_reopen_condition": "renderer registration 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -42632,7 +42632,7 @@
       ],
       "matrix": {
         "domain": "entities/rendering",
-        "line": 99,
+        "line": 100,
         "required_state_projection": "layer order/state/material",
         "route_reopen_condition": "layer registration 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -43653,7 +43653,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 100,
+        "line": 101,
         "required_state_projection": "每个注册的 `BlockEntityType` 对应唯一 BBB 投影 owner：sign/hanging_sign、chest 三件、spawner 两件共用同一 owner，item display 四件走 `item_models/block_entity.rs` 的 per-renderer transform，piston 走 `entity_block_attachments`，beacon/structure_block/test_instance 走各自 off-screen 通道",
         "route_reopen_condition": "vanilla 新增/删除 `BlockEntityRenderers.register` 调用、某 owner 的投影搬家或实体 ROI/draw 结构变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -43937,7 +43937,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 101,
+        "line": 102,
         "required_state_projection": "type→provider/sprite/runtime effect",
         "route_reopen_condition": "provider registration 或固定 state facts 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -44804,7 +44804,7 @@
       ],
       "matrix": {
         "domain": "ui/rendering",
-        "line": 102,
+        "line": 103,
         "required_state_projection": "每帧 HUD 抽取顺序由单一 `renderer_frame` 路径承担；五槽 mixed-family FIFO 与独立 `NowPlayingToast` 分离拥有。NowPlaying 消费实际 sound key、冻结 notification multiplier、5s/600ms 动画、25ms 门控音符色、动画 sprite、hideGui、PauseScreen/static/draft-icon 顺序均有决策测试；SystemToast title 在 extract 按当前 language 重解析而 lines/width 冻结；首次多人 tick 的 social TutorialToast 消费并写回 `joinedFirstServer`，冻结当前重绑键文案，按 fully-visible wall time 直达进度且仅在 `>8000ms` 隐藏，社交键先 hide 再开屏；`onFileDropFailure` 在官方 Java 25 Linux/Wayland 转换链不可达，且唯一成功路径 consumer `PackSelectionScreen` 不在 CLI-only 范围",
         "route_reopen_condition": "code-freeze HUD visual/draw formal receipt 待采；任一 owner/source hash、Java/LWJGL/GLFW/JDK 转换链、screen scope、抽取顺序、slot/visibility sound、timed lifetime/持久化顺序或门控变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -45311,7 +45311,7 @@
       ],
       "matrix": {
         "domain": "ui/rendering",
-        "line": 103,
+        "line": 104,
         "required_state_projection": "全部 vitals 走 `WorldStore::hud_camera_player_vitals` 单一投影：本地与远端 camera player 共用同一 heart type/排布判据（`Gui.HeartType.forPlayer`/`getSprite`），armor/food/air/absorption 计数、饥饿抖动与 regeneration 心跳、vehicle heart 行数与心行优先级一致",
         "route_reopen_condition": "owner/symbol、heart type 优先级、心行/气泡排布常量或 camera player vitals 投影搬家时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -45601,7 +45601,7 @@
       ],
       "matrix": {
         "domain": "ui/rendering",
-        "line": 104,
+        "line": 105,
         "required_state_projection": "hotbar slot 装饰、off-hand 侧别与选中物品名只在 camera player 是本地玩家时投影，旁观非玩家实体按 vanilla 隐藏；crosshair 走 `canRenderCrosshairForSpectator` 与 attack-indicator 判据，contextual info 与准星共用同一命中目标通道",
         "route_reopen_condition": "owner/symbol、spectator/camera 门控、attack indicator 或 contextual info 判据变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -45913,7 +45913,7 @@
       ],
       "matrix": {
         "domain": "ui/rendering",
-        "line": 105,
+        "line": 106,
         "required_state_projection": "vignette 亮度随 darkness 效果与光照插值、portal/nausea overlay 走各自 pipeline、spyglass 与 pumpkin/frozen/fire/water overlay 纹理与顺序一致；状态效果图标按 ambient/blinking 与 sprite 解析投影",
         "route_reopen_condition": "owner/symbol、overlay 顺序/亮度曲线、effect 图标 sprite 解析或 pipeline 数量变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -46316,7 +46316,7 @@
       ],
       "matrix": {
         "domain": "ui/rendering",
-        "line": 106,
+        "line": 107,
         "required_state_projection": "title/subtitle 计时与 `clear`、overlay message 淡出、chat 与 sound subtitle 位置（screen 是否 in-game UI 决定 before-screen 还是 deferred）、tab list、scoreboard sidebar、boss bar 与 debug overlay 均逐 owner 投影；saving indicator 对外部客户端恒为 vanilla no-op（`getSingleplayerServer()` 为 null）",
         "route_reopen_condition": "owner/symbol、title/overlay 计时常量、subtitle 位置判据或 tab/scoreboard/boss 排布变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -46775,7 +46775,7 @@
       ],
       "matrix": {
         "domain": "rendering/frame",
-        "line": 107,
+        "line": 108,
         "required_state_projection": "update→extract→render 单一帧路径与 `FRAME_STEPS` 顺序、per-tick 渲染态推进（camera spin/totem/boss darkening 走 runsNormally 门控）、framerate limiter（10..260、iconified/AFK/menu 节流）、resize 重配置、clearLevel 触发 `resetData`（维度重生不触发）、setLevel 重绑 cardinal lighting",
         "route_reopen_condition": "owner/symbol、FRAME_STEPS 顺序、tick 门控、framerate 节流表或 resetData 归属变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -47246,7 +47246,7 @@
       ],
       "matrix": {
         "domain": "rendering/extract",
-        "line": 108,
+        "line": 109,
         "required_state_projection": "window/options/camera/gui 每帧采样进不可变 RendererFrame（唯一 commit 点）、hideGui 门 renderNames、improvedTransparency && !panoramic 门 shader transparency、submit/feature dispatcher 与 entity model 层归属",
         "route_reopen_condition": "owner/symbol、extract 顺序、RendererFrame 唯一 commit 点或 transparency 判据变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -47745,7 +47745,7 @@
       ],
       "matrix": {
         "domain": "rendering/level",
-        "line": 109,
+        "line": 110,
         "required_state_projection": "level pass 后 hud3d 投影+深度清屏再画手/totem、hurt tilt 与 view bob 矩阵、block outline 门（hideGui/camera player/spectator）、night vision/boss darkening 标量、waypoint locator 的 point/horizon 投影、SetCamera 实体切换与 spectator glow 判据",
         "route_reopen_condition": "owner/symbol、hand pass 深度清屏、outline/glow 门控或投影公式变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -48367,7 +48367,7 @@
       ],
       "matrix": {
         "domain": "rendering/effects",
-        "line": 110,
+        "line": 111,
         "required_state_projection": "相机实体 post effect（creeper/spider/enderman）check/set/clear/F4 toggle、menu blur、totem `displayItemActivation`（40 tick/随机偏移）、UI shader 预编译、lightmap level/UI 双源、glint alpha/速度进 uniform、diffuse lighting 方向、panorama 纹理注册与滚速；auto-screenshot 仅 `isLocalServer()`（外部客户端恒 false，vanilla no-op）",
         "route_reopen_condition": "owner/symbol、post-effect 门控、totem 动画常量、lightmap 双源或 auto-screenshot 前提变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -48650,7 +48650,7 @@
       ],
       "matrix": {
         "domain": "rendering/lifecycle",
-        "line": 111,
+        "line": 112,
         "required_state_projection": "resource、target、level、resize rebuild lifetime",
         "route_reopen_condition": "owner/symbol、prepare/apply 边界、RAII/resource/level generation 或 resize rollback 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -48968,7 +48968,7 @@
       ],
       "matrix": {
         "domain": "rendering/terrain",
-        "line": 112,
+        "line": 113,
         "required_state_projection": "view section、frustum、compile、dirty、fade、translucent resort",
         "route_reopen_condition": "当前实现提交通过 full gate 并重绑 exact-commit evidence 后复核；owner/symbol、750ms/0.3 决策、shader consumer 或 generation lifetime 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -49302,7 +49302,7 @@
       ],
       "matrix": {
         "domain": "rendering/frame",
-        "line": 113,
+        "line": 114,
         "required_state_projection": "regular/improved target、depth、combine、presentation order",
         "route_reopen_condition": "owner/symbol、option/panoramic gate、target/depth/combine order 或 post-generation rollback 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -49677,7 +49677,7 @@
       ],
       "matrix": {
         "domain": "rendering/scene",
-        "line": 114,
+        "line": 115,
         "required_state_projection": "entity、block entity、breaking、outline extraction/submission",
         "route_reopen_condition": "owner/symbol、resource material flag、selection/crack gate 或 submission order 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -49932,7 +49932,7 @@
       ],
       "matrix": {
         "domain": "rendering/effects",
-        "line": 115,
+        "line": 116,
         "required_state_projection": "weather order、id/position/highest stage、20/400 expiry、freeze/teardown/budget",
         "route_reopen_condition": "owner/symbol、weather/effect order、expiry/budget、world projection 或 teardown lifetime 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -50197,7 +50197,7 @@
       ],
       "matrix": {
         "domain": "rendering/diagnostics",
-        "line": 116,
+        "line": 117,
         "required_state_projection": "visible/total/SD、single collect/finalize、generation/stale clear、phase/depth",
         "route_reopen_condition": "owner/symbol、GUI extract order、gizmo producer/lifetime、phase/depth 或 generation reset 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -50439,7 +50439,7 @@
       ],
       "matrix": {
         "domain": "rendering/light",
-        "line": 117,
+        "line": 118,
         "required_state_projection": "emissive/emission、block/sky、packed/normalized query",
         "route_reopen_condition": "owner/symbol、state facts、查询坐标、fallback 或生产 resolver 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -50658,7 +50658,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 118,
+        "line": 119,
         "required_state_projection": "occlusion/light facts",
         "route_reopen_condition": "ROI/state table、occlusion/light projection 或 mesh owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -50935,7 +50935,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 119,
+        "line": 120,
         "required_state_projection": "material layer、section buffer、quad centroid/index sort state",
         "route_reopen_condition": "render-layer bootstrap、sort state 或 visible workload 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -51187,7 +51187,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 120,
+        "line": 121,
         "required_state_projection": "neighbor/overlay/tint/light",
         "route_reopen_condition": "fluid ROI、neighbor/overlay/tint/light projection 或 renderer 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -51510,7 +51510,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 121,
+        "line": 122,
         "required_state_projection": "None/Water/Lava/PowderSnow、FOV、color/darkness、distance、sky/effect precedence",
         "route_reopen_condition": "camera/fog owner、medium 采样顺序、FOV、color/darkness、distance、sky/effect precedence 或 renderer uniform 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -51715,7 +51715,7 @@
       ],
       "matrix": {
         "domain": "ui/menu",
-        "line": 122,
+        "line": 123,
         "required_state_projection": "menu type→screen、state/action lifecycle",
         "route_reopen_condition": "`MenuScreens`/`MenuType` 注册或 native screen lifecycle 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -51892,7 +51892,7 @@
       ],
       "matrix": {
         "domain": "ui",
-        "line": 123,
+        "line": 124,
         "required_state_projection": "edit、recent/draft/history、permission、suggestion、component interaction、narration、send、render、lifecycle",
         "route_reopen_condition": "ChatScreen/ChatAbilities/recent-draft 或 input/control/live 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -52080,7 +52080,7 @@
       ],
       "matrix": {
         "domain": "ui",
-        "line": 124,
+        "line": 125,
         "required_state_projection": "delay、normal/hardcore、draft Edit/Discard、report return、URL、narration、resource/render/live lifecycle",
         "route_reopen_condition": "DeathScreen/reporting previous-screen 或 playable UI-respawn 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -52238,7 +52238,7 @@
       ],
       "matrix": {
         "domain": "ui",
-        "line": 125,
+        "line": 126,
         "required_state_projection": "bounded styled reason/details、phase title、atomic teardown、buttons、narration、non-Esc lifecycle",
         "route_reopen_condition": "terminal outcome、screen lifecycle 或 live kick 合同变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -52380,7 +52380,7 @@
       ],
       "matrix": {
         "domain": "ui",
-        "line": 126,
+        "line": 127,
         "required_state_projection": "菜单网格/feedback/custom-additions、链接确认与 draftReportHandled 保持；startup `musicToast=pause`/`pause_and_toast` 仅在真实 PauseScreen+show-menu+final music volume>0 时左上静态呈现，feedback/confirm 子屏按非 PauseScreen 路由，normal toast 被 PauseScreen 抑制，NowPlaying 在 tooltip 后、draft-report sprite 前提交",
         "route_reopen_condition": "PauseScreen screen-type、`rendersNowPlayingToast`、hideGui、draftReportHandled 或 draw order 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -52561,7 +52561,7 @@
       ],
       "matrix": {
         "domain": "ui",
-        "line": 127,
+        "line": 128,
         "required_state_projection": "per-screen 状态替换（鼠标 grab/release 由 runtime_wants_cursor 统一判定、null→restore-chat 由 dialog stack 先例、teardown 全关 screen）、setOverlay 唯一用途 reload LoadingOverlay 由 reload barrier 拥有、canInterruptScreen 唯一消费点 debug-options 快捷键由打开门拥有",
         "route_reopen_condition": "screen 替换语义、reload overlay 或 interrupt 门变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -52665,7 +52665,7 @@
       ],
       "matrix": {
         "domain": "ui/text",
-        "line": 128,
+        "line": 129,
         "required_state_projection": "ICU4J Arabic shaping option 8、default LTR/RTL paragraph level、visual bidi runs、mirroring、UTF-16 style metadata",
         "route_reopen_condition": "shaping owner、ICU version、paragraph level、run/mirroring 或 UTF-16 metadata 语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -53029,7 +53029,7 @@
       ],
       "matrix": {
         "domain": "accessibility",
-        "line": 129,
+        "line": 130,
         "required_state_projection": "进程式 TTS 后端承接四条 narration 入口（chat/system-chat/system 队列 + system-now 打断），状态门控与 vanilla 相同；Ctrl+B 循环发 `NARRATOR_TOGGLE` toast 并按启动冻结的 voice*master 音量朗读；RAII Drop 收割子进程；`checkStatus`/`NarratorInitException` 的 MessageBox 中止面按 CLI 显式后端记录为警告继续；IME preedit 按焦点 owner 路由并在焦点切换时双向移交（`lastPreeditEvent` 常存 + resubmit/清除）",
         "route_reopen_condition": "owner/symbol、narration 门控、toast/音量链或 TTS 生命周期变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -53196,7 +53196,7 @@
       ],
       "matrix": {
         "domain": "accessibility",
-        "line": 130,
+        "line": 131,
         "required_state_projection": "`arboard` 后端读写：读失败折叠为 `None`（vanilla `FORMAT_UNAVAILABLE`→`\"\"` 等价）、空文本写直接吞掉、写失败回报 `success:false`；GLFW 8 KiB scratch-buffer push 路径与 surrogate 过滤按 Rust `String` 良构性记录为结构性不需要",
         "route_reopen_condition": "owner/symbol、剪贴板后端或空文本/错误折叠语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -53322,7 +53322,7 @@
       ],
       "matrix": {
         "domain": "ui/text",
-        "line": 131,
+        "line": 132,
         "required_state_projection": "ICU4X 2.2 承接 CLDR 文本/zone 名/每 locale 历法与数字系统，native 承接全部数字字段与 ICU4J 周算法（`w`/`W`/`Y`/`e` 含 WEEK_OF_MONTH 最小 0），generated 表承接 quarter 名/flexible day period `B` 分段与三宽度名/GMT 零格式/`VVV` unknown-city/root 地区码，ULocale 解析含 `@calendar=`/`ca`/`nu` 关键字与 root 回落，1s 结果缓存同 vanilla 更新间隔",
         "route_reopen_condition": "模式字母语义、CLDR 修订、周算法、day-period 规则或 zone 名回落链变化时以 `scripts/local-time-icu4j/` oracle 重跑重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -53429,7 +53429,7 @@
       ],
       "matrix": {
         "domain": "items/ui",
-        "line": 132,
+        "line": 133,
         "required_state_projection": "vanilla 26.1 全部传真实 living owner 的消费者已接线：第一人称/GUI（`minecraft.player`）、第三人称双手/头戴/holding 实体（`entity_model_context_entity_type` 映射）、scoping avatar 的 spyglass held-to-eye（HEAD context、头骨 xRot 钳 `[-π/6, π/2]`、`translateToHead`+眼侧偏移，melee swing 门控回手部）；SmithingScreen 预览按 vanilla 故意 null",
         "route_reopen_condition": "新 consumer 传 real living owner、held-to-eye 门控或 clamp 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -53720,7 +53720,7 @@
       ],
       "matrix": {
         "domain": "input",
-        "line": 133,
+        "line": 134,
         "required_state_projection": "winit `KeyboardInput`/`Ime` 事件经单一 mailbox 进 `apply_key`/`apply_ime_*`，screen 优先级级联后走 fullscreen→screenshot→Ctrl+B→编辑器→debug→Escape→keybind 分派；修饰键从按键沿踪、last-input-type 只在 screen 打开时记录；IME preedit 按当前焦点 owner 路由并在焦点切换时双向移交（`lastPreeditEvent` 常存，gain resubmit、lose 清除）",
         "route_reopen_condition": "owner/symbol、分派优先级、修饰键判据或 IME 路由/移交变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -53974,7 +53974,7 @@
       ],
       "matrix": {
         "domain": "input",
-        "line": 134,
+        "line": 135,
         "required_state_projection": "完整 F3 组合表按 vanilla 优先级（chunk-debug→feature-count→映射键）；黄色 feedback 与红色 warning 前缀、`/setblock`+`/summon` 复制经 server query 事务、debug-crash 倒计时 1s 首报+ceil 秒递减+10s panic（Ctrl 持有走 `youJustLostTheGame` 式 abort）；F3 组合比较硬编码 KeyCode 且启动时警告不可重绑（见 ledger 记录）",
         "route_reopen_condition": "owner/symbol、F3 组合表、倒计时常量或 feedback 装饰变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -54309,7 +54309,7 @@
       ],
       "matrix": {
         "domain": "input",
-        "line": 135,
+        "line": 136,
         "required_state_projection": "screen-vs-game 按键分派、touchscreen 外 attack/use/pick 路由、`(s*0.6+0.2)^3` 转向链与 invert/scoping、discrete/wheel scroll 缩放与 hotbar 残差、Locked→Confined 捕获与 cursor 释放、物理光标缓存单次 GUI 投影；`simulateRightClick`（macOS quirk）、`onDrop`（仅 pack 屏消费）、`drawDebugMouseInfo`（dev flag）与 first-move 抑制为记录在案的 scope 决策",
         "route_reopen_condition": "owner/symbol、转向/scroll 公式、捕获 fallback 或投影比率变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -54622,7 +54622,7 @@
       ],
       "matrix": {
         "domain": "input",
-        "line": 136,
+        "line": 137,
         "required_state_projection": "60 mapping 生成 catalog 承担注册/默认/类别，`key_<name>` 覆盖默认并整批重建，press-edge 即 click/consume、toggle 四键 flip-on-press、screen 关闭恢复 keyboard-bound toggle、respawn 重置全部 toggle、keybind 组件解析当前绑定键名；conflict/排序 UI 面留 options 非目标记录",
         "route_reopen_condition": "owner/symbol、catalog 生成器、toggle 语义或绑定解析链变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -54912,7 +54912,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 137,
+        "line": 138,
         "required_state_projection": "`build_window` 单 owner 承担创建、`CloseRequested`→单次 Shutdown、`LoopExiting` 冻结 teardown、平台名映射与 typed error；winit 的成功文件事件在当前范围无可达 consumer；官方 Java 25 Linux/Wayland 的 GLFW NUL-terminated path→LWJGL replacement decoder→UnixPath 链不能产生 `InvalidPathException`，故失败计数亦不可观察",
         "route_reopen_condition": "code-freeze Linux platform formal receipt 待采；Java/LWJGL/GLFW/JDK 转换链、winit 版本/事件/后端、支持平台范围、screen surface 或创建/关闭顺序变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -55166,7 +55166,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 138,
+        "line": 139,
         "required_state_projection": "单一确定性 mode policy（exact winit mode+exclusive 后端才 Exclusive，否则 borderless；Wayland 恒 borderless）、`fullscreenResolution` 仅启动行（无 runtime writer，dirty 重放面记录为不可达）、vsync 过渡后重放、rawMouseInput 有界警告、毫赫兹→GLFW 整数刷新率",
         "route_reopen_condition": "owner/symbol、mode policy、vsync 重放或分辨率解析变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -55485,7 +55485,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 139,
+        "line": 140,
         "required_state_projection": "非零 resize 清 minimized 并同步发布逻辑 GUI 面（ceiling division），零尺寸只标 minimized；`calculateScale` 逐级增长+manual cap+unicode 奇数上取；焦点丢失清输入并释放捕获、严格 >500ms 失焦暂停在步末裁决；物理/逻辑尺寸各归其 owner、线宽走物理宽度；resize 失败带新旧尺寸入 crash report",
         "route_reopen_condition": "owner/symbol、scale 公式、resize/焦点/暂停判据变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -55667,7 +55667,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 140,
+        "line": 141,
         "required_state_projection": "标题 `Minecraft* <version> - Multiplayer` 按连接态 diff 后设置、光标经 `selectCursor` 门控（不允许时强制 Default、跳过冗余变更）；图标平台族与提交合同由资源机制行独占",
         "route_reopen_condition": "owner/symbol、标题构成、光标门控或 icon route 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -55913,7 +55913,7 @@
       ],
       "matrix": {
         "domain": "persistence",
-        "line": 141,
+        "line": 142,
         "required_state_projection": "options.txt 行格式（首个 `:` 切分、坏行跳过、未知 key 不回写）、由 `Options.java` 派生的 key/编码/默认值表、直写非原子",
         "route_reopen_condition": "vanilla 新增/改写 options.txt key 或改变 save 顺序时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -56203,7 +56203,7 @@
       ],
       "matrix": {
         "domain": "persistence",
-        "line": 142,
+        "line": 143,
         "required_state_projection": "effective render distance、final sound volume、background color/opacity、menu blur、model part、camera type、sensitivity 编码、effective max anisotropy（`min(1<<bit, device max)` 只在 `ANISOTROPIC` 下生效）、cloud status 进 cloud pass",
         "route_reopen_condition": "这些派生规则的 vanilla 算术变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -56798,7 +56798,7 @@
       ],
       "matrix": {
         "domain": "persistence",
-        "line": 143,
+        "line": 144,
         "required_state_projection": "既有 player-info/broadcast/crash/fullscreen/font/graphics/pack/sound-device 消费链保留；stored startup `musicToast`/`musicFrequency` 使用 Vanilla enum 编码与默认值，显式 CLI 保持启动优先级，分别进入独立 NowPlaying runtime 与 MusicManager schedule；`joinedFirstServer` 也在启动消费并由首个 multiplayer tick 同批写回；仅 in-game widget captions/callbacks 有带源码依据的 scope ruling",
         "route_reopen_condition": "这些 owner、enum codec/default、runtime callback 可达性、preset、pack/audio/resource reload 或 adapter filtering 规则变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -56993,7 +56993,7 @@
       ],
       "matrix": {
         "domain": "persistence",
-        "line": 144,
+        "line": 145,
         "required_state_projection": "完整 raw string map 在任何 current codec/startup binding 前按文件 `version`（缺失/非法为 0）执行 17 个 `DataFixTypes.OPTIONS` registration；schema 边界、LWJGL2 112 键码、rename/overwrite、Java number/rounding 与异常时整组 defaults 保留均复刻 owner",
         "route_reopen_condition": "`Options.dataFix`、`DataFixTypes.OPTIONS` registration、14 个 `Options*Fix` source hash、schema version/order 或 Java 数值/异常语义变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -57144,7 +57144,7 @@
       ],
       "matrix": {
         "domain": "persistence",
-        "line": 145,
+        "line": 146,
         "required_state_projection": "servers.dat 读写、`get(String)` 按地址复用、quick-play hidden 新建与 16 上限、单条保存、`Util.safeReplaceFile`",
         "route_reopen_condition": "新增服务器选择屏、或 `ServerData.write` 字段变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -57236,7 +57236,7 @@
       ],
       "matrix": {
         "domain": "identity/security",
-        "line": 146,
+        "line": 147,
         "required_state_projection": "pre-connect prepare、refresh、play-local signed session lifetime（2026-08-05 用户裁决 online 模式为非目标，实现已移除）",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)；仅当 offline-only scope 决策被推翻时重开",
         "status": "not-needed"
@@ -57374,7 +57374,7 @@
       ],
       "matrix": {
         "domain": "identity",
-        "line": 147,
+        "line": 148,
         "required_state_projection": "profile trust、all-of skin/cape/elytra、retained CPU→GPU generation",
         "route_reopen_condition": "trust、URL identity、all-of fallback 或 generation owner 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -58052,7 +58052,7 @@
       ],
       "matrix": {
         "domain": "security",
-        "line": 148,
+        "line": 149,
         "required_state_projection": "chatVisibility 四 restriction 与 restrictions screen、isBlocked（非本地且 hidden 或 blocked）的三处 chat 消费、matched-name 走 discovered-names map、block-list 会话 generation 门控（离线恒 inactive；online 面已按 scope 决策移除）、reporting environment/draft/evidence 链与 pause/death draft 确认、入站签名验证与 last-seen ack；出站签名按 vanilla 无 key pair 语义恒空",
         "route_reopen_condition": "owner/symbol、offline 服务边界、draft 确认门、签名/ack 语义或 block-list 会话生命周期变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -58232,7 +58232,7 @@
       ],
       "matrix": {
         "domain": "diagnostics",
-        "line": 149,
+        "line": 150,
         "required_state_projection": "first/suppressed ownership、bounded report、atomic save、ordered panic/timeout shutdown",
         "route_reopen_condition": "新 fatal ingress、report budget/publish 或 shutdown order 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -62193,7 +62193,7 @@
       ],
       "matrix": {
         "domain": "performance",
-        "line": 150,
+        "line": 151,
         "required_state_projection": "replay/world/resource/settings hashes",
         "route_reopen_condition": "workload、binary identity、tool、camera/scene hash 或性能阈值变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -62481,7 +62481,7 @@
       ],
       "matrix": {
         "domain": "performance",
-        "line": 151,
+        "line": 152,
         "required_state_projection": "client context submit→fence chain",
         "route_reopen_condition": "采集链、fence context 配对、ring 归类、runner 授权、association 或 overhead 阈值变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -62694,7 +62694,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 152,
+        "line": 153,
         "required_state_projection": "interactive event matrix",
         "route_reopen_condition": "seat 链路、platform manifest、focused 决策、receipt 判据或声明行变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -62802,7 +62802,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 153,
+        "line": 154,
         "required_state_projection": "winit/wgpu/audio/input fixtures",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "deferred-external"
@@ -62893,7 +62893,7 @@
       ],
       "matrix": {
         "domain": "platform",
-        "line": 154,
+        "line": 155,
         "required_state_projection": "平台面已删除，构建即拒绝",
         "route_reopen_condition": "该 scope 裁决被推翻时重开",
         "status": "not-needed"
@@ -62981,7 +62981,7 @@
       ],
       "matrix": {
         "domain": "out-of-scope/ui",
-        "line": 155,
+        "line": 156,
         "required_state_projection": "official title/menu owner classification",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -63091,7 +63091,7 @@
       ],
       "matrix": {
         "domain": "out-of-scope/singleplayer",
-        "line": 156,
+        "line": 157,
         "required_state_projection": "singleplayer generation/save/server mirror",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -63236,7 +63236,7 @@
       ],
       "matrix": {
         "domain": "out-of-scope/realms",
-        "line": 157,
+        "line": 158,
         "required_state_projection": "Realms network/UI presentation",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -63421,7 +63421,7 @@
       ],
       "matrix": {
         "domain": "out-of-scope/options",
-        "line": 158,
+        "line": 159,
         "required_state_projection": "in-game options UI/save trigger、widget caption 文本",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -63533,7 +63533,7 @@
       ],
       "matrix": {
         "domain": "out-of-scope/ui",
-        "line": 159,
+        "line": 160,
         "required_state_projection": "手工排序/删除/取消隐藏等列表编辑（`replace` 在 26.1 无调用方）",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -63619,7 +63619,7 @@
       ],
       "matrix": {
         "domain": "out-of-scope/telemetry",
-        "line": 160,
+        "line": 161,
         "required_state_projection": "telemetry event/upload lifecycle",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -63734,7 +63734,7 @@
       ],
       "matrix": {
         "domain": "inventory/support",
-        "line": 161,
+        "line": 162,
         "required_state_projection": "accessor-only source owner classification",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64079,7 +64079,7 @@
       ],
       "matrix": {
         "domain": "inventory/support",
-        "line": 162,
+        "line": 163,
         "required_state_projection": "source-empty client hook classification",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64165,7 +64165,7 @@
       ],
       "matrix": {
         "domain": "debug",
-        "line": 163,
+        "line": 164,
         "required_state_projection": "local server/chunk/entity mirror",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64305,7 +64305,7 @@
       ],
       "matrix": {
         "domain": "resources/ui",
-        "line": 164,
+        "line": 165,
         "required_state_projection": "external dynamic textures",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64421,7 +64421,7 @@
       ],
       "matrix": {
         "domain": "movement",
-        "line": 165,
+        "line": 166,
         "required_state_projection": "exact local movement authority",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64533,7 +64533,7 @@
       ],
       "matrix": {
         "domain": "interaction",
-        "line": 166,
+        "line": 167,
         "required_state_projection": "dragon breath/enchantment/animal/audio exact exclusions",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64665,7 +64665,7 @@
       ],
       "matrix": {
         "domain": "ui/menu",
-        "line": 167,
+        "line": 168,
         "required_state_projection": "mismatched-id/empty-handler behavior",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64745,7 +64745,7 @@
       ],
       "matrix": {
         "domain": "rendering",
-        "line": 168,
+        "line": 169,
         "required_state_projection": "exact official noop/not-observable owners",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64885,7 +64885,7 @@
       ],
       "matrix": {
         "domain": "items",
-        "line": 169,
+        "line": 170,
         "required_state_projection": "synchronized conditional/server-only effects",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -64969,7 +64969,7 @@
       ],
       "matrix": {
         "domain": "items",
-        "line": 170,
+        "line": 171,
         "required_state_projection": "no unregistered target-version property",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -65053,7 +65053,7 @@
       ],
       "matrix": {
         "domain": "rendering/tests",
-        "line": 171,
+        "line": 172,
         "required_state_projection": "no cross-driver full-frame golden hash",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -65135,7 +65135,7 @@
       ],
       "matrix": {
         "domain": "diagnostics",
-        "line": 172,
+        "line": 173,
         "required_state_projection": "no server-private/integrated/options-only state",
         "route_reopen_condition": "[ledger](../../unsupported-features.md)",
         "status": "not-needed"
@@ -65605,7 +65605,7 @@
       ],
       "matrix": {
         "domain": "workflow",
-        "line": 173,
+        "line": 174,
         "required_state_projection": "owner mapping、evidence、bilateral routes、stale checks",
         "route_reopen_condition": "Vanilla owner corpus、census、executable identity 或 acceptance schema 变化时重开；[ledger](../../unsupported-features.md)",
         "status": "equivalent"
@@ -65846,7 +65846,7 @@
       ],
       "matrix": {
         "domain": "workflow",
-        "line": 174,
+        "line": 175,
         "required_state_projection": "唯一 Mechanism ID、双向 route、owner/source/BBB evidence、exact-output stale check、工作流行不得从说明文字猜测 Java owner",
         "route_reopen_condition": "新 inventory/generator 通过 exact-output tests、full gate 与 code-freeze domain sweep 后恢复 `equivalent`；目标版本、canonical owner、blocker artifact、dependency closure、receipt identity、acceptance schema 或 matrix/ledger/docs-lint 规则变化时重开；[文档工作流](../development/documentation-workflow.md)、[ledger](../../unsupported-features.md)",
         "status": "equivalent"
