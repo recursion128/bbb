@@ -3945,9 +3945,16 @@ impl Renderer {
             // resident section. Prune owners which left residency now. A newly resident owner
             // remains culled until the next native frame projection publishes membership and
             // fade together; recompiling an existing owner retains its current projection.
-            self.terrain_section_visibility
-                .retain(|owner, _| desired_sections.contains(owner));
+            let mut has_fading = false;
+            self.terrain_section_visibility.retain(|owner, visibility| {
+                let retained = desired_sections.contains(owner);
+                has_fading |= retained && *visibility < 1.0;
+                retained
+            });
+            self.terrain_section_visibility_has_fading = has_fading;
             self.terrain_visible_section_order
+                .retain(|owner| desired_sections.contains(owner));
+            self.terrain_nearby_visible_section_order
                 .retain(|owner| desired_sections.contains(owner));
         }
 
@@ -4065,9 +4072,13 @@ impl Renderer {
         self.counters.terrain_index_upload_bytes = 0;
 
         let mut translucent_changed = false;
+        let mut removed_fading = false;
         for owner in removed {
             self.terrain_section_revisions.remove(&owner);
-            self.terrain_section_visibility.remove(&owner);
+            removed_fading |= self
+                .terrain_section_visibility
+                .remove(&owner)
+                .is_some_and(|visibility| visibility < 1.0);
             self.terrain_visible_section_order
                 .retain(|candidate| *candidate != owner);
             self.terrain_nearby_visible_section_order
@@ -4080,6 +4091,12 @@ impl Renderer {
                 remove_resident_terrain_section(&mut self.terrain_translucent, owner);
             self.counters.terrain_removed_owners += removed_translucent;
             translucent_changed |= removed_translucent != 0;
+        }
+        if removed_fading {
+            self.terrain_section_visibility_has_fading = self
+                .terrain_section_visibility
+                .values()
+                .any(|visibility| *visibility < 1.0);
         }
 
         for (owner, revision, layers, mesh_camera_position) in changes {
@@ -5814,6 +5831,29 @@ mod tests {
         assert_eq!(renderer.counters().terrain_removed_owners, 1);
         assert_eq!(renderer.counters().visible_sections, 0);
         assert_eq!(renderer.terrain_opaque.len(), 1);
+        assert!(!renderer.terrain_section_visibility_has_fading);
+        renderer.set_terrain_section_states(2, &[]);
+        assert!(!renderer.terrain_section_visibility_has_fading);
+
+        renderer.set_terrain_section_states(
+            3,
+            &[TerrainSectionRenderState {
+                owner: west_section,
+                visibility: 0.4,
+                nearby: true,
+            }],
+        );
+        assert!(renderer.terrain_section_visibility_has_fading);
+        let no_chunks: [(
+            TerrainChunkMeshOwner,
+            &[(i32, u64)],
+            &TerrainSectionMeshLayers,
+            [f32; 3],
+        ); 0] = [];
+        renderer.synchronize_terrain_section_mesh_layer_refs(0, no_chunks);
+        assert!(!renderer.terrain_section_visibility_has_fading);
+        assert!(renderer.terrain_nearby_visible_section_order.is_empty());
+        renderer.set_terrain_section_states(4, &[]);
     }
 
     #[test]
