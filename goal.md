@@ -519,8 +519,8 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-clean/full-gated `ae371a58a` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；两条 performance 行现保持 `partial` / `formal-receipt-pending`，必须先提交并 full-gate 本轮 evidence-sweep receipt，再集中运行两轮 ABBA/GPU。历史 `675cbfc53` 结果不关闭当前性能行。
-audio schema-3 formal receipt 已在 clean/full-gated exact `ae371a58a` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `a00ea9a745d66f27916bc1272dae1bb5f47cae78a34a8559f77e8941c40c9b86`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。
+clean/full-gated `d2f210805` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；两条 performance 行现保持 `partial` / `formal-receipt-pending`，必须先提交并 full-gate 本轮 evidence-sweep receipt，再集中运行两轮 ABBA/GPU。历史 `675cbfc53` 结果不关闭当前性能行。
+audio schema-3 formal receipt 已在 clean/full-gated exact `d2f210805` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `5b6b5939304c957bb6e5a2dba3751503505ee03d2d0e9aa45c1c80b9ba44f474`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
 步逐 crate 实测第二平台类型检查，但通过的 cross-check 是构建证据、不是发布验收。

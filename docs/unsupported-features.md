@@ -75,7 +75,7 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   HEAD with `--require-final-head`; closure-only `docs/**`/`goal.md` sealing is allowed
   only while the evidence-sweep semantic-contract hash remains identical. Scoped
   development reuse cannot weaken delivery.
-  The exact `ae371a58a` lifecycle/platform/visual/draw sweep is current and
+  The exact `d2f210805` lifecycle/platform/visual/draw sweep is current and
   passed, but both performance rows remain `partial` with the derived reason
   `formal-receipt-pending` until a sealed consistency receipt is followed by a
   fresh two-round ABBA/GPU capture. The `675cbfc53` summary remains historical
