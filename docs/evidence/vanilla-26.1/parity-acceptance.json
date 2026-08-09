@@ -373,8 +373,6 @@
         "items-server-owned-effects",
         "items-versioned-property-surface",
         "movement-remote-type-exceptions",
-        "performance-gpu-execution-duration",
-        "performance-official-equal-load",
         "platform-macos-release",
         "platform-windows-release",
         "protocol-framing-no-world-state",
@@ -1035,27 +1033,209 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "26d53bed4758a9ef5c635b21b0e06d3d949f768a724487eda7996b21d983d3ac",
+      "sha256": "f49c3ad7c7ebae318d3fcc22cb4a7ed9c10b1d1f8ac2b3aefbc894605daed821",
       "valid": true
     },
     {
       "artifact_id": "performance-abba",
-      "bbb_commit": null,
-      "capture_contract": null,
-      "evidence_class": "absent",
-      "exists": false,
-      "invalid_reasons": [
-        "performance artifact was not supplied"
-      ],
+      "bbb_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
+      "bbb_provenance": {
+        "binary_identical": false,
+        "binary_sha256": "35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d",
+        "capture_binary": {
+          "bytes": 79496472,
+          "path": "/tmp/bbb-parity-20bcefd49-final/provenance/bbb-native-20bcefd49",
+          "runtime_image_sha256": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64",
+          "sha256": "35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d"
+        },
+        "capture_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
+        "evidence_binary": {
+          "bytes": 79496472,
+          "path": "/tmp/bbb-target-platform.W7OsHB/release/bbb-native",
+          "runtime_image_sha256": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64",
+          "sha256": "bdfbf2bf608adacfa12b742a85470b6f00c0c48dc08757e669c46d780671a768"
+        },
+        "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
+        "identity_kind": "elf-load-image-v1",
+        "runtime_image_identical": true,
+        "runtime_image_sha256": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64"
+      },
+      "capture_contract": {
+        "binary_load_identity": {
+          "binary_identical": false,
+          "binary_sha256": "35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d",
+          "capture_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
+          "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
+          "identity_kind": "elf-load-image-v1",
+          "runtime_image_identical": true,
+          "runtime_image_sha256": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64",
+          "scope": "captures belong to capture_commit; evidence_commit is accepted only because its independently rebuilt bbb-native execution image is identical"
+        },
+        "evidence_class": "formal",
+        "hash_inputs": [
+          {
+            "field": "artifacts.renderdoc_evidence_sha256",
+            "value": "e2ea4805a8892656fb1fda16d1d5af16880301b67e6a5a6abe84bd45beb86f37"
+          },
+          {
+            "field": "artifacts.workload_evidence_sha256",
+            "value": "d07e190f0dda635735d78f988900cfff38e4313b52b068a38d37677b1be51368"
+          },
+          {
+            "field": "bbb_binary_sha256",
+            "value": "35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d"
+          },
+          {
+            "field": "bbb_provenance.binary_sha256",
+            "value": "35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d"
+          },
+          {
+            "field": "bbb_provenance.capture_binary.runtime_image_sha256",
+            "value": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64"
+          },
+          {
+            "field": "bbb_provenance.capture_binary.sha256",
+            "value": "35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d"
+          },
+          {
+            "field": "bbb_provenance.evidence_binary.runtime_image_sha256",
+            "value": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64"
+          },
+          {
+            "field": "bbb_provenance.evidence_binary.sha256",
+            "value": "bdfbf2bf608adacfa12b742a85470b6f00c0c48dc08757e669c46d780671a768"
+          },
+          {
+            "field": "bbb_provenance.runtime_image.sha256",
+            "value": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64"
+          },
+          {
+            "field": "bbb_provenance.runtime_image_sha256",
+            "value": "c5ffeef9796699357a13ddff12cebee6e87f1e772baaa43aadeaab77b34d6d64"
+          },
+          {
+            "field": "contracts.replay_hash",
+            "value": "5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388"
+          },
+          {
+            "field": "contracts.resource_hash",
+            "value": "8aa8d02d6806ef9396564b83b7b64f73014ea654d8059a1b8ae6b09f3f67df0c"
+          },
+          {
+            "field": "contracts.scene_contract_hash",
+            "value": "d3fdd2005e6a03d6531aa82b2044472ac8c74dbc28f276b8e2bfd5ca9d63aad2"
+          },
+          {
+            "field": "contracts.settings_hash",
+            "value": "5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd"
+          },
+          {
+            "field": "contracts.world_hash",
+            "value": "6ab2ef99bd6c816b68e54608142206f38aa6f3644f087c477d2367ce50173fd1"
+          },
+          {
+            "field": "gpu_duration.clients.bbb.summary_sha256",
+            "value": "e5cacdaee87e6159757550e860285d588b7609026162be5ab8b439bc503d19e9"
+          },
+          {
+            "field": "gpu_duration.clients.vanilla.summary_sha256",
+            "value": "1b14649daef942b7bfec90d1e1ab3d88f3ac13af1e28fc594667151e7ac96e7c"
+          },
+          {
+            "field": "prerequisites.consistency_receipt.full_gate_receipt_sha256",
+            "value": "c848a9f4f0bc333c52379c5a82207a6f3d9d687e4b77d7b47d456237382c5eed"
+          },
+          {
+            "field": "prerequisites.consistency_receipt.semantic_contract_sha256",
+            "value": "be95b939fa6610a62b01a8b51fa6f3f76e2108d8790b690f2b6749e6f0dcf26e"
+          },
+          {
+            "field": "prerequisites.consistency_receipt.sha256",
+            "value": "ccf30cb6cec2956a10f403827cfa8ef076c7f8aac407453ff37c0feed5b687b4"
+          },
+          {
+            "field": "server_camera_log_sha256",
+            "value": "f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a"
+          }
+        ],
+        "inputs": [
+          {
+            "capture_sha256": "8ca86cd112d5d6279835dd03a4f924fec6f766f1793ae900bf45a3f09dcae644",
+            "current_sha256": "8ca86cd112d5d6279835dd03a4f924fec6f766f1793ae900bf45a3f09dcae644",
+            "path": "scripts/fixtures/official-client-benchmark/replay-26.1.json"
+          }
+        ],
+        "kind": "performance",
+        "selected_contract": {
+          "contracts": {
+            "replay_hash": "5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388",
+            "resource_hash": "8aa8d02d6806ef9396564b83b7b64f73014ea654d8059a1b8ae6b09f3f67df0c",
+            "scene_contract_hash": "d3fdd2005e6a03d6531aa82b2044472ac8c74dbc28f276b8e2bfd5ca9d63aad2",
+            "settings_hash": "5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd",
+            "world_hash": "6ab2ef99bd6c816b68e54608142206f38aa6f3644f087c477d2367ce50173fd1"
+          },
+          "metric_scope": "MangoHud present-call frame intervals p50/p95/p99, 1% low, hitches and GPU telemetry; perf process totals are normalized per captured frame and are not CPU-frame percentiles",
+          "prerequisites": {
+            "consistency_receipt": {
+              "bbb_evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
+              "full_gate_receipt_sha256": "c848a9f4f0bc333c52379c5a82207a6f3d9d687e4b77d7b47d456237382c5eed",
+              "path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+              "report_commit": "f01ed702e51d9753914ea1d3ae6836a1f76e5e1b",
+              "semantic_contract_sha256": "be95b939fa6610a62b01a8b51fa6f3f76e2108d8790b690f2b6749e6f0dcf26e",
+              "sha256": "ccf30cb6cec2956a10f403827cfa8ef076c7f8aac407453ff37c0feed5b687b4",
+              "stage": "evidence-sweep"
+            }
+          },
+          "schema": 1,
+          "server_camera_log_sha256": "f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a"
+        },
+        "sha256": "0a6cfb2f7e64b47a8e37fcf8de26b7edfa8e002e097c86ecf7cd563abfb39981",
+        "tools": [
+          {
+            "capture_sha256": "72094b963068de9c7d59a70c39c72cc12f6028a1455914907d655a9dc04163bc",
+            "current_sha256": "72094b963068de9c7d59a70c39c72cc12f6028a1455914907d655a9dc04163bc",
+            "path": "scripts/official_client_benchmark.py"
+          },
+          {
+            "capture_sha256": "92be59d16fd9140be5c7957bfa4d0aebf14c008d5707360e15b67770069dbd13",
+            "current_sha256": "92be59d16fd9140be5c7957bfa4d0aebf14c008d5707360e15b67770069dbd13",
+            "path": "scripts/official-client-benchmark.sh"
+          },
+          {
+            "capture_sha256": "ddbc440bf2a4717cdc0d57ba24e8bfdcc704b7e64265b30cf8aa05e90d69bb81",
+            "current_sha256": "ddbc440bf2a4717cdc0d57ba24e8bfdcc704b7e64265b30cf8aa05e90d69bb81",
+            "path": "scripts/gpu_duration_capture.py"
+          },
+          {
+            "capture_sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576",
+            "current_sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576",
+            "path": "scripts/bbb_tools/executable_identity.py"
+          },
+          {
+            "capture_sha256": "bea744d83fe513c58869b282455f11f2fb008f8047c0ea0a52e6150c5300a6c8",
+            "current_sha256": "bea744d83fe513c58869b282455f11f2fb008f8047c0ea0a52e6150c5300a6c8",
+            "path": "scripts/bbb_tools/execution/deadline.py"
+          },
+          {
+            "capture_sha256": "6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7",
+            "current_sha256": "6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7",
+            "path": "scripts/bbb_tools/execution/process.py"
+          }
+        ]
+      },
+      "evidence_class": "formal",
+      "exists": true,
+      "invalid_reasons": [],
       "kind": "performance",
       "mechanism_ids": [
         "performance-gpu-execution-duration",
         "performance-official-equal-load"
       ],
-      "path": null,
+      "path": "/tmp/bbb-parity-f01ed702e-final/formal-summary.json",
       "scenario_ids": [],
-      "sha256": null,
-      "valid": false
+      "scoped_reuse": null,
+      "sha256": "1a2f38d7c8a6b6fc17f92fa814dd338c045e772bf880e2e329a62b69c123497e",
+      "valid": true
     },
     {
       "artifact_id": "repo:crates/bbb-audio/src/command.rs",
@@ -8746,7 +8926,7 @@
       ],
       "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
       "scenario_ids": [],
-      "sha256": "bfb482ead82bddbbb371e290407e80da6a8d475474fc46f5f48d81203f8db933",
+      "sha256": "bf04c4f225b2e6643eed3ad09f1b67d7d9cc580f5c85786f8d967cbe52b3ff33",
       "valid": true
     },
     {
@@ -9713,11 +9893,27 @@
     ],
     "base_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
     "changed_paths": [
+      "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
       "docs/wiki/parity/vanilla-26.1-matrix.md"
     ],
     "functional_affected_mechanism_ids": [],
     "functional_changed_paths": [],
     "path_impacts": [
+      {
+        "mechanism_ids": [
+          "performance-gpu-execution-duration",
+          "performance-official-equal-load"
+        ],
+        "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
+        "reasons": [
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "acceptance-contract",
+          "bbb-owner",
+          "vanilla-owner"
+        ]
+      },
       {
         "mechanism_ids": [
           "audio-client-level-sound-routing",
@@ -9878,7 +10074,9 @@
       }
     ],
     "required_validation_classes": [
-      "acceptance-contract"
+      "acceptance-contract",
+      "bbb-owner",
+      "vanilla-owner"
     ]
   },
   "commands": {
@@ -9899,7 +10097,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "26d53bed4758a9ef5c635b21b0e06d3d949f768a724487eda7996b21d983d3ac"
+      "sha256": "f49c3ad7c7ebae318d3fcc22cb4a7ed9c10b1d1f8ac2b3aefbc894605daed821"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -57765,7 +57963,6 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
-        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "performance-abba",
@@ -58149,7 +58346,9 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/command.rs",
@@ -60662,7 +60861,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "bfb482ead82bddbbb371e290407e80da6a8d475474fc46f5f48d81203f8db933"
+            "sha256": "bf04c4f225b2e6643eed3ad09f1b67d7d9cc580f5c85786f8d967cbe52b3ff33"
           },
           {
             "path": "scripts/tests/test_block_registry_catalog_extractor.py",
@@ -60791,14 +60990,14 @@
             "sha256": "2d60a7885aa73352ac8d1d5b3400207221695674411c3aec8f42be26c41e3021"
           }
         ],
-        "dependency_closure_sha256": "c9de4f6717ec317c0a681f24a4af00babc1c4fc7bf74de712958d433daf6be6b",
+        "dependency_closure_sha256": "3443026cf807320e2ef2ab5a9985480f51421206db6af18ef5954064dc936dde",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
         "focused_test_contract_sha256": "f83b9932a9100cacf35756a8c2a313747b5603e70ac16b81e3393c088f3966c9",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "9083fb83873d35eb163236099474b72cef41fe61e5ec90f57969281e8cc17bd1"
+        "owner_contract_sha256": "e20bdf4c16093b0560ccc7c61d5426fb42ae1e14db787b39a8a974b22de05437"
       },
       "differential_scenarios": [
         {
@@ -61223,7 +61422,7 @@
           ],
           "kind": "performance",
           "scenario_id": "receipt-performance-abba",
-          "status": "invalid"
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -61258,7 +61457,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -61651,12 +61850,10 @@
         "line": 136,
         "required_state_projection": "replay/world/resource/settings hashes",
         "route_reopen_condition": "workload、binary identity、tool、camera/scene hash 或性能阈值变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "status": "equivalent"
       },
       "mechanism_id": "performance-official-equal-load",
-      "open_reasons": [
-        "formal-receipt-pending"
-      ],
+      "open_reasons": [],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -61668,11 +61865,8 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": false,
-      "validity_reasons": [
-        "required performance-abba receipt is invalid: performance artifact was not supplied",
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 0,
@@ -61731,7 +61925,6 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
-        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "performance-abba",
@@ -61740,14 +61933,16 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
+        ],
         "dependency_closure": [
           {
             "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "bfb482ead82bddbbb371e290407e80da6a8d475474fc46f5f48d81203f8db933"
+            "sha256": "bf04c4f225b2e6643eed3ad09f1b67d7d9cc580f5c85786f8d967cbe52b3ff33"
           },
           {
             "path": "scripts/tests/test_gpu_duration_capture.py",
@@ -61758,7 +61953,7 @@
             "sha256": "0542d90530cc3f93425ab4ed0ec20f2271487d89f6803c6fec0d9baebdf43f43"
           }
         ],
-        "dependency_closure_sha256": "01a82058fba0542127c94ef4fa4b5a3f9662dac4f2f3fa02e64b4c40ecdaddec",
+        "dependency_closure_sha256": "8784cd8e215a26ae1cb7197a25b5806e45f162b68a4b307ac8f45b46a46e1f6b",
         "evidence_commit": "dd5890673b4cb979b1244ecf85f37cd516c79da6",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
@@ -61766,7 +61961,7 @@
         ],
         "focused_test_contract_sha256": "fbf1dd0b95a5b1f79dad69ddb38b7d3bf1a1318592185456f60e4bb505d47cda",
         "owner": "`scripts/gpu_duration_capture.py`",
-        "owner_contract_sha256": "9715e5362594ba83e96462721404b700b951f331c00bc98328cfb5a47802c63f"
+        "owner_contract_sha256": "6ee492f42d2335d799d0b8d95cb32e6ab1ee9404ac2233c3f2a63c7ae04df459"
       },
       "differential_scenarios": [
         {
@@ -61816,7 +62011,7 @@
           ],
           "kind": "performance",
           "scenario_id": "receipt-performance-abba",
-          "status": "invalid"
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -61851,7 +62046,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/dev test python --suite all",
@@ -61936,12 +62131,10 @@
         "line": 137,
         "required_state_projection": "client context submit→fence chain",
         "route_reopen_condition": "采集链、fence context 配对、ring 归类、runner 授权、association 或 overhead 阈值变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "status": "equivalent"
       },
       "mechanism_id": "performance-gpu-execution-duration",
-      "open_reasons": [
-        "formal-receipt-pending"
-      ],
+      "open_reasons": [],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -61953,11 +62146,8 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": false,
-      "validity_reasons": [
-        "required performance-abba receipt is invalid: performance artifact was not supplied",
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 0,
@@ -69261,7 +69451,7 @@
         "performance-official-equal-load"
       ],
       "scenario_id": "receipt-performance-abba",
-      "status": "invalid"
+      "status": "passed"
     },
     {
       "artifact_ids": [
@@ -69741,28 +69931,26 @@
     "declared_scope_complete": false,
     "false_equivalent_ids": [],
     "invalid_ids": [
-      "audio-sound-manager-engine",
-      "performance-gpu-execution-duration",
-      "performance-official-equal-load"
+      "audio-sound-manager-engine"
     ],
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 118,
+      "equivalent": 120,
       "not-needed": 25,
-      "partial": 3
+      "partial": 1
     },
-    "valid_count": 144
+    "valid_count": 146
   },
   "vanilla_version": "26.1",
   "workflow": {
     "code_freeze_ready": true,
     "consistency_gate_passed": true,
-    "formal_performance_allowed": false,
+    "formal_performance_allowed": true,
     "implementation_blocking_ids": [],
     "implementation_ready": true,
     "semantic_contract_sha256": "be95b939fa6610a62b01a8b51fa6f3f76e2108d8790b690f2b6749e6f0dcf26e",
-    "stage": "evidence-sweep",
+    "stage": "final-performance",
     "stage_order": [
       "implementation",
       "checkpoint",
