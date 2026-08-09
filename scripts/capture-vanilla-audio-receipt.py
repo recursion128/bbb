@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -289,13 +290,12 @@ def openal_environment(driver: str, alsa_config: Path | None) -> dict[str, str]:
 
 
 def snapshot_file(source: Path, destination: Path) -> dict[str, Any]:
-    payload = source.read_bytes()
-    destination.write_bytes(payload)
+    shutil.copyfile(source, destination)
     return {
         "source_path": str(source),
         "path": str(destination.resolve()),
-        "sha256": hashlib.sha256(payload).hexdigest(),
-        "size": len(payload),
+        "sha256": file_digest(destination, "sha256"),
+        "size": destination.stat().st_size,
     }
 
 

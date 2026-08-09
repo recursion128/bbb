@@ -335,10 +335,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "draw-evidence",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
-        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_blob_sha1": "7cf064fe77e086c12ad8693d31d4b79fb6fc7b99",
+        "source_report_commit": "c3f4faff66466f973201e8c1bf99a3b53c0fbc1c",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+        "source_report_sha256": "a10ec4df6e6ef7a6da8702a144b8618c42348d1775a04da7be489d3a62958267"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -639,10 +639,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "lifecycle-soak",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
-        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_blob_sha1": "7cf064fe77e086c12ad8693d31d4b79fb6fc7b99",
+        "source_report_commit": "c3f4faff66466f973201e8c1bf99a3b53c0fbc1c",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+        "source_report_sha256": "a10ec4df6e6ef7a6da8702a144b8618c42348d1775a04da7be489d3a62958267"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -877,10 +877,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "linux-platform",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
-        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_blob_sha1": "7cf064fe77e086c12ad8693d31d4b79fb6fc7b99",
+        "source_report_commit": "c3f4faff66466f973201e8c1bf99a3b53c0fbc1c",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+        "source_report_sha256": "a10ec4df6e6ef7a6da8702a144b8618c42348d1775a04da7be489d3a62958267"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -1240,10 +1240,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "performance-abba",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
-        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_blob_sha1": "7cf064fe77e086c12ad8693d31d4b79fb6fc7b99",
+        "source_report_commit": "c3f4faff66466f973201e8c1bf99a3b53c0fbc1c",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+        "source_report_sha256": "a10ec4df6e6ef7a6da8702a144b8618c42348d1775a04da7be489d3a62958267"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -9065,7 +9065,7 @@
       ],
       "path": "scripts/capture-vanilla-audio-receipt.py",
       "scenario_ids": [],
-      "sha256": "682134c32be75e6271c161a9f4a69f6e7440b2333765b8303f49b55bbf45600b",
+      "sha256": "86a885773ad8ca4d0c6da3c431d5f1d8a6130ccdad3523c406ae6fb3aa59b443",
       "valid": true
     },
     {
@@ -9199,7 +9199,7 @@
       ],
       "path": "scripts/parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39",
+      "sha256": "88180b5b83623666b4d951aa55580fabf516eb148a2038b3a51402ee02583899",
       "valid": true
     },
     {
@@ -9740,10 +9740,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "visual-workload",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "84bebcb4d16927e40650ac582886c0c26b30c667",
-        "source_report_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
+        "source_report_blob_sha1": "7cf064fe77e086c12ad8693d31d4b79fb6fc7b99",
+        "source_report_commit": "c3f4faff66466f973201e8c1bf99a3b53c0fbc1c",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "e57e6448ab2ab1b7e45d5617174315ab57052d5bc757a7429422e068fc43949c"
+        "source_report_sha256": "a10ec4df6e6ef7a6da8702a144b8618c42348d1775a04da7be489d3a62958267"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -10530,7 +10530,7 @@
   "generator_inputs": [
     {
       "path": "scripts/parity_acceptance.py",
-      "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39"
+      "sha256": "88180b5b83623666b4d951aa55580fabf516eb148a2038b3a51402ee02583899"
     },
     {
       "path": "scripts/bbb_tools/executable_identity.py",
@@ -14755,10 +14755,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "682134c32be75e6271c161a9f4a69f6e7440b2333765b8303f49b55bbf45600b"
+            "sha256": "86a885773ad8ca4d0c6da3c431d5f1d8a6130ccdad3523c406ae6fb3aa59b443"
           }
         ],
-        "dependency_closure_sha256": "ead8a41a0be0bf00dce0072fe797530144f9f0cc15c745e48358feb8e7a47a7c",
+        "dependency_closure_sha256": "be05fac3cf7cb74fc095ac9ad28cd35b9a87c24c3b5260e2a6686dd546edece7",
         "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
@@ -14772,7 +14772,7 @@
         ],
         "focused_test_contract_sha256": "a5c68acb3916ab67b0457c6c060ff2d2a28072b642db37cee8606b7585308682",
         "owner": "pack sound catalog/native/audio",
-        "owner_contract_sha256": "1381ae12079b9045846842269cf28ffef2b6ac08d2c24d688c613206dd67f67f"
+        "owner_contract_sha256": "54128cf9551802f4f0da672c08247bfe963668eecc2ddd8cdec49cb6a4fe8382"
       },
       "differential_scenarios": [
         {
@@ -65385,7 +65385,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39"
+            "sha256": "88180b5b83623666b4d951aa55580fabf516eb148a2038b3a51402ee02583899"
           },
           {
             "path": "scripts/tests/test_parity_acceptance.py",
@@ -65396,7 +65396,7 @@
             "sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
           }
         ],
-        "dependency_closure_sha256": "544d62d1e96f4d8fa837c1202a4d84b534f582e2fbdb90bd3a98dcc254052512",
+        "dependency_closure_sha256": "26fb99565639c31a436d3e0933cd3b7d3c9f137512f61a035f76b5267c02c161",
         "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
@@ -65407,7 +65407,7 @@
         ],
         "focused_test_contract_sha256": "fbfedd6fff6a2b19733f8aa0eab81ad1edd700634a8ae6ad902e0f4f35a0f2c2",
         "owner": "generated inventory/matrix/ledger lint",
-        "owner_contract_sha256": "75b8f6baad3a0ecdb011c760ebd6fe4e9f960a9a347757e96dda2a617e8168d1"
+        "owner_contract_sha256": "b17937fbb76558b24deea121315fe5a701067a2dfc2a198a8d2032280f1d536e"
       },
       "differential_scenarios": [
         {
@@ -65844,7 +65844,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "afc33e40fa9722d28519529a93020ece2d095fc53c06b3af598442b170604b39"
+            "sha256": "88180b5b83623666b4d951aa55580fabf516eb148a2038b3a51402ee02583899"
           },
           {
             "path": "scripts/tests/test_docs_lint.py",
@@ -65863,7 +65863,7 @@
             "sha256": "d0e2ae24154c4d1c2a98dbdb4bf11e4b663e534660979f5d7f1728ae21e26735"
           }
         ],
-        "dependency_closure_sha256": "c748cfee2b1a763358ccc1b162f00e43aa4d651e4fe52e4ed73d9c5f6c6c244f",
+        "dependency_closure_sha256": "2d23de221f31916d63d9583cb6f09717bafdcf590d0655d0fac7afd0108e6fd0",
         "evidence_commit": "0d4cdc155478f7c62ac6ed6eb1202ee8563e62ca",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
@@ -65881,7 +65881,7 @@
         ],
         "focused_test_contract_sha256": "e51828ab3b8b167ad552d18e67de7326f285bb3401293cfd0083a9fe22f70e67",
         "owner": "docs Wiki/inventory/docs-lint/acceptance",
-        "owner_contract_sha256": "f95e2d9197e5ac6c4d565fe05bceb0d4271ebd79e3e0d8f79bff1bc018f4378e"
+        "owner_contract_sha256": "ce4e49a2c3d933a6244188f28a56ace862e9db437e3ee8528f3f6d68dfcde9e3"
       },
       "differential_scenarios": [
         {

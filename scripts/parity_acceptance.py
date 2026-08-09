@@ -1925,7 +1925,13 @@ def projection_reuse_reasons(
     ):
         return ["external artifact projection reuse identity is malformed"]
     ancestry = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", source_commit, evidence_commit],
+        [
+            "git",
+            "merge-base",
+            "--is-ancestor",
+            source_commit,
+            git(repo, "rev-parse", "HEAD"),
+        ],
         cwd=repo,
         check=False,
         stdout=subprocess.DEVNULL,
