@@ -352,7 +352,6 @@
         "diagnostics-crash-runtime",
         "docs-chinese-mechanism-wiki",
         "entities-fixed-type-surface",
-        "hud-frame-extract-order",
         "identity-profile-key-lifecycle",
         "identity-skin-presentation",
         "interaction-server-authority-exclusions",
@@ -373,7 +372,6 @@
         "registries-built-in-catalogs",
         "registries-synchronized-data",
         "registries-unsynchronized-fixed-identities",
-        "rendering-level-section-lifecycle",
         "rendering-nondeterministic-golden-exclusions",
         "rendering-official-noop-surfaces",
         "resources-indexed-built-in-packs",
@@ -1020,7 +1018,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "306a412578e5ed2d99e70e6b84e3862fe46bfc6b9970f3cc87145d3e14d8988f",
+      "sha256": "3fb1e42aee9a2add79894b722e4fd129c646e9c3833eb380932b57a6643dfc17",
       "valid": true
     },
     {
@@ -9873,7 +9871,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "306a412578e5ed2d99e70e6b84e3862fe46bfc6b9970f3cc87145d3e14d8988f"
+      "sha256": "3fb1e42aee9a2add79894b722e4fd129c646e9c3833eb380932b57a6643dfc17"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -43589,7 +43587,6 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
-        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-audio/src/runtime.rs",
@@ -43938,7 +43935,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-audio stopped_instance_shell_remains_projected_until_twentieth_tick",
@@ -44303,12 +44300,10 @@
         "line": 88,
         "required_state_projection": "每帧 HUD 抽取顺序由单一 `renderer_frame` 路径承担；五槽 mixed-family FIFO 与独立 `NowPlayingToast` 分离拥有。NowPlaying 消费实际 sound key、冻结 notification multiplier、5s/600ms 动画、25ms 门控音符色、动画 sprite、hideGui、PauseScreen/static/draft-icon 顺序均有决策测试；SystemToast title 在 extract 按当前 language 重解析而 lines/width 冻结；首次多人 tick 的 social TutorialToast 消费并写回 `joinedFirstServer`，冻结当前重绑键文案，按 fully-visible wall time 直达进度且仅在 `>8000ms` 隐藏，社交键先 hide 再开屏；`onFileDropFailure` 在官方 Java 25 Linux/Wayland 转换链不可达，且唯一成功路径 consumer `PackSelectionScreen` 不在 CLI-only 范围",
         "route_reopen_condition": "code-freeze HUD visual/draw formal receipt 待采；任一 owner/source hash、Java/LWJGL/GLFW/JDK 转换链、screen scope、抽取顺序、slot/visibility sound、timed lifetime/持久化顺序或门控变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "status": "equivalent"
       },
       "mechanism_id": "hud-frame-extract-order",
-      "open_reasons": [
-        "formal-receipt-pending"
-      ],
+      "open_reasons": [],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -44319,10 +44314,8 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 118,
@@ -48192,7 +48185,6 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
-        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/terrain_runtime.rs",
@@ -48360,7 +48352,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "open",
+      "final_conclusion": "equivalent",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers",
@@ -48466,12 +48458,10 @@
         "line": 98,
         "required_state_projection": "view section、frustum、compile、dirty、fade、translucent resort",
         "route_reopen_condition": "当前实现提交通过 full gate 并重绑 exact-commit evidence 后复核；owner/symbol、750ms/0.3 决策、shader consumer 或 generation lifetime 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "partial"
+        "status": "equivalent"
       },
       "mechanism_id": "rendering-level-section-lifecycle",
-      "open_reasons": [
-        "formal-receipt-pending"
-      ],
+      "open_reasons": [],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -48482,10 +48472,8 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": false,
-      "validity_reasons": [
-        "mechanism remains open with matrix status partial"
-      ],
+      "valid": true,
+      "validity_reasons": [],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 29,
@@ -69851,7 +69839,6 @@
       "diagnostics-crash-runtime",
       "docs-chinese-mechanism-wiki",
       "entities-fixed-type-surface",
-      "hud-frame-extract-order",
       "identity-skin-presentation",
       "performance-gpu-execution-duration",
       "performance-official-equal-load",
@@ -69863,7 +69850,6 @@
       "player-local-world-edit-ui",
       "registries-built-in-catalogs",
       "registries-synchronized-data",
-      "rendering-level-section-lifecycle",
       "security-secure-chat-reporting",
       "ui-accessibility-surface",
       "ui-bidirectional-shaping",
@@ -69882,16 +69868,16 @@
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 89,
+      "equivalent": 91,
       "not-needed": 25,
-      "partial": 32
+      "partial": 30
     },
-    "valid_count": 115
+    "valid_count": 117
   },
   "vanilla_version": "26.1",
   "workflow": {
     "code_freeze_ready": true,
-    "consistency_gate_passed": false,
+    "consistency_gate_passed": true,
     "formal_performance_allowed": false,
     "implementation_blocking_ids": [],
     "implementation_ready": true,
