@@ -75,8 +75,11 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   HEAD with `--require-final-head`; closure-only `docs/**`/`goal.md` sealing is allowed
   only while the evidence-sweep semantic-contract hash remains identical. Scoped
   development reuse cannot weaken delivery.
-  The exact `675cbfc53` two-round ABBA/GPU summary is valid and closes both
-  performance rows (SHA-256 `5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706`).
+  The exact `ae371a58a` lifecycle/platform/visual/draw sweep is current and
+  passed, but both performance rows remain `partial` with the derived reason
+  `formal-receipt-pending` until a sealed consistency receipt is followed by a
+  fresh two-round ABBA/GPU capture. The `675cbfc53` summary remains historical
+  regression evidence and cannot close the current rows.
   Preserve invalid receipts until replaced. The user-waived macOS
   `deferred-external` row is not a closure blocker but retains its source basis and
   reopen condition. The bidirectional-text owner remains bound to exact Vanilla

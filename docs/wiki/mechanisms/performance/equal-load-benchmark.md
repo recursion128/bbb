@@ -82,25 +82,30 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
 CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、percentile、1%
 low、hitch、per-frame normalization、invalid reason 与 cleanup。
 
-### 当前 `675cbfc53` exact-HEAD 一致性 sweep
+### 当前 `ae371a58a` exact-HEAD 一致性 sweep
 
 当前性能前置证据全部来自 clean/full-gated
-`675cbfc53e7b8e9047e0367751fb714bb673e4a6`，BBB release binary SHA-256 为
-`29729be9ff1f4b089a486ce9fbe2a65a465c94e4939f55be353aa450245e305a`。
+`ae371a58a67dacb7fd5e9b46f729d21957ddbae9`，BBB release binary SHA-256 为
+`35685227c3e49454c4b6d0deee5a4503a4c4bfc051932a4c9fdeda69690a9f3d`。
 Vanilla→Vanilla→BBB→BBB 的三个共同 replay 重复 capture 保持 637 resident/selected chunks、
 15,288 resident/selected/uploaded sections，以及相同 replay/world/resources/settings/scene/camera
 hash。冻结 ROI、结构断言和六份 RenderDoc capture 均通过。机器摘要为：
 
-- lifecycle：`/tmp/bbb-domain-675cbfc53/lifecycle/report.json`，SHA-256
-  `e57925177f57fa53cc191b595e83e849b3daad4d35f0a4cf329861aef241c6a3`；
-- Linux platform：`/tmp/bbb-domain-675cbfc53/platform/report.json`，SHA-256
-  `2bf698e6a90b561cc7cd2f718d1df6d9538a38fd19c6ca0b3e4d9264cfb0eb1a`；
-- visual/workload：`/tmp/bbb-parity-675cbfc53-final/visual/workload-summary.json`，SHA-256
-  `dafc114e6d6f0394eec76ada60820c9415d57b3e7e59bb1e6b6833af5bcb51ef`；
-- draw：`/tmp/bbb-parity-675cbfc53-final/renderdoc/summary.json`，SHA-256
-  `50a268cb0f48b518ece6bd95e2676172320708219fa05dbae99de9501d3be63d`。
+- lifecycle：`/var/tmp/bbb-domain-ae371a58a/lifecycle/report.json`，SHA-256
+  `e7effd80d450534ddc98c5132b21e4725bf4311e74ab4a94b658e7f28b598d2e`；
+- Linux platform：`/var/tmp/bbb-domain-ae371a58a/platform/report.json`，SHA-256
+  `0bde127ba02ef82f9aa01b59690fdfc375f6aa393469e3158bcea8e44972f4e0`；
+- visual/workload：`/var/tmp/bbb-parity-ae371a58a-final/visual/workload-summary.json`，SHA-256
+  `d245da2dc86d5e2eb484b21b0938615a3df55818353939912b5fa62747049c24`；
+- draw：`/var/tmp/bbb-parity-ae371a58a-final/renderdoc/summary.json`，SHA-256
+  `0a50522d0ed7eb8174d8fb0a4e79a28dc4f54793ad92498fe7c3b9501005973f`。
 
 这些 receipt 只签发当前 evidence-sweep 的一致性前置门禁，不继承下面历史 ABBA 的性能结论。
+当前两条性能机制保持 `partial` / `formal-receipt-pending`，等待本轮 receipt 提交并
+full gate 后执行的两轮 Java→BBB→BBB→Java 与两侧 exact GPU trace。
+
+### 历史 `675cbfc53` 性能回归基线（不关闭当前行）
+
 sealed/full-gated receipt `6e2d23e7f` 之后已完成两轮 Java→BBB→BBB→Java 和两侧 exact GPU
 trace；formal summary 位于
 `/tmp/bbb-parity-675cbfc53-final/final-performance/formal-summary.json`，SHA-256 为
@@ -242,9 +247,9 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 
 ## 当前差异
 
-当前没有开放的同载性能差异：code-freeze domain sweep、三场景 camera/world/workload、
-冻结 ROI、结构/draw、两轮 ABBA、MangoHud/perf、GPU-duration association 与 overhead
-均由 machine-readable acceptance 校验通过。frame interval、
+当前实现与一致性前置门禁没有已知差异，但两条同载性能机制仍开放：
+exact `ae371a58a` 的三场景 camera/world/workload、冻结 ROI 和结构/draw 已通过，
+本轮两轮 ABBA、MangoHud/perf 与 GPU-duration association/overhead 尚待采集。frame interval、
 进程 CPU 均值与 GPU execution duration 是三个各自独立测得的量，
 任何一个都不能由另一个推导或相减得出；draw count 因 API batching 不同，同样不能作为
 等负载或性能倍数。
