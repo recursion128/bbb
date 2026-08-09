@@ -8,12 +8,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 import gpu_duration_capture as capture  # noqa: E402
-
 
 FIXTURE = SCRIPTS / "fixtures" / "gpu-duration" / "perf-script-sample.txt"
 
@@ -107,10 +105,29 @@ class GpuDurationCaptureTests(unittest.TestCase):
         self.assertEqual(report["kernel_internal_jobs"], 0)
         self.assertEqual(report["submitted_jobs"], report["associated_jobs"])
 
+    def test_linux_7_fence_trace_format_reaches_a_complete_chain(self) -> None:
+        lines = [
+            " client:cs0 4242 10.000000001: amdgpu:amdgpu_cs_ioctl: "
+            "timeline=gfx_0.0.0, fence=91:7, ring_name=gfx_0.0.0, num_ibs=1\n",
+            " kworker 99 10.000000002: amdgpu:amdgpu_sched_run_job: "
+            "timeline=gfx_0.0.0, fence=91:7, ring_name=gfx_0.0.0, num_ibs=1\n",
+            " swapper 0 10.000000003: dma_fence:dma_fence_signaled: "
+            "driver=drm_sched timeline=gfx_0.0.0 context=91 seqno=7\n",
+        ]
+        indexed = capture.parse_perf_script(lines)
+        jobs = capture.join_jobs(indexed)
+
+        self.assertEqual(capture.association_ratio(indexed, jobs), 1.0)
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].pid, 4242)
+        self.assertEqual(jobs[0].execution_ns, 1)
+
     def test_preflight_names_the_provisioning_for_each_blocker(self) -> None:
         report = capture.preflight(Path("/nonexistent-trace-root"))
         codes = {blocker["code"] for blocker in report["blockers"]}
         self.assertIn("tracepoint_ids_unreadable", codes)
+        self.assertIn("trace_metadata_unreadable", codes)
+        self.assertEqual(report["trace_metadata"], {})
         self.assertFalse(report["unprivileged_capture_ready"])
         for blocker in report["blockers"]:
             self.assertTrue(blocker["provision"].startswith("sudo "))

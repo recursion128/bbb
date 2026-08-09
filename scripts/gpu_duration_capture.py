@@ -35,14 +35,14 @@ tracepoint ids, and `kernel.perf_event_paranoid <= -1` so it can open them.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import re
 import statistics
 import subprocess
 import sys
+from dataclasses import dataclass
+from pathlib import Path
 
 CS_IOCTL_EVENT = "amdgpu:amdgpu_cs_ioctl"
 RUN_JOB_EVENT = "amdgpu:amdgpu_sched_run_job"
@@ -55,9 +55,13 @@ _LINE_RE = re.compile(
     r"^\s*(?P<comm>\S.*?)\s+(?P<pid>\d+)\s+(?P<seconds>\d+)\.(?P<nanos>\d{9}):\s+"
     r"(?P<event>[\w:]+):\s*(?P<fields>.*)$"
 )
-_AMDGPU_JOB_RE = re.compile(
+_AMDGPU_JOB_LEGACY_RE = re.compile(
     r"sched_job=(?P<sched_job>\d+),\s*timeline=(?P<timeline>\S+?),\s*"
     r"context=(?P<context>\d+),\s*seqno=(?P<seqno>\d+),\s*ring_name=(?P<ring>\S+?),"
+)
+_AMDGPU_JOB_FENCE_RE = re.compile(
+    r"timeline=(?P<timeline>\S+?),\s*fence=(?P<context>\d+):(?P<seqno>\d+),\s*"
+    r"ring_name=(?P<ring>\S+?),"
 )
 _FENCE_RE = re.compile(
     r"driver=(?P<driver>\S+)\s+timeline=(?P<timeline>\S+)\s+"
@@ -111,7 +115,9 @@ def parse_perf_script(lines) -> dict[str, dict]:
         fields = line_match.group("fields")
         timestamp = _timestamp_ns(line_match)
         if event in (CS_IOCTL_EVENT, RUN_JOB_EVENT):
-            job_match = _AMDGPU_JOB_RE.search(fields)
+            job_match = _AMDGPU_JOB_LEGACY_RE.search(fields)
+            if job_match is None:
+                job_match = _AMDGPU_JOB_FENCE_RE.search(fields)
             if job_match is None:
                 continue
             key = (int(job_match.group("context")), int(job_match.group("seqno")))
@@ -282,6 +288,7 @@ def preflight(trace_root: Path | None = None) -> dict:
         else [Path("/sys/kernel/tracing"), Path("/sys/kernel/debug/tracing")]
     )
     events: dict[str, bool] = {}
+    metadata: dict[str, bool] = {}
     resolved_root: Path | None = None
     for root in roots:
         if not root.is_dir():
@@ -290,12 +297,21 @@ def preflight(trace_root: Path | None = None) -> dict:
         for event in CAPTURE_EVENTS:
             group, name = event.split(":", 1)
             readable[event] = os.access(root / "events" / group / name / "id", os.R_OK)
-        if all(readable.values()):
+        required_metadata = {
+            "events/header_page": os.access(root / "events" / "header_page", os.R_OK),
+            "events/header_event": os.access(root / "events" / "header_event", os.R_OK),
+            "printk_formats": os.access(root / "printk_formats", os.R_OK),
+            "saved_cmdlines": os.access(root / "saved_cmdlines", os.R_OK),
+            "saved_tgids": os.access(root / "saved_tgids", os.R_OK),
+        }
+        if all(readable.values()) and all(required_metadata.values()):
             resolved_root = root
             events = readable
+            metadata = required_metadata
             break
         if not events:
             events = readable
+            metadata = required_metadata
     paranoid_path = Path("/proc/sys/kernel/perf_event_paranoid")
     try:
         paranoid = int(paranoid_path.read_text(encoding="utf-8").strip())
@@ -303,16 +319,35 @@ def preflight(trace_root: Path | None = None) -> dict:
         paranoid = None
     blockers = []
     if resolved_root is None:
-        blockers.append(
-            {
-                "code": "tracepoint_ids_unreadable",
-                "detail": "perf cannot resolve the amdgpu/dma_fence tracepoint ids",
-                "provision": (
-                    "sudo mount -o remount,gid=<benchmark-group>,mode=0750 "
-                    "/sys/kernel/tracing"
-                ),
-            }
-        )
+        if not events or not all(events.values()):
+            blockers.append(
+                {
+                    "code": "tracepoint_ids_unreadable",
+                    "detail": "perf cannot resolve the amdgpu/dma_fence tracepoint ids",
+                    "provision": (
+                        "sudo mount -o remount,gid=<benchmark-group>,mode=0750 "
+                        "/sys/kernel/tracing"
+                    ),
+                }
+            )
+        if not metadata or not all(metadata.values()):
+            missing = ", ".join(
+                path for path, readable in metadata.items() if not readable
+            ) or "tracefs metadata"
+            blockers.append(
+                {
+                    "code": "trace_metadata_unreadable",
+                    "detail": f"perf cannot embed required trace metadata: {missing}",
+                    "provision": (
+                        "sudo setfacl -m g:<benchmark-group>:r "
+                        "/sys/kernel/tracing/events/header_page "
+                        "/sys/kernel/tracing/events/header_event "
+                        "/sys/kernel/tracing/printk_formats "
+                        "/sys/kernel/tracing/saved_cmdlines "
+                        "/sys/kernel/tracing/saved_tgids"
+                    ),
+                }
+            )
     if paranoid is None or paranoid > -1:
         blockers.append(
             {
@@ -328,6 +363,7 @@ def preflight(trace_root: Path | None = None) -> dict:
         "schema": 1,
         "trace_root": str(resolved_root) if resolved_root else None,
         "tracepoints": events,
+        "trace_metadata": metadata,
         "perf_event_paranoid": paranoid,
         "unprivileged_capture_ready": not blockers,
         "blockers": blockers,

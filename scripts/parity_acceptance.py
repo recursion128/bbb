@@ -180,10 +180,13 @@ CENTRAL_PATH_VALIDATION_CLASSES = (
         (
             "scripts/official_client_benchmark.py",
             "scripts/official-client-benchmark.sh",
-            "scripts/gpu_duration_capture.py",
             "scripts/fixtures/official-client-benchmark/",
         ),
         frozenset({"visual-workload", "draw-evidence", "performance-abba"}),
+    ),
+    (
+        ("scripts/gpu_duration_capture.py",),
+        frozenset({"performance-abba"}),
     ),
     (
         (

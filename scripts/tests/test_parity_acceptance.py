@@ -1217,6 +1217,21 @@ mod tests {
                 ["protocol-state-receipt", "release-identity", "visual-workload"],
             )
 
+            gpu_records = copy.deepcopy(report["mechanisms"])
+            gpu_records[0]["required_validation_classes"] = ["visual-workload"]
+            gpu_records[1]["required_validation_classes"] = ["performance-abba"]
+            gpu_plan = change_impact_plan(
+                gpu_records,
+                ["scripts/gpu_duration_capture.py"],
+                self.commit,
+            )
+            self.assertEqual(
+                gpu_plan["affected_mechanism_ids"], ["fixture-not-needed"]
+            )
+            self.assertEqual(
+                gpu_plan["required_validation_classes"], ["performance-abba"]
+            )
+
             test_only_records = copy.deepcopy(report["mechanisms"])
             test_only_records[0]["required_validation_classes"] = [
                 "focused-evidence",

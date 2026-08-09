@@ -229,8 +229,15 @@ compositor 按进程排除，不靠推断：Weston 从自己的 pid 提交，永
 实测同一次采集里 Weston、Xwayland 与官方客户端三个进程被干净分离。
 
 采集在 runner 完成两项标准授权后以**非特权**身份运行（`perf record`，见
-`scripts/python python scripts/gpu_duration_capture.py preflight`）：tracefs 对 benchmark 组可读以便 perf
-解析 tracepoint id，以及 `kernel.perf_event_paranoid=-1` 以便打开它们。
+`scripts/python python scripts/gpu_duration_capture.py preflight`）：tracefs 的 tracepoint id 与
+`header_page`、`header_event`、`printk_formats`、`saved_cmdlines`、`saved_tgids` 元数据对 benchmark
+组可读，以便 perf 同时记录事件和可解码的 `TRACING_DATA`；`kernel.perf_event_paranoid=-1`
+则允许打开事件。preflight 必须逐项检查，不能只以 event id 可读判定 ready。
+
+AMDGPU 在当前受测内核上存在两种等价打印格式：旧格式给出
+`sched_job=..., context=..., seqno=...`，Linux 7.0 格式给出
+`fence=<context>:<seqno>`。parser 同时接受两种格式，关联键仍是同一个
+`(context, seqno)`；未知格式会导致 association ratio 不足并使正式汇总失败。
 
 发布该指标的判据是采集自身的 association ratio（完成整条链的客户端提交占比），低于
 门槛的采集按失败报告，不降格汇总。分母只计 `amdgpu_cs_ioctl` 提交：调度器还会跑无
