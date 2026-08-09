@@ -101,8 +101,26 @@ hash。冻结 ROI、结构断言和六份 RenderDoc capture 均通过。机器�
   `50a268cb0f48b518ece6bd95e2676172320708219fa05dbae99de9501d3be63d`。
 
 这些 receipt 只签发当前 evidence-sweep 的一致性前置门禁，不继承下面历史 ABBA 的性能结论。
-两条 performance 机制继续保持 `partial`，直到绑定本次 sealed receipt 的两轮新 ABBA 和
-exact-commit GPU-duration evidence 完成。
+sealed/full-gated receipt `6e2d23e7f` 之后已完成两轮 Java→BBB→BBB→Java 和两侧 exact GPU
+trace；formal summary 位于
+`/tmp/bbb-parity-675cbfc53-final/final-performance/formal-summary.json`，SHA-256 为
+`5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706`。汇总器重验八次
+raw 的 receipt、binary、camera/world/resource/settings/scene hash、零位置修正、MangoHud/perf
+与 workload/draw linkage，`formal_comparison_complete=true`、`metrics_publishable=true`。
+
+| 当前正式指标 | Vanilla | BBB |
+| --- | ---: | ---: |
+| application-frame p50 / p95 / p99 | 3.437 / 5.083 / 5.838 ms | 2.817 / 4.294 / 4.764 ms |
+| >=33.333 ms hitch | 0 | 0 |
+| task-clock / presented frame | 1.080 ms | 1.045 ms |
+| cycles / presented frame | 4,449,322 | 4,531,010 |
+| instructions / presented frame | 6,840,948 | 6,668,909 |
+| GPU execution p50 / p95 / p99 | 1.538 / 3.272 / 4.296 ms | 2.757 / 3.114 / 4.495 ms |
+
+GPU trace 的 Vanilla/BBB association ratio 均为 `1.0`（83,263/37,192 graphics jobs），
+baseline→trace Weston p50 overhead 为 `+0.012%/-0.007%`；MangoHud overhead 为
+`-0.028%/-0.031%`。负数只表示测量噪声内未见开销，不解释成性能收益。GPU execution
+是独立 submit→scheduler→finished-fence 指标，不能替代 application-frame 或 CPU 指标。
 
 ### 上一轮历史结果（不可关闭当前性能行）
 

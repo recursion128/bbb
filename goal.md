@@ -519,7 +519,7 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-clean/full-gated `675cbfc53` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均绑定当前 HEAD，后四者共用同一 release、world/replay/settings/scene identity；consistency gate 已通过且 semantic-contract 仍为 `d008aa81fc8676b076e83b4b19608da62f1cbccd4a2b6bed921ce4d86ed80d0f`，两条 performance 行保持 `partial`，等待绑定本次 sealed receipt 的两轮 ABBA/GPU evidence，旧性能结论不得关闭它们。
+clean/full-gated `675cbfc53` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均绑定当前 HEAD，后四者共用同一 release、world/replay/settings/scene identity；sealed receipt `6e2d23e7f` 后的两轮 ABBA/GPU receipt SHA-256 为 `5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706`，两条 performance 行已关闭且 semantic-contract 仍为 `d008aa81fc8676b076e83b4b19608da62f1cbccd4a2b6bed921ce4d86ed80d0f`。
 audio schema-2 receipt 仍因 UID 无设备权限且四个 HDMI ELD 无 sink 失败，正式 receipt 等真实 sink/ACL。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
