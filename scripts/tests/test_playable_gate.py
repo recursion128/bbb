@@ -486,6 +486,17 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_inventory_stack_selector_uses_the_observed_item_id_not_only_count(self):
+        leaf_litter = {"item_id": 733, "count": 3}
+        diamond = {"item_id": 899, "count": 3}
+
+        self.assertEqual(
+            playable_gate._matching_player_menu_stack(
+                {9: leaf_litter, 44: diamond}, diamond["item_id"], 3
+            ),
+            (44, diamond),
+        )
+
     def test_unmoved_inventory_stack_fails(self):
         evidence = copy.deepcopy(self.fixture)
         evidence["inventory_interaction"]["to_slot"] = evidence[

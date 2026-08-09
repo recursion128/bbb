@@ -345,25 +345,80 @@
       "invalid_reasons": [],
       "kind": "repo-evidence",
       "mechanism_ids": [
+        "audio-client-level-sound-routing",
         "audio-sound-manager-engine",
         "debug-integrated-server-mirrors",
+        "diagnostics-client-level-report",
         "diagnostics-client-only-inspection-exclusions",
         "identity-profile-key-lifecycle",
+        "input-debug-key-actions",
+        "input-key-mapping",
+        "input-keyboard-routing",
+        "input-mouse-routing",
+        "interaction-block-breaking",
+        "interaction-carried-slot-sync",
+        "interaction-container-actions",
+        "interaction-creative-actions",
+        "interaction-entity-actions",
+        "interaction-game-mode-guards",
+        "interaction-game-mode-lifecycle",
+        "interaction-item-use",
+        "interaction-pick-actions",
+        "interaction-prediction-sequence",
+        "interaction-primary-action-routing",
         "interaction-server-authority-exclusions",
         "items-server-owned-effects",
         "items-versioned-property-surface",
+        "lifecycle-client-runtime",
+        "lifecycle-client-task-handoff",
+        "lifecycle-session-replacement",
         "movement-remote-type-exceptions",
         "performance-gpu-execution-duration",
         "performance-official-equal-load",
+        "persistence-options-apply",
+        "persistence-options-derived",
+        "persistence-options-file",
+        "persistence-options-unconsumed",
+        "persistence-server-list",
+        "platform-linux-seat-matrix",
         "platform-macos-release",
+        "platform-window-chrome",
+        "platform-window-display-mode",
+        "platform-window-lifecycle",
+        "platform-window-surface-state",
         "platform-windows-release",
+        "player-local-camera-targeting",
+        "player-local-input-movement",
+        "player-local-item-use-state",
+        "player-local-movement-reporting",
+        "player-local-session-respawn",
+        "player-local-vehicle-control",
+        "protocol-client-state-flow",
+        "protocol-configuration-handler-decisions",
         "protocol-framing-no-world-state",
+        "protocol-listener-contracts",
+        "protocol-login-handler-decisions",
+        "protocol-packet-tables",
+        "protocol-play-handler-decisions",
+        "protocol-serverbound-call-sites",
         "registries-unsynchronized-fixed-identities",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-level-backend-lifecycle",
         "rendering-nondeterministic-golden-exclusions",
         "rendering-official-noop-surfaces",
+        "resources-default-pack-stack",
         "resources-indexed-built-in-packs",
+        "resources-indexed-panorama",
         "resources-indexed-realms",
+        "resources-indexed-vanilla-provider",
+        "resources-language-manager",
+        "resources-offline-asset-trust",
+        "resources-reload-listeners",
+        "resources-reload-recovery",
         "resources-runtime-mipmap-update",
+        "resources-server-pack-lifecycle",
+        "resources-window-icons",
         "resources-world-list-favicons",
         "scope-client-level-noop-hooks",
         "scope-multiplayer-server-list",
@@ -373,7 +428,21 @@
         "scope-support-accessors",
         "scope-telemetry-upload",
         "scope-title-screen",
-        "ui-container-server-authority-exclusions"
+        "startup-client-bootstrap",
+        "startup-session-identity",
+        "ui-chat-screen-surface",
+        "ui-container-server-authority-exclusions",
+        "ui-death-screen-surface",
+        "ui-disconnected-screen-surface",
+        "world-client-ambient-animation",
+        "world-client-chunk-light-lifecycle",
+        "world-client-clock-weather",
+        "world-client-entity-lifecycle",
+        "world-client-level-events",
+        "world-client-level-lifecycle",
+        "world-client-map-data",
+        "world-client-respawn-data",
+        "world-client-session-services"
       ],
       "path": "docs/unsupported-features.md",
       "scenario_ids": [],
@@ -554,7 +623,7 @@
           "manifest_sha256": "42bae29b811a7cc8412a48fd571519babfc0fd3173622424bfb84ed878bf7d00",
           "schema": 1
         },
-        "sha256": "fd6f78295d124667419f7d8f47490667ad693591cb4e1a189f9061c5bcbb28da",
+        "sha256": "5882b1818925366a7bb46288f3fee3e66db7da2936d50c6c097d8f5876112610",
         "tools": [
           {
             "capture_sha256": "b6db7be56be775b86e5d3168b47e31305230ef16fc143486ba069abae91d6430",
@@ -568,7 +637,7 @@
           },
           {
             "capture_sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a",
-            "current_sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a",
+            "current_sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25",
             "path": "scripts/playable_gate.py"
           },
           {
@@ -605,7 +674,9 @@
       },
       "evidence_class": "formal",
       "exists": true,
-      "invalid_reasons": [],
+      "invalid_reasons": [
+        "capture tool changed after the artifact: scripts/playable_gate.py"
+      ],
       "kind": "lifecycle",
       "mechanism_ids": [
         "lifecycle-client-runtime",
@@ -616,7 +687,7 @@
       "path": "/tmp/bbb-domain-20bcefd49/lifecycle/report.json",
       "scenario_ids": [],
       "sha256": "0b2df9e13187286cfb6e99a15a50065b23607021fbf63ceece5905e927ea65d1",
-      "valid": true
+      "valid": false
     },
     {
       "artifact_id": "linux-platform",
@@ -668,7 +739,7 @@
           },
           "schema": 1
         },
-        "sha256": "8001c6cd78d7e58b27862f74bb06e88055c19430a4b2ba855295a69cf20d60f6",
+        "sha256": "b4a9545ab192bb57dba58b56899f27cb4792d4c936e89560d8c1982571055658",
         "tools": [
           {
             "capture_sha256": "99e0439487c5b98b47d6cb2dd071dc362fcd7dc1a550b4486863ed6ef1054110",
@@ -682,7 +753,7 @@
           },
           {
             "capture_sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a",
-            "current_sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a",
+            "current_sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25",
             "path": "scripts/playable_gate.py"
           },
           {
@@ -759,7 +830,9 @@
       },
       "evidence_class": "formal",
       "exists": true,
-      "invalid_reasons": [],
+      "invalid_reasons": [
+        "capture tool changed after the artifact: scripts/playable_gate.py"
+      ],
       "kind": "platform",
       "mechanism_ids": [
         "audio-client-level-sound-routing",
@@ -832,7 +905,7 @@
       "path": "/tmp/bbb-domain-20bcefd49/platform/report.json",
       "scenario_ids": [],
       "sha256": "044004827ef28f494238e006bad5a65713f3957c8a962378dc85213818f6a05b",
-      "valid": true
+      "valid": false
     },
     {
       "artifact_id": "parity-matrix",
@@ -991,7 +1064,7 @@
       ],
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
       "scenario_ids": [],
-      "sha256": "26d53bed4758a9ef5c635b21b0e06d3d949f768a724487eda7996b21d983d3ac",
+      "sha256": "60d419863e0537ee380921e73610c5f5a74156a8ff96c96f989c3524d60ca8ea",
       "valid": true
     },
     {
@@ -8984,7 +9057,7 @@
       ],
       "path": "scripts/playable_gate.py",
       "scenario_ids": [],
-      "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a",
+      "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25",
       "valid": true
     },
     {
@@ -9235,7 +9308,7 @@
       ],
       "path": "scripts/tests/test_playable_gate.py",
       "scenario_ids": [],
-      "sha256": "131d5437727a2a794294b07ea06ce35fdd41a2b5f02a8b1b1c781ffee6ad9630",
+      "sha256": "ad2b49292058e7d5ef180474447199d5738d03ae863a0b36f08f59e7d08e2b19",
       "valid": true
     },
     {
@@ -9649,10 +9722,86 @@
     ],
     "base_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
     "changed_paths": [
-      "docs/wiki/parity/vanilla-26.1-matrix.md"
+      "docs/wiki/parity/vanilla-26.1-matrix.md",
+      "scripts/playable_gate.py",
+      "scripts/tests/test_playable_gate.py"
     ],
-    "functional_affected_mechanism_ids": [],
-    "functional_changed_paths": [],
+    "functional_affected_mechanism_ids": [
+      "audio-client-level-sound-routing",
+      "diagnostics-client-level-report",
+      "input-debug-key-actions",
+      "input-key-mapping",
+      "input-keyboard-routing",
+      "input-mouse-routing",
+      "interaction-block-breaking",
+      "interaction-carried-slot-sync",
+      "interaction-container-actions",
+      "interaction-creative-actions",
+      "interaction-entity-actions",
+      "interaction-game-mode-guards",
+      "interaction-game-mode-lifecycle",
+      "interaction-item-use",
+      "interaction-pick-actions",
+      "interaction-prediction-sequence",
+      "interaction-primary-action-routing",
+      "lifecycle-client-runtime",
+      "lifecycle-client-task-handoff",
+      "lifecycle-session-replacement",
+      "performance-official-equal-load",
+      "persistence-options-apply",
+      "persistence-options-derived",
+      "persistence-options-file",
+      "persistence-options-unconsumed",
+      "persistence-server-list",
+      "platform-linux-seat-matrix",
+      "platform-window-chrome",
+      "platform-window-display-mode",
+      "platform-window-lifecycle",
+      "platform-window-surface-state",
+      "player-local-camera-targeting",
+      "player-local-input-movement",
+      "player-local-item-use-state",
+      "player-local-movement-reporting",
+      "player-local-session-respawn",
+      "player-local-vehicle-control",
+      "protocol-client-state-flow",
+      "protocol-configuration-handler-decisions",
+      "protocol-listener-contracts",
+      "protocol-login-handler-decisions",
+      "protocol-packet-tables",
+      "protocol-play-handler-decisions",
+      "protocol-serverbound-call-sites",
+      "rendering-client-block-entity-tracking",
+      "rendering-client-level-dirty-handoff",
+      "rendering-level-backend-lifecycle",
+      "resources-default-pack-stack",
+      "resources-indexed-panorama",
+      "resources-indexed-vanilla-provider",
+      "resources-language-manager",
+      "resources-offline-asset-trust",
+      "resources-reload-listeners",
+      "resources-reload-recovery",
+      "resources-server-pack-lifecycle",
+      "resources-window-icons",
+      "startup-client-bootstrap",
+      "startup-session-identity",
+      "ui-chat-screen-surface",
+      "ui-death-screen-surface",
+      "ui-disconnected-screen-surface",
+      "world-client-ambient-animation",
+      "world-client-chunk-light-lifecycle",
+      "world-client-clock-weather",
+      "world-client-entity-lifecycle",
+      "world-client-level-events",
+      "world-client-level-lifecycle",
+      "world-client-map-data",
+      "world-client-respawn-data",
+      "world-client-session-services"
+    ],
+    "functional_changed_paths": [
+      "scripts/playable_gate.py",
+      "scripts/tests/test_playable_gate.py"
+    ],
     "path_impacts": [
       {
         "mechanism_ids": [
@@ -9811,10 +9960,116 @@
         "required_validation_classes": [
           "acceptance-contract"
         ]
+      },
+      {
+        "mechanism_ids": [
+          "audio-client-level-sound-routing",
+          "diagnostics-client-level-report",
+          "input-debug-key-actions",
+          "input-key-mapping",
+          "input-keyboard-routing",
+          "input-mouse-routing",
+          "interaction-block-breaking",
+          "interaction-carried-slot-sync",
+          "interaction-container-actions",
+          "interaction-creative-actions",
+          "interaction-entity-actions",
+          "interaction-game-mode-guards",
+          "interaction-game-mode-lifecycle",
+          "interaction-item-use",
+          "interaction-pick-actions",
+          "interaction-prediction-sequence",
+          "interaction-primary-action-routing",
+          "lifecycle-client-runtime",
+          "lifecycle-client-task-handoff",
+          "lifecycle-session-replacement",
+          "persistence-options-apply",
+          "persistence-options-derived",
+          "persistence-options-file",
+          "persistence-options-unconsumed",
+          "persistence-server-list",
+          "platform-linux-seat-matrix",
+          "platform-window-chrome",
+          "platform-window-display-mode",
+          "platform-window-lifecycle",
+          "platform-window-surface-state",
+          "player-local-camera-targeting",
+          "player-local-input-movement",
+          "player-local-item-use-state",
+          "player-local-movement-reporting",
+          "player-local-session-respawn",
+          "player-local-vehicle-control",
+          "protocol-client-state-flow",
+          "protocol-configuration-handler-decisions",
+          "protocol-listener-contracts",
+          "protocol-login-handler-decisions",
+          "protocol-packet-tables",
+          "protocol-play-handler-decisions",
+          "protocol-serverbound-call-sites",
+          "rendering-client-block-entity-tracking",
+          "rendering-client-level-dirty-handoff",
+          "rendering-level-backend-lifecycle",
+          "resources-default-pack-stack",
+          "resources-indexed-panorama",
+          "resources-indexed-vanilla-provider",
+          "resources-language-manager",
+          "resources-offline-asset-trust",
+          "resources-reload-listeners",
+          "resources-reload-recovery",
+          "resources-server-pack-lifecycle",
+          "resources-window-icons",
+          "startup-client-bootstrap",
+          "startup-session-identity",
+          "ui-chat-screen-surface",
+          "ui-death-screen-surface",
+          "ui-disconnected-screen-surface",
+          "world-client-ambient-animation",
+          "world-client-chunk-light-lifecycle",
+          "world-client-clock-weather",
+          "world-client-entity-lifecycle",
+          "world-client-level-events",
+          "world-client-level-lifecycle",
+          "world-client-map-data",
+          "world-client-respawn-data",
+          "world-client-session-services"
+        ],
+        "path": "scripts/playable_gate.py",
+        "reasons": [
+          "capture-tool",
+          "central-owner",
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "acceptance-contract",
+          "bbb-owner",
+          "full-gate",
+          "protocol-state-receipt",
+          "resource-platform-receipt",
+          "vanilla-owner"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "performance-official-equal-load"
+        ],
+        "path": "scripts/tests/test_playable_gate.py",
+        "reasons": [
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "focused-evidence",
+          "full-gate"
+        ]
       }
     ],
     "required_validation_classes": [
-      "acceptance-contract"
+      "acceptance-contract",
+      "bbb-owner",
+      "focused-evidence",
+      "full-gate",
+      "protocol-state-receipt",
+      "resource-platform-receipt",
+      "vanilla-owner"
     ]
   },
   "commands": {
@@ -9835,7 +10090,7 @@
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "sha256": "26d53bed4758a9ef5c635b21b0e06d3d949f768a724487eda7996b21d983d3ac"
+      "sha256": "60d419863e0537ee380921e73610c5f5a74156a8ff96c96f989c3524d60ca8ea"
     },
     {
       "path": "docs/evidence/vanilla-26.1/client-mechanism-inventory.json",
@@ -9850,6 +10105,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -9977,10 +10233,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native incomplete_startup_clears_fullscreen_resolution_only_on_successful_final_save",
@@ -10079,10 +10335,12 @@
         "line": 14,
         "required_state_projection": "CLI/目录、render thread、窗口参数与全屏 fallback、quick-play 初始连接、启动 clean marker",
         "route_reopen_condition": "Main/Minecraft source hash或 owner set、参数/quick-play、activation/order、thread identity、dirty marker、window/fullscreen fallback 或 launcher contract 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "startup-client-bootstrap",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -10092,8 +10350,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -10125,6 +10386,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -10257,10 +10519,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native one_startup_identity_feeds_network_world_and_server_pack_headers",
@@ -10324,10 +10586,12 @@
         "line": 15,
         "required_state_projection": "username、Vanilla-lenient optional `--uuid`、无效值 offline UUID fallback、严格 offline service",
         "route_reopen_condition": "User/Main/Minecraft source hash、owner set、`--uuid` lenient/fallback、identity consumer、offline-only 或 telemetry scope 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "startup-session-identity",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -10337,8 +10601,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 12,
@@ -10377,6 +10644,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -10388,7 +10656,9 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/network_runtime.rs",
@@ -10427,10 +10697,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a"
+            "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25"
           }
         ],
-        "dependency_closure_sha256": "280c423db73661696c5e10304c444e3199804c7abccab1d46aed332f45cc4095",
+        "dependency_closure_sha256": "c9f20959b9087036b0792c35539deaef230350bf07a91451a5e65f8ce8f559ae",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
@@ -10451,7 +10721,7 @@
         ],
         "focused_test_contract_sha256": "f69920412d07a5b48cbae41b29eaebb1a39095be78ef2ab3d2739edf659609af",
         "owner": "native event loop/simulation/control",
-        "owner_contract_sha256": "21daa6e56c22e917b73650d3a6123f5d0adbb5b185b52a29a299041248795e05"
+        "owner_contract_sha256": "88bee255396f7bddcffe0191e8b286d6b38cff04d2009d39308a13e07c839885"
       },
       "differential_scenarios": [
         {
@@ -10472,7 +10742,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -10480,10 +10750,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native closed_simulation_receiver_does_not_stall_relay_join",
@@ -10582,10 +10852,12 @@
         "line": 16,
         "required_state_projection": "tick deadline、render handoff、terminal shutdown",
         "route_reopen_condition": "run/tick/terminal owner、dynamic tick target/catch-up cap、publication/wake transport 或 simulation→network→snapshot join order 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "lifecycle-client-runtime",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -10595,8 +10867,12 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required lifecycle-soak receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -10624,6 +10900,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -10638,7 +10915,9 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/network_runtime.rs",
@@ -10701,10 +10980,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a"
+            "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25"
           }
         ],
-        "dependency_closure_sha256": "9d6c8ee8b241ded4519caeacd0370ffae6a971363f5277eb05170fcb67d6a208",
+        "dependency_closure_sha256": "4e6d524ac78360397bac50e2be85e204015ad76bc71553a52cc9fd742647dd3c",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
@@ -10720,7 +10999,7 @@
         ],
         "focused_test_contract_sha256": "54ab2ca6a446abe969091fba42f47161eada7872411dfb6e08ed1e72982b7191",
         "owner": "`WorldStore` connection session→native effect projection",
-        "owner_contract_sha256": "ce71b65e9797f6c16bd69a78a96c6529449b6b9233b207ac98f6fb54d47d3686"
+        "owner_contract_sha256": "e87c6bfea1a37e754ee3900216d198659cdbdf56abf6cd1b3cceca9f03ad911e"
       },
       "differential_scenarios": [
         {
@@ -10744,7 +11023,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -10752,10 +11031,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native terminal_close_does_not_fabricate_remote_disconnect",
@@ -10826,10 +11105,12 @@
         "line": 17,
         "required_state_projection": "connection/level generation replacement、reconfiguration、Transfer carry、terminal drop",
         "route_reopen_condition": "replacement carry、generation、Transfer intent、cookie/listener state 或 teardown order 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "lifecycle-session-replacement",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -10839,8 +11120,12 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required lifecycle-soak receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 12,
@@ -10871,6 +11156,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -10932,7 +11218,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -10940,10 +11226,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native close_unblocks_a_saturated_producer_and_rejects_control",
@@ -11007,10 +11293,12 @@
         "line": 18,
         "required_state_projection": "ordered handoff、wake、close、stale task rejection",
         "route_reopen_condition": "Vanilla task scheduling、task producer、mailbox sequence/partition/barrier、output transport telemetry、wake generation 或 close contract 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "lifecycle-client-task-handoff",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -11020,8 +11308,12 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required lifecycle-soak receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 3,
@@ -11043,6 +11335,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -11127,10 +11420,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-pack discovers_and_verifies_indexed_object",
@@ -11201,10 +11494,12 @@
         "line": 19,
         "required_state_projection": "metadata/index id/hash/size、安全对象映射、lazy object integrity",
         "route_reopen_condition": "metadata/index codec、managed-cache layout、trust budget 或 object integrity owner 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-offline-asset-trust",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -11214,8 +11509,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 2,
@@ -11240,6 +11538,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -11344,10 +11643,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-pack resource_location_matches_vanilla_identifier_validation",
@@ -11390,10 +11689,12 @@
         "line": 20,
         "required_state_projection": "indexed→source vanilla、namespace/root/filter/metadata/lazy integrity",
         "route_reopen_condition": "provider 顺序、source hash/owner set、namespace/root/metadata、development config 可达性或 consumer resolver 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-indexed-vanilla-provider",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -11403,8 +11704,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 21,
@@ -11452,6 +11756,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -11529,10 +11834,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-pack metadata_filter_clears_metadata_without_filtering_resource",
@@ -11582,10 +11887,12 @@
         "line": 21,
         "required_state_projection": "vanilla/startup/selected/server priority、filter、stack",
         "route_reopen_condition": "任一 source hash、owner set、pack priority/filter/metadata/stack 合同、CLI/built-in selection scope 或 owned-read API 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-default-pack-stack",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -11595,8 +11902,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 42,
@@ -11665,6 +11975,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -11957,10 +12268,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-item-model font_book_stacks_fonts_into_one_atlas_and_keeps_per_font_metrics",
@@ -12150,10 +12461,12 @@
         "line": 22,
         "required_state_projection": "prepare/apply generation、失败保留旧代",
         "route_reopen_condition": "listener 注册、generation barrier 或 selected stage compiler owner 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-reload-listeners",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -12163,8 +12476,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 20,
@@ -12203,6 +12519,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -12283,10 +12600,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
@@ -12350,10 +12667,12 @@
         "line": 23,
         "required_state_projection": "ordered apply/ack、atomic fallback、单次 recovery、toast、terminal abort、stale completion rejection",
         "route_reopen_condition": "reload barrier、recovery 或 failure presentation owner 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-reload-recovery",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -12364,8 +12683,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -12503,6 +12825,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -12521,7 +12844,9 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_pack_runtime.rs",
@@ -12651,7 +12976,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a"
+            "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -12663,7 +12988,7 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "d9ffda3ed48018615739095202f33e8245aef140eb48434c3f80d4fa855e4430",
+        "dependency_closure_sha256": "3204d3b704433e74a9a00f79020cf6134537a6e99ba17e2105b5d27f1cf98608",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
@@ -12705,7 +13030,7 @@
         ],
         "focused_test_contract_sha256": "bfc12ef207f93e6f1c3698262c149a061882482585f8ceb8b785b415d9cd5821",
         "owner": "`bbb-net::resource_pack`、native pack runtime、`bbb-pack::server_pack`",
-        "owner_contract_sha256": "7b61dd659c22fa5228dd598d162223e9dfc68ff9f8945b216b2a15563cccc54d"
+        "owner_contract_sha256": "e2049fe56c0f5f70fef78c991b9e6d9fa732599ec43c7717aa8203b43ec2733b"
       },
       "differential_scenarios": [
         {
@@ -12734,10 +13059,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native accepted_pack_runs_download_apply_pop_restore_lifecycle",
@@ -13074,10 +13399,12 @@
         "line": 25,
         "required_state_projection": "packet offer/response、每次 external push 的顺序 singleton batch、跨 batch failure、每 batch独立 toast identity、共享五槽 mixed-family admission/multi-slot reservation/单次 visibility sound、250 MiB/SHA-1/headers/SOCKS、`<gameDir>/downloads/<UUID>/<SHA1>` cache、JSONL receipt、20-file vacuum、直接/lazy ZIP provider、`server/%08X/%UUID` identity/reverse-push repository order、reload/recovery、pop/transfer/terminal cleanup",
         "route_reopen_condition": "任一 owner/source hash、batch/cache/provider/toast/reload/response order、pack identity、scope ruling 或 live receipt 合同变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-server-pack-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -13087,8 +13414,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 68,
@@ -13195,6 +13525,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -13336,10 +13667,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native recipe_book_language_write_stores_the_bare_language_code",
@@ -13452,10 +13783,12 @@
         "line": 26,
         "required_state_projection": "pack metadata `putIfAbsent` 可用语言、en_us→selected、namespace/resource-stack 异常边界、deprecated translation、任意 fallback、bidi、override/filter；recipe-book 搜索按 `Locale.ROOT` 等价判定 `excitedze`，仅在 metadata 含 `en_pt` 且当前未选中时依次更新 locale、请求 reload、写 `lang`，写盘尝试完成后才广播新 `ClientInformation`；SystemToast title 在 extract 重解析而 message lines/初始 width 冻结",
         "route_reopen_condition": "新实现通过 full gate 并重采 exact-HEAD zh_cn platform/language receipt 后关闭；language/recipe owner、metadata/merge/fallback/bidi、save→broadcast 次序、screen/input reachability、title component 或 consumer owner 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-language-manager",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -13465,8 +13798,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 15,
@@ -14837,6 +15173,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -14916,10 +15253,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native platform_target_preserves_vanilla_family_and_wayland_skip",
@@ -14976,10 +15313,12 @@
         "line": 30,
         "required_state_projection": "release/snapshot vanilla-only root、16/32/48/128/256 五图全有或全拒绝、X11 一次提交完整 ARGB family、Wayland 零读取 skip、startup apply/fallback",
         "route_reopen_condition": "任一 source hash/owner set、IconSet/root-provider、X11 CARDINAL encoding、platform target 或 startup fallback 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-window-icons",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -14989,8 +15328,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 5,
@@ -15022,6 +15364,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "lifecycle-soak",
         "linux-platform",
@@ -15184,7 +15527,7 @@
           ],
           "kind": "lifecycle",
           "scenario_id": "receipt-lifecycle-soak",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -15192,10 +15535,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native renderer_resource_owners_commit_inside_one_reload_barrier",
@@ -15280,10 +15623,12 @@
         "line": 31,
         "required_state_projection": "indexed/selected/filter 七图全有或全拒绝、Vanilla face/layer 与显示行方向、realtime spin、cube→overlay→blur→menu background、失败保留上一 GPU generation",
         "route_reopen_condition": "任一 source hash/owner set、face/layer/row convention、screen-background order、spin/options 或 GPU generation/rollback 合同变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "resources-indexed-panorama",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -15293,8 +15638,12 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required lifecycle-soak receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 14,
@@ -15507,6 +15856,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -17700,10 +18050,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -17956,10 +18306,12 @@
         "line": 34,
         "required_state_projection": "phase/direction/id/class/resource id",
         "route_reopen_condition": "五个 Vanilla phase table 的 source hash、packet 顺序/id/class/resource id、coverage schema 或 generator 输入变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-packet-tables",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -17969,8 +18321,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 256,
@@ -18261,6 +18616,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -20440,10 +20796,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -20696,10 +21052,12 @@
         "line": 35,
         "required_state_projection": "handler surface 与 phase contract",
         "route_reopen_condition": "任一 listener interface/source hash、owner set、GameProtocols clientbound table、phase dispatch 或 unknown-packet contract 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-listener-contracts",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -20709,8 +21067,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 155,
@@ -20908,6 +21269,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -23083,10 +23445,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -23339,10 +23701,12 @@
         "line": 36,
         "required_state_projection": "compression/cookie/custom-query/finish/disconnect；encryption 请求按 offline-only scope 以可归因错误拒绝（见 ledger）",
         "route_reopen_condition": "login handler 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-login-handler-decisions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -23352,8 +23716,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 15,
@@ -23387,6 +23754,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -25569,10 +25937,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -25825,10 +26193,12 @@
         "line": 37,
         "required_state_projection": "registry/tags/known-pack FIFO → atomic validation/freeze → finish ACK → Play；invalid registry disconnects without ACK",
         "route_reopen_condition": "configuration handler source/owner set 或 ordering 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-configuration-handler-decisions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -25838,8 +26208,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 16,
@@ -25874,6 +26247,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -28058,10 +28432,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -28314,10 +28688,12 @@
         "line": 38,
         "required_state_projection": "canonical apply、runtime effect、ack/diagnostics",
         "route_reopen_condition": "play handler/source hash、owner set、packet table、canonical apply/runtime effect 或 ack/diagnostics ordering 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-play-handler-decisions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -28327,8 +28703,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 238,
@@ -28589,6 +28968,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -28656,10 +29036,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native input_only_publication_reuses_exact_world_arc_for_render_and_control",
@@ -28709,10 +29089,12 @@
         "line": 39,
         "required_state_projection": "ordered packet→state→consumer",
         "route_reopen_condition": "packet side-effect owner 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-client-state-flow",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -28722,8 +29104,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 0,
@@ -28745,6 +29130,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -30928,10 +31314,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
@@ -31184,10 +31570,12 @@
         "line": 40,
         "required_state_projection": "action/ack/command invocation and state guards",
         "route_reopen_condition": "任一 call-site source hash、owner set、serverbound table、action/prediction/ack ordering 或 CLI/offline scope 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "protocol-serverbound-call-sites",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -31197,8 +31585,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 67,
@@ -31781,6 +32172,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -31907,10 +32299,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native respawn_local_consumers_cannot_restore_level_generation_as_their_only_identity",
@@ -31981,10 +32373,12 @@
         "line": 45,
         "required_state_projection": "exact level identity、cache invalidation、transport delegation",
         "route_reopen_condition": "constructor/cache owner、same-dimension respawn、clear/terminal order 或 stale-work contract 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-level-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -31994,8 +32388,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 3,
@@ -32017,6 +32414,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -32101,10 +32499,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native clear_color_hides_client_sky_flash_when_option_is_enabled",
@@ -32196,10 +32594,12 @@
         "line": 46,
         "required_state_projection": "runsNormally 门内 tickTime、SetTime 无条件重同步+clock handleUpdates、rain/thunder snap、skyFlash 原始 tick 衰减+hide 门+SKY_COLOR/LIGHT_FACTOR layer",
         "route_reopen_condition": "tick 序、clock rate/重同步、weather snap 语义或 flash layer 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-clock-weather",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -32209,8 +32609,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 8,
@@ -32237,6 +32640,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -32332,10 +32736,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native queued_light_poll_follows_the_single_network_drain_before_presentation_sync",
@@ -32406,10 +32810,12 @@
         "line": 47,
         "required_state_projection": "同步 chunk 替换/丢弃、bounded 每帧 light drain、light-apply 后 terrain 失效与首次可渲染、pending 生命周期",
         "route_reopen_condition": "chunk replace/unload 顺序、drain 公式、initial-light readiness 门或 pending 生命周期变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-chunk-light-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -32419,8 +32825,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 5,
@@ -32444,6 +32853,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -32555,10 +32965,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-world simulation_distance_only_gates_living_death_ticks_by_chunk_distance",
@@ -32643,10 +33053,12 @@
         "line": 48,
         "required_state_projection": "add/re-add/remove、loaded/frozen/passenger tick、id/UUID/list query、multipart/render projection、simulation-distance death tick、team/scale/override local push",
         "route_reopen_condition": "ClientLevel entity callback/tick order、generated push dispatch、bounds/team/pushability 或 entity generation owner 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-entity-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -32656,8 +33068,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 17,
@@ -32693,6 +33108,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -32794,10 +33210,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native ambient_particles_observe_chunks_biomes_replacement_on_the_next_tick",
@@ -32889,10 +33305,12 @@
         "line": 49,
         "required_state_projection": "667×(16/32) 采样、block dispatch→fluid+1/10 drip→marker→full-block 门内 ambient 顺序、drip 三分支、destroy=2001/breaking/fireworks batch",
         "route_reopen_condition": "采样循环/半径、doAnimateTick 顺序、marker 物品集或 drip/destroy/firework batch 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-ambient-animation",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -32902,8 +33320,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -32931,6 +33352,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -33067,10 +33489,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net drive_connection_sends_movement_net_commands_in_play",
@@ -33113,10 +33535,12 @@
         "line": 50,
         "required_state_projection": "respawn 全携带、listener 重置只清 scoreboard/recipes（features cookie 携带、brewing/fuel registry 重建覆盖）、block/fluid ticks 恒空（无 scheduled-tick 模拟）、无 world socket",
         "route_reopen_condition": "listener carry/reset 分界、服务归属、出站路径或 scheduled-tick 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-session-services",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -33126,8 +33550,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 8,
@@ -33154,6 +33581,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -33239,10 +33667,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native filled_map_frame_renders_decoded_full_frame_map_when_data_exists",
@@ -33285,10 +33713,12 @@
         "line": 51,
         "required_state_projection": "create-if-absent(scale/locked)+bounds 校验 patch merge+retained bytes、item-frame 消费、dimension-respawn 整表携带、login 空表重建",
         "route_reopen_condition": "patch merge、respawn 携带、login 清空或 map 消费路径变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-map-data",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -33298,8 +33728,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -33322,6 +33755,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -33423,10 +33857,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native explosion_tracker_is_deterministic_caps_at_512_and_clears_after_tick",
@@ -33469,10 +33903,12 @@
         "line": 52,
         "required_state_projection": "global 门（1023/1028/1038 camera 相对 2.0 距离、dragon death 音量 5）、非全局 jukebox/seeded 音效/粒子共享 random 链、explosion tracker 确定性 512 cap 按代清理",
         "route_reopen_condition": "global 门、random 链、explosion 交接或事件效果路径变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-level-events",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -33482,8 +33918,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 3,
@@ -33505,6 +33944,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -33623,10 +34063,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native player_abilities_spawn_distance_and_chat_update_world_counters",
@@ -33704,10 +34144,12 @@
         "line": 53,
         "required_state_projection": "login Normal 默认+ChangeDifficulty 覆盖+respawn 携带、spawn world-border 钳制（越界→border center MOTION_BLOCKING/minY）、horizon=is_flat?minY:63 的 dark disc 门、void darkness onset=is_flat?1:32 的 fog 基值",
         "route_reopen_condition": "difficulty/spawn 生命周期、钳制公式、horizon/onset 常量或 disc 形状变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "world-client-respawn-data",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -33717,8 +34159,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -33747,6 +34192,7 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -33833,7 +34279,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -33868,7 +34314,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native compiled_section_gate_precedes_camera_frustum_submission",
@@ -33897,10 +34343,12 @@
         "line": 54,
         "required_state_projection": "两条提取路径同址：ordinary 走 section gate + per-renderer view distance（default 64/gateway 256），`shouldRenderOffScreen` 成员（beacon beam/bounding box/test instance）绕开 section/frustum，只走各自 `shouldRender`（水平 `renderDistance*16`／球面 96／两者并集）",
         "route_reopen_condition": "新增 off-screen renderer 或两条提取路径分界变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "rendering-client-block-entity-tracking",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -33912,8 +34360,11 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 1,
@@ -33934,6 +34385,7 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -34059,7 +34511,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -34094,7 +34546,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native player_adjacent_dirty_chunk_schedules_before_a_distant_dirty_chunk",
@@ -34179,10 +34631,12 @@
         "line": 55,
         "required_state_projection": "同态 setBlock 全 no-op、±1 block/section/range 展开、destroy progress 合并、空 section occlusion 传播、player 邻近优先调度",
         "route_reopen_condition": "同态 no-op、邻域展开、destroy 合并/过期或 occlusion 派生变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "rendering-client-level-dirty-handoff",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -34194,8 +34648,11 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 6,
@@ -34740,6 +35197,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -34834,10 +35292,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-audio delayed_positioned_sounds_release_after_remaining_ticks",
@@ -34901,10 +35359,12 @@
         "line": 58,
         "required_state_projection": "包驱动 seeded（except 门恒真、positioned 无 delay）、entity-bound silent 门、本地 per-call nextLong seed、私有 playSound 延迟（>100 sqr→0.5 tick/block）",
         "route_reopen_condition": "seed 链、delay 公式、silent/except 门或 audio 提交路径变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "audio-client-level-sound-routing",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -34914,8 +35374,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 6,
@@ -34940,6 +35403,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -35016,10 +35480,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native level_details_render_as_the_affected_level_category",
@@ -35069,10 +35533,12 @@
         "line": 59,
         "required_state_projection": "\"Affected level\" 九项 vanilla 顺序活值（players/chunk stats/dimension/time/spawn/brand/type/entity count/weather）、失败边界同代附加、`Chunks[C]` 行、恒 \"ClientLevel\" identity",
         "route_reopen_condition": "报告段落、chunk-stats 格式、spawn location 转写或失败边界附加路径变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "diagnostics-client-level-report",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -35082,8 +35548,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -35106,6 +35575,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -35213,10 +35683,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native queues_perform_respawn_command",
@@ -35252,10 +35722,12 @@
         "line": 60,
         "required_state_projection": "构造器/resetPos 由 login/respawn 重建链唯一拥有（keep-data 分支）、respawn 请求经 death screen 20 tick 锁+PerformRespawn 命令单发、tickDeath 由 death 动画计数（health<=0 起递增、倒地渲染）拥有",
         "route_reopen_condition": "重建分支、respawn 命令序或 death 计数语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "player-local-session-respawn",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -35265,8 +35737,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -35419,6 +35894,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -35489,10 +35965,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native move_command_forces_position_after_vanilla_reminder_interval",
@@ -35528,10 +36004,12 @@
         "line": 62,
         "required_state_projection": "per-tick 移动报文循环（position reminder 间隔、rotation-only 不重置 reminder）、sprint start/stop 转换命令（队列失败保基线重试）、abilities 命令（flying toggle 抑制重复）均经唯一命令链",
         "route_reopen_condition": "报文序、reminder 间隔或 sprint/abilities 命令语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "player-local-movement-reporting",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -35541,8 +36019,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -35565,6 +36046,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -35651,10 +36133,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity",
@@ -35753,10 +36235,12 @@
         "line": 63,
         "required_state_projection": "输入归一（0.98/慢速属性/unit-square）、sprint 起停链+sprint 粒子（on-pos/clamp/-4dx 速度）、squish 逃逸、minor-collision 角度门、auto-jump、ladder sneak 抑制",
         "route_reopen_condition": "输入归一、sprint 链、squish/auto-jump/minor-collision 判定或 movement tick 归属变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "player-local-input-movement",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -35766,8 +36250,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 20,
@@ -35806,6 +36293,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -35913,10 +36401,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native mounted_jumpable_vehicle_release_queues_riding_jump_command",
@@ -35973,10 +36461,12 @@
         "line": 64,
         "required_state_projection": "ride tick（motion 清零序）、riding jump（saddle 门+charge 释放命令）、jumpable/sprintable vehicle 判定、SetPassengers mount/dismount 链；shouldRotateWithMinecart 唯一消费点在 experimental `minecart_improvements` 移动路径——flag 判定链已有、实验乘客旋转未实现（默认服务器不可达，有界差异）",
         "route_reopen_condition": "mount 语义、jump charge 曲线变化或实现 experimental minecart 移动时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "player-local-vehicle-control",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -35986,8 +36476,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 7,
@@ -36293,6 +36786,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -36392,10 +36886,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-world trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned",
@@ -36431,10 +36925,12 @@
         "line": 67,
         "required_state_projection": "start/stop/hand 由 use-prediction 本地状态（set/take drain、hand 记录）唯一拥有、use 减速与乘子由 movement 输入归一链拥有、synced LIVING_ENTITY_FLAGS（is_using/off_hand 掩码）由 entity store 投影链 reconcile",
         "route_reopen_condition": "use 状态机、减速乘子或 flags 掩码语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "player-local-item-use-state",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -36444,8 +36940,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 6,
@@ -37153,6 +37652,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -37249,10 +37749,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_camera_uses_local_player_tick_endpoints",
@@ -37302,10 +37802,12 @@
         "line": 71,
         "required_state_projection": "pick/raycast/filter 经唯一 crosshair resolver（item attack-range 优先+block 距离 clamp+双 range fallback、fluid 剔除、pickable/marker 判定）、view rot 经 camera pose tick 端点、visual-rot/rope-hold 经 leash 端点链、controlled-camera 经 SetCamera follows_player 判定",
         "route_reopen_condition": "resolver 优先级、attack-range 语义、camera pose 插值或 spectate camera 判定变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "player-local-camera-targeting",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -37315,8 +37817,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -37348,6 +37853,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -37448,10 +37954,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native f3_f4_game_mode_switcher_does_not_open_over_existing_screen",
@@ -37494,10 +38000,12 @@
         "line": 72,
         "required_state_projection": "game type 由 GameEvent CHANGE_GAME_MODE 唯一设置、login/respawn 玩家重建链（keep-data 分支保留 sprint/pose/attribute）、abilities 由 game_type 唯一映射、F3+F4 switcher 开门判定",
         "route_reopen_condition": "game type 事件语义、respawn keep-data 分支或 switcher 门变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-game-mode-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -37507,8 +38015,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 7,
@@ -37538,6 +38049,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -37657,10 +38169,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native local_attack_miss_time_uses_screen_sentinel_and_clears_on_release",
@@ -37696,10 +38208,12 @@
         "line": 73,
         "required_state_projection": "canHurtPlayer/hasExperience 的 survival/adventure HUD 门在 renderer publication 提取链、miss-time 由 attack sentinel 链拥有、spectator 与 server-controlled-inventory 各有唯一 world 判定 fn",
         "route_reopen_condition": "HUD 门、miss-time 或 spectator/mount 判定语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-game-mode-guards",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -37709,8 +38223,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 5,
@@ -37734,6 +38251,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -37844,10 +38362,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native completion_and_abort_retry_without_publishing_partial_state_when_queue_is_full",
@@ -37960,10 +38478,12 @@
         "line": 74,
         "required_state_projection": "restrict/border/item+permission gate/start/abort/progress/finish/sound/overlay、atomic queue admission/rollback",
         "route_reopen_condition": "owner/symbol、border/order、item/block membership、queue commit barrier、prediction correction 或 stage consumer 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-block-breaking",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -37973,8 +38493,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 6,
@@ -37999,6 +38522,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38108,10 +38632,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native prediction_commands_cannot_restore_unreserved_queue_helpers",
@@ -38182,10 +38706,12 @@
         "line": 75,
         "required_state_projection": "signed allocation、predict-before-send、inclusive ack/correction、teleport/respawn lifetime、bounded rollback",
         "route_reopen_condition": "owner/source hash、permit barrier、signed ack/wrap、teleport/level lifetime 或 matching packet 顺序变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-prediction-sequence",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -38195,8 +38721,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 5,
@@ -38224,6 +38753,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38293,10 +38823,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native digit_key_selects_hotbar_slot_updates_world_and_queues_command",
@@ -38311,10 +38841,12 @@
         "line": 76,
         "required_state_projection": "held-slot 命令 change-only 发送（world 基线不变则不发，即 ensureHasSentCarriedItem 语义）",
         "route_reopen_condition": "held-slot 基线或发送时序语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-carried-slot-sync",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -38324,8 +38856,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 2,
@@ -38346,6 +38881,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38417,10 +38953,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native right_mouse_bucket_prediction_uses_the_queued_use_item_sequence",
@@ -38449,10 +38985,12 @@
         "line": 77,
         "required_state_projection": "use/useOn 经 reserved use-item 命令与 use-prediction 链（bucket 序列先例）、release 经 ReleaseUseItem action（trident hold 阈值）",
         "route_reopen_condition": "use 命令序或预测语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-item-use",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -38462,8 +39000,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -38486,6 +39027,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38558,10 +39100,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native queues_entity_attack_and_interact_commands",
@@ -38597,10 +39139,12 @@
         "line": 78,
         "required_state_projection": "attack/piercing 经 attack-entity 命令+swing/stab、interact 经 interact-entity 命令、spectate 经 spectate-entity 命令（spectator 左键）",
         "route_reopen_condition": "命令序或 spectate 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-entity-actions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -38610,8 +39154,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -38634,6 +39181,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38713,10 +39261,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native queues_container_button_click_command",
@@ -38759,10 +39307,12 @@
         "line": 79,
         "required_state_projection": "click/button/recipe/slot-state 各经唯一 queue 命令（slot-state 与 click 原子合发）",
         "route_reopen_condition": "命令原子性或 slot 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-container-actions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -38772,8 +39322,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 4,
@@ -38796,6 +39349,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38858,10 +39412,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native creative_drop_throttler_limits_decays_and_resets_for_a_new_level_owner",
@@ -38876,10 +39430,12 @@
         "line": 80,
         "required_state_projection": "add/drop 经 creative submit 链（instabuild/feature 门、drop throttler +20/1280）",
         "route_reopen_condition": "creative 提交计划或 throttler 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-creative-actions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -38889,8 +39445,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 2,
@@ -38911,6 +39470,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -38973,10 +39533,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native control_middle_mouse_press_on_block_queues_pick_block_with_data",
@@ -39005,10 +39565,12 @@
         "line": 81,
         "required_state_projection": "中键 pick 经 crosshair 命中路由 block/entity pick 命令、include-data 由修饰键决定",
         "route_reopen_condition": "pick 路由或 include-data 语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-pick-actions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -39018,8 +39580,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 3,
@@ -39045,6 +39610,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -39098,10 +39664,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native held_left_mouse_while_using_item_does_not_continue_or_abort_destroy",
@@ -39151,10 +39717,12 @@
         "line": 82,
         "required_state_projection": "左键攻击（attack-blocked 门、entity attack+swing、miss-time sentinel）、按住持续破坏（using-item/piercing 抑制）、右键 use（bucket 预测/instrument/equippable 优先级）均经 mouse.rs 唯一路由链",
         "route_reopen_condition": "路由优先级、miss-time 或 use 预测语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "interaction-primary-action-routing",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -39164,8 +39732,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 3,
@@ -47816,6 +48387,7 @@
       "artifact_ids": [
         "client-owner-inventory",
         "draw-evidence",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -47950,7 +48522,7 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -47985,7 +48557,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native frame_visibility_matches_vanilla_two_degree_rotation_gate",
@@ -48049,10 +48621,12 @@
         "line": 97,
         "required_state_projection": "resource、target、level、resize rebuild lifetime",
         "route_reopen_condition": "owner/symbol、prepare/apply 边界、RAII/resource/level generation 或 resize rollback 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "rendering-level-backend-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "draw-evidence",
@@ -48064,8 +48638,11 @@
         "visual-workload"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 9,
@@ -51170,6 +51747,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input.rs",
@@ -51180,7 +51758,9 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -51224,10 +51804,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a"
+            "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25"
           }
         ],
-        "dependency_closure_sha256": "5957f85ab3fe83cf815fc2ff6413d21eaf84066edcc39ce867256b438e712e90",
+        "dependency_closure_sha256": "1801f934882bef777140ee0917acff3e1b0e9b25e196449cca11fb9d95b387fd",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
@@ -51241,7 +51821,7 @@
         ],
         "focused_test_contract_sha256": "df017a6a3638b5ac4761cd2cedeb1cfd19d6274bfeeca3ffc5887dd5376525fa",
         "owner": "`ClientInputState`→immutable renderer/control projection",
-        "owner_contract_sha256": "f6c1e21b2594a830659722f3b07a52dfcda6d3b2dafc78666e80b00c599d0ab2"
+        "owner_contract_sha256": "4572668571eddc0507ef17062413c340736db82d9517b434c89b1242076aa598"
       },
       "differential_scenarios": [
         {
@@ -51255,7 +51835,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -51291,10 +51871,12 @@
         "line": 109,
         "required_state_projection": "edit、recent/draft/history、permission、suggestion、component interaction、narration、send、render、lifecycle",
         "route_reopen_condition": "ChatScreen/ChatAbilities/recent-draft 或 input/control/live 合同变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "ui-chat-screen-surface",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -51302,8 +51884,10 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 26,
@@ -51356,6 +51940,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/input/death_screen.rs",
@@ -51366,7 +51951,9 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/death_screen.rs",
@@ -51411,10 +51998,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a"
+            "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25"
           }
         ],
-        "dependency_closure_sha256": "32e8aefe962bd269aa233e6db91ea1a5dbc4045fd71617a3be4faaf98d58a24a",
+        "dependency_closure_sha256": "7f34ea7737397d1de18f55292e8d04c1d89f2f484c5d59df286ee343b1bf696e",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
@@ -51428,7 +52015,7 @@
         ],
         "focused_test_contract_sha256": "66ce50957d40cd849d22a5d97ba766fbdfb9dc7903fddf7c039f48c8e01c5b75",
         "owner": "world death/report state→native input→immutable renderer/control projection",
-        "owner_contract_sha256": "4e7aae699747ca9247a0d428953162bcb8bc075d7be3113f29b125d8b59fb09c"
+        "owner_contract_sha256": "a8b99f136006f5be61d7b84c6ccbe4e73a67962046605783d1db91f883529137"
       },
       "differential_scenarios": [
         {
@@ -51443,7 +52030,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -51479,10 +52066,12 @@
         "line": 110,
         "required_state_projection": "delay、normal/hardcore、draft Edit/Discard、report return、URL、narration、resource/render/live lifecycle",
         "route_reopen_condition": "DeathScreen/reporting previous-screen 或 playable UI-respawn 合同变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "ui-death-screen-surface",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -51490,8 +52079,10 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 16,
@@ -51534,6 +52125,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "parity-matrix",
         "repo:crates/bbb-native/src/network_runtime.rs",
@@ -51543,7 +52135,9 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/network_runtime.rs",
@@ -51579,10 +52173,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "e41406f6ed34876d4dac043258c2fbdfbcf017c1242925d75e9ae1f878bd763a"
+            "sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25"
           }
         ],
-        "dependency_closure_sha256": "f5eb250b6c219465c60a400bdec5583efaf64a05be75f41c5e9abadfa309087c",
+        "dependency_closure_sha256": "d059cb4f8b14cd386fd51c80dd807c1cbd4d1d9933809b4cdac29ce8d500a366",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
@@ -51595,7 +52189,7 @@
         ],
         "focused_test_contract_sha256": "7a37906eb50bcc9a15e7158f36166016b0257902648f03d23bca97208ad9d534",
         "owner": "net typed outcome→native input/publication→renderer/platform",
-        "owner_contract_sha256": "998683ea62200061d1460dbb6cdcd2dc900521f8571354d3fe38fccbe771a213"
+        "owner_contract_sha256": "86f54d91d6ad2f6193a921fd6a8d1baf91977cb4c3b1f137db318edd9f64927d"
       },
       "differential_scenarios": [
         {
@@ -51608,7 +52202,7 @@
           "status": "passed"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native disconnected_screen_projection_preserves_style_focus_and_narration",
@@ -51637,10 +52231,12 @@
         "line": 111,
         "required_state_projection": "bounded styled reason/details、phase title、atomic teardown、buttons、narration、non-Esc lifecycle",
         "route_reopen_condition": "terminal outcome、screen lifecycle 或 live kick 合同变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "ui-disconnected-screen-surface",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -51648,8 +52244,10 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 8,
@@ -52862,6 +53460,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -52968,10 +53567,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native social_interactions_default_p_key_opens_and_closes_away_from_search",
@@ -53119,10 +53718,12 @@
         "line": 119,
         "required_state_projection": "winit `KeyboardInput`/`Ime` 事件经单一 mailbox 进 `apply_key`/`apply_ime_*`，screen 优先级级联后走 fullscreen→screenshot→Ctrl+B→编辑器→debug→Escape→keybind 分派；修饰键从按键沿踪、last-input-type 只在 screen 打开时记录；IME preedit 按当前焦点 owner 路由并在焦点切换时双向移交（`lastPreeditEvent` 常存，gain resubmit、lose 清除）",
         "route_reopen_condition": "owner/symbol、分派优先级、修饰键判据或 IME 路由/移交变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "input-keyboard-routing",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -53132,8 +53733,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 12,
@@ -53168,6 +53772,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -53243,10 +53848,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native debug_hotkeys_take_priority_over_feature_count_and_regular_keymap",
@@ -53373,10 +53978,12 @@
         "line": 120,
         "required_state_projection": "完整 F3 组合表按 vanilla 优先级（chunk-debug→feature-count→映射键）；黄色 feedback 与红色 warning 前缀、`/setblock`+`/summon` 复制经 server query 事务、debug-crash 倒计时 1s 首报+ceil 秒递减+10s panic（Ctrl 持有走 `youJustLostTheGame` 式 abort）；F3 组合比较硬编码 KeyCode 且启动时警告不可重绑（见 ledger 记录）",
         "route_reopen_condition": "owner/symbol、F3 组合表、倒计时常量或 feedback 装饰变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "input-debug-key-actions",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -53386,8 +53993,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 13,
@@ -53419,6 +54029,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -53550,10 +54161,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native friendly_report_has_vanilla_sections_and_bounded_accounting",
@@ -53708,10 +54319,12 @@
         "line": 121,
         "required_state_projection": "screen-vs-game 按键分派、touchscreen 外 attack/use/pick 路由、`(s*0.6+0.2)^3` 转向链与 invert/scoping、discrete/wheel scroll 缩放与 hotbar 残差、Locked→Confined 捕获与 cursor 释放、物理光标缓存单次 GUI 投影；`simulateRightClick`（macOS quirk）、`onDrop`（仅 pack 屏消费）、`drawDebugMouseInfo`（dev flag）与 first-move 抑制为记录在案的 scope 决策",
         "route_reopen_condition": "owner/symbol、转向/scroll 公式、捕获 fallback 或投影比率变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "input-mouse-routing",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -53721,8 +54334,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 19,
@@ -53760,6 +54376,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -53877,10 +54494,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native save_round_trips_and_drops_keys_this_client_does_not_know",
@@ -54021,10 +54638,12 @@
         "line": 122,
         "required_state_projection": "60 mapping 生成 catalog 承担注册/默认/类别，`key_<name>` 覆盖默认并整批重建，press-edge 即 click/consume、toggle 四键 flip-on-press、screen 关闭恢复 keyboard-bound toggle、respawn 重置全部 toggle、keybind 组件解析当前绑定键名；conflict/排序 UI 面留 options 非目标记录",
         "route_reopen_condition": "owner/symbol、catalog 生成器、toggle 语义或绑定解析链变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "input-key-mapping",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -54034,8 +54653,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 30,
@@ -54084,6 +54706,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -54216,10 +54839,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native friendly_report_has_vanilla_sections_and_bounded_accounting",
@@ -54311,10 +54934,12 @@
         "line": 123,
         "required_state_projection": "`build_window` 单 owner 承担创建、`CloseRequested`→单次 Shutdown、`LoopExiting` 冻结 teardown、平台名映射与 typed error；winit 的成功文件事件在当前范围无可达 consumer；官方 Java 25 Linux/Wayland 的 GLFW NUL-terminated path→LWJGL replacement decoder→UnixPath 链不能产生 `InvalidPathException`，故失败计数亦不可观察",
         "route_reopen_condition": "code-freeze Linux platform formal receipt 待采；Java/LWJGL/GLFW/JDK 转换链、winit 版本/事件/后端、支持平台范围、screen surface 或创建/关闭顺序变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "platform-window-lifecycle",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -54324,8 +54949,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 16,
@@ -54360,6 +54988,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -54470,10 +55099,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native the_fullscreen_key_toggles_the_window_and_saves_the_option",
@@ -54565,10 +55194,12 @@
         "line": 124,
         "required_state_projection": "单一确定性 mode policy（exact winit mode+exclusive 后端才 Exclusive，否则 borderless；Wayland 恒 borderless）、`fullscreenResolution` 仅启动行（无 runtime writer，dirty 重放面记录为不可达）、vsync 过渡后重放、rawMouseInput 有界警告、毫赫兹→GLFW 整数刷新率",
         "route_reopen_condition": "owner/symbol、mode policy、vsync 重放或分辨率解析变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "platform-window-display-mode",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -54578,8 +55209,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 11,
@@ -54613,6 +55247,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -54733,10 +55368,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native focus_loss_clears_pressed_input_and_queues_release",
@@ -54884,10 +55519,12 @@
         "line": 125,
         "required_state_projection": "非零 resize 清 minimized 并同步发布逻辑 GUI 面（ceiling division），零尺寸只标 minimized；`calculateScale` 逐级增长+manual cap+unicode 奇数上取；焦点丢失清输入并释放捕获、严格 >500ms 失焦暂停在步末裁决；物理/逻辑尺寸各归其 owner、线宽走物理宽度；resize 失败带新旧尺寸入 crash report",
         "route_reopen_condition": "owner/symbol、scale 公式、resize/焦点/暂停判据变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "platform-window-surface-state",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -54897,8 +55534,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 17,
@@ -54938,6 +55578,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -55020,10 +55661,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native cursor_icon_changes_flow_through_select_cursor_gating",
@@ -55066,10 +55707,12 @@
         "line": 126,
         "required_state_projection": "标题 `Minecraft* <version> - Multiplayer` 按连接态 diff 后设置、光标经 `selectCursor` 门控（不允许时强制 Default、跳过冗余变更）；图标平台族与提交合同由资源机制行独占",
         "route_reopen_condition": "owner/symbol、标题构成、光标门控或 icon route 变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "platform-window-chrome",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -55079,8 +55722,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 5,
@@ -55108,6 +55754,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -55210,10 +55857,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native a_line_splits_on_its_first_colon_only_and_bad_lines_are_skipped",
@@ -55312,10 +55959,12 @@
         "line": 127,
         "required_state_projection": "options.txt 行格式（首个 `:` 切分、坏行跳过、未知 key 不回写）、由 `Options.java` 派生的 key/编码/默认值表、直写非原子",
         "route_reopen_condition": "vanilla 新增/改写 options.txt key 或改变 save 顺序时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "persistence-options-file",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -55325,8 +55974,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 14,
@@ -55359,6 +56011,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -55507,10 +56160,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-audio final_source_volume_matches_vanilla_master_and_category_mix",
@@ -55602,10 +56255,12 @@
         "line": 128,
         "required_state_projection": "effective render distance、final sound volume、background color/opacity、menu blur、model part、camera type、sensitivity 编码、effective max anisotropy（`min(1<<bit, device max)` 只在 `ANISOTROPIC` 下生效）、cloud status 进 cloud pass",
         "route_reopen_condition": "这些派生规则的 vanilla 算术变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "persistence-options-derived",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -55615,8 +56270,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 15,
@@ -55650,6 +56308,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -55962,10 +56621,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-audio only_the_empty_name_selects_the_default_device",
@@ -56197,10 +56856,12 @@
         "line": 129,
         "required_state_projection": "既有 player-info/broadcast/crash/fullscreen/font/graphics/pack/sound-device 消费链保留；stored startup `musicToast`/`musicFrequency` 使用 Vanilla enum 编码与默认值，显式 CLI 保持启动优先级，分别进入独立 NowPlaying runtime 与 MusicManager schedule；`joinedFirstServer` 也在启动消费并由首个 multiplayer tick 同批写回；仅 in-game widget captions/callbacks 有带源码依据的 scope ruling",
         "route_reopen_condition": "这些 owner、enum codec/default、runtime callback 可达性、preset、pack/audio/resource reload 或 adapter filtering 规则变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "persistence-options-apply",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -56210,8 +56871,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 14,
@@ -56248,6 +56912,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -56346,10 +57011,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native a_throwing_legacy_key_fix_retains_all_defaults_like_options_load",
@@ -56392,10 +57057,12 @@
         "line": 130,
         "required_state_projection": "完整 raw string map 在任何 current codec/startup binding 前按文件 `version`（缺失/非法为 0）执行 17 个 `DataFixTypes.OPTIONS` registration；schema 边界、LWJGL2 112 键码、rename/overwrite、Java number/rounding 与异常时整组 defaults 保留均复刻 owner",
         "route_reopen_condition": "`Options.dataFix`、`DataFixTypes.OPTIONS` registration、14 个 `Options*Fix` source hash、schema version/order 或 Java 数值/异常语义变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "persistence-options-unconsumed",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -56405,8 +57072,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 1,
@@ -56426,6 +57096,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -56490,10 +57161,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native server_data_event_persists_configured_vanilla_server_list_owner",
@@ -56543,10 +57214,12 @@
         "line": 131,
         "required_state_projection": "servers.dat 读写、`get(String)` 按地址复用、quick-play hidden 新建与 16 上限、单条保存、`Util.safeReplaceFile`",
         "route_reopen_condition": "新增服务器选择屏、或 `ServerData.write` 字段变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "persistence-server-list",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -56556,8 +57229,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 8,
@@ -58085,7 +58761,9 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/tests/test_playable_gate.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/command.rs",
@@ -60703,7 +61381,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "131d5437727a2a794294b07ea06ce35fdd41a2b5f02a8b1b1c781ffee6ad9630"
+            "sha256": "ad2b49292058e7d5ef180474447199d5738d03ae863a0b36f08f59e7d08e2b19"
           },
           {
             "path": "scripts/tests/test_seat_device.py",
@@ -60727,14 +61405,14 @@
             "sha256": "2d60a7885aa73352ac8d1d5b3400207221695674411c3aec8f42be26c41e3021"
           }
         ],
-        "dependency_closure_sha256": "84d6348c40bedad90f716f2695b8f1e7461c8b78b5a20a22091324a8c677e69b",
+        "dependency_closure_sha256": "2b80f8a69799f2eca4344a8b5cab10d60bfa5f08a23505c4ba61a79c0e35ac68",
         "evidence_commit": "20bcefd4916f4c1e3a11934b2c41ba09d7b5e61c",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
-        "focused_test_contract_sha256": "1099c98b6e681a2873e07fe599b6bc267072570374f1924531127157b7386f4a",
+        "focused_test_contract_sha256": "ece20464b34f1554421bdfe318868b46411df70d443177b01df0dfa6be49d2b9",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "d41372cbb0fb3e7f91b6c04a9591a90fe04ae8688f1981e1c86b76c69591da42"
+        "owner_contract_sha256": "04de0fef42459fe171116bc484c06233ad8dca9b83893151e6958fcf4514aed5"
       },
       "differential_scenarios": [
         {
@@ -61119,7 +61797,7 @@
           ],
           "kind": "state-trace",
           "scenario_id": "focused-performance-official-equal-load",
-          "status": "passed"
+          "status": "invalid"
         },
         {
           "artifact_ids": [
@@ -61198,10 +61876,10 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 2900,
-          "evidence_set_sha256": "41cc0cb4708c6a370d4a118a0419488471e93a6cdf5daba2c71f6cec3341f814",
+          "evidence_set_count": 2901,
+          "evidence_set_sha256": "5f8ebd86e51e3c47063af259ae846b1ff0281ec7e01d4603cb747c18813e4466",
           "ignored": false,
-          "result": "passed-via-full-gate",
+          "result": "focused-evidence-pending",
           "source_artifact_ids": [
             "repo:crates/bbb-audio/src/command.rs",
             "repo:crates/bbb-audio/src/device.rs",
@@ -61591,6 +62269,7 @@
       },
       "mechanism_id": "performance-official-equal-load",
       "open_reasons": [
+        "focused-evidence-pending",
         "formal-receipt-pending"
       ],
       "required_validation_classes": [
@@ -61951,6 +62630,7 @@
     {
       "artifact_ids": [
         "client-owner-inventory",
+        "feature-ledger",
         "full-gate",
         "linux-platform",
         "parity-matrix",
@@ -62037,10 +62717,10 @@
           ],
           "kind": "platform",
           "scenario_id": "receipt-linux-platform",
-          "status": "passed"
+          "status": "invalid"
         }
       ],
-      "final_conclusion": "equivalent",
+      "final_conclusion": "open",
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native local_input_projection_includes_focus_keys_and_mouse_delta",
@@ -62090,10 +62770,12 @@
         "line": 138,
         "required_state_projection": "interactive event matrix",
         "route_reopen_condition": "seat 链路、platform manifest、focused 决策、receipt 判据或声明行变化时重开；[ledger](../../unsupported-features.md)",
-        "status": "equivalent"
+        "status": "partial"
       },
       "mechanism_id": "platform-linux-seat-matrix",
-      "open_reasons": [],
+      "open_reasons": [
+        "formal-receipt-pending"
+      ],
       "required_validation_classes": [
         "bbb-owner",
         "focused-evidence",
@@ -62103,8 +62785,11 @@
         "vanilla-owner"
       ],
       "scope_ruling_sha256": null,
-      "valid": true,
-      "validity_reasons": [],
+      "valid": false,
+      "validity_reasons": [
+        "required linux-platform receipt is invalid: capture tool changed after the artifact: scripts/playable_gate.py",
+        "mechanism remains open with matrix status partial"
+      ],
       "vanilla": {
         "corpus_source_sha256": "d0a4ce3603018d28e1c340266c8a5d90ab8418fe50595fbde520cc958eb61003",
         "inventory_owner_count": 0,
@@ -66061,7 +66746,7 @@
         "performance-official-equal-load"
       ],
       "scenario_id": "focused-performance-official-equal-load",
-      "status": "passed"
+      "status": "invalid"
     },
     {
       "artifact_ids": [
@@ -69095,7 +69780,7 @@
         "resources-indexed-panorama"
       ],
       "scenario_id": "receipt-lifecycle-soak",
-      "status": "passed"
+      "status": "invalid"
     },
     {
       "artifact_ids": [
@@ -69171,7 +69856,7 @@
         "world-client-session-services"
       ],
       "scenario_id": "receipt-linux-platform",
-      "status": "passed"
+      "status": "invalid"
     },
     {
       "artifact_ids": [
@@ -69663,28 +70348,99 @@
     "declared_scope_complete": false,
     "false_equivalent_ids": [],
     "invalid_ids": [
+      "audio-client-level-sound-routing",
       "audio-sound-manager-engine",
+      "diagnostics-client-level-report",
+      "input-debug-key-actions",
+      "input-key-mapping",
+      "input-keyboard-routing",
+      "input-mouse-routing",
+      "interaction-block-breaking",
+      "interaction-carried-slot-sync",
+      "interaction-container-actions",
+      "interaction-creative-actions",
+      "interaction-entity-actions",
+      "interaction-game-mode-guards",
+      "interaction-game-mode-lifecycle",
+      "interaction-item-use",
+      "interaction-pick-actions",
+      "interaction-prediction-sequence",
+      "interaction-primary-action-routing",
+      "lifecycle-client-runtime",
+      "lifecycle-client-task-handoff",
+      "lifecycle-session-replacement",
       "performance-gpu-execution-duration",
-      "performance-official-equal-load"
+      "performance-official-equal-load",
+      "persistence-options-apply",
+      "persistence-options-derived",
+      "persistence-options-file",
+      "persistence-options-unconsumed",
+      "persistence-server-list",
+      "platform-linux-seat-matrix",
+      "platform-window-chrome",
+      "platform-window-display-mode",
+      "platform-window-lifecycle",
+      "platform-window-surface-state",
+      "player-local-camera-targeting",
+      "player-local-input-movement",
+      "player-local-item-use-state",
+      "player-local-movement-reporting",
+      "player-local-session-respawn",
+      "player-local-vehicle-control",
+      "protocol-client-state-flow",
+      "protocol-configuration-handler-decisions",
+      "protocol-listener-contracts",
+      "protocol-login-handler-decisions",
+      "protocol-packet-tables",
+      "protocol-play-handler-decisions",
+      "protocol-serverbound-call-sites",
+      "rendering-client-block-entity-tracking",
+      "rendering-client-level-dirty-handoff",
+      "rendering-level-backend-lifecycle",
+      "resources-default-pack-stack",
+      "resources-indexed-panorama",
+      "resources-indexed-vanilla-provider",
+      "resources-language-manager",
+      "resources-offline-asset-trust",
+      "resources-reload-listeners",
+      "resources-reload-recovery",
+      "resources-server-pack-lifecycle",
+      "resources-window-icons",
+      "startup-client-bootstrap",
+      "startup-session-identity",
+      "ui-chat-screen-surface",
+      "ui-death-screen-surface",
+      "ui-disconnected-screen-surface",
+      "world-client-ambient-animation",
+      "world-client-chunk-light-lifecycle",
+      "world-client-clock-weather",
+      "world-client-entity-lifecycle",
+      "world-client-level-events",
+      "world-client-level-lifecycle",
+      "world-client-map-data",
+      "world-client-respawn-data",
+      "world-client-session-services"
     ],
     "mechanism_count": 147,
     "status_counts": {
       "deferred-external": 1,
-      "equivalent": 118,
+      "equivalent": 49,
       "not-needed": 25,
-      "partial": 3
+      "partial": 72
     },
-    "valid_count": 144
+    "valid_count": 75
   },
   "vanilla_version": "26.1",
   "workflow": {
-    "code_freeze_ready": true,
-    "consistency_gate_passed": true,
+    "code_freeze_ready": false,
+    "consistency_gate_passed": false,
     "formal_performance_allowed": false,
-    "implementation_blocking_ids": [],
-    "implementation_ready": true,
-    "semantic_contract_sha256": "71e5e8e1afaaef24495fea4f5f59fe682d56df27fcd8e90d371c958e08931ed8",
-    "stage": "evidence-sweep",
+    "implementation_blocking_ids": [
+      "performance-official-equal-load"
+    ],
+    "implementation_ready": false,
+    "semantic_contract_sha256": "d5308446194cbb4ff4f2ce56c4b3fd46f8d4ff724304a03312e986b6641645d8",
+    "stage": "implementation",
     "stage_order": [
       "implementation",
       "checkpoint",

@@ -2845,6 +2845,10 @@ def drive_container_interaction(
     if stocked is None or int(stocked.get("count") or 0) != 3:
         raise GateFailure(f"chest slot 0 was not stocked with the expected count: {stocked!r}")
     stocked_item_id = stocked.get("item_id")
+    if not isinstance(stocked_item_id, int) or isinstance(stocked_item_id, bool):
+        raise GateFailure(
+            f"chest slot 0 has no protocol item id for the stocked stack: {stocked!r}"
+        )
 
     # Quick-move the stack: chest slot 0 empties and the same item lands in
     # the player section of the same menu (slots 27+ for a single chest).
@@ -2921,6 +2925,7 @@ def drive_container_interaction(
         "chest_position": chest,
         "container_id": container_id,
         "menu_type_id": opened.get("menu_type_id"),
+        "stocked_item_id": stocked_item_id,
         "opened": True,
         "moved": True,
         "closed": True,
@@ -3937,6 +3942,15 @@ def _player_menu_stacks(address: tuple[str, int]) -> dict[int, dict[str, Any]]:
     return stacks
 
 
+def _matching_player_menu_stack(
+    stacks: dict[int, dict[str, Any]], item_id: Any, count: int
+) -> tuple[int, dict[str, Any]] | None:
+    for slot, item in sorted(stacks.items()):
+        if item.get("item_id") == item_id and int(item.get("count") or 0) == count:
+            return slot, item
+    return None
+
+
 def _server_inventory_line_confirms_move(line: str, from_hotbar: bool) -> bool:
     entries = re.findall(r"\{[^{}]*\}", line)
     for entry in entries:
@@ -3985,6 +3999,7 @@ def drive_inventory_interaction(
     address: tuple[str, int],
     server_command: Path,
     server_log: Path,
+    expected_item_id: int,
     timeout_seconds: float,
 ) -> dict[str, Any]:
     """Open the survival inventory with the real keyboard path, quick-move
@@ -4006,10 +4021,12 @@ def drive_inventory_interaction(
     )
 
     def _diamond_slot() -> tuple[int, dict[str, Any]] | None:
-        for slot, item in sorted(_player_menu_stacks(address).items()):
-            if slot >= PLAYER_MENU_MAIN_FIRST_SLOT and int(item.get("count") or 0) == 3:
-                return slot, item
-        return None
+        stacks = {
+            slot: item
+            for slot, item in _player_menu_stacks(address).items()
+            if slot >= PLAYER_MENU_MAIN_FIRST_SLOT
+        }
+        return _matching_player_menu_stack(stacks, expected_item_id, 3)
 
     found = _await_value(
         deadline,
@@ -5831,6 +5848,7 @@ def collect_live(args: argparse.Namespace) -> None:
                     address,
                     args.server_command,
                     args.server_log,
+                    int(scenarios["container_interaction"]["stocked_item_id"]),
                     min(60.0, gameplay_timeout),
                 ),
             ),
