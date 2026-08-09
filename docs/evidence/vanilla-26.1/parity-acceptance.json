@@ -198,13 +198,104 @@
     },
     {
       "artifact_id": "draw-evidence",
-      "bbb_commit": null,
-      "capture_contract": null,
-      "evidence_class": "absent",
-      "exists": false,
-      "invalid_reasons": [
-        "draw artifact was not supplied"
-      ],
+      "bbb_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+      "bbb_provenance": {
+        "binary_identical": true,
+        "binary_sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710",
+        "capture_binary": {
+          "bytes": 79495640,
+          "path": "/tmp/bbb-parity-91e7144b5-final/provenance/bbb-native-91e7144b5",
+          "sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+        },
+        "capture_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+        "evidence_binary": {
+          "bytes": 79495640,
+          "path": "/tmp/bbb-parity-91e7144b5-final/provenance/bbb-native-91e7144b5",
+          "sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+        },
+        "evidence_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+        "identity_kind": "sha256",
+        "runtime_image_identical": true,
+        "runtime_image_sha256": null
+      },
+      "capture_contract": {
+        "binary_load_identity": {
+          "binary_identical": true,
+          "binary_sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710",
+          "capture_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+          "evidence_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+          "identity_kind": "sha256",
+          "runtime_image_identical": true,
+          "scope": "captures belong to capture_commit; evidence_commit is accepted only because its independently rebuilt bbb-native execution image is identical"
+        },
+        "evidence_class": "formal",
+        "hash_inputs": [
+          {
+            "field": "bbb_binary_sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "bbb_provenance.binary_sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "bbb_provenance.capture_binary.sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "bbb_provenance.evidence_binary.sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "renderdoc_evidence_hash",
+            "value": "4bd88ff546f4f17b3f0ccd36c8ae77d63ee5bef331944832150584b28010b51d"
+          }
+        ],
+        "inputs": [
+          {
+            "capture_sha256": "8ca86cd112d5d6279835dd03a4f924fec6f766f1793ae900bf45a3f09dcae644",
+            "current_sha256": "8ca86cd112d5d6279835dd03a4f924fec6f766f1793ae900bf45a3f09dcae644",
+            "path": "scripts/fixtures/official-client-benchmark/replay-26.1.json"
+          }
+        ],
+        "kind": "draw",
+        "selected_contract": {
+          "formal_timing_sample": false,
+          "schema": 1,
+          "scope": "common RenderDoc 1.45 raw frame captures and replay-independent XML API event streams prove each anchor submitted visible draw work; API call counts are not compared as equivalent semantics and are not performance measurements"
+        },
+        "sha256": "2765739049f3baa192b09e8c48f3061629057e3da6837d3700b0ea0566e8acb4",
+        "tools": [
+          {
+            "capture_sha256": "72094b963068de9c7d59a70c39c72cc12f6028a1455914907d655a9dc04163bc",
+            "current_sha256": "72094b963068de9c7d59a70c39c72cc12f6028a1455914907d655a9dc04163bc",
+            "path": "scripts/official_client_benchmark.py"
+          },
+          {
+            "capture_sha256": "92be59d16fd9140be5c7957bfa4d0aebf14c008d5707360e15b67770069dbd13",
+            "current_sha256": "92be59d16fd9140be5c7957bfa4d0aebf14c008d5707360e15b67770069dbd13",
+            "path": "scripts/official-client-benchmark.sh"
+          },
+          {
+            "capture_sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576",
+            "current_sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576",
+            "path": "scripts/bbb_tools/executable_identity.py"
+          },
+          {
+            "capture_sha256": "bea744d83fe513c58869b282455f11f2fb008f8047c0ea0a52e6150c5300a6c8",
+            "current_sha256": "bea744d83fe513c58869b282455f11f2fb008f8047c0ea0a52e6150c5300a6c8",
+            "path": "scripts/bbb_tools/execution/deadline.py"
+          },
+          {
+            "capture_sha256": "6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7",
+            "current_sha256": "6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7",
+            "path": "scripts/bbb_tools/execution/process.py"
+          }
+        ]
+      },
+      "evidence_class": "formal",
+      "exists": true,
+      "invalid_reasons": [],
       "kind": "draw",
       "mechanism_ids": [
         "hud-frame-extract-order",
@@ -238,10 +329,14 @@
         "rendering-level-section-lifecycle",
         "rendering-particle-provider-registration"
       ],
-      "path": null,
-      "scenario_ids": [],
-      "sha256": null,
-      "valid": false
+      "path": "/tmp/bbb-parity-91e7144b5-final/renderdoc/summary.json",
+      "scenario_ids": [
+        "chunk_boundary_crossing",
+        "preloaded_flight",
+        "static_orbit"
+      ],
+      "sha256": "32f8da35e7f440aaab6d2e2217018c55ae932c58deaf8b90c6124d7fb035160e",
+      "valid": true
     },
     {
       "artifact_id": "feature-ledger",
@@ -9319,13 +9414,163 @@
     },
     {
       "artifact_id": "visual-workload",
-      "bbb_commit": null,
-      "capture_contract": null,
-      "evidence_class": "absent",
-      "exists": false,
-      "invalid_reasons": [
-        "workload artifact was not supplied"
-      ],
+      "bbb_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+      "bbb_provenance": {
+        "binary_identical": true,
+        "binary_sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710",
+        "capture_binary": {
+          "bytes": 79495640,
+          "path": "/tmp/bbb-parity-91e7144b5-final/provenance/bbb-native-91e7144b5",
+          "sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+        },
+        "capture_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+        "evidence_binary": {
+          "bytes": 79495640,
+          "path": "/tmp/bbb-parity-91e7144b5-final/provenance/bbb-native-91e7144b5",
+          "sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+        },
+        "evidence_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+        "identity_kind": "sha256",
+        "runtime_image_identical": true,
+        "runtime_image_sha256": null
+      },
+      "capture_contract": {
+        "binary_load_identity": {
+          "binary_identical": true,
+          "binary_sha256": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710",
+          "capture_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+          "evidence_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
+          "identity_kind": "sha256",
+          "runtime_image_identical": true,
+          "scope": "captures belong to capture_commit; evidence_commit is accepted only because its independently rebuilt bbb-native execution image is identical"
+        },
+        "evidence_class": "formal",
+        "hash_inputs": [
+          {
+            "field": "bbb_binary_sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "bbb_provenance.binary_sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "bbb_provenance.capture_binary.sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "bbb_provenance.evidence_binary.sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "contracts.replay_hash",
+            "value": "5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388"
+          },
+          {
+            "field": "contracts.resource_hash",
+            "value": "8aa8d02d6806ef9396564b83b7b64f73014ea654d8059a1b8ae6b09f3f67df0c"
+          },
+          {
+            "field": "contracts.scene_contract_hash",
+            "value": "d3fdd2005e6a03d6531aa82b2044472ac8c74dbc28f276b8e2bfd5ca9d63aad2"
+          },
+          {
+            "field": "contracts.settings_hash",
+            "value": "5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd"
+          },
+          {
+            "field": "contracts.world_hash",
+            "value": "6ab2ef99bd6c816b68e54608142206f38aa6f3644f087c477d2367ce50173fd1"
+          },
+          {
+            "field": "pixel_evidence.diff_maps[0].sha256",
+            "value": "39a1f9b0c3880a5f8d2e88dff1e32e04fe259a24aaa7cade521997b58a3e1dc6"
+          },
+          {
+            "field": "pixel_evidence.diff_maps[1].sha256",
+            "value": "6e60452012cc205db2402713e175733a2cf4104798e0cf2b34bb22ad3d75bbfd"
+          },
+          {
+            "field": "pixel_evidence.diff_maps[2].sha256",
+            "value": "cfb073d4cc9c0c0df2cc51ee33e448de72dba196a205d44cb8221cc989956ffa"
+          },
+          {
+            "field": "same_client_calibration.bbb.client_identity.sha256",
+            "value": "48f6b601ca77cf67258b58529182d2e669dbfc4b478fb4f4e37283146c94c710"
+          },
+          {
+            "field": "same_client_calibration.bbb.visual_calibration_hash",
+            "value": "3cb2945b7d624f724168c449f317a09a7c9062815857d218bb37bf5f40d03178"
+          },
+          {
+            "field": "same_client_calibration.vanilla.client_identity.options_hash",
+            "value": "f2abeb46d4d8d1538010c20f407996561990aa28bd1d40c7de1404e67cd9376a"
+          },
+          {
+            "field": "same_client_calibration.vanilla.visual_calibration_hash",
+            "value": "a532e15a09da8bdc2cd228e563a55c7cd8cdf1d7b211befb12eb821a9783889f"
+          },
+          {
+            "field": "server_camera_log.sha256",
+            "value": "f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a"
+          },
+          {
+            "field": "workload_evidence_hash",
+            "value": "74f81317c330fc915886ea08a398a67d14e96425d5ce41749f1ec9eccab0ce5f"
+          }
+        ],
+        "inputs": [
+          {
+            "capture_sha256": "8ca86cd112d5d6279835dd03a4f924fec6f766f1793ae900bf45a3f09dcae644",
+            "current_sha256": "8ca86cd112d5d6279835dd03a4f924fec6f766f1793ae900bf45a3f09dcae644",
+            "path": "scripts/fixtures/official-client-benchmark/replay-26.1.json"
+          }
+        ],
+        "kind": "workload",
+        "selected_contract": {
+          "contracts": {
+            "replay_hash": "5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388",
+            "resource_hash": "8aa8d02d6806ef9396564b83b7b64f73014ea654d8059a1b8ae6b09f3f67df0c",
+            "scene_contract_hash": "d3fdd2005e6a03d6531aa82b2044472ac8c74dbc28f276b8e2bfd5ca9d63aad2",
+            "settings_hash": "5d67fe2070707f14dbc3420313e9af7ef239914dd3daa50356c05a02609da1cd",
+            "world_hash": "6ab2ef99bd6c816b68e54608142206f38aa6f3644f087c477d2367ce50173fd1"
+          },
+          "counter_scope": "bbb counters are renderer-native evidence; optional Vanilla-only debug counters are supplementary and are not treated as numerically identical counter semantics",
+          "formal_timing_sample": false,
+          "schema": 1
+        },
+        "sha256": "35bd429e4540f150192c5ad39ef1207224a1d3bd8b04ed3366cd2ad10110c7e6",
+        "tools": [
+          {
+            "capture_sha256": "72094b963068de9c7d59a70c39c72cc12f6028a1455914907d655a9dc04163bc",
+            "current_sha256": "72094b963068de9c7d59a70c39c72cc12f6028a1455914907d655a9dc04163bc",
+            "path": "scripts/official_client_benchmark.py"
+          },
+          {
+            "capture_sha256": "92be59d16fd9140be5c7957bfa4d0aebf14c008d5707360e15b67770069dbd13",
+            "current_sha256": "92be59d16fd9140be5c7957bfa4d0aebf14c008d5707360e15b67770069dbd13",
+            "path": "scripts/official-client-benchmark.sh"
+          },
+          {
+            "capture_sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576",
+            "current_sha256": "7115b0b976e57ebfda11c54f4c0373cadd71f371bb1698ef9a15e72e4ae2a576",
+            "path": "scripts/bbb_tools/executable_identity.py"
+          },
+          {
+            "capture_sha256": "bea744d83fe513c58869b282455f11f2fb008f8047c0ea0a52e6150c5300a6c8",
+            "current_sha256": "bea744d83fe513c58869b282455f11f2fb008f8047c0ea0a52e6150c5300a6c8",
+            "path": "scripts/bbb_tools/execution/deadline.py"
+          },
+          {
+            "capture_sha256": "6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7",
+            "current_sha256": "6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7",
+            "path": "scripts/bbb_tools/execution/process.py"
+          }
+        ]
+      },
+      "evidence_class": "formal",
+      "exists": true,
+      "invalid_reasons": [],
       "kind": "workload",
       "mechanism_ids": [
         "hud-frame-extract-order",
@@ -9359,10 +9604,14 @@
         "rendering-level-section-lifecycle",
         "rendering-particle-provider-registration"
       ],
-      "path": null,
-      "scenario_ids": [],
-      "sha256": null,
-      "valid": false
+      "path": "/tmp/bbb-parity-91e7144b5-final/visual/workload-summary.json",
+      "scenario_ids": [
+        "chunk_boundary_crossing",
+        "preloaded_flight",
+        "static_orbit"
+      ],
+      "sha256": "16055745fe246281d34950a5d136e7cfd9dc013bc2feced29b2e8c678afc4faf",
+      "valid": true
     }
   ],
   "bbb_evidence_commit": "91e7144b538105f26c07e1d94e7ec6f39a87fed4",
@@ -33530,7 +33779,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -33546,7 +33819,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -33597,8 +33894,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -33715,7 +34010,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -33731,7 +34050,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -33838,8 +34181,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -33942,7 +34283,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -33950,7 +34315,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -34014,8 +34403,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -34169,7 +34556,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -34177,7 +34588,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -34276,8 +34711,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -40162,7 +40595,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -40170,7 +40627,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -40668,8 +41149,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -41157,7 +41636,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -41165,7 +41668,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -41663,8 +42190,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -42305,7 +42830,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -42313,7 +42862,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -42643,8 +43216,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -42779,7 +43350,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -42787,7 +43382,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -42886,8 +43505,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -43316,7 +43933,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -43324,7 +43965,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -43710,8 +44375,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -43985,7 +44648,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -43993,7 +44680,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -44176,8 +44887,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -44311,7 +45020,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -44319,7 +45052,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -44425,8 +45182,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -44540,7 +45295,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -44548,7 +45327,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -44696,8 +45499,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -44867,7 +45668,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -44875,7 +45700,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -45058,8 +45907,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -45257,7 +46104,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -45265,7 +46136,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -45476,8 +46371,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -45692,7 +46585,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -45700,7 +46617,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -45904,8 +46845,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -46120,7 +47059,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -46128,7 +47091,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -46360,8 +47347,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -46685,7 +47670,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -46693,7 +47702,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -46939,8 +47972,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -47080,7 +48111,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -47096,7 +48151,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -47182,8 +48261,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -47323,7 +48400,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -47331,7 +48432,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -47458,8 +48583,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -47595,7 +48718,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -47603,7 +48750,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -47751,8 +48922,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -47929,7 +49098,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -47937,7 +49130,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -48085,8 +49302,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -48206,7 +49421,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -48214,7 +49453,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -48299,8 +49562,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -48437,7 +49698,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -48445,7 +49730,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -48523,8 +49832,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -48652,7 +49959,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -48660,7 +49991,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -48724,8 +50079,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -48809,7 +50162,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -48817,7 +50194,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -48902,8 +50303,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -49031,7 +50430,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -49039,7 +50462,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -49138,8 +50585,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -49242,7 +50687,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -49250,7 +50719,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -49349,8 +50842,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -49461,7 +50952,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -49469,7 +50984,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -49631,8 +51170,6 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -59972,7 +61509,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -59988,7 +61549,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -60403,9 +61988,7 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
         "required performance-abba receipt is invalid: performance artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -60519,7 +62102,31 @@
           ],
           "kind": "draw",
           "scenario_id": "receipt-draw-evidence",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "draw-evidence"
+          ],
+          "kind": "draw",
+          "scenario_id": "receipt-draw-evidence:static_orbit",
+          "status": "passed"
         },
         {
           "artifact_ids": [
@@ -60535,7 +62142,31 @@
           ],
           "kind": "workload",
           "scenario_id": "receipt-visual-workload",
-          "status": "invalid"
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:preloaded_flight",
+          "status": "passed"
+        },
+        {
+          "artifact_ids": [
+            "visual-workload"
+          ],
+          "kind": "workload",
+          "scenario_id": "receipt-visual-workload:static_orbit",
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -60642,9 +62273,7 @@
       "scope_ruling_sha256": null,
       "valid": false,
       "validity_reasons": [
-        "required draw-evidence receipt is invalid: draw artifact was not supplied",
         "required performance-abba receipt is invalid: performance artifact was not supplied",
-        "required visual-workload receipt is invalid: workload artifact was not supplied",
         "mechanism remains open with matrix status partial"
       ],
       "vanilla": {
@@ -67729,7 +69358,127 @@
         "rendering-particle-provider-registration"
       ],
       "scenario_id": "receipt-draw-evidence",
-      "status": "invalid"
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "draw-evidence"
+      ],
+      "kind": "draw",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
+        "performance-gpu-execution-duration",
+        "performance-official-equal-load",
+        "rendering-block-entity-registration",
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-client-biome-tint",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-client-particle-routing",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-fluid-mesh",
+        "rendering-frame-order",
+        "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-frame-graph",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
+        "rendering-level-section-lifecycle",
+        "rendering-particle-provider-registration"
+      ],
+      "scenario_id": "receipt-draw-evidence:chunk_boundary_crossing",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "draw-evidence"
+      ],
+      "kind": "draw",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
+        "performance-gpu-execution-duration",
+        "performance-official-equal-load",
+        "rendering-block-entity-registration",
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-client-biome-tint",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-client-particle-routing",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-fluid-mesh",
+        "rendering-frame-order",
+        "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-frame-graph",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
+        "rendering-level-section-lifecycle",
+        "rendering-particle-provider-registration"
+      ],
+      "scenario_id": "receipt-draw-evidence:preloaded_flight",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "draw-evidence"
+      ],
+      "kind": "draw",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
+        "performance-gpu-execution-duration",
+        "performance-official-equal-load",
+        "rendering-block-entity-registration",
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-client-biome-tint",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-client-particle-routing",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-fluid-mesh",
+        "rendering-frame-order",
+        "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-frame-graph",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
+        "rendering-level-section-lifecycle",
+        "rendering-particle-provider-registration"
+      ],
+      "scenario_id": "receipt-draw-evidence:static_orbit",
+      "status": "passed"
     },
     {
       "artifact_ids": [
@@ -67871,7 +69620,127 @@
         "rendering-particle-provider-registration"
       ],
       "scenario_id": "receipt-visual-workload",
-      "status": "invalid"
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "visual-workload"
+      ],
+      "kind": "workload",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
+        "performance-gpu-execution-duration",
+        "performance-official-equal-load",
+        "rendering-block-entity-registration",
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-client-biome-tint",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-client-particle-routing",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-fluid-mesh",
+        "rendering-frame-order",
+        "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-frame-graph",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
+        "rendering-level-section-lifecycle",
+        "rendering-particle-provider-registration"
+      ],
+      "scenario_id": "receipt-visual-workload:chunk_boundary_crossing",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "visual-workload"
+      ],
+      "kind": "workload",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
+        "performance-gpu-execution-duration",
+        "performance-official-equal-load",
+        "rendering-block-entity-registration",
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-client-biome-tint",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-client-particle-routing",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-fluid-mesh",
+        "rendering-frame-order",
+        "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-frame-graph",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
+        "rendering-level-section-lifecycle",
+        "rendering-particle-provider-registration"
+      ],
+      "scenario_id": "receipt-visual-workload:preloaded_flight",
+      "status": "passed"
+    },
+    {
+      "artifact_ids": [
+        "visual-workload"
+      ],
+      "kind": "workload",
+      "mechanism_ids": [
+        "hud-frame-extract-order",
+        "hud-hotbar-selection",
+        "hud-overlay-effects",
+        "hud-player-vitals",
+        "hud-text-and-lists",
+        "performance-gpu-execution-duration",
+        "performance-official-equal-load",
+        "rendering-block-entity-registration",
+        "rendering-block-model-pipeline",
+        "rendering-camera-fluid-fog",
+        "rendering-chunk-layer-routing",
+        "rendering-client-biome-tint",
+        "rendering-client-block-entity-tracking",
+        "rendering-client-level-dirty-handoff",
+        "rendering-client-particle-routing",
+        "rendering-effects-screenshot",
+        "rendering-entity-layer-registration",
+        "rendering-entity-renderer-registration",
+        "rendering-extract-surface",
+        "rendering-fluid-mesh",
+        "rendering-frame-order",
+        "rendering-level-backend-lifecycle",
+        "rendering-level-diagnostics-gizmos",
+        "rendering-level-effect-lifecycle",
+        "rendering-level-frame-graph",
+        "rendering-level-light-query",
+        "rendering-level-pass",
+        "rendering-level-scene-projection",
+        "rendering-level-section-lifecycle",
+        "rendering-particle-provider-registration"
+      ],
+      "scenario_id": "receipt-visual-workload:static_orbit",
+      "status": "passed"
     },
     {
       "artifact_ids": [
