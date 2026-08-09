@@ -520,7 +520,7 @@ route/scope ruling、inventory source 与 validation-class 语义 hash 不得变
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
 clean/full-gated `675cbfc53` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均绑定当前 HEAD，后四者共用同一 release、world/replay/settings/scene identity；sealed receipt `6e2d23e7f` 后的两轮 ABBA/GPU receipt SHA-256 为 `5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706`，两条 performance 行已关闭且 semantic-contract 仍为 `d008aa81fc8676b076e83b4b19608da62f1cbccd4a2b6bed921ce4d86ed80d0f`。
-audio schema-3 首份 formal receipt 已在 clean/full-gated `f67542b4b` 通过实际 ALSA PCM、PCI/sysfs、受控 plug→dmix→hw、Vanilla 双分支与 BBB 六测试；ELD 未连接如实记录且不以 null/dummy 代替，required-state 合同改为恒定表述后须在新 gated HEAD 精确重采再关闭。
+audio schema-3 formal receipt 已在 clean/full-gated exact `b4e08d751` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `868144788f04f25569129b85e2119b9c532934465c8c23685373db125ccfb616`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`
 步逐 crate 实测第二平台类型检查，但通过的 cross-check 是构建证据、不是发布验收。

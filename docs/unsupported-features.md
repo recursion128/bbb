@@ -76,13 +76,11 @@ Matrix routes: `diagnostics-crash-runtime`, `player-local-client-status-options`
   only while the evidence-sweep semantic-contract hash remains identical. Scoped
   development reuse cannot weaken delivery.
   The exact `675cbfc53` two-round ABBA/GPU summary is valid and closes both
-  performance rows (SHA-256 `5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706`);
-  the remaining non-waived external closure is the real Linux ALSA host-device receipt.
+  performance rows (SHA-256 `5fa8dbb86169f1c117137df506892e3f444550245393a5393fe3c721226c3706`).
   Preserve invalid receipts until replaced. The user-waived macOS
   `deferred-external` row is not a closure blocker but retains its source basis and
   reopen condition. The bidirectional-text owner remains bound to exact Vanilla
-  classes rather than prose fallback. Remaining external closure includes the exact
-  real ALSA host-device receipt. The language census now derives all 7
+  classes rather than prose fallback. The language census now derives all 7
   `LanguageManager`, all 7 `ClientLanguage`, and the two exact recipe-book
   trigger owners with per-owner evidence; the six non-bidi `ClientLanguage`
   owners plus 7 manager owners and 2 trigger owners route to
@@ -177,39 +175,6 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `identity-profile-key-lifecycle`, `identity-skin-presentation`,
 `security-secure-chat-reporting`, `persistence-options-unconsumed`,
 `audio-sound-manager-engine`
-
-- Produce the formal Vanilla↔BBB ALSA PCI-PCM differential receipt
-  for `audio-sound-manager-engine`, exercising both HRTF requests, device-derived
-  pool capacity, static/streaming source state, buffer lifecycle, listener state,
-  device reload and stopped-channel release. The 159-owner generated census has
-  implementation/focused-test evidence; its twelve unreachable integrated-pause/
-  manual-loop/runtime-options owners retain caller basis and reopen conditions.
-  The schema-3 capture command runs both Vanilla HRTF branches plus BBB's exact
-  six-test OpenAL owner set, hashes its test binary/library/sound/logs, and rejects
-  zero-test or Vanilla-only JSON. Formal evidence additionally requires an explicitly
-  selected read/write ALSA playback character device, matching `/proc/asound` PCM and
-  PCI/sysfs identities, a generated and hashed plug→dmix→hw route, and a scrubbed,
-  frozen OpenAL/ALSA environment; `--driver null` and an unverified host default remain
-  diagnostic only. The
-  2026-08-09 schema-2 ALSA capture at clean `4578667e7` is invalid (artifact
-  SHA-256 `d55f21a550227610795edcc9b6dbca1b162cfbca555d2fb32c60fd2b63958923`):
-  UID 1000 cannot access any of eight `/dev/snd` nodes; both Vanilla branches and
-  BBB's four source/channel tests fail. After host firmware/audio access repair, the
-  AMD GPU HDMI `hw:Generic,3` PCI PCM is read/write accessible and a controlled
-  hardware-backed dmix diagnostic passes both Vanilla branches and all six BBB tests.
-  All HDMI ELD records still have `monitor_present=0`/`eld_valid=0`; this is recorded
-  rather than hidden, but an external speaker/display transducer is beyond the client
-  mechanism boundary once OpenAL has opened the real kernel PCM and playback periods
-  advance. The first schema-3 formal receipt at clean/full-gated `f67542b4b` passes
-  both Vanilla branches and all six BBB tests (SHA-256
-  `4db3e26f2d4078e391bf006b4df8922ee381c78df95a42403306a5cd23b43d95`).
-  That receipt predates this checkpoint's normalization of temporary “pending capture”
-  prose into the matrix's constant required-state contract; full-gate this commit and
-  recapture on its new exact HEAD before closing the item.
-  Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
-  `Library.java:64-114,124-155`, `Channel.java:35-149`,
-  `SoundEngine.java:101-109,215-327,402-443`, and `Sound.java:68-70`.
-  Reopen the owner census if any source hash, OpenAL artifact or method set moves.
 
 - **Online mode (authenticated Services and encrypted transport) is
   `not-needed`.** User scope decision 2026-08-05: this client is offline-only.
