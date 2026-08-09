@@ -3373,6 +3373,21 @@ def validate_report(
         and artifact.get("evidence_class") == "formal"
         and artifact.get("scoped_reuse") is not None
     )
+    scoped_consistency_artifact_ids = [
+        artifact_id
+        for artifact_id in scoped_formal_artifact_ids
+        if artifact_id != "performance-abba"
+    ]
+    if (
+        workflow_stage_index(str(stage))
+        >= workflow_stage_index("final-performance")
+        and scoped_consistency_artifact_ids
+    ):
+        issues.append(
+            "final-performance stage requires exact-commit consistency receipts; "
+            "scoped reuse remains: "
+            + ", ".join(scoped_consistency_artifact_ids)
+        )
     if stage == "final" and scoped_formal_artifact_ids:
         issues.append(
             "final workflow stage requires exact-commit formal receipts; "

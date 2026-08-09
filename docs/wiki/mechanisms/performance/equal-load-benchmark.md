@@ -72,7 +72,8 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
   只约束新采集，不作废已有 pre-capture receipt 证明且 planner 判定未受影响的 formal artifact。
 - code freeze 后 owner/path、focused contract、capture schema/settings/input 或 binary/load image
   变化时，只失效 acceptance planner 指出的机制和 validation class；最终仍在 clean gated HEAD
-  运行 strict acceptance，`final` stage lint 会拒绝任何 formal artifact 的 scoped reuse。
+  运行 strict acceptance；`final-performance` 先拒绝 scoped consistency receipt，`final` 再拒绝
+  任何 formal artifact 的 scoped reuse，因而旧 domain sweep 不能解锁新 ABBA。
 - 每项性能优化都重跑 planner 判定受影响的视觉锚点和 workload gate。
 
 ## 聚焦测试（focused tests）和真实证据

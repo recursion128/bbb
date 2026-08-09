@@ -519,7 +519,7 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-clean `605ee5548` 已满足 code-freeze ready；两条 performance 行保持 `partial`，等待该 semantic contract 的最终 ABBA/GPU receipt。
+`605ee5548` code freeze 仅因 exact-receipt lint 加固而重开；两条 performance 行保持 `partial`，等待新冻结合同的 ABBA/GPU receipt。
 audio schema-2 receipt 仍因 UID 无设备权限且四个 HDMI ELD 无 sink 失败，正式 receipt 等真实 sink/ACL。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 发布行只按其
 `Reopen when ...` deferred——macOS 与 Linux 是声明的开发平台，gate 的 `cross-check`

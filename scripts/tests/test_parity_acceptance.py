@@ -1811,6 +1811,40 @@ Matrix route: `fixture-not-needed`
                     enforce_current=True,
                 ),
             )
+            preperformance = copy.deepcopy(report)
+            preperformance["workflow"]["stage"] = "final-performance"
+            consistency_artifact = next(
+                artifact
+                for artifact in preperformance["artifacts"]
+                if artifact.get("artifact_id") == "visual-workload"
+            )
+            consistency_artifact["evidence_class"] = "formal"
+            consistency_artifact["scoped_reuse"] = {
+                "artifact_commit": "0" * 40,
+                "evidence_commit": head,
+                "rule": "closure-or-acceptance-metadata-only",
+            }
+            self.assertIn(
+                "final-performance stage requires exact-commit consistency receipts; "
+                "scoped reuse remains: visual-workload",
+                validate_report(
+                    preperformance,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+            )
+            preperformance["workflow"]["stage"] = "evidence-sweep"
+            self.assertNotIn(
+                "final-performance stage requires exact-commit consistency receipts; "
+                "scoped reuse remains: visual-workload",
+                validate_report(
+                    preperformance,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+            )
             acceptance_path = (
                 repo / "docs/evidence/vanilla-26.1/parity-acceptance.json"
             )
