@@ -1764,6 +1764,53 @@ Matrix route: `fixture-not-needed`
                 ),
                 [],
             )
+            reused = copy.deepcopy(report)
+            reused_artifact = next(
+                artifact
+                for artifact in reused["artifacts"]
+                if artifact.get("artifact_id") == "performance-abba"
+            )
+            reused_artifact["evidence_class"] = "formal"
+            reused_artifact["scoped_reuse"] = {
+                "artifact_commit": "0" * 40,
+                "evidence_commit": head,
+                "rule": "closure-or-acceptance-metadata-only",
+            }
+            issues = validate_report(
+                reused,
+                repo=repo,
+                source_root=source_root,
+                enforce_current=True,
+                require_final_head=True,
+            )
+            self.assertIn(
+                "final workflow stage requires exact-commit formal receipts; "
+                "scoped reuse remains: performance-abba",
+                issues,
+            )
+            issues = validate_report(
+                reused,
+                repo=repo,
+                source_root=source_root,
+                enforce_current=True,
+            )
+            self.assertIn(
+                "final workflow stage requires exact-commit formal receipts; "
+                "scoped reuse remains: performance-abba",
+                issues,
+            )
+            intermediate = copy.deepcopy(reused)
+            intermediate["workflow"]["stage"] = "evidence-sweep"
+            self.assertNotIn(
+                "final workflow stage requires exact-commit formal receipts; "
+                "scoped reuse remains: performance-abba",
+                validate_report(
+                    intermediate,
+                    repo=repo,
+                    source_root=source_root,
+                    enforce_current=True,
+                ),
+            )
             acceptance_path = (
                 repo / "docs/evidence/vanilla-26.1/parity-acceptance.json"
             )

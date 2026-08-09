@@ -8,6 +8,7 @@
 全部有效；full gate 不会自动触发 live、视觉、RenderDoc 或 ABBA。共享 receipt 可覆盖多个
 Mechanism ID，但 artifact 与机制必须双向映射，失效范围由 acceptance report 的依赖闭包派生。
 任一行仍派生 `implementation-gap` 或 `focused-evidence-pending` 时，code freeze 必须保持关闭。
+开发期 scoped reuse 只用于精确失效；`final` stage lint 要求每个 formal artifact 均为 exact-commit receipt。
 
 | Mechanism ID | 领域 | Vanilla owner/class | BBB owner/module | Required state/projection | 状态 | Focused test/evidence | Route / reopen condition |
 | --- | --- | --- | --- | --- | --- | --- | --- |

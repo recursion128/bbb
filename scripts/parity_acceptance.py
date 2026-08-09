@@ -3366,6 +3366,19 @@ def validate_report(
                 "final performance semantic contract differs from its consistency receipt"
             )
 
+    scoped_formal_artifact_ids = sorted(
+        str(artifact.get("artifact_id"))
+        for artifact in artifacts
+        if isinstance(artifact, dict)
+        and artifact.get("evidence_class") == "formal"
+        and artifact.get("scoped_reuse") is not None
+    )
+    if stage == "final" and scoped_formal_artifact_ids:
+        issues.append(
+            "final workflow stage requires exact-commit formal receipts; "
+            "scoped reuse remains: " + ", ".join(scoped_formal_artifact_ids)
+        )
+
     if require_final_head:
         if stage != "final":
             issues.append("final exact-HEAD check requires workflow stage final")
