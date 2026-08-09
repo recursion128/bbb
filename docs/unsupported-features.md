@@ -200,8 +200,12 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   All HDMI ELD records still have `monitor_present=0`/`eld_valid=0`; this is recorded
   rather than hidden, but an external speaker/display transducer is beyond the client
   mechanism boundary once OpenAL has opened the real kernel PCM and playback periods
-  advance. The diagnostic is not registered as formal evidence: capture schema/tooling
-  changed and the exact tooling commit must first be clean and full-gated.
+  advance. The first schema-3 formal receipt at clean/full-gated `f67542b4b` passes
+  both Vanilla branches and all six BBB tests (SHA-256
+  `4db3e26f2d4078e391bf006b4df8922ee381c78df95a42403306a5cd23b43d95`).
+  That receipt predates this checkpoint's normalization of temporary “pending capture”
+  prose into the matrix's constant required-state contract; full-gate this commit and
+  recapture on its new exact HEAD before closing the item.
   Owner: `bbb-pack` + `bbb-audio` + `bbb-native`. Vanilla anchors:
   `Library.java:64-114,124-155`, `Channel.java:35-149`,
   `SoundEngine.java:101-109,215-327,402-443`, and `Sound.java:68-70`.
