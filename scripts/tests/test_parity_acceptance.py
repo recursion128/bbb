@@ -1128,6 +1128,100 @@ Matrix route: `fixture-not-needed`
             self.assertTrue(normalized["runtime_image_identical"])
             self.assertEqual(normalized["runtime_image_sha256"], runtime_sha256)
 
+    def test_platform_receipt_scoped_reuse_accepts_only_closure_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = root / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            product = repo / "product"
+            acceptance_tool = repo / "scripts/parity_acceptance.py"
+            acceptance_tool.parent.mkdir(parents=True)
+            product.write_text("frozen\n", encoding="utf-8")
+            acceptance_tool.write_text("v1\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "capture"], cwd=repo, check=True)
+            capture_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+
+            binary = root / "bbb-native"
+            binary.write_bytes(b"release")
+            digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+            receipt = root / "platform.json"
+            receipt.write_text(
+                json.dumps(
+                    {
+                        "head": capture_commit,
+                        "release": {"binary": str(binary), "sha256": digest},
+                        "status": "passed",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            matrix = repo / "docs/wiki/parity/matrix.md"
+            matrix.parent.mkdir(parents=True)
+            matrix.write_text("closed\n", encoding="utf-8")
+            acceptance_tool.write_text("v2\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "seal"], cwd=repo, check=True)
+            evidence_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+
+            reused = external_artifact(
+                repo=repo,
+                kind="platform",
+                artifact_id="linux-platform",
+                path=receipt,
+                evidence_commit=evidence_commit,
+            )
+            self.assertTrue(reused["valid"])
+            self.assertEqual(
+                reused["scoped_reuse"]["rule"],
+                "closure-or-acceptance-metadata-only",
+            )
+
+            product.write_text("changed\n", encoding="utf-8")
+            subprocess.run(["git", "commit", "-qam", "product"], cwd=repo, check=True)
+            changed_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            rejected = external_artifact(
+                repo=repo,
+                kind="platform",
+                artifact_id="linux-platform",
+                path=receipt,
+                evidence_commit=changed_commit,
+            )
+            self.assertFalse(rejected["valid"])
+            self.assertIsNone(rejected["scoped_reuse"])
+            self.assertIn(
+                f"artifact BBB commit {capture_commit} differs from evidence commit {changed_commit}",
+                rejected["invalid_reasons"],
+            )
+
     def test_diagnostic_smoke_cannot_satisfy_a_formal_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1337,6 +1431,97 @@ Matrix route: `fixture-not-needed`
             self.assertIn(
                 "formal ABBA consistency receipt is not sealed by its commit",
                 performance_prerequisite_reasons(repo, broken, evidence_commit),
+            )
+
+    def test_formal_abba_accepts_semantically_unchanged_closure_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = Path(temporary) / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"], cwd=repo, check=True
+            )
+            receipt_path = (
+                repo / "docs/evidence/vanilla-26.1/parity-acceptance.json"
+            )
+            receipt_path.parent.mkdir(parents=True)
+            receipt_path.write_text(
+                json.dumps(
+                    {
+                        "workflow": {
+                            "semantic_contract_sha256": "3" * 64,
+                            "stage": "implementation",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "freeze"], cwd=repo, check=True)
+            evidence_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+
+            matrix = repo / "docs/wiki/parity/vanilla-26.1-matrix.md"
+            matrix.parent.mkdir(parents=True)
+            matrix.write_text("equivalent\n", encoding="utf-8")
+            receipt_path.write_text(
+                json.dumps(
+                    {
+                        "bbb_evidence_commit": evidence_commit,
+                        "change_impact": {
+                            "functional_affected_mechanism_ids": [],
+                            "functional_changed_paths": [],
+                        },
+                        "workflow": {
+                            "consistency_gate_passed": True,
+                            "semantic_contract_sha256": "3" * 64,
+                            "stage": "evidence-sweep",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "seal"], cwd=repo, check=True)
+            report_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            gate_dir = repo / ".git/bbb"
+            gate_dir.mkdir(parents=True)
+            gate_line = (
+                f"2026-08-07T00:00:00Z\t{report_commit}\tclean\ttotal:1s,test:1s"
+            )
+            (gate_dir / "gate-log.tsv").write_text(
+                f"{gate_line}\n", encoding="utf-8"
+            )
+            identity = {
+                "bbb_evidence_commit": evidence_commit,
+                "full_gate_receipt_sha256": hashlib.sha256(
+                    f"{gate_line}\n".encode()
+                ).hexdigest(),
+                "path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+                "report_commit": report_commit,
+                "semantic_contract_sha256": "3" * 64,
+                "sha256": hashlib.sha256(receipt_path.read_bytes()).hexdigest(),
+                "stage": "evidence-sweep",
+            }
+            value = {"prerequisites": {"consistency_receipt": identity}}
+            self.assertEqual(
+                performance_prerequisite_reasons(repo, value, evidence_commit), []
             )
 
     def test_final_exact_head_requires_clean_current_full_gate(self):

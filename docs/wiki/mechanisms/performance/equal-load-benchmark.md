@@ -30,8 +30,9 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
 3. warm-up 后按 marker capture 三场景：`static_orbit`、`preloaded_flight`、
    `chunk_boundary_crossing`。
 4. 同 tick 检查 pose、camera、settings、chunk/section/entity/particle 与 material ROI。
-5. 视觉/workload/draw 通过后生成 `evidence-sweep` acceptance，提交仅报告的 sealing commit
-   并 full gate；每次 timing smoke 都用 `--consistency-receipt` 指向
+5. 视觉/workload/draw 通过后生成 `evidence-sweep` acceptance，提交仅含 closure metadata、
+   且 semantic-contract hash 不变的 sealing commit 并 full gate；每次 timing smoke 都用
+   `--consistency-receipt` 指向
    `docs/evidence/vanilla-26.1/parity-acceptance.json`，冻结该 commit/hash。
 6. 只有每个 run 都携带同一 pre-capture receipt，才按 Java → BBB → BBB → Java 的 ABBA 轮次采样。
 7. parser 拒绝 hash/correction/resource/resolution/content/throttle/hook/receipt 异常，再聚合 raw。

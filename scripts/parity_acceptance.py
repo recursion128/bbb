@@ -63,6 +63,12 @@ FORMAL_BINARY_IDENTITY_KINDS = frozenset(
     {"performance", "workload", "draw", "platform", "lifecycle"}
 )
 CLOSURE_METADATA_PREFIXES = ("docs/", "goal.md")
+SCOPED_FORMAL_RECEIPT_REUSE_PATHS = frozenset(
+    {
+        "scripts/parity_acceptance.py",
+        "scripts/tests/test_parity_acceptance.py",
+    }
+)
 OPEN_STATUSES = frozenset(
     {"partial", "missing", "active", "unverified", "deferred-external"}
 )
@@ -1442,10 +1448,41 @@ def performance_prerequisite_reasons(
         stderr=subprocess.DEVNULL,
     )
     changed_paths = set(changed.stdout.splitlines()) if changed.returncode == 0 else set()
-    if ancestry.returncode != 0 or changed.returncode != 0 or changed_paths - {
-        REPORT_PATH.as_posix()
-    }:
+    if ancestry.returncode != 0 or changed.returncode != 0 or any(
+        not is_closure_metadata_path(path) for path in changed_paths
+    ):
         return ["formal ABBA consistency receipt includes a functional code delta"]
+    closure_paths = changed_paths - {REPORT_PATH.as_posix()}
+    if closure_paths:
+        baseline_blob = subprocess.run(
+            ["git", "show", f"{evidence_commit}:{REPORT_PATH.as_posix()}"],
+            cwd=repo,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            baseline_report = json.loads(baseline_blob.stdout)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            baseline_report = None
+        baseline_workflow = (
+            baseline_report.get("workflow")
+            if isinstance(baseline_report, dict)
+            else None
+        )
+        impact = report.get("change_impact")
+        if (
+            baseline_blob.returncode != 0
+            or not isinstance(baseline_workflow, dict)
+            or baseline_workflow.get("semantic_contract_sha256")
+            != workflow.get("semantic_contract_sha256")
+            or not isinstance(impact, dict)
+            or impact.get("functional_changed_paths") != []
+            or impact.get("functional_affected_mechanism_ids") != []
+        ):
+            return [
+                "formal ABBA consistency receipt closure metadata changed its semantic contract"
+            ]
     git_dir_result = subprocess.run(
         ["git", "rev-parse", "--absolute-git-dir"],
         cwd=repo,
@@ -1597,10 +1634,56 @@ def external_artifact(
         reasons.append("artifact does not identify the BBB commit")
     if isinstance(provenance, dict) and provenance.get("evidence_commit") != commit:
         reasons.append("artifact BBB commit differs from binary provenance")
+    scoped_reuse = None
     if commit is not None and not evidence_commit.startswith(commit) and commit != evidence_commit:
-        reasons.append(
-            f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
-        )
+        if kind in {"platform", "lifecycle"}:
+            ancestry = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", commit, evidence_commit],
+                cwd=repo,
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            changed = subprocess.run(
+                ["git", "diff", "--name-only", commit, evidence_commit, "--"],
+                cwd=repo,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+            changed_paths = (
+                sorted(set(changed.stdout.splitlines()))
+                if changed.returncode == 0
+                else []
+            )
+            disallowed_paths = [
+                path
+                for path in changed_paths
+                if not is_closure_metadata_path(path)
+                and path not in SCOPED_FORMAL_RECEIPT_REUSE_PATHS
+            ]
+            if (
+                ancestry.returncode == 0
+                and changed.returncode == 0
+                and not disallowed_paths
+                and not changed_capture_paths["tools"]
+                and not changed_capture_paths["inputs"]
+            ):
+                scoped_reuse = {
+                    "artifact_commit": commit,
+                    "changed_paths": changed_paths,
+                    "evidence_commit": evidence_commit,
+                    "rule": "closure-or-acceptance-metadata-only",
+                }
+            else:
+                reasons.append(
+                    f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
+                )
+        else:
+            reasons.append(
+                f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
+            )
     return {
         "artifact_id": artifact_id,
         "bbb_commit": commit,
@@ -1612,6 +1695,7 @@ def external_artifact(
         "path": str(path),
         "bbb_provenance": provenance,
         "scenario_ids": artifact_scenario_ids(kind, value),
+        "scoped_reuse": scoped_reuse,
         "sha256": sha256_file(path),
         "valid": not reasons,
     }
@@ -3054,6 +3138,7 @@ def validate_report(
                     "invalid_reasons",
                     "kind",
                     "scenario_ids",
+                    "scoped_reuse",
                     "sha256",
                     "valid",
                 ):
