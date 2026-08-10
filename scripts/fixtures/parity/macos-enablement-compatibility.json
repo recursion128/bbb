@@ -20,7 +20,7 @@
     {"base_sha256":"02109214048fd72bdc80f8f539eda37e66e0fed99e3be39afcdd2f660d574a82","current_sha256":"bd18f0e9cafe84e48287f011e5f0ee486641168e1da6d651c175c8dcd3f3440a","path":"scripts/platform-acceptance-gate.sh"},
     {"base_sha256":"99e0439487c5b98b47d6cb2dd071dc362fcd7dc1a550b4486863ed6ef1054110","current_sha256":"76420874d2a45f91060cf87f1f4902966dcb2fd2a7100617a023505cd810acb3","path":"scripts/platform_acceptance.py"},
     {"base_sha256":"293e338480484be5c96caa1979d10e69cee00349ab776d7ecae227e85d918ea2","current_sha256":"5d271f37ea3b26c8fe5efc658a09deb01ee48a4916db426e3e415536079d0b74","path":"scripts/playable-gate.sh"},
-    {"base_sha256":"1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25","current_sha256":"30530d2b64b8dbdfc3065a0eda16b44f4acedad777697d4b7cdb2d871e642c0f","path":"scripts/playable_gate.py"},
+    {"base_sha256":"1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25","current_sha256":"d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238","path":"scripts/playable_gate.py"},
     {"base_sha256":"eb189cd25a956a938d8997447c037638493afebd8e633c28634a83e5d576a8a0","current_sha256":"8b60d6cd05e5f6671955be67be197d52f45f6d3f4437b941b60582c89175395a","path":"scripts/process"},
     {"base_sha256":"606159fc73c2628ec523f7bd0f53a66f6bd357086adb0e3476cda1d41998ec2a","current_sha256":"292126415d1de2e67180812f676739dcac38e2afd8817dd7fc867efa80f2091e","path":"scripts/python"},
     {"base_sha256":"bb28fdcaad08cec40c61f5ca4c809d49c740b669791b7e63978f4cf4002f90ab","current_sha256":"0f6cb7810bebccf65a6ecea0368216e3fee88e263e3a2c4ba4107d8fef345775","path":"scripts/tests/test_dev_chain_portability.py"},
@@ -28,7 +28,7 @@
     {"base_sha256":"c82773b40516b469b0a233a0a8963e2e6e185e7bd6197ef18583581edbdcb2a1","current_sha256":"ff0325cdc07e52cf8ef727511151aadd1bbe12fbb7f927a2ef17f1185f98592e","path":"scripts/tests/test_gpu_duration_capture.py"},
     {"base_sha256":"9216d3b2217d91d9044e1805cfbf7de08f4c71cc282e503e0dad99748e3f357b","current_sha256":"76cea162624574bb57082bec10e0de30b627cce146b8f614fc8c946053384b9d","path":"scripts/tests/test_official_client_benchmark.py"},
     {"base_sha256":"86cb70e9af1a89a7bf7d492a103f58903fdb2432cd8cee576cba550973461f14","current_sha256":"1c9ffd360ff7a3f93ac32abe206ec1a0cf517606954256cc164547e05abf7aad","path":"scripts/tests/test_platform_acceptance.py"},
-    {"base_sha256":"ad2b49292058e7d5ef180474447199d5738d03ae863a0b36f08f59e7d08e2b19","current_sha256":"af9d875e7bf495d5e539814e641616911c84a889a7fda92a6db5dd761b4bd69c","path":"scripts/tests/test_playable_gate.py"},
+    {"base_sha256":"ad2b49292058e7d5ef180474447199d5738d03ae863a0b36f08f59e7d08e2b19","current_sha256":"51c2977da14b26e0768c8174b46d6a0f60722a8134d4b0a18cddd4b8203f2c63","path":"scripts/tests/test_playable_gate.py"},
     {"base_sha256":"ebb0b4d34a6bd7f3a258324085e1627081fd1160eddbe3563ac0905b69eafc59","current_sha256":"85db4a70428b5747c7aef81c18a9c4b087145b6d4314693ab064d66e51f4b61a","path":"scripts/tests/test_tooling_execution.py"},
     {"base_sha256":null,"current_sha256":"10b26fdf5851c15de9e736cfe02d0a473ba394b639bafd9b4b6ebd57406245d7","path":"scripts/fixtures/platform-acceptance/macos-aarch64-cocoa-metal.json"},
     {"base_sha256":null,"current_sha256":"09bfcf3f8886ad5893c02a8231119f85ec2e22d57a3bafefa8a5d854f367bb46","path":"scripts/tests/elf_fixture.py"}

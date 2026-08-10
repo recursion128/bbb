@@ -5184,6 +5184,7 @@ def drive_session_lifecycle(
     transfer_server_port: int,
     timeout_seconds: float,
     progress: dict[str, Any],
+    injector: list[str] | None = None,
 ) -> dict[str, Any]:
     """Drive real Vanilla lifecycle boundaries through control and server commands."""
 
@@ -5229,6 +5230,15 @@ def drive_session_lifecycle(
         and isinstance(value.get("elapsed_ticks"), int)
         and value["elapsed_ticks"] >= 20,
     )
+    if injector is not None:
+        # A user or another mapped application can take focus after the
+        # platform handshake. Restore this exact client window through the
+        # native backend before exercising the synthetic DeathScreen path;
+        # do not replace it with the synthetic input.focus write that a
+        # platform-backed run intentionally forbids.
+        _seat_inject(injector, "focus")
+    else:
+        _ensure_focus(address)
     _tap_key(address, "enter")
     _await_value(
         deadline,
@@ -5867,6 +5877,7 @@ def collect_live(args: argparse.Namespace) -> None:
                 args.transfer_server_port,
                 min(180.0, gameplay_timeout),
                 progress,
+                injector,
             )
 
         plan = (

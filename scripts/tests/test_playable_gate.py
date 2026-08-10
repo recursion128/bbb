@@ -911,6 +911,8 @@ class PlayableGateLifecycleTests(unittest.TestCase):
 
         source = inspect.getsource(playable_gate.drive_session_lifecycle)
         self.assertIn('_tap_key(address, "enter")', source)
+        self.assertIn('_seat_inject(injector, "focus")', source)
+        self.assertIn("_ensure_focus(address)", source)
         self.assertIn("_death_screen_status", source)
         self.assertNotIn('"net.perform_respawn"', source)
 
