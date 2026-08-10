@@ -152,13 +152,13 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
   Windows means reimplementing that dispatch from Vanilla source.
-- macOS aarch64 release validation is active: this maintained host satisfies
-  the former runner restart condition. Close the Cocoa/Metal/windowed external-
-  multiplayer row only after a fresh locked release build, native live/quit,
-  Quartz keyboard/pointer/clipboard, OpenAL/CoreAudio device, lifecycle and
-  focused receipts are assembled by the platform gate with an empty limitation
-  set. Linux `cross-check` remains build evidence for macOS code, not a
-  substitute for these host-run receipts.
+- `macos-native-retina` performance acceptance is active as an independent
+  profile and must not replace the fixed 1280x720 baseline. It must probe the
+  built-in display's current CoreGraphics backing pixels and scale, require
+  identical observed drawable pixels and frozen replay/settings/input on BBB
+  and Vanilla, run two formal Java→BBB→BBB→Java rounds with VSync off and
+  the limit unlimited, and retain frame/GPU-timer summaries. A drawable
+  mismatch is a formal blocker, never a comparable result.
 
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,

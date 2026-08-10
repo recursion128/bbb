@@ -95,5 +95,6 @@
   owner/test/capture hash 局部失效与 final-only ABBA 全部机器执行；exact `d2f210805` lifecycle、Linux
   platform、audio、三场景 visual/workload/draw 和两轮正式 ABBA/GPU receipt 通过，panorama/window-icon
   等最后 owner 随矩阵逐项关闭，账本 active=0；仅保留用户豁免且有 reopen condition 的 macOS defer。
+- **2026-08-10（macOS release closure）**：exact full-gated `611d0b623` 的 5× lifecycle 与 Cocoa/Metal/Quartz/OpenAL host-run 通过，formal platform report SHA-256 `a1e8d028bd74bf5f4e05a51eb517af49611781aec263a9f5d9184baa3be4cf7f`，limitations 为空。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
