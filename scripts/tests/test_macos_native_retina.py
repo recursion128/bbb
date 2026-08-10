@@ -4,12 +4,10 @@ import struct
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
-from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "scripts" / "macos_native_retina.py"
@@ -188,35 +186,29 @@ class LaunchContractTests(unittest.TestCase):
         self.assertEqual([Path(item.path).name for item in mac], ["liblwjgl.dylib"])
         self.assertEqual([Path(item.path).name for item in linux], ["liblwjgl.so"])
 
-    def test_focus_retries_transient_fullscreen_raise_failure(self):
+    def test_screenshot_input_posts_directly_to_exact_pid_without_focus(self):
+        class Api:
+            def CGEventCreateKeyboardEvent(self, source, code, pressed):
+                return (source, code, pressed)
+
         class Backend:
             def __init__(self):
-                self.calls = 0
+                self._api = Api()
+                self.events = []
 
-            def focus_pid(self, pid):
-                self.calls += 1
-                if self.calls < 3:
-                    raise retina.InputError("macOS window was not raised (-25204)")
-
-        backend = Backend()
-        started = time.monotonic()
-        retina.focus_with_retry(backend, 42, timeout=1.0)
-
-        self.assertEqual(backend.calls, 3)
-        self.assertGreaterEqual(time.monotonic() - started, 0.5)
-
-    def test_focus_accepts_unsupported_raise_only_after_frontmost_proof(self):
-        class Backend:
-            def focus_pid(self, pid):
-                raise retina.InputError("macOS window was not raised (-25206)")
+            def _post(self, event, *, application_targeted):
+                self.events.append((event, application_targeted))
 
         backend = Backend()
-        with mock.patch.object(
-            retina, "_macos_application_is_frontmost", return_value=True
-        ) as frontmost:
-            retina.focus_with_retry(backend, 42, timeout=0.1)
+        retina.send_screenshot_input(backend, 42)
 
-        frontmost.assert_called_once_with(backend, 42)
+        self.assertEqual(
+            backend.events,
+            [
+                ((None, retina.F2_KEY_CODE, True), True),
+                ((None, retina.F2_KEY_CODE, False), True),
+            ],
+        )
 
 
 class ProfilerTests(unittest.TestCase):
@@ -248,6 +240,8 @@ class FormalValidationTests(unittest.TestCase):
         return {
             "client": client,
             "status": "passed",
+            "requested_window_mode": "fullscreen",
+            "effective_window_mode": "fullscreen",
             "drawable_pixels": list(drawable),
             "vsync": False,
             "framerate_limit": "unlimited",
@@ -274,6 +268,15 @@ class FormalValidationTests(unittest.TestCase):
         self.assertFalse(report["metrics_publishable"])
         self.assertIsNone(report["comparison"])
         self.assertIn("drawable_mismatch", {item["code"] for item in report["blockers"]})
+
+    def test_windowed_fallback_blocks_even_before_metric_publication(self):
+        runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+        runs[0]["effective_window_mode"] = "windowed-fallback"
+
+        report = retina.validate_and_summarize(display(), runs)
+
+        self.assertFalse(report["metrics_publishable"])
+        self.assertIn("window_mode_mismatch", {item["code"] for item in report["blockers"]})
 
     def test_two_complete_abba_rounds_aggregate_only_after_validation(self):
         with tempfile.TemporaryDirectory() as directory:

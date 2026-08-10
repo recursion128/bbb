@@ -525,8 +525,7 @@ def launch_contract(
         "profile_seconds": PROFILE_SECONDS,
         "capture_segments": list(CAPTURE_SEGMENTS),
         "input_script": [
-            "focus exact client pid",
-            "at each capture_start: F2 screenshot, then hold F3 and tap L",
+            "at each capture_start, post to exact client pid: F2 screenshot, then hold F3 and tap L",
         ],
     }
     official = (
@@ -812,6 +811,16 @@ def validate_and_summarize(
             reasons.append({"code": "run_not_passed", "run": index, "status": run.get("status")})
         if run.get("vsync") is not False or run.get("framerate_limit") != "unlimited":
             reasons.append({"code": "frame_pacing_contract_mismatch", "run": index})
+        if run.get("effective_window_mode") != "fullscreen":
+            reasons.append(
+                {
+                    "code": "window_mode_mismatch",
+                    "run": index,
+                    "client": run.get("client"),
+                    "requested": "fullscreen",
+                    "actual": run.get("effective_window_mode"),
+                }
+            )
         if float(run.get("warmup_seconds", -1)) < WARMUP_SECONDS:
             reasons.append({"code": "insufficient_warmup", "run": index})
         observed = run.get("drawable_pixels")
@@ -948,77 +957,12 @@ def _post_key_code(backend: MacOsQuartzBackend, key_code: int, pressed: bool) ->
     backend._post(event, application_targeted=True)
 
 
-def _macos_application_is_frontmost(backend: MacOsQuartzBackend, pid: int) -> bool:
-    name = backend._cf.CFStringCreateWithCString(None, b"AXFrontmost", 0x08000100)
-    application = backend._api.AXUIElementCreateApplication(pid)
-    value = ctypes.c_void_p()
-    try:
-        if not name or not application:
-            return False
-        status = backend._api.AXUIElementCopyAttributeValue(
-            application, name, ctypes.byref(value)
-        )
-        return bool(
-            status == 0
-            and value.value
-            and backend._cf.CFBooleanGetValue(value)
-        )
-    finally:
-        if value.value:
-            backend._cf.CFRelease(value)
-        if application:
-            backend._cf.CFRelease(application)
-        if name:
-            backend._cf.CFRelease(name)
-
-
-def focus_with_retry(
-    backend: MacOsQuartzBackend,
-    pid: int,
-    *,
-    process: subprocess.Popen[object] | None = None,
-    timeout: float = 10.0,
-) -> None:
-    """Focus a fullscreen Cocoa window after its Space transition settles."""
-
-    deadline = time.monotonic() + timeout
-    last_error: InputError | None = None
-    while time.monotonic() < deadline:
-        if process is not None and process.poll() is not None:
-            raise RetinaAcceptanceError(
-                f"client exited with status {process.returncode} while waiting for focus"
-            )
-        try:
-            backend.focus_pid(pid)
-            return
-        except InputError as error:
-            # A GLFW fullscreen window may expose AXMain/AXFocused and become
-            # frontmost while declining the redundant AXRaise action. Accept
-            # only that exact action-unsupported result, with a fresh native
-            # AXFrontmost read proving activation actually succeeded.
-            if str(error).endswith("window was not raised (-25206)") and (
-                _macos_application_is_frontmost(backend, pid)
-            ):
-                return
-            last_error = error
-            time.sleep(0.25)
-    raise RetinaAcceptanceError(
-        f"could not focus macOS client {pid} within {timeout:.1f}s: {last_error}"
-    ) from last_error
-
-
-def send_screenshot_input(
-    backend: MacOsQuartzBackend, pid: int, *, process: subprocess.Popen[object] | None = None
-) -> None:
-    focus_with_retry(backend, pid, process=process)
+def send_screenshot_input(backend: MacOsQuartzBackend, pid: int) -> None:
     _post_key_code(backend, F2_KEY_CODE, True)
     _post_key_code(backend, F2_KEY_CODE, False)
 
 
-def send_profiler_input(
-    backend: MacOsQuartzBackend, pid: int, *, process: subprocess.Popen[object] | None = None
-) -> None:
-    focus_with_retry(backend, pid, process=process)
+def send_profiler_input(backend: MacOsQuartzBackend, pid: int) -> None:
     _post_key_code(backend, F3_KEY_CODE, True)
     _post_key_code(backend, L_KEY_CODE, True)
     time.sleep(0.05)
@@ -1246,14 +1190,15 @@ def _run_client(
     input_script = {
         "events": ["F2", "F3-down", "L-down", "L-up", "F3-up"],
         "at_markers": [f"{segment}:capture_start" for segment in CAPTURE_SEGMENTS],
-        "targeting": "CoreGraphics keyboard events posted to exact client pid",
+        "targeting": "CoreGraphics keyboard events posted directly to exact client pid",
     }
     result: dict[str, object] = {
         "schema": SCHEMA,
         "profile": PROFILE_ID,
         "client": client,
         "status": "started",
-        "window_mode": "fullscreen",
+        "requested_window_mode": "fullscreen",
+        "effective_window_mode": "pending",
         "logical_size": [display.logical_width, display.logical_height],
         "target_drawable_pixels": list(display.target_drawable),
         "drawable_pixels": None,
@@ -1341,7 +1286,6 @@ def _run_client(
                 timeout=timeout,
             )
             input_backend = MacOsQuartzBackend(client_process.pid)
-            focus_with_retry(input_backend, client_process.pid, process=client_process)
             _warmup_and_start_replay(server_process, replay)
             starts = [
                 marker
@@ -1358,9 +1302,7 @@ def _run_client(
                 )
                 before_screenshots = set(screenshot_root.glob("*.png"))
                 before_profiles = set(profile_root.glob("*.zip"))
-                send_screenshot_input(
-                    input_backend, client_process.pid, process=client_process
-                )
+                send_screenshot_input(input_backend, client_process.pid)
                 screenshot = _wait_for_new_file(
                     screenshot_root,
                     "*.png",
@@ -1369,7 +1311,7 @@ def _run_client(
                     timeout=10.0,
                 )
                 cpu_before = process_cpu_time_nanos(client_process.pid)
-                send_profiler_input(input_backend, client_process.pid, process=client_process)
+                send_profiler_input(input_backend, client_process.pid)
                 profile = _wait_for_new_file(
                     profile_root,
                     "*.zip",
@@ -1387,6 +1329,12 @@ def _run_client(
                         "pixels": list(dimensions),
                     }
                 )
+                if dimensions != display.target_drawable:
+                    result["drawable_pixels"] = list(dimensions)
+                    raise RetinaAcceptanceError(
+                        f"{client} drawable {dimensions[0]}x{dimensions[1]} differs from "
+                        f"target {display.backing_pixel_width}x{display.backing_pixel_height}"
+                    )
                 result["profiles"].append(
                     _write_profile_samples(
                         artifact_dir,
@@ -1434,6 +1382,12 @@ def _run_client(
             else ""
         )
         result["adapter"] = _adapter_from_log(client, client_text, display.metal_device)
+        result["effective_window_mode"] = (
+            "windowed-fallback"
+            if client == "vanilla"
+            and "Failed to find suitable monitor for fullscreen mode" in client_text
+            else "fullscreen"
+        )
         if options_path.is_file():
             try:
                 result["loaded_options"] = audit_vanilla_options(options_path)
