@@ -184,4 +184,4 @@ machine-readable acceptance report，并由 docs lint 在运行时核对；正�
 当前精确分布只由同目录的 machine-readable acceptance report 从本表派生，避免在正文维护
 第二份易过期计数。本轮所有 `equivalent` 均由 current focused evidence、domain sweep 与正式
 receipt 逐机制恢复；当前声明范围内没有 `missing`、`partial`、`active` 或 `unverified`。
-`macos-native-retina` 是不替换上述固定分辨率结论的独立交付 profile，其 active/blocker 状态只由 [ledger](../../unsupported-features.md) 与对应 report 维护。
+`macos-native-retina` 是不替换上述固定分辨率结论的独立交付 profile，其 deferred/blocker 状态只由 [ledger](../../unsupported-features.md) 与对应 [report](../../evidence/macos-native-retina/report.json) 维护。

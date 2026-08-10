@@ -152,13 +152,18 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
   Windows means reimplementing that dispatch from Vanilla source.
-- `macos-native-retina` performance acceptance is active as an independent
-  profile and must not replace the fixed 1280x720 baseline. It must probe the
-  built-in display's current CoreGraphics backing pixels and scale, require
-  identical observed drawable pixels and frozen replay/settings/input on BBB
-  and Vanilla, run two formal Java→BBB→BBB→Java rounds with VSync off and
-  the limit unlimited, and retain frame/GPU-timer summaries. A drawable
-  mismatch is a formal blocker, never a comparable result.
+- `macos-native-retina` performance acceptance is `deferred` as an independent
+  profile and does not replace the fixed 1280x720 baseline. The clean,
+  full-gated `5460aa12c` formal run probed the built-in display at logical
+  1440x900, scale 2, and current CoreGraphics backing target 2880x1800, but
+  the official Java 26.1 fullscreen F2 drawable was 1920x1200. The runner
+  rejected the mismatch before profiling, so the retained
+  [`macos-native-retina` report](evidence/macos-native-retina/report.json)
+  has `metrics_publishable=false` and no performance comparison. Reopen when
+  the repo-managed official 26.1 client and BBB can both expose and attest the
+  same 2880x1800 drawable on this built-in display; then rerun the complete two
+  round Java→BBB→BBB→Java contract with frozen replay/settings/input, VSync
+  off, and the frame-rate limit unlimited.
 
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
