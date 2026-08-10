@@ -152,14 +152,6 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
   Windows means reimplementing that dispatch from Vanilla source.
-- `macos-native-retina` performance acceptance is active as an independent
-  profile and does not replace the fixed 1280x720 baseline. Probe the built-in
-  display's panel-native pixels, current CoreGraphics logical/backing mode and
-  scale separately; pin both clients to the same exact panel-native fullscreen
-  video mode; and require identical F2 drawable pixels, replay, settings,
-  resource pack and input. Run the complete two-round Java→BBB→BBB→Java
-  contract with VSync off and the frame-rate limit unlimited. A drawable
-  mismatch remains a formal blocker and never produces a comparison.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

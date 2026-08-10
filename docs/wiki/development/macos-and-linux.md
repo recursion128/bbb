@@ -87,6 +87,18 @@ pixels 为准。该 profile 独立于 Linux 1280x720 基线，需要与 platform
 Accessibility 权限；像素不匹配只产生 blocker，不产生性能比较。正式结果保存在
 [独立报告](../../evidence/macos-native-retina/report.json)。
 
+2026-08-10 的正式两轮 ABBA 在 full-gated `54f20a62a` 上通过：内建 `Color LCD`
+（display id 1）逻辑 bounds 为 1440x900、scale 2.0、当前 backing mode 为
+2880x1800，硬件 panel-native 及两端每段 F2 截图实测 drawable 均为 2560x1600。
+两端均为 fullscreen、VSync 关闭、帧率上限解除；BBB 使用 Metal / Apple M1，官方
+Java 26.1 使用 OpenGL / Apple M1。八轮的 world/replay/settings/resource-pack/input
+哈希完全相同。合并三段、四轮后的 application frame-time 汇总为：BBB 120.738 FPS、
+8.282 ms、1% low 43.240 FPS、p95/p99 17.945/21.520 ms、CV 0.5822；官方为
+80.646 FPS、12.400 ms、1% low 55.267 FPS、p95/p99 15.248/16.806 ms、CV 0.1201。
+进程 CPU/frame 均值分别为 2.902/5.184 ms；GPU duration 均值分别为
+13.281/10.353 ms。报告 SHA-256 为
+`84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

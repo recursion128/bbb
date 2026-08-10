@@ -425,7 +425,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: closed
 - p2-hud: closed
 - p3-resources: closed
-- p4-delivery: active
+- p4-delivery: maintenance
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -498,7 +498,7 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。macOS aarch64 发布行在 native-Retina 修复改变 exclusive window / Metal drawable owner 后，已由 exact full-gated `afe29aa32` fresh host-run 重新关闭。当前只推进用户重开的独立 `macos-native-retina` 2560x1600 panel-native 验收，不替换固定分辨率基线。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
+状态：`maintenance`。macOS aarch64 发布行在 native-Retina 修复改变 exclusive window / Metal drawable owner 后，已由 exact full-gated `afe29aa32` fresh host-run 重新关闭。独立 `macos-native-retina` 2560x1600 panel-native 验收也已在 exact full-gated `54f20a62a` 完成，正式报告 SHA-256 为 `84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`，不替换固定分辨率基线。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
 Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；任一 receipt 失效时必须
 恢复真实开放状态，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独保留 `equivalent`。
 
@@ -522,7 +522,7 @@ route/scope ruling、inventory source 与 validation-class 语义 hash 不得变
 clean/full-gated `d2f210805` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；绑定 full-gated `a0781a7eb` consistency receipt 的两轮 Java→BBB→BBB→Java、MangoHud/perf 与双侧 GPU trace 亦通过，formal summary SHA-256 为 `c5930d19a414fad69cc1f402d5a8a3bd5ffc5094c732d643f06c74f0042bcb54`。两条 performance 行已具备逐机制关闭证据；历史 `675cbfc53` 结果仅保留为回归基线。
 audio schema-3 formal receipt 已在 clean/full-gated exact `d2f210805` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `5b6b5939304c957bb6e5a2dba3751503505ee03d2d0e9aa45c1c80b9ba44f474`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。
 Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 与 Linux
-是声明的开发平台。macOS exact `611d0b623` release/lifecycle/Cocoa/Metal/Quartz/OpenAL report 已通过且 limitation 为空；新的 native-Retina 性能路线必须独立保留实际 drawable 身份与不匹配拒绝证据。
+是声明的开发平台。macOS exact `afe29aa32` release/lifecycle/Cocoa/Metal/Quartz/OpenAL report 已通过且 limitation 为空；native-Retina 性能路线独立保留实际 drawable 身份与不匹配拒绝证据。
 官方 26.1 离线启动、共同 replay/capture 合同、当前 host/tool hash 与 GPU-duration
 采集链由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
