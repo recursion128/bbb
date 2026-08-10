@@ -498,7 +498,7 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。macOS aarch64 发布行已由 exact `611d0b623` host-run 正式关闭；当前只推进用户重开的独立 `macos-native-retina` 2560x1600 panel-native 验收，不替换固定分辨率基线。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
+状态：`active`。macOS aarch64 发布行曾由 exact `611d0b623` host-run 正式关闭；native-Retina 修复改变 exclusive window / Metal drawable owner 后，该行先以一次 fresh host-run 复验再重新关闭。随后推进用户重开的独立 `macos-native-retina` 2560x1600 panel-native 验收，不替换固定分辨率基线。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
 Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；任一 receipt 失效时必须
 恢复真实开放状态，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独保留 `equivalent`。
 

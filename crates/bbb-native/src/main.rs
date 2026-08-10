@@ -957,7 +957,21 @@ fn run_client(mut args: startup::Args) -> Result<()> {
 
     let event_loop = create_event_loop()?;
     let window_config = startup::WindowConfig::from_args(&args);
-    let window = build_window(&event_loop, &window_config)?;
+    // GLFW creates a macOS fullscreen window with its monitor/video mode
+    // already selected. Match that ordering: winit's post-creation exclusive
+    // transition can switch the CoreGraphics mode before AppKit expands the
+    // old windowed content frame, leaving a half-resolution Metal drawable.
+    #[cfg(target_os = "macos")]
+    let initial_fullscreen = requested_window_fullscreen(
+        args.client_fullscreen,
+        args.client_fullscreen_resolution,
+        event_loop.primary_monitor().as_ref(),
+        true,
+    );
+    #[cfg(not(target_os = "macos"))]
+    let initial_fullscreen = None;
+    let fullscreen_applied_at_creation = initial_fullscreen.is_some();
+    let window = build_window(&event_loop, &window_config, initial_fullscreen)?;
     let window_backend = window_icon::NativeWindowBackend::detect(&window)?;
     let window_size = window.inner_size();
     let window_platform = window_backend.platform_identity(std::env::consts::OS);
@@ -1023,6 +1037,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
     apply_startup_fullscreen(
         &window,
         &mut input,
+        fullscreen_applied_at_creation,
         args.client_fullscreen_resolution,
         window_backend.supports_exclusive_fullscreen(),
     );
@@ -1066,6 +1081,23 @@ fn run_client(mut args: startup::Args) -> Result<()> {
             args.fabulous_texture_filtering,
         ),
     )?;
+    let startup_window_size = window.inner_size();
+    let startup_surface_size = platform_surface_size(
+        std::env::consts::OS,
+        matches!(window.fullscreen(), Some(Fullscreen::Exclusive(_))),
+        args.client_fullscreen_resolution,
+        startup_window_size,
+    );
+    if startup_surface_size != renderer.physical_surface_size() {
+        renderer.resize(startup_surface_size)?;
+    }
+    tracing::info!(
+        window_width = startup_window_size.width,
+        window_height = startup_window_size.height,
+        drawable_width = startup_surface_size.width,
+        drawable_height = startup_surface_size.height,
+        "native renderer drawable configured"
+    );
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     renderer.set_glint_settings(args.client_glint_speed, args.client_glint_strength as f32);
     renderer.set_terrain_max_anisotropy_bit(args.client_max_anisotropy_bit);
@@ -1265,7 +1297,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
         }
     }
     let mut simulation_input_runtime = simulation::input_commands::SimulationInputRuntime::new(
-        window.inner_size(),
+        renderer.physical_surface_size(),
         false,
         startup_client_information,
     );
@@ -1624,8 +1656,14 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                 // once per frame, while winit delivers each resize as an event
                 // consumed exactly once right here.
                 WindowEvent::Resized(size) => {
+                    let surface_size = platform_surface_size(
+                        std::env::consts::OS,
+                        matches!(window.fullscreen(), Some(Fullscreen::Exclusive(_))),
+                        args.client_fullscreen_resolution,
+                        size,
+                    );
                     let old_size = renderer.physical_surface_size();
-                    if let Err(error) = renderer.resize(size) {
+                    if let Err(error) = renderer.resize(surface_size) {
                         record_runtime_failure(
                             &event_failures,
                             // `Window.onFramebufferResize` failure reporting
@@ -1635,7 +1673,10 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                                 "renderer resize",
                                 format!(
                                     "Failed to resize renderer resources from {}x{} to {}x{}",
-                                    old_size.width, old_size.height, size.width, size.height
+                                    old_size.width,
+                                    old_size.height,
+                                    surface_size.width,
+                                    surface_size.height
                                 ),
                                 error,
                             ),
@@ -1653,15 +1694,15 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                     // command is queued; a zero-size/minimized callback keeps
                     // the last usable physical and logical sizes, exactly like
                     // the simulation's own `SurfaceResized` handling.
-                    if size.width != 0 && size.height != 0 {
+                    if surface_size.width != 0 && surface_size.height != 0 {
                         renderer.set_gui_surface_size(resize_gui_surface(
-                            size,
+                            surface_size,
                             args.client_gui_scale,
                             args.client_force_unicode_font,
                         ));
                     }
                     simulation_mailbox.enqueue_or_report(
-                        SimulationCommand::SurfaceResized(size),
+                        SimulationCommand::SurfaceResized(surface_size),
                         "surface resize",
                     );
                 }
@@ -2394,37 +2435,72 @@ fn apply_window_cursor_icon(
     }
 }
 
-/// The one transition policy shared by the startup apply and later
-/// `SetFullscreen` effects (`Window.setMode`, Window.java:350-389): enter
+/// The one selection policy shared by creation-time macOS fullscreen, the
+/// post-creation startup apply on other platforms, and later `SetFullscreen`
+/// effects (`Window.setMode`, Window.java:350-389): enter
 /// exclusive mode only when the stored `fullscreenResolution` exactly matches
 /// a winit video mode on a backend that supports exclusive mode, otherwise
 /// borderless on the current monitor. Windowed restoration is winit-owned
 /// (`set_fullscreen(None)` restores the saved windowed geometry). Winit has no
 /// synchronous failure channel, so the mode choice is decided up front rather
 /// than by inspecting `Window::fullscreen()` afterwards.
+fn requested_window_fullscreen(
+    fullscreen: bool,
+    preferred: Option<window_surface::PreferredVideoMode>,
+    monitor: Option<&winit::monitor::MonitorHandle>,
+    exclusive_supported: bool,
+) -> Option<Fullscreen> {
+    if !fullscreen {
+        return None;
+    }
+    let exact = preferred.and_then(|mode| window_surface::find_exact_video_mode(mode, monitor));
+    Some(
+        match window_surface::fullscreen_choice(preferred, exact.is_some(), exclusive_supported) {
+            window_surface::FullscreenChoice::Exclusive => {
+                Fullscreen::Exclusive(exact.expect("exclusive choice requires an exact video mode"))
+            }
+            window_surface::FullscreenChoice::Borderless => Fullscreen::Borderless(None),
+        },
+    )
+}
+
+/// Winit 0.29's macOS exclusive path switches the CoreGraphics video mode,
+/// but `Window::inner_size` follows AppKit's logical backing scale. On Retina
+/// panels that can report 1440x900 or 1280x789 while Metal's drawable must
+/// remain the exact preferred 2560x1600 pixels. wgpu's Metal surface configure
+/// sets `CAMetalLayer.drawableSize` directly, so preserve that physical target
+/// only for an actual exclusive macOS window. Windowed/borderless and every
+/// non-macOS backend continue to consume the native resize event unchanged.
+fn platform_surface_size(
+    target_os: &str,
+    exclusive_fullscreen: bool,
+    preferred: Option<window_surface::PreferredVideoMode>,
+    observed: PhysicalSize<u32>,
+) -> PhysicalSize<u32> {
+    if observed.width == 0 || observed.height == 0 {
+        return observed;
+    }
+    if target_os == "macos" && exclusive_fullscreen {
+        if let Some(preferred) = preferred {
+            return PhysicalSize::new(preferred.width, preferred.height);
+        }
+    }
+    observed
+}
+
 fn set_window_fullscreen(
     window: &Window,
     fullscreen: bool,
     preferred: Option<window_surface::PreferredVideoMode>,
     exclusive_supported: bool,
 ) {
-    if !fullscreen {
-        window.set_fullscreen(None);
-        return;
-    }
     let monitor = window.current_monitor();
-    let exact =
-        preferred.and_then(|mode| window_surface::find_exact_video_mode(mode, monitor.as_ref()));
-    match window_surface::fullscreen_choice(preferred, exact.is_some(), exclusive_supported) {
-        window_surface::FullscreenChoice::Exclusive => {
-            window.set_fullscreen(Some(Fullscreen::Exclusive(
-                exact.expect("exclusive choice requires an exact video mode"),
-            )));
-        }
-        window_surface::FullscreenChoice::Borderless => {
-            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
-        }
-    }
+    window.set_fullscreen(requested_window_fullscreen(
+        fullscreen,
+        preferred,
+        monitor.as_ref(),
+        exclusive_supported,
+    ));
 }
 
 /// `Minecraft.<init>` (Minecraft.java:647-656): a clean start with
@@ -2436,10 +2512,11 @@ fn set_window_fullscreen(
 fn apply_startup_fullscreen(
     window: &Window,
     input: &mut ClientInputState,
+    applied_at_creation: bool,
     preferred: Option<window_surface::PreferredVideoMode>,
     exclusive_supported: bool,
 ) {
-    if !input.is_fullscreen() {
+    if !input.is_fullscreen() || applied_at_creation {
         return;
     }
     set_window_fullscreen(window, true, preferred, exclusive_supported);
@@ -2850,7 +2927,7 @@ mod tests {
             .find("load_pack_roots_with_options(&args)")
             .unwrap();
         let window = production
-            .find("build_window(&event_loop, &window_config)")
+            .find("build_window(&event_loop, &window_config, initial_fullscreen)")
             .unwrap();
         let simulation = production
             .find("let mut simulation_thread = SimulationThread::")
@@ -2966,7 +3043,7 @@ mod tests {
             .expect("production/test boundary")
             .0;
         let policy = production
-            .split_once("fn set_window_fullscreen(")
+            .split_once("fn requested_window_fullscreen(")
             .expect("fullscreen mode policy owner")
             .1;
         assert!(policy.contains("window_surface::find_exact_video_mode("));
@@ -2974,23 +3051,55 @@ mod tests {
         assert!(policy.contains("Fullscreen::Exclusive("));
         assert!(policy.contains("Fullscreen::Borderless(None)"));
         assert!(!policy.contains("window.fullscreen()"));
-        // Both the startup apply and the runtime SetFullscreen effect route
-        // through the same policy; no second window owner exists.
+        // Creation-time macOS fullscreen and both later paths route through
+        // the same policy; no second native mode selector exists.
+        let creation = production
+            .split_once("let initial_fullscreen = requested_window_fullscreen(")
+            .expect("macOS creation-time fullscreen selection")
+            .1;
+        assert!(creation.contains("event_loop.primary_monitor().as_ref()"));
         let startup = production
             .split_once("fn apply_startup_fullscreen(")
             .expect("startup fullscreen owner")
             .1;
         assert!(startup.contains("set_window_fullscreen(window, true,"));
+        assert!(startup.contains("applied_at_creation"));
         let effect = production
             .split_once("PlatformEffect::SetFullscreen(fullscreen) =>")
             .expect("runtime fullscreen effect")
             .1;
         assert!(effect.contains("set_window_fullscreen("));
-        // One definition plus one startup call site plus one effect call site.
+        // One transition definition plus one startup call site plus one effect
+        // call site; each transition calls the single selection policy.
         assert_eq!(production.matches("set_window_fullscreen(").count(), 3);
-        // The policy helper owns all three native transitions (windowed
-        // restore, exclusive entry, borderless entry).
-        assert_eq!(production.matches("window.set_fullscreen(").count(), 3);
+        assert_eq!(
+            production.matches("requested_window_fullscreen(").count(),
+            3
+        );
+        assert_eq!(production.matches("window.set_fullscreen(").count(), 1);
+    }
+
+    #[test]
+    fn only_macos_exclusive_mode_pins_the_physical_metal_drawable() {
+        let preferred = window_surface::PreferredVideoMode::parse("2560x1600@60:24");
+        let observed = PhysicalSize::new(1440, 900);
+
+        assert_eq!(
+            platform_surface_size("macos", true, preferred, observed),
+            PhysicalSize::new(2560, 1600)
+        );
+        assert_eq!(
+            platform_surface_size("macos", false, preferred, observed),
+            observed
+        );
+        assert_eq!(
+            platform_surface_size("linux", true, preferred, observed),
+            observed
+        );
+        assert_eq!(
+            platform_surface_size("macos", true, preferred, PhysicalSize::new(0, 0)),
+            PhysicalSize::new(0, 0)
+        );
     }
 
     #[test]

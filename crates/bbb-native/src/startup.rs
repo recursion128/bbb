@@ -41,7 +41,7 @@ use crate::window_surface;
 use winit::{
     dpi::PhysicalSize,
     event_loop::EventLoop,
-    window::{Window, WindowBuilder},
+    window::{Fullscreen, Window, WindowBuilder},
 };
 
 use crate::{
@@ -2394,10 +2394,15 @@ impl WindowConfig {
 /// errors in a process-global queue behind an installable callback, so every
 /// failure is handled where it occurs and flows into the guarded crash
 /// report.
-pub(crate) fn build_window(event_loop: &EventLoop<()>, config: &WindowConfig) -> Result<Window> {
+pub(crate) fn build_window(
+    event_loop: &EventLoop<()>,
+    config: &WindowConfig,
+    initial_fullscreen: Option<Fullscreen>,
+) -> Result<Window> {
     WindowBuilder::new()
         .with_title(config.title.clone())
         .with_inner_size(config.physical_size())
+        .with_fullscreen(initial_fullscreen)
         .build(event_loop)
         .context("create native window")
 }
