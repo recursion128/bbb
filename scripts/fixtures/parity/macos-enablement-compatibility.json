@@ -12,7 +12,7 @@
     {"base_sha256":"6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7","current_sha256":"7f91b313cc16d3512dc3aa02392c29958bfebb5b5bb5b9443478c9111b7e38cc","path":"scripts/bbb_tools/execution/process.py"},
     {"base_sha256":"b9bf2b8cdbbc3a848a354d0cc0dba54216be8c7e2e00c55bbc642c76eb139f4b","current_sha256":"6560e7725634c4ac32e2649d0e627b8595b06438b5016a9860e0f495746a7bf8","path":"scripts/bbb_tools/host/capabilities.py"},
     {"base_sha256":"ef340e653a32509e5c4edcc10557a5e52f1a50897378e02ada0078301f82817e","current_sha256":"ae127aeea55ef37c95a0a5005023c575fb412f013de6012d24e3ecfc0e2e03de","path":"scripts/bbb_tools/input/cli.py"},
-    {"base_sha256":"6f7a1adec9506c3685686d60c811178f6724bb8996b00a197a9c338be03bfd7f","current_sha256":"c7628e49f0ad56915f36db2cd1fdf798c8400af63fd43f54d8c894bd29d251e6","path":"scripts/bbb_tools/input/macos_quartz.py"},
+    {"base_sha256":"6f7a1adec9506c3685686d60c811178f6724bb8996b00a197a9c338be03bfd7f","current_sha256":"c9502e4c05f65cc457eecdd6553fb6ddcc730d32c4b6d724adec64e352cd9451","path":"scripts/bbb_tools/input/macos_quartz.py"},
     {"base_sha256":"fbb36593de0b5ba52676c91237a71ee817f2cc2457533a494da8ba92963a623b","current_sha256":"6fca5a51fbe287f6df50de6de1c2079ee2587968bf63949e8b13bf435f004b63","path":"scripts/bootstrap"},
     {"base_sha256":"437ba55db7f865d5b9cec1891294b101abfabe88c09bd9198cefe8baf5f39395","current_sha256":"dceda982f07c74aca373f5ab385b7f2e86b24a7d2cbba8350edb5e2c3a5227a7","path":"scripts/cross_check.py"},
     {"base_sha256":"4bf0ca321d8d6e3712a1c4a709ec28f07c53226616dcd304f4d420e843aa9613","current_sha256":"1c87d8cb3ed2f26d6986b4b2fa67049cb55c6cfbff4a91b4fcd770a3f782a8db","path":"scripts/file_drop_capability.py"},
@@ -29,7 +29,7 @@
     {"base_sha256":"9216d3b2217d91d9044e1805cfbf7de08f4c71cc282e503e0dad99748e3f357b","current_sha256":"76cea162624574bb57082bec10e0de30b627cce146b8f614fc8c946053384b9d","path":"scripts/tests/test_official_client_benchmark.py"},
     {"base_sha256":"86cb70e9af1a89a7bf7d492a103f58903fdb2432cd8cee576cba550973461f14","current_sha256":"1c9ffd360ff7a3f93ac32abe206ec1a0cf517606954256cc164547e05abf7aad","path":"scripts/tests/test_platform_acceptance.py"},
     {"base_sha256":"ad2b49292058e7d5ef180474447199d5738d03ae863a0b36f08f59e7d08e2b19","current_sha256":"1e6e29dc738f637bd92b09c644721d798de5d17303061c7aa5f2d9218e9d94ac","path":"scripts/tests/test_playable_gate.py"},
-    {"base_sha256":"ebb0b4d34a6bd7f3a258324085e1627081fd1160eddbe3563ac0905b69eafc59","current_sha256":"85db4a70428b5747c7aef81c18a9c4b087145b6d4314693ab064d66e51f4b61a","path":"scripts/tests/test_tooling_execution.py"},
+    {"base_sha256":"ebb0b4d34a6bd7f3a258324085e1627081fd1160eddbe3563ac0905b69eafc59","current_sha256":"9300eab0093d4bf869f9c36b555355b038769f7e25086c647d84554da0cea722","path":"scripts/tests/test_tooling_execution.py"},
     {"base_sha256":null,"current_sha256":"10b26fdf5851c15de9e736cfe02d0a473ba394b639bafd9b4b6ebd57406245d7","path":"scripts/fixtures/platform-acceptance/macos-aarch64-cocoa-metal.json"},
     {"base_sha256":null,"current_sha256":"09bfcf3f8886ad5893c02a8231119f85ec2e22d57a3bafefa8a5d854f367bb46","path":"scripts/tests/elf_fixture.py"}
   ],

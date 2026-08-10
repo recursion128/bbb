@@ -47,6 +47,25 @@ KEY_CODES = {
     "f11": 103,
 }
 BUTTONS = {"left": 0, "right": 1, "middle": 2}
+AX_ERROR_ATTRIBUTE_UNSUPPORTED = -25205
+
+
+def _require_accessibility_status(
+    operation: str, status: int, *, optional_attribute: bool = False
+) -> bool:
+    """Validate an AX operation while tolerating a genuinely absent attribute.
+
+    Cocoa windows are not required to expose AXMain or AXFocused as writable
+    attributes.  They can still be raised and receive input once their process
+    is frontmost.  All other failures remain fatal so platform acceptance never
+    substitutes a synthetic focus receipt for a failed native activation.
+    """
+
+    if status == 0:
+        return True
+    if optional_attribute and status == AX_ERROR_ATTRIBUTE_UNSUPPORTED:
+        return False
+    raise InputError(f"macOS window was not {operation} ({status})")
 
 
 class CGPoint(ctypes.Structure):
@@ -86,6 +105,7 @@ class MacOsQuartzBackend(InputBackend):
         ]
         self._api.CGEventSetFlags.argtypes = [c_void_p, ctypes.c_uint64]
         self._api.CGEventPost.argtypes = [c_uint32, c_void_p]
+        self._api.CGEventPostToPid.argtypes = [ctypes.c_int, c_void_p]
         self._api.CFRelease.argtypes = [c_void_p]
         self._api.GetProcessForPID.argtypes = [
             ctypes.c_int,
@@ -111,6 +131,8 @@ class MacOsQuartzBackend(InputBackend):
         self._cf.CFArrayGetCount.restype = ctypes.c_long
         self._cf.CFArrayGetValueAtIndex.argtypes = [c_void_p, ctypes.c_long]
         self._cf.CFArrayGetValueAtIndex.restype = c_void_p
+        self._cf.CFBooleanGetValue.argtypes = [c_void_p]
+        self._cf.CFBooleanGetValue.restype = c_bool
         self._cf.CFRelease.argtypes = [c_void_p]
         self._api.AXUIElementCreateApplication.argtypes = [ctypes.c_int]
         self._api.AXUIElementCreateApplication.restype = c_void_p
@@ -127,11 +149,14 @@ class MacOsQuartzBackend(InputBackend):
         self._api.AXValueGetValue.argtypes = [c_void_p, c_uint32, c_void_p]
         self._api.AXValueGetValue.restype = c_bool
 
-    def _post(self, event: int) -> None:
+    def _post(self, event: int, *, application_targeted: bool = False) -> None:
         if not event:
             raise InputError("CoreGraphics could not create an input event")
         try:
-            self._api.CGEventPost(0, event)
+            if application_targeted and self._pid is not None and self._pid > 0:
+                self._api.CGEventPostToPid(self._pid, event)
+            else:
+                self._api.CGEventPost(0, event)
         finally:
             self._api.CFRelease(event)
 
@@ -146,7 +171,7 @@ class MacOsQuartzBackend(InputBackend):
             or (key.lower() != "command" and "command" in self._pressed_keys)
         ):
             self._api.CGEventSetFlags(event, 1 << 20)
-        self._post(event)
+        self._post(event, application_targeted=True)
 
     def _pointer_location(self) -> CGPoint:
         event = self._api.CGEventCreate(None)
@@ -287,23 +312,42 @@ class MacOsQuartzBackend(InputBackend):
             if self._cf.CFArrayGetCount(windows) < 1:
                 raise InputError(f"macOS process {pid} has no Accessibility window")
             window = self._cf.CFArrayGetValueAtIndex(windows, 0)
-            operations = (
-                ("main", self._api.AXUIElementSetAttributeValue(
+            _require_accessibility_status(
+                "main",
+                self._api.AXUIElementSetAttributeValue(
                     window, attributes["AXMain"], true_value
-                )),
-                ("focused", self._api.AXUIElementSetAttributeValue(
-                    window, attributes["AXFocused"], true_value
-                )),
-                ("raised", self._api.AXUIElementPerformAction(
-                    window, attributes["AXRaise"]
-                )),
+                ),
+                optional_attribute=True,
             )
-            for operation, status in operations:
-                if status != 0:
-                    raise InputError(
-                        f"macOS window for process {pid} was not {operation} ({status})"
-                    )
+            _require_accessibility_status(
+                "focused",
+                self._api.AXUIElementSetAttributeValue(
+                    window, attributes["AXFocused"], true_value
+                ),
+                optional_attribute=True,
+            )
+            _require_accessibility_status(
+                "raised",
+                self._api.AXUIElementPerformAction(window, attributes["AXRaise"]),
+            )
             time.sleep(0.2)
+
+            frontmost = c_void_p()
+            try:
+                status = self._api.AXUIElementCopyAttributeValue(
+                    application, attributes["AXFrontmost"], ctypes.byref(frontmost)
+                )
+                if (
+                    status != 0
+                    or not frontmost.value
+                    or not self._cf.CFBooleanGetValue(frontmost)
+                ):
+                    raise InputError(
+                        f"macOS process {pid} did not remain frontmost ({status})"
+                    )
+            finally:
+                if frontmost.value:
+                    self._cf.CFRelease(frontmost)
         finally:
             if windows.value:
                 self._cf.CFRelease(windows)

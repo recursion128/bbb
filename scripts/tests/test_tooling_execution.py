@@ -19,7 +19,11 @@ from bbb_tools.host.capabilities import (
     _vulkan_loader_available,
     missing_for_profile,
 )
-from bbb_tools.input.contract import InputBackend
+from bbb_tools.input.contract import InputBackend, InputError
+from bbb_tools.input.macos_quartz import (
+    MacOsQuartzBackend,
+    _require_accessibility_status,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -37,6 +41,21 @@ class RecordingInput(InputBackend):
 
     def move(self, dx: float, dy: float) -> None:
         self.events.append(("move", dx, dy))
+
+
+class RecordingQuartzApi:
+    def __init__(self) -> None:
+        self.posts: list[tuple[str, int, int]] = []
+        self.releases: list[int] = []
+
+    def CGEventPost(self, location: int, event: int) -> None:
+        self.posts.append(("global", location, event))
+
+    def CGEventPostToPid(self, pid: int, event: int) -> None:
+        self.posts.append(("pid", pid, event))
+
+    def CFRelease(self, event: int) -> None:
+        self.releases.append(event)
 
 
 class ToolingExecutionTests(unittest.TestCase):
@@ -107,6 +126,55 @@ class ToolingExecutionTests(unittest.TestCase):
                 ("key", "shift", False),
                 ("button", "left", False),
             ],
+        )
+
+    def test_macos_focus_allows_only_unsupported_optional_window_attributes(self) -> None:
+        self.assertFalse(
+            _require_accessibility_status(
+                "main", -25205, optional_attribute=True
+            )
+        )
+        self.assertTrue(
+            _require_accessibility_status(
+                "focused", 0, optional_attribute=True
+            )
+        )
+        with self.assertRaisesRegex(
+            InputError, r"macOS window was not focused \(-25204\)"
+        ):
+            _require_accessibility_status(
+                "focused", -25204, optional_attribute=True
+            )
+        with self.assertRaisesRegex(
+            InputError, r"macOS window was not raised \(-25205\)"
+        ):
+            _require_accessibility_status("raised", -25205)
+
+    def test_macos_quartz_routes_platform_events_to_the_declared_client_pid(self) -> None:
+        backend = object.__new__(MacOsQuartzBackend)
+        backend._api = RecordingQuartzApi()
+        backend._pid = 4242
+
+        backend._post(99, application_targeted=True)
+
+        self.assertEqual(backend._api.posts, [("pid", 4242, 99)])
+        self.assertEqual(backend._api.releases, [99])
+
+    def test_macos_quartz_keeps_pointer_and_pidless_events_in_the_global_stream(self) -> None:
+        backend = object.__new__(MacOsQuartzBackend)
+        backend._api = RecordingQuartzApi()
+        backend._pid = 4242
+
+        backend._post(101)
+
+        self.assertEqual(backend._api.posts, [("global", 0, 101)])
+        self.assertEqual(backend._api.releases, [101])
+
+        backend._pid = None
+        backend._post(102, application_targeted=True)
+        self.assertEqual(
+            backend._api.posts,
+            [("global", 0, 101), ("global", 0, 102)],
         )
 
     def test_profiles_are_policy_over_host_facts(self) -> None:

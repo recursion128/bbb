@@ -209,10 +209,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "audio-host-device",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "452d2ca1158a6f5e4bcec844f06024cad7ff50bf",
-        "source_report_commit": "578a8496c5deea6a93e1df1ca84ab390d944300f",
+        "source_report_blob_sha1": "cc7c29349f26de9fe99633bf7f1b532268c328c8",
+        "source_report_commit": "57a8b39b97cb815672559acab70c8f4e881b13eb",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "a251332dc39d149653170af58e92ca1f56e15386a02b60a00f7a2a01649e01d5"
+        "source_report_sha256": "a3ddd0be38547458d5b560498911421c0f5d277ce3d430563ba977dcc60c9ff1"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -541,10 +541,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "draw-evidence",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "452d2ca1158a6f5e4bcec844f06024cad7ff50bf",
-        "source_report_commit": "578a8496c5deea6a93e1df1ca84ab390d944300f",
+        "source_report_blob_sha1": "cc7c29349f26de9fe99633bf7f1b532268c328c8",
+        "source_report_commit": "57a8b39b97cb815672559acab70c8f4e881b13eb",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "a251332dc39d149653170af58e92ca1f56e15386a02b60a00f7a2a01649e01d5"
+        "source_report_sha256": "a3ddd0be38547458d5b560498911421c0f5d277ce3d430563ba977dcc60c9ff1"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -842,10 +842,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "lifecycle-soak",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "452d2ca1158a6f5e4bcec844f06024cad7ff50bf",
-        "source_report_commit": "578a8496c5deea6a93e1df1ca84ab390d944300f",
+        "source_report_blob_sha1": "cc7c29349f26de9fe99633bf7f1b532268c328c8",
+        "source_report_commit": "57a8b39b97cb815672559acab70c8f4e881b13eb",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "a251332dc39d149653170af58e92ca1f56e15386a02b60a00f7a2a01649e01d5"
+        "source_report_sha256": "a3ddd0be38547458d5b560498911421c0f5d277ce3d430563ba977dcc60c9ff1"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -902,7 +902,7 @@
           },
           "schema": 1
         },
-        "sha256": "ca7232632f415d81692ab521dce11edf4e9381ddf9a075bca50f36858539ed1c",
+        "sha256": "6436038e9496618809a5fc0c66eea6309b97102d4997019a66d3dfba4778165d",
         "tools": [
           {
             "capture_sha256": "99e0439487c5b98b47d6cb2dd071dc362fcd7dc1a550b4486863ed6ef1054110",
@@ -976,7 +976,7 @@
           },
           {
             "capture_sha256": "6f7a1adec9506c3685686d60c811178f6724bb8996b00a197a9c338be03bfd7f",
-            "current_sha256": "c7628e49f0ad56915f36db2cd1fdf798c8400af63fd43f54d8c894bd29d251e6",
+            "current_sha256": "c9502e4c05f65cc457eecdd6553fb6ddcc730d32c4b6d724adec64e352cd9451",
             "path": "scripts/bbb_tools/input/macos_quartz.py"
           },
           {
@@ -1081,10 +1081,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "linux-platform",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "452d2ca1158a6f5e4bcec844f06024cad7ff50bf",
-        "source_report_commit": "578a8496c5deea6a93e1df1ca84ab390d944300f",
+        "source_report_blob_sha1": "cc7c29349f26de9fe99633bf7f1b532268c328c8",
+        "source_report_commit": "57a8b39b97cb815672559acab70c8f4e881b13eb",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "a251332dc39d149653170af58e92ca1f56e15386a02b60a00f7a2a01649e01d5"
+        "source_report_sha256": "a3ddd0be38547458d5b560498911421c0f5d277ce3d430563ba977dcc60c9ff1"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -1456,10 +1456,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "performance-abba",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "452d2ca1158a6f5e4bcec844f06024cad7ff50bf",
-        "source_report_commit": "578a8496c5deea6a93e1df1ca84ab390d944300f",
+        "source_report_blob_sha1": "cc7c29349f26de9fe99633bf7f1b532268c328c8",
+        "source_report_commit": "57a8b39b97cb815672559acab70c8f4e881b13eb",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "a251332dc39d149653170af58e92ca1f56e15386a02b60a00f7a2a01649e01d5"
+        "source_report_sha256": "a3ddd0be38547458d5b560498911421c0f5d277ce3d430563ba977dcc60c9ff1"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -9744,7 +9744,7 @@
       ],
       "path": "scripts/tests/test_tooling_execution.py",
       "scenario_ids": [],
-      "sha256": "85db4a70428b5747c7aef81c18a9c4b087145b6d4314693ab064d66e51f4b61a",
+      "sha256": "9300eab0093d4bf869f9c36b555355b038769f7e25086c647d84554da0cea722",
       "valid": true
     },
     {
@@ -9994,10 +9994,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "visual-workload",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "452d2ca1158a6f5e4bcec844f06024cad7ff50bf",
-        "source_report_commit": "578a8496c5deea6a93e1df1ca84ab390d944300f",
+        "source_report_blob_sha1": "cc7c29349f26de9fe99633bf7f1b532268c328c8",
+        "source_report_commit": "57a8b39b97cb815672559acab70c8f4e881b13eb",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "a251332dc39d149653170af58e92ca1f56e15386a02b60a00f7a2a01649e01d5"
+        "source_report_sha256": "a3ddd0be38547458d5b560498911421c0f5d277ce3d430563ba977dcc60c9ff1"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -11401,7 +11401,7 @@
     },
     {
       "path": "scripts/fixtures/parity/macos-enablement-compatibility.json",
-      "sha256": "ca575283e3e3cb54979fcefc2fe455d6e7c7149476fc2f740f78f24e057c64e0"
+      "sha256": "a423157217c70c2ab8440b137a695cf782ecd470f7987c85889cd0b5127fd0d8"
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
@@ -62495,7 +62495,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "85db4a70428b5747c7aef81c18a9c4b087145b6d4314693ab064d66e51f4b61a"
+            "sha256": "9300eab0093d4bf869f9c36b555355b038769f7e25086c647d84554da0cea722"
           },
           {
             "path": "scripts/tests/test_vanilla_audio_receipt.py",
@@ -62505,14 +62505,14 @@
             "sha256": "a6c28286d0255bf25aac05b494fdf07341ead562d7a8f0965d6b8d5dae0bf805"
           }
         ],
-        "dependency_closure_sha256": "bd93b66dd997e845ece6c3c2c5c49336c741d3998ce4cc33064bab170c84c392",
+        "dependency_closure_sha256": "e48fab908ac6e35c13ddd3ed4a719be8e0add72c5eb5b0a96c4683f6d00c4b6c",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
-        "focused_test_contract_sha256": "603f49ad3503d3b216339ad72f4d9344e9c8dce30d1eb3819db5e03f6585f285",
+        "focused_test_contract_sha256": "b307a56e5a49d0698e8cae61709e42aa8ee53a77e0083579109adbe5ef2aef5f",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "b57e10882c3fa34a178483b7a078eb5e500f93f936d4d2f4cc84970e4b3c1d82"
+        "owner_contract_sha256": "437d05ae8d54f797bfbfbe0d26ce741cb7520b52a515b3ccc3259844d4f45239"
       },
       "differential_scenarios": [
         {
@@ -62978,8 +62978,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 2961,
-          "evidence_set_sha256": "ed17af3f8b1eb9d79c6a0cac0a2e08969a5bbcae2baedb48b57f84d958a54f2e",
+          "evidence_set_count": 2964,
+          "evidence_set_sha256": "44187669d7b6c1cf0e9d072947a551ad1b4ce6d8fadf678fc4fe46360c37d951",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -71597,7 +71597,7 @@
       "platform-macos-release"
     ],
     "implementation_ready": false,
-    "semantic_contract_sha256": "21ffbe926cd27214e8a4c951f0f455c4bf85248d93300d46854cee2404eac1d8",
+    "semantic_contract_sha256": "8d345f85a49a82df116cbfcae834f7463a24e7fd0d84bcfafc5b90d026824aa2",
     "stage": "implementation",
     "stage_order": [
       "implementation",
