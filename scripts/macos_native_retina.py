@@ -2,9 +2,10 @@
 """macOS built-in-display native-drawable performance acceptance.
 
 This is deliberately separate from ``official_client_benchmark.py``'s fixed
-1280x720 Linux baseline.  CoreGraphics supplies the current backing-pixel
-target, screenshots attest the drawable actually rendered by each client, and
-formal aggregation refuses to compare runs when those pixels differ.
+1280x720 Linux baseline.  ``system_profiler`` supplies the built-in panel's
+physical native target while CoreGraphics records the current logical/backing
+mode and scale. Screenshots attest the drawable actually rendered by each
+client, and formal aggregation refuses to compare runs when those pixels differ.
 """
 
 from __future__ import annotations
@@ -173,14 +174,14 @@ class DisplayProbe:
     scale_factor: float
     backing_pixel_width: int
     backing_pixel_height: int
-    panel_native_width: int | None
-    panel_native_height: int | None
+    panel_native_width: int
+    panel_native_height: int
     refresh_hz: float | None
     metal_device: str
 
     @property
     def target_drawable(self) -> tuple[int, int]:
-        return (self.backing_pixel_width, self.backing_pixel_height)
+        return (self.panel_native_width, self.panel_native_height)
 
 
 @dataclass(frozen=True)
@@ -346,6 +347,10 @@ def normalize_display_probe(
             f"system_profiler display id {profiler_id} differs from CoreGraphics {display_id}"
         )
     panel_native = _parse_pair(profiler.get("spdisplays_pixelresolution"))
+    if panel_native is None or min(panel_native) <= 0:
+        raise RetinaAcceptanceError(
+            "system_profiler did not report a positive built-in panel-native resolution"
+        )
 
     def optional_hex(name: str) -> int | None:
         value = profiler.get(name)
@@ -371,8 +376,8 @@ def normalize_display_probe(
         scale_factor=scale_x,
         backing_pixel_width=pixel_width,
         backing_pixel_height=pixel_height,
-        panel_native_width=None if panel_native is None else panel_native[0],
-        panel_native_height=None if panel_native is None else panel_native[1],
+        panel_native_width=panel_native[0],
+        panel_native_height=panel_native[1],
         refresh_hz=refresh_hz,
         metal_device=str(coregraphics.get("metal_device", "unknown")),
     )
@@ -502,12 +507,24 @@ def probe_builtin_display() -> DisplayProbe:
     return normalize_display_probe(joined, matches[0])
 
 
+def fullscreen_video_mode(display: DisplayProbe) -> str:
+    """Return Vanilla's exact preferred-mode spelling for the physical panel."""
+
+    refresh_hz = round(display.refresh_hz) if display.refresh_hz is not None else 60
+    if refresh_hz <= 0:
+        raise RetinaAcceptanceError("panel-native fullscreen refresh must be positive")
+    return (
+        f"{display.panel_native_width}x{display.panel_native_height}"
+        f"@{refresh_hz}:24"
+    )
+
+
 def launch_contract(
     display: DisplayProbe, *, server_port: int, control_port: int
 ) -> dict[str, object]:
     if not 1 <= server_port <= 65535 or not 1 <= control_port <= 65535:
         raise RetinaAcceptanceError("launch ports must be in 1..65535")
-    drawable = [display.backing_pixel_width, display.backing_pixel_height]
+    drawable = list(display.target_drawable)
     logical = [display.logical_width, display.logical_height]
     common = {
         "profile": PROFILE_ID,
@@ -515,7 +532,12 @@ def launch_contract(
         "username": BENCHMARK_USERNAME,
         "window_mode": "fullscreen",
         "logical_size": logical,
+        "current_backing_pixels": [
+            display.backing_pixel_width,
+            display.backing_pixel_height,
+        ],
         "target_drawable_pixels": drawable,
+        "fullscreen_video_mode": fullscreen_video_mode(display),
         "view_distance_chunks": VIEW_DISTANCE,
         "resource_packs": ["vanilla"],
         "vsync": False,
@@ -533,15 +555,21 @@ def launch_contract(
         str(display.logical_width),
         "--height",
         str(display.logical_height),
+        "--fullscreenWidth",
+        str(display.panel_native_width),
+        "--fullscreenHeight",
+        str(display.panel_native_height),
         "--fullscreen",
         "--quickPlayMultiplayer",
         f"127.0.0.1:{server_port}",
     )
     bbb = (
         "--width",
-        str(display.backing_pixel_width),
+        str(display.panel_native_width),
         "--height",
-        str(display.backing_pixel_height),
+        str(display.panel_native_height),
+        "--client-fullscreen-resolution",
+        fullscreen_video_mode(display),
         "--client-fullscreen",
         "true",
         "--client-vsync",
@@ -1068,6 +1096,10 @@ def build_macos_vanilla_argv(
         str(display.logical_width),
         "--height",
         str(display.logical_height),
+        "--fullscreenWidth",
+        str(display.panel_native_width),
+        "--fullscreenHeight",
+        str(display.panel_native_height),
         "--fullscreen",
         "--quickPlayMultiplayer",
         f"127.0.0.1:{server_port}",
@@ -1090,8 +1122,8 @@ def build_macos_bbb_argv(
         control_port=control_port,
     )
     for option, value in (
-        ("--width", str(display.backing_pixel_width)),
-        ("--height", str(display.backing_pixel_height)),
+        ("--width", str(display.panel_native_width)),
+        ("--height", str(display.panel_native_height)),
         ("--client-vsync", "false"),
         ("--client-framerate-limit", str(UNLIMITED_FPS_SENTINEL)),
     ):
@@ -1102,6 +1134,8 @@ def build_macos_bbb_argv(
         str(game_dir),
         "--client-fullscreen",
         "true",
+        "--client-fullscreen-resolution",
+        fullscreen_video_mode(display),
     )
 
 
@@ -1338,9 +1372,10 @@ def _run_client(
                 )
                 if dimensions != display.target_drawable:
                     result["drawable_pixels"] = list(dimensions)
+                    target_width, target_height = display.target_drawable
                     raise RetinaAcceptanceError(
                         f"{client} drawable {dimensions[0]}x{dimensions[1]} differs from "
-                        f"target {display.backing_pixel_width}x{display.backing_pixel_height}"
+                        f"target {target_width}x{target_height}"
                     )
                 cpu_before = process_cpu_time_nanos(client_process.pid)
                 send_profiler_input(input_backend, client_process.pid)

@@ -6,8 +6,9 @@
     "selection": "exactly-one-online-built-in",
     "logical_source": "CGDisplayBounds",
     "scale_source": "current-mode-pixels-divided-by-logical-bounds",
-    "target_drawable_source": "CGDisplayModeGetPixelWidth/Height",
+    "current_backing_source": "CGDisplayModeGetPixelWidth/Height",
     "panel_native_source": "system_profiler.spdisplays_pixelresolution",
+    "target_drawable_source": "system_profiler.spdisplays_pixelresolution",
     "require_screenshot_attestation": true
   },
   "window_mode": "fullscreen",

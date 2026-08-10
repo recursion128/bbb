@@ -58,7 +58,7 @@ class DisplayProbeTests(unittest.TestCase):
         self.assertEqual(contract["formal_order"], list(retina.FORMAL_ORDER))
         self.assertEqual(contract["drawable_mismatch_policy"], "block-without-comparison")
 
-    def test_current_backing_pixels_not_looks_like_or_panel_label_are_target(self):
+    def test_panel_native_pixels_not_looks_like_or_scaled_backing_are_target(self):
         probe = retina.normalize_display_probe(
             {
                 "display_id": 1,
@@ -79,10 +79,23 @@ class DisplayProbeTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(probe.target_drawable, (2880, 1800))
+        self.assertEqual(probe.target_drawable, (2560, 1600))
         self.assertEqual((probe.logical_width, probe.logical_height), (1440, 900))
         self.assertEqual((probe.panel_native_width, probe.panel_native_height), (2560, 1600))
         self.assertEqual(probe.scale_factor, 2.0)
+
+    def test_missing_panel_native_resolution_is_rejected(self):
+        with self.assertRaisesRegex(retina.RetinaAcceptanceError, "panel-native"):
+            retina.normalize_display_probe(
+                {
+                    "display_id": 1,
+                    "builtin": True,
+                    "main": True,
+                    "logical_size": [1440, 900],
+                    "backing_pixel_size": [2880, 1800],
+                },
+                {"_spdisplays_displayID": "1"},
+            )
 
     def test_non_uniform_scale_is_rejected(self):
         with self.assertRaisesRegex(retina.RetinaAcceptanceError, "non-uniform"):
@@ -128,19 +141,40 @@ class LaunchContractTests(unittest.TestCase):
             with self.assertRaisesRegex(retina.RetinaAcceptanceError, "clean worktree"):
                 retina.require_clean_full_gated_head(repo)
 
-    def test_arguments_translate_logical_glfw_and_physical_bbb_dimensions(self):
+    def test_arguments_pin_both_clients_to_panel_native_fullscreen_mode(self):
         contract = retina.launch_contract(display(), server_port=25565, control_port=24454)
 
         self.assertEqual(
-            contract["official_arguments"][:5],
-            ["--width", "1440", "--height", "900", "--fullscreen"],
+            contract["official_arguments"][:9],
+            [
+                "--width",
+                "1440",
+                "--height",
+                "900",
+                "--fullscreenWidth",
+                "2560",
+                "--fullscreenHeight",
+                "1600",
+                "--fullscreen",
+            ],
         )
         self.assertEqual(
-            contract["bbb_arguments"][:6],
-            ["--width", "2880", "--height", "1800", "--client-fullscreen", "true"],
+            contract["bbb_arguments"][:8],
+            [
+                "--width",
+                "2560",
+                "--height",
+                "1600",
+                "--client-fullscreen-resolution",
+                "2560x1600@60:24",
+                "--client-fullscreen",
+                "true",
+            ],
         )
         self.assertIn("--client-vsync", contract["bbb_arguments"])
-        self.assertEqual(contract["common"]["target_drawable_pixels"], [2880, 1800])
+        self.assertEqual(contract["common"]["target_drawable_pixels"], [2560, 1600])
+        self.assertEqual(contract["common"]["current_backing_pixels"], [2880, 1800])
+        self.assertEqual(contract["common"]["fullscreen_video_mode"], "2560x1600@60:24")
         self.assertEqual(contract["common"]["framerate_limit"], "unlimited")
 
     def test_official_launch_uses_first_thread_fullscreen_and_logical_coordinates(self):
@@ -164,6 +198,8 @@ class LaunchContractTests(unittest.TestCase):
         self.assertIn("--fullscreen", argv)
         self.assertEqual(argv[argv.index("--width") + 1], "1440")
         self.assertEqual(argv[argv.index("--height") + 1], "900")
+        self.assertEqual(argv[argv.index("--fullscreenWidth") + 1], "2560")
+        self.assertEqual(argv[argv.index("--fullscreenHeight") + 1], "1600")
 
     def test_macos_arm64_distribution_selects_only_arm64_native_classifier(self):
         self.assertTrue(
@@ -230,9 +266,9 @@ class ProfilerTests(unittest.TestCase):
                 retina.PNG_SIGNATURE
                 + struct.pack(">I", 13)
                 + b"IHDR"
-                + struct.pack(">II", 2880, 1800)
+                + struct.pack(">II", 2560, 1600)
             )
-            self.assertEqual(retina.png_dimensions(path), (2880, 1800))
+            self.assertEqual(retina.png_dimensions(path), (2560, 1600))
 
     def test_png_completion_rejects_header_only_and_accepts_iend(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -249,7 +285,7 @@ class ProfilerTests(unittest.TestCase):
 
 
 class FormalValidationTests(unittest.TestCase):
-    def run_record(self, client: str, drawable=(2880, 1800)) -> dict[str, object]:
+    def run_record(self, client: str, drawable=(2560, 1600)) -> dict[str, object]:
         return {
             "client": client,
             "status": "passed",
@@ -273,7 +309,7 @@ class FormalValidationTests(unittest.TestCase):
 
     def test_drawable_mismatch_blocks_and_withholds_comparison(self):
         runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
-        runs[3] = self.run_record("vanilla", (2560, 1600))
+        runs[3] = self.run_record("vanilla", (1920, 1200))
 
         report = retina.validate_and_summarize(display(), runs)
 

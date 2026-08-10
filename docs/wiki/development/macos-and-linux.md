@@ -81,12 +81,11 @@ System Settings → Privacy & Security → Accessibility 获得授权。
 
 `scripts/macos_native_retina.py detect|run` 只在 macOS 登录 GUI session 执行，将内建
 显示器的 panel-native、逻辑 bounds、scale 和当前 CoreGraphics backing 分开记录；性能
-合同以两侧 F2 截图实测的 drawable pixels 为准。该 profile 独立于 Linux 1280x720
-基线，需要与 platform gate 相同的 Accessibility 权限；像素不匹配只产生 blocker，
-不产生性能比较。当前保留的[正式报告](../../evidence/macos-native-retina/report.json)
-在 full-gated `5460aa12c` 上检测到逻辑 1440x900、scale 2、CoreGraphics backing
-目标 2880x1800，而官方 Java 26.1 fullscreen F2 实际 drawable 为 1920x1200；runner
-已在 profiling 和 BBB 启动前拒绝该轮，故报告不含可发布的 ABBA 指标。
+目标取硬件 panel-native pixels，并通过 `fullscreenWidth`/`fullscreenHeight` 与 BBB
+的 exact preferred video mode 同时传入两端，最终仍以两侧 F2 截图实测的 drawable
+pixels 为准。该 profile 独立于 Linux 1280x720 基线，需要与 platform gate 相同的
+Accessibility 权限；像素不匹配只产生 blocker，不产生性能比较。正式结果保存在
+[独立报告](../../evidence/macos-native-retina/report.json)。
 
 ## 第二平台 cross-check
 
