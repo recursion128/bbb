@@ -234,6 +234,19 @@ class ProfilerTests(unittest.TestCase):
             )
             self.assertEqual(retina.png_dimensions(path), (2880, 1800))
 
+    def test_png_completion_rejects_header_only_and_accepts_iend(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.png"
+            path.write_bytes(retina.PNG_SIGNATURE + b"header-only")
+            self.assertFalse(retina.png_file_complete(path))
+            path.write_bytes(
+                retina.PNG_SIGNATURE
+                + b"payload-padding"
+                + b"\x00\x00\x00\x00IEND"
+                + b"crc!"
+            )
+            self.assertTrue(retina.png_file_complete(path))
+
 
 class FormalValidationTests(unittest.TestCase):
     def run_record(self, client: str, drawable=(2880, 1800)) -> dict[str, object]:

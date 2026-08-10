@@ -25,7 +25,7 @@ import subprocess
 import sys
 import time
 import zipfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -567,6 +567,19 @@ def png_dimensions(path: Path) -> tuple[int, int]:
     return width, height
 
 
+def png_file_complete(path: Path) -> bool:
+    try:
+        payload = path.read_bytes()
+    except OSError:
+        return False
+    return (
+        len(payload) >= 33
+        and payload.startswith(PNG_SIGNATURE)
+        and payload[-12:-8] == b"\x00\x00\x00\x00"
+        and payload[-8:-4] == b"IEND"
+    )
+
+
 def _read_metric_csv(archive: zipfile.ZipFile, suffix: str, column: str) -> dict[int, float]:
     names = [name for name in archive.namelist() if name.endswith(suffix)]
     if len(names) != 1:
@@ -977,12 +990,15 @@ def _wait_for_new_file(
     *,
     process: subprocess.Popen[object],
     timeout: float,
+    complete: Callable[[Path], bool] | None = None,
 ) -> Path:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         candidates = set(root.glob(pattern)) - before
         if candidates:
-            return max(candidates, key=lambda path: path.stat().st_mtime_ns)
+            candidate = max(candidates, key=lambda path: path.stat().st_mtime_ns)
+            if complete is None or complete(candidate):
+                return candidate
         status = process.poll()
         if status is not None:
             raise RetinaAcceptanceError(
@@ -1309,6 +1325,7 @@ def _run_client(
                     before_screenshots,
                     process=client_process,
                     timeout=10.0,
+                    complete=png_file_complete,
                 )
                 dimensions = png_dimensions(screenshot)
                 result["screenshots"].append(
@@ -1333,6 +1350,7 @@ def _run_client(
                     before_profiles,
                     process=client_process,
                     timeout=PROFILE_SECONDS + 10.0,
+                    complete=zipfile.is_zipfile,
                 )
                 cpu_after = process_cpu_time_nanos(client_process.pid)
                 result["profiles"].append(
