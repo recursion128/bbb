@@ -3187,6 +3187,37 @@ def drive_chat_interaction(
     }
 
 
+def _reach_restricted_chat_screen(
+    address: tuple[str, int], deadline: float
+) -> dict[str, Any]:
+    """Open the restricted ChatScreen despite an intervening focus transfer.
+
+    The second live client maps late in the gate.  On an interactive desktop
+    the runner can become active after the endpoint probe but before Play, so
+    a single early focus write leaves the later chat press ignored.  Re-focus
+    and retry only while the screen is absent; once it opens, no extra key is
+    sent into the text field.
+    """
+
+    def focus_and_open() -> dict[str, Any] | None:
+        status = _chat_screen_status(address)
+        if status is not None:
+            return status
+        _ensure_focus(address)
+        _tap_key(address, "chat")
+        return _chat_screen_status(address)
+
+    return _await_value(
+        deadline,
+        "system-visibility ChatScreen status",
+        focus_and_open,
+        lambda value: isinstance(value, dict)
+        and value.get("screen") == "chat"
+        and value.get("can_send_messages") is False
+        and value.get("can_send_commands") is True,
+    )
+
+
 def collect_chat_restriction(args: argparse.Namespace) -> None:
     host, raw_port = args.control.rsplit(":", 1)
     address = (host, int(raw_port))
@@ -3210,16 +3241,7 @@ def collect_chat_restriction(args: argparse.Namespace) -> None:
         and value.get("connected") is True
         and value.get("state") == "Play",
     )
-    _tap_key(address, "chat")
-    initial = _await_value(
-        deadline,
-        "system-visibility ChatScreen status",
-        lambda: _chat_screen_status(address),
-        lambda value: isinstance(value, dict)
-        and value.get("screen") == "chat"
-        and value.get("can_send_messages") is False
-        and value.get("can_send_commands") is True,
-    )
+    initial = _reach_restricted_chat_screen(address, deadline)
     before = _net_counter(address, "chat_message_commands_queued")
     blocked_text = "bbb restricted message"
     _input_text(address, blocked_text)

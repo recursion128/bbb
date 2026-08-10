@@ -1632,6 +1632,31 @@ class PlayableGateTerminationTests(unittest.TestCase):
 
 
 class PlayableGateScriptContractTests(unittest.TestCase):
+    def test_restricted_chat_retries_focus_when_the_first_key_is_lost(self):
+        opened = {
+            "screen": "chat",
+            "can_send_messages": False,
+            "can_send_commands": True,
+        }
+        with (
+            mock.patch.object(
+                playable_gate,
+                "_chat_screen_status",
+                side_effect=[None, None, None, opened],
+            ),
+            mock.patch.object(playable_gate, "_ensure_focus") as focus,
+            mock.patch.object(playable_gate, "_tap_key") as tap,
+            mock.patch.object(playable_gate.time, "sleep"),
+        ):
+            result = playable_gate._reach_restricted_chat_screen(
+                ("127.0.0.1", 1), playable_gate.time.monotonic() + 1.0
+            )
+
+        self.assertEqual(result, opened)
+        self.assertEqual(focus.call_count, 2)
+        self.assertEqual(tap.call_count, 2)
+        tap.assert_called_with(("127.0.0.1", 1), "chat")
+
     def test_macos_live_clients_do_not_pause_when_the_runner_takes_focus(self):
         source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
             encoding="utf-8"
