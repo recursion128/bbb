@@ -1141,10 +1141,12 @@ def build_macos_bbb_argv(
 
 def _adapter_from_log(client: str, text: str, fallback: str) -> dict[str, str]:
     if client == "bbb":
-        name = re.search(r'adapter_name=(?:"([^"]+)"|([^ ]+))', text)
+        name = re.search(
+            r'adapter_name=(?:"([^"]+)"|(.+?))\s+adapter_backend=', text
+        )
         backend = re.search(r'adapter_backend=(?:"([^"]+)"|([^ ]+))', text)
         return {
-            "device": (name.group(1) or name.group(2)) if name else fallback,
+            "device": (name.group(1) or name.group(2)).strip() if name else fallback,
             "api": (backend.group(1) or backend.group(2)) if backend else "metal",
         }
     renderer = re.search(r"(?im)^\s*(?:OpenGL renderer|Renderer):\s*(.+)$", text)

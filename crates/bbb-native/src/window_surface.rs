@@ -102,10 +102,22 @@ pub(crate) fn refresh_rate_hz(refresh_rate_millihertz: u32) -> u32 {
     refresh_rate_millihertz.saturating_add(500) / 1000
 }
 
+/// Normalize winit's platform pixel encoding to GLFW's RGB component sum.
+/// On macOS, winit maps `IO32BitDirectPixels` to 32, while GLFW exposes the
+/// same 8-bit RGB mode as red+green+blue = 24. The alpha/storage byte must not
+/// prevent Vanilla's `fullscreenResolution` from matching that native mode.
+pub(crate) const fn vanilla_total_color_bits(winit_bit_depth: u16) -> u32 {
+    #[cfg(target_os = "macos")]
+    if winit_bit_depth == 32 {
+        return 24;
+    }
+    winit_bit_depth as u32
+}
+
 /// The winit `VideoMode` surface facts `Monitor.getPreferredVidMode`
 /// (Monitor.java:45-57) compares: resolution, refresh rate in hertz, and the
-/// total colour bits (winit `bit_depth`, matching GLFW
-/// `redBits + greenBits + blueBits`).
+/// total colour bits after the platform encoding is normalized to GLFW's
+/// `redBits + greenBits + blueBits` convention.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct VideoModeFacts {
     pub(crate) width: u32,
@@ -120,7 +132,7 @@ impl VideoModeFacts {
             width: video_mode.size().width,
             height: video_mode.size().height,
             refresh_rate_hz: refresh_rate_hz(video_mode.refresh_rate_millihertz()),
-            total_bits: u32::from(video_mode.bit_depth()),
+            total_bits: vanilla_total_color_bits(video_mode.bit_depth()),
         }
     }
 
@@ -530,6 +542,20 @@ mod tests {
             ..exact
         }
         .exactly_matches(preferred));
+    }
+
+    #[test]
+    fn platform_video_mode_depth_uses_vanilla_glfw_rgb_bits() {
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(vanilla_total_color_bits(32), 24);
+            assert_eq!(vanilla_total_color_bits(30), 30);
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            assert_eq!(vanilla_total_color_bits(32), 32);
+            assert_eq!(vanilla_total_color_bits(24), 24);
+        }
     }
 
     #[test]

@@ -160,6 +160,10 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   resource pack and input. Run the complete two-round Java→BBB→BBB→Java
   contract with VSync off and the frame-rate limit unlimited. A drawable
   mismatch remains a formal blocker and never produces a comparison.
+- `platform-macos-release` is active for one bounded revalidation: normalize
+  winit's macOS `IO32BitDirectPixels` value to Vanilla/GLFW's 24-bit RGB sum so
+  the requested panel-native exclusive mode can match, then rerun the existing
+  Cocoa/Metal/Quartz/OpenAL release acceptance on the clean full-gated commit.
 
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,

@@ -248,6 +248,15 @@ class LaunchContractTests(unittest.TestCase):
 
 
 class ProfilerTests(unittest.TestCase):
+    def test_bbb_adapter_log_preserves_unquoted_multiword_device_name(self):
+        adapter = retina._adapter_from_log(
+            "bbb",
+            "renderer ready adapter_name=Apple M1 adapter_backend=metal present_mode=Immediate",
+            "fallback",
+        )
+
+        self.assertEqual(adapter, {"device": "Apple M1", "api": "metal"})
+
     def test_vanilla_shaped_and_bbb_shaped_archives_share_parser(self):
         with tempfile.TemporaryDirectory() as directory:
             profile = Path(directory) / "profile.zip"
