@@ -1845,7 +1845,7 @@ def validate_terminal_snapshot(
     return observed
 
 
-def _process_metrics(pid: int) -> dict[str, int]:
+def _linux_process_metrics(pid: int) -> dict[str, int]:
     status_path = Path(f"/proc/{pid}/status")
     try:
         status = status_path.read_text(encoding="utf-8")
@@ -1868,6 +1868,61 @@ def _process_metrics(pid: int) -> dict[str, int]:
         "file_descriptors": file_descriptors,
         "threads": int(threads[0]),
     }
+
+
+def _macos_process_metrics(pid: int) -> dict[str, int]:
+    commands = {
+        "rss": ["/bin/ps", "-o", "rss=", "-p", str(pid)],
+        "threads": ["/bin/ps", "-M", "-p", str(pid)],
+        "file_descriptors": [
+            "/usr/sbin/lsof",
+            "-a",
+            "-p",
+            str(pid),
+            "-d",
+            "0-999999",
+            "-Fn",
+        ],
+    }
+    outputs: dict[str, str] = {}
+    try:
+        for name, command in commands.items():
+            completed = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            outputs[name] = completed.stdout
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise GateFailure(f"cannot capture process metrics for pid {pid}: {error}") from error
+
+    rss = outputs["rss"].strip()
+    thread_rows = [line for line in outputs["threads"].splitlines() if line.strip()]
+    file_descriptors = sum(
+        1
+        for line in outputs["file_descriptors"].splitlines()
+        if re.fullmatch(r"f[0-9]+.*", line)
+    )
+    if not rss.isdigit():
+        raise GateFailure(f"process {pid} has no readable RSS")
+    if len(thread_rows) < 2:
+        raise GateFailure(f"process {pid} has no readable thread count")
+    if file_descriptors < 1:
+        raise GateFailure(f"process {pid} has no readable file descriptor count")
+    return {
+        "rss_bytes": int(rss) * 1024,
+        "file_descriptors": file_descriptors,
+        "threads": len(thread_rows) - 1,
+    }
+
+
+def _process_metrics(pid: int) -> dict[str, int]:
+    if sys.platform == "linux":
+        return _linux_process_metrics(pid)
+    if sys.platform == "darwin":
+        return _macos_process_metrics(pid)
+    raise GateFailure(f"process metrics are unsupported on {sys.platform}")
 
 
 def _await_kick_panorama(

@@ -5,6 +5,7 @@ import inspect
 import json
 import re
 import socket
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -1326,6 +1327,45 @@ class PlayableGateStatusTests(unittest.TestCase):
 
 
 class PlayableGateTerminationTests(unittest.TestCase):
+    def test_macos_process_metrics_parse_ps_threads_and_numeric_lsof_descriptors(self):
+        completed = [
+            subprocess.CompletedProcess([], 0, stdout=" 12345\n", stderr=""),
+            subprocess.CompletedProcess(
+                [],
+                0,
+                stdout=(
+                    "USER PID TT %CPU STAT PRI STIME UTIME COMMAND\n"
+                    "user 42 ?? 0.0 S 31T 0:00 0:00 bbb-native\n"
+                    "user 42 ?? 0.0 S 31T 0:00 0:00 bbb-native\n"
+                ),
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                [],
+                0,
+                stdout="p42\nf0\n/dev/null\nf1u\n/dev/null\nfcwd\n/tmp\n",
+                stderr="",
+            ),
+        ]
+        with mock.patch.object(
+            playable_gate.subprocess, "run", side_effect=completed
+        ) as run:
+            metrics = playable_gate._macos_process_metrics(42)
+
+        self.assertEqual(
+            metrics,
+            {"rss_bytes": 12_641_280, "file_descriptors": 2, "threads": 2},
+        )
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual(run.call_args_list[0].args[0], ["/bin/ps", "-o", "rss=", "-p", "42"])
+        self.assertEqual(run.call_args_list[1].args[0], ["/bin/ps", "-M", "-p", "42"])
+        self.assertEqual(run.call_args_list[2].args[0][0], "/usr/sbin/lsof")
+
+    def test_process_metrics_rejects_unknown_platform(self):
+        with mock.patch.object(playable_gate.sys, "platform", "unsupported"):
+            with self.assertRaisesRegex(playable_gate.GateFailure, "unsupported"):
+                playable_gate._process_metrics(42)
+
     def test_terminal_snapshot_returns_exact_observations(self):
         snapshot = {
             "world": {"resource_packs_tracked": 0},
