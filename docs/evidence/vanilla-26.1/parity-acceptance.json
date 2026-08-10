@@ -209,10 +209,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "audio-host-device",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "3a625af229a6c61de4d2604c2c9323a8ad956f23",
-        "source_report_commit": "7e49987e4d15be32a970b0b7031ab7c69520112d",
+        "source_report_blob_sha1": "b3319809385cb077ecf96e0cc65ec65129529e45",
+        "source_report_commit": "d634362307172d5f8e6d36ca60b8bfd6a356e27b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "7fb062b830cbcf5ba579b6b89d575acb9899f9e407557e7cf69392713d4d3dac"
+        "source_report_sha256": "e7da5e60dfedeccf11869b654776b8a82c5c488a375a589b9109d36823a422ec"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -541,10 +541,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "draw-evidence",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "3a625af229a6c61de4d2604c2c9323a8ad956f23",
-        "source_report_commit": "7e49987e4d15be32a970b0b7031ab7c69520112d",
+        "source_report_blob_sha1": "b3319809385cb077ecf96e0cc65ec65129529e45",
+        "source_report_commit": "d634362307172d5f8e6d36ca60b8bfd6a356e27b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "7fb062b830cbcf5ba579b6b89d575acb9899f9e407557e7cf69392713d4d3dac"
+        "source_report_sha256": "e7da5e60dfedeccf11869b654776b8a82c5c488a375a589b9109d36823a422ec"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -768,7 +768,7 @@
           "manifest_sha256": "42bae29b811a7cc8412a48fd571519babfc0fd3173622424bfb84ed878bf7d00",
           "schema": 1
         },
-        "sha256": "1387c427601a218b5fcb539e4cdc8f46248420ca90153c4659ef162e731bcc06",
+        "sha256": "ed4628f9b4a5080db27c721516e3570cd050fd4c4de0f92427213afa20d8930c",
         "tools": [
           {
             "capture_sha256": "b6db7be56be775b86e5d3168b47e31305230ef16fc143486ba069abae91d6430",
@@ -782,7 +782,7 @@
           },
           {
             "capture_sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25",
-            "current_sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238",
+            "current_sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760",
             "path": "scripts/playable_gate.py"
           },
           {
@@ -842,10 +842,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "lifecycle-soak",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "3a625af229a6c61de4d2604c2c9323a8ad956f23",
-        "source_report_commit": "7e49987e4d15be32a970b0b7031ab7c69520112d",
+        "source_report_blob_sha1": "b3319809385cb077ecf96e0cc65ec65129529e45",
+        "source_report_commit": "d634362307172d5f8e6d36ca60b8bfd6a356e27b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "7fb062b830cbcf5ba579b6b89d575acb9899f9e407557e7cf69392713d4d3dac"
+        "source_report_sha256": "e7da5e60dfedeccf11869b654776b8a82c5c488a375a589b9109d36823a422ec"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -902,7 +902,7 @@
           },
           "schema": 1
         },
-        "sha256": "05b765d061e3c6d0481fa369fac0f9f7da9089a1ad79ffd78336e721983e762e",
+        "sha256": "bf3e51c6ae6c6c592c940bdb399b0b076666b637b49e1ec337d02dcd5e0396a2",
         "tools": [
           {
             "capture_sha256": "99e0439487c5b98b47d6cb2dd071dc362fcd7dc1a550b4486863ed6ef1054110",
@@ -916,7 +916,7 @@
           },
           {
             "capture_sha256": "1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25",
-            "current_sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238",
+            "current_sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760",
             "path": "scripts/playable_gate.py"
           },
           {
@@ -1081,10 +1081,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "linux-platform",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "3a625af229a6c61de4d2604c2c9323a8ad956f23",
-        "source_report_commit": "7e49987e4d15be32a970b0b7031ab7c69520112d",
+        "source_report_blob_sha1": "b3319809385cb077ecf96e0cc65ec65129529e45",
+        "source_report_commit": "d634362307172d5f8e6d36ca60b8bfd6a356e27b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "7fb062b830cbcf5ba579b6b89d575acb9899f9e407557e7cf69392713d4d3dac"
+        "source_report_sha256": "e7da5e60dfedeccf11869b654776b8a82c5c488a375a589b9109d36823a422ec"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -1456,10 +1456,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "performance-abba",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "3a625af229a6c61de4d2604c2c9323a8ad956f23",
-        "source_report_commit": "7e49987e4d15be32a970b0b7031ab7c69520112d",
+        "source_report_blob_sha1": "b3319809385cb077ecf96e0cc65ec65129529e45",
+        "source_report_commit": "d634362307172d5f8e6d36ca60b8bfd6a356e27b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "7fb062b830cbcf5ba579b6b89d575acb9899f9e407557e7cf69392713d4d3dac"
+        "source_report_sha256": "e7da5e60dfedeccf11869b654776b8a82c5c488a375a589b9109d36823a422ec"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -9437,7 +9437,7 @@
       ],
       "path": "scripts/playable_gate.py",
       "scenario_ids": [],
-      "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238",
+      "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760",
       "valid": true
     },
     {
@@ -9702,7 +9702,7 @@
       ],
       "path": "scripts/tests/test_playable_gate.py",
       "scenario_ids": [],
-      "sha256": "51c2977da14b26e0768c8174b46d6a0f60722a8134d4b0a18cddd4b8203f2c63",
+      "sha256": "c82874b7646c2d3e0eee7eaab883ac97275dff4c464fa0d55a93a610fd760ad9",
       "valid": true
     },
     {
@@ -9994,10 +9994,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "visual-workload",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "3a625af229a6c61de4d2604c2c9323a8ad956f23",
-        "source_report_commit": "7e49987e4d15be32a970b0b7031ab7c69520112d",
+        "source_report_blob_sha1": "b3319809385cb077ecf96e0cc65ec65129529e45",
+        "source_report_commit": "d634362307172d5f8e6d36ca60b8bfd6a356e27b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "7fb062b830cbcf5ba579b6b89d575acb9899f9e407557e7cf69392713d4d3dac"
+        "source_report_sha256": "e7da5e60dfedeccf11869b654776b8a82c5c488a375a589b9109d36823a422ec"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -11401,7 +11401,7 @@
     },
     {
       "path": "scripts/fixtures/parity/macos-enablement-compatibility.json",
-      "sha256": "8f24196752092923bcb1603d30183b54a3be6aeb82619d5202dbc9adb7a371b1"
+      "sha256": "d5c761992743646b37d8024cf537d476a0cc9d61eeb9923c6a1dc999dca96ef2"
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
@@ -12005,10 +12005,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238"
+            "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760"
           }
         ],
-        "dependency_closure_sha256": "89ac12d0f1d98161dc38c372124824c1083ccb55d8aacd7897872564fc8f8193",
+        "dependency_closure_sha256": "bd15063eafcb201fbf9af837a5affbde777b1259242cade948134e7f9bb7f707",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
@@ -12029,7 +12029,7 @@
         ],
         "focused_test_contract_sha256": "a11f4c3012aad87776fa3a2b192e3889e00a2f14bcafae26643ae0b2c7834917",
         "owner": "native event loop/simulation/control",
-        "owner_contract_sha256": "5f5f6e965bb449861e8692ce4d8755736cb3c1d01666a1e301eac6edddb7de97"
+        "owner_contract_sha256": "e725180681dccd223cb7223d99bf1197eb7a7ea46d25fc4fb2b71c3db208d4c4"
       },
       "differential_scenarios": [
         {
@@ -12282,10 +12282,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238"
+            "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760"
           }
         ],
-        "dependency_closure_sha256": "eaeb75d5ab52eb388e7f10fb9321ff1fd48e73ddb182a8770fca1f870b47d945",
+        "dependency_closure_sha256": "022993a9b405434d9bb43349f686a5b2ac126ebc13027ef3b3009b5f42415508",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
@@ -12301,7 +12301,7 @@
         ],
         "focused_test_contract_sha256": "b61d4826cd83c0a81bb39c9ae85f5dae2bc6cc0d8d51074f67d654c25d7dee1c",
         "owner": "`WorldStore` connection session→native effect projection",
-        "owner_contract_sha256": "d04d19857b8155dc842659bc3abe7a544efc5c04eeca0882184093eb342c8b41"
+        "owner_contract_sha256": "be9c42184d8b2beeee79617b208e4637a2e3c1828a64bafdb9f2e9d567a3a241"
       },
       "differential_scenarios": [
         {
@@ -14244,7 +14244,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238"
+            "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760"
           },
           {
             "path": "scripts/tests/test_client_mechanism_inventory.py",
@@ -14256,7 +14256,7 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "a1b6dcab9a12140b8896cb2aad1e4661b8d899bb6a68eb4304e5c5b364447c57",
+        "dependency_closure_sha256": "1ec5dee0545f02484df95cfbc046e0c9e0a6b197a1a8727f32fd2b115c917779",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
@@ -14298,7 +14298,7 @@
         ],
         "focused_test_contract_sha256": "83871f67b8e3af613215f2f3b96fd4581bc6e8c86cc496031d66274feb021bf2",
         "owner": "`bbb-net::resource_pack`、native pack runtime、`bbb-pack::server_pack`",
-        "owner_contract_sha256": "d81d7d270436f6ceccdb50f9df2c44c2417de1ae349e5ec0d0975a19011a44d7"
+        "owner_contract_sha256": "6dde0c78d0069402eabcc34c9f85a794d72fcd5513f9a1b8b9e401197e43a86f"
       },
       "differential_scenarios": [
         {
@@ -52932,10 +52932,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238"
+            "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760"
           }
         ],
-        "dependency_closure_sha256": "95bfe40e70c4ca6906f08a6c8c2f5952d047f48cc89e67633f4f079cc7265957",
+        "dependency_closure_sha256": "eb5d636e3ef23f02745b7416993f6c57c1ece49fc2db87294413a57dedde6528",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
@@ -52949,7 +52949,7 @@
         ],
         "focused_test_contract_sha256": "b3d1fb107386df22a23b6f4393f36d0e1d07a7cda614e7cf79b7eedb7013e3a4",
         "owner": "`ClientInputState`→immutable renderer/control projection",
-        "owner_contract_sha256": "bf2c92704f19b5f0531371a3016d9c04129f1c4cba443962686b3a5d073ce3ac"
+        "owner_contract_sha256": "a5aeaf0fa5b1ea8006e0773fc139191b1fc3be1f3b09e27217ef9bfbdda72bd5"
       },
       "differential_scenarios": [
         {
@@ -53122,10 +53122,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238"
+            "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760"
           }
         ],
-        "dependency_closure_sha256": "43df7ba1e3971d537949e453e22e0e385a2854e2e0428b4688439cc0eb17c925",
+        "dependency_closure_sha256": "b3b361035d00287fe717bef748e251f4327a728266e84cadfbc35e14b217609a",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
@@ -53139,7 +53139,7 @@
         ],
         "focused_test_contract_sha256": "75eb646f51bce2d641e147faab35a5d5beda7d7408fef4117496bab045476462",
         "owner": "world death/report state→native input→immutable renderer/control projection",
-        "owner_contract_sha256": "4c3f297ec7bf919e247e0822b321ac1c8dded97b872ce77e05be7c8b34a9a313"
+        "owner_contract_sha256": "9437bd115ae5d41cbc0f33a5b03514391a5564864ea760f5fab346fcc29122e0"
       },
       "differential_scenarios": [
         {
@@ -53293,10 +53293,10 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "d407cd4f516d1aba0224ef8d7c09c8cd66a9489d33dbe6bedc08f5349d8b0238"
+            "sha256": "ea4cac2dd94490c9237572f561035b47126c6d04ef9958d15b0d66daba66e760"
           }
         ],
-        "dependency_closure_sha256": "b42062f51e79dc987f61c7e8915d5346264cdb56e0de26ec8aeea4fe772ce41d",
+        "dependency_closure_sha256": "109611a0e6d9a16a64f98e13db6a9f7fb70dce3881c690e73c21a4ad3fa5263e",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
@@ -53309,7 +53309,7 @@
         ],
         "focused_test_contract_sha256": "27251112cef6be3180f900803d9ab3cf7896a87b0e774efdeee5a682de2f69e0",
         "owner": "net typed outcome→native input/publication→renderer/platform",
-        "owner_contract_sha256": "92e155bf49524d67db5b0cdc481e490c7ea5ef846b57cd0ddb61b5364f88889d"
+        "owner_contract_sha256": "83b36dce861b61cb3a7ef0452fdb3bce279e6ce83feb0d3648e4b0c9020d8483"
       },
       "differential_scenarios": [
         {
@@ -62474,7 +62474,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "51c2977da14b26e0768c8174b46d6a0f60722a8134d4b0a18cddd4b8203f2c63"
+            "sha256": "c82874b7646c2d3e0eee7eaab883ac97275dff4c464fa0d55a93a610fd760ad9"
           },
           {
             "path": "scripts/tests/test_seat_device.py",
@@ -62505,14 +62505,14 @@
             "sha256": "a6c28286d0255bf25aac05b494fdf07341ead562d7a8f0965d6b8d5dae0bf805"
           }
         ],
-        "dependency_closure_sha256": "2becba1ef0d702f4b2c692e14c63a00d86b48f5f346b80ccc31f869301f80273",
+        "dependency_closure_sha256": "d632b3efc3cb2a9a5d3ec31bff051b4e6a62e9606e9cbc2147b033c59f6f7673",
         "evidence_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
-        "focused_test_contract_sha256": "6c3e7b196833102b1e9364770da4c4a5ef680a40b6eaa0aafd74bdbb04642a9d",
+        "focused_test_contract_sha256": "8eb499130d8c3257a7cc8ee5d76f6487d214b3e7173d3d631452cc10d6aabf2f",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "921a61cec8bd0155be0d56e56b0512623465b4ca4a15afa551c60f2418632241"
+        "owner_contract_sha256": "7c15cee45bd0289b0a1cf196d9bd376ea0fc38fb56c7f87e537367aa5293306d"
       },
       "differential_scenarios": [
         {
@@ -62978,8 +62978,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 2957,
-          "evidence_set_sha256": "54ff1170148e0dc7b8a280fe42bc5865b97b039cecc6e8cad723cb548c9f83ed",
+          "evidence_set_count": 2959,
+          "evidence_set_sha256": "5cdb0e190660ad94601ee90b906b5ab72e691405fbf959ec3dddd3c25346536a",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -71597,7 +71597,7 @@
       "platform-macos-release"
     ],
     "implementation_ready": false,
-    "semantic_contract_sha256": "0470286277733ed777e4296129de48c7f501f54ad67fd6a261d41ab30ede3e03",
+    "semantic_contract_sha256": "a979e5d94319a1a2ef3ae9b31db4724ed6405222fae039c7979ecf54b004eb34",
     "stage": "implementation",
     "stage_order": [
       "implementation",
