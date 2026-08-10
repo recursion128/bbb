@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "81365cbcd0a29df880b592632e98f4fe25f5fcfb227571092bbe33a655688ebd"
+      "sha256": "70650996c46ee2714299903259df08f12e9637ce74ab6b79cf69f3eb7a1e05df"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -13733,7 +13733,7 @@
           "crates/bbb-native/src/main.rs#ClientInputState::new(window.has_focus())"
         ],
         "tests": [
-          "crates/bbb-native/src/input/tests.rs#unfocused_movement_key_does_not_queue_player_input",
+          "crates/bbb-native/src/input/tests.rs#delivered_movement_key_is_not_refiltered_by_cached_window_focus",
           "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release"
         ]
       },

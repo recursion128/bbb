@@ -6394,7 +6394,7 @@ PLATFORM_WINDOW_SURFACE_STATE_OWNER_EVIDENCE = _owner_evidence(
                 "crates/bbb-native/src/main.rs#ClientInputState::new(window.has_focus())",
             ),
             (
-                "crates/bbb-native/src/input/tests.rs#unfocused_movement_key_does_not_queue_player_input",
+                "crates/bbb-native/src/input/tests.rs#delivered_movement_key_is_not_refiltered_by_cached_window_focus",
                 "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
             ),
         ),
