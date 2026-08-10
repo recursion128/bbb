@@ -1521,13 +1521,15 @@ impl ClientInputState {
     /// screenshot keys are answered before any screen sees the event and
     /// `return` without recording the key. The only screen that defers them is
     /// `KeyBindsScreen`, whose 20 ms rebind guard has no equivalent here
-    /// (key-binds UI is a non-goal), so these two are unconditional.
+    /// (key-binds UI is a non-goal), so these two are unconditional. Vanilla
+    /// validates only the callback's window handle; the platform filters
+    /// ordinary unfocused input before a key event reaches this owner.
     pub(crate) fn handle_global_key_press(
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
     ) -> bool {
-        if !self.focused || !matches!(state, ElementState::Pressed) {
+        if !matches!(state, ElementState::Pressed) {
             return false;
         }
         let PhysicalKey::Code(code) = physical_key else {
@@ -5182,9 +5184,6 @@ impl ClientInputState {
         item_runtime: Option<&NativeItemRuntime>,
         mut net_context: Option<DebugNetContext<'_>>,
     ) -> bool {
-        if !self.focused {
-            return false;
-        }
         let PhysicalKey::Code(code) = physical_key else {
             return false;
         };
@@ -12499,10 +12498,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
     text_measurer: &impl CommandSuggestionTextMeasurer,
     clipboard: Option<&mut dyn DebugClipboard>,
 ) {
-    if !input.focused {
-        return;
-    }
-
+    // `KeyboardHandler.keyPress` validates the GLFW window handle but does not
+    // recheck `Window.isFocused()`. Preserve that callback contract here:
+    // native window systems filter ordinary background keys, while exact-PID
+    // acceptance and control replay intentionally deliver an event.
     let pressed = matches!(state, ElementState::Pressed);
     let PhysicalKey::Code(code) = physical_key else {
         return;

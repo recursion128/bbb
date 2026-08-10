@@ -2382,7 +2382,7 @@ fn spectator_digit_key_opens_menu_without_queuing_held_slot() {
 }
 
 #[test]
-fn unfocused_movement_key_does_not_queue_player_input() {
+fn delivered_movement_key_is_not_refiltered_by_cached_window_focus() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(false);
@@ -2396,13 +2396,16 @@ fn unfocused_movement_key_does_not_queue_player_input() {
         ElementState::Pressed,
     );
 
-    assert!(!input.forward);
-    assert_eq!(counters.player_input_commands_queued, 0);
-    assert!(rx.try_recv().is_err());
+    // AppKit filters ordinary keyboard events before winit. An event that
+    // reaches this handler was explicitly delivered (for example by the
+    // exact-PID acceptance replay), matching Vanilla's handle-only guard.
+    assert!(input.forward);
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert!(rx.try_recv().is_ok());
 }
 
 #[test]
-fn unfocused_hotbar_or_drop_key_does_not_queue_command() {
+fn delivered_hotbar_and_drop_keys_are_not_refiltered_by_cached_window_focus() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(false);
@@ -2426,10 +2429,11 @@ fn unfocused_hotbar_or_drop_key_does_not_queue_command() {
         ElementState::Pressed,
     );
 
-    assert_eq!(world.local_player().selected_hotbar_slot, 0);
-    assert_eq!(counters.held_slot_commands_queued, 0);
-    assert_eq!(counters.player_action_commands_queued, 0);
-    assert!(rx.try_recv().is_err());
+    assert_eq!(world.local_player().selected_hotbar_slot, 4);
+    assert_eq!(counters.held_slot_commands_queued, 1);
+    assert_eq!(counters.player_action_commands_queued, 1);
+    assert!(rx.try_recv().is_ok());
+    assert!(rx.try_recv().is_ok());
 }
 
 #[test]
@@ -15950,7 +15954,9 @@ fn debug_block_state_description_matches_vanilla_recreate_property_format() {
 
 #[test]
 fn f3_l_toggles_profiling_and_lifecycle_feedback_uses_real_results() {
-    let mut input = ClientInputState::new(true);
+    // Like Vanilla's key callback, explicitly delivered events are not
+    // discarded because a previously published focus snapshot is false.
+    let mut input = ClientInputState::new(false);
     let mut world = WorldStore::new();
 
     assert!(input.handle_debug_overlay_key(
@@ -31501,14 +31507,14 @@ fn the_global_press_keys_ignore_screen_state_and_key_releases() {
     assert!(input.handle_global_key_press(PhysicalKey::Code(KeyCode::F2), ElementState::Pressed));
     assert_eq!(input.take_screenshot_requests(), 1);
 
-    // A release is not a press, an unbound key is not one of the two, and an
-    // unfocused window has no keyboard at all.
+    // A release is not a press and an unbound key is not one of the two.
+    // Focus is deliberately not rechecked: Vanilla's callback validates only
+    // its window handle, while the platform owns ordinary focus filtering.
     assert!(!input.handle_global_key_press(PhysicalKey::Code(KeyCode::F11), ElementState::Released));
     assert!(!input.handle_global_key_press(PhysicalKey::Code(KeyCode::KeyW), ElementState::Pressed));
     input.focused = false;
-    assert!(!input.handle_global_key_press(PhysicalKey::Code(KeyCode::F11), ElementState::Pressed));
-    assert!(input.take_fullscreen_requests().is_empty());
-    assert_eq!(input.take_screenshot_requests(), 0);
+    assert!(input.handle_global_key_press(PhysicalKey::Code(KeyCode::F2), ElementState::Pressed));
+    assert_eq!(input.take_screenshot_requests(), 1);
 }
 
 #[test]
