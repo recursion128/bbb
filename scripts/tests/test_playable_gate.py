@@ -1632,6 +1632,18 @@ class PlayableGateTerminationTests(unittest.TestCase):
 
 
 class PlayableGateScriptContractTests(unittest.TestCase):
+    def test_macos_live_clients_do_not_pause_when_the_runner_takes_focus(self):
+        source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('if [ "$host_os" = Darwin ]; then', source)
+        self.assertIn("client_pause_on_lost_focus=false", source)
+        self.assertEqual(
+            source.count('--pause-on-lost-focus "$client_pause_on_lost_focus"'),
+            2,
+        )
+
     def test_live_success_reports_both_required_markers(self):
         source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
             encoding="utf-8"

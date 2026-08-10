@@ -123,6 +123,19 @@ if [ -z "$live_reason" ] && [ "$host_os" != Darwin ] && [ -z "${DISPLAY:-}${WAYL
   live_reason="no DISPLAY or WAYLAND_DISPLAY for the native client"
 fi
 
+# This is an unattended acceptance run, not the shipped option default.  On
+# macOS the developer may foreground the gate runner to inspect progress while
+# a live scenario is preparing; Vanilla's normal lost-focus policy would open
+# the pause screen and consume the next synthetic gameplay action.  Keep the
+# Cocoa client running through that focus transfer.  Quartz scenarios still
+# explicitly focus the exact PID and prove keyboard/pointer delivery, so this
+# does not replace their native-input receipt.  Linux retains its established
+# command line and pause behavior.
+client_pause_on_lost_focus=true
+if [ "$host_os" = Darwin ]; then
+  client_pause_on_lost_focus=false
+fi
+
 if [ -n "$live_reason" ]; then
   if [ "$mode" = live ]; then
     echo "playable gate: live prerequisites missing: $live_reason" >&2
@@ -468,6 +481,7 @@ RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
     --server-resource-pack-cache-dir "$server_pack_cache" \
     --client-locale "$client_locale" \
     --client-save-chat-drafts true \
+    --pause-on-lost-focus "$client_pause_on_lost_focus" \
     --client-vsync false \
     --client-framerate-limit 30 \
     </dev/null >"$client_log" 2>&1 &
@@ -510,6 +524,7 @@ RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
     --server-resource-pack-policy decline \
     --client-locale "$client_locale" \
     --client-chat-visibility system \
+    --pause-on-lost-focus "$client_pause_on_lost_focus" \
     --client-vsync false \
     --client-framerate-limit 30 \
     </dev/null >"$restricted_client_log" 2>&1 &
