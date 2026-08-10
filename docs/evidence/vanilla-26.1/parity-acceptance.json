@@ -209,10 +209,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "audio-host-device",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "6a63a0a895df89b67fc77c9ce2b6c465d121acde",
-        "source_report_commit": "a1ea5a0ea0b15dcc70c1a77b565d6f706dc8c639",
+        "source_report_blob_sha1": "c485f00e27c174c135a93512218717b6406e3a18",
+        "source_report_commit": "a2d4d940936d905352d571ca2c4735318543179b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "fe8bae359e86d041e0689a97d0aa6db1e13e4d7e236b63fdb28853969f81f93c"
+        "source_report_sha256": "90d5960477b5685ca6d7d04b8e40b89c6d210b0c16ffbedc8336570b5a3d38b7"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -595,10 +595,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "draw-evidence",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "6a63a0a895df89b67fc77c9ce2b6c465d121acde",
-        "source_report_commit": "a1ea5a0ea0b15dcc70c1a77b565d6f706dc8c639",
+        "source_report_blob_sha1": "c485f00e27c174c135a93512218717b6406e3a18",
+        "source_report_commit": "a2d4d940936d905352d571ca2c4735318543179b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "fe8bae359e86d041e0689a97d0aa6db1e13e4d7e236b63fdb28853969f81f93c"
+        "source_report_sha256": "90d5960477b5685ca6d7d04b8e40b89c6d210b0c16ffbedc8336570b5a3d38b7"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -950,10 +950,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "lifecycle-soak",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "6a63a0a895df89b67fc77c9ce2b6c465d121acde",
-        "source_report_commit": "a1ea5a0ea0b15dcc70c1a77b565d6f706dc8c639",
+        "source_report_blob_sha1": "c485f00e27c174c135a93512218717b6406e3a18",
+        "source_report_commit": "a2d4d940936d905352d571ca2c4735318543179b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "fe8bae359e86d041e0689a97d0aa6db1e13e4d7e236b63fdb28853969f81f93c"
+        "source_report_sha256": "90d5960477b5685ca6d7d04b8e40b89c6d210b0c16ffbedc8336570b5a3d38b7"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -1243,10 +1243,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "linux-platform",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "6a63a0a895df89b67fc77c9ce2b6c465d121acde",
-        "source_report_commit": "a1ea5a0ea0b15dcc70c1a77b565d6f706dc8c639",
+        "source_report_blob_sha1": "c485f00e27c174c135a93512218717b6406e3a18",
+        "source_report_commit": "a2d4d940936d905352d571ca2c4735318543179b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "fe8bae359e86d041e0689a97d0aa6db1e13e4d7e236b63fdb28853969f81f93c"
+        "source_report_sha256": "90d5960477b5685ca6d7d04b8e40b89c6d210b0c16ffbedc8336570b5a3d38b7"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -1822,10 +1822,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "performance-abba",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "6a63a0a895df89b67fc77c9ce2b6c465d121acde",
-        "source_report_commit": "a1ea5a0ea0b15dcc70c1a77b565d6f706dc8c639",
+        "source_report_blob_sha1": "c485f00e27c174c135a93512218717b6406e3a18",
+        "source_report_commit": "a2d4d940936d905352d571ca2c4735318543179b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "fe8bae359e86d041e0689a97d0aa6db1e13e4d7e236b63fdb28853969f81f93c"
+        "source_report_sha256": "90d5960477b5685ca6d7d04b8e40b89c6d210b0c16ffbedc8336570b5a3d38b7"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -10418,10 +10418,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "visual-workload",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "6a63a0a895df89b67fc77c9ce2b6c465d121acde",
-        "source_report_commit": "a1ea5a0ea0b15dcc70c1a77b565d6f706dc8c639",
+        "source_report_blob_sha1": "c485f00e27c174c135a93512218717b6406e3a18",
+        "source_report_commit": "a2d4d940936d905352d571ca2c4735318543179b",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "fe8bae359e86d041e0689a97d0aa6db1e13e4d7e236b63fdb28853969f81f93c"
+        "source_report_sha256": "90d5960477b5685ca6d7d04b8e40b89c6d210b0c16ffbedc8336570b5a3d38b7"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",

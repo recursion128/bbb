@@ -1310,16 +1310,6 @@ def _run_client(
                     process=client_process,
                     timeout=10.0,
                 )
-                cpu_before = process_cpu_time_nanos(client_process.pid)
-                send_profiler_input(input_backend, client_process.pid)
-                profile = _wait_for_new_file(
-                    profile_root,
-                    "*.zip",
-                    before_profiles,
-                    process=client_process,
-                    timeout=PROFILE_SECONDS + 10.0,
-                )
-                cpu_after = process_cpu_time_nanos(client_process.pid)
                 dimensions = png_dimensions(screenshot)
                 result["screenshots"].append(
                     {
@@ -1335,6 +1325,16 @@ def _run_client(
                         f"{client} drawable {dimensions[0]}x{dimensions[1]} differs from "
                         f"target {display.backing_pixel_width}x{display.backing_pixel_height}"
                     )
+                cpu_before = process_cpu_time_nanos(client_process.pid)
+                send_profiler_input(input_backend, client_process.pid)
+                profile = _wait_for_new_file(
+                    profile_root,
+                    "*.zip",
+                    before_profiles,
+                    process=client_process,
+                    timeout=PROFILE_SECONDS + 10.0,
+                )
+                cpu_after = process_cpu_time_nanos(client_process.pid)
                 result["profiles"].append(
                     _write_profile_samples(
                         artifact_dir,
