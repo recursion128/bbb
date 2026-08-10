@@ -160,10 +160,6 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   resource pack and input. Run the complete two-round Java→BBB→BBB→Java
   contract with VSync off and the frame-rate limit unlimited. A drawable
   mismatch remains a formal blocker and never produces a comparison.
-- `platform-macos-release` needs one fresh formal host run after the exclusive
-  window creation order and Metal drawable sizing owner changed for the native
-  Retina profile. Focused and live 2560x1600 diagnostics pass; do not reuse the
-  pre-change report to close this bounded revalidation item.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and
