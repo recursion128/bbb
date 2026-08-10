@@ -163,7 +163,12 @@ fn book_screen_selection_and_wrapped_line_limit_match_editor_rules() {
     input.sync_book_screen(&world);
     assert!(input.handle_book_screen_text(&mut world, "alpha", &FallbackTextMeasurer));
 
-    input.set_control_key(KeyCode::ControlLeft, true);
+    #[cfg(target_os = "macos")]
+    let shortcut_key = KeyCode::SuperLeft;
+    #[cfg(not(target_os = "macos"))]
+    let shortcut_key = KeyCode::ControlLeft;
+    input.set_key_down(shortcut_key, true);
+    input.set_control_key(shortcut_key, true);
     let mut clipboard = None;
     assert!(input.handle_book_screen_key(
         &mut counters,
@@ -174,12 +179,14 @@ fn book_screen_selection_and_wrapped_line_limit_match_editor_rules() {
         &FallbackTextMeasurer,
         &mut clipboard,
     ));
-    input.set_control_key(KeyCode::ControlLeft, false);
+    input.set_key_down(shortcut_key, false);
+    input.set_control_key(shortcut_key, false);
     assert!(input.handle_book_screen_text(&mut world, "beta", &FallbackTextMeasurer));
     assert_eq!(current_book_text(&world), Some("beta"));
 
     let fourteen_lines = (0..14).map(|_| "x").collect::<Vec<_>>().join("\n");
-    input.set_control_key(KeyCode::ControlLeft, true);
+    input.set_key_down(shortcut_key, true);
+    input.set_control_key(shortcut_key, true);
     assert!(input.handle_book_screen_key(
         &mut counters,
         &mut world,
@@ -189,7 +196,8 @@ fn book_screen_selection_and_wrapped_line_limit_match_editor_rules() {
         &FallbackTextMeasurer,
         &mut clipboard,
     ));
-    input.set_control_key(KeyCode::ControlLeft, false);
+    input.set_key_down(shortcut_key, false);
+    input.set_control_key(shortcut_key, false);
     assert!(input.handle_book_screen_text(&mut world, &fourteen_lines, &FallbackTextMeasurer));
     assert_eq!(current_book_text(&world), Some(fourteen_lines.as_str()));
 

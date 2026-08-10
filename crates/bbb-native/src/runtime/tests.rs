@@ -15585,7 +15585,12 @@ fn hud_inventory_screen_projects_local_player_entity_preview() {
         preview.rotation,
         quaternion_mul([0.0, 0.0, 1.0, 0.0], expected_camera),
     );
-    assert_eq!(preview.override_camera_rotation, Some(expected_camera));
+    assert_close4(
+        preview
+            .override_camera_rotation
+            .expect("inventory preview should override the camera rotation"),
+        expected_camera,
+    );
     assert_eq!(
         preview.entity.render_state.light_coords,
         ENTITY_FULL_BRIGHT_LIGHT_COORDS

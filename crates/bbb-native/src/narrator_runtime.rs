@@ -601,28 +601,46 @@ mod tests {
 
     #[test]
     fn narrator_status_filters_interrupting_system_messages() {
-        let executable = PathBuf::from("/bin/true");
-        let mut off =
-            NativeNarratorRuntime::new(NarratorStatus::Off, executable.clone(), vec![], 1.0);
+        let executable = PathBuf::from("/bin/sh");
+        let arguments = vec![
+            "-c".to_string(),
+            "sleep 10".to_string(),
+            "--".to_string(),
+            "{text}".to_string(),
+        ];
+        let mut off = NativeNarratorRuntime::new(
+            NarratorStatus::Off,
+            executable.clone(),
+            arguments.clone(),
+            1.0,
+        );
         off.say_system_now("ignored");
         assert!(off.speech.pending.is_empty());
         assert!(off.speech.child.is_none());
 
-        let mut chat =
-            NativeNarratorRuntime::new(NarratorStatus::Chat, executable.clone(), vec![], 1.0);
+        let mut chat = NativeNarratorRuntime::new(
+            NarratorStatus::Chat,
+            executable.clone(),
+            arguments.clone(),
+            1.0,
+        );
         chat.say_system_now("ignored");
         assert!(chat.speech.pending.is_empty());
         assert!(chat.speech.child.is_none());
 
-        let mut all =
-            NativeNarratorRuntime::new(NarratorStatus::All, executable.clone(), vec![], 1.0);
+        let mut all = NativeNarratorRuntime::new(
+            NarratorStatus::All,
+            executable.clone(),
+            arguments.clone(),
+            1.0,
+        );
         all.say_system_now("spoken");
         assert!(all.speech.pending.is_empty());
         assert!(all.speech.child.is_some());
         all.speech.clear();
 
         let mut system =
-            NativeNarratorRuntime::new(NarratorStatus::System, executable, vec![], 1.0);
+            NativeNarratorRuntime::new(NarratorStatus::System, executable, arguments, 1.0);
         system.say_system_now("spoken");
         assert!(system.speech.pending.is_empty());
         assert!(system.speech.child.is_some());

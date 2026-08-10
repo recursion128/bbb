@@ -174,6 +174,16 @@ use uuid::Uuid;
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
 const TEST_GLIDER_ITEM_ID: i32 = 8_904;
 
+#[cfg(target_os = "macos")]
+const TEXT_EDIT_SHORTCUT_KEY: KeyCode = KeyCode::SuperLeft;
+#[cfg(not(target_os = "macos"))]
+const TEXT_EDIT_SHORTCUT_KEY: KeyCode = KeyCode::ControlLeft;
+
+fn set_text_edit_shortcut_down(input: &mut ClientInputState, pressed: bool) {
+    input.set_key_down(TEXT_EDIT_SHORTCUT_KEY, pressed);
+    input.set_control_key(TEXT_EDIT_SHORTCUT_KEY, pressed);
+}
+
 fn entity_metadata_accessors() -> bbb_world::VanillaEntityMetadataAccessors {
     let accessors = vanilla_entity_metadata_entity_accessors()
         .expect("generated base Entity metadata accessors must resolve");
@@ -16419,11 +16429,19 @@ fn debug_options_screen_search_tracks_editbox_cursor_selection_and_word_keys() {
     }
 
     assert!(input.handle_debug_options_screen_key(
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     ));
     assert!(input
         .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::KeyA), ElementState::Pressed,));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
+        ElementState::Released,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    ));
     assert!(input.handle_debug_options_screen_text_input("alpha beta gamma"));
     assert!(input.handle_debug_options_screen_key(
         PhysicalKey::Code(KeyCode::Backspace),
@@ -16500,7 +16518,7 @@ fn debug_options_screen_search_handles_editbox_clipboard_shortcuts() {
 
     let mut clipboard = MockDebugClipboard::with_text("stale");
     assert!(input.handle_debug_options_screen_key(
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     ));
     assert!(input.handle_debug_options_screen_key_with_clipboard(
@@ -16559,7 +16577,7 @@ fn debug_options_screen_search_handles_editbox_clipboard_shortcuts() {
         Some(&mut clipboard),
     ));
     assert!(input.handle_debug_options_screen_key(
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     ));
     let state = input
@@ -16574,7 +16592,7 @@ fn debug_options_screen_search_handles_editbox_clipboard_shortcuts() {
         accepts_text: false,
     };
     assert!(input.handle_debug_options_screen_key(
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     ));
     assert!(input.handle_debug_options_screen_key_with_clipboard(
@@ -16588,7 +16606,7 @@ fn debug_options_screen_search_handles_editbox_clipboard_shortcuts() {
         Some(&mut rejecting_clipboard),
     ));
     assert!(input.handle_debug_options_screen_key(
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     ));
     let screen = input.debug_options_screen.as_ref().unwrap();
@@ -18809,7 +18827,7 @@ fn chat_entry_copies_cuts_and_pastes_through_the_clipboard() {
         false,
     );
     input.replace_chat_entry_text("hello".to_string());
-    input.control_left_down = true;
+    set_text_edit_shortcut_down(&mut input, true);
 
     let mut press = |input: &mut ClientInputState, code, clipboard: &mut MockDebugClipboard| {
         handle_chat_entry_key(
@@ -19554,7 +19572,7 @@ fn command_entry_control_a_selection_replaces_and_submits_command() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -19570,7 +19588,7 @@ fn command_entry_control_a_selection_replaces_and_submits_command() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_text_input(
@@ -19637,7 +19655,7 @@ fn chat_entry_control_a_selection_replaces_message_before_submit() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -19653,7 +19671,7 @@ fn chat_entry_control_a_selection_replaces_message_before_submit() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_text_input(
@@ -23350,7 +23368,7 @@ fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -23366,7 +23384,7 @@ fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_text_input(
@@ -23382,7 +23400,7 @@ fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -23398,7 +23416,7 @@ fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_key_input(
@@ -23422,7 +23440,7 @@ fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -23438,7 +23456,7 @@ fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_key_input(
@@ -24182,7 +24200,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -24198,7 +24216,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_text_input(&mut input, &mut counters, &mut world, &commands, "kept");
@@ -24223,7 +24241,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -24239,7 +24257,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_key_input(
@@ -24271,7 +24289,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -24287,7 +24305,7 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_key_input(
@@ -24511,7 +24529,7 @@ fn sign_editor_clipboard_copy_cut_and_sanitized_paste_match_text_field_helper() 
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     );
     handle_key_input(
@@ -24557,7 +24575,7 @@ fn sign_editor_clipboard_copy_cut_and_sanitized_paste_match_text_field_helper() 
         &mut counters,
         &mut world,
         &commands,
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Released,
     );
     handle_key_input(
@@ -30385,7 +30403,7 @@ fn anvil_rename_clipboard_shortcuts_select_copy_cut_paste_and_emit_only_on_chang
         &mut counters,
         &mut world,
         &commands,
-        KeyCode::ControlLeft,
+        TEXT_EDIT_SHORTCUT_KEY,
     );
 
     press_key_with_clipboard(
@@ -30513,7 +30531,7 @@ fn recipe_book_search_clipboard_shortcuts_select_copy_cut_paste_and_keep_state()
         &mut counters,
         &mut world,
         &commands,
-        KeyCode::ControlLeft,
+        TEXT_EDIT_SHORTCUT_KEY,
     );
     press_key_with_clipboard(
         &mut input,
@@ -30650,7 +30668,7 @@ fn creative_search_clipboard_shortcuts_select_copy_cut_paste_and_keep_filters() 
         &mut counters,
         &mut world,
         &commands,
-        KeyCode::ControlLeft,
+        TEXT_EDIT_SHORTCUT_KEY,
     );
     press_key_with_clipboard(
         &mut input,
@@ -30749,7 +30767,7 @@ fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
     let commands = Some(tx);
     let mut counters = NetCounters::default();
 
-    // Sign editor: Shift and Alt reject copy/cut; plain Ctrl still copies.
+    // Sign editor: Shift and Alt reject copy/cut; the platform shortcut still copies.
     let sign_pos = BlockPos { x: 3, y: 64, z: 3 };
     let mut sign_world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     sign_world.apply_open_sign_editor(OpenSignEditor {
@@ -30769,7 +30787,7 @@ fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
         &mut counters,
         &mut sign_world,
         &commands,
-        KeyCode::ControlLeft,
+        TEXT_EDIT_SHORTCUT_KEY,
     );
     press_key(
         &mut sign_input,
@@ -30827,7 +30845,7 @@ fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
     assert_eq!(clipboard.text.as_deref(), Some("copy"));
     clipboard.text = Some("keep".to_string());
 
-    // Book editor: Shift and Alt reject copy/cut; plain Ctrl still copies.
+    // Book editor: Shift and Alt reject copy/cut; the platform shortcut still copies.
     let mut book_world = WorldStore::new();
     let mut stack = test_item_stack(42, 1);
     stack.component_patch.writable_book_pages = vec!["hello".to_string()];
@@ -30844,7 +30862,7 @@ fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
         &mut counters,
         &mut book_world,
         &commands,
-        KeyCode::ControlLeft,
+        TEXT_EDIT_SHORTCUT_KEY,
     );
     press_key(
         &mut book_input,
@@ -30922,7 +30940,7 @@ fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
         false,
     );
     chat_input.replace_chat_entry_text("hello".to_string());
-    chat_input.control_left_down = true;
+    set_text_edit_shortcut_down(&mut chat_input, true);
     chat_input.pressed_keys.insert(KeyCode::AltLeft);
     handle_chat_entry_key(
         &mut chat_input,
@@ -30955,7 +30973,7 @@ fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
     assert!(debug_input.handle_debug_options_screen_text_input("chunk stats"));
     let mut debug_clipboard = MockDebugClipboard::with_text("keep");
     assert!(debug_input.handle_debug_options_screen_key(
-        PhysicalKey::Code(KeyCode::ControlLeft),
+        PhysicalKey::Code(TEXT_EDIT_SHORTCUT_KEY),
         ElementState::Pressed,
     ));
     assert!(debug_input.handle_debug_options_screen_key(
