@@ -4,6 +4,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zipfile
 from pathlib import Path
@@ -185,6 +186,23 @@ class LaunchContractTests(unittest.TestCase):
 
         self.assertEqual([Path(item.path).name for item in mac], ["liblwjgl.dylib"])
         self.assertEqual([Path(item.path).name for item in linux], ["liblwjgl.so"])
+
+    def test_focus_retries_transient_fullscreen_raise_failure(self):
+        class Backend:
+            def __init__(self):
+                self.calls = 0
+
+            def focus_pid(self, pid):
+                self.calls += 1
+                if self.calls < 3:
+                    raise retina.InputError("macOS window was not raised (-25206)")
+
+        backend = Backend()
+        started = time.monotonic()
+        retina.focus_with_retry(backend, 42, timeout=1.0)
+
+        self.assertEqual(backend.calls, 3)
+        self.assertGreaterEqual(time.monotonic() - started, 0.5)
 
 
 class ProfilerTests(unittest.TestCase):

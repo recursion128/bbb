@@ -30,6 +30,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from bbb_tools.input.macos_quartz import MacOsQuartzBackend
+from bbb_tools.input.contract import InputError
 from official_client_benchmark import (
     BENCHMARK_USERNAME,
     MINECRAFT_VERSION,
@@ -947,14 +948,45 @@ def _post_key_code(backend: MacOsQuartzBackend, key_code: int, pressed: bool) ->
     backend._post(event, application_targeted=True)
 
 
-def send_screenshot_input(backend: MacOsQuartzBackend, pid: int) -> None:
-    backend.focus_pid(pid)
+def focus_with_retry(
+    backend: MacOsQuartzBackend,
+    pid: int,
+    *,
+    process: subprocess.Popen[object] | None = None,
+    timeout: float = 10.0,
+) -> None:
+    """Focus a fullscreen Cocoa window after its Space transition settles."""
+
+    deadline = time.monotonic() + timeout
+    last_error: InputError | None = None
+    while time.monotonic() < deadline:
+        if process is not None and process.poll() is not None:
+            raise RetinaAcceptanceError(
+                f"client exited with status {process.returncode} while waiting for focus"
+            )
+        try:
+            backend.focus_pid(pid)
+            return
+        except InputError as error:
+            last_error = error
+            time.sleep(0.25)
+    raise RetinaAcceptanceError(
+        f"could not focus macOS client {pid} within {timeout:.1f}s: {last_error}"
+    ) from last_error
+
+
+def send_screenshot_input(
+    backend: MacOsQuartzBackend, pid: int, *, process: subprocess.Popen[object] | None = None
+) -> None:
+    focus_with_retry(backend, pid, process=process)
     _post_key_code(backend, F2_KEY_CODE, True)
     _post_key_code(backend, F2_KEY_CODE, False)
 
 
-def send_profiler_input(backend: MacOsQuartzBackend, pid: int) -> None:
-    backend.focus_pid(pid)
+def send_profiler_input(
+    backend: MacOsQuartzBackend, pid: int, *, process: subprocess.Popen[object] | None = None
+) -> None:
+    focus_with_retry(backend, pid, process=process)
     _post_key_code(backend, F3_KEY_CODE, True)
     _post_key_code(backend, L_KEY_CODE, True)
     time.sleep(0.05)
@@ -1277,7 +1309,7 @@ def _run_client(
                 timeout=timeout,
             )
             input_backend = MacOsQuartzBackend(client_process.pid)
-            input_backend.focus_pid(client_process.pid)
+            focus_with_retry(input_backend, client_process.pid, process=client_process)
             _warmup_and_start_replay(server_process, replay)
             starts = [
                 marker
@@ -1294,7 +1326,9 @@ def _run_client(
                 )
                 before_screenshots = set(screenshot_root.glob("*.png"))
                 before_profiles = set(profile_root.glob("*.zip"))
-                send_screenshot_input(input_backend, client_process.pid)
+                send_screenshot_input(
+                    input_backend, client_process.pid, process=client_process
+                )
                 screenshot = _wait_for_new_file(
                     screenshot_root,
                     "*.png",
@@ -1303,7 +1337,7 @@ def _run_client(
                     timeout=10.0,
                 )
                 cpu_before = process_cpu_time_nanos(client_process.pid)
-                send_profiler_input(input_backend, client_process.pid)
+                send_profiler_input(input_backend, client_process.pid, process=client_process)
                 profile = _wait_for_new_file(
                     profile_root,
                     "*.zip",
@@ -1341,7 +1375,7 @@ def _run_client(
             }
             result["drawable_pixels"] = list(next(iter(observed))) if len(observed) == 1 else None
             result["status"] = "passed"
-    except (BenchmarkFailure, RetinaAcceptanceError, OSError) as error:
+    except (BenchmarkFailure, InputError, RetinaAcceptanceError, OSError) as error:
         result["status"] = "failed"
         result["failure"] = str(error)
     finally:
