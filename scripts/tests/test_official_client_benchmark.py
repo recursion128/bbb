@@ -14,6 +14,8 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+from elf_fixture import minimal_elf64
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "scripts" / "official_client_benchmark.py"
@@ -322,7 +324,7 @@ class LaunchPlanTests(unittest.TestCase):
             root = Path(directory)
             capture = root / "bbb-capture"
             evidence = root / "bbb-evidence"
-            capture.write_bytes(Path(sys.executable).read_bytes())
+            capture.write_bytes(minimal_elf64())
             evidence.write_bytes(capture.read_bytes() + b"non-loaded-linker-metadata")
             capture_sha256 = benchmark.file_digest(capture, "sha256")
             evidence_sha256 = benchmark.file_digest(evidence, "sha256")
@@ -364,7 +366,7 @@ class LaunchPlanTests(unittest.TestCase):
             root = Path(directory)
             capture = root / "bbb-capture"
             evidence = root / "bbb-evidence"
-            capture.write_bytes(Path(sys.executable).read_bytes())
+            capture.write_bytes(minimal_elf64())
             changed = bytearray(capture.read_bytes())
             changed[24] ^= 1
             evidence.write_bytes(changed)
@@ -1231,6 +1233,9 @@ class CaptureTests(unittest.TestCase):
                 renderdoc_segments=frozenset(("static_orbit",)),
             )
 
+    @unittest.skipUnless(
+        sys.platform.startswith("linux"), "MangoHud uses Linux abstract Unix sockets"
+    )
     def test_mangohud_control_starts_and_stops_logging_without_input(self):
         process_pid = os.getpid()
         address = "\0" + f"{benchmark.MANGOHUD_CONTROL_PREFIX}-{process_pid}"

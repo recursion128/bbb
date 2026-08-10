@@ -44,6 +44,16 @@ PROFILE_REQUIREMENTS = {
         "macos_quartz",
         "macos_accessibility_trusted",
     ),
+    "mac-release": (
+        "python_312",
+        "cargo",
+        "rustc",
+        "git",
+        "java",
+        "graphical_session",
+        "macos_quartz",
+        "macos_accessibility_trusted",
+    ),
     "linux-release": (
         "cargo",
         "rustc",
@@ -100,7 +110,8 @@ def probe_host() -> HostCapabilities:
                 and os.access(java_override, os.X_OK)
             )
         ),
-        graphical_session=bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")),
+        graphical_session=macos
+        or bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")),
         wayland=linux and bool(os.environ.get("WAYLAND_DISPLAY")),
         vulkan_loader=_vulkan_loader_available(),
         linux_uinput=linux and os.access("/dev/uinput", os.W_OK),

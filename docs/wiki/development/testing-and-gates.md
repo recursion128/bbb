@@ -56,14 +56,16 @@ kick 必须同时具有目标 Vanilla 服的精确 receipt、control `connected=
 `running=false` 回执和零退出关闭客户端。服务器权威状态查询按
 有界 cadence 重取新日志行，不能把跨 console/network 通道的一次旧读复用到整个预算。
 
-`scripts/platform-acceptance-gate.sh` 当前只声明
-`Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`，在非 Linux 主机上
-指名主机后拒绝而不是在 compositor bring-up 里失败。它要求 fully gated
-clean HEAD、fresh locked release build、`--build-info`、headless/live/quit 证据、实际
-winit/wgpu backend 日志、输入语义 focused receipts，以及当前 lifecycle-soak 祖先
-stamp、以及 **seat receipts**；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。
+`scripts/platform-acceptance-gate.sh` 声明两条 windowed external-multiplayer 行：
+`Linux x86_64 / Wayland / Vulkan` 与 `macOS aarch64 / Cocoa / Metal`。其它 host/arch 在
+build 前按名称拒绝。两者都要求 fully gated clean HEAD、fresh locked release build、
+`--build-info`、headless/live/quit、实际 winit/wgpu backend 日志、输入 focused receipts、
+当前 lifecycle-soak 祖先 stamp 与 attributable platform-input receipts；成功后分别写
+`.git/bbb/last-linux-platform` 或 `.git/bbb/last-macos-platform` 及本地 report。Mac 行还
+要求受信 Accessibility、服务端确认的 Quartz keyboard/pointer/clipboard 与真实
+OpenAL/CoreAudio device/capacity/submission 收据。
 
-seat receipts 来自真实 `wl_seat`：headless backend 不广播 `wl_seat`，而
+Linux seat receipts 来自真实 `wl_seat`：headless backend 不广播 `wl_seat`，而
 `scripts/seat_device.py` 常驻一个 `uinput` 设备后，compositor 的 seat 才持续带
 pointer/keyboard capability。设 `BBB_PLAYABLE_INPUT_BACKEND=linux-release` 后，
 live playable gate 只调用 repo-owned `scripts/input`，由它选择持久 uinput seat；不再接受
@@ -72,7 +74,9 @@ live playable gate 只调用 repo-owned `scripts/input`，由它选择持久 uin
 
 `scripts/process` 是 live gate 与 benchmark 的进程监管合同：子进程进入独立 POSIX
 process group，超时使用 monotonic deadline，退出时先 TERM、到期再 KILL 并回收。
-shell 不再依赖 GNU `setsid` 或 `timeout`。fixture/unit 层用 pytest marker 区分
+shell 不再依赖 GNU `setsid` 或 `timeout`。该入口直接 exec 已 bootstrap 的 venv Python，
+因为 `uv run` 会保留一个父监督进程并改变最终 PID/进程组；其它 Python 工具仍统一经过
+offline/locked uv runner。fixture/unit 层用 pytest marker 区分
 `integration`、`vanilla`、`live` 与 `linux_release`；普通 `scripts/dev test python`
 默认不运行后两类真实环境场景。
 
@@ -114,8 +118,9 @@ GUI scale 只由 framebuffer 尺寸算出，而 winit 每次 scale 变化后都�
 `nihao`，规范 chat draft 回来的是非 ASCII 且不等于所打的字。能用 `T` 打开 chat 本身是半个
 判据——IME 若全程开着会把 `T` 也吞去合成。
 
-至此该发布行的 limitation 集合为空：没有任何一条是 deferred。X11 行按 2026-08-06 用户裁决为
-非目标；macOS/Windows runner 仍由[缺口账本](../../unsupported-features.md)维护。
+Linux 行的 limitation 集合为空。macOS 行同样以空 limitation 为通过条件，但它不执行
+Wayland display transition/fcitx5 IME，而是要求 Cocoa/Metal、Quartz 与 CoreAudio 的
+host-native receipts。X11 行按 2026-08-06 用户裁决为非目标；Windows 整体为非目标。
 
 ## 文档测试
 

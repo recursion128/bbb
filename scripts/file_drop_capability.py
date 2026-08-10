@@ -286,8 +286,37 @@ def _winit_lock_record(cargo_lock: Path) -> dict[str, str]:
 
 
 def resolve_winit_root(repo_root: Path) -> Path:
+    rustc = subprocess.run(
+        ["rustc", "-vV"],
+        cwd=repo_root,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    host = next(
+        (
+            line.removeprefix("host:").strip()
+            for line in rustc.stdout.splitlines()
+            if line.startswith("host:")
+        ),
+        "",
+    )
+    if rustc.returncode != 0 or not host:
+        raise FileDropCapabilityError(
+            "rustc -vV could not resolve the host target for cargo metadata: "
+            + rustc.stderr.strip()
+        )
     result = subprocess.run(
-        ["cargo", "metadata", "--format-version=1", "--locked", "--offline"],
+        [
+            "cargo",
+            "metadata",
+            "--format-version=1",
+            "--locked",
+            "--offline",
+            "--filter-platform",
+            host,
+        ],
         cwd=repo_root,
         check=False,
         text=True,

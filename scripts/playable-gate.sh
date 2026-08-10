@@ -28,7 +28,7 @@ Live environment:
   BBB_PLAYABLE_TIMEOUT_SECONDS  Client/canonical-state timeout; default 120
   BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS  Server-ready timeout; default 120
   BBB_PLAYABLE_CLIENT_LOCALE  Deterministic client locale: en_us (default), ar_sa, or zh_cn
-  BBB_PLAYABLE_INPUT_BACKEND  linux-release for attributable compositor-seat receipts
+  BBB_PLAYABLE_INPUT_BACKEND  linux-release or macos-quartz for attributable platform input receipts
   BBB_PLAYABLE_TERMINATION_MODE  Optional validation-only clean quit or server kick
   BBB_LIFECYCLE_SOAK_MANIFEST    Required manifest when termination mode is set
 
@@ -118,7 +118,8 @@ fi
 if [ -z "$live_reason" ] && ! "$client_bin" --help 2>&1 | grep -F -- '--status-server' >/dev/null; then
   live_reason="bbb-native lacks required --status-server <addr> delegated status CLI"
 fi
-if [ -z "$live_reason" ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+host_os=$(uname -s)
+if [ -z "$live_reason" ] && [ "$host_os" != Darwin ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
   live_reason="no DISPLAY or WAYLAND_DISPLAY for the native client"
 fi
 
@@ -483,6 +484,7 @@ if ! run_python collect-live \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs" \
   --output "$evidence_json" \
   --client-game-dir "$client_game_dir" \
+  --client-pid "$client_pid" \
   --timeout "$timeout_seconds" \
   --server-command "$server_command" \
   --profile-id "$profile_id" \

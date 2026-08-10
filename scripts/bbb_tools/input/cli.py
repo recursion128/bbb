@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from ..host.capabilities import probe_host
 from .contract import InputBackend, InputError
 from .linux_external import YdotoolBackend
 from .macos_quartz import MacOsQuartzBackend
@@ -29,9 +31,9 @@ LOGICAL_KEYS = {
 }
 
 
-def _backend(name: str) -> InputBackend:
+def _backend(name: str, pid: int | None = None) -> InputBackend:
     if name == "macos-quartz":
-        return MacOsQuartzBackend()
+        return MacOsQuartzBackend(pid=pid)
     if name == "linux-ydotool":
         return YdotoolBackend()
     raise InputError(f"unknown direct input backend {name!r}")
@@ -42,9 +44,26 @@ def _logical_key(name: str) -> str:
 
 
 def _run_direct(args: argparse.Namespace) -> int:
-    with _backend(args.backend) as backend:
+    with _backend(args.backend, args.pid) as backend:
         if args.action == "probe":
-            print(json.dumps({"backend": args.backend, "status": "ready"}, sort_keys=True))
+            receipt = {"backend": args.backend, "status": "ready"}
+            if isinstance(backend, MacOsQuartzBackend):
+                capabilities = probe_host()
+                if not capabilities.macos_accessibility_trusted:
+                    raise InputError(
+                        "macOS Accessibility permission is required for Quartz input"
+                    )
+                source = Path(__file__).with_name("macos_quartz.py")
+                receipt.update(
+                    {
+                        "accessibility_trusted": True,
+                        "driver": "coregraphics",
+                        "input_backend_source_sha256": hashlib.sha256(
+                            source.read_bytes()
+                        ).hexdigest(),
+                    }
+                )
+            print(json.dumps(receipt, sort_keys=True))
         elif args.action == "focus":
             if not isinstance(backend, MacOsQuartzBackend) or args.pid is None:
                 raise InputError("focus requires macos-quartz and --pid")

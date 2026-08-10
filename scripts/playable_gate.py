@@ -1214,8 +1214,8 @@ def _size(value: Any, label: str) -> tuple[int, int]:
 
 
 def _validate_seat_input(seat_input: Any) -> None:
-    """The seat scenario must show the compositor moving canonical state on
-    both the keyboard and the pointer, with the synthetic input path unused."""
+    """The platform source must move canonical keyboard and pointer state
+    while the synthetic input path stays unused."""
 
     seat_input = _object(seat_input, "seat_input")
     from_slot = seat_input.get("from_slot")
@@ -1264,28 +1264,44 @@ def _validate_seat_input(seat_input: Any) -> None:
     if seat_input.get("control_input_writes") != 0:
         raise GateFailure(
             "seat_input.control_input_writes must be 0: any synthetic input "
-            "write would make the receipts prove nothing about the compositor"
+            "write would make the receipts prove nothing about platform input"
         )
     if not isinstance(seat_input.get("injector"), str) or not seat_input["injector"]:
         raise GateFailure("seat_input.injector must name the injection command")
     if seat_input.get("startup_focus_source") != "compositor":
         raise GateFailure(
             "seat_input.startup_focus_source must be 'compositor': a run that "
-            "needed the focus stand-in cannot attest the seat delivered focus"
+            "needed the focus stand-in cannot attest platform-delivered focus"
         )
     handshake = _object(seat_input.get("handshake"), "seat_input.handshake")
     injector_probe = _object(
         handshake.get("injector_probe"), "seat_input.handshake.injector_probe"
     )
-    if injector_probe.get("driver") != "uinput":
-        raise GateFailure("seat input must identify the held-open uinput driver")
-    device_identity = injector_probe.get("seat_device_source_sha256")
-    if not isinstance(device_identity, str) or re.fullmatch(
-        r"[0-9a-f]{64}", device_identity
-    ) is None:
-        raise GateFailure(
-            "seat_input.handshake.injector_probe must carry the loaded seat-device source hash"
-        )
+    driver = injector_probe.get("driver")
+    if driver == "uinput":
+        device_identity = injector_probe.get("seat_device_source_sha256")
+        if not isinstance(device_identity, str) or re.fullmatch(
+            r"[0-9a-f]{64}", device_identity
+        ) is None:
+            raise GateFailure(
+                "seat_input.handshake.injector_probe must carry the loaded "
+                "seat-device source hash"
+            )
+    elif driver == "coregraphics":
+        source_identity = injector_probe.get("input_backend_source_sha256")
+        if injector_probe.get("backend") != "macos-quartz":
+            raise GateFailure("CoreGraphics input must identify the macos-quartz backend")
+        if injector_probe.get("accessibility_trusted") is not True:
+            raise GateFailure("CoreGraphics input requires a trusted Accessibility process")
+        if not isinstance(source_identity, str) or re.fullmatch(
+            r"[0-9a-f]{64}", source_identity
+        ) is None:
+            raise GateFailure(
+                "seat_input.handshake.injector_probe must carry the loaded "
+                "Quartz backend source hash"
+            )
+    else:
+        raise GateFailure("seat input must identify its uinput or CoreGraphics driver")
     # Zero presses is the healthy reading on a seat that publishes keyboard
     # capability from the start: the client was focused on map and never
     # paused, so there was nothing to reopen.
@@ -1617,10 +1633,10 @@ def normalize_status_capture(
 
 SEAT_BACKEND_ENV = "BBB_PLAYABLE_INPUT_BACKEND"
 
-# A seat-driven scenario is only worth its receipts if the run could not have
+# A platform-driven scenario is only worth its receipts if the run could not have
 # reached the same canonical state through the synthetic `input.*` control
-# path.  While the guard is armed every such write raises, so "the compositor
-# delivered this" is a structural property of the run rather than a promise.
+# path. While the guard is armed every such write raises, so native delivery is
+# a structural property of the run rather than a promise.
 _SEAT_INPUT_GUARD = False
 
 
@@ -1630,10 +1646,9 @@ _SEAT_MODE = False
 def _ensure_focus(address: tuple[str, int]) -> None:
     """Give the client focus the only way this run is entitled to.
 
-    A run without a seat has no other source: no `wl_seat` exists, so the
-    driver replays the same focus handler the window event would.  A
-    seat-backed run has a real source and must not fall back to the synthetic
-    one, or nothing downstream could tell the two apart.
+    A run without a platform backend has no attributable source, so the driver
+    replays the same focus handler the window event would. A backend-driven run
+    must not fall back to that synthetic write.
     """
 
     if _SEAT_MODE:
@@ -1654,19 +1669,36 @@ class _seat_input_only:
         _SEAT_INPUT_GUARD = False
 
 
-def seat_injector(environ: dict[str, str] | None = None) -> list[str] | None:
-    """The repo-owned release input backend, or None when no seat drives."""
+def seat_injector(
+    environ: dict[str, str] | None = None, client_pid: int | None = None
+) -> list[str] | None:
+    """The repo-owned platform input backend, or None when none drives."""
 
     backend = (environ if environ is not None else os.environ).get(
         SEAT_BACKEND_ENV, ""
     )
     if not backend.strip():
         return None
-    if backend != "linux-release":
+    if backend not in {"linux-release", "macos-quartz"}:
         raise GateFailure(
-            f"{SEAT_BACKEND_ENV} must be 'linux-release' for attributable seat receipts"
+            f"{SEAT_BACKEND_ENV} must be 'linux-release' or 'macos-quartz' "
+            "for attributable platform input receipts"
         )
-    return [str(Path(__file__).resolve().with_name("input")), "--backend", backend]
+    command = [str(Path(__file__).resolve().with_name("input")), "--backend", backend]
+    if backend == "macos-quartz":
+        if client_pid is None or client_pid <= 0:
+            raise GateFailure("macos-quartz input requires the live client pid")
+        command.extend(("--pid", str(client_pid)))
+    return command
+
+
+def seat_backend(injector: list[str]) -> str:
+    """Return the backend without depending on optional global arguments."""
+
+    try:
+        return injector[injector.index("--backend") + 1]
+    except (ValueError, IndexError) as error:
+        raise GateFailure("seat injector does not identify its backend") from error
 
 
 def _seat_inject(injector: list[str], *args: str) -> None:
@@ -1702,9 +1734,9 @@ def _seat_inject_json(injector: list[str], *args: str) -> dict[str, Any]:
 def _control_request(address: tuple[str, int], method: str, params: Any = None) -> Any:
     if _SEAT_INPUT_GUARD and method.startswith("input."):
         raise GateFailure(
-            f"a seat-driven scenario must not issue the synthetic {method} "
+            f"a platform-driven scenario must not issue the synthetic {method} "
             "control write: its receipts would no longer prove that the "
-            "compositor delivered the event"
+            "native input source delivered the event"
         )
     # Join-time mesh builds hold the native world lock for multiple seconds,
     # so control reads can legitimately stall well past a request's usual
@@ -3340,7 +3372,8 @@ def _seat_clipboard_reaches_the_client(
         lambda: _chat_screen_status(address),
         lambda value: isinstance(value, dict) and value.get("screen") == "chat",
     )
-    _seat_inject(injector, "chord", "ctrl", "paste")
+    shortcut_modifier = "command" if seat_backend(injector) == "macos-quartz" else "ctrl"
+    _seat_inject(injector, "chord", shortcut_modifier, "paste")
     pasted = _await_value(
         deadline,
         "the seat clipboard text to reach the canonical chat draft",
@@ -3646,16 +3679,16 @@ def _seat_key_reaches_the_world(
 def seat_handshake(
     address: tuple[str, int], injector: list[str], timeout_seconds: float
 ) -> dict[str, Any]:
-    """Hand the session over to the compositor seat before gameplay starts.
+    """Hand the session over to the native input backend before gameplay starts.
 
-    A seat-backed run gets no synthetic focus, so by the time canonical state
+    A backend-driven run gets no synthetic focus, so by the time canonical state
     is up the client has done what vanilla does when it enters Play unfocused:
     paused itself (`Minecraft.pauseIfInactive`).  Focus alone does not undo
     that -- only the Escape key does -- and pressing Escape is precisely the
     receipt worth having, because a client that never received seat focus
     would not process the key at all.
 
-    Whether it paused depends on the seat: one that publishes keyboard
+    Whether it paused depends on the platform: one that supplies keyboard
     capability from the start focuses the client on map, so it never pauses at
     all.  Escape toggles the pause screen either way, so the handshake asks the
     world first and only presses when the answer is no -- and re-asks after
@@ -3689,8 +3722,8 @@ def _seat_reach_the_world(
     vanilla only honours while no screen is open.
     """
 
-    # Focus is the compositor's to give; this only takes it back if a later
-    # client took it.
+    # Focus belongs to the platform window system; this takes it back only if a
+    # later client took it.
     _seat_inject(injector, "focus")
     for presses in range(SEAT_HANDSHAKE_ATTEMPTS + 1):
         if presses:
@@ -3699,10 +3732,9 @@ def _seat_reach_the_world(
         if slot is not None:
             return {"escape_presses": presses, "world_slot_after_escape": slot}
     raise GateFailure(
-        "the compositor seat never reached the world: after "
-        f"{SEAT_HANDSHAKE_ATTEMPTS} seat Escape presses a seat hotbar key "
-        "still could not move the canonical selected slot, so either seat "
-        "focus or the seat keyboard is not reaching the client"
+        "the platform input source never reached the world: after "
+        f"{SEAT_HANDSHAKE_ATTEMPTS} Escape presses a platform hotbar key "
+        "still could not move the canonical selected slot"
     )
 
 
@@ -3714,14 +3746,13 @@ def drive_seat_input(
     server_log: Path,
     timeout_seconds: float,
 ) -> dict[str, Any]:
-    """Drive the client from the compositor's own seat instead of the control
-    plane, and require the same canonical receipts the synthetic scenarios
-    require.
+    """Drive the client from native platform input instead of the control
+    plane, requiring the same canonical receipts as synthetic scenarios.
 
     Every event here crosses the platform path the synthetic `input.*` writes
-    skip: the compositor's `wl_seat` hands the window keyboard focus, key and
-    pointer events, winit turns them into window events, and only then does the
-    canonical handler run.  The control plane stays readable throughout -- it
+    skip: wl_seat on Linux or Quartz/Accessibility on macOS establishes focus
+    and input, winit turns that into window events, and only then does the
+    canonical handler run. The control plane stays readable throughout -- it
     just may not *write* input, which `_seat_input_only` enforces.
     """
 
@@ -3757,8 +3788,8 @@ def drive_seat_input(
 
         yaw_delta = _seat_pointer_turns_view(address, injector, deadline)
 
-        # Pointer buttons: the same `wl_seat` button path a physical mouse
-        # takes, ending in the canonical swing the arm animation reads.  The
+        # Pointer buttons use the same native window-event path as gameplay,
+        # ending in the canonical swing the arm animation reads. The
         # seat aims first, with its own pointer: a click at whatever the
         # previous scenario left under the crosshair may be a click at the sky,
         # and the receipt must not depend on that.  Pitching down onto the
@@ -3779,9 +3810,9 @@ def drive_seat_input(
 
     return {
         "injector": shlex.join(injector),
-        # A seat-driven run never issues the synthetic focus write; the
+        # A platform-driven run never issues the synthetic focus write; the
         # handshake took the client out of its pause screen with a
-        # compositor-delivered Escape, which only a focused client processes.
+        # native-delivered Escape, which only a focused client processes.
         "startup_focus_source": handshake["focus_source"],
         "handshake": handshake,
         "regained_world": regained,
@@ -5695,7 +5726,7 @@ def collect_live(args: argparse.Namespace) -> None:
     last_snapshot: dict[str, Any] | None = None
     last_error: str | None = None
     scenarios: dict[str, Any] = {name: None for name in LIVE_SCENARIO_SECTIONS}
-    injector = seat_injector()
+    injector = seat_injector(client_pid=args.client_pid)
     global _SEAT_MODE
     _SEAT_MODE = injector is not None
     if injector is not None:
@@ -5707,11 +5738,9 @@ def collect_live(args: argparse.Namespace) -> None:
     while time.monotonic() < deadline:
         try:
             if not focus_granted:
-                # A headless compositor publishes no `wl_seat` at all, so the
-                # driver stands in for one: grant focus as soon as bbb-control
-                # answers, before the pause timer can fire.  A seat-backed run
-                # must not have that stand-in -- it takes the pause and undoes
-                # it from the seat afterwards, in `seat_handshake`.
+                # Without a declared platform backend there is no attributable
+                # event source, so grant synthetic focus before the pause timer.
+                # A backend-driven run must regain focus through the platform.
                 _ensure_focus(address)
                 focus_granted = True
             last_snapshot = _capture_control_snapshot(address)
@@ -5760,8 +5789,8 @@ def collect_live(args: argparse.Namespace) -> None:
         _await_control_stability(address, deadline)
         gameplay_timeout = float(args.timeout)
         if injector is not None:
-            # Every scenario after this one needs a focused, unpaused client,
-            # and in a seat-backed run only the seat can supply that.
+            # Every scenario after this one needs a focused, unpaused client;
+            # in a backend-driven run only the platform source can supply it.
             failure_stage = "platform_seat"
             failure_scenario = "seat_handshake"
             handshake = seat_handshake(
@@ -5902,27 +5931,28 @@ def collect_live(args: argparse.Namespace) -> None:
                         ),
                     ),
                 )
-            platform_plan = (
-                *platform_plan,
-                (
-                    DISPLAY_SCENARIO_SECTION,
-                    "platform_display",
-                    lambda: drive_display_transitions(
-                        address,
-                        injector,
-                        min(180.0, gameplay_timeout),
+            if seat_backend(injector) == "linux-release":
+                platform_plan = (
+                    *platform_plan,
+                    (
+                        DISPLAY_SCENARIO_SECTION,
+                        "platform_display",
+                        lambda: drive_display_transitions(
+                            address,
+                            injector,
+                            min(180.0, gameplay_timeout),
+                        ),
                     ),
-                ),
-                (
-                    IME_SCENARIO_SECTION,
-                    "platform_ime",
-                    lambda: drive_seat_ime(
-                        address,
-                        injector,
-                        min(180.0, gameplay_timeout),
+                    (
+                        IME_SCENARIO_SECTION,
+                        "platform_ime",
+                        lambda: drive_seat_ime(
+                            address,
+                            injector,
+                            min(180.0, gameplay_timeout),
+                        ),
                     ),
-                ),
-            )
+                )
             plan = (*plan[:-1], *platform_plan, plan[-1])
         for scenario_name, stage, run in plan:
             failure_scenario = scenario_name
@@ -6034,6 +6064,7 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--protocol-source", type=Path, required=True)
     collect.add_argument("--output", type=Path, required=True)
     collect.add_argument("--client-game-dir", type=Path, required=True)
+    collect.add_argument("--client-pid", type=int, required=True)
     collect.add_argument("--timeout", type=float, required=True)
     collect.add_argument("--server-command", type=Path, required=True)
     collect.add_argument("--profile-id", required=True)
@@ -6115,6 +6146,8 @@ def main(argv: list[str] | None = None) -> int:
             validate_headless_probe(_load_json(args.input))
             print("playable gate: headless Login/Configuration/Play probe passed")
         elif args.command == "collect-live":
+            if args.client_pid <= 0:
+                raise GateFailure("--client-pid must be positive")
             collect_live(args)
         elif args.command == "collect-chat-restriction":
             if args.timeout <= 0:

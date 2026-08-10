@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 import signal
+import subprocess
 import sys
 import time
 import unittest
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import call, patch
 
 import pytest
 
@@ -18,6 +20,8 @@ from bbb_tools.host.capabilities import (
     missing_for_profile,
 )
 from bbb_tools.input.contract import InputBackend
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RecordingInput(InputBackend):
@@ -36,6 +40,20 @@ class RecordingInput(InputBackend):
 
 
 class ToolingExecutionTests(unittest.TestCase):
+    def test_process_entrypoint_preserves_pid_through_exec(self) -> None:
+        command = [
+            str(REPO_ROOT / "scripts" / "process"),
+            "exec",
+            "--",
+            sys.executable,
+            "-c",
+            "import os; print(os.getpid())",
+        ]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
+        stdout, _ = process.communicate(timeout=10)
+        self.assertEqual(process.returncode, 0)
+        self.assertEqual(int(stdout.strip()), process.pid)
+
     def test_vulkan_loader_probe_uses_the_platform_linker_inventory(self) -> None:
         with patch.object(host_capabilities, "find_library", return_value="libvulkan.so.1"):
             self.assertTrue(_vulkan_loader_available())
@@ -45,6 +63,15 @@ class ToolingExecutionTests(unittest.TestCase):
         self.assertGreater(deadline.remaining(), 0)
         time.sleep(0.03)
         self.assertTrue(deadline.expired())
+
+    def test_process_group_probe_treats_permission_denial_as_still_running(self) -> None:
+        with patch(
+            "bbb_tools.execution.process.os.killpg",
+            side_effect=[PermissionError(), ProcessLookupError()],
+        ) as killpg:
+            self.assertTrue(ManagedProcess._wait_for_group_exit(42, 0.1))
+
+        self.assertEqual(killpg.call_args_list, [call(42, 0), call(42, 0)])
 
     @pytest.mark.integration
     def test_managed_process_timeout_kills_the_process_group(self) -> None:
@@ -103,6 +130,7 @@ class ToolingExecutionTests(unittest.TestCase):
         )
         self.assertEqual(missing_for_profile(capabilities, "mac-dev"), [])
         self.assertEqual(missing_for_profile(capabilities, "mac-input"), [])
+        self.assertIn("java", missing_for_profile(capabilities, "mac-release"))
         self.assertIn("linux_uinput", missing_for_profile(capabilities, "linux-release"))
 
 

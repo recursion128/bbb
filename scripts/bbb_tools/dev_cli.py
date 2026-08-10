@@ -100,7 +100,7 @@ def _parser() -> argparse.ArgumentParser:
     doctor = commands.add_parser("doctor")
     doctor.add_argument(
         "--profile",
-        choices=("portable", "mac-dev", "mac-input", "linux-release"),
+        choices=("portable", "mac-dev", "mac-input", "mac-release", "linux-release"),
         default="portable",
     )
     test = commands.add_parser("test")

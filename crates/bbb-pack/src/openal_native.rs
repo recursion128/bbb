@@ -215,9 +215,31 @@ fn platform_openal_artifact() -> Result<(&'static str, &'static str, &'static st
     ))
 }
 
-#[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn platform_openal_artifact() -> Result<(&'static str, &'static str, &'static str)> {
-    bail!("verified Vanilla OpenAL extraction is currently supported on Linux x86_64")
+    Ok((
+        "natives-macos-arm64",
+        "macos/arm64/org/lwjgl/openal/libopenal.dylib",
+        "libopenal.dylib",
+    ))
+}
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+fn platform_openal_artifact() -> Result<(&'static str, &'static str, &'static str)> {
+    Ok((
+        "natives-macos",
+        "macos/x64/org/lwjgl/openal/libopenal.dylib",
+        "libopenal.dylib",
+    ))
+}
+
+#[cfg(not(any(
+    all(target_os = "linux", target_arch = "x86_64"),
+    all(target_os = "macos", target_arch = "aarch64"),
+    all(target_os = "macos", target_arch = "x86_64")
+)))]
+fn platform_openal_artifact() -> Result<(&'static str, &'static str, &'static str)> {
+    bail!("verified Vanilla OpenAL extraction supports Linux x86_64 and macOS aarch64/x86_64")
 }
 
 #[cfg(test)]
@@ -233,12 +255,36 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires BBB_VANILLA_ROOT resolved by scripts/vanilla"]
+    fn platform_openal_artifact_matches_the_native_library_family() {
+        let (classifier, archive_entry, library_name) = platform_openal_artifact().unwrap();
+        #[cfg(target_os = "linux")]
+        {
+            assert_eq!(classifier, "natives-linux");
+            assert_eq!(archive_entry, "linux/x64/org/lwjgl/openal/libopenal.so");
+            assert_eq!(library_name, "libopenal.so");
+        }
+        #[cfg(target_os = "macos")]
+        {
+            assert!(classifier.starts_with("natives-macos"));
+            assert!(archive_entry.starts_with("macos/"));
+            assert_eq!(library_name, "libopenal.dylib");
+        }
+    }
+
+    #[test]
+    #[ignore = "requires BBB_VANILLA_ROOT from scripts/vanilla path 26.1 --kind root"]
     fn verified_workspace_materializes_manifest_owned_openal() {
         let root = std::env::var_os("BBB_VANILLA_ROOT")
             .expect("BBB_VANILLA_ROOT must name the verified Vanilla workspace");
         let path = materialize_verified_openal_library(root).unwrap();
         assert!(path.is_file());
-        assert_eq!(path.file_name().unwrap(), "libopenal.so");
+        assert_eq!(
+            path.file_name().unwrap(),
+            if cfg!(target_os = "macos") {
+                "libopenal.dylib"
+            } else {
+                "libopenal.so"
+            }
+        );
     }
 }

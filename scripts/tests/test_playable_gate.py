@@ -112,6 +112,8 @@ class PlayableGateEvidenceTests(unittest.TestCase):
                 "evidence.json",
                 "--client-game-dir",
                 "client-game",
+                "--client-pid",
+                "123",
                 "--timeout",
                 "3",
                 "--server-command",
@@ -849,6 +851,7 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
                 timeout=0.5,
                 output=root / "evidence.json",
                 client_game_dir=root / "client-game",
+                client_pid=123,
                 client_log=root / "client.log",
                 server_log=root / "server.log",
                 transfer_server_log=root / "transfer.log",
@@ -1976,6 +1979,20 @@ class PlayableGateSeatInputTests(unittest.TestCase):
         evidence["seat_input"] = self.seat_input
         playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_macos_quartz_receipt_is_held_to_the_native_input_contract(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["seat_input"] = copy.deepcopy(self.seat_input)
+        evidence["seat_input"]["injector"] = "scripts/input --backend macos-quartz"
+        evidence["seat_input"]["handshake"]["injector_probe"] = {
+            "accessibility_trusted": True,
+            "backend": "macos-quartz",
+            "driver": "coregraphics",
+            "input_backend_source_sha256": "2" * 64,
+            "status": "ready",
+        }
+
+        playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_synthetic_input_write_invalidates_the_seat_receipts(self):
         evidence = copy.deepcopy(self.fixture)
         evidence["seat_input"] = {**self.seat_input, "control_input_writes": 1}
@@ -2153,10 +2170,17 @@ class PlayableGateSeatInputTests(unittest.TestCase):
             {"BBB_PLAYABLE_INPUT_BACKEND": "linux-release"}
         )
         self.assertEqual(injector[-2:], ["--backend", "linux-release"])
-        with self.assertRaisesRegex(playable_gate.GateFailure, "linux-release"):
+        injector = playable_gate.seat_injector(
+            {"BBB_PLAYABLE_INPUT_BACKEND": "macos-quartz"}, client_pid=321
+        )
+        self.assertEqual(injector[-4:], ["--backend", "macos-quartz", "--pid", "321"])
+        self.assertEqual(playable_gate.seat_backend(injector), "macos-quartz")
+        with self.assertRaisesRegex(playable_gate.GateFailure, "client pid"):
             playable_gate.seat_injector(
                 {"BBB_PLAYABLE_INPUT_BACKEND": "macos-quartz"}
             )
+        with self.assertRaisesRegex(playable_gate.GateFailure, "macos-quartz"):
+            playable_gate.seat_injector({"BBB_PLAYABLE_INPUT_BACKEND": "unknown"})
 
 
 if __name__ == "__main__":

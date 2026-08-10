@@ -41,6 +41,9 @@ INVENTORY_PATH = Path(
 )
 LEDGER_PATH = Path("docs/unsupported-features.md")
 REPORT_PATH = Path("docs/evidence/vanilla-26.1/parity-acceptance.json")
+MACOS_ENABLEMENT_COMPATIBILITY_PATH = Path(
+    "scripts/fixtures/parity/macos-enablement-compatibility.json"
+)
 GATE_LOG_PATH = Path(".git/bbb/gate-log.tsv")
 GATE_RECEIPT_DIGEST_KIND = "gate-receipt-line-v1"
 SCHEMA_VERSION = 3
@@ -72,6 +75,7 @@ VALIDATION_ONLY_PATHS = frozenset(
         "scripts/parity_acceptance.py",
         "scripts/tests/test_parity_acceptance.py",
         "scripts/tests/test_vanilla_audio_receipt.py",
+        MACOS_ENABLEMENT_COMPATIBILITY_PATH.as_posix(),
     }
 )
 SCOPED_FORMAL_RECEIPT_REUSE_PATHS = VALIDATION_ONLY_PATHS | frozenset(
@@ -289,6 +293,23 @@ CAPTURE_INPUT_PATHS = {
         "scripts/fixtures/playable-gate/session-26.1.json",
     ),
 }
+
+
+def capture_input_paths(kind: str, value: dict[str, object]) -> tuple[str, ...]:
+    if kind != "platform":
+        return CAPTURE_INPUT_PATHS.get(kind, ())
+    row = value.get("row")
+    target_os = row.get("target_os") if isinstance(row, dict) else None
+    manifest = (
+        "scripts/fixtures/platform-acceptance/macos-aarch64-cocoa-metal.json"
+        if target_os == "macos"
+        else "scripts/fixtures/platform-acceptance/linux-x86_64-wayland-vulkan.json"
+    )
+    return (
+        manifest,
+        "scripts/fixtures/playable-gate/session-26.1.json",
+        "scripts/fixtures/lifecycle-soak/manifest-26.1.json",
+    )
 CODE_REF_RE = re.compile(
     r"(?P<path>(?:crates|scripts|docs)/[A-Za-z0-9_./-]+(?:\.[A-Za-z0-9_-]+)?)"
     r"(?:#(?P<symbol>[A-Za-z0-9_:<>.-]+))?"
@@ -534,6 +555,7 @@ def artifact_capture_validation_classes(
 
 
 def change_impact_plan(
+    repo: Path,
     records: list[dict[str, object]],
     changed_paths: Iterable[str],
     base_commit: str,
@@ -582,8 +604,8 @@ def change_impact_plan(
         if not isinstance(kind, str):
             continue
         capture_contract = artifact.get("capture_contract")
-        tool_paths = set(CAPTURE_TOOL_PATHS.get(kind, ()))
-        input_paths = set(CAPTURE_INPUT_PATHS.get(kind, ()))
+        tool_paths: set[str] = set()
+        input_paths: set[str] = set()
         if isinstance(capture_contract, dict):
             for item in capture_contract.get("tools", []):
                 if isinstance(item, dict) and isinstance(item.get("path"), str):
@@ -591,6 +613,9 @@ def change_impact_plan(
             for item in capture_contract.get("inputs", []):
                 if isinstance(item, dict) and isinstance(item.get("path"), str):
                     input_paths.add(str(item["path"]))
+        else:
+            tool_paths.update(CAPTURE_TOOL_PATHS.get(kind, ()))
+            input_paths.update(CAPTURE_INPUT_PATHS.get(kind, ()))
         for dependency_path, reason in (
             *((path, "capture-tool") for path in tool_paths),
             *((path, "capture-input") for path in input_paths),
@@ -605,6 +630,26 @@ def change_impact_plan(
         path_ids: set[str] = set()
         path_classes: set[str] = set()
         reasons: set[str] = set()
+        if is_verified_macos_enablement_path(repo, path):
+            macos_record = records_by_id.get("platform-macos-release")
+            if macos_record is not None:
+                path_ids.add("platform-macos-release")
+                path_classes.update(
+                    str(value)
+                    for value in macos_record.get("required_validation_classes", [])
+                )
+                reasons.add("verified-macos-platform-scope")
+            affected_ids.update(path_ids)
+            required_classes.update(path_classes)
+            impacts.append(
+                {
+                    "mechanism_ids": sorted(path_ids),
+                    "path": path,
+                    "reasons": sorted(reasons),
+                    "required_validation_classes": sorted(path_classes),
+                }
+            )
+            continue
         for record in records:
             if not isinstance(record, dict):
                 continue
@@ -1309,6 +1354,67 @@ def git_blob_sha256(repo: Path, commit: str | None, relative: str) -> str | None
     return sha256_bytes(result.stdout) if result.returncode == 0 else None
 
 
+@lru_cache(maxsize=None)
+def verified_macos_enablement_paths(repo_value: str) -> frozenset[str]:
+    """Resolve the exact, content-addressed macOS-only compatibility delta.
+
+    Formal receipts from two hosts must compose. A cfg-gated macOS addition
+    should not invalidate an unchanged Linux seat/GPU capture, but a later edit
+    must. The checked base/current hashes make this a one-time proof instead of
+    a permanent path allowlist.
+    """
+
+    repo = Path(repo_value)
+    manifest_path = repo / MACOS_ENABLEMENT_COMPATIBILITY_PATH
+    if not manifest_path.is_file():
+        return frozenset()
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return frozenset()
+    base_commit = manifest.get("base_commit") if isinstance(manifest, dict) else None
+    entries = manifest.get("paths") if isinstance(manifest, dict) else None
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema") != 1
+        or not isinstance(base_commit, str)
+        or re.fullmatch(r"[0-9a-f]{40}", base_commit) is None
+        or not isinstance(entries, list)
+    ):
+        return frozenset()
+    verified: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            return frozenset()
+        relative = entry.get("path")
+        expected_base = entry.get("base_sha256")
+        expected_current = entry.get("current_sha256")
+        if (
+            not isinstance(relative, str)
+            or not isinstance(expected_current, str)
+            or re.fullmatch(r"[0-9a-f]{64}", expected_current) is None
+            or (
+                expected_base is not None
+                and (
+                    not isinstance(expected_base, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", expected_base) is None
+                )
+            )
+        ):
+            return frozenset()
+        path = repo / relative
+        if not path.is_file() or sha256_file(path) != expected_current:
+            continue
+        if git_blob_sha256(repo, base_commit, relative) != expected_base:
+            continue
+        verified.add(relative)
+    return frozenset(verified)
+
+
+def is_verified_macos_enablement_path(repo: Path, relative: str) -> bool:
+    return relative in verified_macos_enablement_paths(str(repo.resolve()))
+
+
 def capture_path_identities(
     repo: Path, commit: str | None, paths: Iterable[str]
 ) -> list[dict[str, str | None]]:
@@ -1387,7 +1493,7 @@ def capture_contract_identity(
         "evidence_class": evidence_class,
         "hash_inputs": nested_hash_inputs(value),
         "inputs": capture_path_identities(
-            repo, capture_commit, CAPTURE_INPUT_PATHS.get(kind, ())
+            repo, capture_commit, capture_input_paths(kind, value)
         ),
         "kind": kind,
         "selected_contract": selected,
@@ -1616,14 +1722,20 @@ def external_artifact(
     capture_contract = capture_contract_identity(
         repo, kind, value, evidence_class, capture_tool_commit
     )
-    changed_capture_paths = {
-        role: [
-            str(item["path"])
-            for item in capture_contract[role]
-            if item.get("capture_sha256") != item.get("current_sha256")
-        ]
-        for role in ("tools", "inputs")
-    }
+    changed_capture_paths: dict[str, list[str]] = {"tools": [], "inputs": []}
+    compatible_capture_paths: dict[str, list[str]] = {"tools": [], "inputs": []}
+    for role in ("tools", "inputs"):
+        for item in capture_contract[role]:
+            if item.get("capture_sha256") == item.get("current_sha256"):
+                continue
+            relative = str(item["path"])
+            target = (
+                compatible_capture_paths
+                if artifact_id != "macos-platform"
+                and is_verified_macos_enablement_path(repo, relative)
+                else changed_capture_paths
+            )
+            target[role].append(relative)
     if changed_capture_paths["tools"]:
         reasons.append(
             "capture tool changed after the artifact: "
@@ -1694,6 +1806,10 @@ def external_artifact(
                 for path in changed_paths
                 if not is_closure_metadata_path(path)
                 and path not in SCOPED_FORMAL_RECEIPT_REUSE_PATHS
+                and not (
+                    artifact_id != "macos-platform"
+                    and is_verified_macos_enablement_path(repo, path)
+                )
             ]
             if (
                 ancestry.returncode == 0
@@ -1706,7 +1822,14 @@ def external_artifact(
                     "artifact_commit": commit,
                     "changed_paths": changed_paths,
                     "evidence_commit": evidence_commit,
-                    "rule": "closure-or-acceptance-metadata-only",
+                    "rule": (
+                        "closure-acceptance-or-verified-macos-only"
+                        if any(
+                            is_verified_macos_enablement_path(repo, path)
+                            for path in changed_paths
+                        )
+                        else "closure-or-acceptance-metadata-only"
+                    ),
                 }
             else:
                 reasons.append(
@@ -1716,7 +1839,7 @@ def external_artifact(
             reasons.append(
                 f"artifact BBB commit {commit} differs from evidence commit {evidence_commit}"
             )
-    return {
+    artifact = {
         "artifact_id": artifact_id,
         "bbb_commit": commit,
         "capture_contract": capture_contract,
@@ -1731,6 +1854,14 @@ def external_artifact(
         "sha256": sha256_file(path),
         "valid": not reasons,
     }
+    compatible_changes = {
+        role: sorted(paths)
+        for role, paths in compatible_capture_paths.items()
+        if paths
+    }
+    if compatible_changes:
+        artifact["platform_compatible_capture_changes"] = compatible_changes
+    return artifact
 
 
 def reuse_external_artifact_projection(
@@ -1762,6 +1893,7 @@ def reuse_external_artifact_projection(
     contract = artifact.get("capture_contract")
     reasons: list[str] = []
     changed_capture_paths: dict[str, list[str]] = {"tools": [], "inputs": []}
+    compatible_capture_paths: dict[str, list[str]] = {"tools": [], "inputs": []}
     if not isinstance(contract, dict):
         reasons.append("reused formal artifact lacks a capture contract")
     else:
@@ -1781,7 +1913,14 @@ def reuse_external_artifact_projection(
                     sha256_file(path) if path.is_file() else None
                 )
                 if identity.get("capture_sha256") != identity.get("current_sha256"):
-                    changed_capture_paths[role].append(str(identity["path"]))
+                    relative = str(identity["path"])
+                    target = (
+                        compatible_capture_paths
+                        if artifact_id != "macos-platform"
+                        and is_verified_macos_enablement_path(repo, relative)
+                        else changed_capture_paths
+                    )
+                    target[role].append(relative)
         contract["sha256"] = canonical_sha256(
             {key: value for key, value in contract.items() if key != "sha256"}
         )
@@ -1826,6 +1965,10 @@ def reuse_external_artifact_projection(
             for path in changed_paths
             if not is_closure_metadata_path(path)
             and path not in SCOPED_FORMAL_RECEIPT_REUSE_PATHS
+            and not (
+                artifact_id != "macos-platform"
+                and is_verified_macos_enablement_path(repo, path)
+            )
         ]
         if (
             ancestry.returncode == 0
@@ -1838,7 +1981,14 @@ def reuse_external_artifact_projection(
                 "artifact_commit": commit,
                 "changed_paths": changed_paths,
                 "evidence_commit": evidence_commit,
-                "rule": "closure-or-acceptance-metadata-only",
+                "rule": (
+                    "closure-acceptance-or-verified-macos-only"
+                    if any(
+                        is_verified_macos_enablement_path(repo, path)
+                        for path in changed_paths
+                    )
+                    else "closure-or-acceptance-metadata-only"
+                ),
             }
         else:
             reasons.append(
@@ -1846,6 +1996,15 @@ def reuse_external_artifact_projection(
             )
 
     artifact["capture_contract"] = contract
+    compatible_changes = {
+        role: sorted(paths)
+        for role, paths in compatible_capture_paths.items()
+        if paths
+    }
+    if compatible_changes:
+        artifact["platform_compatible_capture_changes"] = compatible_changes
+    else:
+        artifact.pop("platform_compatible_capture_changes", None)
     artifact["invalid_reasons"] = reasons
     artifact_path_value = artifact.get("path")
     artifact_path = (
@@ -2121,7 +2280,11 @@ def external_artifact_ids(row: dict[str, str]) -> list[str]:
     if "draw-evidence" in classes:
         result.append("draw-evidence")
     if classes & {"protocol-state-receipt", "resource-platform-receipt"}:
-        result.append("linux-platform")
+        result.append(
+            "macos-platform"
+            if mechanism_id == "platform-macos-release"
+            else "linux-platform"
+        )
     if mechanism_id.startswith("lifecycle-") or mechanism_id == "resources-indexed-panorama":
         result.append("lifecycle-soak")
     return sorted(set(result))
@@ -2181,6 +2344,7 @@ def build_report(
     workload_summary: Path | None = None,
     draw_summary: Path | None = None,
     platform_report: Path | None = None,
+    macos_platform_report: Path | None = None,
     lifecycle_report: Path | None = None,
     audio_report: Path | None = None,
     reused_external_artifacts: dict[str, dict[str, object]] | None = None,
@@ -2245,13 +2409,27 @@ def build_report(
             evidence_commit=evidence_commit,
         )
 
+    full_gate = gate_receipt(repo, gate_log, evidence_commit)
+    if (
+        full_gate.get("valid") is not True
+        and reused_external_artifacts is not None
+        and isinstance(reused_external_artifacts.get("full-gate"), dict)
+    ):
+        prior_gate = reused_external_artifacts["full-gate"]
+        if (
+            prior_gate.get("valid") is True
+            and prior_gate.get("bbb_commit") == evidence_commit
+        ):
+            full_gate = json.loads(json.dumps(prior_gate))
+            full_gate.pop("mechanism_ids", None)
+
     artifacts: dict[str, dict[str, object]] = {
         "parity-matrix": repo_artifact(repo, "parity-matrix", MATRIX_PATH.as_posix()),
         "client-owner-inventory": repo_artifact(
             repo, "client-owner-inventory", INVENTORY_PATH.as_posix()
         ),
         "feature-ledger": repo_artifact(repo, "feature-ledger", LEDGER_PATH.as_posix()),
-        "full-gate": gate_receipt(repo, gate_log, evidence_commit),
+        "full-gate": full_gate,
         "performance-abba": external_or_reused(
             kind="performance",
             artifact_id="performance-abba",
@@ -2271,6 +2449,11 @@ def build_report(
             kind="platform",
             artifact_id="linux-platform",
             path=platform_report,
+        ),
+        "macos-platform": external_or_reused(
+            kind="platform",
+            artifact_id="macos-platform",
+            path=macos_platform_report,
         ),
         "lifecycle-soak": external_or_reused(
             kind="lifecycle",
@@ -2390,7 +2573,12 @@ def build_report(
                 artifact_id.removeprefix("repo:")
                 for artifact_id in test_source_artifact_ids
             )
-            if path in changed_paths and path not in VALIDATION_ONLY_PATHS
+            if path in changed_paths
+            and path not in VALIDATION_ONLY_PATHS
+            and (
+                mechanism_id == "platform-macos-release"
+                or not is_verified_macos_enablement_path(repo, path)
+            )
         )
         has_executable_tests = any(test.get("ignored") is not True for test in tests)
         focused_current = (
@@ -2568,6 +2756,12 @@ def build_report(
                 if item["path"] in changed_paths
                 and not is_closure_metadata_path(str(item["path"]))
                 and item["path"] not in VALIDATION_ONLY_PATHS
+                and (
+                    mechanism_id == "platform-macos-release"
+                    or not is_verified_macos_enablement_path(
+                        repo, str(item["path"])
+                    )
+                )
             )
             if changed_evidence:
                 reasons.append(
@@ -2689,7 +2883,7 @@ def build_report(
         artifact_values.append(artifact)
 
     change_impact = change_impact_plan(
-        records, changed_paths, evidence_commit, artifact_values
+        repo, records, changed_paths, evidence_commit, artifact_values
     )
     affected_by_change = set(change_impact["functional_affected_mechanism_ids"])
     for record in records:
@@ -2734,11 +2928,14 @@ def build_report(
     for relative in (
         "scripts/parity_acceptance.py",
         "scripts/bbb_tools/executable_identity.py",
+        MACOS_ENABLEMENT_COMPATIBILITY_PATH.as_posix(),
         MATRIX_PATH.as_posix(),
         INVENTORY_PATH.as_posix(),
         LEDGER_PATH.as_posix(),
     ):
         path = repo / relative
+        if not path.is_file():
+            continue
         generator_inputs.append({"path": relative, "sha256": sha256_file(path)})
     semantic_contract_sha256 = parity_semantic_contract_sha256(records)
     blocking_ids = implementation_blocking_ids(records)
@@ -3199,6 +3396,10 @@ def validate_report(
                 for path in dependency_paths & changed_paths
                 if not is_closure_metadata_path(path)
                 and path not in VALIDATION_ONLY_PATHS
+                and (
+                    mechanism_id == "platform-macos-release"
+                    or not is_verified_macos_enablement_path(repo, path)
+                )
             ):
                 issues.append(f"ungated BBB evidence for {mechanism_id}")
             passing_focused = False
@@ -3268,6 +3469,30 @@ def validate_report(
             issues.append(f"{reason}: {artifact_id}")
         artifact_kind = artifact.get("kind")
         if artifact_kind not in {"repo-evidence", "gate"}:
+            compatibility = artifact.get("platform_compatible_capture_changes", {})
+            if not isinstance(compatibility, dict) or any(
+                role not in {"tools", "inputs"}
+                or not isinstance(paths, list)
+                or any(not isinstance(path, str) for path in paths)
+                for role, paths in compatibility.items()
+            ):
+                issues.append(
+                    f"malformed platform-compatible capture changes for {artifact_id}"
+                )
+                compatibility = {}
+            compatible_identities = {
+                (role, path)
+                for role, paths in compatibility.items()
+                for path in paths
+                if artifact_id != "macos-platform"
+                and is_verified_macos_enablement_path(repo, path)
+            }
+            if sum(len(paths) for paths in compatibility.values()) != len(
+                compatible_identities
+            ):
+                issues.append(
+                    f"stale platform-compatible capture changes for {artifact_id}"
+                )
             if artifact.get("evidence_class") not in {
                 "formal",
                 "diagnostic",
@@ -3313,6 +3538,9 @@ def validate_report(
                                 )
                             if identity.get("capture_sha256") != identity.get(
                                 "current_sha256"
+                            ) and (
+                                (identity_role, identity["path"])
+                                not in compatible_identities
                             ) and not any(
                                 identity["path"] in reason
                                 for reason in (
@@ -3550,6 +3778,7 @@ def validate_report(
     if require_complete and isinstance(summary, dict) and summary.get("declared_scope_complete") is not True:
         issues.append("declared-scope parity acceptance is incomplete")
     expected_impact = change_impact_plan(
+        repo,
         [record for record in records if isinstance(record, dict)],
         changed_paths,
         evidence_commit,
@@ -3805,6 +4034,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workload-summary", type=Path)
     parser.add_argument("--draw-summary", type=Path)
     parser.add_argument("--platform-report", type=Path)
+    parser.add_argument("--macos-platform-report", type=Path)
     parser.add_argument("--lifecycle-report", type=Path)
     parser.add_argument("--audio-report", type=Path)
     parser.add_argument(
@@ -3858,6 +4088,7 @@ def main() -> int:
             workload_summary=args.workload_summary,
             draw_summary=args.draw_summary,
             platform_report=args.platform_report,
+            macos_platform_report=args.macos_platform_report,
             lifecycle_report=args.lifecycle_report,
             audio_report=args.audio_report,
             reused_external_artifacts=reused_external_artifacts,
@@ -3921,6 +4152,7 @@ def main() -> int:
         print(
             json.dumps(
                 change_impact_plan(
+                    args.repo_root,
                     [record for record in records if isinstance(record, dict)],
                     paths,
                     base_commit,

@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +23,40 @@ from file_drop_capability import (  # noqa: E402
 
 
 class FileDropCapabilityTests(unittest.TestCase):
+    def test_winit_metadata_is_filtered_to_the_rust_host(self) -> None:
+        host = "aarch64-apple-darwin"
+        manifest = "/tmp/winit-0.29.15/Cargo.toml"
+        completed = (
+            subprocess.CompletedProcess(
+                ["rustc", "-vV"], 0, stdout=f"rustc fixture\nhost: {host}\n", stderr=""
+            ),
+            subprocess.CompletedProcess(
+                ["cargo", "metadata"],
+                0,
+                stdout=json.dumps(
+                    {
+                        "packages": [
+                            {
+                                "name": "winit",
+                                "version": "0.29.15",
+                                "manifest_path": manifest,
+                            }
+                        ]
+                    }
+                ),
+                stderr="",
+            ),
+        )
+        with mock.patch(
+            "file_drop_capability.subprocess.run", side_effect=completed
+        ) as run:
+            self.assertEqual(
+                resolve_winit_root(Path("/tmp/repo")), Path(manifest).resolve().parent
+            )
+
+        metadata_command = run.call_args_list[1].args[0]
+        self.assertEqual(metadata_command[-2:], ["--filter-platform", host])
+
     def test_checked_receipt_matches_verified_vanilla_and_pinned_winit(self) -> None:
         source_root = Path(
             subprocess.run(

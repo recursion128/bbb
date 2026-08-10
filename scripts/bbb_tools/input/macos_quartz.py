@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import subprocess
 import sys
+import time
 from ctypes import c_bool, c_double, c_uint16, c_uint32, c_void_p
 from ctypes.util import find_library
 
@@ -41,6 +42,7 @@ KEY_CODES = {
     "enter": 36,
     "escape": 53,
     "shift": 56,
+    "command": 55,
     "ctrl": 59,
     "f11": 103,
 }
@@ -51,11 +53,20 @@ class CGPoint(ctypes.Structure):
     _fields_ = [("x", c_double), ("y", c_double)]
 
 
+class CGSize(ctypes.Structure):
+    _fields_ = [("width", c_double), ("height", c_double)]
+
+
+class ProcessSerialNumber(ctypes.Structure):
+    _fields_ = [("high", c_uint32), ("low", c_uint32)]
+
+
 class MacOsQuartzBackend(InputBackend):
-    def __init__(self) -> None:
+    def __init__(self, pid: int | None = None) -> None:
         if sys.platform != "darwin":
             raise InputError("Quartz input is available only on macOS")
         super().__init__()
+        self._pid = pid
         library = find_library("ApplicationServices")
         if library is None:
             raise InputError("ApplicationServices.framework is unavailable")
@@ -68,8 +79,53 @@ class MacOsQuartzBackend(InputBackend):
         self._api.CGEventCreate.argtypes = [c_void_p]
         self._api.CGEventGetLocation.restype = CGPoint
         self._api.CGEventGetLocation.argtypes = [c_void_p]
+        self._api.CGEventSetIntegerValueField.argtypes = [
+            c_void_p,
+            c_uint32,
+            ctypes.c_int64,
+        ]
+        self._api.CGEventSetFlags.argtypes = [c_void_p, ctypes.c_uint64]
         self._api.CGEventPost.argtypes = [c_uint32, c_void_p]
         self._api.CFRelease.argtypes = [c_void_p]
+        self._api.GetProcessForPID.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ProcessSerialNumber),
+        ]
+        self._api.GetProcessForPID.restype = ctypes.c_int32
+        self._api.SetFrontProcessWithOptions.argtypes = [
+            ctypes.POINTER(ProcessSerialNumber),
+            c_uint32,
+        ]
+        self._api.SetFrontProcessWithOptions.restype = ctypes.c_int32
+        core_foundation = find_library("CoreFoundation")
+        if core_foundation is None:
+            raise InputError("CoreFoundation.framework is unavailable")
+        self._cf = ctypes.CDLL(core_foundation)
+        self._cf.CFStringCreateWithCString.argtypes = [
+            c_void_p,
+            ctypes.c_char_p,
+            c_uint32,
+        ]
+        self._cf.CFStringCreateWithCString.restype = c_void_p
+        self._cf.CFArrayGetCount.argtypes = [c_void_p]
+        self._cf.CFArrayGetCount.restype = ctypes.c_long
+        self._cf.CFArrayGetValueAtIndex.argtypes = [c_void_p, ctypes.c_long]
+        self._cf.CFArrayGetValueAtIndex.restype = c_void_p
+        self._cf.CFRelease.argtypes = [c_void_p]
+        self._api.AXUIElementCreateApplication.argtypes = [ctypes.c_int]
+        self._api.AXUIElementCreateApplication.restype = c_void_p
+        self._api.AXUIElementSetAttributeValue.argtypes = [c_void_p, c_void_p, c_void_p]
+        self._api.AXUIElementSetAttributeValue.restype = ctypes.c_int32
+        self._api.AXUIElementCopyAttributeValue.argtypes = [
+            c_void_p,
+            c_void_p,
+            ctypes.POINTER(c_void_p),
+        ]
+        self._api.AXUIElementCopyAttributeValue.restype = ctypes.c_int32
+        self._api.AXUIElementPerformAction.argtypes = [c_void_p, c_void_p]
+        self._api.AXUIElementPerformAction.restype = ctypes.c_int32
+        self._api.AXValueGetValue.argtypes = [c_void_p, c_uint32, c_void_p]
+        self._api.AXValueGetValue.restype = c_bool
 
     def _post(self, event: int) -> None:
         if not event:
@@ -84,7 +140,13 @@ class MacOsQuartzBackend(InputBackend):
             code = KEY_CODES[key.lower()]
         except KeyError as error:
             raise InputError(f"no macOS key code for {key!r}") from error
-        self._post(self._api.CGEventCreateKeyboardEvent(None, code, pressed))
+        event = self._api.CGEventCreateKeyboardEvent(None, code, pressed)
+        if event and (
+            (key.lower() == "command" and pressed)
+            or (key.lower() != "command" and "command" in self._pressed_keys)
+        ):
+            self._api.CGEventSetFlags(event, 1 << 20)
+        self._post(event)
 
     def _pointer_location(self) -> CGPoint:
         event = self._api.CGEventCreate(None)
@@ -94,6 +156,56 @@ class MacOsQuartzBackend(InputBackend):
             return self._api.CGEventGetLocation(event)
         finally:
             self._api.CFRelease(event)
+
+    def _window_center(self) -> CGPoint:
+        if self._pid is None or self._pid <= 0:
+            raise InputError("reading a macOS window requires a positive pid")
+        attributes = {
+            name: self._cf.CFStringCreateWithCString(
+                None, name.encode("ascii"), 0x08000100
+            )
+            for name in ("AXWindows", "AXPosition", "AXSize")
+        }
+        application = self._api.AXUIElementCreateApplication(self._pid)
+        windows = c_void_p()
+        position_value = c_void_p()
+        size_value = c_void_p()
+        try:
+            if not all(attributes.values()) or not application:
+                raise InputError("macOS could not open the window Accessibility bridge")
+            status = self._api.AXUIElementCopyAttributeValue(
+                application, attributes["AXWindows"], ctypes.byref(windows)
+            )
+            if status != 0 or not windows.value or self._cf.CFArrayGetCount(windows) < 1:
+                raise InputError(f"macOS could not read process {self._pid}'s window")
+            window = self._cf.CFArrayGetValueAtIndex(windows, 0)
+            for name, output in (("AXPosition", position_value), ("AXSize", size_value)):
+                status = self._api.AXUIElementCopyAttributeValue(
+                    window, attributes[name], ctypes.byref(output)
+                )
+                if status != 0 or not output.value:
+                    raise InputError(
+                        f"macOS could not read process {self._pid}'s {name} ({status})"
+                    )
+            position = CGPoint()
+            size = CGSize()
+            if not self._api.AXValueGetValue(position_value, 1, ctypes.byref(position)):
+                raise InputError("macOS window position had the wrong Accessibility type")
+            if not self._api.AXValueGetValue(size_value, 2, ctypes.byref(size)):
+                raise InputError("macOS window size had the wrong Accessibility type")
+            return CGPoint(
+                position.x + size.width / 2.0,
+                position.y + size.height / 2.0,
+            )
+        finally:
+            for value in (size_value, position_value, windows):
+                if value.value:
+                    self._cf.CFRelease(value)
+            if application:
+                self._cf.CFRelease(application)
+            for value in attributes.values():
+                if value:
+                    self._cf.CFRelease(value)
 
     def button_event(self, button: str, pressed: bool) -> None:
         try:
@@ -106,26 +218,99 @@ class MacOsQuartzBackend(InputBackend):
             2: (25, 26),
         }
         event_type = event_types[code][0 if pressed else 1]
-        self._post(
-            self._api.CGEventCreateMouseEvent(None, event_type, self._pointer_location(), code)
+        event = self._api.CGEventCreateMouseEvent(
+            None, event_type, self._window_center(), code
         )
+        if event:
+            self._api.CGEventSetIntegerValueField(event, 1, 1)
+        self._post(event)
 
     def move(self, dx: float, dy: float) -> None:
         current = self._pointer_location()
         destination = CGPoint(current.x + dx, current.y + dy)
-        self._post(self._api.CGEventCreateMouseEvent(None, 5, destination, 0))
+        event = self._api.CGEventCreateMouseEvent(None, 5, destination, 0)
+        if not event:
+            raise InputError("CoreGraphics could not create a pointer-motion event")
+        # A locked Cocoa cursor consumes the event's relative fields. Merely
+        # changing the absolute location moves a desktop pointer but produces
+        # no winit DeviceEvent::MouseMotion while the game owns the cursor.
+        self._api.CGEventSetIntegerValueField(event, 4, round(dx))
+        self._api.CGEventSetIntegerValueField(event, 5, round(dy))
+        self._post(event)
 
-    @staticmethod
-    def focus_pid(pid: int) -> None:
-        script = (
-            'tell application "System Events" to set frontmost of '
-            f"first process whose unix id is {pid} to true"
-        )
-        completed = subprocess.run(
-            ["/usr/bin/osascript", "-e", script], capture_output=True, text=True
-        )
-        if completed.returncode != 0:
-            raise InputError(completed.stderr.strip() or "cannot focus macOS process")
+    def focus_pid(self, pid: int) -> None:
+        if pid <= 0:
+            raise InputError("macOS focus pid must be positive")
+        # An unbundled command-line Cocoa executable is not necessarily exposed
+        # as an NSRunningApplication until it has first been activated. The
+        # public Process Manager bridge can still resolve its exact Unix PID;
+        # the two option bits mean front window only and caused by user input.
+        serial = ProcessSerialNumber()
+        status = self._api.GetProcessForPID(pid, ctypes.byref(serial))
+        if status != 0:
+            raise InputError(f"process {pid} has no macOS application identity ({status})")
+        status = self._api.SetFrontProcessWithOptions(ctypes.byref(serial), 3)
+        if status != 0:
+            raise InputError(f"macOS could not focus process {pid} ({status})")
+
+        # Process activation alone does not make an unbundled Cocoa window the
+        # key window. Accessibility is already a declared mac-release
+        # capability, so use that exact PID's first window to establish the
+        # same focused state a physical click would create.
+        attributes = {
+            name: self._cf.CFStringCreateWithCString(
+                None, name.encode("ascii"), 0x08000100
+            )
+            for name in ("AXFrontmost", "AXWindows", "AXMain", "AXFocused", "AXRaise")
+        }
+        if not all(attributes.values()):
+            for value in attributes.values():
+                if value:
+                    self._cf.CFRelease(value)
+            raise InputError("macOS could not create Accessibility attribute names")
+        application = self._api.AXUIElementCreateApplication(pid)
+        windows = c_void_p()
+        true_value = c_void_p.in_dll(self._cf, "kCFBooleanTrue").value
+        try:
+            if not application or not true_value:
+                raise InputError("macOS could not open the focus Accessibility bridge")
+            status = self._api.AXUIElementSetAttributeValue(
+                application, attributes["AXFrontmost"], true_value
+            )
+            if status != 0:
+                raise InputError(f"macOS could not make process {pid} frontmost ({status})")
+            status = self._api.AXUIElementCopyAttributeValue(
+                application, attributes["AXWindows"], ctypes.byref(windows)
+            )
+            if status != 0 or not windows.value:
+                raise InputError(f"macOS could not find process {pid}'s window ({status})")
+            if self._cf.CFArrayGetCount(windows) < 1:
+                raise InputError(f"macOS process {pid} has no Accessibility window")
+            window = self._cf.CFArrayGetValueAtIndex(windows, 0)
+            operations = (
+                ("main", self._api.AXUIElementSetAttributeValue(
+                    window, attributes["AXMain"], true_value
+                )),
+                ("focused", self._api.AXUIElementSetAttributeValue(
+                    window, attributes["AXFocused"], true_value
+                )),
+                ("raised", self._api.AXUIElementPerformAction(
+                    window, attributes["AXRaise"]
+                )),
+            )
+            for operation, status in operations:
+                if status != 0:
+                    raise InputError(
+                        f"macOS window for process {pid} was not {operation} ({status})"
+                    )
+            time.sleep(0.2)
+        finally:
+            if windows.value:
+                self._cf.CFRelease(windows)
+            if application:
+                self._cf.CFRelease(application)
+            for value in attributes.values():
+                self._cf.CFRelease(value)
 
     @staticmethod
     def clipboard(text: str) -> None:

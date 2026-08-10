@@ -143,7 +143,9 @@ class GpuDurationCaptureTests(unittest.TestCase):
             }
             stdout = io.StringIO()
             with mock.patch.object(capture, "capture", return_value=expected) as run:
-                with mock.patch("sys.stdout", stdout):
+                with mock.patch.object(capture.sys, "platform", "linux"), mock.patch(
+                    "sys.stdout", stdout
+                ):
                     exit_code = capture.main(
                         ["capture", "--output", str(output), "--", "true"]
                     )

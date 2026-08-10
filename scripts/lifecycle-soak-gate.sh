@@ -19,8 +19,9 @@ Environment:
   BBB_VANILLA_ROOT              Optional managed Vanilla cache root
   BBB_LIFECYCLE_SOAK_ARTIFACT_DIR  Result directory; default is fresh /tmp
 
-The caller must also provide DISPLAY or WAYLAND_DISPLAY. The gate never
-downloads Java, assets, credentials, or a server jar.
+Linux callers must also provide DISPLAY or WAYLAND_DISPLAY; macOS uses the
+logged-in graphical session. The gate never downloads Java, assets,
+credentials, or a server jar.
 EOF
 }
 

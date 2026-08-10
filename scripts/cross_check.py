@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Type-check the workspace for a second platform from the Linux dev host.
+"""Type-check every workspace crate for the maintained Apple target.
 
-bbb declares a Linux release row and supports macOS development, but this
-repository's gate runs on Linux only. Anything behind `cfg(target_os = "macos")`
-is therefore code the gate never compiles, and it rots silently.
+On Linux, anything behind `cfg(target_os = "macos")` is code the native build
+cannot compile. On macOS aarch64 this command is a full per-crate host check;
+on Linux it is the cross-host half of the two-row gate contract.
 
 `cargo check --target aarch64-apple-darwin` closes most of that gap without an
 Apple host. It cannot close all of it: some third-party build scripts compile C
@@ -12,11 +12,12 @@ every crate whose dependency closure reaches one of them stops at that build
 script before any bbb source is read.
 
 Which crates those are is measured, not modelled: this runs the check for every
-workspace member and classifies each failure. A failure whose cargo error names
-a known Apple-toolchain build script is reported as a blocked crate; anything
-else is a real type error and fails the command. That way a crate that gains or
-loses such a dependency re-partitions itself, and a genuine break can never be
-mistaken for a toolchain limit.
+workspace member and classifies each failure. A cross-host failure whose cargo
+error names a known Apple-toolchain build script is reported as a blocked
+crate; anything else is a real type error and fails the command. That way a
+crate that gains or loses such a dependency re-partitions itself, a genuine
+break can never be mistaken for a toolchain limit, and a Mac host naturally
+checks the whole workspace without a special case.
 """
 
 from __future__ import annotations

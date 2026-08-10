@@ -152,18 +152,13 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
   Windows means reimplementing that dispatch from Vanilla source.
-- macOS release validation is `deferred`: bbb is developed on macOS and Linux,
-  but no maintained macOS host/runner exists with the winit, wgpu, audio and
-  input fixtures the declared platform matrix needs. Reopen when such a host is
-  provisioned and can execute that matrix. What is attested without one is the
-  build, not the run, and the distinction is mechanical: `cargo check --target
-  aarch64-apple-darwin` (gate step `cross-check`, `scripts/cross_check.py`)
-  type-checks every workspace crate whose closure cross-compiles from Linux,
-  and `crates/bbb-platform-macos` exists so the AppKit calls are inside that
-  set rather than in the one crate no host here compiles. Three crates stop at
-  `ring` and one at `objc_exception`, both third-party build scripts that need
-  an Apple toolchain; that boundary is measured per run, not asserted. Do not
-  read a passing cross-check as release validation.
+- macOS aarch64 release validation is active: this maintained host satisfies
+  the former runner restart condition. Close the Cocoa/Metal/windowed external-
+  multiplayer row only after a fresh locked release build, native live/quit,
+  Quartz keyboard/pointer/clipboard, OpenAL/CoreAudio device, lifecycle and
+  focused receipts are assembled by the platform gate with an empty limitation
+  set. Linux `cross-check` remains build evidence for macOS code, not a
+  substitute for these host-run receipts.
 
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,

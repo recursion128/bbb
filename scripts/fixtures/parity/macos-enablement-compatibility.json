@@ -1,0 +1,32 @@
+{
+  "base_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+  "paths": [
+    {"base_sha256":"1e64983a1c20fa9d4cd50893c9b8b0e638427cb7473f43db3661f6cbc4bbbb68","current_sha256":"92b2effa2407de23e96879318c1d61c4af3c319c7298a429e76663fcb931cb8d","path":"crates/bbb-pack/src/openal_native.rs"},
+    {"base_sha256":"51ea6348309306ab5001f9192d060eeaa320e53b8fa4f7e6b5083e9143e4e8b6","current_sha256":"c930a49e8ba46f2a055003a20d25a8b6fef8740e0878701a4b15b702a3a993fc","path":"pyproject.toml"},
+    {"base_sha256":"6a11835a890e11f5d70896f11ec8dbd30b6b215eb5d91077cfd05556c28dcd9d","current_sha256":"9aec8c7a4fccbd2b3572e09c95be62b5242924912e979c47bf95a06cd01384ea","path":"scripts/bbb_tools/dev_cli.py"},
+    {"base_sha256":"6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7","current_sha256":"7f91b313cc16d3512dc3aa02392c29958bfebb5b5bb5b9443478c9111b7e38cc","path":"scripts/bbb_tools/execution/process.py"},
+    {"base_sha256":"b9bf2b8cdbbc3a848a354d0cc0dba54216be8c7e2e00c55bbc642c76eb139f4b","current_sha256":"6560e7725634c4ac32e2649d0e627b8595b06438b5016a9860e0f495746a7bf8","path":"scripts/bbb_tools/host/capabilities.py"},
+    {"base_sha256":"ef340e653a32509e5c4edcc10557a5e52f1a50897378e02ada0078301f82817e","current_sha256":"ae127aeea55ef37c95a0a5005023c575fb412f013de6012d24e3ecfc0e2e03de","path":"scripts/bbb_tools/input/cli.py"},
+    {"base_sha256":"6f7a1adec9506c3685686d60c811178f6724bb8996b00a197a9c338be03bfd7f","current_sha256":"c7628e49f0ad56915f36db2cd1fdf798c8400af63fd43f54d8c894bd29d251e6","path":"scripts/bbb_tools/input/macos_quartz.py"},
+    {"base_sha256":"fbb36593de0b5ba52676c91237a71ee817f2cc2457533a494da8ba92963a623b","current_sha256":"6fca5a51fbe287f6df50de6de1c2079ee2587968bf63949e8b13bf435f004b63","path":"scripts/bootstrap"},
+    {"base_sha256":"437ba55db7f865d5b9cec1891294b101abfabe88c09bd9198cefe8baf5f39395","current_sha256":"dceda982f07c74aca373f5ab385b7f2e86b24a7d2cbba8350edb5e2c3a5227a7","path":"scripts/cross_check.py"},
+    {"base_sha256":"4bf0ca321d8d6e3712a1c4a709ec28f07c53226616dcd304f4d420e843aa9613","current_sha256":"1c87d8cb3ed2f26d6986b4b2fa67049cb55c6cfbff4a91b4fcd770a3f782a8db","path":"scripts/file_drop_capability.py"},
+    {"base_sha256":"93840624610df514590418ac2fa55884c5a0b83d0377e3b6753c20a574c1b05b","current_sha256":"181f9a7d5bc5da180eaca4bb4078186a54fa8c9192c74c695d499b966c660559","path":"scripts/lifecycle-soak-gate.sh"},
+    {"base_sha256":"02109214048fd72bdc80f8f539eda37e66e0fed99e3be39afcdd2f660d574a82","current_sha256":"bd18f0e9cafe84e48287f011e5f0ee486641168e1da6d651c175c8dcd3f3440a","path":"scripts/platform-acceptance-gate.sh"},
+    {"base_sha256":"99e0439487c5b98b47d6cb2dd071dc362fcd7dc1a550b4486863ed6ef1054110","current_sha256":"76420874d2a45f91060cf87f1f4902966dcb2fd2a7100617a023505cd810acb3","path":"scripts/platform_acceptance.py"},
+    {"base_sha256":"293e338480484be5c96caa1979d10e69cee00349ab776d7ecae227e85d918ea2","current_sha256":"5d271f37ea3b26c8fe5efc658a09deb01ee48a4916db426e3e415536079d0b74","path":"scripts/playable-gate.sh"},
+    {"base_sha256":"1d14b07b5ce3597810d85e0044fb3ccc51ffe0aa2a31a74881e28c4e5cf12a25","current_sha256":"0e45367660d225b001f07d77ec1f5f5fdc4924bdeca1996320ca552b164bbbac","path":"scripts/playable_gate.py"},
+    {"base_sha256":"eb189cd25a956a938d8997447c037638493afebd8e633c28634a83e5d576a8a0","current_sha256":"8b60d6cd05e5f6671955be67be197d52f45f6d3f4437b941b60582c89175395a","path":"scripts/process"},
+    {"base_sha256":"606159fc73c2628ec523f7bd0f53a66f6bd357086adb0e3476cda1d41998ec2a","current_sha256":"292126415d1de2e67180812f676739dcac38e2afd8817dd7fc867efa80f2091e","path":"scripts/python"},
+    {"base_sha256":"bb28fdcaad08cec40c61f5ca4c809d49c740b669791b7e63978f4cf4002f90ab","current_sha256":"0f6cb7810bebccf65a6ecea0368216e3fee88e263e3a2c4ba4107d8fef345775","path":"scripts/tests/test_dev_chain_portability.py"},
+    {"base_sha256":"57dd8b76eed7543f5c0e4741fa9c5ac9ef81f4c501b60e374c227d1e5c5f6193","current_sha256":"22f83c408f5d6e9fbcd626029944e553e30e4364d30ee61d89958b5e686f4225","path":"scripts/tests/test_file_drop_capability.py"},
+    {"base_sha256":"c82773b40516b469b0a233a0a8963e2e6e185e7bd6197ef18583581edbdcb2a1","current_sha256":"ff0325cdc07e52cf8ef727511151aadd1bbe12fbb7f927a2ef17f1185f98592e","path":"scripts/tests/test_gpu_duration_capture.py"},
+    {"base_sha256":"9216d3b2217d91d9044e1805cfbf7de08f4c71cc282e503e0dad99748e3f357b","current_sha256":"76cea162624574bb57082bec10e0de30b627cce146b8f614fc8c946053384b9d","path":"scripts/tests/test_official_client_benchmark.py"},
+    {"base_sha256":"86cb70e9af1a89a7bf7d492a103f58903fdb2432cd8cee576cba550973461f14","current_sha256":"1c9ffd360ff7a3f93ac32abe206ec1a0cf517606954256cc164547e05abf7aad","path":"scripts/tests/test_platform_acceptance.py"},
+    {"base_sha256":"ad2b49292058e7d5ef180474447199d5738d03ae863a0b36f08f59e7d08e2b19","current_sha256":"fe04b0963812c111f588f336d3abb3243cd6512f1fa2013e161afcaaccabb01c","path":"scripts/tests/test_playable_gate.py"},
+    {"base_sha256":"ebb0b4d34a6bd7f3a258324085e1627081fd1160eddbe3563ac0905b69eafc59","current_sha256":"85db4a70428b5747c7aef81c18a9c4b087145b6d4314693ab064d66e51f4b61a","path":"scripts/tests/test_tooling_execution.py"},
+    {"base_sha256":null,"current_sha256":"10b26fdf5851c15de9e736cfe02d0a473ba394b639bafd9b4b6ebd57406245d7","path":"scripts/fixtures/platform-acceptance/macos-aarch64-cocoa-metal.json"},
+    {"base_sha256":null,"current_sha256":"09bfcf3f8886ad5893c02a8231119f85ec2e22d57a3bafefa8a5d854f367bb46","path":"scripts/tests/elf_fixture.py"}
+  ],
+  "schema": 1
+}

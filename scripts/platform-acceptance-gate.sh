@@ -5,7 +5,6 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo_root/scripts/gate-stamp-lib.sh"
 python_runner="$repo_root/scripts/python"
 helper="$repo_root/scripts/platform_acceptance.py"
-manifest="$repo_root/scripts/fixtures/platform-acceptance/linux-x86_64-wayland-vulkan.json"
 lifecycle_manifest="$repo_root/scripts/fixtures/lifecycle-soak/manifest-26.1.json"
 
 usage() {
@@ -17,7 +16,10 @@ Environment:
   BBB_PLAYABLE_JAVA             Explicit Java executable
   BBB_VANILLA_ROOT              Optional managed Vanilla cache root
   BBB_PLATFORM_ARTIFACT_DIR     Result directory; default is fresh /tmp
-  WAYLAND_DISPLAY               Maintained Wayland compositor socket
+  WAYLAND_DISPLAY               Maintained Wayland compositor socket (Linux row)
+
+The macOS row also requires Accessibility permission for the process running
+this gate so its Quartz input receipts cross the native event path.
 
 The gate requires a clean HEAD already recorded by the full gate. It performs
 a fresh locked release build and never downloads Java, assets or a server jar.
@@ -41,15 +43,34 @@ run_python() {
   "$python_runner" python "$helper" "$@"
 }
 
-# The only declared release row is Linux x86_64 / Wayland / Vulkan, and the
-# gate drives it from a uinput seat. Say so on another host rather than failing
-# somewhere inside the compositor bring-up.
 host_os=$(uname -s)
-if [ "$host_os" != "Linux" ]; then
-  echo "platform acceptance failed: the declared release row is Linux x86_64 / Wayland / Vulkan; this host is $host_os" >&2
-  echo "macOS and Linux development share the full gate (scripts/cargo-dev.sh gate); the seat-driven release gates do not" >&2
-  exit 2
-fi
+host_arch=$(uname -m)
+case "$host_os:$host_arch" in
+  Linux:x86_64)
+    manifest="$repo_root/scripts/fixtures/platform-acceptance/linux-x86_64-wayland-vulkan.json"
+    host_profile=linux-release
+    input_backend=linux-release
+    platform_label="Linux x86_64 Wayland/Vulkan"
+    artifact_prefix=bbb-linux-platform
+    report_name=last-linux-platform-report.json
+    log_name=linux-platform-log.tsv
+    stamp_name=last-linux-platform
+    ;;
+  Darwin:arm64)
+    manifest="$repo_root/scripts/fixtures/platform-acceptance/macos-aarch64-cocoa-metal.json"
+    host_profile=mac-release
+    input_backend=macos-quartz
+    platform_label="macOS aarch64 Cocoa/Metal"
+    artifact_prefix=bbb-macos-platform
+    report_name=last-macos-platform-report.json
+    log_name=macos-platform-log.tsv
+    stamp_name=last-macos-platform
+    ;;
+  *)
+    echo "platform acceptance failed: declared rows are Linux x86_64 and macOS aarch64; this host is $host_os $host_arch" >&2
+    exit 2
+    ;;
+esac
 
 if [ -n "$(git -C "$repo_root" status --porcelain)" ]; then
   echo "platform acceptance failed: worktree must be clean" >&2
@@ -75,11 +96,7 @@ if ! git -C "$repo_root" merge-base --is-ancestor "$lifecycle_head" "$start_head
   echo "platform acceptance failed: lifecycle-soak stamp is not a HEAD ancestor" >&2
   exit 2
 fi
-if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
-  echo "platform acceptance failed: host must be Linux x86_64" >&2
-  exit 2
-fi
-if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+if [ "$host_os" = Linux ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
   echo "platform acceptance failed: WAYLAND_DISPLAY is required" >&2
   exit 2
 fi
@@ -88,13 +105,13 @@ if ! vanilla_root=$("$repo_root/scripts/vanilla" path 26.1 --kind root); then
   exit 2
 fi
 export BBB_VANILLA_ROOT="$vanilla_root"
-export BBB_PLAYABLE_INPUT_BACKEND=linux-release
+export BBB_PLAYABLE_INPUT_BACKEND="$input_backend"
 if [ -z "${BBB_PLAYABLE_JAVA:-}" ]; then
   BBB_PLAYABLE_JAVA=$("$repo_root/scripts/vanilla" path 26.1 --kind java)
   export BBB_PLAYABLE_JAVA
 fi
-if ! "$repo_root/scripts/dev" doctor --profile linux-release; then
-  echo "platform acceptance failed: Linux release host capabilities are incomplete" >&2
+if ! "$repo_root/scripts/dev" doctor --profile "$host_profile"; then
+  echo "platform acceptance failed: $platform_label host capabilities are incomplete" >&2
   exit 2
 fi
 if [ "${BBB_PLAYABLE_ACCEPT_EULA:-0}" != 1 ]; then
@@ -106,7 +123,7 @@ run_python validate-manifest --manifest "$manifest"
 
 artifact_dir=${BBB_PLATFORM_ARTIFACT_DIR:-}
 if [ -z "$artifact_dir" ]; then
-  artifact_dir=$(mktemp -d "${TMPDIR:-/tmp}/bbb-linux-platform.XXXXXX")
+  artifact_dir=$(mktemp -d "${TMPDIR:-/tmp}/${artifact_prefix}.XXXXXX")
 else
   mkdir -p "$artifact_dir"
   artifact_dir=$(CDPATH= cd -- "$artifact_dir" && pwd)
@@ -156,14 +173,26 @@ if ! "$repo_root/scripts/playable-gate.sh" fixture >"$fixture_log" 2>&1; then
   exit 1
 fi
 
-echo "platform acceptance: release live Wayland/Vulkan session: $playable_dir"
-if ! DISPLAY= \
-  RUST_LOG=bbb_net=debug,bbb_native=info,bbb_control=info,bbb_renderer=info \
-  BBB_PLAYABLE_CLIENT_BIN="$release_bin" \
-  BBB_PLAYABLE_ARTIFACT_DIR="$playable_dir" \
-  BBB_PLAYABLE_TERMINATION_MODE=quit \
-  BBB_LIFECYCLE_SOAK_MANIFEST="$lifecycle_manifest" \
-  "$repo_root/scripts/playable-gate.sh" live
+echo "platform acceptance: release live $platform_label session: $playable_dir"
+export RUST_LOG=bbb_net=debug,bbb_native=info,bbb_control=info,bbb_renderer=info
+export BBB_PLAYABLE_CLIENT_BIN="$release_bin"
+export BBB_PLAYABLE_ARTIFACT_DIR="$playable_dir"
+export BBB_PLAYABLE_TERMINATION_MODE=quit
+export BBB_LIFECYCLE_SOAK_MANIFEST="$lifecycle_manifest"
+if [ "$host_os" = Linux ]; then
+  if DISPLAY= "$repo_root/scripts/playable-gate.sh" live; then
+    live_status=0
+  else
+    live_status=$?
+  fi
+else
+  if "$repo_root/scripts/playable-gate.sh" live; then
+    live_status=0
+  else
+    live_status=$?
+  fi
+fi
+if [ "$live_status" -ne 0 ]
 then
   echo "platform acceptance failed: release live playable" >&2
   echo "platform acceptance evidence: $playable_dir" >&2
@@ -187,7 +216,7 @@ then
   echo "platform acceptance failed: repository changed during the gate" >&2
   exit 1
 fi
-cp "$report" "$stamp_dir/last-linux-platform-report.json"
+cp "$report" "$stamp_dir/$report_name"
 (cd "$repo_root" && record_gate_stamp \
-  linux-platform-log.tsv last-linux-platform passed "report:$report")
+  "$log_name" "$stamp_name" passed "report:$report")
 echo "platform acceptance: report: $report"

@@ -9,16 +9,20 @@ from types import SimpleNamespace
 import unittest
 from unittest import mock
 
+from elf_fixture import minimal_elf64
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from parity_acceptance import (
     AcceptanceError,
+    MACOS_ENABLEMENT_COMPATIBILITY_PATH,
     artifact_binary_provenance,
     artifact_scenario_ids,
     build_report,
     capture_contract_identity,
+    capture_input_paths,
     change_impact_plan,
     external_artifact,
     external_artifact_ids,
@@ -34,6 +38,7 @@ from parity_acceptance import (
     reuse_external_artifact_projection,
     validate_report,
     validation_classes,
+    verified_macos_enablement_paths,
 )
 from bbb_tools.audio_receipt import (
     ALSA_DMIX_IPC_KEY,
@@ -788,6 +793,10 @@ class ParityAcceptanceTests(unittest.TestCase):
         )
 
     def make_fixture(self, root: Path) -> tuple[Path, Path]:
+        # Darwin exposes the temporary directory through both /var and
+        # /private/var.  Keep fixture paths canonical so Path.relative_to()
+        # sees the same root as resolved Markdown links.
+        root = root.resolve()
         repo = root / "repo"
         source_root = root / "sources"
         matrix = repo / "docs/wiki/parity/vanilla-26.1-matrix.md"
@@ -946,6 +955,11 @@ mod tests {
             artifact_ids = set(external_artifact_ids(row))
             for validation_class, artifact_id in class_to_artifact.items():
                 if validation_class in classes:
+                    if (
+                        row["mechanism_id"] == "platform-macos-release"
+                        and artifact_id == "linux-platform"
+                    ):
+                        artifact_id = "macos-platform"
                     self.assertIn(
                         artifact_id,
                         artifact_ids,
@@ -959,6 +973,18 @@ mod tests {
                     {"visual-workload", "draw-evidence"}.issubset(classes),
                     row["mechanism_id"],
                 )
+
+    def test_platform_capture_inputs_are_target_specific(self):
+        macos = capture_input_paths(
+            "platform", {"row": {"target_os": "macos"}}
+        )
+        linux = capture_input_paths(
+            "platform", {"row": {"target_os": "linux"}}
+        )
+        self.assertIn("macos-aarch64-cocoa-metal.json", macos[0])
+        self.assertNotIn("linux-x86_64-wayland-vulkan.json", macos)
+        self.assertIn("linux-x86_64-wayland-vulkan.json", linux[0])
+        self.assertNotIn("macos-aarch64-cocoa-metal.json", linux)
 
     def test_report_derives_matrix_rows_and_reverse_evidence_mappings(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1156,6 +1182,7 @@ mod tests {
             repo, source_root = self.make_fixture(Path(temporary))
             report = self.build_fixture_report(repo, source_root)
             plan = change_impact_plan(
+                repo,
                 report["mechanisms"],
                 [
                     "README.md",
@@ -1192,6 +1219,7 @@ mod tests {
                 "visual-workload"
             )
             fixture_plan = change_impact_plan(
+                repo,
                 visual_records,
                 ["scripts/fixtures/official-client-benchmark/replay-26.1.json"],
                 self.commit,
@@ -1204,6 +1232,7 @@ mod tests {
                 ["protocol-state-receipt", "visual-workload", "release-identity"]
             )
             central_owner_plan = change_impact_plan(
+                repo,
                 central_owner_records,
                 ["crates/bbb-world/src/client.rs"],
                 self.commit,
@@ -1221,6 +1250,7 @@ mod tests {
             gpu_records[0]["required_validation_classes"] = ["visual-workload"]
             gpu_records[1]["required_validation_classes"] = ["performance-abba"]
             gpu_plan = change_impact_plan(
+                repo,
                 gpu_records,
                 ["scripts/gpu_duration_capture.py"],
                 self.commit,
@@ -1247,6 +1277,7 @@ mod tests {
                 }
             ]
             test_only_plan = change_impact_plan(
+                repo,
                 test_only_records,
                 ["scripts/tests/test_fixture.py"],
                 self.commit,
@@ -1257,6 +1288,7 @@ mod tests {
             )
 
             metadata_plan = change_impact_plan(
+                repo,
                 report["mechanisms"],
                 ["docs/wiki/parity/vanilla-26.1-matrix.md"],
                 self.commit,
@@ -1272,6 +1304,7 @@ mod tests {
             )
 
             artifact_input_plan = change_impact_plan(
+                repo,
                 report["mechanisms"],
                 ["scripts/generate-fixture-evidence.py"],
                 self.commit,
@@ -1308,6 +1341,7 @@ mod tests {
                 "vanilla-owner",
             ]
             capture_tool_plan = change_impact_plan(
+                repo,
                 platform_records,
                 ["scripts/seat_inject.py"],
                 self.commit,
@@ -1328,6 +1362,63 @@ mod tests {
                 capture_tool["required_validation_classes"],
                 ["full-gate", "resource-platform-receipt"],
             )
+
+    def test_macos_enablement_scope_is_content_addressed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = Path(temporary).resolve()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"],
+                cwd=repo,
+                check=True,
+            )
+            tool = repo / "scripts/macos_tool.py"
+            tool.parent.mkdir(parents=True)
+            tool.write_text("baseline\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-qm", "baseline"], cwd=repo, check=True)
+            base = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.strip()
+            base_sha256 = hashlib.sha256(tool.read_bytes()).hexdigest()
+            tool.write_text("macos-only\n", encoding="utf-8")
+            current_sha256 = hashlib.sha256(tool.read_bytes()).hexdigest()
+            manifest = repo / MACOS_ENABLEMENT_COMPATIBILITY_PATH
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "base_commit": base,
+                        "paths": [
+                            {
+                                "path": "scripts/macos_tool.py",
+                                "base_sha256": base_sha256,
+                                "current_sha256": current_sha256,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            verified_macos_enablement_paths.cache_clear()
+            self.assertEqual(
+                verified_macos_enablement_paths(str(repo)),
+                frozenset({"scripts/macos_tool.py"}),
+            )
+            tool.write_text("later-edit\n", encoding="utf-8")
+            verified_macos_enablement_paths.cache_clear()
+            self.assertEqual(verified_macos_enablement_paths(str(repo)), frozenset())
 
     def test_repo_artifact_generator_inputs_drive_scoped_plan_and_lint(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -1360,6 +1451,7 @@ mod tests {
                 artifact["generator_inputs"], inventory["generator_inputs"]
             )
             plan = change_impact_plan(
+                repo,
                 report["mechanisms"],
                 ["scripts/generate-inventory.py"],
                 self.commit,
@@ -1744,7 +1836,7 @@ Matrix route: `fixture-not-needed`
             ).stdout.strip()
             capture_binary = root / "bbb-capture"
             evidence_binary = root / "bbb-evidence"
-            capture_binary.write_bytes(Path(sys.executable).read_bytes())
+            capture_binary.write_bytes(minimal_elf64())
             evidence_binary.write_bytes(
                 capture_binary.read_bytes() + b"non-loaded-linker-metadata"
             )

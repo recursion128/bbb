@@ -1,8 +1,8 @@
 # macOS 与 Linux 开发
 
-bbb 在 macOS 与 Linux 上开发，只在 Linux 上发布验收。这两件事的边界是本页的
-全部内容：**哪些命令两个平台都跑，哪些只跑在声明发布行的 Linux 主机上，以及
-Linux 主机如何为它编译不了的那部分 macOS 代码负责**。
+bbb 在 macOS 与 Linux 上开发并维护两条发布验收行：Linux x86_64 / Wayland / Vulkan
+与 macOS aarch64 / Cocoa / Metal。跨平台构建检查可以提前发现另一平台的类型错误，但
+正式 platform receipt 必须由对应主机的真实窗口、GPU、音频与输入链路产生。
 
 **Windows 按用户裁决为非目标，平台面已整体删除**：`PlatformTarget::Windows`
 及其 URI/路径打开与 `%APPDATA%` store 根、`WindowIconTarget::Windows` 与
@@ -30,7 +30,7 @@ window icon 走 X11 路径），只是不声明 X11 发布行。
 | `rustup` | 安装锁定 Rust 工具链与 macOS cross-check target | 官方 rustup installer |
 | `git` | 版本控制与门禁 stamp | Xcode Command Line Tools |
 | `rg` | docs lint 的模式检索 | `brew install ripgrep` |
-| `uv` 0.11.16 | 安装锁定 Python、同步根环境并运行全部 Python 工具 | 安装官方 0.11.16 release |
+| `uv` 0.12.3 | 安装锁定 Python、同步根环境并运行全部 Python 工具 | 安装官方 0.12.3 release |
 | `java` 25 | 首次准备 Vanilla 26.1 workspace | 安装 JDK 25 并加入 `PATH` |
 
 仓库不再要求系统 Python。首次 clone 后运行 `scripts/bootstrap`；它按根
@@ -41,8 +41,8 @@ window icon 走 X11 路径），只是不声明 X11 发布行。
 `scripts/tests/test_dev_chain_portability.py` 守住这张表：它拒绝开发链路脚本里的
 GNU-only 写法（`readlink -f`、`sha256sum`、`stat -c`、`sed -i`、`grep -P`、`nproc` 等）、
 `/bin/sh` 脚本里的 bashism（macOS 的 `/bin/sh` 不是 bash），以及一组常被顺手引入的
-表外工具（`curl`、`wget`、`jq`、`docker`）。这些差异只会在 macOS 上暴露，而门禁不跑在
-macOS 上——所以由这条测试代替 macOS 主机发现它们。
+表外工具（`curl`、`wget`、`jq`、`docker`）。结构测试让两个平台在进入昂贵 live gate 前
+就能归因脚本移植错误，Mac full/platform gate 再覆盖真实 BSD userland 与 GUI 路径。
 
 ## 两个平台都跑的
 
@@ -57,31 +57,39 @@ macOS 上——所以由这条测试代替 macOS 主机发现它们。
 
 target 目录约定（`/tmp/bbb-target-<name>`）在 macOS 上同样成立。
 
-## 只跑在 Linux 发布主机上的
+## 声明发布主机才跑的
 
-声明发布行是 Linux x86_64 / Wayland / Vulkan，它的 receipts 由一条真实
-`wl_seat` 链路产生（`uinput` → libinput → sway）。这些接口在 macOS 上不存在，
-相关脚本会指名主机后拒绝，而不是在缺失的内核接口上失败：
+`scripts/platform-acceptance-gate.sh` 按 `uname -s/-m` 选择且只接受两条精确行：
 
-- `scripts/platform-acceptance-gate.sh`：发布行验收。
-- `scripts/input --backend linux-release`：发布 seat 的稳定入口；底层持久 uinput
-  设备与 compositor adapter 是 Linux release 专用。
-- `scripts/python python scripts/gpu_duration_capture.py preflight|capture`：需要 tracefs 与 perf；
-  `summarize` 只读既有 capture，与主机无关，不受限制。
+- Linux x86_64 使用 Wayland/Vulkan，输入 receipt 来自持久
+  `uinput` → libinput → sway → `wl_seat`，并额外验证 compositor DPI/fullscreen 与 fcitx5 IME。
+- macOS aarch64 使用 Cocoa/Metal，输入 receipt 来自受 Accessibility 授权的 CoreGraphics；
+  按最终 client PID 聚焦 Accessibility window，验证服务端确认的键盘/按钮、锁定光标相对
+  转向和 Command+V。音频必须从 Vanilla manifest 锁定的 arm64 OpenAL dylib 打开真实
+  CoreAudio device，并具有 native capacity 与成功 command submission receipt。
 
-`scripts/playable-gate.sh` 与 `scripts/lifecycle-soak-gate.sh` 不按主机拒绝：
-它们本来就按前置条件（server jar、Java、显示环境）逐项降级并给出归因。
+其它 OS/arch 会在 build 前按名称拒绝。`scripts/input --backend linux-release` 与
+`scripts/input --backend macos-quartz` 分别拥有两条输入路径；Mac gate 的调用进程必须先在
+System Settings → Privacy & Security → Accessibility 获得授权。
+
+`scripts/python python scripts/gpu_duration_capture.py preflight|capture` 仍只在 Linux 运行，
+因为它需要 tracefs 与 perf；`summarize` 只读既有 capture，与主机无关。
+
+`scripts/playable-gate.sh` 与 `scripts/lifecycle-soak-gate.sh` 在两平台都可 live：Linux 要求
+`DISPLAY`/`WAYLAND_DISPLAY`，macOS 使用当前登录 GUI session。playable 的普通 synthetic
+路径不冒充平台输入证据；只有显式 backend 才生成可归因 input receipt。
 
 ## 第二平台 cross-check
 
-Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此会无声腐坏。
+Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。
 `scripts/cross_check.py`（`scripts/cargo-dev.sh cross-check`）用
 `cargo check --target aarch64-apple-darwin` 把这个缺口关到能关的程度，作为 gate
 的第二平台步骤在 crate 源码或 manifest 改动时运行。Linux 开发机需要一次
 `rustup target add aarch64-apple-darwin`；target 缺失时该步归因跳过而不是假装通过，
 所以缺 target 的机器不提供这份证据。`--target` 可换其它 triple（如 Intel Mac 的
-`x86_64-apple-darwin`）。反方向不成立：macOS 主机上该步退化为本机检查，Linux 专有
-分支在 macOS 上仍然没有覆盖，Linux 是唯一发布验收主机这一点没有变。
+`x86_64-apple-darwin`）。macOS aarch64 主机运行默认 target 时，11 个 workspace crate
+全部接受逐 crate 本机检查；Linux 专有分支由 Linux full/platform gate 负责，Mac 本机
+检查不声称替代另一发布行。
 
 它关不掉全部：一些第三方 build script 要为目标平台编译 C 或 Objective-C，需要
 Linux 主机没有的 Apple 工具链，凡是依赖闭包碰到它们的 crate 都会停在那个 build
@@ -91,15 +99,15 @@ script（`ring`、`objc_exception`、`coreaudio-sys`）的失败算作受阻，�
 类型错误并让命令失败。于是 crate 增减依赖会自动重新分类，真实错误也不会被误当作
 工具链边界。
 
-当前分区：`bbb-audio`、`bbb-control`、`bbb-pack`、`bbb-platform-macos`、
+Linux cross-host 的当前分区：`bbb-audio`、`bbb-control`、`bbb-pack`、`bbb-platform-macos`、
 `bbb-protocol`、`bbb-render-types`、`bbb-world` 受检；`bbb-item-model`、
 `bbb-native`、`bbb-net` 受阻于 `ring`，`bbb-renderer` 受阻于 `objc_exception`。
 
 ## macOS 系统调用的归属
 
-`bbb-native` 不可 cross-check，所以留在它里面的任何 AppKit 调用都是本仓库任何
-主机都不编译的代码。这些调用因此收敛在 `crates/bbb-platform-macos`——它的依赖
-闭包是纯 Rust，Linux 上真的会编译。约束由两条守卫维持：`cross_check.py` 在该
+Linux cross-host 检查会在 `bbb-native` 的第三方闭包处受阻，所以留在它里面的 AppKit
+调用无法由 Linux gate 编译。这些调用因此收敛在 `crates/bbb-platform-macos`——它的依赖
+闭包是纯 Rust，Linux 上真的会编译，Mac 本机则连同 `bbb-native` 全部编译。约束由两条守卫维持：`cross_check.py` 在该
 crate 掉出受检集合时报错，`test_dev_chain_portability.py` 的同族测试拒绝
 `bbb-native` 里出现 `objc2`。
 

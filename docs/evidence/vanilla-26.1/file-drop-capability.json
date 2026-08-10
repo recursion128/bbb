@@ -180,7 +180,7 @@
     },
     {
       "path": "scripts/file_drop_capability.py",
-      "sha256": "4bf0ca321d8d6e3712a1c4a709ec28f07c53226616dcd304f4d420e843aa9613"
+      "sha256": "1c87d8cb3ed2f26d6986b4b2fa67049cb55c6cfbff4a91b4fcd770a3f782a8db"
     },
     {
       "path": "scripts/generate-file-drop-capability.py",

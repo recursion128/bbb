@@ -27,6 +27,9 @@ DEV_CHAIN_SHELL_SCRIPTS = (
     "docs-lint.sh",
     "gate-stamp-lib.sh",
     "install-hooks.sh",
+    "lifecycle-soak-gate.sh",
+    "platform-acceptance-gate.sh",
+    "playable-gate.sh",
     "python",
     "vanilla-source-tools.sh",
     "worker-worktree.sh",
@@ -42,7 +45,6 @@ LINUX_ONLY_SCRIPTS = {
     "seat_device.py": "require_linux_host",
     "seat_inject.py": "require_linux_host",
     "gpu_duration_capture.py": 'sys.platform != "linux"',
-    "platform-acceptance-gate.sh": 'host_os" != "Linux',
 }
 
 # Constructs whose GNU spelling is not what BSD/macOS userland accepts. Each
@@ -258,7 +260,7 @@ class DevChainToolTests(unittest.TestCase):
 
 class PythonToolchainContractTests(unittest.TestCase):
     PINNED_PYTHON = "3.12.13"
-    PINNED_UV = "0.11.16"
+    PINNED_UV = "0.12.3"
 
     def test_root_project_pins_the_interpreter_uv_and_dependencies(self) -> None:
         self.assertEqual(
@@ -282,10 +284,16 @@ class PythonToolchainContractTests(unittest.TestCase):
         self.assertIn('if [ ! -x "$repo_root/.venv/bin/python" ]', runner)
 
     def test_stable_python_entrypoints_share_the_runner(self) -> None:
-        for name in ("dev", "input", "process", "vanilla", "vanilla-source-tools.sh"):
+        for name in ("dev", "input", "vanilla", "vanilla-source-tools.sh"):
             source = (SCRIPTS / name).read_text(encoding="utf-8")
             with self.subTest(entrypoint=name):
                 self.assertIn("scripts/python", source)
+
+    def test_process_supervisor_bypasses_uv_to_preserve_the_exec_pid(self) -> None:
+        source = (SCRIPTS / "process").read_text(encoding="utf-8")
+        self.assertIn('python="$repo_root/.venv/bin/python"', source)
+        self.assertIn("bbb_tools.execution.cli", source)
+        self.assertNotIn('exec "$repo_root/scripts/python"', source)
 
     def test_bootstrap_owns_every_networked_toolchain_prepare(self) -> None:
         bootstrap = (SCRIPTS / "bootstrap").read_text(encoding="utf-8")

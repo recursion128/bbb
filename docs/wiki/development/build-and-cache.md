@@ -21,10 +21,14 @@ Python 开发工具由仓库根的 `.python-version`、`pyproject.toml` 与 `uv.
 锁定；`.venv/` 是 ignored 的工作树本地 cache。`scripts/bootstrap` 是唯一允许下载
 Python 解释器和 Python/Rust 依赖的初始化入口；Rust 只预取本机 target 与既有
 `aarch64-apple-darwin` cross-check target，不把非目标 Windows 依赖混入 cache 合同。
-它默认也准备锁定的 Vanilla 26.1 workspace。日常命令统一经过 `scripts/python`，
+它默认也准备锁定的 Vanilla 26.1 workspace。Cargo metadata 生成器必须传当前 rustc host 的
+`--filter-platform`，否则 fresh Mac bootstrap 会被不相关 Linux/Android target 依赖阻断。
+日常命令统一经过 `scripts/python`，
 使用 exact uv-managed interpreter、
 `--offline --locked --exact`，因此不会在 lint、测试、生成器或门禁中隐式联网、换
-解释器、改锁或保留未声明包。`scripts/vanilla-source-tools.sh` 只作为旧生成物中命令
+解释器、改锁或保留未声明包。进程监管入口 `scripts/process` 是唯一例外：它直接 exec
+同一个已准备 venv 的解释器以保持调用 PID、最终进程 PID 与 process group identity 一致。
+`scripts/vanilla-source-tools.sh` 只作为旧生成物中命令
 注记的兼容入口，不拥有第二套环境。
 
 ## 缓存与清理

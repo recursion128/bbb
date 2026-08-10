@@ -12,7 +12,7 @@ scripts/
   vanilla                       # 稳定 CLI，只有 prepare 可联网
   dev                           # doctor/lint/test/generate
   process                       # POSIX process-group supervisor
-  input                         # macOS dev / Linux release input adapter
+  input                         # macOS / Linux release input adapter
   bbb_tools/
     vanilla/                    # workspace/lock/download/prepare/verify/clean
     execution/                  # monotonic deadline 与进程监管
@@ -76,19 +76,20 @@ library、4,749 个 asset object 与源码树；clean 只删除一个明确版�
 
 ## 平台能力与输入边界
 
-| 能力 | macOS 开发 | Linux 开发 | Linux release |
+| 能力 | macOS aarch64 | Linux 开发 | Linux x86_64 release |
 | --- | --- | --- | --- |
 | Vanilla prepare/verify/generator | 是 | 是 | 是 |
 | Ruff/pytest/full gate | 是 | 是 | 是 |
-| 本机 input smoke | CoreGraphics；需 Accessibility 授权 | `ydotoold` 可选 | 不作 release 证据 |
-| 真实 seat/display/IME receipt | 否 | 否 | 持久 uinput → libinput → sway → `wl_seat` |
-| Vulkan/Wayland release acceptance | 否 | 否 | 是 |
+| 可归因平台 input | Quartz + Accessibility | `ydotoold` 可选 smoke | 持久 uinput → libinput → sway → `wl_seat` |
+| 平台专有额外 receipt | Cocoa/Metal/OpenAL/CoreAudio | 否 | Wayland DPI/fullscreen + fcitx5 IME |
+| release acceptance | 是 | 否 | 是 |
 
-`scripts/dev doctor --profile portable|mac-dev|mac-input|linux-release` 把 host facts 与
+`scripts/dev doctor --profile portable|mac-dev|mac-input|mac-release|linux-release` 把 host facts 与
 profile policy 分开报告。libei 是成熟的 portal/remote-desktop 注入协议，适合桌面授权
 会话，但当前 release 合同还要求持久物理扫描码、相对指针、seat capability 和 compositor
 display/IME 控制，因此不把“检测到 libei”误当作 release receipt。Linux release 使用
-repo-owned `linux-release` backend；macOS 只用于开发 smoke，不声称替代 Linux 验收。
+repo-owned `linux-release` backend；macOS release 使用 repo-owned `macos-quartz` backend，
+且不声称替代 Linux 的 compositor/display/IME 验收。
 
 ## 验证、迁移结果与回滚点
 
@@ -101,7 +102,7 @@ scripts/dev generate --check all
 scripts/vanilla verify 26.1
 scripts/cargo-dev.sh gate
 scripts/playable-gate.sh fixture
-scripts/platform-acceptance-gate.sh       # 仅声明的 Linux release host
+scripts/platform-acceptance-gate.sh       # 声明的 Linux x86_64 或 macOS aarch64 host
 ```
 
 迁移已按可回滚 checkpoint 完成：先建立新 resolver，随后导入 prepare/verify；在 Linux

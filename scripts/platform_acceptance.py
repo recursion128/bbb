@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and assemble the Linux release/platform acceptance report."""
+"""Validate and assemble the declared Linux or macOS platform report."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-EXPECTED_ROW = {
+LINUX_ROW = {
     "target_os": "linux",
     "target_arch": "x86_64",
     "window_backend": "wayland",
@@ -20,6 +20,17 @@ EXPECTED_ROW = {
     "presentation": "windowed",
     "client_scope": "external-multiplayer",
 }
+MACOS_ROW = {
+    "target_os": "macos",
+    "target_arch": "aarch64",
+    "window_backend": "cocoa",
+    "gpu_backend": "metal",
+    "presentation": "windowed",
+    "client_scope": "external-multiplayer",
+}
+EXPECTED_ROWS = (LINUX_ROW, MACOS_ROW)
+# Compatibility name for Linux-specific callers and fixtures.
+EXPECTED_ROW = LINUX_ROW
 EXPECTED_TESTS = [
     "local_input_projection_includes_focus_keys_and_mouse_delta",
     "saturated_mailbox_never_drops_key_mouse_or_control_releases",
@@ -89,9 +100,9 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     )
     if manifest["schema"] != 1:
         raise PlatformFailure("manifest.schema must be 1")
-    if manifest["row"] != EXPECTED_ROW:
+    if manifest["row"] not in EXPECTED_ROWS:
         raise PlatformFailure(
-            f"manifest.row must equal the declared supported row {EXPECTED_ROW!r}"
+            f"manifest.row must equal a declared supported row {EXPECTED_ROWS!r}"
         )
     if manifest["release_profile"] != "release":
         raise PlatformFailure("manifest.release_profile must be release")
@@ -121,7 +132,9 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         raise PlatformFailure("manifest limitations differ from the fixed bounded set")
 
 
-def validate_build_info(info: dict[str, Any]) -> None:
+def validate_build_info(
+    info: dict[str, Any], row: dict[str, str] = EXPECTED_ROW
+) -> None:
     expected = {
         "schema": 1,
         "client": "bbb-native",
@@ -129,8 +142,8 @@ def validate_build_info(info: dict[str, Any]) -> None:
         "protocol_version": 775,
         "resource_pack_format": "84.0",
         "data_pack_format": "101.1",
-        "target_os": "linux",
-        "target_arch": "x86_64",
+        "target_os": row["target_os"],
+        "target_arch": row["target_arch"],
     }
     for field, value in expected.items():
         if info.get(field) != value:
@@ -215,7 +228,124 @@ def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
+def validate_macos_input_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Require real CoreGraphics events to reach canonical gameplay state."""
+
+    seat = evidence.get("seat_input")
+    if not isinstance(seat, dict):
+        raise PlatformFailure("macOS playable evidence carries no Quartz input receipts")
+    if seat.get("startup_focus_source") != "compositor":
+        raise PlatformFailure("Quartz receipts must show native window focus")
+    if seat.get("control_input_writes") != 0:
+        raise PlatformFailure("Quartz receipts are void after synthetic input writes")
+    handshake = seat.get("handshake")
+    probe = handshake.get("injector_probe") if isinstance(handshake, dict) else None
+    if not isinstance(probe, dict):
+        raise PlatformFailure("Quartz receipts lack an input-backend probe")
+    if (
+        probe.get("backend") != "macos-quartz"
+        or probe.get("driver") != "coregraphics"
+        or probe.get("accessibility_trusted") is not True
+    ):
+        raise PlatformFailure("Quartz receipts do not prove trusted CoreGraphics input")
+    source_identity = probe.get("input_backend_source_sha256")
+    if not isinstance(source_identity, str) or re.fullmatch(
+        r"[0-9a-f]{64}", source_identity
+    ) is None:
+        raise PlatformFailure("Quartz receipts lack the loaded backend source identity")
+    from_slot, to_slot = seat.get("from_slot"), seat.get("to_slot")
+    if not isinstance(from_slot, int) or not isinstance(to_slot, int) or from_slot == to_slot:
+        raise PlatformFailure("Quartz keyboard input did not change the selected slot")
+    if seat.get("server_confirmed") is not True:
+        raise PlatformFailure("Quartz keyboard input was not server-confirmed")
+    held_slot_delta = seat.get("held_slot_commands_delta")
+    if (
+        not isinstance(held_slot_delta, int)
+        or isinstance(held_slot_delta, bool)
+        or held_slot_delta < 1
+    ):
+        raise PlatformFailure("Quartz keyboard input produced no held-slot command")
+    swings = seat.get("swing_commands_delta")
+    if not isinstance(swings, int) or isinstance(swings, bool) or swings < 1:
+        raise PlatformFailure("Quartz pointer button did not produce a canonical swing")
+    yaw = seat.get("yaw_delta_degrees")
+    if not isinstance(yaw, (int, float)) or abs(float(yaw)) < SEAT_MIN_YAW_DEGREES:
+        raise PlatformFailure("Quartz pointer motion did not turn the canonical view")
+    clipboard = seat.get("clipboard")
+    if not isinstance(clipboard, dict):
+        raise PlatformFailure("Quartz receipts carry no clipboard round trip")
+    marker, pasted = clipboard.get("marker"), clipboard.get("pasted_into_chat_draft")
+    if not isinstance(marker, str) or not isinstance(pasted, str) or marker not in pasted:
+        raise PlatformFailure("the macOS clipboard marker never reached the chat draft")
+    return {
+        "backend": "macos-quartz",
+        "driver": "coregraphics",
+        "input_backend_source_sha256": source_identity,
+        "keyboard": {
+            "from_slot": from_slot,
+            "to_slot": to_slot,
+            "held_slot_commands_delta": held_slot_delta,
+            "server_confirmed": True,
+        },
+        "pointer": {
+            "swing_commands_delta": swings,
+            "yaw_delta_degrees": float(yaw),
+        },
+        "clipboard": {"marker": marker},
+    }
+
+
+def validate_macos_audio_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Require the live release to open and inventory a native audio device."""
+
+    snapshot = evidence.get("world_snapshot")
+    audio = snapshot.get("audio") if isinstance(snapshot, dict) else None
+    if not isinstance(audio, dict):
+        raise PlatformFailure("macOS playable evidence carries no audio counters")
+    if audio.get("enabled") is not True:
+        raise PlatformFailure(
+            f"macOS native audio is disabled: {audio.get('disabled_reason')!r}"
+        )
+    current = audio.get("current_device")
+    default = audio.get("default_device")
+    count = audio.get("available_device_count")
+    if not isinstance(current, str) or not current:
+        raise PlatformFailure("macOS audio receipt does not name the opened device")
+    if not isinstance(default, str) or not default:
+        raise PlatformFailure("macOS audio receipt does not name the default device")
+    if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+        raise PlatformFailure("macOS audio receipt found no available playback device")
+    if audio.get("device_query_failures") != 0 or audio.get("last_device_error") is not None:
+        raise PlatformFailure("macOS audio device inventory reported an error")
+    if audio.get("sound_channel_capacity_origin") != "openal-alc-mono-sources":
+        raise PlatformFailure("macOS audio capacity was not queried from native OpenAL")
+    static_capacity = audio.get("sound_static_channels_capacity")
+    streaming_capacity = audio.get("sound_streaming_channels_capacity")
+    commands = audio.get("commands_submitted")
+    for name, value in (
+        ("sound_static_channels_capacity", static_capacity),
+        ("sound_streaming_channels_capacity", streaming_capacity),
+        ("commands_submitted", commands),
+    ):
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise PlatformFailure(f"macOS audio {name} must be positive")
+    if audio.get("submit_failures") != 0 or audio.get("last_submit_error") is not None:
+        raise PlatformFailure("macOS audio command submission reported an error")
+    return {
+        "current_device": current,
+        "default_device": default,
+        "available_device_count": count,
+        "tracking_mode": audio.get("openal_device_tracking_mode"),
+        "capacity_origin": "openal-alc-mono-sources",
+        "static_channels_capacity": static_capacity,
+        "streaming_channels_capacity": streaming_capacity,
+        "commands_submitted": commands,
+    }
+
+
+def validate_playable_artifacts(
+    artifact_dir: Path, row: dict[str, str] = EXPECTED_ROW
+) -> dict[str, Any]:
     evidence = load_json(artifact_dir / "evidence.json")
     probe = load_json(artifact_dir / "probe.json")
     termination = load_json(artifact_dir / "termination.json")
@@ -240,30 +370,57 @@ def validate_playable_artifacts(artifact_dir: Path) -> dict[str, Any]:
     client_log = ANSI_SGR_RE.sub(
         "", client_log_path.read_text(encoding="utf-8", errors="replace")
     )
-    if not re.search(
-        r"native platform window created.*window_backend=wayland", client_log
-    ):
-        raise PlatformFailure("production log does not prove a Wayland window")
-    if not re.search(
-        r"renderer platform adapter selected.*adapter_backend=vulkan", client_log
-    ):
-        raise PlatformFailure("production log does not prove a Vulkan adapter")
+    if row == LINUX_ROW:
+        if not re.search(
+            r"native platform window created.*window_backend=wayland", client_log
+        ):
+            raise PlatformFailure("production log does not prove a Wayland window")
+        if not re.search(
+            r"renderer platform adapter selected.*adapter_backend=vulkan", client_log
+        ):
+            raise PlatformFailure("production log does not prove a Vulkan adapter")
+    elif row == MACOS_ROW:
+        if not re.search(
+            r'native platform window created.*target_os="?macos"?.*'
+            r'target_arch="?aarch64"?.*window_platform="?cocoa"?',
+            client_log,
+        ):
+            raise PlatformFailure("production log does not prove an Apple Cocoa window")
+        if not re.search(
+            r"renderer platform adapter selected.*adapter_backend=metal", client_log
+        ):
+            raise PlatformFailure("production log does not prove a Metal adapter")
+    else:  # pragma: no cover - validate_manifest owns the public row set.
+        raise PlatformFailure(f"unsupported platform row: {row!r}")
     scale = re.search(
         r"native platform window created.*scale_factor=([0-9.]+)", client_log
     )
     if scale is None or float(scale.group(1)) <= 0:
         raise PlatformFailure("production log does not record a positive scale factor")
-    return {
+    result = {
         "artifact_dir": str(artifact_dir.resolve()),
         "evidence": str((artifact_dir / "evidence.json").resolve()),
         "headless_probe": str((artifact_dir / "probe.json").resolve()),
         "termination": str((artifact_dir / "termination.json").resolve()),
         "client_log": str(client_log_path.resolve()),
         "scale_factor": float(scale.group(1)),
-        "seat_input": validate_seat_receipts(evidence),
-        "display_transitions": validate_display_receipts(evidence),
-        "seat_ime": validate_ime_receipts(evidence),
     }
+    if row == LINUX_ROW:
+        result.update(
+            {
+                "seat_input": validate_seat_receipts(evidence),
+                "display_transitions": validate_display_receipts(evidence),
+                "seat_ime": validate_ime_receipts(evidence),
+            }
+        )
+    else:
+        result.update(
+            {
+                "platform_input": validate_macos_input_receipts(evidence),
+                "audio": validate_macos_audio_receipts(evidence),
+            }
+        )
+    return result
 
 
 def validate_display_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
@@ -408,8 +565,8 @@ def assemble_report(args: argparse.Namespace) -> dict[str, Any]:
     manifest = load_json(args.manifest)
     validate_manifest(manifest)
     build_info = load_json(args.build_info)
-    validate_build_info(build_info)
-    playable = validate_playable_artifacts(args.playable_artifact_dir)
+    validate_build_info(build_info, manifest["row"])
+    playable = validate_playable_artifacts(args.playable_artifact_dir, manifest["row"])
     lifecycle = validate_lifecycle_report(
         load_json(args.lifecycle_report),
         args.lifecycle_stamp.read_text(encoding="utf-8").strip(),
@@ -472,7 +629,12 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(report, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
-            print("platform acceptance: Linux x86_64 Wayland/Vulkan row passed")
+            row = report["row"]
+            print(
+                "platform acceptance: "
+                f"{row['target_os']} {row['target_arch']} "
+                f"{row['window_backend']}/{row['gpu_backend']} row passed"
+            )
         else:  # pragma: no cover
             raise AssertionError(args.command)
     except (PlatformFailure, OSError, ValueError, json.JSONDecodeError) as error:

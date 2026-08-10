@@ -15,6 +15,13 @@ MANIFEST_PATH = (
     / "platform-acceptance"
     / "linux-x86_64-wayland-vulkan.json"
 )
+MACOS_MANIFEST_PATH = (
+    REPO_ROOT
+    / "scripts"
+    / "fixtures"
+    / "platform-acceptance"
+    / "macos-aarch64-cocoa-metal.json"
+)
 SPEC = importlib.util.spec_from_file_location("platform_acceptance", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 platform_acceptance = importlib.util.module_from_spec(SPEC)
@@ -27,6 +34,11 @@ class PlatformAcceptanceManifestTests(unittest.TestCase):
 
     def test_checked_in_manifest_is_exact(self):
         platform_acceptance.validate_manifest(self.manifest)
+
+    def test_checked_in_macos_manifest_is_exact(self):
+        platform_acceptance.validate_manifest(
+            json.loads(MACOS_MANIFEST_PATH.read_text(encoding="utf-8"))
+        )
 
     def test_supported_row_cannot_drift(self):
         manifest = copy.deepcopy(self.manifest)
@@ -75,6 +87,14 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             platform_acceptance.PlatformFailure, "protocol_version"
         ):
             platform_acceptance.validate_build_info(info)
+
+    def test_macos_build_info_pins_the_native_target(self):
+        info = self.build_info()
+        info.update({"target_os": "macos", "target_arch": "aarch64"})
+
+        platform_acceptance.validate_build_info(
+            info, platform_acceptance.MACOS_ROW
+        )
 
     def seat_input(self) -> dict:
         return {
@@ -196,6 +216,113 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             evidence = platform_acceptance.validate_playable_artifacts(root)
 
             self.assertEqual(evidence["scale_factor"], 1.0)
+
+    def test_macos_row_requires_cocoa_metal_quartz_and_native_audio(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_playable(
+                root,
+                "native platform window created target_os=macos target_arch=aarch64 "
+                "window_backend=other window_platform=cocoa scale_factor=2.0\n"
+                "renderer platform adapter selected adapter_backend=metal\n",
+            )
+            evidence = json.loads((root / "evidence.json").read_text(encoding="utf-8"))
+            evidence["seat_input"]["handshake"]["injector_probe"] = {
+                "accessibility_trusted": True,
+                "backend": "macos-quartz",
+                "driver": "coregraphics",
+                "input_backend_source_sha256": "2" * 64,
+                "status": "ready",
+            }
+            evidence["world_snapshot"] = {
+                "audio": {
+                    "available_device_count": 1,
+                    "current_device": "MacBook Pro Speakers",
+                    "default_device": "MacBook Pro Speakers",
+                    "device_query_failures": 0,
+                    "enabled": True,
+                    "last_device_error": None,
+                    "last_submit_error": None,
+                    "openal_device_tracking_mode": "polling",
+                    "sound_channel_capacity_origin": "openal-alc-mono-sources",
+                    "sound_static_channels_capacity": 247,
+                    "sound_streaming_channels_capacity": 8,
+                    "commands_submitted": 12,
+                    "submit_failures": 0,
+                }
+            }
+            (root / "evidence.json").write_text(
+                json.dumps(evidence), encoding="utf-8"
+            )
+
+            result = platform_acceptance.validate_playable_artifacts(
+                root, platform_acceptance.MACOS_ROW
+            )
+
+            self.assertEqual(result["scale_factor"], 2.0)
+            self.assertEqual(result["platform_input"]["driver"], "coregraphics")
+            self.assertEqual(
+                result["audio"]["current_device"], "MacBook Pro Speakers"
+            )
+
+    def test_macos_row_rejects_disabled_audio(self):
+        with self.assertRaisesRegex(platform_acceptance.PlatformFailure, "disabled"):
+            platform_acceptance.validate_macos_audio_receipts(
+                {
+                    "world_snapshot": {
+                        "audio": {
+                            "disabled_reason": "no device",
+                            "enabled": False,
+                        }
+                    }
+                }
+            )
+
+    def test_macos_input_requires_server_confirmation(self):
+        seat = self.seat_input()
+        seat["handshake"]["injector_probe"] = {
+            "accessibility_trusted": True,
+            "backend": "macos-quartz",
+            "driver": "coregraphics",
+            "input_backend_source_sha256": "2" * 64,
+        }
+        for field, value, message in (
+            ("server_confirmed", False, "server-confirmed"),
+            ("held_slot_commands_delta", 0, "held-slot command"),
+        ):
+            with self.subTest(field=field):
+                evidence = {"seat_input": {**seat, field: value}}
+                with self.assertRaisesRegex(
+                    platform_acceptance.PlatformFailure, message
+                ):
+                    platform_acceptance.validate_macos_input_receipts(evidence)
+
+    def test_macos_audio_requires_native_capacity_and_submitted_commands(self):
+        audio = {
+            "available_device_count": 1,
+            "commands_submitted": 12,
+            "current_device": "MacBook Pro Speakers",
+            "default_device": "MacBook Pro Speakers",
+            "device_query_failures": 0,
+            "enabled": True,
+            "last_device_error": None,
+            "last_submit_error": None,
+            "sound_channel_capacity_origin": "openal-alc-mono-sources",
+            "sound_static_channels_capacity": 247,
+            "sound_streaming_channels_capacity": 8,
+            "submit_failures": 0,
+        }
+        for field, value, message in (
+            ("sound_channel_capacity_origin", "fixture", "native OpenAL"),
+            ("commands_submitted", 0, "commands_submitted"),
+            ("submit_failures", 1, "submission"),
+        ):
+            with self.subTest(field=field):
+                evidence = {"world_snapshot": {"audio": {**audio, field: value}}}
+                with self.assertRaisesRegex(
+                    platform_acceptance.PlatformFailure, message
+                ):
+                    platform_acceptance.validate_macos_audio_receipts(evidence)
 
     def test_release_row_requires_seat_receipts(self):
         """The row claims seat input, so a control-only run must not pass."""

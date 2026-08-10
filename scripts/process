@@ -2,4 +2,15 @@
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec "$repo_root/scripts/python" python -m bbb_tools.execution.cli "$@"
+python="$repo_root/.venv/bin/python"
+if [ ! -x "$python" ]; then
+  echo "bbb process supervision requires the prepared Python environment; run scripts/bootstrap" >&2
+  exit 2
+fi
+
+# Do not insert `uv run` here. uv supervises its Python child instead of
+# replacing itself, so callers would record uv's PID while `exec` creates a
+# different process group. This entry point must preserve one PID from the
+# caller through execution of the supervised command.
+export PYTHONPATH="$repo_root/scripts"
+exec "$python" -m bbb_tools.execution.cli "$@"

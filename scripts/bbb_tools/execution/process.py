@@ -141,11 +141,19 @@ class ManagedProcess:
                 os.killpg(process_group, 0)
             except ProcessLookupError:
                 return True
+            except PermissionError:
+                # Darwin can report EPERM while a dying group still contains
+                # a member the probe cannot signal. POSIX defines that as an
+                # existing group, so keep waiting for ESRCH instead of
+                # leaking the raw host error out of cleanup.
+                pass
             time.sleep(min(0.01, deadline.remaining()))
         try:
             os.killpg(process_group, 0)
         except ProcessLookupError:
             return True
+        except PermissionError:
+            return False
         return False
 
     def communicate(self, timeout: float) -> tuple[bytes, bytes]:
