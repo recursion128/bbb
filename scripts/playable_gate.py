@@ -5654,9 +5654,40 @@ LIVE_SCENARIO_SECTIONS = (
 SEAT_SCENARIO_SECTION = "seat_input"
 DISPLAY_SCENARIO_SECTION = "display_transitions"
 IME_SCENARIO_SECTION = "seat_ime"
+# These scenarios already establish their own native-seat precondition because
+# every input they drive must itself remain attributable to the platform.  All
+# other scenarios use the synthetic control surface after the platform
+# handshake, so a Cocoa/Wayland focus loss between scenarios must be repaired
+# before their first write instead of leaving Vanilla's pause screen open.
+PLATFORM_DRIVEN_SCENARIO_SECTIONS = frozenset(
+    {
+        SEAT_SCENARIO_SECTION,
+        DISPLAY_SCENARIO_SECTION,
+        IME_SCENARIO_SECTION,
+        "language_transition",
+    }
+)
 # Escape toggles the pause screen, so the handshake checks after each press
 # rather than assuming which side of the toggle the client started on.
 SEAT_HANDSHAKE_ATTEMPTS = 3
+
+
+def _prepare_synthetic_scenario_from_seat(
+    address: tuple[str, int], injector: list[str], timeout_seconds: float
+) -> dict[str, Any]:
+    """Restore a seat-backed client to the world before synthetic driving.
+
+    macOS can transfer frontmost status at any point in a long live gate.  The
+    client then opens its pause screen, and merely replaying the synthetic
+    focus handler cannot prove that the real window became active or close the
+    screen.  Reuse the native focus/Escape/hotbar receipt before every
+    synthetic scenario, while the guard makes a future synthetic fallback an
+    immediate test failure.  A run without an injector never calls this path.
+    """
+
+    deadline = time.monotonic() + timeout_seconds
+    with _seat_input_only():
+        return _seat_reach_the_world(address, injector, deadline)
 
 
 def _classify_pre_gameplay_failure(
@@ -6023,6 +6054,13 @@ def collect_live(args: argparse.Namespace) -> None:
         for scenario_name, stage, run in plan:
             failure_scenario = scenario_name
             failure_stage = stage
+            if (
+                injector is not None
+                and scenario_name not in PLATFORM_DRIVEN_SCENARIO_SECTIONS
+            ):
+                _prepare_synthetic_scenario_from_seat(
+                    address, injector, min(90.0, gameplay_timeout)
+                )
             scenarios[scenario_name] = run()
         last_snapshot = scenarios["lifecycle"].pop("final_snapshot")
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:

@@ -2178,6 +2178,34 @@ class PlayableGateSeatInputTests(unittest.TestCase):
             source.index("_seat_reach_the_world("), source.index('"key", f"hotbar')
         )
 
+    def test_each_synthetic_scenario_re_establishes_the_platform_world(self):
+        """A long macOS gate may lose frontmost status between any two
+        scenarios, so the one initial handshake cannot be treated as a lease
+        over the rest of the run."""
+
+        source = inspect.getsource(playable_gate.collect_live)
+
+        self.assertIn(
+            "scenario_name not in PLATFORM_DRIVEN_SCENARIO_SECTIONS", source
+        )
+        self.assertIn("_prepare_synthetic_scenario_from_seat(", source)
+
+    def test_synthetic_scenario_precondition_is_native_only(self):
+        observed_guard = []
+
+        def reach(_address, _injector, _deadline):
+            observed_guard.append(playable_gate._SEAT_INPUT_GUARD)
+            return {"escape_presses": 0, "world_slot_after_escape": 4}
+
+        with mock.patch.object(playable_gate, "_seat_reach_the_world", side_effect=reach):
+            receipt = playable_gate._prepare_synthetic_scenario_from_seat(
+                ("127.0.0.1", 1), ["scripts/input"], 1.0
+            )
+
+        self.assertEqual(observed_guard, [True])
+        self.assertEqual(receipt["world_slot_after_escape"], 4)
+        self.assertFalse(playable_gate._SEAT_INPUT_GUARD)
+
     def test_display_scenario_is_seat_driven_and_checks_both_sides(self):
         """A DPI transition the client alone reports could be the client
         resizing itself, and one the compositor alone reports could have been
