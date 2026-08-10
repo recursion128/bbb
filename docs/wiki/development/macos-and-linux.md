@@ -79,6 +79,12 @@ System Settings → Privacy & Security → Accessibility 获得授权。
 `DISPLAY`/`WAYLAND_DISPLAY`，macOS 使用当前登录 GUI session。playable 的普通 synthetic
 路径不冒充平台输入证据；只有显式 backend 才生成可归因 input receipt。
 
+`scripts/macos_native_retina.py detect|run` 只在 macOS 登录 GUI session 执行，将内建
+显示器的 panel-native、逻辑 bounds、scale 和当前 CoreGraphics backing 分开记录；性能
+合同以两侧 F2 截图实测的 drawable pixels 为准。该 profile 独立于 Linux 1280x720
+基线，需要与 platform gate 相同的 Accessibility 权限；像素不匹配只产生 blocker，
+不产生性能比较。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

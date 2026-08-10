@@ -73,6 +73,9 @@ CLOSURE_METADATA_PREFIXES = ("docs/", "goal.md")
 VALIDATION_ONLY_PATHS = frozenset(
     {
         "scripts/parity_acceptance.py",
+        "scripts/macos_native_retina.py",
+        "scripts/tests/test_macos_native_retina.py",
+        "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
         "scripts/tests/test_parity_acceptance.py",
         "scripts/tests/test_vanilla_audio_receipt.py",
         MACOS_ENABLEMENT_COMPATIBILITY_PATH.as_posix(),

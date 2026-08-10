@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "profile": "macos-native-retina",
+  "minecraft_version": "26.1",
+  "display": {
+    "selection": "exactly-one-online-built-in",
+    "logical_source": "CGDisplayBounds",
+    "scale_source": "current-mode-pixels-divided-by-logical-bounds",
+    "target_drawable_source": "CGDisplayModeGetPixelWidth/Height",
+    "panel_native_source": "system_profiler.spdisplays_pixelresolution",
+    "require_screenshot_attestation": true
+  },
+  "window_mode": "fullscreen",
+  "vsync": false,
+  "framerate_limit": "unlimited",
+  "framerate_limit_sentinel": 260,
+  "warmup_seconds": 30,
+  "profile_seconds": 10,
+  "formal_order": [
+    "vanilla",
+    "bbb",
+    "bbb",
+    "vanilla",
+    "vanilla",
+    "bbb",
+    "bbb",
+    "vanilla"
+  ],
+  "capture_segments": [
+    "static_orbit",
+    "preloaded_flight",
+    "chunk_boundary_crossing"
+  ],
+  "input_at_each_capture_start": [
+    "F2",
+    "F3-down",
+    "L-down",
+    "L-up",
+    "F3-up"
+  ],
+  "drawable_mismatch_policy": "block-without-comparison"
+}

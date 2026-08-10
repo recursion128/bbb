@@ -209,10 +209,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "audio-host-device",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "d3ef4dadf8ba64ab001f2c876c81d0569b674dc3",
-        "source_report_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "8597c72d118b686400430a14c813e3e4a5e934223752bcd0239b4cfec4c5561e"
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -592,10 +592,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "draw-evidence",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "d3ef4dadf8ba64ab001f2c876c81d0569b674dc3",
-        "source_report_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "8597c72d118b686400430a14c813e3e4a5e934223752bcd0239b4cfec4c5561e"
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -944,10 +944,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "lifecycle-soak",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "d3ef4dadf8ba64ab001f2c876c81d0569b674dc3",
-        "source_report_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "8597c72d118b686400430a14c813e3e4a5e934223752bcd0239b4cfec4c5561e"
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -1234,10 +1234,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "linux-platform",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "d3ef4dadf8ba64ab001f2c876c81d0569b674dc3",
-        "source_report_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "8597c72d118b686400430a14c813e3e4a5e934223752bcd0239b4cfec4c5561e"
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -1442,6 +1442,16 @@
         "platform-macos-release"
       ],
       "path": "/var/folders/l4/58829bq15gs79cqc627697xm0000gn/T/bbb-macos-platform.Oi5ZTN/report.json",
+      "projection_reuse": {
+        "artifact_file_present_at_generation": true,
+        "artifact_file_sha256_at_generation": "a1e8d028bd74bf5f4e05a51eb517af49611781aec263a9f5d9184baa3be4cf7f",
+        "artifact_id": "macos-platform",
+        "rule": "committed-projection-only; final-requires-artifact",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
+        "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
+      },
       "scenario_ids": [],
       "scoped_reuse": null,
       "sha256": "a1e8d028bd74bf5f4e05a51eb517af49611781aec263a9f5d9184baa3be4cf7f",
@@ -1794,10 +1804,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "performance-abba",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "d3ef4dadf8ba64ab001f2c876c81d0569b674dc3",
-        "source_report_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "8597c72d118b686400430a14c813e3e4a5e934223752bcd0239b4cfec4c5561e"
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
       },
       "scenario_ids": [],
       "scoped_reuse": {
@@ -9782,7 +9792,7 @@
       ],
       "path": "scripts/parity_acceptance.py",
       "scenario_ids": [],
-      "sha256": "5e9529d8425a71b6e9ff92342052c45174579e2bad3277e6bd5c5b8804e24045",
+      "sha256": "f6dd28fc7ce7579b6cffaffab4af47a7b7857dcbe6e11a782fe850fa4b0a4dba",
       "valid": true
     },
     {
@@ -10023,6 +10033,20 @@
       "path": "scripts/tests/test_lifecycle_soak.py",
       "scenario_ids": [],
       "sha256": "d9dde869a5b6e8ae4dc6a337b7923ba7f1ea5b052110adc7e5dc8781cfdd8ebd",
+      "valid": true
+    },
+    {
+      "artifact_id": "repo:scripts/tests/test_macos_native_retina.py",
+      "bbb_commit": null,
+      "exists": true,
+      "invalid_reasons": [],
+      "kind": "repo-evidence",
+      "mechanism_ids": [
+        "performance-official-equal-load"
+      ],
+      "path": "scripts/tests/test_macos_native_retina.py",
+      "scenario_ids": [],
+      "sha256": "08520729a4a451afb19f5f68e3d3795d5f012e0a0917a3d2507ba07b7e4d4114",
       "valid": true
     },
     {
@@ -10373,10 +10397,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "visual-workload",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "d3ef4dadf8ba64ab001f2c876c81d0569b674dc3",
-        "source_report_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
+        "source_report_blob_sha1": "4dee3e554187d7bbcd4983cd17773961a1800e67",
+        "source_report_commit": "19e64be1c79f159c5098a803e49defde66f76ab0",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "8597c72d118b686400430a14c813e3e4a5e934223752bcd0239b4cfec4c5561e"
+        "source_report_sha256": "94f2270817a4e592c1fab4f3991c2d3fdb08783a471b0e0ef701cf96c681854c"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -10594,8 +10618,13 @@
     "changed_paths": [
       "docs/goal-archive.md",
       "docs/unsupported-features.md",
+      "docs/wiki/development/macos-and-linux.md",
       "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "goal.md"
+      "goal.md",
+      "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
+      "scripts/macos_native_retina.py",
+      "scripts/parity_acceptance.py",
+      "scripts/tests/test_macos_native_retina.py"
     ],
     "functional_affected_mechanism_ids": [],
     "functional_changed_paths": [],
@@ -10777,6 +10806,14 @@
         ]
       },
       {
+        "mechanism_ids": [],
+        "path": "docs/wiki/development/macos-and-linux.md",
+        "reasons": [
+          "unrelated"
+        ],
+        "required_validation_classes": []
+      },
+      {
         "mechanism_ids": [
           "audio-client-level-sound-routing",
           "audio-sound-manager-engine",
@@ -10941,6 +10978,231 @@
           "unrelated"
         ],
         "required_validation_classes": []
+      },
+      {
+        "mechanism_ids": [
+          "hud-frame-extract-order",
+          "hud-hotbar-selection",
+          "hud-overlay-effects",
+          "hud-player-vitals",
+          "hud-text-and-lists",
+          "performance-gpu-execution-duration",
+          "performance-official-equal-load",
+          "rendering-block-entity-registration",
+          "rendering-block-model-pipeline",
+          "rendering-camera-fluid-fog",
+          "rendering-chunk-layer-routing",
+          "rendering-client-biome-tint",
+          "rendering-client-block-entity-tracking",
+          "rendering-client-level-dirty-handoff",
+          "rendering-client-particle-routing",
+          "rendering-effects-screenshot",
+          "rendering-entity-layer-registration",
+          "rendering-entity-renderer-registration",
+          "rendering-extract-surface",
+          "rendering-fluid-mesh",
+          "rendering-frame-order",
+          "rendering-level-backend-lifecycle",
+          "rendering-level-diagnostics-gizmos",
+          "rendering-level-effect-lifecycle",
+          "rendering-level-frame-graph",
+          "rendering-level-light-query",
+          "rendering-level-pass",
+          "rendering-level-scene-projection",
+          "rendering-level-section-lifecycle",
+          "rendering-particle-provider-registration"
+        ],
+        "path": "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
+        "reasons": [
+          "central-owner"
+        ],
+        "required_validation_classes": [
+          "draw-evidence",
+          "performance-abba",
+          "visual-workload"
+        ]
+      },
+      {
+        "mechanism_ids": [],
+        "path": "scripts/macos_native_retina.py",
+        "reasons": [
+          "unrelated"
+        ],
+        "required_validation_classes": []
+      },
+      {
+        "mechanism_ids": [
+          "audio-client-level-sound-routing",
+          "audio-sound-manager-engine",
+          "coverage-external-client-census",
+          "debug-integrated-server-mirrors",
+          "diagnostics-client-level-report",
+          "diagnostics-client-only-inspection-exclusions",
+          "diagnostics-crash-runtime",
+          "docs-chinese-mechanism-wiki",
+          "entities-fixed-type-surface",
+          "hud-frame-extract-order",
+          "hud-hotbar-selection",
+          "hud-overlay-effects",
+          "hud-player-vitals",
+          "hud-text-and-lists",
+          "identity-profile-key-lifecycle",
+          "identity-skin-presentation",
+          "input-debug-key-actions",
+          "input-key-mapping",
+          "input-keyboard-routing",
+          "input-mouse-routing",
+          "interaction-block-breaking",
+          "interaction-carried-slot-sync",
+          "interaction-container-actions",
+          "interaction-creative-actions",
+          "interaction-entity-actions",
+          "interaction-game-mode-guards",
+          "interaction-game-mode-lifecycle",
+          "interaction-item-use",
+          "interaction-pick-actions",
+          "interaction-prediction-sequence",
+          "interaction-primary-action-routing",
+          "interaction-server-authority-exclusions",
+          "items-server-owned-effects",
+          "items-versioned-property-surface",
+          "lifecycle-client-runtime",
+          "lifecycle-client-task-handoff",
+          "lifecycle-session-replacement",
+          "movement-remote-type-exceptions",
+          "performance-gpu-execution-duration",
+          "performance-official-equal-load",
+          "persistence-options-apply",
+          "persistence-options-derived",
+          "persistence-options-file",
+          "persistence-options-unconsumed",
+          "persistence-server-list",
+          "platform-linux-seat-matrix",
+          "platform-macos-release",
+          "platform-window-chrome",
+          "platform-window-display-mode",
+          "platform-window-lifecycle",
+          "platform-window-surface-state",
+          "platform-windows-release",
+          "player-local-camera-targeting",
+          "player-local-client-status-options",
+          "player-local-environment-effects",
+          "player-local-input-movement",
+          "player-local-inventory-actions",
+          "player-local-item-use-state",
+          "player-local-movement-reporting",
+          "player-local-permission-chat-state",
+          "player-local-session-respawn",
+          "player-local-vehicle-control",
+          "player-local-vitals-status",
+          "player-local-world-edit-ui",
+          "protocol-client-state-flow",
+          "protocol-configuration-handler-decisions",
+          "protocol-framing-no-world-state",
+          "protocol-listener-contracts",
+          "protocol-login-handler-decisions",
+          "protocol-packet-tables",
+          "protocol-play-handler-decisions",
+          "protocol-serverbound-call-sites",
+          "registries-built-in-catalogs",
+          "registries-synchronized-data",
+          "registries-unsynchronized-fixed-identities",
+          "rendering-block-entity-registration",
+          "rendering-block-model-pipeline",
+          "rendering-camera-fluid-fog",
+          "rendering-chunk-layer-routing",
+          "rendering-client-biome-tint",
+          "rendering-client-block-entity-tracking",
+          "rendering-client-level-dirty-handoff",
+          "rendering-client-particle-routing",
+          "rendering-effects-screenshot",
+          "rendering-entity-layer-registration",
+          "rendering-entity-renderer-registration",
+          "rendering-extract-surface",
+          "rendering-fluid-mesh",
+          "rendering-frame-order",
+          "rendering-level-backend-lifecycle",
+          "rendering-level-diagnostics-gizmos",
+          "rendering-level-effect-lifecycle",
+          "rendering-level-frame-graph",
+          "rendering-level-light-query",
+          "rendering-level-pass",
+          "rendering-level-scene-projection",
+          "rendering-level-section-lifecycle",
+          "rendering-nondeterministic-golden-exclusions",
+          "rendering-official-noop-surfaces",
+          "rendering-particle-provider-registration",
+          "resources-default-pack-stack",
+          "resources-indexed-built-in-packs",
+          "resources-indexed-panorama",
+          "resources-indexed-realms",
+          "resources-indexed-vanilla-provider",
+          "resources-language-manager",
+          "resources-offline-asset-trust",
+          "resources-reload-listeners",
+          "resources-reload-recovery",
+          "resources-runtime-mipmap-update",
+          "resources-server-pack-lifecycle",
+          "resources-window-icons",
+          "resources-world-list-favicons",
+          "scope-client-level-noop-hooks",
+          "scope-multiplayer-server-list",
+          "scope-options-ui",
+          "scope-realms",
+          "scope-singleplayer-integrated",
+          "scope-support-accessors",
+          "scope-telemetry-upload",
+          "scope-title-screen",
+          "security-secure-chat-reporting",
+          "startup-client-bootstrap",
+          "startup-session-identity",
+          "ui-accessibility-surface",
+          "ui-bidirectional-shaping",
+          "ui-chat-screen-surface",
+          "ui-clipboard-surface",
+          "ui-container-server-authority-exclusions",
+          "ui-context-entity-type",
+          "ui-death-screen-surface",
+          "ui-disconnected-screen-surface",
+          "ui-font-manager",
+          "ui-font-provider-pipeline",
+          "ui-local-time-icu",
+          "ui-menu-screen-registration",
+          "ui-pause-screen-surface",
+          "ui-screen-lifecycle",
+          "world-client-ambient-animation",
+          "world-client-chunk-light-lifecycle",
+          "world-client-clock-weather",
+          "world-client-entity-lifecycle",
+          "world-client-level-events",
+          "world-client-level-lifecycle",
+          "world-client-map-data",
+          "world-client-respawn-data",
+          "world-client-session-services"
+        ],
+        "path": "scripts/parity_acceptance.py",
+        "reasons": [
+          "central-owner",
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "acceptance-contract",
+          "bbb-owner",
+          "vanilla-owner"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "performance-official-equal-load"
+        ],
+        "path": "scripts/tests/test_macos_native_retina.py",
+        "reasons": [
+          "direct-dependency"
+        ],
+        "required_validation_classes": [
+          "focused-evidence",
+          "full-gate"
+        ]
       }
     ],
     "required_validation_classes": [
@@ -10949,13 +11211,19 @@
       "draw-evidence",
       "focused-evidence",
       "full-gate",
+      "performance-abba",
       "protocol-state-receipt",
       "release-identity",
       "resource-platform-receipt",
       "vanilla-owner",
       "visual-workload"
     ],
-    "validation_only_changed_paths": []
+    "validation_only_changed_paths": [
+      "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
+      "scripts/macos_native_retina.py",
+      "scripts/parity_acceptance.py",
+      "scripts/tests/test_macos_native_retina.py"
+    ]
   },
   "commands": {
     "change_plan": "scripts/python python scripts/parity_acceptance.py plan --base-commit <commit>",
@@ -10967,7 +11235,7 @@
   "generator_inputs": [
     {
       "path": "scripts/parity_acceptance.py",
-      "sha256": "5e9529d8425a71b6e9ff92342052c45174579e2bad3277e6bd5c5b8804e24045"
+      "sha256": "f6dd28fc7ce7579b6cffaffab4af47a7b7857dcbe6e11a782fe850fa4b0a4dba"
     },
     {
       "path": "scripts/bbb_tools/executable_identity.py",
@@ -59243,6 +59511,7 @@
         "repo:scripts/tests/test_gpu_duration_capture.py",
         "repo:scripts/tests/test_item_catalog.py",
         "repo:scripts/tests/test_lifecycle_soak.py",
+        "repo:scripts/tests/test_macos_native_retina.py",
         "repo:scripts/tests/test_official_client_benchmark.py",
         "repo:scripts/tests/test_parity_acceptance.py",
         "repo:scripts/tests/test_platform_acceptance.py",
@@ -59254,7 +59523,9 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/tests/test_macos_native_retina.py"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/command.rs",
@@ -61854,6 +62125,13 @@
             "sha256": "d9dde869a5b6e8ae4dc6a337b7923ba7f1ea5b052110adc7e5dc8781cfdd8ebd"
           },
           {
+            "path": "scripts/tests/test_macos_native_retina.py",
+            "roles": [
+              "focused-test-set"
+            ],
+            "sha256": "08520729a4a451afb19f5f68e3d3795d5f012e0a0917a3d2507ba07b7e4d4114"
+          },
+          {
             "path": "scripts/tests/test_official_client_benchmark.py",
             "roles": [
               "focused-test-set"
@@ -61910,14 +62188,14 @@
             "sha256": "a6c28286d0255bf25aac05b494fdf07341ead562d7a8f0965d6b8d5dae0bf805"
           }
         ],
-        "dependency_closure_sha256": "e48fab908ac6e35c13ddd3ed4a719be8e0add72c5eb5b0a96c4683f6d00c4b6c",
+        "dependency_closure_sha256": "8e7f993f4387c38222c4cc70a2ff1068f343a4de1d18eb39bceeb62a0a714dc9",
         "evidence_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
-        "focused_test_contract_sha256": "b307a56e5a49d0698e8cae61709e42aa8ee53a77e0083579109adbe5ef2aef5f",
+        "focused_test_contract_sha256": "a24173d1cb6d47552a6635939f27cc09fe1eafa7683550dd8e3cd7b63d28ade7",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "437d05ae8d54f797bfbfbe0d26ce741cb7520b52a515b3ccc3259844d4f45239"
+        "owner_contract_sha256": "a2f373f638b4221cb1019404fdec1c14f7c7162499d52a4c21a8fe90adc13e9b"
       },
       "differential_scenarios": [
         {
@@ -62293,6 +62571,7 @@
             "repo:scripts/tests/test_gpu_duration_capture.py",
             "repo:scripts/tests/test_item_catalog.py",
             "repo:scripts/tests/test_lifecycle_soak.py",
+            "repo:scripts/tests/test_macos_native_retina.py",
             "repo:scripts/tests/test_official_client_benchmark.py",
             "repo:scripts/tests/test_parity_acceptance.py",
             "repo:scripts/tests/test_platform_acceptance.py",
@@ -62383,8 +62662,8 @@
       "focused_tests": [
         {
           "command": "scripts/cargo-dev.sh gate",
-          "evidence_set_count": 2964,
-          "evidence_set_sha256": "44187669d7b6c1cf0e9d072947a551ad1b4ce6d8fadf678fc4fe46360c37d951",
+          "evidence_set_count": 2976,
+          "evidence_set_sha256": "0b10615c6b5783360d357f949bce83a1f7f661e881abf11e548fa242a0dac565",
           "ignored": false,
           "result": "passed-via-full-gate",
           "source_artifact_ids": [
@@ -62758,6 +63037,7 @@
             "repo:scripts/tests/test_gpu_duration_capture.py",
             "repo:scripts/tests/test_item_catalog.py",
             "repo:scripts/tests/test_lifecycle_soak.py",
+            "repo:scripts/tests/test_macos_native_retina.py",
             "repo:scripts/tests/test_official_client_benchmark.py",
             "repo:scripts/tests/test_parity_acceptance.py",
             "repo:scripts/tests/test_platform_acceptance.py",
@@ -65891,7 +66171,9 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/parity_acceptance.py"
+        ],
         "dependency_closure": [
           {
             "path": "scripts/bbb_tools/executable_identity.py",
@@ -65919,7 +66201,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "5e9529d8425a71b6e9ff92342052c45174579e2bad3277e6bd5c5b8804e24045"
+            "sha256": "f6dd28fc7ce7579b6cffaffab4af47a7b7857dcbe6e11a782fe850fa4b0a4dba"
           },
           {
             "path": "scripts/tests/test_parity_acceptance.py",
@@ -65930,7 +66212,7 @@
             "sha256": "0c576ab5def5a7ab512c6cf6284bb7bee5e89c4ada5b94a7649ed9a99ca93e62"
           }
         ],
-        "dependency_closure_sha256": "999af924978db581fa70195973a7ff3ec016e7e53e43c0190370e65778d99e3e",
+        "dependency_closure_sha256": "0ba9ed01e8d82a55737650759f77414b04a8f06419d3f1a1f14bf89cc8f7443d",
         "evidence_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
@@ -65941,7 +66223,7 @@
         ],
         "focused_test_contract_sha256": "f992d170445a7b64c9ebb1fbd3012d397cb8120fb996e7d9d9b3f28bc4b95eda",
         "owner": "generated inventory/matrix/ledger lint",
-        "owner_contract_sha256": "e8bb7aa126e37a731473b1a3f6156e5326089f48eb698c08b57af04ed9088845"
+        "owner_contract_sha256": "21e502d89f422d2bdc89f15472be12aa5f6c36878357e726aa390e097f3a5c0f"
       },
       "differential_scenarios": [
         {
@@ -66375,7 +66657,9 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "scripts/parity_acceptance.py"
+        ],
         "dependency_closure": [
           {
             "path": "scripts/docs_wiki_lint.py",
@@ -66389,7 +66673,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "5e9529d8425a71b6e9ff92342052c45174579e2bad3277e6bd5c5b8804e24045"
+            "sha256": "f6dd28fc7ce7579b6cffaffab4af47a7b7857dcbe6e11a782fe850fa4b0a4dba"
           },
           {
             "path": "scripts/tests/test_docs_lint.py",
@@ -66408,7 +66692,7 @@
             "sha256": "0c576ab5def5a7ab512c6cf6284bb7bee5e89c4ada5b94a7649ed9a99ca93e62"
           }
         ],
-        "dependency_closure_sha256": "6da6bbd4caf48a9de1a4c1d80cbf5a3c880c54fd9d7e4dcac345bda81005a093",
+        "dependency_closure_sha256": "2e0bf56b3cb1445be86a7a1a206e5bd29a5c83302596d38224dacaa350536435",
         "evidence_commit": "611d0b62390d7f5b0e2d9909ff278fef116eced9",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
@@ -66426,7 +66710,7 @@
         ],
         "focused_test_contract_sha256": "4301d6d21d23e185df868c65e6d7b0d1725822adff76a35730341384cd0dc99c",
         "owner": "docs Wiki/inventory/docs-lint/acceptance",
-        "owner_contract_sha256": "20ea5d834085077d0947801d41293f49c844ae56f4e806bb97f7f4a973528067"
+        "owner_contract_sha256": "9235492683b692ad7274b1b03124327d4f20f1244b7ee477fd5866177fb069e2"
       },
       "differential_scenarios": [
         {
@@ -67428,6 +67712,7 @@
         "repo:scripts/tests/test_gpu_duration_capture.py",
         "repo:scripts/tests/test_item_catalog.py",
         "repo:scripts/tests/test_lifecycle_soak.py",
+        "repo:scripts/tests/test_macos_native_retina.py",
         "repo:scripts/tests/test_official_client_benchmark.py",
         "repo:scripts/tests/test_parity_acceptance.py",
         "repo:scripts/tests/test_platform_acceptance.py",
@@ -71067,12 +71352,12 @@
   },
   "vanilla_version": "26.1",
   "workflow": {
-    "code_freeze_ready": true,
+    "code_freeze_ready": false,
     "consistency_gate_passed": true,
     "formal_performance_allowed": false,
     "implementation_blocking_ids": [],
     "implementation_ready": true,
-    "semantic_contract_sha256": "9c243d23f886ff09d5a802f2c6914236c58de26e50ad6c88f0e1ffc6c903f376",
+    "semantic_contract_sha256": "28b84f72d203a387934af0ddc8d462139f5d6d3fee6b8e3e655096d936b76409",
     "stage": "implementation",
     "stage_order": [
       "implementation",
