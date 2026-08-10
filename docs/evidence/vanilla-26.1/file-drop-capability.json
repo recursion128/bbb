@@ -14,7 +14,7 @@
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "08285a364d1a35176c7c119a3f17b3737eac15eb90addaa96323b0753ccf8a8e"
+        "sha256": "6f16ad19e054c62b775b79249c2a146a47e655af0905dc9b6d454ba869c0f4dc"
       },
       "successful_path_event_consumed": false,
       "valid_path_values_consumed": false,

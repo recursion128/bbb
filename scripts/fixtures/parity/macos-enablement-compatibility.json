@@ -3,7 +3,7 @@
   "paths": [
     {"base_sha256":"44312af4e3b84a96e1396e6b724c344343c525130b8ada60be4377a1ab80b67b","current_sha256":"44312af4e3b84a96e1396e6b724c344343c525130b8ada60be4377a1ab80b67b","path":"crates/bbb-native/src/input/book/tests.rs"},
     {"base_sha256":"8410b72a1ed4c2c034cae9802be76e9266c3e12c966edf9a25d18589f5ab8994","current_sha256":"8410b72a1ed4c2c034cae9802be76e9266c3e12c966edf9a25d18589f5ab8994","path":"crates/bbb-native/src/input/tests.rs"},
-    {"base_sha256":"83d8ecbd9b4e83eec1b8177e7fd0c32138a5176fc1b145e659f14dde3668e09c","current_sha256":"08285a364d1a35176c7c119a3f17b3737eac15eb90addaa96323b0753ccf8a8e","path":"crates/bbb-native/src/main.rs"},
+    {"base_sha256":"83d8ecbd9b4e83eec1b8177e7fd0c32138a5176fc1b145e659f14dde3668e09c","current_sha256":"6f16ad19e054c62b775b79249c2a146a47e655af0905dc9b6d454ba869c0f4dc","path":"crates/bbb-native/src/main.rs"},
     {"base_sha256":"e3017746cea1c008e601af3d2b2b04915c6f93371c6f4b0d3602be1dc69eb82e","current_sha256":"e3017746cea1c008e601af3d2b2b04915c6f93371c6f4b0d3602be1dc69eb82e","path":"crates/bbb-native/src/narrator_runtime.rs"},
     {"base_sha256":"4c54465918384ae82ee319c2127bdbbca1c13daed97129d123fbea9ce3f793ef","current_sha256":"4c54465918384ae82ee319c2127bdbbca1c13daed97129d123fbea9ce3f793ef","path":"crates/bbb-native/src/runtime/tests.rs"},
     {"base_sha256":"25d693230147c2795a5c13498906f9cf198f0861a6cb56824f051e9a618d1d3f","current_sha256":"00bd8f19cf97d885d9e53b2f43ddb63ea707f89483824f09d0ab7f34df5b9035","path":"crates/bbb-native/src/startup.rs"},

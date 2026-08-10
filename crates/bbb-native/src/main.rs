@@ -3214,16 +3214,24 @@ mod tests {
             .split_once("WindowEvent::RedrawRequested =>")
             .expect("redraw arm")
             .0;
-        // The synchronous logical-GUI publish must come before the simulation
-        // command is queued, so a `MouseInput` delivered before the
-        // asynchronous publication projects with the new ratio.
+        // Resolve the platform-specific physical drawable once, configure the
+        // renderer with it, then synchronously publish its logical-GUI
+        // projection before the same physical size is queued for simulation.
+        // A `MouseInput` delivered before the asynchronous publication then
+        // still projects with the new ratio.
+        let resolve = arm
+            .find("let surface_size = platform_surface_size(")
+            .expect("platform physical drawable selection");
+        let resize = arm
+            .find("renderer.resize(surface_size)")
+            .expect("renderer physical surface resize");
         let publish = arm
             .find("renderer.set_gui_surface_size(")
             .expect("synchronous logical GUI publish");
         let enqueue = arm
-            .find("SimulationCommand::SurfaceResized(size)")
+            .find("SimulationCommand::SurfaceResized(surface_size)")
             .expect("surface resize simulation command");
-        assert!(publish < enqueue);
+        assert!(resolve < resize && resize < publish && publish < enqueue);
         // The projection is computed from the configured GUI-scale arguments
         // through the shared `window_surface` functions, not a second formula.
         assert!(arm.contains("resize_gui_surface("));
@@ -3231,7 +3239,7 @@ mod tests {
         assert!(arm.contains("args.client_force_unicode_font"));
         // A zero-size/minimized callback retains both last usable sizes: the
         // synchronous publish is gated on nonzero dimensions.
-        assert!(arm.contains("if size.width != 0 && size.height != 0 {"));
+        assert!(arm.contains("if surface_size.width != 0 && surface_size.height != 0 {"));
     }
 
     fn insert_empty_sign(world: &mut WorldStore, pos: BlockPos) {
