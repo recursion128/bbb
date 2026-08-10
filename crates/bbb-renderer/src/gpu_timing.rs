@@ -1,11 +1,16 @@
 use std::{
+    collections::VecDeque,
     sync::mpsc::{self, Receiver, Sender, TryRecvError},
     time::Duration,
 };
 
+// wgpu-hal 0.19 passes Metal's absolute query-range end as NSRange.length when
+// resolving a non-zero range. Give every asynchronous slot its own query set
+// so all resolves start at zero until the workspace upgrades to a backend with
+// the upstream range-length fix. This preserves the three-slot sampling ring.
 const SLOT_COUNT: usize = 3;
 const QUERIES_PER_FRAME: u32 = 12;
-const QUERY_BYTES: u64 = QUERIES_PER_FRAME as u64 * std::mem::size_of::<u64>() as u64;
+const TOTAL_ONLY_QUERIES_PER_FRAME: u32 = 2;
 const RESOLVE_SLOT_BYTES: u64 = wgpu::QUERY_RESOLVE_BUFFER_ALIGNMENT;
 const STAGE_COUNT: usize = QUERIES_PER_FRAME as usize - 1;
 const STAGE_LOG_SAMPLE_COUNT: u64 = 600;
@@ -13,8 +18,13 @@ const STAGE_LOG_SAMPLE_COUNT: u64 = 600;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SlotState {
     Idle,
-    Encoding,
-    Mapping { cpu_duration_nanos: u64 },
+    Encoding {
+        detailed_stages: bool,
+    },
+    Mapping {
+        cpu_duration_nanos: u64,
+        detailed_stages: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -32,6 +42,7 @@ struct MapCompletion {
 #[derive(Debug, Clone, Copy)]
 pub(super) struct GpuFrameToken {
     slot: usize,
+    detailed_stages: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,15 +61,18 @@ pub(super) enum GpuFrameStage {
 
 #[derive(Debug)]
 pub(super) struct GpuFrameTiming {
-    query_set: wgpu::QuerySet,
+    query_sets: Vec<wgpu::QuerySet>,
     resolve: wgpu::Buffer,
     slots: Vec<TimingSlot>,
     completion_sender: Sender<MapCompletion>,
     completions: Receiver<MapCompletion>,
     timestamp_period_nanos: f64,
+    queries_per_frame: u32,
+    detailed_stages: bool,
     next_slot: usize,
     enabled: bool,
     latest_utilization: Option<f64>,
+    completed_durations: VecDeque<Duration>,
     stage_sample_count: u64,
     stage_nanos_sum: [u128; STAGE_COUNT],
     stage_nanos_samples: [Vec<u64>; STAGE_COUNT],
@@ -70,12 +84,19 @@ impl GpuFrameTiming {
             .features()
             .contains(wgpu::Features::TIMESTAMP_QUERY)
             .then(|| {
-                let query_count = SLOT_COUNT as u32 * QUERIES_PER_FRAME;
-                let query_set = device.create_query_set(&wgpu::QuerySetDescriptor {
-                    label: Some("bbb-frame-timestamp-queries"),
-                    ty: wgpu::QueryType::Timestamp,
-                    count: query_count,
-                });
+                let detailed_stages =
+                    tracing::enabled!(target: "bbb_renderer::gpu_timing", tracing::Level::DEBUG);
+                let queries_per_frame = queries_per_frame(detailed_stages);
+                let query_bytes = u64::from(queries_per_frame) * std::mem::size_of::<u64>() as u64;
+                let query_sets = (0..SLOT_COUNT)
+                    .map(|_| {
+                        device.create_query_set(&wgpu::QuerySetDescriptor {
+                            label: Some("bbb-frame-timestamp-queries"),
+                            ty: wgpu::QueryType::Timestamp,
+                            count: queries_per_frame,
+                        })
+                    })
+                    .collect();
                 let resolve = device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("bbb-frame-timestamp-resolve"),
                     size: SLOT_COUNT as u64 * RESOLVE_SLOT_BYTES,
@@ -86,7 +107,7 @@ impl GpuFrameTiming {
                     .map(|_| TimingSlot {
                         readback: device.create_buffer(&wgpu::BufferDescriptor {
                             label: Some("bbb-frame-timestamp-readback"),
-                            size: QUERY_BYTES,
+                            size: query_bytes,
                             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                             mapped_at_creation: false,
                         }),
@@ -95,15 +116,18 @@ impl GpuFrameTiming {
                     .collect();
                 let (completion_sender, completions) = mpsc::channel();
                 Self {
-                    query_set,
+                    query_sets,
                     resolve,
                     slots,
                     completion_sender,
                     completions,
                     timestamp_period_nanos: f64::from(queue.get_timestamp_period()),
+                    queries_per_frame,
+                    detailed_stages,
                     next_slot: 0,
                     enabled: false,
                     latest_utilization: None,
+                    completed_durations: VecDeque::with_capacity(SLOT_COUNT),
                     stage_sample_count: 0,
                     stage_nanos_sum: [0; STAGE_COUNT],
                     stage_nanos_samples: std::array::from_fn(|_| {
@@ -117,6 +141,7 @@ impl GpuFrameTiming {
         self.enabled = enabled;
         if !enabled {
             self.latest_utilization = None;
+            self.completed_durations.clear();
             self.stage_sample_count = 0;
             self.stage_nanos_sum = [0; STAGE_COUNT];
             for samples in &mut self.stage_nanos_samples {
@@ -156,9 +181,13 @@ impl GpuFrameTiming {
             .map(|offset| (self.next_slot + offset) % self.slots.len())
             .find(|slot| self.slots[*slot].state == SlotState::Idle)?;
         self.next_slot = (slot + 1) % self.slots.len();
-        self.slots[slot].state = SlotState::Encoding;
-        encoder.write_timestamp(&self.query_set, query_index(slot));
-        Some(GpuFrameToken { slot })
+        let detailed_stages = self.detailed_stages;
+        self.slots[slot].state = SlotState::Encoding { detailed_stages };
+        encoder.write_timestamp(&self.query_sets[slot], 0);
+        Some(GpuFrameToken {
+            slot,
+            detailed_stages,
+        })
     }
 
     pub(super) fn mark_stage(
@@ -167,8 +196,15 @@ impl GpuFrameTiming {
         token: GpuFrameToken,
         stage: GpuFrameStage,
     ) {
-        debug_assert_eq!(self.slots[token.slot].state, SlotState::Encoding);
-        encoder.write_timestamp(&self.query_set, query_index(token.slot) + stage as u32);
+        debug_assert_eq!(
+            self.slots[token.slot].state,
+            SlotState::Encoding {
+                detailed_stages: token.detailed_stages
+            }
+        );
+        if token.detailed_stages {
+            encoder.write_timestamp(&self.query_sets[token.slot], stage as u32);
+        }
     }
 
     pub(super) fn finish_encoding(
@@ -176,13 +212,18 @@ impl GpuFrameTiming {
         encoder: &mut wgpu::CommandEncoder,
         token: GpuFrameToken,
     ) {
-        debug_assert_eq!(self.slots[token.slot].state, SlotState::Encoding);
-        let start = query_index(token.slot);
-        encoder.write_timestamp(&self.query_set, start + QUERIES_PER_FRAME - 1);
+        debug_assert_eq!(
+            self.slots[token.slot].state,
+            SlotState::Encoding {
+                detailed_stages: token.detailed_stages
+            }
+        );
+        let query_count = self.queries_per_frame;
+        encoder.write_timestamp(&self.query_sets[token.slot], query_count - 1);
         let resolve_offset = resolve_offset(token.slot);
         encoder.resolve_query_set(
-            &self.query_set,
-            start..start + QUERIES_PER_FRAME,
+            &self.query_sets[token.slot],
+            zero_based_query_range(query_count),
             &self.resolve,
             resolve_offset,
         );
@@ -191,14 +232,20 @@ impl GpuFrameTiming {
             resolve_offset,
             &self.slots[token.slot].readback,
             0,
-            QUERY_BYTES,
+            u64::from(query_count) * std::mem::size_of::<u64>() as u64,
         );
     }
 
     pub(super) fn after_submit(&mut self, token: GpuFrameToken, cpu_duration: Duration) {
-        debug_assert_eq!(self.slots[token.slot].state, SlotState::Encoding);
+        debug_assert_eq!(
+            self.slots[token.slot].state,
+            SlotState::Encoding {
+                detailed_stages: token.detailed_stages
+            }
+        );
         self.slots[token.slot].state = SlotState::Mapping {
             cpu_duration_nanos: duration_nanos(cpu_duration),
+            detailed_stages: token.detailed_stages,
         };
         let sender = self.completion_sender.clone();
         let slot = token.slot;
@@ -211,7 +258,7 @@ impl GpuFrameTiming {
     }
 
     pub(super) fn cancel(&mut self, token: GpuFrameToken) {
-        if self.slots[token.slot].state == SlotState::Encoding {
+        if matches!(self.slots[token.slot].state, SlotState::Encoding { .. }) {
             self.slots[token.slot].state = SlotState::Idle;
         }
     }
@@ -220,30 +267,54 @@ impl GpuFrameTiming {
         self.latest_utilization
     }
 
+    pub(super) fn take_completed_duration(&mut self) -> Option<Duration> {
+        self.completed_durations.pop_front()
+    }
+
     fn finish_mapping(&mut self, completion: MapCompletion) {
         let mut stage_sample = None;
         let slot = &mut self.slots[completion.slot];
-        let SlotState::Mapping { cpu_duration_nanos } = slot.state else {
+        let SlotState::Mapping {
+            cpu_duration_nanos,
+            detailed_stages,
+        } = slot.state
+        else {
             return;
         };
         if completion.result.is_ok() {
             let mapped = slot.readback.slice(..).get_mapped_range();
-            let timestamps: Option<[u64; QUERIES_PER_FRAME as usize]> = mapped
-                .get(..QUERY_BYTES as usize)
-                .and_then(|bytes| bytemuck::try_cast_slice::<u8, u64>(bytes).ok())
-                .and_then(|values| values.get(..QUERIES_PER_FRAME as usize))
-                .and_then(|values| values.try_into().ok());
+            let query_bytes = self.queries_per_frame as usize * std::mem::size_of::<u64>();
+            let timestamps = mapped
+                .get(..query_bytes)
+                .and_then(|bytes| bytemuck::try_cast_slice::<u8, u64>(bytes).ok());
             if self.enabled {
-                self.latest_utilization = timestamps.and_then(|timestamps| {
-                    gpu_utilization_from_timestamps(
-                        [timestamps[0], timestamps[QUERIES_PER_FRAME as usize - 1]],
+                let end_index = if detailed_stages {
+                    QUERIES_PER_FRAME as usize - 1
+                } else {
+                    TOTAL_ONLY_QUERIES_PER_FRAME as usize - 1
+                };
+                let duration = timestamps.and_then(|timestamps| {
+                    gpu_duration_from_timestamps(
+                        [timestamps[0], timestamps[end_index]],
                         self.timestamp_period_nanos,
-                        cpu_duration_nanos,
                     )
                 });
-                stage_sample = timestamps.and_then(|timestamps| {
-                    gpu_stage_nanos_from_timestamps(timestamps, self.timestamp_period_nanos)
+                self.latest_utilization = duration.and_then(|duration| {
+                    gpu_utilization_from_duration(duration, cpu_duration_nanos)
                 });
+                if let Some(duration) = duration {
+                    if self.completed_durations.len() == SLOT_COUNT {
+                        self.completed_durations.pop_front();
+                    }
+                    self.completed_durations.push_back(duration);
+                }
+                if detailed_stages {
+                    stage_sample = timestamps
+                        .and_then(|timestamps| timestamps.try_into().ok())
+                        .and_then(|timestamps| {
+                            gpu_stage_nanos_from_timestamps(timestamps, self.timestamp_period_nanos)
+                        });
+                }
             }
             drop(mapped);
             slot.readback.unmap();
@@ -337,20 +408,24 @@ pub(super) fn optional_gpu_timing_features(adapter_features: wgpu::Features) -> 
     adapter_features & wgpu::Features::TIMESTAMP_QUERY
 }
 
-fn gpu_utilization_from_timestamps(
+fn gpu_duration_from_timestamps(
     timestamps: [u64; 2],
     timestamp_period_nanos: f64,
-    cpu_duration_nanos: u64,
-) -> Option<f64> {
+) -> Option<Duration> {
     let ticks = timestamps[1].checked_sub(timestamps[0])?;
-    if ticks == 0
-        || cpu_duration_nanos == 0
-        || !timestamp_period_nanos.is_finite()
-        || timestamp_period_nanos <= 0.0
-    {
+    if ticks == 0 || !timestamp_period_nanos.is_finite() || timestamp_period_nanos <= 0.0 {
         return None;
     }
-    let utilization = ticks as f64 * timestamp_period_nanos * 100.0 / cpu_duration_nanos as f64;
+    let nanos = ticks as f64 * timestamp_period_nanos;
+    (nanos.is_finite() && nanos > 0.0 && nanos <= u64::MAX as f64)
+        .then(|| Duration::from_nanos(nanos.round() as u64))
+}
+
+fn gpu_utilization_from_duration(duration: Duration, cpu_duration_nanos: u64) -> Option<f64> {
+    if cpu_duration_nanos == 0 {
+        return None;
+    }
+    let utilization = duration_nanos(duration) as f64 * 100.0 / cpu_duration_nanos as f64;
     utilization.is_finite().then_some(utilization)
 }
 
@@ -373,8 +448,16 @@ fn gpu_stage_nanos_from_timestamps(
     Some(stage_nanos)
 }
 
-fn query_index(slot: usize) -> u32 {
-    slot as u32 * QUERIES_PER_FRAME
+fn queries_per_frame(detailed_stages: bool) -> u32 {
+    if detailed_stages {
+        QUERIES_PER_FRAME
+    } else {
+        TOTAL_ONLY_QUERIES_PER_FRAME
+    }
+}
+
+fn zero_based_query_range(query_count: u32) -> std::ops::Range<u32> {
+    0..query_count
 }
 
 fn resolve_offset(slot: usize) -> u64 {
@@ -432,18 +515,23 @@ mod tests {
     #[test]
     fn gpu_timing_utilization_uses_real_query_delta_and_cpu_frame_duration() {
         assert_eq!(
-            gpu_utilization_from_timestamps([100, 300], 2.0, 1_000),
+            gpu_utilization_from_duration(Duration::from_nanos(400), 1_000),
             Some(40.0)
         );
         assert_eq!(
-            gpu_utilization_from_timestamps([300, 100], 2.0, 1_000),
+            gpu_utilization_from_duration(Duration::from_nanos(400), 0),
             None
         );
-        assert_eq!(gpu_utilization_from_timestamps([100, 300], 2.0, 0), None);
+    }
+
+    #[test]
+    fn gpu_timing_duration_preserves_the_query_pair_without_cpu_frame_reconstruction() {
         assert_eq!(
-            gpu_utilization_from_timestamps([100, 300], f64::NAN, 1_000),
-            None
+            gpu_duration_from_timestamps([100, 300], 2.0),
+            Some(Duration::from_nanos(400))
         );
+        assert_eq!(gpu_duration_from_timestamps([300, 100], 2.0), None);
+        assert_eq!(gpu_duration_from_timestamps([100, 300], f64::NAN), None);
     }
 
     #[test]
@@ -478,8 +566,31 @@ mod tests {
                 resolve_offset(slot) % wgpu::QUERY_RESOLVE_BUFFER_ALIGNMENT,
                 0
             );
-            assert!(QUERY_BYTES <= RESOLVE_SLOT_BYTES);
+            assert!(
+                u64::from(queries_per_frame(false)) * std::mem::size_of::<u64>() as u64
+                    <= RESOLVE_SLOT_BYTES
+            );
+            assert!(
+                u64::from(queries_per_frame(true)) * std::mem::size_of::<u64>() as u64
+                    <= RESOLVE_SLOT_BYTES
+            );
         }
+    }
+
+    #[test]
+    fn gpu_timing_query_layout_is_two_for_formal_and_full_only_for_diagnostics() {
+        assert_eq!(queries_per_frame(false), 2);
+        assert_eq!(queries_per_frame(true), QUERIES_PER_FRAME);
+    }
+
+    #[test]
+    fn gpu_timing_keeps_three_slots_for_zero_based_query_sets() {
+        assert_eq!(SLOT_COUNT, 3);
+        assert_eq!(zero_based_query_range(queries_per_frame(false)), 0..2);
+        assert_eq!(
+            zero_based_query_range(queries_per_frame(true)),
+            0..QUERIES_PER_FRAME
+        );
     }
 
     #[test]
@@ -498,7 +609,14 @@ mod tests {
             return;
         };
         let mut timing = GpuFrameTiming::new(&device, &queue).expect("timestamp timing");
+        assert_eq!(timing.query_sets.len(), SLOT_COUNT);
         timing.set_enabled(true);
+        let timestamp_work = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bbb-gpu-timing-test-work"),
+            size: 4_096,
+            usage: wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
         for _ in 0..SLOT_COUNT {
             let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -519,6 +637,7 @@ mod tests {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::WeatherEnd);
             timing.mark_stage(&mut encoder, token, GpuFrameStage::TransparencyCombineEnd);
             timing.mark_stage(&mut encoder, token, GpuFrameStage::PresentationTailEnd);
+            encoder.clear_buffer(&timestamp_work, 0, None);
             timing.finish_encoding(&mut encoder, token);
             queue.submit(Some(encoder.finish()));
             timing.after_submit(token, Duration::from_millis(16));
@@ -530,5 +649,10 @@ mod tests {
             .slots
             .iter()
             .all(|slot| slot.state == SlotState::Idle));
+        let durations = (0..SLOT_COUNT)
+            .filter_map(|_| timing.take_completed_duration())
+            .collect::<Vec<_>>();
+        assert_eq!(durations.len(), SLOT_COUNT);
+        assert!(durations.iter().all(|duration| *duration > Duration::ZERO));
     }
 }

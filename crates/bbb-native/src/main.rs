@@ -2104,12 +2104,17 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                     renderer_counters.non_entity_rebuilt_owners =
                         non_entity_observation.rebuilt_owners;
                     project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
+                    // Always drain completed queries so opening the profiler after the GPU HUD
+                    // cannot publish durations captured before the recording window.
+                    let completed_gpu_duration = renderer.take_gpu_duration();
                     let profiler_frame_metrics = profiler_enabled.then(|| {
+                        let gpu_utilization = renderer.gpu_utilization();
                         DebugProfilerFrameMetrics::from_renderer(
                             std::time::Duration::ZERO,
                             &renderer_counters,
                             args.render_distance_chunks,
-                            renderer.gpu_utilization(),
+                            gpu_utilization,
+                            completed_gpu_duration,
                         )
                     });
                     simulation_mailbox.update_backend_telemetry(renderer_counters, audio_counters);

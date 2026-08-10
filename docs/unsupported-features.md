@@ -122,7 +122,12 @@ path exists at all.
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
-Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform-windows-release`
+Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform-windows-release`, `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-client-runtime`, `lifecycle-session-replacement`, `lifecycle-client-task-handoff`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-default-pack-stack`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-packet-tables`, `protocol-listener-contracts`, `protocol-login-handler-decisions`, `protocol-configuration-handler-decisions`, `protocol-play-handler-decisions`, `protocol-client-state-flow`, `protocol-serverbound-call-sites`, `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`, `rendering-level-backend-lifecycle`, `rendering-level-section-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`, `rendering-block-model-pipeline`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-camera-fluid-fog`, `ui-screen-lifecycle`, `ui-accessibility-surface`, `ui-clipboard-surface`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `platform-window-lifecycle`, `platform-window-display-mode`, `platform-window-surface-state`, `platform-window-chrome`, `performance-official-equal-load`, `performance-gpu-execution-duration`
+
+These rows remain implemented; they are temporarily `partial` because the
+renderer/native release image changed. Refresh the validation classes derived
+by `scripts/parity_acceptance.py plan` against the new full-gated binary before
+restoring any row to `equivalent`.
 
 - An X11 release row is `not-needed`: the user declared X11 a non-goal on
   2026-08-06 in favour of the declared Wayland row. bbb keeps its winit X11
@@ -152,6 +157,16 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
   Windows means reimplementing that dispatch from Vanilla source.
+- `macos-native-retina-stability` is active against the accepted 2560x1600
+  report. Preserve the exact fullscreen drawable, world/replay, scene, view
+  distance, quality, resource pack, input, VSync-off and unlimited-cap contract.
+  Complete only when a fresh two-round Java→BBB→BBB→Java report keeps BBB mean
+  FPS at or above 120.738 and BBB application-frame and GPU-duration p95, p99,
+  coefficient of variation, and >=33.333 ms hitch count are no worse than the
+  official client measured in that same ABBA run. BBB duration attribution must
+  remain tied to one GPU query submission; the official side retains unmodified
+  26.1 F3+L semantics. Lowering visible/resident work, quality or resolution is
+  not an optimization.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

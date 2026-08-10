@@ -197,6 +197,9 @@ impl DebugProfilerFrameMetrics {
         if let Some(value) = finite_metric(self.gpu_utilization) {
             insert_metric(&mut categories, "gpu", "gpuUtilization", value);
         }
+        if let Some(value) = finite_metric(self.gpu_duration_nanos) {
+            insert_metric(&mut categories, "gpu", "gpuDuration", value);
+        }
         categories
     }
 }
@@ -474,6 +477,7 @@ mod tests {
                     last_view_distance: Some(12.0),
                     compile_queue_size: Some(1.0),
                     gpu_utilization: Some(50.0),
+                    gpu_duration_nanos: Some(20.0),
                     ..DebugProfilerFrameMetrics::default()
                 },
             ),
@@ -511,7 +515,10 @@ mod tests {
         let report = test_report(SystemTime::UNIX_EPOCH);
         let files = metrics_csv_files(&report.frames);
         assert_eq!(files["ticking"], "@tick,ticktime\n1,10\n2,40\n");
-        assert_eq!(files["gpu"], "@tick,gpuUtilization\n1,0\n2,50\n");
+        assert_eq!(
+            files["gpu"],
+            "@tick,gpuDuration,gpuUtilization\n1,0,0\n2,20,50\n"
+        );
         assert!(files["chunk rendering"]
             .contains("@tick,lastViewDistance,renderedChunks,totalChunks\n1,12,5,8\n2,12,6,9\n"));
     }

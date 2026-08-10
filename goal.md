@@ -425,7 +425,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: closed
 - p2-hud: closed
 - p3-resources: closed
-- p4-delivery: maintenance
+- p4-delivery: active
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -498,7 +498,7 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`maintenance`。macOS aarch64 发布行在 native-Retina 修复改变 exclusive window / Metal drawable owner 后，已由 exact full-gated `afe29aa32` fresh host-run 重新关闭。独立 `macos-native-retina` 2560x1600 panel-native 验收也已在 exact full-gated `54f20a62a` 完成，正式报告 SHA-256 为 `84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`，不替换固定分辨率基线。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
+状态：`active`。macOS aarch64 发布行在 native-Retina 修复改变 exclusive window / Metal drawable owner 后，已由 exact full-gated `afe29aa32` fresh host-run 重新关闭。独立 `macos-native-retina` 2560x1600 panel-native 首轮验收已在 exact full-gated `54f20a62a` 完成，正式报告 SHA-256 为 `84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`，不替换固定分辨率基线；当前只推进用户重开的同 profile Metal 稳定性与 GPU 尾延迟优化。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
 Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；任一 receipt 失效时必须
 恢复真实开放状态，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独保留 `equivalent`。
 

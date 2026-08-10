@@ -665,26 +665,53 @@ def summarize_durations_ms(values: Sequence[float]) -> dict[str, object]:
     }
 
 
-def profiler_samples(path: Path) -> dict[str, list[float]]:
+def profiler_samples(path: Path) -> dict[str, object]:
     try:
         archive = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as error:
         raise RetinaAcceptanceError(f"cannot open profiling archive {path}: {error}") from error
+    gpu = None
     with archive:
         ticking = _read_metric_csv(archive, "/metrics/ticking.csv", "ticktime")
-        gpu = _read_metric_csv(archive, "/metrics/gpu.csv", "gpuUtilization")
-    common_ticks = sorted(ticking.keys() & gpu.keys())
-    if not common_ticks:
-        raise RetinaAcceptanceError("profiling ticktime and GPU samples do not overlap")
-    frame_ms = [ticking[tick] / 1_000_000.0 for tick in common_ticks]
-    gpu_ms = [
-        ticking[tick] * gpu[tick] / 100.0 / 1_000_000.0 for tick in common_ticks if gpu[tick] > 0.0
-    ]
+        try:
+            gpu_duration = _read_metric_csv(archive, "/metrics/gpu.csv", "gpuDuration")
+        except RetinaAcceptanceError:
+            gpu_duration = None
+            gpu = _read_metric_csv(archive, "/metrics/gpu.csv", "gpuUtilization")
+    if gpu_duration is not None:
+        frame_ms = [ticking[tick] / 1_000_000.0 for tick in sorted(ticking)]
+        gpu_ms = [
+            gpu_duration[tick] / 1_000_000.0
+            for tick in sorted(gpu_duration)
+            if gpu_duration[tick] > 0.0
+        ]
+        gpu_duration_scope = (
+            "renderer timestamp-query pair read directly from one completed GPU "
+            "submission; no asynchronous utilization/frame-time reconstruction"
+        )
+    else:
+        assert gpu is not None
+        common_ticks = sorted(ticking.keys() & gpu.keys())
+        if not common_ticks:
+            raise RetinaAcceptanceError("profiling ticktime and GPU samples do not overlap")
+        frame_ms = [ticking[tick] / 1_000_000.0 for tick in common_ticks]
+        gpu_ms = [
+            ticking[tick] * gpu[tick] / 100.0 / 1_000_000.0
+            for tick in common_ticks
+            if gpu[tick] > 0.0
+        ]
+        gpu_duration_scope = (
+            "unmodified official 26.1 F3+L: Minecraft divides TimerQuery duration "
+            "by that query's saved CPU frame duration, while the archive exports "
+            "only sampled ticktime and gpuUtilization; duration is reconstructed "
+            "as exported ticktime * gpuUtilization / 100"
+        )
     if not gpu_ms:
         raise RetinaAcceptanceError("profiling archive contains no positive GPU timer sample")
     return {
         "application_frame_time": frame_ms,
         "gpu_duration": gpu_ms,
+        "gpu_duration_scope": gpu_duration_scope,
     }
 
 
@@ -695,11 +722,7 @@ def parse_profiler_archive(path: Path) -> dict[str, object]:
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "application_frame_time": summarize_durations_ms(samples["application_frame_time"]),
         "gpu_duration": summarize_durations_ms(samples["gpu_duration"]),
-        "gpu_duration_scope": (
-            "render-API timer-query duration reconstructed as "
-            "ticktime * gpuUtilization / 100; both clients use the unmodified "
-            "26.1 F3+L metric names"
-        ),
+        "gpu_duration_scope": samples["gpu_duration_scope"],
     }
 
 

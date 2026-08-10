@@ -3350,6 +3350,12 @@ impl Renderer {
             .and_then(GpuFrameTiming::latest_utilization)
     }
 
+    pub fn take_gpu_duration(&mut self) -> Option<Duration> {
+        self.gpu_timing
+            .as_mut()
+            .and_then(GpuFrameTiming::take_completed_duration)
+    }
+
     pub fn last_frame_profile(&self) -> RendererFrameProfile {
         self.last_frame_profile
     }

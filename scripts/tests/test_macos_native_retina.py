@@ -52,6 +52,18 @@ def write_profile(path: Path) -> None:
         )
 
 
+def write_bbb_profile(path: Path) -> None:
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "client/metrics/ticking.csv",
+            "@tick,ticktime\n1,10000000\n2,20000000\n3,15000000\n",
+        )
+        archive.writestr(
+            "client/metrics/gpu.csv",
+            "@tick,gpuDuration\n1,0\n2,4000000\n3,5000000\n",
+        )
+
+
 class DisplayProbeTests(unittest.TestCase):
     def test_checked_in_profile_contract_is_exact(self):
         contract = retina.load_profile_contract()
@@ -267,6 +279,18 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(parsed["application_frame_time"]["samples"], 2)
         self.assertEqual(parsed["application_frame_time"]["p50_ms"], 10.0)
         self.assertEqual(parsed["gpu_duration"]["p99_ms"], 5.0)
+
+    def test_bbb_archive_uses_direct_gpu_duration_without_utilization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_profile(profile)
+
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(parsed["application_frame_time"]["samples"], 3)
+        self.assertEqual(parsed["gpu_duration"]["samples"], 2)
+        self.assertEqual(parsed["gpu_duration"]["mean_ms"], 4.5)
+        self.assertIn("directly", parsed["gpu_duration_scope"])
 
     def test_png_dimensions_read_actual_framebuffer_pixels(self):
         with tempfile.TemporaryDirectory() as directory:

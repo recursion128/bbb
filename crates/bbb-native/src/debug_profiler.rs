@@ -44,6 +44,7 @@ pub(crate) struct DebugProfilerFrameMetrics {
     pub(crate) last_view_distance: Option<f64>,
     pub(crate) compile_queue_size: Option<f64>,
     pub(crate) gpu_utilization: Option<f64>,
+    pub(crate) gpu_duration_nanos: Option<f64>,
 }
 
 impl DebugProfilerFrameMetrics {
@@ -52,6 +53,7 @@ impl DebugProfilerFrameMetrics {
         counters: &RendererCounters,
         render_distance_chunks: u32,
         gpu_utilization: Option<f64>,
+        gpu_duration: Option<Duration>,
     ) -> Self {
         Self {
             tick_time_nanos: duration_nanos(tick_time) as f64,
@@ -61,6 +63,7 @@ impl DebugProfilerFrameMetrics {
             last_view_distance: Some(render_distance_chunks as f64),
             compile_queue_size: Some(counters.terrain_mesh_queue_depth as f64),
             gpu_utilization: finite_metric(gpu_utilization),
+            gpu_duration_nanos: gpu_duration.map(|duration| duration_nanos(duration) as f64),
             ..Self::default()
         }
     }

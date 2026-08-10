@@ -5,16 +5,16 @@
       "source": {
         "anchors": [
           {
-            "line": 2570,
+            "line": 2575,
             "symbol": "window-event adapter"
           },
           {
-            "line": 2565,
+            "line": 2570,
             "symbol": "Linux Java 25 scope ruling"
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "6f16ad19e054c62b775b79249c2a146a47e655af0905dc9b6d454ba869c0f4dc"
+        "sha256": "9b569c9df2aced21a3a0d9a269d38ab98dc9f3ffed729f3355c0eaa07d92c9d7"
       },
       "successful_path_event_consumed": false,
       "valid_path_values_consumed": false,
