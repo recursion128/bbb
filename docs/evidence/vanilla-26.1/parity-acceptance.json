@@ -209,10 +209,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "audio-host-device",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "f797da41ef58936e27a1ab37b50920bbf83a469c",
-        "source_report_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+        "source_report_blob_sha1": "ac8fea647e847b0ba202b85952646c8817238587",
+        "source_report_commit": "beba7e90d378e0fc9f78f99fccc2ee03c526c288",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "0e75de69c9d33210a46dcf6666148a2f29f6843d6388ff9a873f0a8a2e2ff1c5"
+        "source_report_sha256": "539e605bcdae6c0a77646a99773e48f2cf17fb37d1f63748d0a938d258426a69"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -541,10 +541,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "draw-evidence",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "f797da41ef58936e27a1ab37b50920bbf83a469c",
-        "source_report_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+        "source_report_blob_sha1": "ac8fea647e847b0ba202b85952646c8817238587",
+        "source_report_commit": "beba7e90d378e0fc9f78f99fccc2ee03c526c288",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "0e75de69c9d33210a46dcf6666148a2f29f6843d6388ff9a873f0a8a2e2ff1c5"
+        "source_report_sha256": "539e605bcdae6c0a77646a99773e48f2cf17fb37d1f63748d0a938d258426a69"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -842,10 +842,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "lifecycle-soak",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "f797da41ef58936e27a1ab37b50920bbf83a469c",
-        "source_report_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+        "source_report_blob_sha1": "ac8fea647e847b0ba202b85952646c8817238587",
+        "source_report_commit": "beba7e90d378e0fc9f78f99fccc2ee03c526c288",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "0e75de69c9d33210a46dcf6666148a2f29f6843d6388ff9a873f0a8a2e2ff1c5"
+        "source_report_sha256": "539e605bcdae6c0a77646a99773e48f2cf17fb37d1f63748d0a938d258426a69"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -1081,10 +1081,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "linux-platform",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "f797da41ef58936e27a1ab37b50920bbf83a469c",
-        "source_report_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+        "source_report_blob_sha1": "ac8fea647e847b0ba202b85952646c8817238587",
+        "source_report_commit": "beba7e90d378e0fc9f78f99fccc2ee03c526c288",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "0e75de69c9d33210a46dcf6666148a2f29f6843d6388ff9a873f0a8a2e2ff1c5"
+        "source_report_sha256": "539e605bcdae6c0a77646a99773e48f2cf17fb37d1f63748d0a938d258426a69"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -1456,10 +1456,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "performance-abba",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "f797da41ef58936e27a1ab37b50920bbf83a469c",
-        "source_report_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+        "source_report_blob_sha1": "ac8fea647e847b0ba202b85952646c8817238587",
+        "source_report_commit": "beba7e90d378e0fc9f78f99fccc2ee03c526c288",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "0e75de69c9d33210a46dcf6666148a2f29f6843d6388ff9a873f0a8a2e2ff1c5"
+        "source_report_sha256": "539e605bcdae6c0a77646a99773e48f2cf17fb37d1f63748d0a938d258426a69"
       },
       "scenario_ids": [],
       "scoped_reuse": null,
@@ -9994,10 +9994,10 @@
         "artifact_file_sha256_at_generation": null,
         "artifact_id": "visual-workload",
         "rule": "committed-projection-only; final-requires-artifact",
-        "source_report_blob_sha1": "f797da41ef58936e27a1ab37b50920bbf83a469c",
-        "source_report_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
+        "source_report_blob_sha1": "ac8fea647e847b0ba202b85952646c8817238587",
+        "source_report_commit": "beba7e90d378e0fc9f78f99fccc2ee03c526c288",
         "source_report_path": "docs/evidence/vanilla-26.1/parity-acceptance.json",
-        "source_report_sha256": "0e75de69c9d33210a46dcf6666148a2f29f6843d6388ff9a873f0a8a2e2ff1c5"
+        "source_report_sha256": "539e605bcdae6c0a77646a99773e48f2cf17fb37d1f63748d0a938d258426a69"
       },
       "scenario_ids": [
         "chunk_boundary_crossing",
@@ -10163,6 +10163,7 @@
     "base_commit": "d2f21080548603a9d3bd9df6f9c07e8c23d6c49d",
     "changed_paths": [
       "crates/bbb-pack/src/openal_native.rs",
+      "crates/bbb-platform-macos/src/lib.rs",
       "docs/evidence/vanilla-26.1/file-drop-capability.json",
       "docs/goal-archive.md",
       "docs/unsupported-features.md",
@@ -10207,6 +10208,7 @@
     ],
     "functional_changed_paths": [
       "crates/bbb-pack/src/openal_native.rs",
+      "crates/bbb-platform-macos/src/lib.rs",
       "pyproject.toml",
       "scripts/bbb_tools/dev_cli.py",
       "scripts/bbb_tools/execution/process.py",
@@ -10239,6 +10241,23 @@
           "platform-macos-release"
         ],
         "path": "crates/bbb-pack/src/openal_native.rs",
+        "reasons": [
+          "verified-macos-platform-scope"
+        ],
+        "required_validation_classes": [
+          "bbb-owner",
+          "focused-evidence",
+          "full-gate",
+          "release-identity",
+          "resource-platform-receipt",
+          "vanilla-owner"
+        ]
+      },
+      {
+        "mechanism_ids": [
+          "platform-macos-release"
+        ],
+        "path": "crates/bbb-platform-macos/src/lib.rs",
         "reasons": [
           "verified-macos-platform-scope"
         ],
@@ -11306,7 +11325,7 @@
     },
     {
       "path": "scripts/fixtures/parity/macos-enablement-compatibility.json",
-      "sha256": "61b636b6f51462ec238644c660f67dfe3014f072c6c9a67959097ba8816b46f3"
+      "sha256": "d00bd4f74cabec641b46902b8285d179b96026f1afb22e7e0fa41a0aefb49788"
     },
     {
       "path": "docs/wiki/parity/vanilla-26.1-matrix.md",

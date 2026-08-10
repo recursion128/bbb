@@ -50,12 +50,11 @@ pub fn set_application_icon(_icns_bytes: &[u8]) -> Result<()> {
     anyhow::bail!("macOS application icon apply is unavailable on this target")
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "macos")))]
 mod tests {
-    use super::*;
+    use super::set_application_icon;
 
     #[test]
-    #[cfg(not(target_os = "macos"))]
     fn non_macos_targets_report_the_platform_mismatch() {
         let err = set_application_icon(b"icns").expect_err("non-macOS apply must fail");
         assert_eq!(

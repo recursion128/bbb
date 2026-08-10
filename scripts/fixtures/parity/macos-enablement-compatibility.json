@@ -2,6 +2,7 @@
   "base_commit": "85f4fd88b4123fa505b370a379c66375b7c0d479",
   "paths": [
     {"base_sha256":"1e64983a1c20fa9d4cd50893c9b8b0e638427cb7473f43db3661f6cbc4bbbb68","current_sha256":"92b2effa2407de23e96879318c1d61c4af3c319c7298a429e76663fcb931cb8d","path":"crates/bbb-pack/src/openal_native.rs"},
+    {"base_sha256":"4268ac088dc4b9c6861f63ed3b09a7133de7074cacb81c36c58f7c04519ed029","current_sha256":"3ef83ea914b2f993d384794dfa43935b3bc5f32f5da5caae63b15e457cc391f4","path":"crates/bbb-platform-macos/src/lib.rs"},
     {"base_sha256":"51ea6348309306ab5001f9192d060eeaa320e53b8fa4f7e6b5083e9143e4e8b6","current_sha256":"c930a49e8ba46f2a055003a20d25a8b6fef8740e0878701a4b15b702a3a993fc","path":"pyproject.toml"},
     {"base_sha256":"6a11835a890e11f5d70896f11ec8dbd30b6b215eb5d91077cfd05556c28dcd9d","current_sha256":"9aec8c7a4fccbd2b3572e09c95be62b5242924912e979c47bf95a06cd01384ea","path":"scripts/bbb_tools/dev_cli.py"},
     {"base_sha256":"6973d50a0e740be584e505cdbad3ecd902a33bc70478c2d8c2fae97ecaff31f7","current_sha256":"7f91b313cc16d3512dc3aa02392c29958bfebb5b5bb5b9443478c9111b7e38cc","path":"scripts/bbb_tools/execution/process.py"},
