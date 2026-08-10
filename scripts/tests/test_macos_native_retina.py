@@ -9,6 +9,7 @@ import unittest
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "scripts" / "macos_native_retina.py"
@@ -195,7 +196,7 @@ class LaunchContractTests(unittest.TestCase):
             def focus_pid(self, pid):
                 self.calls += 1
                 if self.calls < 3:
-                    raise retina.InputError("macOS window was not raised (-25206)")
+                    raise retina.InputError("macOS window was not raised (-25204)")
 
         backend = Backend()
         started = time.monotonic()
@@ -203,6 +204,19 @@ class LaunchContractTests(unittest.TestCase):
 
         self.assertEqual(backend.calls, 3)
         self.assertGreaterEqual(time.monotonic() - started, 0.5)
+
+    def test_focus_accepts_unsupported_raise_only_after_frontmost_proof(self):
+        class Backend:
+            def focus_pid(self, pid):
+                raise retina.InputError("macOS window was not raised (-25206)")
+
+        backend = Backend()
+        with mock.patch.object(
+            retina, "_macos_application_is_frontmost", return_value=True
+        ) as frontmost:
+            retina.focus_with_retry(backend, 42, timeout=0.1)
+
+        frontmost.assert_called_once_with(backend, 42)
 
 
 class ProfilerTests(unittest.TestCase):

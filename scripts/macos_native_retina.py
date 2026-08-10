@@ -29,8 +29,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from bbb_tools.input.macos_quartz import MacOsQuartzBackend
 from bbb_tools.input.contract import InputError
+from bbb_tools.input.macos_quartz import MacOsQuartzBackend
 from official_client_benchmark import (
     BENCHMARK_USERNAME,
     MINECRAFT_VERSION,
@@ -948,6 +948,30 @@ def _post_key_code(backend: MacOsQuartzBackend, key_code: int, pressed: bool) ->
     backend._post(event, application_targeted=True)
 
 
+def _macos_application_is_frontmost(backend: MacOsQuartzBackend, pid: int) -> bool:
+    name = backend._cf.CFStringCreateWithCString(None, b"AXFrontmost", 0x08000100)
+    application = backend._api.AXUIElementCreateApplication(pid)
+    value = ctypes.c_void_p()
+    try:
+        if not name or not application:
+            return False
+        status = backend._api.AXUIElementCopyAttributeValue(
+            application, name, ctypes.byref(value)
+        )
+        return bool(
+            status == 0
+            and value.value
+            and backend._cf.CFBooleanGetValue(value)
+        )
+    finally:
+        if value.value:
+            backend._cf.CFRelease(value)
+        if application:
+            backend._cf.CFRelease(application)
+        if name:
+            backend._cf.CFRelease(name)
+
+
 def focus_with_retry(
     backend: MacOsQuartzBackend,
     pid: int,
@@ -968,6 +992,14 @@ def focus_with_retry(
             backend.focus_pid(pid)
             return
         except InputError as error:
+            # A GLFW fullscreen window may expose AXMain/AXFocused and become
+            # frontmost while declining the redundant AXRaise action. Accept
+            # only that exact action-unsupported result, with a fresh native
+            # AXFrontmost read proving activation actually succeeded.
+            if str(error).endswith("window was not raised (-25206)") and (
+                _macos_application_is_frontmost(backend, pid)
+            ):
+                return
             last_error = error
             time.sleep(0.25)
     raise RetinaAcceptanceError(
