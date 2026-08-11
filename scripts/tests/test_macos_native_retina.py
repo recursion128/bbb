@@ -335,6 +335,28 @@ class DisplayProbeTests(unittest.TestCase):
         self.assertEqual(contract["formal_order"], list(retina.FORMAL_ORDER))
         self.assertEqual(contract["drawable_mismatch_policy"], "block-without-comparison")
         self.assertEqual(contract["stability_acceptance"]["policy"], "absolute-tail-v2")
+        self.assertEqual(
+            contract["candidate_bbb_ab"],
+            {
+                "schema": retina.WGPU30_CANDIDATE_AB_SCHEMA,
+                "legacy_schemas": [
+                    retina.LEGACY_CANDIDATE_AB_SCHEMA,
+                    retina.CANDIDATE_AB_SCHEMA,
+                ],
+                "surface_policy": "macos-immediate-wgpu30-unchanged",
+                "baseline_desired_maximum_frame_latency": 2,
+                "candidate_desired_maximum_frame_latency": 2,
+                "baseline_expected_metal_drawable_count": 3,
+                "candidate_expected_metal_drawable_count": 3,
+                "baseline_actual_metal_drawable_count": 3,
+                "candidate_actual_metal_drawable_count": 3,
+                "baseline_in_flight_submission_budget": 1,
+                "candidate_in_flight_submission_budget": 1,
+                "queue_depth_increased": False,
+                "wait_acquire_submit_present_order_unchanged": True,
+                "input_latency_policy": "unchanged-single-in-flight",
+            },
+        )
 
     def test_panel_native_pixels_not_looks_like_or_scaled_backing_are_target(self):
         probe = retina.normalize_display_probe(

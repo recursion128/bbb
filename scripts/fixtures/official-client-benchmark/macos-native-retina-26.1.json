@@ -41,16 +41,23 @@
   ],
   "drawable_mismatch_policy": "block-without-comparison",
   "candidate_bbb_ab": {
-    "schema": "macos-native-retina-bbb-ab-v2",
-    "legacy_schema": "macos-native-retina-bbb-ab-v1",
-    "surface_policy": "macos-immediate-low-latency",
+    "schema": "macos-native-retina-bbb-ab-v3",
+    "legacy_schemas": [
+      "macos-native-retina-bbb-ab-v1",
+      "macos-native-retina-bbb-ab-v2"
+    ],
+    "surface_policy": "macos-immediate-wgpu30-unchanged",
     "baseline_desired_maximum_frame_latency": 2,
-    "candidate_desired_maximum_frame_latency": 1,
+    "candidate_desired_maximum_frame_latency": 2,
     "baseline_expected_metal_drawable_count": 3,
-    "candidate_expected_metal_drawable_count": 2,
-    "in_flight_submission_budget": 1,
+    "candidate_expected_metal_drawable_count": 3,
+    "baseline_actual_metal_drawable_count": 3,
+    "candidate_actual_metal_drawable_count": 3,
+    "baseline_in_flight_submission_budget": 1,
+    "candidate_in_flight_submission_budget": 1,
     "queue_depth_increased": false,
-    "input_latency_policy": "wgpu-documented-low-latency-surface-hint"
+    "wait_acquire_submit_present_order_unchanged": true,
+    "input_latency_policy": "unchanged-single-in-flight"
   },
   "frame_phase_diagnostics": {
     "schema": "renderer-frame-phases-v2",
