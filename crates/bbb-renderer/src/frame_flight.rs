@@ -161,9 +161,8 @@ struct PreviousSubmissionSynchronization {
 }
 
 /// Owns the backend frame-flight lifecycle without owning visible frame work.
-/// macOS Immediate retains one in-flight submission. The current bounded policy
-/// first polls completion without blocking and waits on the exact prior fence
-/// only while that submission remains active.
+/// macOS Immediate retains one in-flight submission and waits on the exact
+/// prior fence before drawable acquisition.
 pub(super) struct FrameFlightController {
     #[cfg(target_os = "macos")]
     previous_submission: Option<wgpu::SubmissionIndex>,
@@ -215,22 +214,15 @@ impl FrameFlightController {
             if budget == Some(1) {
                 if let Some(submission) = self.previous_submission.take() {
                     let synchronization_started_at = profile_wait.then(Instant::now);
-                    let poll_started_at = profile_wait.then(Instant::now);
-                    let queue_empty = device.poll(wgpu::Maintain::Poll).is_queue_empty();
-                    let poll = poll_started_at
+                    let wait_started_at = profile_wait.then(Instant::now);
+                    device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
+                    let blocking_wait = wait_started_at
                         .map(|started_at| started_at.elapsed())
                         .unwrap_or_default();
-                    let blocking_wait = if queue_empty {
-                        Duration::ZERO
-                    } else {
-                        let wait_started_at = profile_wait.then(Instant::now);
-                        device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
-                        wait_started_at
-                            .map(|started_at| started_at.elapsed())
-                            .unwrap_or_default()
-                    };
                     return PreviousSubmissionSynchronization {
-                        poll,
+                        // Schema v2 retains the rejected completion-poll phase
+                        // as an explicit zero rather than changing old columns.
+                        poll: Duration::ZERO,
                         blocking_wait,
                         total: synchronization_started_at
                             .map(|started_at| started_at.elapsed())
@@ -342,18 +334,19 @@ mod tests {
     }
 
     #[test]
-    fn completion_poll_only_skips_the_blocking_wait_when_the_queue_is_empty() {
+    fn fixed_budget_wait_does_not_restore_the_rejected_completion_poll() {
         let source = include_str!("frame_flight.rs");
         let wait = source.find("fn wait_for_previous_submission(").unwrap();
         let submit = source.find("pub(super) fn submit_and_present(").unwrap();
         let body = &source[wait..submit];
-        let poll = body.find("wgpu::Maintain::Poll").unwrap();
-        let queue_empty = body.find("if queue_empty").unwrap();
         let blocking_wait = body
             .find("wgpu::Maintain::WaitForSubmissionIndex(submission)")
             .unwrap();
-        assert!(poll < queue_empty && queue_empty < blocking_wait);
+        assert!(blocking_wait > 0);
+        assert!(!body.contains("wgpu::Maintain::Poll"));
+        assert!(!body.contains("is_queue_empty"));
         assert!(body.contains("self.previous_submission.take()"));
+        assert!(body.contains("poll: Duration::ZERO"));
     }
 
     #[test]

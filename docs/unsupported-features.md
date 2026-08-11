@@ -208,12 +208,19 @@ restoring any row to `equivalent`.
   a separately predeclared policy whose lifecycle/input-latency contract is
   focused-tested and whose paired A/B passes every combined/scene/run-pair FPS
   and absolute-stability scope; do not reuse acquire-before-wait as a candidate.
-  The next bounded candidate keeps budget one and the same lifecycle order,
-  using a non-blocking completion poll before the exact prior-submission fence
-  wait. Frame-phase schema v2 records poll and conditional blocking-wait
-  durations separately and rejects a per-frame partition exceeding total
-  synchronization. Retain this policy only if its AC paired A/B passes; it does
-  not authorize multiple in-flight frames.
+  The full-gated `36bd347d7` completion-poll candidate also kept budget one and
+  the same lifecycle order, but its AC paired A/B skipped the blocking wait on
+  only 110/17,252 candidate frames (0.638%). Combined FPS remained within the
+  fixed margin (-0.138%), while App p50/p95/p99/stddev/p99-p50/1% low regressed;
+  round 2 and eight pair/scene FPS scopes also exceeded the margin. Its 49
+  validator failures reject it before Vanilla ABBA. The report is
+  `docs/evidence/macos-native-retina/completion-poll-ac-candidate.json` at
+  SHA-256
+  `bce5d7bce10a75f46dde3b1bd978cc0502b29a2c51be726865aedce39bda9c10`.
+  Frame-phase schema v2 remains compatible, but the accepted fixed-budget
+  policy reports its rejected poll phase as zero and restores the exact
+  blocking fence. A future Slice B policy needs a new lifecycle, queue-depth
+  and input-latency contract; neither rejected strategy may be reused.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

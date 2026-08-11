@@ -163,13 +163,27 @@ mean/p95/p99/p99-p50 也从 0.473/0.699/0.886/0.404 ms 回退到
 scene-pair 超过固定 margin。因此在正式 Vanilla ABBA 前拒绝。报告 SHA-256 为
 `163dfb5557ad8002a5f097db6c627dbc6268744b76a9c36c2549fa46c510fe07`。
 
-下一项有界 candidate 仍保持 macOS Immediate 单 in-flight 和
-wait→acquire→submit→present：先用 `Device::poll(Poll)` 非阻塞检查上一 submission；只有
+第二项有界 candidate 在 full-gated `36bd347d7` 保持 macOS Immediate 单 in-flight 和
+wait→acquire→submit→present：先用 `Device::poll(Poll)` 非阻塞检查上一 submission，只有
 queue 仍 busy 才执行原 `WaitForSubmissionIndex`。frame-phase schema v2 将
 `previous_submission_poll` 与 `previous_submission_blocking_wait` 从 total
 `previous_submission_wait` 中分列；validator 逐 tick 要求 poll+blocking 不超过 total，并
-继续校验 archive/raw sidecar/summary。该策略不改变 FIFO/Linux、drawable 时机或 queue
-depth，因此不引入额外排队输入延迟；仍必须通过独立 AC paired A/B 后才能保留。
+继续校验 archive/raw sidecar/summary。
+
+接电、无温控告警的两轮 B→C→C→B 在八轮均实测 fullscreen 2560x1600，且 workload/input/
+settings/resource/scene hash 完全一致。17,252 个候选帧仅 110 帧（0.638%）免于 blocking
+wait；poll mean 0.00235 ms，而 blocking wait mean/p95/p99 仍为
+4.849/5.919/6.970 ms。combined FPS 为 baseline 143.916、candidate 143.717
+（-0.138%，在固定 0.3404% margin 内），但 App p50/p95/p99/stddev/p99-p50 从
+6.800/9.071/10.731/1.356/3.931 ms 回退到
+6.817/9.095/10.768/1.412/3.951 ms，1% low 从 73.428 降到 70.951 FPS；GPU p50/p95
+也从 0.4890/0.8428 回退到 0.4892/0.8493 ms。round-2 FPS -0.514%，另有七个 pair/scene
+FPS scope 加上该 round 超 margin；绝对稳定性在 combined、两个 round 与多项 pair/scene
+失败，共 49 条 validator failure。因此
+[completion-poll AC candidate report](../../evidence/macos-native-retina/completion-poll-ac-candidate.json)
+以 SHA-256 `bce5d7bce10a75f46dde3b1bd978cc0502b29a2c51be726865aedce39bda9c10`
+在 Vanilla ABBA 前拒绝，正常 fix-forward 恢复 exact blocking fence。schema v2 仍保留两列，
+accepted policy 将 poll 列显式写零，不回退已有 parser/Linux 兼容性。
 Vanilla `Minecraft.java:1338-1356` 仍是顺序锚点：main target blit、GPU profile end、
 swap/`RenderSystem.flipFrame` 先完成，显式 FPS limiter 最后运行；该 Metal 内部策略不改变
 这一可见 present/cap 顺序。

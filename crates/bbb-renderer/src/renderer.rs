@@ -218,12 +218,12 @@ pub struct RendererFrameProfile {
     /// CPU command encoding before the macOS Immediate submission fence.
     pub cpu_encode_before_wait: Duration,
     /// Total completion synchronization for the preceding macOS Immediate
-    /// submission: a non-blocking poll plus a conditional fence wait.
+    /// submission.
     pub previous_submission_wait: Duration,
-    /// Non-blocking completion poll before deciding whether the preceding
-    /// macOS Immediate submission still needs a fence wait.
+    /// Non-blocking completion-poll phase retained by schema v2. The accepted
+    /// fixed-budget policy reports zero after that candidate was rejected.
     pub previous_submission_poll: Duration,
-    /// Blocking subset of `previous_submission_wait` after a busy completion poll.
+    /// Blocking fence-wait subset of `previous_submission_wait`.
     pub previous_submission_blocking_wait: Duration,
     /// Final swapchain blit and timestamp encoding after surface acquisition.
     pub presentation_tail_encode: Duration,

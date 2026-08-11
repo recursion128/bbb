@@ -53,6 +53,10 @@ interval[N+1] 计算，并将同-row prior correlation 单列；官方 archive �
 当前 frame-phase schema v2 进一步把 macOS Immediate 上一 submission 的 non-blocking
 completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
 `poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。
+该 schema 不授权 completion-poll 策略：full-gated `36bd347d7` 的接电 paired A/B 仅在
+110/17,252 候选帧跳过 blocking wait，并产生 49 条 FPS/绝对稳定性 failure，已由
+`completion-poll-ac-candidate.json` 在 Vanilla ABBA 前拒绝。恢复后的固定 budget-one
+策略将 poll 列写零，继续保留 blocking/total 诊断与旧 Linux/report 兼容。
 当前 repo evidence `docs/evidence/macos-native-retina/frame-phase-diagnostic.json` 来自
 full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715af` 按 lag-1
 口径复算；它触发的等价 flight-controller 重构已在 full-gated `9802b1ef5` 完成，仍保持
