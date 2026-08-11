@@ -221,15 +221,20 @@ restoring any row to `equivalent`.
   policy reports its rejected poll phase as zero and restores the exact
   blocking fence. A future Slice B policy needs a new lifecycle, queue-depth
   and input-latency contract; neither rejected strategy may be reused.
-  The next bounded candidate does not increase that queue. Wgpu 0.19 documents
+  A third bounded candidate did not increase that queue. Wgpu 0.19 documents
   `desired_maximum_frame_latency=1` as its low-latency presentation hint, and
   its Metal backend maps the supported value to two CAMetalLayer drawables
-  instead of the default three. BBB requests one only for macOS Immediate;
+  instead of the default three. BBB requested one only for macOS Immediate;
   FIFO, Linux, wait/acquire/submit/present order and the explicit one-submission
-  budget remain unchanged. Candidate A/B schema v2 must attest baseline/candidate
+  budget remained unchanged. Candidate A/B schema v2 attested baseline/candidate
   hints 2/1, expected drawable counts 3/2 and `queue_depth_increased=false`;
-  legacy v1 evidence remains revalidatable. Retain the candidate only if every
-  AC combined/scene/round/pair FPS and absolute-stability scope passes.
+  legacy v1 evidence remains revalidatable. Full-gated candidate `969ea38f7`
+  then failed every one of the 22 AC FPS scopes and 44 App/GPU absolute-stability
+  comparisons: combined FPS fell 153.996→142.297, App p99 rose 10.135→15.927 ms
+  and GPU p99 rose 0.877→0.893 ms. The default-three-drawable policy is restored;
+  this two-drawable strategy may not be reused. Evidence:
+  `low-latency-surface-ac-candidate.json` (SHA-256
+  `662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`).
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

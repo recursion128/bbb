@@ -84,6 +84,15 @@ surface presentation 字段时 fail-closed；validator 还按 B-C-C-B×2 顺序�
 观测到的 2/1 hint 与 3/2 预期 drawable count，不能只信顶层声明。这组字段只证明调度
 合同，不能替代 22-scope FPS/绝对稳定性比较。
 
+full-gated `969ea38f7` 的正式接电 B-C-C-B×2 正好验证了该 fail-closed 路径：8 个 run
+均为 fullscreen 2560x1600，逐 run hint 2/1 与预期 drawable count 3/2 全部一致，但
+validator 拒绝全部 22 个 FPS scope 和 44 个绝对稳定性比较。combined FPS
+153.996→142.297，App p99 10.135→15.927 ms，GPU p99 0.877→0.893 ms；0 个
+>=33.333 ms hitch 不能抵消其它绝对指标回退。报告为
+`docs/evidence/macos-native-retina/low-latency-surface-ac-candidate.json`（SHA-256
+`662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`）。默认 hint 2
+已恢复，该候选不进入 Vanilla ABBA。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。
