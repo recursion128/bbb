@@ -230,7 +230,10 @@ impl GpuFrameTiming {
         self.next_slot = (slot + 1) % self.slots.len();
         let detailed_stages = self.detailed_stages;
         self.slots[slot].state = SlotState::Encoding { detailed_stages };
-        self.write_timestamp(encoder, slot, 0, MarkerSamplePoint::AfterMarker);
+        // Apple tile GPUs can overlap an earlier pass's fragment tail with a
+        // later pass's vertex head. Start at the first marker's beginning and
+        // finish at the last marker's end so the pair remains ordered.
+        self.write_timestamp(encoder, slot, 0, MarkerSamplePoint::BeforeMarker);
         Some(GpuFrameToken {
             slot,
             detailed_stages,
@@ -275,7 +278,7 @@ impl GpuFrameTiming {
             encoder,
             token.slot,
             query_count - 1,
-            MarkerSamplePoint::BeforeMarker,
+            MarkerSamplePoint::AfterMarker,
         );
         let resolve_offset = resolve_offset(token.slot);
         encoder.resolve_query_set(
@@ -760,7 +763,10 @@ mod tests {
         timing.set_enabled(true);
         let timestamp_work = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("bbb-gpu-timing-test-work"),
-            size: 4_096,
+            // A tiny clear can begin and end within one Metal counter tick on
+            // Apple GPUs. Keep the focused test workload large enough that all
+            // eight independently resolved query pairs must be non-zero.
+            size: 16 * 1024 * 1024,
             usage: wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
