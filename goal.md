@@ -397,13 +397,10 @@ P0 focused acceptance matrix 至少覆盖 `static_orbit`、`preloaded_flight` �
 一致后每个性能修复都必须重跑关键视觉锚点和 workload gate，破坏画面合同的优化
 立即作废并 fix-forward。
 
-正式采样时，三场景每个客户端各至少四次有效 capture（强于最低三次要求），保持
-两轮 ABBA；bbb application-frame p50/p95 均不劣于 Vanilla，p99 不恶化，且没有
-Vanilla 不存在的 `>=33.333 ms` hitch。共同 `perf stat` 只报告每 presented frame 的
-进程 task-clock/cycles/instructions 均值；MangoHud present interval 只报告端到端
-frame p50/p95/p99、1% low 与 hitch，不能宣称纯 CPU/GPU frame duration。最终
-machine-readable summary 必须保留每次 run、无效原因、截图/marker/residency、
-MangoHud、perf、共同 draw/frame evidence及工具版本/校验。
+正式三场景、每客户端至少四次 capture，保持两轮 ABBA；application frame 校验 mean FPS/frame、p50/p95/p99、1% low、stddev、p99-p50/hitch，GPU duration 校验 mean、p50/p95/p99、stddev、p99-p50/hitch。
+CV 仅诊断：绝对指标全过时不得单独阻止，伴随绝对回退时随该回退报告。validator 先拒绝 drawable、world/replay/settings/resource/input、visible workload/draw 不一致，再查 combined、scene、ABBA round 与 nearest-run pair；失败 run 列 scope/metric/field，不得被 combined 掩盖。
+禁止 sleep、固定 pacing、cap、VSync 或减载压 CV。candidate 还须交错 BBB-baseline A/B，FPS margin 从至少四次 baseline 重复噪声预先派生并封顶 1%，快于官方不豁免自身回退。
+`perf stat` 只报告每 presented frame 的进程均值；最终 summary 保留各 run、无效原因、截图/marker/residency、MangoHud/perf、共同 draw/frame evidence 及工具版本/校验。
 
 按本合同重开的 P0 slice 只有同时满足以下条件才能关闭：Vanilla 机制证据已记录；focused
 unit/integration tests 通过；三个场景关键锚点通过；可见 workload 与共同 draw
@@ -498,7 +495,7 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。macOS aarch64 发布行在 native-Retina 修复改变 exclusive window / Metal drawable owner 后，已由 exact full-gated `afe29aa32` fresh host-run 重新关闭。独立 `macos-native-retina` 2560x1600 panel-native 首轮验收已在 exact full-gated `54f20a62a` 完成，正式报告 SHA-256 为 `84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`，不替换固定分辨率基线；当前只推进用户重开的同 profile Metal 稳定性与 GPU 尾延迟优化。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
+状态：`active`。macOS aarch64 发布行在 native-Retina 修复改变 exclusive window / Metal drawable owner 后，已由 exact full-gated `afe29aa32` fresh host-run 重新关闭。独立 `macos-native-retina` 2560x1600 panel-native 首轮验收已在 exact full-gated `54f20a62a` 完成，不替换固定分辨率基线；当前 schema-2 绝对稳定性判据以 capture commit `d698c8db0` 固定为后续 BBB FPS baseline，raw-backed stability report SHA-256 为 `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`，仍推进同 profile Metal application-frame 尾部归因。CV 只作诊断，不能在绝对指标全过时单独保持 active。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
 Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；任一 receipt 失效时必须
 恢复真实开放状态，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独保留 `equivalent`。
 
@@ -518,6 +515,10 @@ summary/lint 复核其 commit/blob hash，禁止采集后补写前置状态。
 receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态，但冻结的 owner、required projection、
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
+
+当前 macOS Retina 路线严格串行：A 独立采 encode-before-wait、previous-submission-wait、surface-acquire、presentation-tail、submit/present/GPU-poll、render-total/interval 的 p50/p95/p99/stddev/correlation，只 diagnostic 不改调度；B 仅在 A 指向 flight 调度时，以保持 Immediate 单 in-flight、FIFO/Linux、顺序/surface-error 的等价 `FrameFlightController` 起步，不默认多帧或后台 acquire。
+C 仅在 A 指向 encode/upload 时启用 submission-safe 对齐 upload pages，保持 geometry/order/material、grow-only/empty fail-closed 并量化 writes/bytes/replacements；D 仅在 GPU pass/copy 证据触发，以静态 FramePlan 保持 `FRAME_STEPS`、透明/材质/draw evidence，不建通用 render graph。
+candidate 先过 ≤1% 预声明 BBB A/B、视觉/workload 与绝对尾部非回退才进 Vanilla ABBA；提高 FPS 但恶化 input latency、p95/p99 或 hitch 一律拒绝。
 
 clean/full-gated `d2f210805` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；绑定 full-gated `a0781a7eb` consistency receipt 的两轮 Java→BBB→BBB→Java、MangoHud/perf 与双侧 GPU trace 亦通过，formal summary SHA-256 为 `c5930d19a414fad69cc1f402d5a8a3bd5ffc5094c732d643f06c74f0042bcb54`。两条 performance 行已具备逐机制关闭证据；历史 `675cbfc53` 结果仅保留为回归基线。
 audio schema-3 formal receipt 已在 clean/full-gated exact `d2f210805` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `5b6b5939304c957bb6e5a2dba3751503505ee03d2d0e9aa45c1c80b9ba44f474`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。

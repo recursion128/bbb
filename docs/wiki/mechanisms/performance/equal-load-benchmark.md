@@ -36,6 +36,12 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
    `docs/evidence/vanilla-26.1/parity-acceptance.json`，冻结该 commit/hash。
 6. 只有每个 run 都携带同一 pre-capture receipt，才按 Java → BBB → BBB → Java 的 ABBA 轮次采样。
 7. parser 拒绝 hash/correction/resource/resolution/content/throttle/hook/receipt 异常，再聚合 raw。
+8. 稳定性先看绝对量：application frame 的 mean FPS/frame、p50/p95/p99、1% low、
+   stddev、p99-p50、hitch，以及 GPU duration 的 mean、p50/p95/p99、stddev、p99-p50、
+   hitch。CV 只诊断；绝对指标全过时，CV 单独较差不产生 blocker。
+9. summary 同时检查 combined、scene、ABBA round 与预声明 nearest-run pair；后续 BBB
+   candidate 还要先完成交错 BBB-baseline A/B，FPS margin 由至少四次 baseline 重复噪声
+   预先派生并封顶 1%。
 
 ## 生命周期和 fallback
 
@@ -75,12 +81,17 @@ capture parsing 和 summary；`scripts/fixtures/official-client-benchmark/replay
   运行 strict acceptance；`final-performance` 先拒绝 scoped consistency receipt，`final` 再拒绝
   任何 formal artifact 的 scoped reuse，因而旧 domain sweep 不能解锁新 ABBA。
 - 每项性能优化都重跑 planner 判定受影响的视觉锚点和 workload gate。
+- sleep、固定 pacing、FPS cap、VSync 或减少 visible/resident/draw workload 不能作为稳定性
+  优化；candidate 即使仍快于 Vanilla，只要超过固定 BBB baseline 的 FPS margin 仍拒绝。
 
 ## 聚焦测试（focused tests）和真实证据
 
 `scripts.tests.test_official_client_benchmark` 覆盖 metadata/classpath/native、hash、offline
 CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、percentile、1%
-low、hitch、per-frame normalization、invalid reason 与 cleanup。
+low、hitch、per-frame normalization、invalid reason 与 cleanup；
+`scripts.tests.test_macos_native_retina` 另覆盖 panel-native/drawable 先行拒绝、raw/archive
+互证、stddev 与 p99-p50 派生、CV-only 非阻塞、绝对回退、逐 run scope 及 BBB baseline
+FPS 非劣。
 
 ### 当前 `d2f210805` exact-HEAD 一致性 sweep
 

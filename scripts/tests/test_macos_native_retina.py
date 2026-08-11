@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import struct
 import subprocess
@@ -69,6 +70,7 @@ class DisplayProbeTests(unittest.TestCase):
         contract = retina.load_profile_contract()
         self.assertEqual(contract["formal_order"], list(retina.FORMAL_ORDER))
         self.assertEqual(contract["drawable_mismatch_policy"], "block-without-comparison")
+        self.assertEqual(contract["stability_acceptance"]["policy"], "absolute-tail-v2")
 
     def test_panel_native_pixels_not_looks_like_or_scaled_backing_are_target(self):
         probe = retina.normalize_display_probe(
@@ -260,6 +262,18 @@ class LaunchContractTests(unittest.TestCase):
 
 
 class ProfilerTests(unittest.TestCase):
+    def test_absolute_jitter_fields_are_derived_from_the_same_samples(self):
+        summary = retina.summarize_durations_ms([1.0, 2.0, 4.0, 9.0])
+
+        self.assertAlmostEqual(
+            summary["stddev_ms"],
+            summary["mean_ms"] * summary["coefficient_of_variation"],
+        )
+        self.assertEqual(
+            summary["p99_minus_p50_ms"],
+            summary["p99_ms"] - summary["p50_ms"],
+        )
+
     def test_bbb_adapter_log_preserves_unquoted_multiword_device_name(self):
         adapter = retina._adapter_from_log(
             "bbb",
@@ -340,6 +354,105 @@ class FormalValidationTests(unittest.TestCase):
             "profiles": [],
         }
 
+    def profile_record(
+        self,
+        profile: Path,
+        frame_samples: Path,
+        gpu_samples: Path,
+        segment: str,
+        application_values: list[float],
+        gpu_values: list[float],
+    ) -> dict[str, object]:
+        return {
+            "path": str(profile),
+            "sha256": hashlib.sha256(profile.read_bytes()).hexdigest(),
+            "segment": segment,
+            "application_frame_time": retina.summarize_durations_ms(application_values),
+            "gpu_duration": retina.summarize_durations_ms(gpu_values),
+            "application_frame_time_samples": str(frame_samples),
+            "gpu_duration_samples": str(gpu_samples),
+            "process_cpu_time_ms": 12.0,
+            "process_cpu_frame_time": {"frames": len(application_values), "mean_ms": 6.0},
+        }
+
+    def test_cv_alone_is_diagnostic_when_absolute_metrics_are_better(self):
+        bbb = retina.summarize_durations_ms([0.8, 1.2])
+        official = retina.summarize_durations_ms([9.0, 11.0])
+
+        comparison = retina._metric_stability_comparison(
+            bbb, official, "application_frame_time"
+        )
+
+        self.assertEqual(comparison["status"], "passed")
+        self.assertTrue(comparison["coefficient_of_variation"]["bbb_is_worse"])
+        self.assertEqual(
+            comparison["coefficient_of_variation"]["classification"],
+            "diagnostic-only-absolute-metrics-pass",
+        )
+
+    def test_cv_with_absolute_tail_regression_is_rejected(self):
+        bbb = retina.summarize_durations_ms([0.1, 3.9])
+        official = retina.summarize_durations_ms([9.0, 11.0])
+
+        comparison = retina._metric_stability_comparison(
+            bbb, official, "application_frame_time"
+        )
+
+        self.assertEqual(comparison["status"], "failed")
+        self.assertIn("stddev_ms", comparison["failed_absolute_metrics"])
+        self.assertIn("p99_minus_p50_ms", comparison["failed_absolute_metrics"])
+        self.assertEqual(
+            comparison["coefficient_of_variation"]["classification"],
+            "diagnostic-coincident-with-absolute-regression",
+        )
+
+    def test_candidate_fps_regression_is_rejected_against_fixed_bbb_baseline(self):
+        result = retina.evaluate_candidate_fps_noninferiority(100.0, 98.9, 0.01)
+
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["minimum_candidate_mean_fps"], 99.0)
+
+    def test_candidate_report_rejects_interleaved_fps_regression(self):
+        evidence = {
+            "baseline_bbb_commit": retina.BASELINE_BBB_COMMIT,
+            "baseline_bbb_report_sha256": retina.BASELINE_BBB_REPORT_SHA256,
+            "baseline_bbb_binary_sha256": retina.BASELINE_BBB_BINARY_SHA256,
+            "candidate_bbb_commit": "c" * 40,
+            "pairing": "interleaved-baseline-candidate",
+            "margin_declared_before_capture": True,
+            "baseline_repeat_raw_sha256": "a" * 64,
+            "baseline_repeat_mean_fps": [100.0, 100.5, 99.5, 100.0],
+            "baseline_repeat_noise_margin": 0.01,
+            "comparisons": [
+                {
+                    "scope_type": "combined",
+                    "scope_id": "combined",
+                    "baseline_mean_fps": 100.0,
+                    "candidate_mean_fps": 98.9,
+                },
+                *[
+                    {
+                        "scope_type": "scene",
+                        "scope_id": segment,
+                        "baseline_mean_fps": 100.0,
+                        "candidate_mean_fps": 100.0,
+                    }
+                    for segment in retina.CAPTURE_SEGMENTS
+                ],
+                {
+                    "scope_type": "run_pair",
+                    "scope_id": "pair-1",
+                    "baseline_mean_fps": 100.0,
+                    "candidate_mean_fps": 100.0,
+                },
+            ],
+        }
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("bbb_candidate_fps_regression", {item["code"] for item in result["failures"]})
+
     def test_drawable_mismatch_blocks_and_withholds_comparison(self):
         runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
         runs[3] = self.run_record("vanilla", (1920, 1200))
@@ -360,6 +473,16 @@ class FormalValidationTests(unittest.TestCase):
         self.assertFalse(report["metrics_publishable"])
         self.assertIn("window_mode_mismatch", {item["code"] for item in report["blockers"]})
 
+    def test_workload_mismatch_blocks_before_any_performance_comparison(self):
+        runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+        runs[5]["settings_sha256"] = "f" * 64
+
+        report = retina.validate_and_summarize(display(), runs)
+
+        self.assertFalse(report["metrics_publishable"])
+        self.assertIsNone(report["comparison"])
+        self.assertIn("workload_contract_mismatch", {item["code"] for item in report["blockers"]})
+
     def test_two_complete_abba_rounds_aggregate_only_after_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -372,14 +495,15 @@ class FormalValidationTests(unittest.TestCase):
             runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
             for run in runs:
                 run["profiles"] = [
-                    {
-                        "path": str(profile),
-                        "application_frame_time_samples": str(frame_samples),
-                        "gpu_duration_samples": str(gpu_samples),
-                        "process_cpu_time_ms": 12.0,
-                        "process_cpu_frame_time": {"frames": 2, "mean_ms": 6.0},
-                    }
-                    for _ in retina.CAPTURE_SEGMENTS
+                    self.profile_record(
+                        profile,
+                        frame_samples,
+                        gpu_samples,
+                        segment,
+                        [10.0, 20.0],
+                        [5.0, 5.0],
+                    )
+                    for segment in retina.CAPTURE_SEGMENTS
                 ]
 
             report = retina.validate_and_summarize(display(), runs)
@@ -391,6 +515,92 @@ class FormalValidationTests(unittest.TestCase):
             24,
         )
         self.assertEqual(report["comparison"]["bbb"]["gpu_duration"]["p95_ms"], 5.0)
+
+    def test_failed_run_pair_cannot_be_hidden_by_combined_or_scene_aggregate(self):
+        def write_values(
+            root: Path, name: str, application: list[float], gpu: list[float]
+        ) -> tuple[Path, Path, Path]:
+            profile = root / f"{name}.zip"
+            with zipfile.ZipFile(profile, "w") as archive:
+                archive.writestr(
+                    "client/metrics/ticking.csv",
+                    "@tick,ticktime\n"
+                    + "".join(
+                        f"{index},{value * 1_000_000.0}\n"
+                        for index, value in enumerate(application, start=1)
+                    ),
+                )
+                archive.writestr(
+                    "client/metrics/gpu.csv",
+                    "@tick,gpuDuration\n"
+                    + "".join(
+                        f"{index},{value * 1_000_000.0}\n"
+                        for index, value in enumerate(gpu, start=1)
+                    ),
+                )
+            frame_samples = root / f"{name}-frame.json"
+            gpu_samples = root / f"{name}-gpu.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": application}), encoding="utf-8"
+            )
+            gpu_samples.write_text(json.dumps({"milliseconds": gpu}), encoding="utf-8")
+            return profile, frame_samples, gpu_samples
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+            for run_number, run in enumerate(runs, start=1):
+                profiles = []
+                for segment in retina.CAPTURE_SEGMENTS:
+                    if run["client"] == "vanilla":
+                        application = [9.0, 11.0] * 100
+                        gpu = [1.0, 2.0] * 100
+                    else:
+                        application = [5.0] * 200
+                        gpu = [0.5] * 200
+                    if run_number == 2 and segment == "static_orbit":
+                        application[-3:] = [12.0, 12.0, 12.0]
+                    profile, frame_samples, gpu_samples = write_values(
+                        root,
+                        f"run-{run_number}-{segment}",
+                        application,
+                        gpu,
+                    )
+                    profiles.append(
+                        self.profile_record(
+                            profile,
+                            frame_samples,
+                            gpu_samples,
+                            segment,
+                            application,
+                            gpu,
+                        )
+                    )
+                run["profiles"] = profiles
+
+            report = retina.validate_and_summarize(display(), runs)
+
+        combined = next(
+            scope
+            for scope in report["stability_acceptance"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        self.assertEqual(combined["status"], "passed")
+        self.assertEqual(
+            next(
+                scope
+                for scope in report["stability_acceptance"]["scopes"]
+                if scope["scope_id"] == "static_orbit"
+            )["status"],
+            "passed",
+        )
+        self.assertEqual(report["status"], "blocked")
+        self.assertTrue(
+            any(
+                failure["scope_id"] == "pair-1-static_orbit"
+                for failure in report["stability_acceptance"]["failures"]
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -290,3 +290,8 @@
 ^crates/bbb-audio/src/runtime[.]rs$	preferred_fallback
 ^crates/bbb-native/src/audio_runtime[.]rs$	preferred_device_fallbacks
 ^crates/bbb-control/src/types/audio[.]rs$	preferred_device_fallbacks
+
+# Frame diagnostics attributes only the residual of an explicitly configured
+# user FPS cap to Vanilla's frameLimiter section. The uncapped Retina contract
+# keeps this zero; the comment does not introduce pacing or hide frame work.
+^crates/bbb-native/src/frame_diagnostics[.]rs$	explicit client cap may own the residual

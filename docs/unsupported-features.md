@@ -160,18 +160,26 @@ restoring any row to `equivalent`.
 - `macos-native-retina-stability` is active against the accepted 2560x1600
   report. Preserve the exact fullscreen drawable, world/replay, scene, view
   distance, quality, resource pack, input, VSync-off and unlimited-cap contract.
-  Complete only when a fresh two-round Java→BBB→BBB→Java report keeps BBB mean
-  FPS at or above 120.738 and BBB application-frame and GPU-duration p95, p99,
-  coefficient of variation, and >=33.333 ms hitch count are no worse than the
-  official client measured in that same ABBA run. BBB duration attribution must
-  remain tied to one GPU query submission; the official side retains unmodified
-  26.1 F3+L semantics. Lowering visible/resident work, quality or resolution is
-  not an optimization. The fresh full-gated `d698c8db0` report keeps 152.029
-  FPS, zero BBB hitches, application p95/p99 8.627/10.583 ms and GPU p95/p99
-  0.661/0.805 ms, all better than the same-run official values, but remains
-  active because application CV is 0.1864 versus 0.1177 and GPU CV is 0.3237
-  versus 0.0932. The current report SHA-256 is
-  `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`.
+  Complete only when the schema-2 validator finds no absolute-stability failure
+  in combined, scene, ABBA-round or nearest-run-pair scopes. Application metrics
+  are mean FPS/frame time, p50/p95/p99, 1% low, stddev, p99-p50 and hitches;
+  GPU metrics are mean, p50/p95/p99, stddev, p99-p50 and hitches. CV remains
+  diagnostic and never blocks by itself when every absolute metric passes.
+  BBB duration attribution remains one GPU query submission; official retains
+  unmodified 26.1 F3+L semantics. Lowering visible/resident work, quality or
+  resolution, or adding sleep/pacing/VSync/caps, is not an optimization.
+  Capture commit `d698c8db0` is the fixed BBB FPS baseline for later candidates;
+  each candidate additionally needs a predeclared, paired/interleaved BBB A/B
+  whose repeat-noise margin is at most 1%. The existing raw eight-run evidence
+  has valid hashes and passes combined absolute App/GPU and every GPU scope, but
+  remains active because App p99-p50 regresses in the `static_orbit` and
+  `preloaded_flight` scene aggregates and nine explicit scene/run-pair
+  classifications remain. CV alone is no longer the blocker.
+  The immutable schema-1 capture remains `docs/evidence/macos-native-retina/report.json`
+  at SHA-256 `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`;
+  its raw-backed schema-2 revalidation is
+  `docs/evidence/macos-native-retina/stability-report.json` at SHA-256
+  `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

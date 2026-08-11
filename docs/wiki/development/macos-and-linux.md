@@ -100,14 +100,25 @@ Java 26.1 使用 OpenGL / Apple M1。八轮的 world/replay/settings/resource-pa
 `84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`。
 
 2026-08-11 在 full-gated `d698c8db0` 上以完全相同的 2560x1600、两轮
-Java→BBB→BBB→Java 合同复测。BBB 为 152.029 FPS，application frame-time
-p95/p99 为 8.627/10.583 ms，1% low 为 79.617 FPS，>=33.333 ms 卡顿为 0；
-官方对应为 80.838 FPS、15.070/16.542 ms、56.079 FPS、1 次。BBB GPU
-duration p95/p99 为 0.661/0.805 ms、卡顿为 0，官方为 12.456/13.400 ms、
-1 次。绝对尾延迟已优于官方且 FPS 高于既有 120.738 基线，但稳定性优化仍为
-active：application CV 为 0.1864/0.1177（BBB/官方），GPU CV 为
-0.3237/0.0932。当前独立报告 SHA-256 为
-`2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`。
+Java→BBB→BBB→Java 合同复测。schema 2 从原 profiler archives 与 raw sidecars 逐值
+互证后重算：combined BBB/官方 application mean 为 6.578/12.370 ms，p50 为
+6.513/12.049 ms，p95 为 8.627/15.070 ms，p99 为 10.583/16.542 ms，stddev 为
+1.226/1.456 ms，p99-p50 为 4.070/4.493 ms，1% low 为 79.617/56.079 FPS，
+>=33.333 ms hitch 为 0/1；BBB mean FPS 为 152.029。GPU mean 为
+0.435/10.317 ms，p50 为 0.446/10.161 ms，p95 为 0.661/12.456 ms，p99 为
+0.805/13.400 ms，stddev 为 0.141/0.961 ms，p99-p50 为 0.359/3.239 ms，
+hitch 为 0/1。
+
+CV 仍记录为 application 0.1864/0.1177、GPU 0.3237/0.0932，但不再单独阻止。
+combined 与所有 GPU scope 通过；active 的精确原因是 application `p99-p50` 在
+`static_orbit`、`preloaded_flight` scene aggregate 回退，以及七个 nearest-run-pair
+scene scope 中共九条 stddev/p99-p50 失败分类。报告保留 metrics publishable，同时以
+`blocked` 明示这些绝对 scope；capture commit `d698c8db0` 固定为后续 candidate 的 BBB
+FPS baseline，candidate 还必须先提供交错 baseline/candidate A/B，不能因快于官方豁免
+自身 FPS 回退。原 schema-1 [capture report](../../evidence/macos-native-retina/report.json)
+保持 SHA-256 `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`；
+raw-backed schema-2 [stability report](../../evidence/macos-native-retina/stability-report.json)
+的 SHA-256 为 `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`。
 
 ## 第二平台 cross-check
 

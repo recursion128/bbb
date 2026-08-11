@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "profile": "macos-native-retina",
   "minecraft_version": "26.1",
   "display": {
@@ -39,5 +39,29 @@
     "L-up",
     "F3-up"
   ],
-  "drawable_mismatch_policy": "block-without-comparison"
+  "drawable_mismatch_policy": "block-without-comparison",
+  "stability_acceptance": {
+    "policy": "absolute-tail-v2",
+    "cv_role": "diagnostic-only-when-absolute-metrics-pass",
+    "required_scopes": [
+      "combined",
+      "scene",
+      "abba_round",
+      "run_pair"
+    ],
+    "abba_rounds": [
+      [1, 2, 3, 4],
+      [5, 6, 7, 8]
+    ],
+    "abba_run_pairs": [
+      [1, 2],
+      [4, 3],
+      [5, 6],
+      [8, 7]
+    ],
+    "baseline_bbb_commit": "d698c8db0d219f035c7597726c76225c6cd70abc",
+    "baseline_bbb_report_sha256": "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b",
+    "baseline_bbb_binary_sha256": "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97",
+    "maximum_candidate_fps_margin": 0.01
+  }
 }
