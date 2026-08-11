@@ -18,6 +18,7 @@ import json
 import math
 import os
 import platform
+import plistlib
 import re
 import shutil
 import statistics
@@ -172,6 +173,41 @@ WGPU_METAL_FENCE_STRATEGY = "completion-handler condition-variable wait"
 
 class RetinaAcceptanceError(RuntimeError):
     """The native-Retina contract or one of its evidence files is invalid."""
+
+
+def _console_locked_from_ioreg_plist(payload: bytes) -> bool:
+    """Read the kernel-owned console lock bit used by the capture preflight."""
+
+    try:
+        value = plistlib.loads(payload)
+    except plistlib.InvalidFileException as error:
+        raise RetinaAcceptanceError("IORegistry root is not a valid plist") from error
+    if not isinstance(value, Mapping):
+        raise RetinaAcceptanceError("IORegistry root plist is not a dictionary")
+    locked = value.get("IOConsoleLocked")
+    if not isinstance(locked, bool):
+        raise RetinaAcceptanceError("IORegistry root lacks boolean IOConsoleLocked")
+    return locked
+
+
+def require_unlocked_macos_console() -> None:
+    """Reject formal input capture before launch while loginwindow owns the seat."""
+
+    if sys.platform != "darwin":
+        raise RetinaAcceptanceError("Retina capture requires a macOS console session")
+    result = subprocess.run(
+        ("/usr/sbin/ioreg", "-n", "Root", "-d", "1", "-a"),
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        error = result.stderr.decode("utf-8", errors="replace").strip()
+        raise RetinaAcceptanceError(f"IORegistry console query failed: {error}")
+    if _console_locked_from_ioreg_plist(result.stdout):
+        raise RetinaAcceptanceError(
+            "macOS console is locked; unlock the graphical session before Retina capture"
+        )
 
 
 def workspace_wgpu_dependency_receipt(repo: Path = REPO_ROOT) -> dict[str, object]:
@@ -3466,6 +3502,7 @@ def _run_client(
 ) -> dict[str, object]:
     if client not in {"vanilla", "bbb"}:
         raise RetinaAcceptanceError(f"unsupported formal client {client!r}")
+    require_unlocked_macos_console()
     if artifact_dir.exists() and any(artifact_dir.iterdir()):
         raise RetinaAcceptanceError(f"run directory is not empty: {artifact_dir}")
     artifact_dir.mkdir(parents=True, exist_ok=True)

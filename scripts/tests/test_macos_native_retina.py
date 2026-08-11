@@ -2,6 +2,7 @@ import importlib.util
 import hashlib
 import copy
 import json
+import plistlib
 import statistics
 import struct
 import subprocess
@@ -11,6 +12,7 @@ import unittest
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "scripts" / "macos_native_retina.py"
@@ -353,6 +355,70 @@ def wgpu30_optimization_evidence() -> dict[str, object]:
         run["runtime_dependency_receipt"] = dict(runtime_receipt)
         run["gpu_timestamp_strategy"] = retina.WGPU30_GPU_TIMESTAMP_STRATEGY
     return evidence
+
+
+class ConsolePreflightTests(unittest.TestCase):
+    def test_ioreg_console_lock_parser_accepts_explicit_boolean_states(self):
+        self.assertTrue(
+            retina._console_locked_from_ioreg_plist(
+                plistlib.dumps({"IOConsoleLocked": True})
+            )
+        )
+        self.assertFalse(
+            retina._console_locked_from_ioreg_plist(
+                plistlib.dumps({"IOConsoleLocked": False})
+            )
+        )
+
+    def test_ioreg_console_lock_parser_fails_closed_on_missing_or_malformed_state(self):
+        with self.assertRaisesRegex(
+            retina.RetinaAcceptanceError, "boolean IOConsoleLocked"
+        ):
+            retina._console_locked_from_ioreg_plist(plistlib.dumps({}))
+        with self.assertRaisesRegex(
+            retina.RetinaAcceptanceError, "valid plist"
+        ):
+            retina._console_locked_from_ioreg_plist(b"not a plist")
+
+    def test_locked_console_is_rejected_before_capture(self):
+        result = subprocess.CompletedProcess(
+            args=("ioreg",),
+            returncode=0,
+            stdout=plistlib.dumps({"IOConsoleLocked": True}),
+            stderr=b"",
+        )
+        with (
+            mock.patch.object(retina.sys, "platform", "darwin"),
+            mock.patch.object(retina.subprocess, "run", return_value=result),
+            self.assertRaisesRegex(retina.RetinaAcceptanceError, "console is locked"),
+        ):
+            retina.require_unlocked_macos_console()
+
+    def test_unlocked_console_passes_capture_preflight(self):
+        result = subprocess.CompletedProcess(
+            args=("ioreg",),
+            returncode=0,
+            stdout=plistlib.dumps({"IOConsoleLocked": False}),
+            stderr=b"",
+        )
+        with (
+            mock.patch.object(retina.sys, "platform", "darwin"),
+            mock.patch.object(retina.subprocess, "run", return_value=result),
+        ):
+            retina.require_unlocked_macos_console()
+
+    def test_console_query_failure_is_rejected(self):
+        result = subprocess.CompletedProcess(
+            args=("ioreg",), returncode=1, stdout=b"", stderr=b"unavailable"
+        )
+        with (
+            mock.patch.object(retina.sys, "platform", "darwin"),
+            mock.patch.object(retina.subprocess, "run", return_value=result),
+            self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "console query failed: unavailable"
+            ),
+        ):
+            retina.require_unlocked_macos_console()
 
 
 class DisplayProbeTests(unittest.TestCase):
