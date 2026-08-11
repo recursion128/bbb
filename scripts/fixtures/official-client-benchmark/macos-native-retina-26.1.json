@@ -41,12 +41,16 @@
   ],
   "drawable_mismatch_policy": "block-without-comparison",
   "candidate_bbb_ab": {
-    "schema": "macos-native-retina-bbb-ab-v3",
+    "schema": "macos-native-retina-bbb-ab-v4",
     "legacy_schemas": [
       "macos-native-retina-bbb-ab-v1",
-      "macos-native-retina-bbb-ab-v2"
+      "macos-native-retina-bbb-ab-v2",
+      "macos-native-retina-bbb-ab-v3"
     ],
-    "surface_policy": "macos-immediate-wgpu30-unchanged",
+    "surface_policy": "macos-immediate-wgpu30-both-sides",
+    "baseline_wgpu_version": "30.0.0",
+    "candidate_wgpu_version": "30.0.0",
+    "gpu_timestamp_strategy": "PassBoundary",
     "baseline_desired_maximum_frame_latency": 2,
     "candidate_desired_maximum_frame_latency": 2,
     "baseline_expected_metal_drawable_count": 3,
@@ -100,9 +104,16 @@
       [5, 6],
       [8, 7]
     ],
-    "baseline_bbb_commit": "d698c8db0d219f035c7597726c76225c6cd70abc",
-    "baseline_bbb_report_sha256": "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b",
-    "baseline_bbb_binary_sha256": "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97",
+    "baseline_bbb_commit": "5b1903221acac8a2487fb5499dbf970ee192c97d",
+    "baseline_bbb_report_sha256": "7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa",
+    "baseline_bbb_binary_sha256": "849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817",
+    "baseline_repeat_raw_sha256": "6860b4a74d3edf14d6a043eb71f1ef4d0a3e4c2b746cdbaae112ce4b8308acec",
+    "baseline_repeat_mean_fps": [
+      195.82836970695612,
+      194.41391459437463,
+      194.42203984309396,
+      194.18012527990288
+    ],
     "maximum_candidate_fps_margin": 0.01
   }
 }

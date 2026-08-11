@@ -91,11 +91,30 @@ MAX_BASELINE_FPS_MARGIN = 0.01
 LEGACY_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
 CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v2"
 WGPU30_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v3"
+WGPU30_OPTIMIZATION_AB_SCHEMA = "macos-native-retina-bbb-ab-v4"
 ACCEPTED_CANDIDATE_AB_SCHEMAS = (
     LEGACY_CANDIDATE_AB_SCHEMA,
     CANDIDATE_AB_SCHEMA,
     WGPU30_CANDIDATE_AB_SCHEMA,
+    WGPU30_OPTIMIZATION_AB_SCHEMA,
 )
+WGPU30_OPTIMIZATION_BASELINE_COMMIT = "5b1903221acac8a2487fb5499dbf970ee192c97d"
+WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256 = (
+    "7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa"
+)
+WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256 = (
+    "849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817"
+)
+WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS = (
+    195.82836970695612,
+    194.41391459437463,
+    194.42203984309396,
+    194.18012527990288,
+)
+WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256 = (
+    "6860b4a74d3edf14d6a043eb71f1ef4d0a3e4c2b746cdbaae112ce4b8308acec"
+)
+WGPU30_GPU_TIMESTAMP_STRATEGY = "PassBoundary"
 CANDIDATE_AB_ORDER = ("baseline", "candidate", "candidate", "baseline") * 2
 CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
 FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
@@ -266,9 +285,13 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
             "abba_rounds": [list(round_runs) for round_runs in FORMAL_ROUNDS],
             "abba_run_pairs": [list(pair) for pair in FORMAL_RUN_PAIRS],
-            "baseline_bbb_commit": BASELINE_BBB_COMMIT,
-            "baseline_bbb_report_sha256": BASELINE_BBB_REPORT_SHA256,
-            "baseline_bbb_binary_sha256": BASELINE_BBB_BINARY_SHA256,
+            "baseline_bbb_commit": WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+            "baseline_bbb_report_sha256": WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
+            "baseline_bbb_binary_sha256": WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+            "baseline_repeat_raw_sha256": WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256,
+            "baseline_repeat_mean_fps": list(
+                WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS
+            ),
             "maximum_candidate_fps_margin": MAX_BASELINE_FPS_MARGIN,
         },
     }
@@ -1665,6 +1688,8 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
 
     if evidence.get("schema") == LEGACY_CANDIDATE_AB_SCHEMA:
         return []
+    if evidence.get("schema") == WGPU30_OPTIMIZATION_AB_SCHEMA:
+        return _wgpu30_optimization_receipt_and_scheduling_failures(evidence)
     if evidence.get("schema") == WGPU30_CANDIDATE_AB_SCHEMA:
         return _wgpu30_candidate_receipt_and_scheduling_failures(evidence)
     contract = evidence.get("scheduling_contract")
@@ -1745,6 +1770,146 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
                 for field, value in expected_presentation
                 if presentation.get(field) != value
             )
+        if run_mismatches:
+            failures.append(
+                {
+                    "code": "bbb_candidate_surface_run_mismatch",
+                    "run": sequence,
+                    "mismatches": run_mismatches,
+                }
+            )
+    return failures
+
+
+def _wgpu30_optimization_receipt_and_scheduling_failures(
+    evidence: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """Require registry wgpu 30 and one timing scope on both A/B sides."""
+
+    failures: list[dict[str, object]] = []
+    try:
+        committed_receipt = load_committed_wgpu_dependency_receipt()
+    except RetinaAcceptanceError as error:
+        return [{"code": "bbb_candidate_dependency_receipt_invalid", "error": str(error)}]
+    receipt_sha256 = file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256")
+    for variant in ("baseline", "candidate"):
+        if evidence.get(f"{variant}_dependency_receipt") != committed_receipt:
+            failures.append(
+                {"code": f"bbb_{variant}_dependency_receipt_mismatch"}
+            )
+        if evidence.get(f"{variant}_dependency_receipt_sha256") != receipt_sha256:
+            failures.append(
+                {"code": f"bbb_{variant}_dependency_receipt_hash_mismatch"}
+            )
+
+    contract = evidence.get("scheduling_contract")
+    if not isinstance(contract, Mapping):
+        failures.append({"code": "bbb_candidate_scheduling_contract_missing"})
+        return failures
+    expected_contract: tuple[tuple[str, object], ...] = (
+        ("status", "passed"),
+        ("platform", "macos"),
+        ("present_mode", "Immediate"),
+        ("baseline_desired_maximum_frame_latency", 2),
+        ("candidate_desired_maximum_frame_latency", 2),
+        ("baseline_expected_metal_drawable_count", 3),
+        ("candidate_expected_metal_drawable_count", 3),
+        ("baseline_actual_metal_drawable_count", 3),
+        ("candidate_actual_metal_drawable_count", 3),
+        ("baseline_in_flight_submission_budget", 1),
+        ("candidate_in_flight_submission_budget", 1),
+        ("queue_depth_increased", False),
+        ("wait_acquire_submit_present_order_unchanged", True),
+        ("input_latency_policy", "unchanged-single-in-flight"),
+    )
+    mismatches = [
+        {"field": field, "expected": expected, "actual": contract.get(field)}
+        for field, expected in expected_contract
+        if contract.get(field) != expected
+    ]
+    if mismatches:
+        failures.append(
+            {"code": "bbb_candidate_scheduling_contract_mismatch", "mismatches": mismatches}
+        )
+
+    expected_runtime = {
+        **WGPU_COMPONENT_VERSIONS,
+        "upstream_metal_fence_commit": WGPU_METAL_FENCE_COMMIT,
+        "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+    }
+    if evidence.get("gpu_timestamp_strategy") != WGPU30_GPU_TIMESTAMP_STRATEGY:
+        failures.append({"code": "bbb_candidate_gpu_timestamp_strategy_mismatch"})
+    candidate_binary_sha256 = evidence.get("candidate_bbb_binary_sha256")
+    if (
+        not isinstance(candidate_binary_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", candidate_binary_sha256) is None
+    ):
+        failures.append({"code": "bbb_candidate_binary_hash_missing"})
+
+    runs = evidence.get("runs")
+    if not isinstance(runs, list) or len(runs) != len(CANDIDATE_AB_ORDER):
+        failures.append(
+            {
+                "code": "bbb_candidate_surface_runs_missing",
+                "expected_count": len(CANDIDATE_AB_ORDER),
+                "actual_count": len(runs) if isinstance(runs, list) else None,
+            }
+        )
+        return failures
+    for sequence, (run, expected_variant) in enumerate(
+        zip(runs, CANDIDATE_AB_ORDER, strict=True), start=1
+    ):
+        run_mismatches: list[dict[str, object]] = []
+        if not isinstance(run, Mapping):
+            failures.append({"code": "bbb_candidate_surface_run_malformed", "run": sequence})
+            continue
+        for field, expected in (
+            ("sequence", sequence),
+            ("variant", expected_variant),
+            ("status", "passed"),
+        ):
+            if run.get(field) != expected:
+                run_mismatches.append(
+                    {"field": field, "expected": expected, "actual": run.get(field)}
+                )
+        presentation = run.get("surface_presentation")
+        expected_presentation: tuple[tuple[str, object], ...] = (
+            ("api", "metal"),
+            ("present_mode", "Immediate"),
+            ("desired_maximum_frame_latency", 2),
+            ("expected_metal_drawable_count", 3),
+            ("actual_metal_drawable_count", 3),
+            ("actual_drawable_pixels", [2560, 1600]),
+            ("in_flight_submission_budget", 1),
+        )
+        if not isinstance(presentation, Mapping):
+            run_mismatches.append(
+                {"field": "surface_presentation", "expected": "mapping", "actual": presentation}
+            )
+        else:
+            run_mismatches.extend(
+                {
+                    "field": f"surface_presentation.{field}",
+                    "expected": expected,
+                    "actual": presentation.get(field),
+                }
+                for field, expected in expected_presentation
+                if presentation.get(field) != expected
+            )
+        expected_binary_sha256 = (
+            WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256
+            if expected_variant == "baseline"
+            else candidate_binary_sha256
+        )
+        for field, expected in (
+            ("binary_sha256", expected_binary_sha256),
+            ("runtime_dependency_receipt", expected_runtime),
+            ("gpu_timestamp_strategy", WGPU30_GPU_TIMESTAMP_STRATEGY),
+        ):
+            if run.get(field) != expected:
+                run_mismatches.append(
+                    {"field": field, "expected": expected, "actual": run.get(field)}
+                )
         if run_mismatches:
             failures.append(
                 {
@@ -2121,19 +2286,47 @@ def validate_candidate_fps_evidence(
             "stability": None,
             "failures": parity_failures,
         }
+    is_wgpu30_optimization = evidence.get("schema") == WGPU30_OPTIMIZATION_AB_SCHEMA
+    expected_baseline_commit = (
+        WGPU30_OPTIMIZATION_BASELINE_COMMIT
+        if is_wgpu30_optimization
+        else BASELINE_BBB_COMMIT
+    )
+    expected_baseline_report_sha256 = (
+        WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256
+        if is_wgpu30_optimization
+        else BASELINE_BBB_REPORT_SHA256
+    )
+    expected_baseline_binary_sha256 = (
+        WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256
+        if is_wgpu30_optimization
+        else BASELINE_BBB_BINARY_SHA256
+    )
     failures: list[dict[str, object]] = []
     if evidence.get("schema") not in ACCEPTED_CANDIDATE_AB_SCHEMAS:
         failures.append({"code": "bbb_candidate_schema_mismatch"})
     else:
         failures.extend(_candidate_scheduling_failures(evidence))
-    if evidence.get("baseline_bbb_commit") != BASELINE_BBB_COMMIT:
+    if evidence.get("baseline_bbb_commit") != expected_baseline_commit:
         failures.append({"code": "bbb_baseline_commit_mismatch"})
-    if evidence.get("baseline_bbb_report_sha256") != BASELINE_BBB_REPORT_SHA256:
+    if evidence.get("baseline_bbb_report_sha256") != expected_baseline_report_sha256:
         failures.append({"code": "bbb_baseline_report_mismatch"})
-    if evidence.get("baseline_bbb_binary_sha256") != BASELINE_BBB_BINARY_SHA256:
+    if evidence.get("baseline_bbb_binary_sha256") != expected_baseline_binary_sha256:
         failures.append({"code": "bbb_baseline_binary_mismatch"})
     if evidence.get("candidate_bbb_commit") != candidate_commit:
         failures.append({"code": "bbb_candidate_commit_mismatch"})
+    if is_wgpu30_optimization and failures:
+        return {
+            "status": "failed",
+            "baseline_bbb_commit": expected_baseline_commit,
+            "baseline_bbb_report_sha256": expected_baseline_report_sha256,
+            "baseline_bbb_binary_sha256": expected_baseline_binary_sha256,
+            "candidate_bbb_commit": candidate_commit,
+            "maximum_margin": MAX_BASELINE_FPS_MARGIN,
+            "results": [],
+            "stability": None,
+            "failures": failures,
+        }
     if evidence.get("pairing") != "interleaved-baseline-candidate":
         failures.append({"code": "bbb_candidate_pairing_mismatch"})
     if evidence.get("margin_declared_before_capture") is not True:
@@ -2141,6 +2334,11 @@ def validate_candidate_fps_evidence(
     raw_sha256 = evidence.get("baseline_repeat_raw_sha256")
     if not isinstance(raw_sha256, str) or re.fullmatch(r"[0-9a-f]{64}", raw_sha256) is None:
         failures.append({"code": "bbb_baseline_noise_raw_hash_missing"})
+    elif (
+        is_wgpu30_optimization
+        and raw_sha256 != WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256
+    ):
+        failures.append({"code": "bbb_baseline_noise_raw_hash_mismatch"})
     try:
         margin = float(evidence.get("baseline_repeat_noise_margin"))
     except (TypeError, ValueError):
@@ -2155,6 +2353,10 @@ def validate_candidate_fps_evidence(
     else:
         try:
             repeats = [float(value) for value in repeat_values]
+            if is_wgpu30_optimization and repeats != list(
+                WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS
+            ):
+                failures.append({"code": "bbb_baseline_noise_repeats_mismatch"})
             if not all(math.isfinite(value) and value > 0.0 for value in repeats):
                 raise ValueError("non-positive baseline repeat")
             measured_noise = (max(repeats) - min(repeats)) / statistics.fmean(repeats)
@@ -2177,6 +2379,18 @@ def validate_candidate_fps_evidence(
                 )
         except (TypeError, ValueError):
             failures.append({"code": "bbb_baseline_noise_repeats_malformed"})
+    if is_wgpu30_optimization and failures:
+        return {
+            "status": "failed",
+            "baseline_bbb_commit": expected_baseline_commit,
+            "baseline_bbb_report_sha256": expected_baseline_report_sha256,
+            "baseline_bbb_binary_sha256": expected_baseline_binary_sha256,
+            "candidate_bbb_commit": candidate_commit,
+            "maximum_margin": MAX_BASELINE_FPS_MARGIN,
+            "results": [],
+            "stability": None,
+            "failures": failures,
+        }
     comparisons = evidence.get("comparisons")
     results: list[dict[str, object]] = []
     if not isinstance(comparisons, list):
@@ -2228,9 +2442,9 @@ def validate_candidate_fps_evidence(
     failures.extend(stability["failures"])
     return {
         "status": "passed" if not failures else "failed",
-        "baseline_bbb_commit": BASELINE_BBB_COMMIT,
-        "baseline_bbb_report_sha256": BASELINE_BBB_REPORT_SHA256,
-        "baseline_bbb_binary_sha256": BASELINE_BBB_BINARY_SHA256,
+        "baseline_bbb_commit": expected_baseline_commit,
+        "baseline_bbb_report_sha256": expected_baseline_report_sha256,
+        "baseline_bbb_binary_sha256": expected_baseline_binary_sha256,
         "candidate_bbb_commit": candidate_commit,
         "maximum_margin": MAX_BASELINE_FPS_MARGIN,
         "results": results,
@@ -2751,6 +2965,16 @@ def _runtime_dependency_receipt_from_log(text: str) -> dict[str, str]:
     }
 
 
+def _gpu_timestamp_strategy_from_log(text: str) -> str | None:
+    line = re.search(r"renderer GPU timestamp strategy selected[^\n]*", text)
+    if line is None:
+        return None
+    strategy = re.search(r"strategy=([A-Za-z]+)", line.group(0))
+    if strategy is None:
+        raise RetinaAcceptanceError("BBB GPU timestamp strategy log is malformed")
+    return strategy.group(1)
+
+
 def load_bbb_build_info(binary: Path) -> dict[str, object]:
     completed = subprocess.run(
         (str(binary), "--build-info"),
@@ -3091,6 +3315,9 @@ def _run_client(
                     }
                 else:
                     result["runtime_dependency_receipt"] = None
+                result["gpu_timestamp_strategy"] = _gpu_timestamp_strategy_from_log(
+                    client_text
+                )
             except RetinaAcceptanceError as error:
                 result.setdefault("validation_failures", []).append(str(error))
                 result["status"] = "failed"

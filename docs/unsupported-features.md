@@ -168,13 +168,13 @@ restoring any row to `equivalent`.
   BBB duration attribution remains one GPU query submission; official retains
   unmodified 26.1 F3+L semantics. Lowering visible/resident work, quality or
   resolution, or adding sleep/pacing/VSync/caps, is not an optimization.
-  Capture commit `d698c8db0` is the fixed BBB FPS baseline for later candidates;
-  each candidate additionally needs a predeclared, paired/interleaved BBB A/B
-  whose repeat-noise margin is at most 1%. The existing raw eight-run evidence
-  has valid hashes and passes combined absolute App/GPU and every GPU scope, but
-  remains active because App p99-p50 regresses in the `static_orbit` and
-  `preloaded_flight` scene aggregates and nine explicit scene/run-pair
-  classifications remain. CV alone is no longer the blocker.
+  Full-gated wgpu 30 commit `5b1903221` and release SHA-256
+  `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`
+  are the fixed BBB baseline for later candidates. Its four AC repeats are
+  195.828/194.414/194.422/194.180 FPS, fixing a 0.8465% margin below the 1%
+  ceiling. Every later paired/interleaved B/C run must use registry wgpu 30 on
+  both sides; wgpu 0.19 evidence remains historical and cannot supply a
+  baseline, noise margin or rollback target.
   The immutable schema-1 capture remains `docs/evidence/macos-native-retina/report.json`
   at SHA-256 `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`;
   its raw-backed schema-2 revalidation is
@@ -235,18 +235,25 @@ restoring any row to `equivalent`.
   this two-drawable strategy may not be reused. Evidence:
   `low-latency-surface-ac-candidate.json` (SHA-256
   `662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`).
-  The active infrastructure step is now the crates.io wgpu 30.0.0 migration;
-  the rejected local wgpu-hal 0.19.5 backport is not a maintained option.
+  The crates.io wgpu 30.0.0 migration is complete; the rejected local
+  wgpu-hal 0.19.5 backport is not a maintained option.
   Its committed dependency receipt is
   `docs/evidence/dependency-receipts/wgpu-30.0.0.json`, including the upstream
   Metal condition-variable fence commit provenance. Candidate schema v3 keeps
-  v1/v2 historical validation, but additionally rejects a run before metrics
+  v1/v2 historical validation and records the completed 0.19-to-30 migration
+  comparison, but it is no longer an active performance-baseline schema. Its
+  failed report remains
+  `docs/evidence/macos-native-retina/wgpu30-ac-candidate.json` at SHA-256
+  `7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa`.
+  Candidate schema v4 requires wgpu 30 for both baseline and candidate and
+  rejects a run before metrics
   unless the binary/runtime dependency receipts, 2560x1600 CAMetalLayer
   drawable, actual maximum drawable count 3, Immediate mode, latency hint 2,
-  single in-flight budget and workload contract all match. After a clean full
-  gate, run AC-only B-C-C-B twice against the fixed 0.19 binary. A failed
-  performance result retains wgpu 30 and becomes the evidence-backed restart
-  condition for one bounded optimization slice; it does not reopen the fork.
+  single in-flight budget, `PassBoundary` GPU timestamp strategy and workload
+  contract all match. The next bounded candidate must address the measured
+  submission-wait/surface-acquire tail through `FrameFlightController` while
+  preserving this measurement scope; the three previously rejected policies
+  remain forbidden. Only a v4 all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

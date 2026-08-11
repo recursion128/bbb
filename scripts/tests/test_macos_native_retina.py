@@ -2,6 +2,7 @@ import importlib.util
 import hashlib
 import copy
 import json
+import statistics
 import struct
 import subprocess
 import sys
@@ -291,6 +292,50 @@ def wgpu30_candidate_evidence() -> dict[str, object]:
     return evidence
 
 
+def wgpu30_optimization_evidence() -> dict[str, object]:
+    evidence = copy.deepcopy(wgpu30_candidate_evidence())
+    evidence["schema"] = retina.WGPU30_OPTIMIZATION_AB_SCHEMA
+    evidence["baseline_bbb_commit"] = retina.WGPU30_OPTIMIZATION_BASELINE_COMMIT
+    evidence["baseline_bbb_report_sha256"] = (
+        retina.WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256
+    )
+    evidence["baseline_bbb_binary_sha256"] = (
+        retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256
+    )
+    evidence.pop("actual_rebuilt_baseline_binary_sha256")
+    evidence["baseline_repeat_raw_sha256"] = (
+        retina.WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256
+    )
+    evidence["baseline_repeat_mean_fps"] = list(
+        retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS
+    )
+    repeats = evidence["baseline_repeat_mean_fps"]
+    evidence["baseline_repeat_noise_margin"] = (
+        max(repeats) - min(repeats)
+    ) / statistics.fmean(repeats)
+    receipt = retina.load_committed_wgpu_dependency_receipt()
+    receipt_sha256 = retina.file_digest(retina.WGPU_DEPENDENCY_RECEIPT_PATH, "sha256")
+    evidence["baseline_dependency_receipt"] = copy.deepcopy(receipt)
+    evidence["baseline_dependency_receipt_sha256"] = receipt_sha256
+    evidence["candidate_dependency_receipt"] = copy.deepcopy(receipt)
+    evidence["candidate_dependency_receipt_sha256"] = receipt_sha256
+    evidence["gpu_timestamp_strategy"] = retina.WGPU30_GPU_TIMESTAMP_STRATEGY
+    runtime_receipt = {
+        **retina.WGPU_COMPONENT_VERSIONS,
+        "upstream_metal_fence_commit": retina.WGPU_METAL_FENCE_COMMIT,
+        "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+    }
+    for run in evidence["runs"]:
+        run["binary_sha256"] = (
+            evidence["baseline_bbb_binary_sha256"]
+            if run["variant"] == "baseline"
+            else evidence["candidate_bbb_binary_sha256"]
+        )
+        run["runtime_dependency_receipt"] = dict(runtime_receipt)
+        run["gpu_timestamp_strategy"] = retina.WGPU30_GPU_TIMESTAMP_STRATEGY
+    return evidence
+
+
 class DisplayProbeTests(unittest.TestCase):
     def test_legacy_metal_layer_probe_restores_the_hot_path_after_one_observation(self):
         source = (
@@ -338,12 +383,16 @@ class DisplayProbeTests(unittest.TestCase):
         self.assertEqual(
             contract["candidate_bbb_ab"],
             {
-                "schema": retina.WGPU30_CANDIDATE_AB_SCHEMA,
+                "schema": retina.WGPU30_OPTIMIZATION_AB_SCHEMA,
                 "legacy_schemas": [
                     retina.LEGACY_CANDIDATE_AB_SCHEMA,
                     retina.CANDIDATE_AB_SCHEMA,
+                    retina.WGPU30_CANDIDATE_AB_SCHEMA,
                 ],
-                "surface_policy": "macos-immediate-wgpu30-unchanged",
+                "surface_policy": "macos-immediate-wgpu30-both-sides",
+                "baseline_wgpu_version": "30.0.0",
+                "candidate_wgpu_version": "30.0.0",
+                "gpu_timestamp_strategy": retina.WGPU30_GPU_TIMESTAMP_STRATEGY,
                 "baseline_desired_maximum_frame_latency": 2,
                 "candidate_desired_maximum_frame_latency": 2,
                 "baseline_expected_metal_drawable_count": 3,
@@ -957,6 +1006,92 @@ class FormalValidationTests(unittest.TestCase):
             "surface_presentation.actual_metal_drawable_count",
             {item["field"] for item in failure["mismatches"]},
         )
+
+    def test_wgpu30_optimization_uses_only_the_committed_wgpu30_baseline(self):
+        evidence = wgpu30_optimization_evidence()
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(
+            result["baseline_bbb_commit"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+        )
+        self.assertEqual(
+            result["baseline_bbb_binary_sha256"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+        )
+
+    def test_wgpu30_optimization_rejects_a_019_baseline_before_metrics(self):
+        evidence = wgpu30_optimization_evidence()
+        evidence["baseline_bbb_commit"] = retina.BASELINE_BBB_COMMIT
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertEqual(
+            {failure["code"] for failure in result["failures"]},
+            {"bbb_baseline_commit_mismatch"},
+        )
+
+    def test_wgpu30_optimization_rejects_timestamp_scope_mismatch_before_metrics(self):
+        evidence = wgpu30_optimization_evidence()
+        evidence["runs"][1]["gpu_timestamp_strategy"] = "Encoder"
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_surface_run_mismatch"
+        )
+        self.assertEqual(failure["run"], 2)
+        self.assertIn(
+            "gpu_timestamp_strategy",
+            {item["field"] for item in failure["mismatches"]},
+        )
+
+    def test_wgpu30_optimization_rejects_non_wgpu30_runtime_before_metrics(self):
+        evidence = wgpu30_optimization_evidence()
+        evidence["runs"][0]["runtime_dependency_receipt"]["wgpu-hal"] = "0.19.5"
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertIn(
+            "bbb_candidate_surface_run_mismatch",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_wgpu30_optimization_noise_margin_comes_from_wgpu30_repeats(self):
+        evidence = wgpu30_optimization_evidence()
+        evidence["baseline_repeat_mean_fps"] = [100.0, 100.1, 100.0, 100.1]
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertIn(
+            "bbb_baseline_noise_repeats_mismatch",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_gpu_timestamp_strategy_is_parsed_from_runtime_log(self):
+        self.assertEqual(
+            retina._gpu_timestamp_strategy_from_log(
+                "renderer GPU timestamp strategy selected strategy=PassBoundary\n"
+            ),
+            retina.WGPU30_GPU_TIMESTAMP_STRATEGY,
+        )
+        self.assertIsNone(retina._gpu_timestamp_strategy_from_log("legacy renderer log"))
 
     def test_candidate_cv_alone_is_diagnostic_when_absolute_metrics_improve(self):
         result = retina.validate_candidate_fps_evidence(candidate_evidence(), "c" * 40)

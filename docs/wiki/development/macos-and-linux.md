@@ -113,9 +113,9 @@ CV 仍记录为 application 0.1864/0.1177、GPU 0.3237/0.0932，但不再单独�
 combined 与所有 GPU scope 通过；active 的精确原因是 application `p99-p50` 在
 `static_orbit`、`preloaded_flight` scene aggregate 回退，以及七个 nearest-run-pair
 scene scope 中共九条 stddev/p99-p50 失败分类。报告保留 metrics publishable，同时以
-`blocked` 明示这些绝对 scope；capture commit `d698c8db0` 固定为后续 candidate 的 BBB
-FPS baseline，candidate 还必须先提供交错 baseline/candidate A/B，不能因快于官方豁免
-自身 FPS 回退。原 schema-1 [capture report](../../evidence/macos-native-retina/report.json)
+`blocked` 明示这些绝对 scope；capture commit `d698c8db0` 当时用于 BBB FPS baseline，
+现只保留历史复核，不再参与新候选比较或 margin 推导。原 schema-1
+[capture report](../../evidence/macos-native-retina/report.json)
 保持 SHA-256 `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`；
 raw-backed schema-2 [stability report](../../evidence/macos-native-retina/stability-report.json)
 的 SHA-256 为 `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`。
@@ -222,14 +222,19 @@ CAMetalLayer `drawableSize` 与 `maximumDrawableCount`，不再把 hint+1 单独
 `scripts/fixtures/official-client-benchmark/metal-layer-probe.m` 在第一次
 `nextDrawable` 时读取同一 CAMetalLayer，立即恢复原 IMP，再进入预热和正式采样。
 
-`macos-native-retina-bbb-ab-v3` 保留 v1/v2 parser，并针对 0.19 baseline→wgpu 30
-candidate 强制 B-C-C-B×2 每轮记录 binary hash、runtime versions/provenance、Immediate、
-hint 2、expected/actual drawable count 3、actual 2560x1600 drawable 与单 in-flight budget。
-历史发布 binary hash 继续固定身份；本机重建 hash 独立记录并绑定每个 baseline run，
-不得把不同工具链的重建产物伪称为历史发布二进制。
-任一 dependency/surface/workload mismatch 都先于 FPS 或稳定性比较拒绝。该迁移不授权
-多帧排队、后台 acquire、upload arena、FramePlan 或 render graph；即使性能不通过，也保留
-通过正确性/full gate 的 wgpu 30 基础设施，再按 phase evidence 选择单一有界优化。
+`macos-native-retina-bbb-ab-v3` 的 0.19→wgpu 30 比较只保留为历史迁移报告：
+[`wgpu30-ac-candidate.json`](../../evidence/macos-native-retina/wgpu30-ac-candidate.json)，
+SHA-256 `7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa`。它不再提供
+active baseline、noise margin 或 rollback target。
+
+active `macos-native-retina-bbb-ab-v4` 把 clean/full-gated `5b1903221` 与 release SHA-256
+`849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817` 固定为 wgpu 30
+baseline。四次 AC repeat 为 195.828/194.414/194.422/194.180 FPS，预声明 margin 为
+0.8465%。以后 baseline/candidate 每个 run 都必须解析到 registry wgpu/core/hal/types/naga
+30.0.0，绑定相同 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、
+单 in-flight、2560x1600 fullscreen 和同一 workload；任一 identity/scope mismatch 都在解析
+FPS 前拒绝。下一有界优化只在 wgpu 30 上按 submission-wait/surface-acquire phase evidence
+修改 FrameFlightController，绝不回退 0.19。
 
 ## 第二平台 cross-check
 

@@ -93,16 +93,15 @@ validator 拒绝全部 22 个 FPS scope 和 44 个绝对稳定性比较。combin
 `662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`）。默认 hint 2
 已恢复，该候选不进入 Vanilla ABBA。
 
-wgpu 30 基础设施候选使用 `macos-native-retina-bbb-ab-v3`。它向后接受 v1/v2 失败报告，
-但新 capture 必须绑定 committed registry dependency receipt、两侧 binary hash、candidate
-`--build-info` 与 renderer runtime receipt。surface contract 除配置的 Immediate/hint 2/
-single-in-flight 外，还从实际 CAMetalLayer 读取 2560x1600 `drawableSize` 和
-`maximumDrawableCount=3`；缺失或不匹配时 validator 在解析任何 FPS comparison 前返回
-blocker。只有 AC Power 的 B-C-C-B×2 在 combined、三个 scene、两个 round、全部 nearest
-pair 与逐 scene pair 的 FPS/绝对 App/GPU stability scope 全过，才允许正式 Java ABBA。
-当前 binary 原生记录；固定 0.19 baseline 使用首个 `nextDrawable` 后立即自恢复的 capture
-probe 只读同一 layer。canonical 历史 binary hash 与本机重建 hash 分列，逐 baseline run
-必须绑定后者，source commit/report 身份仍固定为既有 baseline。
+`macos-native-retina-bbb-ab-v3` 及其 0.19→wgpu 30 失败报告只作历史迁移证据，不再参与
+候选判定。active v4 baseline 是 full-gated `5b1903221` / release SHA-256
+`849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
+195.828/194.414/194.422/194.180 FPS 派生 0.8465% noise margin。B-C-C-B×2 的两侧均须为
+registry wgpu/core/hal/types/naga 30.0.0，并逐 run 绑定 dependency receipt、binary hash、
+`PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、单 in-flight、
+2560x1600 fullscreen 与相同 workload。任何 identity 或 measurement-scope mismatch 都在
+FPS/稳定性比较前 fail-closed；combined、三个 scene、两个 round、全部 nearest pair 与逐
+scene pair 的 FPS/绝对 App/GPU scope 全过后，才允许正式 Java ABBA。
 
 ## 生命周期和 fallback
 
