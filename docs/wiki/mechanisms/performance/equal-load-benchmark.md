@@ -57,6 +57,16 @@ expected/missing 与 bounded-channel drop。archive、同 tick raw sidecar、列
 互相校验，duration 才换算为毫秒，count 保持计数。该 callback 只能证明 GPU work 已完成后
 运行时何时观察到回调，不能称为硬件完成瞬间、drawable 实际显示、光子或输入延迟；未录制
 profiler 时不注册 callback，GPU HUD 单独开启不触发它。
+显式 diagnostic capture 可再声明 `renderer-gpu-stages-v1`。BBB 此时才把既有
+`PassBoundary` timestamp 从总时长的两个 query 扩展为十二个有序边界，并在
+`gpu_stages.csv` 写出同一 submission 的 application interval、总 GPU duration 和十一段：
+terrain atlas animation、opaque world、opaque particles、feature depth copies、entity/
+translucent features、remaining feature targets、clouds、weather、transparency combine、
+presentation tail、encoder tail。validator 要求 archive、raw sidecar、schema marker 与逐行
+stage sum 互证，再输出 combined/scene/run 的 p50/p95/p99/stddev、p99-p50、总时长占比，
+以及对同一 submission 总 GPU duration/application interval 的相关性。普通 profiler 与
+未启用 profiler 的运行仍使用两个 timestamp query；该诊断不改变 pass、draw order、material
+route、submission 或 present 顺序，也不单独构成候选验收结论。
 当前 frame-phase schema v2 进一步把 macOS Immediate 上一 submission 的 non-blocking
 completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
 `poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。
@@ -115,9 +125,15 @@ hint 2、实际三个 drawable 与 `PassBoundary` strategy。combined FPS 从 19
 205.274，但 App p99/stddev/p99-p50/1% low 与 GPU mean/p50/p95 回退；combined/scene 共
 28 个绝对失败，所以按预声明流程在正式 B→C→C→B×2 前拒绝。报告是
 [`prefinish-command-buffer-ac-diagnostic.json`](../../../evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json)，
-SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。后续先补
-profiler-only callback-observation age/in-flight-depth 归因，不能用 callback 或
-submit/present call 返回时间代替实际显示或输入延迟证据。
+SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。后续的
+callback-observation 正式 B→C→C→B×2 仍保持 2560x1600、budget 1 与三个 drawable；combined
+FPS 和 App 绝对指标改善，但 pair-2 FPS 及多项逐 scene/pair App/GPU 指标失败，故在 Java
+ABBA 前拒绝。报告是
+[`callback-observation-ac-candidate.json`](../../../evidence/macos-native-retina/callback-observation-ac-candidate.json)，
+SHA-256 `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`。callback 几乎紧邻
+wait 返回，surface acquire 对下一 application interval 的相关性最强；由于 GPU duration
+scope 同时失败，下一步先用 `renderer-gpu-stages-v1` 定位具体 GPU 尾部 owner，不能直接放宽
+submission budget，也不能把 callback、submit 或 present 返回时间称为实际显示延迟。
 
 ## 生命周期和 fallback
 

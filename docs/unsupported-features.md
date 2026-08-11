@@ -268,13 +268,15 @@ restoring any row to `equivalent`.
   `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`.
   `renderer-frame-flight-v1` remains diagnostic: callback-to-wait is negligible,
   while surface acquire is the strongest next-interval correlate; none of these
-  timestamps claims actual display or photon latency. The next bounded slice is
-  profiler-only GPU pass/stage timestamp attribution because scheduling cannot
-  by itself close the GPU-duration failures. Keep the callback/query paths off
-  when profiling is disabled. A queue-budget experiment additionally requires
-  an executable input-to-render/present latency contract. The three previously
-  rejected scheduling policies remain forbidden. Only a v4 all-scope pass can
-  authorize official Java ABBA.
+  timestamps claims actual display or photon latency. The current bounded action
+  is a full-gated `renderer-gpu-stages-v1` probe that attributes the same
+  submission's total to eleven ordered `PassBoundary` intervals and preserves
+  the original application interval. Choose one renderer candidate only after
+  combined/scene/run stage tails identify its owner. Keep the detailed query and
+  callback paths off when profiling is disabled. A queue-budget experiment
+  additionally requires an executable input-to-render/present latency contract.
+  The three previously rejected scheduling policies remain forbidden. Only a v4
+  all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

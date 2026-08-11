@@ -2132,7 +2132,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                     project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
                     // Always drain completed queries so opening the profiler after the GPU HUD
                     // cannot publish durations captured before the recording window.
-                    let completed_gpu_duration = renderer.take_gpu_duration();
+                    let completed_gpu_timing = renderer.take_gpu_timing_profile();
                     let profiler_frame_metrics = profiler_enabled.then(|| {
                         let gpu_utilization = renderer.gpu_utilization();
                         DebugProfilerFrameMetrics::from_renderer(
@@ -2140,7 +2140,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                             &renderer_counters,
                             args.render_distance_chunks,
                             gpu_utilization,
-                            completed_gpu_duration,
+                            completed_gpu_timing,
                             renderer_frame_profile,
                         )
                     });

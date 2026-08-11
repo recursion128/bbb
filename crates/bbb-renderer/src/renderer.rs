@@ -3347,10 +3347,12 @@ impl Renderer {
             .and_then(GpuFrameTiming::latest_utilization)
     }
 
-    pub fn take_gpu_duration(&mut self) -> Option<Duration> {
+    pub fn take_gpu_timing_profile(
+        &mut self,
+    ) -> Option<crate::gpu_timing::RendererGpuTimingProfile> {
         self.gpu_timing
             .as_mut()
-            .and_then(GpuFrameTiming::take_completed_duration)
+            .and_then(GpuFrameTiming::take_completed_profile)
     }
 
     pub fn last_frame_profile(&self) -> RendererFrameProfile {

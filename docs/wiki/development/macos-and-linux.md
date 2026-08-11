@@ -239,10 +239,21 @@ FPS 前拒绝。full-gated `62555c6bf` 的 command-buffer-boundary diagnostic �
 B→C→C→B×2 或 Java ABBA，单 encoder 行为已 fix-forward 恢复。raw-hash-backed 报告为
 [`prefinish-command-buffer-ac-diagnostic.json`](../../evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json)，
 SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。
-下一有界 slice 只在 profiler recording 开启时记录 wgpu completion callback 的观察年龄、
-callback→wait 尾部、expected/missing/drop 与 controller-owned in-flight depth，先以 budget 1
-验证测量开销；GPU HUD 单独开启不注册回调。该观察时间不是硬件完成瞬间或实际显示/光子/
-输入延迟；绝不回退 0.19，也不把 callback、submit 或 present 返回时间称为实际显示延迟。
+后续 callback-observation 的正式接电 B→C→C→B×2 保持相同 surface/workload；combined FPS
+183.626→184.874 且 combined App p99/stddev/p99-p50 改善，但 pair-2 all-scenes/preloaded FPS
+和多项逐 scene/pair App/GPU 绝对指标失败，因此不进入 Java ABBA。报告
+[`callback-observation-ac-candidate.json`](../../evidence/macos-native-retina/callback-observation-ac-candidate.json)
+SHA-256 为 `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`。观察到的 callback
+几乎紧邻 wait 返回，surface acquire 才是对下一 application interval 相关性最强的 CPU phase；
+GPU scope 的失败要求先定位具体 GPU owner。
+
+下一有界诊断使用 `renderer-gpu-stages-v1`：只有显式 capture 才通过
+`bbb_renderer::gpu_timing=debug` 把原总时长两个 timestamp query 扩为十二个
+`PassBoundary` 边界，记录同一 submission 的 application interval、总 GPU duration 与十一段
+pass/stage duration。archive/raw/schema/逐行 stage sum 必须互证，报告按 combined、scene、run
+给出 p50/p95/p99/stddev、p99-p50、占比及同 submission 相关性。普通路径仍为两个 query；不改
+pass/order/material/workload、单 in-flight 或 wait→acquire→submit→present。归因后一次只选择
+一个有界 renderer candidate；绝不回退 0.19，也不直接放宽 submission budget。
 
 ## 第二平台 cross-check
 

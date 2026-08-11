@@ -107,6 +107,31 @@
     "primary_correlation": "observation[n]-to-interval[n+1]",
     "phase_to_interval_lag_frames": 1
   },
+  "gpu_stage_diagnostics": {
+    "schema": "renderer-gpu-stages-v1",
+    "archive_path": "client/metrics/gpu_stages.csv",
+    "units": "nanoseconds",
+    "columns": [
+      "application_frame_interval",
+      "total_gpu_duration",
+      "terrain_atlas_animation",
+      "opaque_world",
+      "opaque_particles",
+      "feature_depth_copies",
+      "entity_translucent_features",
+      "remaining_feature_targets",
+      "clouds",
+      "weather",
+      "transparency_combine",
+      "presentation_tail",
+      "encoder_tail"
+    ],
+    "required_client": "bbb-when-run-declares-required-schema",
+    "activation": "RUST_LOG=bbb_renderer::gpu_timing=debug",
+    "correlation_target": "same-submission-application-frame-interval",
+    "total_duration_check": "ordered-stage-sum-within-rounding-tolerance",
+    "timestamp_strategy": "PassBoundary"
+  },
   "stability_acceptance": {
     "policy": "absolute-tail-v2",
     "cv_role": "diagnostic-only-when-absolute-metrics-pass",

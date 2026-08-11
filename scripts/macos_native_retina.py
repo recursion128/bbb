@@ -145,6 +145,30 @@ FRAME_FLIGHT_COUNT_COLUMNS = (
     "completion_observations_dropped",
 )
 FRAME_FLIGHT_COLUMNS = FRAME_FLIGHT_DURATION_COLUMNS + FRAME_FLIGHT_COUNT_COLUMNS
+GPU_STAGE_SCHEMA = "renderer-gpu-stages-v1"
+GPU_STAGE_DURATION_COLUMNS = (
+    "terrain_atlas_animation",
+    "opaque_world",
+    "opaque_particles",
+    "feature_depth_copies",
+    "entity_translucent_features",
+    "remaining_feature_targets",
+    "clouds",
+    "weather",
+    "transparency_combine",
+    "presentation_tail",
+    "encoder_tail",
+)
+GPU_STAGE_COLUMNS = (
+    "application_frame_interval",
+    "total_gpu_duration",
+) + GPU_STAGE_DURATION_COLUMNS
+BBB_RUNTIME_LOG_FILTERS = (
+    "bbb_native=info",
+    "bbb_renderer=info",
+    "bbb_net=info",
+)
+GPU_STAGE_RUNTIME_LOG_FILTER = "bbb_renderer::gpu_timing=debug"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 F2_KEY_CODE = 120
 F3_KEY_CODE = 99
@@ -340,6 +364,17 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "correlation_target": "application_frame_interval",
             "primary_correlation": "observation[n]-to-interval[n+1]",
             "phase_to_interval_lag_frames": 1,
+        },
+        "gpu_stage_diagnostics": {
+            "schema": GPU_STAGE_SCHEMA,
+            "archive_path": "client/metrics/gpu_stages.csv",
+            "units": "nanoseconds",
+            "columns": list(GPU_STAGE_COLUMNS),
+            "required_client": "bbb-when-run-declares-required-schema",
+            "activation": f"RUST_LOG={GPU_STAGE_RUNTIME_LOG_FILTER}",
+            "correlation_target": "same-submission-application-frame-interval",
+            "total_duration_check": "ordered-stage-sum-within-rounding-tolerance",
+            "timestamp_strategy": WGPU30_GPU_TIMESTAMP_STRATEGY,
         },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
@@ -1071,6 +1106,75 @@ def summarize_frame_flight(
     return {"durations": durations, "counts": counts}
 
 
+def summarize_gpu_stages(
+    samples: Mapping[str, Sequence[float]],
+) -> dict[str, object]:
+    if set(samples) != set(GPU_STAGE_COLUMNS):
+        raise RetinaAcceptanceError("GPU stage columns differ from the committed schema")
+    application_intervals = samples["application_frame_interval"]
+    total_durations = samples["total_gpu_duration"]
+    sample_count = len(application_intervals)
+    if (
+        sample_count == 0
+        or len(total_durations) != sample_count
+        or any(
+            len(samples[column]) != sample_count
+            for column in GPU_STAGE_DURATION_COLUMNS
+        )
+        or any(
+            not math.isfinite(value) or value <= 0.0
+            for value in (*application_intervals, *total_durations)
+        )
+        or any(
+            not math.isfinite(value) or value < 0.0
+            for column in GPU_STAGE_DURATION_COLUMNS
+            for value in samples[column]
+        )
+    ):
+        raise RetinaAcceptanceError(
+            "GPU stage samples must be finite, aligned, and use positive frame/total durations"
+        )
+    # Rust rounds each of eleven adjacent timestamp deltas independently and
+    # rounds the endpoint total once. Their sums may therefore differ by at
+    # most one nanosecond per stage.
+    rounding_tolerance_ms = len(GPU_STAGE_DURATION_COLUMNS) / 1_000_000.0
+    for index, total in enumerate(total_durations):
+        stage_sum = sum(samples[column][index] for column in GPU_STAGE_DURATION_COLUMNS)
+        if abs(stage_sum - total) > rounding_tolerance_ms:
+            raise RetinaAcceptanceError(
+                "GPU stage sum differs from the same-submission total duration"
+            )
+
+    stages: dict[str, object] = {}
+    for column in GPU_STAGE_DURATION_COLUMNS:
+        values = samples[column]
+        ordered = sorted(values)
+        mean_ms = statistics.fmean(values)
+        p50_ms = percentile(ordered, 50)
+        p99_ms = percentile(ordered, 99)
+        stages[column] = {
+            "samples": sample_count,
+            "mean_ms": mean_ms,
+            "p50_ms": p50_ms,
+            "p95_ms": percentile(ordered, 95),
+            "p99_ms": p99_ms,
+            "stddev_ms": statistics.pstdev(values) if sample_count > 1 else 0.0,
+            "p99_minus_p50_ms": p99_ms - p50_ms,
+            "mean_total_gpu_share": mean_ms / statistics.fmean(total_durations),
+            "total_gpu_duration_correlation": pearson_correlation(
+                values, total_durations
+            ),
+            "application_frame_interval_correlation": pearson_correlation(
+                values, application_intervals
+            ),
+        }
+    return {
+        "total_gpu_duration": summarize_durations_ms(total_durations),
+        "application_frame_interval": summarize_durations_ms(application_intervals),
+        "stages": stages,
+    }
+
+
 def profiler_samples(path: Path) -> dict[str, object]:
     try:
         archive = zipfile.ZipFile(path)
@@ -1079,6 +1183,7 @@ def profiler_samples(path: Path) -> dict[str, object]:
     gpu = None
     frame_phase_rows: dict[str, dict[int, float]] | None = None
     frame_flight_rows: dict[str, dict[int, float]] | None = None
+    gpu_stage_rows: dict[str, dict[int, float]] | None = None
     with archive:
         ticking = _read_metric_csv(archive, "/metrics/ticking.csv", "ticktime")
         try:
@@ -1117,6 +1222,22 @@ def profiler_samples(path: Path) -> dict[str, object]:
                     archive, "/metrics/frame_flight.csv", column
                 )
                 for column in FRAME_FLIGHT_COLUMNS
+            }
+        gpu_stage_names = [
+            name
+            for name in archive.namelist()
+            if name.endswith("/metrics/gpu_stages.csv")
+        ]
+        if gpu_stage_names:
+            if len(gpu_stage_names) != 1:
+                raise RetinaAcceptanceError(
+                    "profiling archive must contain at most one gpu_stages.csv"
+                )
+            gpu_stage_rows = {
+                column: _read_metric_csv(
+                    archive, "/metrics/gpu_stages.csv", column
+                )
+                for column in GPU_STAGE_COLUMNS
             }
     if gpu_duration is not None:
         frame_ms = [ticking[tick] / 1_000_000.0 for tick in sorted(ticking)]
@@ -1252,6 +1373,32 @@ def profiler_samples(path: Path) -> dict[str, object]:
             ]
             for column, rows in frame_flight_rows.items()
         }
+    if gpu_stage_rows is not None:
+        tick_sets = {frozenset(rows) for rows in gpu_stage_rows.values()}
+        if len(tick_sets) != 1:
+            raise RetinaAcceptanceError("GPU stage columns use different profiler ticks")
+        stage_ticks = next(iter(tick_sets))
+        if gpu_duration is None:
+            raise RetinaAcceptanceError(
+                "GPU stage evidence requires direct gpuDuration samples"
+            )
+        duration_ticks = frozenset(
+            tick for tick, value in gpu_duration.items() if value > 0.0
+        )
+        if stage_ticks != duration_ticks or any(
+            gpu_stage_rows["total_gpu_duration"][tick] != gpu_duration[tick]
+            for tick in stage_ticks
+        ):
+            raise RetinaAcceptanceError(
+                "GPU stage total differs from the same profiler gpuDuration sample"
+            )
+        ordered_ticks = sorted(stage_ticks)
+        gpu_stages = {
+            column: [rows[tick] / 1_000_000.0 for tick in ordered_ticks]
+            for column, rows in gpu_stage_rows.items()
+        }
+        summarize_gpu_stages(gpu_stages)
+        result["gpu_stages"] = gpu_stages
     return result
 
 
@@ -1284,6 +1431,10 @@ def parse_profiler_archive(path: Path) -> dict[str, object]:
         parsed["frame_flight"] = summarize_frame_flight(
             frame_flight, application_intervals
         )
+    gpu_stages = samples.get("gpu_stages")
+    if isinstance(gpu_stages, Mapping):
+        parsed["gpu_stage_schema"] = GPU_STAGE_SCHEMA
+        parsed["gpu_stages"] = summarize_gpu_stages(gpu_stages)
     return parsed
 
 
@@ -1427,6 +1578,7 @@ def _materialize_formal_samples(
     dict[tuple[int, str, str], list[float]],
     dict[tuple[int, str, str], list[float]],
     dict[tuple[int, str, str], list[float]],
+    dict[tuple[int, str, str], list[float]],
 ]:
     """Reparse and normalize every archive exactly once.
 
@@ -1440,6 +1592,7 @@ def _materialize_formal_samples(
     matrix: dict[tuple[int, str, str], list[float]] = {}
     phase_matrix: dict[tuple[int, str, str], list[float]] = {}
     flight_matrix: dict[tuple[int, str, str], list[float]] = {}
+    gpu_stage_matrix: dict[tuple[int, str, str], list[float]] = {}
     for run_number, run in enumerate(runs, start=1):
         profiles = run.get("profiles")
         if not isinstance(profiles, list):
@@ -1614,13 +1767,67 @@ def _materialize_formal_samples(
                     ]
                 normalized_profile["frame_flight_schema"] = FRAME_FLIGHT_SCHEMA
                 normalized_profile["frame_flight"] = flight_summary
+            archive_gpu_stages = archive_samples.get("gpu_stages")
+            required_gpu_stage_schema = run.get("required_gpu_stage_schema")
+            if (
+                required_gpu_stage_schema is not None
+                and required_gpu_stage_schema != GPU_STAGE_SCHEMA
+            ):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} declares unknown GPU stage schema"
+                )
+            if required_gpu_stage_schema == GPU_STAGE_SCHEMA and not isinstance(
+                archive_gpu_stages, Mapping
+            ):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} {segment} lacks required {GPU_STAGE_SCHEMA} evidence"
+                )
+            if isinstance(archive_gpu_stages, Mapping):
+                if profile.get("gpu_stage_schema") != GPU_STAGE_SCHEMA:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} GPU stage schema differs"
+                    )
+                sidecar_value = profile.get("gpu_stage_samples")
+                if not isinstance(sidecar_value, str):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} lacks GPU stage raw samples"
+                    )
+                raw = _load_object(Path(sidecar_value), "GPU stage raw samples")
+                raw_stages = raw.get("milliseconds")
+                if not isinstance(raw_stages, Mapping):
+                    raise RetinaAcceptanceError("GPU stage raw samples are malformed")
+                materialized_stages = {
+                    str(column): [float(value) for value in values]
+                    for column, values in raw_stages.items()
+                    if isinstance(values, list)
+                }
+                expected_stages = {
+                    str(column): [float(value) for value in values]
+                    for column, values in archive_gpu_stages.items()
+                }
+                if materialized_stages != expected_stages:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} GPU stage sidecar differs from archive"
+                    )
+                stage_summary = summarize_gpu_stages(materialized_stages)
+                _validate_stored_summary(
+                    profile.get("gpu_stages"),
+                    stage_summary,
+                    label=f"run {run_number} {segment} GPU stages",
+                )
+                for column in GPU_STAGE_COLUMNS:
+                    gpu_stage_matrix[(run_number, segment, column)] = materialized_stages[
+                        column
+                    ]
+                normalized_profile["gpu_stage_schema"] = GPU_STAGE_SCHEMA
+                normalized_profile["gpu_stages"] = stage_summary
             normalized_profiles.append(normalized_profile)
         normalized_run = dict(run)
         normalized_run["capture_schema"] = run.get("capture_schema", run.get("schema", 0))
         normalized_run["schema"] = SCHEMA
         normalized_run["profiles"] = normalized_profiles
         normalized_runs.append(normalized_run)
-    return normalized_runs, matrix, phase_matrix, flight_matrix
+    return normalized_runs, matrix, phase_matrix, flight_matrix, gpu_stage_matrix
 
 
 def _frame_phase_scope_summary(
@@ -1815,6 +2022,74 @@ def _build_frame_flight_diagnostics(
         "correlation_target": "application_frame_interval",
         "primary_correlation": "observation[n]-to-interval[n+1]",
         "phase_to_interval_lag_frames": 1,
+        "scopes": scopes,
+    }
+
+
+def _gpu_stage_scope_summary(
+    matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+    run_numbers: Sequence[int],
+    segment: str | None,
+) -> dict[str, object]:
+    selected = [
+        (run_number, profile_segment)
+        for run_number in run_numbers
+        if runs[run_number - 1].get("client") == "bbb"
+        for profile_segment in CAPTURE_SEGMENTS
+        if segment is None or profile_segment == segment
+        if (run_number, profile_segment, GPU_STAGE_COLUMNS[0]) in matrix
+    ]
+    if not selected:
+        return {}
+    samples = {
+        column: [
+            value
+            for run_number, profile_segment in selected
+            for value in matrix[(run_number, profile_segment, column)]
+        ]
+        for column in GPU_STAGE_COLUMNS
+    }
+    return summarize_gpu_stages(samples)
+
+
+def _build_gpu_stage_diagnostics(
+    matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+) -> dict[str, object] | None:
+    all_runs = tuple(range(1, len(runs) + 1))
+    combined = _gpu_stage_scope_summary(matrix, runs, all_runs, None)
+    if not combined:
+        return None
+    scopes = [
+        {"scope_type": "combined", "scope_id": "combined", "metrics": combined}
+    ]
+    scopes.extend(
+        {
+            "scope_type": "scene",
+            "scope_id": segment,
+            "metrics": _gpu_stage_scope_summary(matrix, runs, all_runs, segment),
+        }
+        for segment in CAPTURE_SEGMENTS
+    )
+    for run_number in all_runs:
+        if (run_number, CAPTURE_SEGMENTS[0], GPU_STAGE_COLUMNS[0]) not in matrix:
+            continue
+        scopes.append(
+            {
+                "scope_type": "run",
+                "scope_id": f"run-{run_number}",
+                "metrics": _gpu_stage_scope_summary(
+                    matrix, runs, (run_number,), None
+                ),
+            }
+        )
+    return {
+        "schema": GPU_STAGE_SCHEMA,
+        "units": "milliseconds",
+        "timestamp_strategy": WGPU30_GPU_TIMESTAMP_STRATEGY,
+        "correlation_target": "same-submission-application-frame-interval",
+        "total_duration_check": "ordered-stage-sum-within-rounding-tolerance",
         "scopes": scopes,
     }
 
@@ -3014,6 +3289,7 @@ def validate_and_summarize(
             "stability_acceptance": None,
             "frame_phase_diagnostics": None,
             "frame_flight_diagnostics": None,
+            "gpu_stage_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     try:
@@ -3022,6 +3298,7 @@ def validate_and_summarize(
             sample_matrix,
             frame_phase_matrix,
             frame_flight_matrix,
+            gpu_stage_matrix,
         ) = _materialize_formal_samples(runs)
     except RetinaAcceptanceError as error:
         blocker = {"code": "raw_evidence_integrity_failure", "error": str(error)}
@@ -3035,6 +3312,7 @@ def validate_and_summarize(
             "stability_acceptance": None,
             "frame_phase_diagnostics": None,
             "frame_flight_diagnostics": None,
+            "gpu_stage_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     all_runs = tuple(range(1, len(normalized_runs) + 1))
@@ -3060,6 +3338,9 @@ def validate_and_summarize(
     )
     frame_flight_diagnostics = _build_frame_flight_diagnostics(
         frame_flight_matrix, frame_phase_matrix, normalized_runs
+    )
+    gpu_stage_diagnostics = _build_gpu_stage_diagnostics(
+        gpu_stage_matrix, normalized_runs
     )
     if bbb_commit == BASELINE_BBB_COMMIT:
         baseline_comparison = {
@@ -3090,6 +3371,7 @@ def validate_and_summarize(
         "stability_acceptance": stability,
         "frame_phase_diagnostics": frame_phase_diagnostics,
         "frame_flight_diagnostics": frame_flight_diagnostics,
+        "gpu_stage_diagnostics": gpu_stage_diagnostics,
         "bbb_baseline_comparison": baseline_comparison,
     }
 
@@ -3442,6 +3724,13 @@ def load_bbb_build_info(binary: Path) -> dict[str, object]:
     return value
 
 
+def bbb_runtime_log_filter(*, require_gpu_stages: bool) -> str:
+    filters = list(BBB_RUNTIME_LOG_FILTERS)
+    if require_gpu_stages:
+        filters.append(GPU_STAGE_RUNTIME_LOG_FILTER)
+    return ",".join(filters)
+
+
 def _write_profile_samples(
     path: Path,
     profile_path: Path,
@@ -3449,6 +3738,7 @@ def _write_profile_samples(
     cpu_nanos: int,
     *,
     require_frame_flight: bool,
+    require_gpu_stages: bool,
 ) -> dict[str, object]:
     samples = profiler_samples(profile_path)
     entry = parse_profiler_archive(profile_path)
@@ -3471,6 +3761,15 @@ def _write_profile_samples(
     elif require_frame_flight:
         raise RetinaAcceptanceError(
             f"BBB profiler archive lacks required {FRAME_FLIGHT_SCHEMA} evidence"
+        )
+    gpu_stages = samples.get("gpu_stages")
+    if isinstance(gpu_stages, Mapping):
+        output = path / f"{segment}-gpu-stages-samples.json"
+        output.write_bytes(canonical_json_bytes({"milliseconds": gpu_stages}))
+        entry["gpu_stage_samples"] = str(output)
+    elif require_gpu_stages:
+        raise RetinaAcceptanceError(
+            f"BBB profiler archive lacks required {GPU_STAGE_SCHEMA} evidence"
         )
     frame_count = len(samples["application_frame_time"])
     entry["process_cpu_time_ms"] = cpu_nanos / 1_000_000.0
@@ -3499,6 +3798,7 @@ def _run_client(
     natives_dir: Path,
     timeout: float,
     require_frame_flight: bool = False,
+    require_gpu_stages: bool = False,
 ) -> dict[str, object]:
     if client not in {"vanilla", "bbb"}:
         raise RetinaAcceptanceError(f"unsupported formal client {client!r}")
@@ -3579,6 +3879,9 @@ def _run_client(
         "required_frame_flight_schema": (
             FRAME_FLIGHT_SCHEMA if client == "bbb" and require_frame_flight else None
         ),
+        "required_gpu_stage_schema": (
+            GPU_STAGE_SCHEMA if client == "bbb" and require_gpu_stages else None
+        ),
         "server_port": server_port,
         "control_port": control_port if client == "bbb" else None,
         "launch_argv": sanitized_argv(client_argv),
@@ -3629,7 +3932,9 @@ def _run_client(
             environment.update(
                 {
                     "BBB_VANILLA_ROOT": str(vanilla_root),
-                    "RUST_LOG": "bbb_native=info,bbb_renderer=info,bbb_net=info",
+                    "RUST_LOG": bbb_runtime_log_filter(
+                        require_gpu_stages=client == "bbb" and require_gpu_stages
+                    ),
                 }
             )
             client_group = ProcessGroup(
@@ -3708,6 +4013,7 @@ def _run_client(
                         segment,
                         cpu_after - cpu_before,
                         require_frame_flight=require_frame_flight,
+                        require_gpu_stages=require_gpu_stages,
                     )
                 )
             final_marker = replay_capture_markers(replay)[-1]

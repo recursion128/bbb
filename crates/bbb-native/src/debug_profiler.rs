@@ -6,7 +6,9 @@ use std::{
 };
 
 use bbb_control::RendererCounters;
-use bbb_renderer::{HudDebugProfilerChart, HudDebugProfilerSlice, RendererFrameProfile};
+use bbb_renderer::{
+    HudDebugProfilerChart, HudDebugProfilerSlice, RendererFrameProfile, RendererGpuTimingProfile,
+};
 
 use self::report::{
     ProfilingReport, ProfilingReportCompletion, ProfilingReportWriter, RecordedDeviation,
@@ -45,6 +47,7 @@ pub(crate) struct DebugProfilerFrameMetrics {
     pub(crate) compile_queue_size: Option<f64>,
     pub(crate) gpu_utilization: Option<f64>,
     pub(crate) gpu_duration_nanos: Option<f64>,
+    pub(crate) gpu_stages: Option<DebugProfilerGpuStages>,
     pub(crate) frame_phases: Option<DebugProfilerFramePhases>,
     pub(crate) frame_flight: Option<DebugProfilerFrameFlight>,
 }
@@ -73,6 +76,44 @@ pub(crate) struct DebugProfilerFrameFlight {
     pub(crate) completion_observation_expected: f64,
     pub(crate) completion_observation_missing: f64,
     pub(crate) completion_observations_dropped: f64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct DebugProfilerGpuStages {
+    pub(crate) application_frame_interval: f64,
+    pub(crate) total_gpu_duration: f64,
+    pub(crate) terrain_atlas_animation: f64,
+    pub(crate) opaque_world: f64,
+    pub(crate) opaque_particles: f64,
+    pub(crate) feature_depth_copies: f64,
+    pub(crate) entity_translucent_features: f64,
+    pub(crate) remaining_feature_targets: f64,
+    pub(crate) clouds: f64,
+    pub(crate) weather: f64,
+    pub(crate) transparency_combine: f64,
+    pub(crate) presentation_tail: f64,
+    pub(crate) encoder_tail: f64,
+}
+
+impl DebugProfilerGpuStages {
+    fn from_profile(timing: RendererGpuTimingProfile) -> Option<Self> {
+        let stages = timing.stages?;
+        Some(Self {
+            application_frame_interval: duration_nanos(timing.application_frame_interval) as f64,
+            total_gpu_duration: duration_nanos(timing.duration) as f64,
+            terrain_atlas_animation: duration_nanos(stages.terrain_atlas_animation) as f64,
+            opaque_world: duration_nanos(stages.opaque_world) as f64,
+            opaque_particles: duration_nanos(stages.opaque_particles) as f64,
+            feature_depth_copies: duration_nanos(stages.feature_depth_copies) as f64,
+            entity_translucent_features: duration_nanos(stages.entity_translucent_features) as f64,
+            remaining_feature_targets: duration_nanos(stages.remaining_feature_targets) as f64,
+            clouds: duration_nanos(stages.clouds) as f64,
+            weather: duration_nanos(stages.weather) as f64,
+            transparency_combine: duration_nanos(stages.transparency_combine) as f64,
+            presentation_tail: duration_nanos(stages.presentation_tail) as f64,
+            encoder_tail: duration_nanos(stages.encoder_tail) as f64,
+        })
+    }
 }
 
 impl From<RendererFrameProfile> for DebugProfilerFramePhases {
@@ -123,9 +164,10 @@ impl DebugProfilerFrameMetrics {
         counters: &RendererCounters,
         render_distance_chunks: u32,
         gpu_utilization: Option<f64>,
-        gpu_duration: Option<Duration>,
+        gpu_timing: Option<RendererGpuTimingProfile>,
         frame_profile: RendererFrameProfile,
     ) -> Self {
+        let gpu_stages = gpu_timing.and_then(DebugProfilerGpuStages::from_profile);
         Self {
             tick_time_nanos: duration_nanos(tick_time) as f64,
             process_memory_mib: process_resident_memory_mib(),
@@ -134,7 +176,8 @@ impl DebugProfilerFrameMetrics {
             last_view_distance: Some(render_distance_chunks as f64),
             compile_queue_size: Some(counters.terrain_mesh_queue_depth as f64),
             gpu_utilization: finite_metric(gpu_utilization),
-            gpu_duration_nanos: gpu_duration.map(|duration| duration_nanos(duration) as f64),
+            gpu_duration_nanos: gpu_timing.map(|timing| duration_nanos(timing.duration) as f64),
+            gpu_stages,
             frame_phases: Some(frame_profile.into()),
             frame_flight: Some(frame_profile.into()),
             ..Self::default()

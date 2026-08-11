@@ -93,6 +93,7 @@ pub use crate::entity_models::{
     witch_held_item_transform,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
+pub use crate::gpu_timing::{RendererGpuStageProfile, RendererGpuTimingProfile};
 pub use crate::hud::{
     hud_air_supply_pop, hud_air_supply_visible, hud_book_layout,
     hud_game_rules_confirmation_buttons, hud_game_rules_layout, hud_player_reporting_layout,

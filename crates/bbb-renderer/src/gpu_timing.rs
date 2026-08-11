@@ -77,6 +77,54 @@ pub(super) enum GpuFrameStage {
     PresentationTailEnd = 10,
 }
 
+/// GPU durations between the existing ordered frame-stage timestamp boundaries.
+///
+/// These values are populated only when detailed GPU timing is explicitly
+/// enabled. The normal total-duration query path remains two timestamps.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RendererGpuStageProfile {
+    pub terrain_atlas_animation: Duration,
+    pub opaque_world: Duration,
+    pub opaque_particles: Duration,
+    pub feature_depth_copies: Duration,
+    pub entity_translucent_features: Duration,
+    pub remaining_feature_targets: Duration,
+    pub clouds: Duration,
+    pub weather: Duration,
+    pub transparency_combine: Duration,
+    pub presentation_tail: Duration,
+    pub encoder_tail: Duration,
+}
+
+impl RendererGpuStageProfile {
+    fn from_nanos(values: [u64; STAGE_COUNT]) -> Self {
+        let [terrain_atlas_animation, opaque_world, opaque_particles, feature_depth_copies, entity_translucent_features, remaining_feature_targets, clouds, weather, transparency_combine, presentation_tail, encoder_tail] =
+            values.map(Duration::from_nanos);
+        Self {
+            terrain_atlas_animation,
+            opaque_world,
+            opaque_particles,
+            feature_depth_copies,
+            entity_translucent_features,
+            remaining_feature_targets,
+            clouds,
+            weather,
+            transparency_combine,
+            presentation_tail,
+            encoder_tail,
+        }
+    }
+}
+
+/// One completed GPU timestamp sample and the CPU frame interval captured for
+/// the same submitted frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RendererGpuTimingProfile {
+    pub duration: Duration,
+    pub application_frame_interval: Duration,
+    pub stages: Option<RendererGpuStageProfile>,
+}
+
 #[derive(Debug)]
 pub(super) struct GpuFrameTiming {
     query_sets: Vec<wgpu::QuerySet>,
@@ -92,7 +140,7 @@ pub(super) struct GpuFrameTiming {
     next_slot: usize,
     enabled: bool,
     latest_utilization: Option<f64>,
-    completed_durations: VecDeque<Duration>,
+    completed_profiles: VecDeque<RendererGpuTimingProfile>,
     stage_sample_count: u64,
     stage_nanos_sum: [u128; STAGE_COUNT],
     stage_nanos_samples: [Vec<u64>; STAGE_COUNT],
@@ -172,7 +220,7 @@ impl GpuFrameTiming {
                 next_slot: 0,
                 enabled: false,
                 latest_utilization: None,
-                completed_durations: VecDeque::with_capacity(SLOT_COUNT),
+                completed_profiles: VecDeque::with_capacity(SLOT_COUNT),
                 stage_sample_count: 0,
                 stage_nanos_sum: [0; STAGE_COUNT],
                 stage_nanos_samples: std::array::from_fn(|_| {
@@ -186,7 +234,7 @@ impl GpuFrameTiming {
         self.enabled = enabled;
         if !enabled {
             self.latest_utilization = None;
-            self.completed_durations.clear();
+            self.completed_profiles.clear();
             self.stage_sample_count = 0;
             self.stage_nanos_sum = [0; STAGE_COUNT];
             for samples in &mut self.stage_nanos_samples {
@@ -373,12 +421,13 @@ impl GpuFrameTiming {
         self.latest_utilization
     }
 
-    pub(super) fn take_completed_duration(&mut self) -> Option<Duration> {
-        self.completed_durations.pop_front()
+    pub(super) fn take_completed_profile(&mut self) -> Option<RendererGpuTimingProfile> {
+        self.completed_profiles.pop_front()
     }
 
     fn finish_mapping(&mut self, completion: MapCompletion) {
-        let mut stage_sample = None;
+        let mut completed_profile = None;
+        let mut stage_sample_for_log = None;
         let slot = &mut self.slots[completion.slot];
         let SlotState::Mapping {
             cpu_duration_nanos,
@@ -408,22 +457,26 @@ impl GpuFrameTiming {
                     self.latest_utilization = duration.and_then(|duration| {
                         gpu_utilization_from_duration(duration, cpu_duration_nanos)
                     });
+                    let stage_sample = detailed_stages
+                        .then(|| {
+                            timestamps
+                                .and_then(|timestamps| timestamps.try_into().ok())
+                                .and_then(|timestamps| {
+                                    gpu_stage_nanos_from_timestamps(
+                                        timestamps,
+                                        self.timestamp_period_nanos,
+                                    )
+                                })
+                        })
+                        .flatten();
                     if let Some(duration) = duration {
-                        if self.completed_durations.len() == SLOT_COUNT {
-                            self.completed_durations.pop_front();
-                        }
-                        self.completed_durations.push_back(duration);
+                        completed_profile = Some(RendererGpuTimingProfile {
+                            duration,
+                            application_frame_interval: Duration::from_nanos(cpu_duration_nanos),
+                            stages: stage_sample.map(RendererGpuStageProfile::from_nanos),
+                        });
                     }
-                    if detailed_stages {
-                        stage_sample = timestamps
-                            .and_then(|timestamps| timestamps.try_into().ok())
-                            .and_then(|timestamps| {
-                                gpu_stage_nanos_from_timestamps(
-                                    timestamps,
-                                    self.timestamp_period_nanos,
-                                )
-                            });
-                    }
+                    stage_sample_for_log = stage_sample;
                 }
                 drop(mapped);
             } else {
@@ -434,8 +487,14 @@ impl GpuFrameTiming {
             self.latest_utilization = None;
         }
         slot.state = SlotState::Idle;
-        if let Some(stage_nanos) = stage_sample {
-            self.record_stage_sample(stage_nanos);
+        if let Some(stage_sample) = stage_sample_for_log {
+            self.record_stage_sample(stage_sample);
+        }
+        if let Some(profile) = completed_profile {
+            if self.completed_profiles.len() == SLOT_COUNT {
+                self.completed_profiles.pop_front();
+            }
+            self.completed_profiles.push_back(profile);
         }
     }
 
@@ -706,6 +765,22 @@ mod tests {
     }
 
     #[test]
+    fn gpu_stage_profile_preserves_every_ordered_interval() {
+        let profile = RendererGpuStageProfile::from_nanos([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+        assert_eq!(profile.terrain_atlas_animation, Duration::from_nanos(1));
+        assert_eq!(profile.opaque_world, Duration::from_nanos(2));
+        assert_eq!(profile.opaque_particles, Duration::from_nanos(3));
+        assert_eq!(profile.feature_depth_copies, Duration::from_nanos(4));
+        assert_eq!(profile.entity_translucent_features, Duration::from_nanos(5));
+        assert_eq!(profile.remaining_feature_targets, Duration::from_nanos(6));
+        assert_eq!(profile.clouds, Duration::from_nanos(7));
+        assert_eq!(profile.weather, Duration::from_nanos(8));
+        assert_eq!(profile.transparency_combine, Duration::from_nanos(9));
+        assert_eq!(profile.presentation_tail, Duration::from_nanos(10));
+        assert_eq!(profile.encoder_tail, Duration::from_nanos(11));
+    }
+
+    #[test]
     fn gpu_timing_resolve_slots_satisfy_wgpu_alignment() {
         for slot in 0..SLOT_COUNT {
             assert_eq!(
@@ -802,10 +877,16 @@ mod tests {
             .slots
             .iter()
             .all(|slot| slot.state == SlotState::Idle));
-        let durations = (0..SLOT_COUNT)
-            .filter_map(|_| timing.take_completed_duration())
+        let profiles = (0..SLOT_COUNT)
+            .filter_map(|_| timing.take_completed_profile())
             .collect::<Vec<_>>();
-        assert_eq!(durations.len(), SLOT_COUNT);
-        assert!(durations.iter().all(|duration| *duration > Duration::ZERO));
+        assert_eq!(profiles.len(), SLOT_COUNT);
+        assert!(profiles
+            .iter()
+            .all(|profile| profile.duration > Duration::ZERO));
+        assert!(profiles
+            .iter()
+            .all(|profile| profile.application_frame_interval == Duration::from_millis(16)));
+        assert!(profiles.iter().all(|profile| profile.stages.is_none()));
     }
 }

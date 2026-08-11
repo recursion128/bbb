@@ -200,6 +200,34 @@ impl DebugProfilerFrameMetrics {
         if let Some(value) = finite_metric(self.gpu_duration_nanos) {
             insert_metric(&mut categories, "gpu", "gpuDuration", value);
         }
+        if let Some(stages) = &self.gpu_stages {
+            for (name, value) in [
+                (
+                    "application_frame_interval",
+                    stages.application_frame_interval,
+                ),
+                ("total_gpu_duration", stages.total_gpu_duration),
+                ("terrain_atlas_animation", stages.terrain_atlas_animation),
+                ("opaque_world", stages.opaque_world),
+                ("opaque_particles", stages.opaque_particles),
+                ("feature_depth_copies", stages.feature_depth_copies),
+                (
+                    "entity_translucent_features",
+                    stages.entity_translucent_features,
+                ),
+                (
+                    "remaining_feature_targets",
+                    stages.remaining_feature_targets,
+                ),
+                ("clouds", stages.clouds),
+                ("weather", stages.weather),
+                ("transparency_combine", stages.transparency_combine),
+                ("presentation_tail", stages.presentation_tail),
+                ("encoder_tail", stages.encoder_tail),
+            ] {
+                insert_metric(&mut categories, "gpu stages", name, value);
+            }
+        }
         if let Some(phases) = &self.frame_phases {
             for (name, value) in [
                 (
@@ -496,7 +524,8 @@ mod tests {
 
     use super::*;
     use crate::debug_profiler::{
-        DebugProfilerFrameFlight, DebugProfilerFramePhases, DebugProfilerSectionSample,
+        DebugProfilerFrameFlight, DebugProfilerFramePhases, DebugProfilerGpuStages,
+        DebugProfilerSectionSample,
     };
 
     static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -541,6 +570,21 @@ mod tests {
                         completion_observation_expected: 1.0,
                         completion_observation_missing: 0.0,
                         completion_observations_dropped: 0.0,
+                    }),
+                    gpu_stages: Some(DebugProfilerGpuStages {
+                        application_frame_interval: 100.0,
+                        total_gpu_duration: 66.0,
+                        terrain_atlas_animation: 1.0,
+                        opaque_world: 2.0,
+                        opaque_particles: 3.0,
+                        feature_depth_copies: 4.0,
+                        entity_translucent_features: 5.0,
+                        remaining_feature_targets: 6.0,
+                        clouds: 7.0,
+                        weather: 8.0,
+                        transparency_combine: 9.0,
+                        presentation_tail: 10.0,
+                        encoder_tail: 11.0,
                     }),
                     ..DebugProfilerFrameMetrics::default()
                 },
@@ -605,6 +649,9 @@ mod tests {
         assert!(files["frame flight"].contains(
             "@tick,callback_to_wait_return,completion_observation_expected,completion_observation_missing,completion_observations_dropped,in_flight_depth_at_submit,render_to_callback_observed,submit_to_callback_observed\n1,2,1,0,0,1,80,30\n"
         ));
+        assert!(files["gpu stages"].contains(
+            "@tick,application_frame_interval,clouds,encoder_tail,entity_translucent_features,feature_depth_copies,opaque_particles,opaque_world,presentation_tail,remaining_feature_targets,terrain_atlas_animation,total_gpu_duration,transparency_combine,weather\n1,100,7,11,5,4,3,2,10,6,1,66,9,8\n"
+        ));
     }
 
     #[test]
@@ -628,6 +675,7 @@ mod tests {
             "client/metrics/chunk_rendering.csv",
             "client/metrics/frame_phases.csv",
             "client/metrics/frame_flight.csv",
+            "client/metrics/gpu_stages.csv",
             "client/deviations/ticktime/2@000000.txt",
         ] {
             assert!(archive.by_name(name).is_ok(), "missing {name}");

@@ -73,7 +73,9 @@ def write_bbb_phase_profile(
     path: Path,
     *,
     include_flight: bool = False,
+    include_gpu_stages: bool = False,
     flight_rows: list[list[int]] | None = None,
+    gpu_stage_rows: list[list[int]] | None = None,
 ) -> None:
     columns = list(retina.FRAME_PHASE_COLUMNS)
     rows = [
@@ -143,6 +145,20 @@ def write_bbb_phase_profile(
             archive.writestr(
                 "client/metrics/frame_flight.csv",
                 "@tick," + ",".join(retina.FRAME_FLIGHT_COLUMNS) + "\n"
+                + "".join(
+                    f"{tick}," + ",".join(str(value) for value in values) + "\n"
+                    for tick, values in enumerate(values_by_tick, start=1)
+                ),
+            )
+        if include_gpu_stages or gpu_stage_rows is not None:
+            values_by_tick = gpu_stage_rows or [
+                [10_000_000, 3_000_000, *([100_000] * 10), 2_000_000],
+                [20_000_000, 4_000_000, *([200_000] * 10), 2_000_000],
+                [30_000_000, 5_000_000, *([300_000] * 10), 2_000_000],
+            ]
+            archive.writestr(
+                "client/metrics/gpu_stages.csv",
+                "@tick," + ",".join(retina.GPU_STAGE_COLUMNS) + "\n"
                 + "".join(
                     f"{tick}," + ",".join(str(value) for value in values) + "\n"
                     for tick, values in enumerate(values_by_tick, start=1)
@@ -495,6 +511,22 @@ class DisplayProbeTests(unittest.TestCase):
             contract["frame_flight_diagnostics"]["timestamp_semantics"],
             "wgpu-callback-observation-not-hardware-completion",
         )
+        self.assertEqual(
+            contract["gpu_stage_diagnostics"]["schema"],
+            retina.GPU_STAGE_SCHEMA,
+        )
+        self.assertEqual(
+            contract["gpu_stage_diagnostics"]["columns"],
+            list(retina.GPU_STAGE_COLUMNS),
+        )
+        self.assertNotIn(
+            retina.GPU_STAGE_RUNTIME_LOG_FILTER,
+            retina.bbb_runtime_log_filter(require_gpu_stages=False),
+        )
+        self.assertIn(
+            retina.GPU_STAGE_RUNTIME_LOG_FILTER,
+            retina.bbb_runtime_log_filter(require_gpu_stages=True),
+        )
 
     def test_panel_native_pixels_not_looks_like_or_scaled_backing_are_target(self):
         probe = retina.normalize_display_probe(
@@ -835,6 +867,55 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(
             flight["counts"]["completion_observation_missing"]["total"], 0.0
         )
+
+    def test_bbb_gpu_stages_preserve_ordered_tail_stats_and_same_submission_correlation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, include_gpu_stages=True)
+
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(parsed["gpu_stage_schema"], retina.GPU_STAGE_SCHEMA)
+        stages = parsed["gpu_stages"]
+        self.assertEqual(stages["total_gpu_duration"]["mean_ms"], 4.0)
+        opaque = stages["stages"]["opaque_world"]
+        self.assertEqual(opaque["p50_ms"], 0.2)
+        self.assertEqual(opaque["p95_ms"], 0.3)
+        self.assertAlmostEqual(opaque["p99_minus_p50_ms"], 0.1)
+        self.assertAlmostEqual(opaque["total_gpu_duration_correlation"], 1.0)
+        self.assertAlmostEqual(
+            opaque["application_frame_interval_correlation"], 1.0
+        )
+
+    def test_bbb_gpu_stages_reject_sum_that_differs_from_total_duration(self):
+        rows = [
+            [10_000_000, 3_000_000, *([100_000] * 10), 2_100_000],
+            [20_000_000, 4_000_000, *([200_000] * 10), 2_000_000],
+            [30_000_000, 5_000_000, *([300_000] * 10), 2_000_000],
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, gpu_stage_rows=rows)
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "stage sum differs"
+            ):
+                retina.parse_profiler_archive(profile)
+
+    def test_bbb_gpu_stages_reject_total_that_differs_from_gpu_metric(self):
+        rows = [
+            [10_000_000, 3_100_000, *([100_000] * 10), 2_100_000],
+            [20_000_000, 4_000_000, *([200_000] * 10), 2_000_000],
+            [30_000_000, 5_000_000, *([300_000] * 10), 2_000_000],
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, gpu_stage_rows=rows)
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "differs from the same profiler"
+            ):
+                retina.parse_profiler_archive(profile)
 
     def test_frame_flight_rejects_callback_age_before_submit_age(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1546,16 +1627,62 @@ class FormalValidationTests(unittest.TestCase):
             ):
                 retina._materialize_formal_samples([run])
 
+    def test_declared_gpu_stage_capture_rejects_missing_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "profile.zip"
+            write_bbb_phase_profile(profile)
+            samples = retina.profiler_samples(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            phase_samples = root / "phases.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": samples["application_frame_time"]}),
+                encoding="utf-8",
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": samples["gpu_duration"]}),
+                encoding="utf-8",
+            )
+            phase_samples.write_text(
+                json.dumps({"milliseconds": samples["frame_phases"]}),
+                encoding="utf-8",
+            )
+            run = self.run_record("bbb")
+            run["schema"] = retina.SCHEMA
+            run["required_gpu_stage_schema"] = retina.GPU_STAGE_SCHEMA
+            run["profiles"] = []
+            for segment in retina.CAPTURE_SEGMENTS:
+                record = retina.parse_profiler_archive(profile)
+                record.update(
+                    {
+                        "segment": segment,
+                        "application_frame_time_samples": str(frame_samples),
+                        "gpu_duration_samples": str(gpu_samples),
+                        "frame_phase_samples": str(phase_samples),
+                    }
+                )
+                run["profiles"].append(record)
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError,
+                "lacks required renderer-gpu-stages-v1 evidence",
+            ):
+                retina._materialize_formal_samples([run])
+
     def test_current_frame_phase_and_flight_sidecars_are_rederived_into_report_scopes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             profile = root / "profile.zip"
-            write_bbb_phase_profile(profile, include_flight=True)
+            write_bbb_phase_profile(
+                profile, include_flight=True, include_gpu_stages=True
+            )
             samples = retina.profiler_samples(profile)
             frame_samples = root / "frame.json"
             gpu_samples = root / "gpu.json"
             phase_samples = root / "phases.json"
             flight_samples = root / "flight.json"
+            gpu_stage_samples = root / "gpu-stages.json"
             frame_samples.write_text(
                 json.dumps({"milliseconds": samples["application_frame_time"]}),
                 encoding="utf-8",
@@ -1572,9 +1699,15 @@ class FormalValidationTests(unittest.TestCase):
                 json.dumps({"values": samples["frame_flight"]}),
                 encoding="utf-8",
             )
+            gpu_stage_samples.write_text(
+                json.dumps({"milliseconds": samples["gpu_stages"]}),
+                encoding="utf-8",
+            )
             runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
             for run in runs:
                 run["schema"] = retina.SCHEMA
+                if run["client"] == "bbb":
+                    run["required_gpu_stage_schema"] = retina.GPU_STAGE_SCHEMA
                 profiles = []
                 for segment in retina.CAPTURE_SEGMENTS:
                     record = retina.parse_profiler_archive(profile)
@@ -1585,6 +1718,7 @@ class FormalValidationTests(unittest.TestCase):
                             "gpu_duration_samples": str(gpu_samples),
                             "frame_phase_samples": str(phase_samples),
                             "frame_flight_samples": str(flight_samples),
+                            "gpu_stage_samples": str(gpu_stage_samples),
                             "process_cpu_time_ms": 12.0,
                             "process_cpu_frame_time": {"frames": 3, "mean_ms": 4.0},
                         }
@@ -1611,6 +1745,18 @@ class FormalValidationTests(unittest.TestCase):
         flight_combined = flight["scopes"][0]["metrics"]
         self.assertEqual(
             flight_combined["counts"]["in_flight_depth_at_submit"]["minimum"],
+            1.0,
+        )
+        gpu_stages = report["gpu_stage_diagnostics"]
+        self.assertEqual(gpu_stages["schema"], retina.GPU_STAGE_SCHEMA)
+        stage_combined = gpu_stages["scopes"][0]["metrics"]
+        self.assertEqual(
+            stage_combined["stages"]["opaque_world"]["p99_ms"], 0.3
+        )
+        self.assertAlmostEqual(
+            stage_combined["stages"]["opaque_world"][
+                "total_gpu_duration_correlation"
+            ],
             1.0,
         )
 
