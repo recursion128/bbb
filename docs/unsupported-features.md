@@ -258,16 +258,23 @@ restoring any row to `equivalent`.
   `docs/evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json`
   at SHA-256
   `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`.
-  The accepted one-encoder behavior is restored. The next bounded slice is
-  profiler-only callback-observation-age/in-flight-depth attribution on budget
-  one. `renderer-frame-flight-v1` records render/submit-to-callback observation,
-  callback-to-wait tail, expected/missing/drop and controller-owned depth; it
-  does not claim hardware-completion, display, photon or input latency and must
-  remain unregistered when profiler recording is off. Callback, submit and
-  present return timestamps must not be labeled as actual display latency. The
-  three
-  previously rejected scheduling policies remain forbidden. Only a v4
-  all-scope pass can authorize official Java ABBA.
+  The accepted one-encoder behavior is restored. Budget-one callback
+  attribution completed 8/8 valid 2560x1600 AC runs with no missing or dropped
+  observations. Combined FPS and every combined App absolute metric improved,
+  but pair-2 preloaded-flight FPS and GPU/App absolute tails failed 37 validator
+  comparisons, so official Java ABBA remains forbidden. Evidence is
+  `docs/evidence/macos-native-retina/callback-observation-ac-candidate.json` at
+  SHA-256
+  `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`.
+  `renderer-frame-flight-v1` remains diagnostic: callback-to-wait is negligible,
+  while surface acquire is the strongest next-interval correlate; none of these
+  timestamps claims actual display or photon latency. The next bounded slice is
+  profiler-only GPU pass/stage timestamp attribution because scheduling cannot
+  by itself close the GPU-duration failures. Keep the callback/query paths off
+  when profiling is disabled. A queue-budget experiment additionally requires
+  an executable input-to-render/present latency contract. The three previously
+  rejected scheduling policies remain forbidden. Only a v4 all-scope pass can
+  authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

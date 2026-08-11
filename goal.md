@@ -495,14 +495,15 @@ path patch、vendor 或直接 `wgpu-hal` 依赖。当前 BBB baseline 是 full-g
 `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
 固定 FPS noise margin 为 0.8465%，且任何新 margin 最大不得超过 1%。
 
-当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。当前候选的
-profiler-only flight-latency 归因通过 wgpu 30 公共 completion callback 记录
+当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。现有
+profiler-only flight-latency 归因继续通过 wgpu 30 公共 completion callback 记录
 render/submit→callback 被运行时观察的时间、callback→wait 返回尾部、实际在途深度与丢失计数；
-它不是硬件完成瞬间、实际显示、光子或输入延迟。未开启 profiler 时不得注册 callback，
-不得改变 FIFO/Linux、surface fallback、GPU `PassBoundary` measurement scope、可见
-geometry/order/material/workload 或输入生命周期。候选先以 budget 1 完成采集合同 smoke 与配对
-非回退验证，再决定是否有依据测试其它明确 queue budget；不能把 submit/present call 返回时间
-冒充实际显示时间。
+它不是硬件完成瞬间、实际显示、光子或输入延迟。下一有界 slice 只增加 profiler-only GPU
+pass/stage timestamp 归因，先定位 `PassBoundary` 总 GPU duration 的尾部 owner，再选择一个
+renderer 优化；不得借诊断改动 pass/order/material/workload。未开启 profiler 时不得注册额外
+callback/query，不得改变 FIFO/Linux、surface fallback、可见 geometry 或输入生命周期。任何
+queue-budget 候选还必须先建立可执行的 input-to-render/present latency 合同；不能把
+submit/present call 返回时间冒充实际显示时间。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝
