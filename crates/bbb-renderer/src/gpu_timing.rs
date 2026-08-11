@@ -46,6 +46,24 @@ pub(super) struct GpuFrameToken {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TimestampWriteStrategy {
+    Encoder,
+    PassBoundary,
+}
+
+#[derive(Debug)]
+struct TimestampMarker {
+    _texture: wgpu::Texture,
+    view: wgpu::TextureView,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MarkerSamplePoint {
+    AfterMarker,
+    BeforeMarker,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum GpuFrameStage {
     TerrainAtlasAnimationEnd = 1,
     OpaqueWorldEnd = 2,
@@ -67,6 +85,8 @@ pub(super) struct GpuFrameTiming {
     completion_sender: Sender<MapCompletion>,
     completions: Receiver<MapCompletion>,
     timestamp_period_nanos: f64,
+    timestamp_write_strategy: TimestampWriteStrategy,
+    timestamp_marker: Option<TimestampMarker>,
     queries_per_frame: u32,
     detailed_stages: bool,
     next_slot: usize,
@@ -80,61 +100,86 @@ pub(super) struct GpuFrameTiming {
 
 impl GpuFrameTiming {
     pub(super) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<Self> {
-        device
-            .features()
-            .contains(wgpu::Features::TIMESTAMP_QUERY)
-            .then(|| {
-                let detailed_stages =
-                    tracing::enabled!(target: "bbb_renderer::gpu_timing", tracing::Level::DEBUG);
-                let queries_per_frame = queries_per_frame(detailed_stages);
-                let query_bytes = u64::from(queries_per_frame) * std::mem::size_of::<u64>() as u64;
-                let query_sets = (0..SLOT_COUNT)
-                    .map(|_| {
-                        device.create_query_set(&wgpu::QuerySetDescriptor {
-                            label: Some("bbb-frame-timestamp-queries"),
-                            ty: wgpu::QueryType::Timestamp,
-                            count: queries_per_frame,
-                        })
+        timestamp_write_strategy(device.features()).map(|timestamp_write_strategy| {
+            tracing::info!(
+                strategy = ?timestamp_write_strategy,
+                "renderer GPU timestamp strategy selected"
+            );
+            let detailed_stages =
+                tracing::enabled!(target: "bbb_renderer::gpu_timing", tracing::Level::DEBUG);
+            let queries_per_frame = queries_per_frame(detailed_stages);
+            let query_bytes = u64::from(queries_per_frame) * std::mem::size_of::<u64>() as u64;
+            let query_sets = (0..SLOT_COUNT)
+                .map(|_| {
+                    device.create_query_set(&wgpu::QuerySetDescriptor {
+                        label: Some("bbb-frame-timestamp-queries"),
+                        ty: wgpu::QueryType::Timestamp,
+                        count: queries_per_frame,
                     })
-                    .collect();
-                let resolve = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("bbb-frame-timestamp-resolve"),
-                    size: SLOT_COUNT as u64 * RESOLVE_SLOT_BYTES,
-                    usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
-                    mapped_at_creation: false,
-                });
-                let slots = (0..SLOT_COUNT)
-                    .map(|_| TimingSlot {
-                        readback: device.create_buffer(&wgpu::BufferDescriptor {
-                            label: Some("bbb-frame-timestamp-readback"),
-                            size: query_bytes,
-                            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                            mapped_at_creation: false,
-                        }),
-                        state: SlotState::Idle,
-                    })
-                    .collect();
-                let (completion_sender, completions) = mpsc::channel();
-                Self {
-                    query_sets,
-                    resolve,
-                    slots,
-                    completion_sender,
-                    completions,
-                    timestamp_period_nanos: f64::from(queue.get_timestamp_period()),
-                    queries_per_frame,
-                    detailed_stages,
-                    next_slot: 0,
-                    enabled: false,
-                    latest_utilization: None,
-                    completed_durations: VecDeque::with_capacity(SLOT_COUNT),
-                    stage_sample_count: 0,
-                    stage_nanos_sum: [0; STAGE_COUNT],
-                    stage_nanos_samples: std::array::from_fn(|_| {
-                        Vec::with_capacity(STAGE_LOG_SAMPLE_COUNT as usize)
+                })
+                .collect();
+            let resolve = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("bbb-frame-timestamp-resolve"),
+                size: SLOT_COUNT as u64 * RESOLVE_SLOT_BYTES,
+                usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
+            let slots = (0..SLOT_COUNT)
+                .map(|_| TimingSlot {
+                    readback: device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("bbb-frame-timestamp-readback"),
+                        size: query_bytes,
+                        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                        mapped_at_creation: false,
                     }),
-                }
-            })
+                    state: SlotState::Idle,
+                })
+                .collect();
+            let (completion_sender, completions) = mpsc::channel();
+            let timestamp_marker =
+                (timestamp_write_strategy == TimestampWriteStrategy::PassBoundary).then(|| {
+                    let texture = device.create_texture(&wgpu::TextureDescriptor {
+                        label: Some("bbb-frame-timestamp-marker"),
+                        size: wgpu::Extent3d {
+                            width: 1,
+                            height: 1,
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: wgpu::TextureDimension::D2,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                        view_formats: &[],
+                    });
+                    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+                    TimestampMarker {
+                        _texture: texture,
+                        view,
+                    }
+                });
+            Self {
+                query_sets,
+                resolve,
+                slots,
+                completion_sender,
+                completions,
+                timestamp_period_nanos: f64::from(queue.get_timestamp_period()),
+                timestamp_write_strategy,
+                timestamp_marker,
+                queries_per_frame,
+                detailed_stages,
+                next_slot: 0,
+                enabled: false,
+                latest_utilization: None,
+                completed_durations: VecDeque::with_capacity(SLOT_COUNT),
+                stage_sample_count: 0,
+                stage_nanos_sum: [0; STAGE_COUNT],
+                stage_nanos_samples: std::array::from_fn(|_| {
+                    Vec::with_capacity(STAGE_LOG_SAMPLE_COUNT as usize)
+                }),
+            }
+        })
     }
 
     pub(super) fn set_enabled(&mut self, enabled: bool) {
@@ -185,7 +230,7 @@ impl GpuFrameTiming {
         self.next_slot = (slot + 1) % self.slots.len();
         let detailed_stages = self.detailed_stages;
         self.slots[slot].state = SlotState::Encoding { detailed_stages };
-        encoder.write_timestamp(&self.query_sets[slot], 0);
+        self.write_timestamp(encoder, slot, 0, MarkerSamplePoint::AfterMarker);
         Some(GpuFrameToken {
             slot,
             detailed_stages,
@@ -205,7 +250,12 @@ impl GpuFrameTiming {
             }
         );
         if token.detailed_stages {
-            encoder.write_timestamp(&self.query_sets[token.slot], stage as u32);
+            self.write_timestamp(
+                encoder,
+                token.slot,
+                stage as u32,
+                MarkerSamplePoint::AfterMarker,
+            );
         }
     }
 
@@ -221,7 +271,12 @@ impl GpuFrameTiming {
             }
         );
         let query_count = self.queries_per_frame;
-        encoder.write_timestamp(&self.query_sets[token.slot], query_count - 1);
+        self.write_timestamp(
+            encoder,
+            token.slot,
+            query_count - 1,
+            MarkerSamplePoint::BeforeMarker,
+        );
         let resolve_offset = resolve_offset(token.slot);
         encoder.resolve_query_set(
             &self.query_sets[token.slot],
@@ -262,6 +317,52 @@ impl GpuFrameTiming {
     pub(super) fn cancel(&mut self, token: GpuFrameToken) {
         if matches!(self.slots[token.slot].state, SlotState::Encoding { .. }) {
             self.slots[token.slot].state = SlotState::Idle;
+        }
+    }
+
+    fn write_timestamp(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        slot: usize,
+        query_index: u32,
+        marker_sample_point: MarkerSamplePoint,
+    ) {
+        match self.timestamp_write_strategy {
+            TimestampWriteStrategy::Encoder => {
+                encoder.write_timestamp(&self.query_sets[slot], query_index);
+            }
+            TimestampWriteStrategy::PassBoundary => {
+                let marker = self
+                    .timestamp_marker
+                    .as_ref()
+                    .expect("pass-boundary timestamps own a marker attachment");
+                let color_attachments = [Some(wgpu::RenderPassColorAttachment {
+                    view: &marker.view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Discard,
+                    },
+                })];
+                let (beginning_of_pass_write_index, end_of_pass_write_index) =
+                    match marker_sample_point {
+                        MarkerSamplePoint::AfterMarker => (None, Some(query_index)),
+                        MarkerSamplePoint::BeforeMarker => (Some(query_index), None),
+                    };
+                let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bbb-frame-timestamp-boundary"),
+                    color_attachments: &color_attachments,
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: Some(wgpu::RenderPassTimestampWrites {
+                        query_set: &self.query_sets[slot],
+                        beginning_of_pass_write_index,
+                        end_of_pass_write_index,
+                    }),
+                    multiview_mask: None,
+                });
+            }
         }
     }
 
@@ -413,12 +514,23 @@ fn nearest_rank_percentile(sorted_samples: &[u64], percentile: usize) -> u64 {
 }
 
 pub(super) fn optional_gpu_timing_features(adapter_features: wgpu::Features) -> wgpu::Features {
-    let encoder_timestamps =
-        wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS;
-    adapter_features
-        .contains(encoder_timestamps)
-        .then_some(encoder_timestamps)
-        .unwrap_or_default()
+    if !adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
+        return wgpu::Features::empty();
+    }
+    wgpu::Features::TIMESTAMP_QUERY
+        | (adapter_features & wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS)
+}
+
+fn timestamp_write_strategy(device_features: wgpu::Features) -> Option<TimestampWriteStrategy> {
+    device_features
+        .contains(wgpu::Features::TIMESTAMP_QUERY)
+        .then(|| {
+            if device_features.contains(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS) {
+                TimestampWriteStrategy::Encoder
+            } else {
+                TimestampWriteStrategy::PassBoundary
+            }
+        })
 }
 
 fn gpu_duration_from_timestamps(
@@ -520,7 +632,7 @@ mod tests {
             optional_gpu_timing_features(
                 wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TEXTURE_COMPRESSION_BC
             ),
-            wgpu::Features::empty()
+            wgpu::Features::TIMESTAMP_QUERY
         );
         assert_eq!(
             optional_gpu_timing_features(
@@ -529,6 +641,17 @@ mod tests {
                     | wgpu::Features::TEXTURE_COMPRESSION_BC
             ),
             wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS
+        );
+        assert_eq!(timestamp_write_strategy(wgpu::Features::empty()), None);
+        assert_eq!(
+            timestamp_write_strategy(wgpu::Features::TIMESTAMP_QUERY),
+            Some(TimestampWriteStrategy::PassBoundary)
+        );
+        assert_eq!(
+            timestamp_write_strategy(
+                wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS
+            ),
+            Some(TimestampWriteStrategy::Encoder)
         );
     }
 
@@ -630,6 +753,10 @@ mod tests {
         };
         let mut timing = GpuFrameTiming::new(&device, &queue).expect("timestamp timing");
         assert_eq!(timing.query_sets.len(), SLOT_COUNT);
+        assert_eq!(
+            timing.timestamp_write_strategy,
+            timestamp_write_strategy(device.features()).expect("device timestamp strategy")
+        );
         timing.set_enabled(true);
         let timestamp_work = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("bbb-gpu-timing-test-work"),
