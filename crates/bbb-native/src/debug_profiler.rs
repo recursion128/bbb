@@ -46,6 +46,7 @@ pub(crate) struct DebugProfilerFrameMetrics {
     pub(crate) gpu_utilization: Option<f64>,
     pub(crate) gpu_duration_nanos: Option<f64>,
     pub(crate) frame_phases: Option<DebugProfilerFramePhases>,
+    pub(crate) frame_flight: Option<DebugProfilerFrameFlight>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -61,6 +62,17 @@ pub(crate) struct DebugProfilerFramePhases {
     pub(crate) swap_buffers_present: f64,
     pub(crate) gpu_async_poll: f64,
     pub(crate) render_call_total: f64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct DebugProfilerFrameFlight {
+    pub(crate) render_to_callback_observed: f64,
+    pub(crate) submit_to_callback_observed: f64,
+    pub(crate) callback_to_wait_return: f64,
+    pub(crate) in_flight_depth_at_submit: f64,
+    pub(crate) completion_observation_expected: f64,
+    pub(crate) completion_observation_missing: f64,
+    pub(crate) completion_observations_dropped: f64,
 }
 
 impl From<RendererFrameProfile> for DebugProfilerFramePhases {
@@ -79,6 +91,28 @@ impl From<RendererFrameProfile> for DebugProfilerFramePhases {
             swap_buffers_present: duration_nanos(profile.swap_buffers_present) as f64,
             gpu_async_poll: duration_nanos(profile.gpu_async_poll) as f64,
             render_call_total: duration_nanos(profile.render_call_total) as f64,
+        }
+    }
+}
+
+impl From<RendererFrameProfile> for DebugProfilerFrameFlight {
+    fn from(profile: RendererFrameProfile) -> Self {
+        Self {
+            render_to_callback_observed: duration_nanos(
+                profile.retired_submission_render_to_callback,
+            ) as f64,
+            submit_to_callback_observed: duration_nanos(
+                profile.retired_submission_submit_to_callback,
+            ) as f64,
+            callback_to_wait_return: duration_nanos(
+                profile.retired_submission_callback_to_wait_return,
+            ) as f64,
+            in_flight_depth_at_submit: f64::from(profile.in_flight_depth_at_submit),
+            completion_observation_expected: f64::from(
+                profile.completion_observation_expected as u8,
+            ),
+            completion_observation_missing: f64::from(profile.completion_observation_missing as u8),
+            completion_observations_dropped: profile.completion_observations_dropped as f64,
         }
     }
 }
@@ -102,6 +136,7 @@ impl DebugProfilerFrameMetrics {
             gpu_utilization: finite_metric(gpu_utilization),
             gpu_duration_nanos: gpu_duration.map(|duration| duration_nanos(duration) as f64),
             frame_phases: Some(frame_profile.into()),
+            frame_flight: Some(frame_profile.into()),
             ..Self::default()
         }
     }

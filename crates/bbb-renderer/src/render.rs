@@ -293,6 +293,7 @@ impl Renderer {
             &mut self.counters,
             injected_fault,
             self.frame_phase_profiling_enabled,
+            self.submission_completion_profiling_enabled,
             render_encoding_started_at,
         );
         let previous_submission_poll = acquired.previous_submission_poll;
@@ -300,6 +301,19 @@ impl Renderer {
         let previous_submission_wait = acquired.previous_submission_wait;
         let render_duration_before_surface = acquired.render_duration_before_surface;
         self.last_frame_profile.surface_acquire = acquired.surface_acquire;
+        self.last_frame_profile
+            .retired_submission_render_to_callback = acquired.retired_submission_render_to_callback;
+        self.last_frame_profile
+            .retired_submission_submit_to_callback = acquired.retired_submission_submit_to_callback;
+        self.last_frame_profile
+            .retired_submission_callback_to_wait_return =
+            acquired.retired_submission_callback_to_wait_return;
+        self.last_frame_profile.completion_observation_expected =
+            acquired.completion_observation_expected;
+        self.last_frame_profile.completion_observation_missing =
+            acquired.completion_observation_missing;
+        self.last_frame_profile.completion_observations_dropped =
+            acquired.completion_observations_dropped;
         let frame = match acquired.frame {
             Ok(Some(frame)) => frame,
             Ok(None) => {
@@ -4230,9 +4244,14 @@ impl Renderer {
             None => None,
         };
 
-        let submission = self
-            .frame_flight
-            .submit_and_present(&self.queue, encoder, frame);
+        let submission = self.frame_flight.submit_and_present(
+            &self.queue,
+            encoder,
+            frame,
+            self.config.present_mode,
+            self.submission_completion_profiling_enabled,
+            render_started_at,
+        );
         let present_duration = submission.queue_submit;
         let swap_buffers_duration = submission.swap_buffers_present;
         self.last_frame_profile.render = render_duration;
@@ -4246,6 +4265,7 @@ impl Renderer {
         self.last_frame_profile.presentation_tail_encode = presentation_tail_encode;
         self.last_frame_profile.queue_submit = present_duration;
         self.last_frame_profile.swap_buffers_present = swap_buffers_duration;
+        self.last_frame_profile.in_flight_depth_at_submit = submission.in_flight_depth_at_submit;
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.after_submit(token, frame_interval);
         }
@@ -9135,13 +9155,15 @@ mod tests {
 
         let finish_owner = &source[finish_start..];
         let submit = finish_owner
-            .find(".submit_and_present(&self.queue, encoder, frame)")
+            .find(".submit_and_present(")
             .expect("controller-owned queue submission and drawable present");
         assert!(submit > finish_owner.find("prepare_screenshot_copy").unwrap());
         assert!(
             render.contains(".frame_phase_profiling_enabled")
                 && render.contains("acquired.previous_submission_wait")
-                && render.contains("acquired.surface_acquire"),
+                && render.contains("acquired.surface_acquire")
+                && render.contains("acquired.retired_submission_render_to_callback")
+                && finish_owner.contains("self.submission_completion_profiling_enabled"),
             "controller phase measurements remain projected into the frame profile"
         );
     }

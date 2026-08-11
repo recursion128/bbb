@@ -67,7 +67,12 @@ def write_bbb_profile(path: Path) -> None:
         )
 
 
-def write_bbb_phase_profile(path: Path) -> None:
+def write_bbb_phase_profile(
+    path: Path,
+    *,
+    include_flight: bool = False,
+    flight_rows: list[list[int]] | None = None,
+) -> None:
     columns = list(retina.FRAME_PHASE_COLUMNS)
     rows = [
         [
@@ -127,6 +132,20 @@ def write_bbb_phase_profile(path: Path) -> None:
                 for tick, values in enumerate(rows, start=1)
             ),
         )
+        if include_flight or flight_rows is not None:
+            values_by_tick = flight_rows or [
+                [0, 0, 0, 1, 0, 0, 0],
+                [6_000_000, 4_000_000, 100_000, 1, 1, 0, 0],
+                [7_000_000, 5_000_000, 200_000, 1, 1, 0, 0],
+            ]
+            archive.writestr(
+                "client/metrics/frame_flight.csv",
+                "@tick," + ",".join(retina.FRAME_FLIGHT_COLUMNS) + "\n"
+                + "".join(
+                    f"{tick}," + ",".join(str(value) for value in values) + "\n"
+                    for tick, values in enumerate(values_by_tick, start=1)
+                ),
+            )
 
 
 def write_invalid_bbb_phase_partition(path: Path) -> None:
@@ -405,6 +424,10 @@ class DisplayProbeTests(unittest.TestCase):
                 "wait_acquire_submit_present_order_unchanged": True,
                 "input_latency_policy": "unchanged-single-in-flight",
             },
+        )
+        self.assertEqual(
+            contract["frame_flight_diagnostics"]["timestamp_semantics"],
+            "wgpu-callback-observation-not-hardware-completion",
         )
 
     def test_panel_native_pixels_not_looks_like_or_scaled_backing_are_target(self):
@@ -724,6 +747,99 @@ class ProfilerTests(unittest.TestCase):
             parsed["frame_phases"]["previous_submission_blocking_wait"]["p99_ms"],
             2.25,
         )
+
+    def test_bbb_frame_flight_keeps_callback_observation_and_count_units_separate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, include_flight=True)
+
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(parsed["frame_flight_schema"], retina.FRAME_FLIGHT_SCHEMA)
+        flight = parsed["frame_flight"]
+        self.assertEqual(
+            flight["durations"]["render_to_callback_observed"]["p50_ms"], 6.0
+        )
+        self.assertEqual(
+            flight["durations"]["submit_to_callback_observed"]["p99_ms"], 5.0
+        )
+        self.assertEqual(
+            flight["counts"]["in_flight_depth_at_submit"]["minimum"], 1.0
+        )
+        self.assertEqual(
+            flight["counts"]["completion_observation_missing"]["total"], 0.0
+        )
+
+    def test_frame_flight_rejects_callback_age_before_submit_age(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            valid = root / "valid.zip"
+            profile = root / "invalid.zip"
+            write_bbb_phase_profile(valid, include_flight=True)
+            with zipfile.ZipFile(valid) as archive:
+                base_files = {
+                    name: archive.read(name)
+                    for name in (
+                        "client/metrics/ticking.csv",
+                        "client/metrics/gpu.csv",
+                        "client/metrics/frame_phases.csv",
+                    )
+                }
+            with zipfile.ZipFile(profile, "w") as archive:
+                for name, contents in base_files.items():
+                    archive.writestr(name, contents)
+                rows = [
+                    [0, 0, 0, 1, 0, 0, 0],
+                    [3_000_000, 4_000_000, 100_000, 1, 1, 0, 0],
+                    [7_000_000, 5_000_000, 200_000, 1, 1, 0, 0],
+                ]
+                archive.writestr(
+                    "client/metrics/frame_flight.csv",
+                    "@tick," + ",".join(retina.FRAME_FLIGHT_COLUMNS) + "\n"
+                    + "".join(
+                        f"{tick}," + ",".join(str(value) for value in values) + "\n"
+                        for tick, values in enumerate(rows, start=1)
+                    ),
+                )
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "precedes submit-to-callback"
+            ):
+                retina.parse_profiler_archive(profile)
+
+    def test_frame_flight_rejects_missing_or_dropped_completion_observation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(
+                profile,
+                flight_rows=[
+                    [0, 0, 0, 1, 0, 0, 0],
+                    [0, 0, 0, 1, 1, 1, 1],
+                    [7_000_000, 5_000_000, 200_000, 1, 1, 0, 0],
+                ],
+            )
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "missing or dropped"
+            ):
+                retina.parse_profiler_archive(profile)
+
+    def test_frame_flight_rejects_non_budget_one_depth(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(
+                profile,
+                flight_rows=[
+                    [0, 0, 0, 1, 0, 0, 0],
+                    [6_000_000, 4_000_000, 100_000, 2, 1, 0, 0],
+                    [7_000_000, 5_000_000, 200_000, 1, 1, 0, 0],
+                ],
+            )
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "in-flight depth must remain one"
+            ):
+                retina.parse_profiler_archive(profile)
 
     def test_frame_phase_partition_rejects_subphases_exceeding_total(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1321,7 +1437,7 @@ class FormalValidationTests(unittest.TestCase):
             report["blockers"][0]["error"],
         )
 
-    def test_current_frame_phase_sidecar_is_rederived_into_report_scopes(self):
+    def test_declared_instrumented_capture_rejects_missing_frame_flight_archive(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             profile = root / "profile.zip"
@@ -1342,6 +1458,54 @@ class FormalValidationTests(unittest.TestCase):
                 json.dumps({"milliseconds": samples["frame_phases"]}),
                 encoding="utf-8",
             )
+            run = self.run_record("bbb")
+            run["schema"] = retina.SCHEMA
+            run["required_frame_flight_schema"] = retina.FRAME_FLIGHT_SCHEMA
+            run["profiles"] = []
+            for segment in retina.CAPTURE_SEGMENTS:
+                record = retina.parse_profiler_archive(profile)
+                record.update(
+                    {
+                        "segment": segment,
+                        "application_frame_time_samples": str(frame_samples),
+                        "gpu_duration_samples": str(gpu_samples),
+                        "frame_phase_samples": str(phase_samples),
+                    }
+                )
+                run["profiles"].append(record)
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError,
+                "lacks required renderer-frame-flight-v1 evidence",
+            ):
+                retina._materialize_formal_samples([run])
+
+    def test_current_frame_phase_and_flight_sidecars_are_rederived_into_report_scopes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "profile.zip"
+            write_bbb_phase_profile(profile, include_flight=True)
+            samples = retina.profiler_samples(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            phase_samples = root / "phases.json"
+            flight_samples = root / "flight.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": samples["application_frame_time"]}),
+                encoding="utf-8",
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": samples["gpu_duration"]}),
+                encoding="utf-8",
+            )
+            phase_samples.write_text(
+                json.dumps({"milliseconds": samples["frame_phases"]}),
+                encoding="utf-8",
+            )
+            flight_samples.write_text(
+                json.dumps({"values": samples["frame_flight"]}),
+                encoding="utf-8",
+            )
             runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
             for run in runs:
                 run["schema"] = retina.SCHEMA
@@ -1354,6 +1518,7 @@ class FormalValidationTests(unittest.TestCase):
                             "application_frame_time_samples": str(frame_samples),
                             "gpu_duration_samples": str(gpu_samples),
                             "frame_phase_samples": str(phase_samples),
+                            "frame_flight_samples": str(flight_samples),
                             "process_cpu_time_ms": 12.0,
                             "process_cpu_frame_time": {"frames": 3, "mean_ms": 4.0},
                         }
@@ -1369,6 +1534,17 @@ class FormalValidationTests(unittest.TestCase):
         self.assertEqual(combined["previous_submission_wait"]["p99_ms"], 3.0)
         self.assertAlmostEqual(
             combined["queue_submit"]["next_application_frame_interval_correlation"],
+            1.0,
+        )
+        flight = report["frame_flight_diagnostics"]
+        self.assertEqual(flight["schema"], retina.FRAME_FLIGHT_SCHEMA)
+        self.assertEqual(
+            flight["timestamp_semantics"],
+            "wgpu-callback-observation-not-hardware-completion",
+        )
+        flight_combined = flight["scopes"][0]["metrics"]
+        self.assertEqual(
+            flight_combined["counts"]["in_flight_depth_at_submit"]["minimum"],
             1.0,
         )
 

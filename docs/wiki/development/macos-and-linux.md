@@ -239,8 +239,10 @@ FPS 前拒绝。full-gated `62555c6bf` 的 command-buffer-boundary diagnostic �
 B→C→C→B×2 或 Java ABBA，单 encoder 行为已 fix-forward 恢复。raw-hash-backed 报告为
 [`prefinish-command-buffer-ac-diagnostic.json`](../../evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json)，
 SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。
-下一有界 slice 只在 profiler 开启时记录 submission completion age 与实际 in-flight depth，
-先以 budget 1 验证测量开销；绝不回退 0.19，也不把 submit/present 返回时间称为实际显示延迟。
+下一有界 slice 只在 profiler recording 开启时记录 wgpu completion callback 的观察年龄、
+callback→wait 尾部、expected/missing/drop 与 controller-owned in-flight depth，先以 budget 1
+验证测量开销；GPU HUD 单独开启不注册回调。该观察时间不是硬件完成瞬间或实际显示/光子/
+输入延迟；绝不回退 0.19，也不把 callback、submit 或 present 返回时间称为实际显示延迟。
 
 ## 第二平台 cross-check
 

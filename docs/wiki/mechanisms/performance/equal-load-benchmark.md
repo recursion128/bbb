@@ -50,6 +50,13 @@ validator 从 hashed archive 与 raw sidecar 重新派生各阶段 p50/p95/p99/s
 render-start interval 描述当前工作之前刚结束的区间，归因相关性按 phase[N] 对下一条
 interval[N+1] 计算，并将同-row prior correlation 单列；官方 archive 不伪造 BBB 内部阶段。
 阶段数据只作调度归因，不能单独成为性能胜负结论。
+profiler-only `renderer-frame-flight-v1` 另存 `frame_flight.csv`：三个 duration 列记录
+render/submit 到 wgpu completion callback 被运行时执行的年龄，以及 callback 执行到精确
+prior-submission wait 返回的尾部；count 列记录 submit 后的 controller-owned in-flight depth、
+expected/missing 与 bounded-channel drop。archive、同 tick raw sidecar、列集合和单位在聚合前
+互相校验，duration 才换算为毫秒，count 保持计数。该 callback 只能证明 GPU work 已完成后
+运行时何时观察到回调，不能称为硬件完成瞬间、drawable 实际显示、光子或输入延迟；未录制
+profiler 时不注册 callback，GPU HUD 单独开启不触发它。
 当前 frame-phase schema v2 进一步把 macOS Immediate 上一 submission 的 non-blocking
 completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
 `poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。
@@ -109,8 +116,8 @@ hint 2、实际三个 drawable 与 `PassBoundary` strategy。combined FPS 从 19
 28 个绝对失败，所以按预声明流程在正式 B→C→C→B×2 前拒绝。报告是
 [`prefinish-command-buffer-ac-diagnostic.json`](../../../evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json)，
 SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。后续先补
-profiler-only GPU completion age/in-flight-depth 归因，不能用 submit/present call 返回时间
-代替实际显示或输入延迟证据。
+profiler-only callback-observation age/in-flight-depth 归因，不能用 callback 或
+submit/present call 返回时间代替实际显示或输入延迟证据。
 
 ## 生命周期和 fallback
 

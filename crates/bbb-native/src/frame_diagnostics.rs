@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 const SAMPLE_COUNT: usize = 600;
-const PHASE_COUNT: usize = 16;
+const PHASE_COUNT: usize = 19;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct FramePhaseSample {
@@ -28,6 +28,9 @@ pub(crate) struct FramePhaseSample {
     pub(crate) gpu_async_poll: Duration,
     pub(crate) legacy_render_encode: Duration,
     pub(crate) publish: Duration,
+    pub(crate) retired_submission_render_to_callback: Duration,
+    pub(crate) retired_submission_submit_to_callback: Duration,
+    pub(crate) retired_submission_callback_to_wait_return: Duration,
 }
 
 impl FramePhaseSample {
@@ -49,6 +52,9 @@ impl FramePhaseSample {
             duration_nanos(self.gpu_async_poll),
             duration_nanos(self.legacy_render_encode),
             duration_nanos(self.publish),
+            duration_nanos(self.retired_submission_render_to_callback),
+            duration_nanos(self.retired_submission_submit_to_callback),
+            duration_nanos(self.retired_submission_callback_to_wait_return),
         ]
     }
 }
@@ -186,6 +192,25 @@ impl FramePhaseDiagnostics {
             gpu_async_poll_stddev_us = nanos_to_micros(summaries[13].stddev),
             gpu_async_poll_prior_interval_correlation = summaries[13].prior_interval_correlation,
             gpu_async_poll_next_interval_correlation = summaries[13].next_interval_correlation,
+            retired_submission_render_to_callback_p50_us = micros(summaries[16].p50),
+            retired_submission_render_to_callback_p95_us = micros(summaries[16].p95),
+            retired_submission_render_to_callback_p99_us = micros(summaries[16].p99),
+            retired_submission_render_to_callback_stddev_us = nanos_to_micros(summaries[16].stddev),
+            retired_submission_render_to_callback_next_interval_correlation =
+                summaries[16].next_interval_correlation,
+            retired_submission_submit_to_callback_p50_us = micros(summaries[17].p50),
+            retired_submission_submit_to_callback_p95_us = micros(summaries[17].p95),
+            retired_submission_submit_to_callback_p99_us = micros(summaries[17].p99),
+            retired_submission_submit_to_callback_stddev_us = nanos_to_micros(summaries[17].stddev),
+            retired_submission_submit_to_callback_next_interval_correlation =
+                summaries[17].next_interval_correlation,
+            retired_submission_callback_to_wait_return_p50_us = micros(summaries[18].p50),
+            retired_submission_callback_to_wait_return_p95_us = micros(summaries[18].p95),
+            retired_submission_callback_to_wait_return_p99_us = micros(summaries[18].p99),
+            retired_submission_callback_to_wait_return_stddev_us =
+                nanos_to_micros(summaries[18].stddev),
+            retired_submission_callback_to_wait_return_next_interval_correlation =
+                summaries[18].next_interval_correlation,
             "renderer CPU phase tail diagnostics"
         );
         self.clear();

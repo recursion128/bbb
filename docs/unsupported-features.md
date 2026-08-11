@@ -259,8 +259,13 @@ restoring any row to `equivalent`.
   at SHA-256
   `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`.
   The accepted one-encoder behavior is restored. The next bounded slice is
-  profiler-only completion-age/in-flight-depth attribution on budget one; it
-  must not call submit/present return time actual display latency. The three
+  profiler-only callback-observation-age/in-flight-depth attribution on budget
+  one. `renderer-frame-flight-v1` records render/submit-to-callback observation,
+  callback-to-wait tail, expected/missing/drop and controller-owned depth; it
+  does not claim hardware-completion, display, photon or input latency and must
+  remain unregistered when profiler recording is off. Callback, submit and
+  present return timestamps must not be labeled as actual display latency. The
+  three
   previously rejected scheduling policies remain forbidden. Only a v4
   all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,

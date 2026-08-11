@@ -507,7 +507,8 @@ path patch、vendor 或直接 `wgpu-hal` 依赖。当前 BBB baseline 是 full-g
 
 当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。下一有界
 slice 只扩展 profiler-only flight-latency 归因：通过 wgpu 30 公共 completion callback 记录
-render start→GPU submission completion、实际在途深度与 callback delivery delay；未开启 profiler
+render/submit→callback 被运行时观察的时间、callback→wait 返回尾部、实际在途深度与丢失计数；
+它不是硬件完成瞬间、实际显示、光子或输入延迟。未开启 profiler
 时不注册 callback，不改变 FIFO/Linux、surface fallback、GPU `PassBoundary` measurement scope、
 可见 geometry/order/material/workload 或输入生命周期。该测量先以 budget 1 做配对非回退验证，
 再决定是否有依据测试其它明确 queue budget；不能把 submit/present call 返回时间冒充实际显示时间。

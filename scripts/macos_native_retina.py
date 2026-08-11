@@ -131,6 +131,19 @@ FRAME_PHASE_COLUMNS = (
     "gpu_async_poll",
     "render_call_total",
 )
+FRAME_FLIGHT_SCHEMA = "renderer-frame-flight-v1"
+FRAME_FLIGHT_DURATION_COLUMNS = (
+    "render_to_callback_observed",
+    "submit_to_callback_observed",
+    "callback_to_wait_return",
+)
+FRAME_FLIGHT_COUNT_COLUMNS = (
+    "in_flight_depth_at_submit",
+    "completion_observation_expected",
+    "completion_observation_missing",
+    "completion_observations_dropped",
+)
+FRAME_FLIGHT_COLUMNS = FRAME_FLIGHT_DURATION_COLUMNS + FRAME_FLIGHT_COUNT_COLUMNS
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 F2_KEY_CODE = 120
 F3_KEY_CODE = 99
@@ -277,6 +290,19 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "required_client": "bbb",
             "correlation_target": "application_frame_interval",
             "primary_correlation": "phase[n]-to-interval[n+1]",
+            "phase_to_interval_lag_frames": 1,
+        },
+        "frame_flight_diagnostics": {
+            "schema": FRAME_FLIGHT_SCHEMA,
+            "archive_path": "client/metrics/frame_flight.csv",
+            "duration_units": "nanoseconds",
+            "count_units": "count",
+            "duration_columns": list(FRAME_FLIGHT_DURATION_COLUMNS),
+            "count_columns": list(FRAME_FLIGHT_COUNT_COLUMNS),
+            "required_client": "bbb-when-run-declares-required-schema",
+            "timestamp_semantics": "wgpu-callback-observation-not-hardware-completion",
+            "correlation_target": "application_frame_interval",
+            "primary_correlation": "observation[n]-to-interval[n+1]",
             "phase_to_interval_lag_frames": 1,
         },
         "stability_acceptance": {
@@ -914,6 +940,101 @@ def summarize_frame_phase_ms(
     }
 
 
+def summarize_frame_flight(
+    samples: Mapping[str, Sequence[float]],
+    application_intervals: Sequence[float],
+    *,
+    next_samples: Mapping[str, Sequence[float]] | None = None,
+    next_application_intervals: Sequence[float] | None = None,
+) -> dict[str, object]:
+    if set(samples) != set(FRAME_FLIGHT_COLUMNS):
+        raise RetinaAcceptanceError("frame flight columns differ from the committed schema")
+    if next_samples is None and next_application_intervals is None:
+        next_samples = {
+            column: values[:-1] for column, values in samples.items()
+        }
+        next_application_intervals = application_intervals[1:]
+    if (
+        next_samples is None
+        or next_application_intervals is None
+        or set(next_samples) != set(FRAME_FLIGHT_COLUMNS)
+        or any(len(values) != len(application_intervals) for values in samples.values())
+        or any(
+            len(values) != len(next_application_intervals)
+            for values in next_samples.values()
+        )
+    ):
+        raise RetinaAcceptanceError("frame flight next-frame samples are malformed")
+    observed_indexes = [
+        index
+        for index, (expected, missing) in enumerate(
+            zip(
+                samples["completion_observation_expected"],
+                samples["completion_observation_missing"],
+                strict=True,
+            )
+        )
+        if expected == 1.0 and missing == 0.0
+    ]
+    observed_next_indexes = [
+        index
+        for index, (expected, missing) in enumerate(
+            zip(
+                next_samples["completion_observation_expected"],
+                next_samples["completion_observation_missing"],
+                strict=True,
+            )
+        )
+        if expected == 1.0 and missing == 0.0
+    ]
+    if not observed_indexes:
+        raise RetinaAcceptanceError("frame flight archive contains no callback observation")
+    durations = {
+        column: summarize_frame_phase_ms(
+            [values[index] for index in observed_indexes],
+            [application_intervals[index] for index in observed_indexes],
+            next_phase_values=[
+                next_samples[column][index] for index in observed_next_indexes
+            ],
+            next_application_intervals=[
+                next_application_intervals[index] for index in observed_next_indexes
+            ],
+        )
+        for column, values in samples.items()
+        if column in FRAME_FLIGHT_DURATION_COLUMNS
+    }
+    counts: dict[str, object] = {}
+    for column in FRAME_FLIGHT_COUNT_COLUMNS:
+        values = samples[column]
+        if (
+            not values
+            or len(values) != len(application_intervals)
+            or any(not math.isfinite(value) or value < 0 for value in values)
+        ):
+            raise RetinaAcceptanceError(
+                "frame flight count samples must be finite, non-negative, and aligned"
+            )
+        ordered = sorted(values)
+        counts[column] = {
+            "samples": len(values),
+            "mean": statistics.fmean(values),
+            "p50": percentile(ordered, 50),
+            "p95": percentile(ordered, 95),
+            "p99": percentile(ordered, 99),
+            "stddev": statistics.pstdev(values) if len(values) > 1 else 0.0,
+            "minimum": ordered[0],
+            "maximum": ordered[-1],
+            "total": sum(values),
+            "prior_application_frame_interval_correlation": pearson_correlation(
+                values, application_intervals
+            ),
+            "next_application_frame_interval_correlation": pearson_correlation(
+                next_samples[column], next_application_intervals
+            ),
+        }
+    return {"durations": durations, "counts": counts}
+
+
 def profiler_samples(path: Path) -> dict[str, object]:
     try:
         archive = zipfile.ZipFile(path)
@@ -921,6 +1042,7 @@ def profiler_samples(path: Path) -> dict[str, object]:
         raise RetinaAcceptanceError(f"cannot open profiling archive {path}: {error}") from error
     gpu = None
     frame_phase_rows: dict[str, dict[int, float]] | None = None
+    frame_flight_rows: dict[str, dict[int, float]] | None = None
     with archive:
         ticking = _read_metric_csv(archive, "/metrics/ticking.csv", "ticktime")
         try:
@@ -943,6 +1065,22 @@ def profiler_samples(path: Path) -> dict[str, object]:
                     archive, "/metrics/frame_phases.csv", column
                 )
                 for column in FRAME_PHASE_COLUMNS
+            }
+        flight_names = [
+            name
+            for name in archive.namelist()
+            if name.endswith("/metrics/frame_flight.csv")
+        ]
+        if flight_names:
+            if len(flight_names) != 1:
+                raise RetinaAcceptanceError(
+                    "profiling archive must contain at most one frame_flight.csv"
+                )
+            frame_flight_rows = {
+                column: _read_metric_csv(
+                    archive, "/metrics/frame_flight.csv", column
+                )
+                for column in FRAME_FLIGHT_COLUMNS
             }
     if gpu_duration is not None:
         frame_ms = [ticking[tick] / 1_000_000.0 for tick in sorted(ticking)]
@@ -1006,6 +1144,78 @@ def profiler_samples(path: Path) -> dict[str, object]:
             column: [rows[tick] / 1_000_000.0 for tick in ordered_ticks]
             for column, rows in frame_phase_rows.items()
         }
+    if frame_flight_rows is not None:
+        if frame_phase_rows is None:
+            raise RetinaAcceptanceError(
+                "frame flight evidence requires aligned frame phase evidence"
+            )
+        expected_ticks = set(ticking)
+        for column, rows in frame_flight_rows.items():
+            if set(rows) != expected_ticks:
+                raise RetinaAcceptanceError(
+                    f"frame flight {column} ticks differ from application frames"
+                )
+        for tick in expected_ticks:
+            render_age = frame_flight_rows["render_to_callback_observed"][tick]
+            submit_age = frame_flight_rows["submit_to_callback_observed"][tick]
+            callback_tail = frame_flight_rows["callback_to_wait_return"][tick]
+            expected = frame_flight_rows["completion_observation_expected"][tick]
+            missing = frame_flight_rows["completion_observation_missing"][tick]
+            depth = frame_flight_rows["in_flight_depth_at_submit"][tick]
+            dropped = frame_flight_rows["completion_observations_dropped"][tick]
+            durations = (render_age, submit_age, callback_tail)
+            if any(not math.isfinite(value) or value < 0.0 for value in durations):
+                raise RetinaAcceptanceError(
+                    "frame flight observation durations must be finite and non-negative"
+                )
+            if render_age < submit_age:
+                raise RetinaAcceptanceError(
+                    "frame flight render-to-callback age precedes submit-to-callback age"
+                )
+            if expected not in (0.0, 1.0) or missing not in (0.0, 1.0):
+                raise RetinaAcceptanceError(
+                    "frame flight expected/missing flags must be zero or one"
+                )
+            if missing > expected:
+                raise RetinaAcceptanceError(
+                    "frame flight missing observation was not expected"
+                )
+            if expected == 0.0 and any(value != 0.0 for value in durations):
+                raise RetinaAcceptanceError(
+                    "frame flight unexpected callback carries an observation age"
+                )
+            if missing == 1.0 and any(value != 0.0 for value in durations):
+                raise RetinaAcceptanceError(
+                    "frame flight missing callback carries an observation age"
+                )
+            if expected == 1.0 and missing == 0.0 and (
+                render_age <= 0.0 or submit_age <= 0.0
+            ):
+                raise RetinaAcceptanceError(
+                    "frame flight delivered callback lacks a positive observation age"
+                )
+            if depth != 1.0:
+                raise RetinaAcceptanceError(
+                    "frame flight macOS Immediate in-flight depth must remain one"
+                )
+            if dropped < 0.0 or not dropped.is_integer():
+                raise RetinaAcceptanceError(
+                    "frame flight dropped observations must be a non-negative integer"
+                )
+            if missing != 0.0 or dropped != 0.0:
+                raise RetinaAcceptanceError(
+                    "frame flight completion observation is missing or dropped"
+                )
+        ordered_ticks = sorted(expected_ticks)
+        result["frame_flight"] = {
+            column: [
+                rows[tick] / 1_000_000.0
+                if column in FRAME_FLIGHT_DURATION_COLUMNS
+                else rows[tick]
+                for tick in ordered_ticks
+            ]
+            for column, rows in frame_flight_rows.items()
+        }
     return result
 
 
@@ -1026,6 +1236,18 @@ def parse_profiler_archive(path: Path) -> dict[str, object]:
             phase: summarize_frame_phase_ms(values, application_intervals)
             for phase, values in frame_phases.items()
         }
+    frame_flight = samples.get("frame_flight")
+    if isinstance(frame_flight, Mapping):
+        frame_phases = samples.get("frame_phases")
+        if not isinstance(frame_phases, Mapping):
+            raise RetinaAcceptanceError(
+                "frame flight evidence requires application frame intervals"
+            )
+        application_intervals = frame_phases["application_frame_interval"]
+        parsed["frame_flight_schema"] = FRAME_FLIGHT_SCHEMA
+        parsed["frame_flight"] = summarize_frame_flight(
+            frame_flight, application_intervals
+        )
     return parsed
 
 
@@ -1168,6 +1390,7 @@ def _materialize_formal_samples(
     list[dict[str, object]],
     dict[tuple[int, str, str], list[float]],
     dict[tuple[int, str, str], list[float]],
+    dict[tuple[int, str, str], list[float]],
 ]:
     """Reparse and normalize every archive exactly once.
 
@@ -1180,6 +1403,7 @@ def _materialize_formal_samples(
     normalized_runs: list[dict[str, object]] = []
     matrix: dict[tuple[int, str, str], list[float]] = {}
     phase_matrix: dict[tuple[int, str, str], list[float]] = {}
+    flight_matrix: dict[tuple[int, str, str], list[float]] = {}
     for run_number, run in enumerate(runs, start=1):
         profiles = run.get("profiles")
         if not isinstance(profiles, list):
@@ -1296,13 +1520,71 @@ def _materialize_formal_samples(
                     ]
                 normalized_profile["frame_phase_schema"] = FRAME_PHASE_SCHEMA
                 normalized_profile["frame_phases"] = phase_summaries
+            archive_flight = archive_samples.get("frame_flight")
+            required_flight_schema = run.get("required_frame_flight_schema")
+            if required_flight_schema is not None and required_flight_schema != FRAME_FLIGHT_SCHEMA:
+                raise RetinaAcceptanceError(
+                    f"run {run_number} declares unknown frame flight schema"
+                )
+            if required_flight_schema == FRAME_FLIGHT_SCHEMA and not isinstance(
+                archive_flight, Mapping
+            ):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} {segment} lacks required {FRAME_FLIGHT_SCHEMA} evidence"
+                )
+            if isinstance(archive_flight, Mapping):
+                if profile.get("frame_flight_schema") != FRAME_FLIGHT_SCHEMA:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame flight schema differs"
+                    )
+                sidecar_value = profile.get("frame_flight_samples")
+                if not isinstance(sidecar_value, str):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} lacks frame flight raw samples"
+                    )
+                raw = _load_object(Path(sidecar_value), "frame flight raw samples")
+                raw_flight = raw.get("values")
+                if not isinstance(raw_flight, Mapping):
+                    raise RetinaAcceptanceError("frame flight raw samples are malformed")
+                materialized_flight = {
+                    str(column): [float(value) for value in values]
+                    for column, values in raw_flight.items()
+                    if isinstance(values, list)
+                }
+                expected_flight = {
+                    str(column): [float(value) for value in values]
+                    for column, values in archive_flight.items()
+                }
+                if materialized_flight != expected_flight:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame flight sidecar differs from archive"
+                    )
+                if not isinstance(archive_phases, Mapping):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame flight lacks aligned phases"
+                    )
+                flight_summary = summarize_frame_flight(
+                    materialized_flight,
+                    archive_phases["application_frame_interval"],
+                )
+                _validate_stored_summary(
+                    profile.get("frame_flight"),
+                    flight_summary,
+                    label=f"run {run_number} {segment} frame flight",
+                )
+                for column in FRAME_FLIGHT_COLUMNS:
+                    flight_matrix[(run_number, segment, column)] = materialized_flight[
+                        column
+                    ]
+                normalized_profile["frame_flight_schema"] = FRAME_FLIGHT_SCHEMA
+                normalized_profile["frame_flight"] = flight_summary
             normalized_profiles.append(normalized_profile)
         normalized_run = dict(run)
         normalized_run["capture_schema"] = run.get("capture_schema", run.get("schema", 0))
         normalized_run["schema"] = SCHEMA
         normalized_run["profiles"] = normalized_profiles
         normalized_runs.append(normalized_run)
-    return normalized_runs, matrix, phase_matrix
+    return normalized_runs, matrix, phase_matrix, flight_matrix
 
 
 def _frame_phase_scope_summary(
@@ -1390,6 +1672,112 @@ def _build_frame_phase_diagnostics(
         "units": "milliseconds",
         "correlation_target": "application_frame_interval",
         "primary_correlation": "phase[n]-to-interval[n+1]",
+        "phase_to_interval_lag_frames": 1,
+        "scopes": scopes,
+    }
+
+
+def _frame_flight_scope_summary(
+    flight_matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    phase_matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+    run_numbers: Sequence[int],
+    segment: str | None,
+) -> dict[str, object]:
+    selected = [
+        (run_number, profile_segment)
+        for run_number in run_numbers
+        if runs[run_number - 1].get("client") == "bbb"
+        for profile_segment in CAPTURE_SEGMENTS
+        if segment is None or profile_segment == segment
+        if (run_number, profile_segment, FRAME_FLIGHT_COLUMNS[0]) in flight_matrix
+    ]
+    if not selected:
+        return {}
+    samples = {
+        column: [
+            value
+            for run_number, profile_segment in selected
+            for value in flight_matrix[(run_number, profile_segment, column)]
+        ]
+        for column in FRAME_FLIGHT_COLUMNS
+    }
+    intervals = [
+        value
+        for run_number, profile_segment in selected
+        for value in phase_matrix[
+            (run_number, profile_segment, "application_frame_interval")
+        ]
+    ]
+    next_samples = {
+        column: [
+            value
+            for run_number, profile_segment in selected
+            for value in flight_matrix[(run_number, profile_segment, column)][:-1]
+        ]
+        for column in FRAME_FLIGHT_COLUMNS
+    }
+    next_intervals = [
+        value
+        for run_number, profile_segment in selected
+        for value in phase_matrix[
+            (run_number, profile_segment, "application_frame_interval")
+        ][1:]
+    ]
+    return summarize_frame_flight(
+        samples,
+        intervals,
+        next_samples=next_samples,
+        next_application_intervals=next_intervals,
+    )
+
+
+def _build_frame_flight_diagnostics(
+    flight_matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    phase_matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+) -> dict[str, object] | None:
+    all_runs = tuple(range(1, len(runs) + 1))
+    combined = _frame_flight_scope_summary(
+        flight_matrix, phase_matrix, runs, all_runs, None
+    )
+    if not combined:
+        return None
+    scopes = [
+        {"scope_type": "combined", "scope_id": "combined", "metrics": combined}
+    ]
+    scopes.extend(
+        {
+            "scope_type": "scene",
+            "scope_id": segment,
+            "metrics": _frame_flight_scope_summary(
+                flight_matrix, phase_matrix, runs, all_runs, segment
+            ),
+        }
+        for segment in CAPTURE_SEGMENTS
+    )
+    for run_number, run in enumerate(runs, start=1):
+        if run.get("client") == "bbb":
+            scopes.append(
+                {
+                    "scope_type": "run",
+                    "scope_id": f"run-{run_number}",
+                    "metrics": _frame_flight_scope_summary(
+                        flight_matrix,
+                        phase_matrix,
+                        runs,
+                        (run_number,),
+                        None,
+                    ),
+                }
+            )
+    return {
+        "schema": FRAME_FLIGHT_SCHEMA,
+        "duration_units": "milliseconds",
+        "count_units": "count",
+        "timestamp_semantics": "wgpu-callback-observation-not-hardware-completion",
+        "correlation_target": "application_frame_interval",
+        "primary_correlation": "observation[n]-to-interval[n+1]",
         "phase_to_interval_lag_frames": 1,
         "scopes": scopes,
     }
@@ -2589,12 +2977,16 @@ def validate_and_summarize(
             "comparison": None,
             "stability_acceptance": None,
             "frame_phase_diagnostics": None,
+            "frame_flight_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     try:
-        normalized_runs, sample_matrix, frame_phase_matrix = _materialize_formal_samples(
-            runs
-        )
+        (
+            normalized_runs,
+            sample_matrix,
+            frame_phase_matrix,
+            frame_flight_matrix,
+        ) = _materialize_formal_samples(runs)
     except RetinaAcceptanceError as error:
         blocker = {"code": "raw_evidence_integrity_failure", "error": str(error)}
         return {
@@ -2606,6 +2998,7 @@ def validate_and_summarize(
             "comparison": None,
             "stability_acceptance": None,
             "frame_phase_diagnostics": None,
+            "frame_flight_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     all_runs = tuple(range(1, len(normalized_runs) + 1))
@@ -2628,6 +3021,9 @@ def validate_and_summarize(
     stability = _build_stability_acceptance(sample_matrix, normalized_runs)
     frame_phase_diagnostics = _build_frame_phase_diagnostics(
         frame_phase_matrix, normalized_runs
+    )
+    frame_flight_diagnostics = _build_frame_flight_diagnostics(
+        frame_flight_matrix, frame_phase_matrix, normalized_runs
     )
     if bbb_commit == BASELINE_BBB_COMMIT:
         baseline_comparison = {
@@ -2657,6 +3053,7 @@ def validate_and_summarize(
         "comparison": comparison,
         "stability_acceptance": stability,
         "frame_phase_diagnostics": frame_phase_diagnostics,
+        "frame_flight_diagnostics": frame_flight_diagnostics,
         "bbb_baseline_comparison": baseline_comparison,
     }
 
@@ -3010,7 +3407,12 @@ def load_bbb_build_info(binary: Path) -> dict[str, object]:
 
 
 def _write_profile_samples(
-    path: Path, profile_path: Path, segment: str, cpu_nanos: int
+    path: Path,
+    profile_path: Path,
+    segment: str,
+    cpu_nanos: int,
+    *,
+    require_frame_flight: bool,
 ) -> dict[str, object]:
     samples = profiler_samples(profile_path)
     entry = parse_profiler_archive(profile_path)
@@ -3025,6 +3427,15 @@ def _write_profile_samples(
         output = path / f"{segment}-frame-phases-samples.json"
         output.write_bytes(canonical_json_bytes({"milliseconds": frame_phases}))
         entry["frame_phase_samples"] = str(output)
+    frame_flight = samples.get("frame_flight")
+    if isinstance(frame_flight, Mapping):
+        output = path / f"{segment}-frame-flight-samples.json"
+        output.write_bytes(canonical_json_bytes({"values": frame_flight}))
+        entry["frame_flight_samples"] = str(output)
+    elif require_frame_flight:
+        raise RetinaAcceptanceError(
+            f"BBB profiler archive lacks required {FRAME_FLIGHT_SCHEMA} evidence"
+        )
     frame_count = len(samples["application_frame_time"])
     entry["process_cpu_time_ms"] = cpu_nanos / 1_000_000.0
     entry["process_cpu_frame_time"] = {
@@ -3051,6 +3462,7 @@ def _run_client(
     audit: object,
     natives_dir: Path,
     timeout: float,
+    require_frame_flight: bool = False,
 ) -> dict[str, object]:
     if client not in {"vanilla", "bbb"}:
         raise RetinaAcceptanceError(f"unsupported formal client {client!r}")
@@ -3127,6 +3539,9 @@ def _run_client(
         "input_script": input_script,
         "screenshots": [],
         "profiles": [],
+        "required_frame_flight_schema": (
+            FRAME_FLIGHT_SCHEMA if client == "bbb" and require_frame_flight else None
+        ),
         "server_port": server_port,
         "control_port": control_port if client == "bbb" else None,
         "launch_argv": sanitized_argv(client_argv),
@@ -3255,6 +3670,7 @@ def _run_client(
                         profile,
                         segment,
                         cpu_after - cpu_before,
+                        require_frame_flight=require_frame_flight,
                     )
                 )
             final_marker = replay_capture_markers(replay)[-1]
@@ -3406,6 +3822,7 @@ def run_formal(
             audit=audit,
             natives_dir=natives_dir,
             timeout=timeout,
+            require_frame_flight=client == "bbb",
         )
         run_path = run_dir / "run.json"
         run_paths.append(str(run_path))

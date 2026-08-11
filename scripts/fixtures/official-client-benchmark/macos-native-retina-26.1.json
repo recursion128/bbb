@@ -85,6 +85,28 @@
     "primary_correlation": "phase[n]-to-interval[n+1]",
     "phase_to_interval_lag_frames": 1
   },
+  "frame_flight_diagnostics": {
+    "schema": "renderer-frame-flight-v1",
+    "archive_path": "client/metrics/frame_flight.csv",
+    "duration_units": "nanoseconds",
+    "count_units": "count",
+    "duration_columns": [
+      "render_to_callback_observed",
+      "submit_to_callback_observed",
+      "callback_to_wait_return"
+    ],
+    "count_columns": [
+      "in_flight_depth_at_submit",
+      "completion_observation_expected",
+      "completion_observation_missing",
+      "completion_observations_dropped"
+    ],
+    "required_client": "bbb-when-run-declares-required-schema",
+    "timestamp_semantics": "wgpu-callback-observation-not-hardware-completion",
+    "correlation_target": "application_frame_interval",
+    "primary_correlation": "observation[n]-to-interval[n+1]",
+    "phase_to_interval_lag_frames": 1
+  },
   "stability_acceptance": {
     "policy": "absolute-tail-v2",
     "cv_role": "diagnostic-only-when-absolute-metrics-pass",

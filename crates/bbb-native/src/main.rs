@@ -1757,6 +1757,8 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                                 .show_only_reduced_info(&render_publication.world),
                         );
                     renderer.set_gpu_timing_enabled(gpu_timing_enabled);
+                    renderer
+                        .set_submission_completion_profiling_enabled(debug_profiler.is_recording());
                     frame_phase_diagnostics.set_enabled(gpu_timing_enabled);
                     let dynamic_texture_resource_generation = item_runtime
                         .as_ref()
@@ -2175,6 +2177,12 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                         gpu_async_poll: renderer_frame_profile.gpu_async_poll,
                         legacy_render_encode: renderer_frame_profile.render,
                         publish: profiler_publish_duration,
+                        retired_submission_render_to_callback: renderer_frame_profile
+                            .retired_submission_render_to_callback,
+                        retired_submission_submit_to_callback: renderer_frame_profile
+                            .retired_submission_submit_to_callback,
+                        retired_submission_callback_to_wait_return: renderer_frame_profile
+                            .retired_submission_callback_to_wait_return,
                     });
                     let (profiler_frame_duration, profiler_frame_limiter_duration) =
                         frame_diagnostics::profiler_frame_timing(
@@ -3011,6 +3019,24 @@ mod tests {
 
         assert!(dirty < packs && packs < window && window < simulation);
         assert!(simulation < clean && clean < connect && connect < event_loop);
+    }
+
+    #[test]
+    fn submission_completion_profiler_is_not_enabled_by_the_gpu_hud() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let redraw = production
+            .split_once("WindowEvent::RedrawRequested =>")
+            .expect("redraw arm")
+            .1;
+        assert!(redraw.contains("renderer.set_gpu_timing_enabled(gpu_timing_enabled)"));
+        assert!(redraw.contains(
+            "renderer\n                        .set_submission_completion_profiling_enabled(debug_profiler.is_recording())"
+        ));
+        assert!(!redraw.contains("set_submission_completion_profiling_enabled(gpu_timing_enabled)"));
     }
 
     #[test]

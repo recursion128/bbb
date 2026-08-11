@@ -249,6 +249,21 @@ pub struct RendererFrameProfile {
     pub gpu_async_poll: Duration,
     /// Complete successful `Renderer::render` call, including its publication tail.
     pub render_call_total: Duration,
+    /// Render-start age when wgpu delivered the retired submission callback.
+    /// This is an observation timestamp, not the exact GPU completion instant.
+    pub retired_submission_render_to_callback: Duration,
+    /// Queue-submit age when wgpu delivered the retired submission callback.
+    pub retired_submission_submit_to_callback: Duration,
+    /// Time from callback delivery until the exact prior-submission wait returned.
+    pub retired_submission_callback_to_wait_return: Duration,
+    /// Number of submissions owned by the macOS Immediate controller after submit.
+    pub in_flight_depth_at_submit: u32,
+    /// The retired submission registered a completion observation callback.
+    pub completion_observation_expected: bool,
+    /// The exact prior submission expected an observation but none was received.
+    pub completion_observation_missing: bool,
+    /// Completion observations rejected because the bounded channel was full.
+    pub completion_observations_dropped: u64,
 }
 
 /// Complete camera-uniform inputs extracted for one presented frame.
@@ -477,6 +492,7 @@ pub struct Renderer {
     /// Normal frames retain the legacy aggregate profile without paying for
     /// the extra macOS fence timestamp or render-call completion timestamp.
     pub(super) frame_phase_profiling_enabled: bool,
+    pub(super) submission_completion_profiling_enabled: bool,
     pub(super) frame_flight: FrameFlightController,
     pub(super) last_frame_profile: RendererFrameProfile,
     pub(super) last_frame_started_at: Instant,
@@ -2387,6 +2403,7 @@ impl Renderer {
             started_at: Instant::now(),
             gpu_timing,
             frame_phase_profiling_enabled: false,
+            submission_completion_profiling_enabled: false,
             frame_flight: FrameFlightController::new(),
             last_frame_profile: RendererFrameProfile::default(),
             last_frame_started_at: Instant::now(),
@@ -3312,6 +3329,12 @@ impl Renderer {
             timing.set_enabled(enabled);
         }
         self.frame_phase_profiling_enabled = enabled;
+    }
+
+    /// Enables profiler-only delivery observations for the exact prior submission.
+    /// GPU HUD timing alone deliberately does not enable this callback path.
+    pub fn set_submission_completion_profiling_enabled(&mut self, enabled: bool) {
+        self.submission_completion_profiling_enabled = enabled;
     }
 
     pub fn set_level_frame_route(&mut self, route: LevelFrameRoute) {

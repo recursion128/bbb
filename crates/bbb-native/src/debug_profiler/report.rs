@@ -223,6 +223,37 @@ impl DebugProfilerFrameMetrics {
                 insert_metric(&mut categories, "frame phases", name, value);
             }
         }
+        if let Some(flight) = &self.frame_flight {
+            for (name, value) in [
+                (
+                    "render_to_callback_observed",
+                    flight.render_to_callback_observed,
+                ),
+                (
+                    "submit_to_callback_observed",
+                    flight.submit_to_callback_observed,
+                ),
+                ("callback_to_wait_return", flight.callback_to_wait_return),
+                (
+                    "in_flight_depth_at_submit",
+                    flight.in_flight_depth_at_submit,
+                ),
+                (
+                    "completion_observation_expected",
+                    flight.completion_observation_expected,
+                ),
+                (
+                    "completion_observation_missing",
+                    flight.completion_observation_missing,
+                ),
+                (
+                    "completion_observations_dropped",
+                    flight.completion_observations_dropped,
+                ),
+            ] {
+                insert_metric(&mut categories, "frame flight", name, value);
+            }
+        }
         categories
     }
 }
@@ -464,7 +495,9 @@ mod tests {
     use zip::ZipArchive;
 
     use super::*;
-    use crate::debug_profiler::{DebugProfilerFramePhases, DebugProfilerSectionSample};
+    use crate::debug_profiler::{
+        DebugProfilerFrameFlight, DebugProfilerFramePhases, DebugProfilerSectionSample,
+    };
 
     static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
@@ -499,6 +532,15 @@ mod tests {
                         swap_buffers_present: 6.0,
                         gpu_async_poll: 7.0,
                         render_call_total: 95.0,
+                    }),
+                    frame_flight: Some(DebugProfilerFrameFlight {
+                        render_to_callback_observed: 80.0,
+                        submit_to_callback_observed: 30.0,
+                        callback_to_wait_return: 2.0,
+                        in_flight_depth_at_submit: 1.0,
+                        completion_observation_expected: 1.0,
+                        completion_observation_missing: 0.0,
+                        completion_observations_dropped: 0.0,
                     }),
                     ..DebugProfilerFrameMetrics::default()
                 },
@@ -560,6 +602,9 @@ mod tests {
         assert!(files["frame phases"].contains(
             "@tick,application_frame_interval,cpu_encode_before_wait,gpu_async_poll,presentation_tail_encode,previous_submission_blocking_wait,previous_submission_poll,previous_submission_wait,queue_submit,render_call_total,surface_acquire,swap_buffers_present\n1,100,50,7,4,12,8,20,5,95,3,6\n"
         ));
+        assert!(files["frame flight"].contains(
+            "@tick,callback_to_wait_return,completion_observation_expected,completion_observation_missing,completion_observations_dropped,in_flight_depth_at_submit,render_to_callback_observed,submit_to_callback_observed\n1,2,1,0,0,1,80,30\n"
+        ));
     }
 
     #[test]
@@ -582,6 +627,7 @@ mod tests {
             "client/metrics/ticking.csv",
             "client/metrics/chunk_rendering.csv",
             "client/metrics/frame_phases.csv",
+            "client/metrics/frame_flight.csv",
             "client/deviations/ticktime/2@000000.txt",
         ] {
             assert!(archive.by_name(name).is_ok(), "missing {name}");
