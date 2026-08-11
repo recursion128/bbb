@@ -35,6 +35,11 @@ fn in_flight_budget(
         .then_some(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET)
 }
 
+#[cfg(any(target_os = "macos", test))]
+fn prefinish_main_encoding(platform: FrameFlightPlatform, present_mode: wgpu::PresentMode) -> bool {
+    platform == FrameFlightPlatform::MacOs && present_mode == wgpu::PresentMode::Immediate
+}
+
 /// Where `render()` sends the frame's color output. Production always draws
 /// into the window swapchain; whole-frame readback tests swap in a plain
 /// offscreen texture so the full frame-step sequence runs without a window.
@@ -199,6 +204,29 @@ pub(super) struct FrameFlightSubmission {
     pub(super) swap_buffers_present: Duration,
 }
 
+/// Command encoding split at the drawable-acquisition boundary. On macOS
+/// Immediate the already encoded main work is finalized before the exact
+/// single-submission fence wait; only the presentation tail retains a live
+/// encoder after acquiring the CAMetalLayer drawable. Both command buffers are
+/// still submitted together, so this does not add an in-flight submission or
+/// change the GPU timing submission scope.
+pub(super) struct FrameFlightEncoding {
+    encoded_before_wait: Option<wgpu::CommandBuffer>,
+    presentation_encoder: wgpu::CommandEncoder,
+}
+
+impl FrameFlightEncoding {
+    pub(super) fn presentation_encoder(&mut self) -> &mut wgpu::CommandEncoder {
+        &mut self.presentation_encoder
+    }
+
+    fn into_command_buffers(self) -> impl Iterator<Item = wgpu::CommandBuffer> {
+        self.encoded_before_wait
+            .into_iter()
+            .chain(std::iter::once(self.presentation_encoder.finish()))
+    }
+}
+
 #[derive(Default)]
 struct PreviousSubmissionSynchronization {
     poll: Duration,
@@ -261,6 +289,30 @@ impl FrameFlightController {
         }
     }
 
+    pub(super) fn prepare_for_acquire(
+        &self,
+        device: &wgpu::Device,
+        present_mode: wgpu::PresentMode,
+        encoder: wgpu::CommandEncoder,
+    ) -> FrameFlightEncoding {
+        #[cfg(target_os = "macos")]
+        if prefinish_main_encoding(FrameFlightPlatform::CURRENT, present_mode) {
+            return FrameFlightEncoding {
+                encoded_before_wait: Some(encoder.finish()),
+                presentation_encoder: device.create_command_encoder(
+                    &wgpu::CommandEncoderDescriptor {
+                        label: Some("bbb-native-presentation-tail"),
+                    },
+                ),
+            };
+        }
+        let _ = (device, present_mode);
+        FrameFlightEncoding {
+            encoded_before_wait: None,
+            presentation_encoder: encoder,
+        }
+    }
+
     fn wait_for_previous_submission(
         &mut self,
         device: &wgpu::Device,
@@ -309,11 +361,11 @@ impl FrameFlightController {
     pub(super) fn submit_and_present(
         &mut self,
         queue: &wgpu::Queue,
-        encoder: wgpu::CommandEncoder,
+        encoding: FrameFlightEncoding,
         frame: FrameTarget,
     ) -> FrameFlightSubmission {
         let submit_started_at = Instant::now();
-        let submission = queue.submit(Some(encoder.finish()));
+        let submission = queue.submit(encoding.into_command_buffers());
         #[cfg(target_os = "macos")]
         {
             self.previous_submission = Some(submission);
@@ -333,7 +385,10 @@ impl FrameFlightController {
 
 #[cfg(test)]
 mod tests {
-    use super::{in_flight_budget, FrameFlightPlatform, MACOS_IMMEDIATE_IN_FLIGHT_BUDGET};
+    use super::{
+        in_flight_budget, prefinish_main_encoding, FrameFlightPlatform,
+        MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
+    };
 
     #[test]
     fn only_macos_immediate_has_the_existing_single_submission_budget() {
@@ -359,6 +414,28 @@ mod tests {
                 "{mode:?} keeps its prior non-serializing behavior"
             );
             assert_eq!(in_flight_budget(FrameFlightPlatform::Other, mode), None);
+        }
+    }
+
+    #[test]
+    fn only_macos_immediate_prefinishes_the_main_encoder() {
+        assert!(prefinish_main_encoding(
+            FrameFlightPlatform::MacOs,
+            wgpu::PresentMode::Immediate
+        ));
+        assert!(!prefinish_main_encoding(
+            FrameFlightPlatform::Other,
+            wgpu::PresentMode::Immediate
+        ));
+        for mode in [
+            wgpu::PresentMode::Fifo,
+            wgpu::PresentMode::FifoRelaxed,
+            wgpu::PresentMode::Mailbox,
+            wgpu::PresentMode::AutoVsync,
+            wgpu::PresentMode::AutoNoVsync,
+        ] {
+            assert!(!prefinish_main_encoding(FrameFlightPlatform::MacOs, mode));
+            assert!(!prefinish_main_encoding(FrameFlightPlatform::Other, mode));
         }
     }
 
@@ -399,6 +476,27 @@ mod tests {
             .unwrap();
         assert!(submit < record_submission && record_submission < present);
         assert!(source.contains("Self::Surface(frame) => queue.present(frame)"));
+    }
+
+    #[test]
+    fn macos_immediate_prefinishes_main_work_without_adding_a_submission() {
+        let source = include_str!("frame_flight.rs");
+        let prepare = source.find("pub(super) fn prepare_for_acquire(").unwrap();
+        let wait = source.find("fn wait_for_previous_submission(").unwrap();
+        let body = &source[prepare..wait];
+        assert!(
+            body.contains("prefinish_main_encoding(FrameFlightPlatform::CURRENT, present_mode)")
+        );
+        assert!(body.contains("encoded_before_wait: Some(encoder.finish())"));
+        assert!(body.contains("bbb-native-presentation-tail"));
+        assert!(body.contains("encoded_before_wait: None"));
+
+        let submit = source.find("pub(super) fn submit_and_present(").unwrap();
+        let tests = source.rfind("#[cfg(test)]\nmod tests").unwrap();
+        let body = &source[submit..tests];
+        assert_eq!(body.matches("queue.submit").count(), 1);
+        assert!(body.contains("queue.submit(encoding.into_command_buffers())"));
+        assert_eq!(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET, 1);
     }
 
     #[test]

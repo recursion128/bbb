@@ -103,6 +103,12 @@ registry wgpu/core/hal/types/naga 30.0.0，并逐 run 绑定 dependency receipt�
 FPS/稳定性比较前 fail-closed；combined、三个 scene、两个 round、全部 nearest pair 与逐
 scene pair 的 FPS/绝对 App/GPU scope 全过后，才允许正式 Java ABBA。
 
+当前 v4 candidate 的变量只有 macOS Immediate 的 command-buffer finalize 边界：main
+encoder 在 budget-one wait 前结束，drawable acquire 后另一个 encoder 只写 presentation
+tail，两者进入同一次 queue submission。逐 run 仍须证明 budget 1、hint 2、三个实际
+drawable 与 `PassBoundary` strategy；该边界不能被解释为多帧排队，也不能改变输入延迟
+政策、可见 workload 或 GPU duration scope。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。

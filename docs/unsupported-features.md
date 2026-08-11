@@ -250,10 +250,14 @@ restoring any row to `equivalent`.
   unless the binary/runtime dependency receipts, 2560x1600 CAMetalLayer
   drawable, actual maximum drawable count 3, Immediate mode, latency hint 2,
   single in-flight budget, `PassBoundary` GPU timestamp strategy and workload
-  contract all match. The next bounded candidate must address the measured
-  submission-wait/surface-acquire tail through `FrameFlightController` while
-  preserving this measurement scope; the three previously rejected policies
-  remain forbidden. Only a v4 all-scope pass can authorize official Java ABBA.
+  contract all match. The active bounded candidate finalizes the already
+  encoded main command buffer before the exact budget-one wait on macOS
+  Immediate, then records only the presentation tail after drawable acquire.
+  Both buffers remain in one `Queue::submit`, so queue depth, input-latency
+  policy, wait/acquire/submit/present order and the `PassBoundary` measurement
+  scope do not change; FIFO and Linux retain one encoder. The three previously
+  rejected policies remain forbidden. Only a v4 all-scope pass can authorize
+  official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

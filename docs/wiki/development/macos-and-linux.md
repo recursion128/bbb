@@ -233,8 +233,11 @@ baseline。四次 AC repeat 为 195.828/194.414/194.422/194.180 FPS，预声明 
 0.8465%。以后 baseline/candidate 每个 run 都必须解析到 registry wgpu/core/hal/types/naga
 30.0.0，绑定相同 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、
 单 in-flight、2560x1600 fullscreen 和同一 workload；任一 identity/scope mismatch 都在解析
-FPS 前拒绝。下一有界优化只在 wgpu 30 上按 submission-wait/surface-acquire phase evidence
-修改 FrameFlightController，绝不回退 0.19。
+FPS 前拒绝。当前有界 candidate 只在 macOS Immediate 将已编码的 main command buffer
+在 exact budget-one wait 前 finalize；drawable acquire 后的新 encoder 只承载 presentation
+tail，两段仍由同一次 `Queue::submit` 提交。它不增加 queue depth 或输入延迟预算，不改变
+wait→acquire→submit→present、surface fallback、`PassBoundary` measurement scope，且 FIFO/
+Linux 仍使用原单 encoder。candidate 必须先通过 v4 全 scope A/B，绝不回退 0.19。
 
 ## 第二平台 cross-check
 

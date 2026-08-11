@@ -495,64 +495,31 @@ native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panora
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。macOS aarch64 发布行与独立 `macos-native-retina` 2560x1600 panel-native profile 保持原验收合同；当前性能优化只在 crates.io wgpu 30.0.0 上继续，full-gated `5b1903221` 与 release SHA-256 `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817` 是新的固定 BBB baseline。wgpu 0.19 只保留历史 evidence，不再参与候选比较、margin 推导或回退决策。CV 只作诊断，不能在绝对指标全过时单独保持 active。其它 matrix 只把当前 code-freeze domain sweep 已逐机制验证 focused contract、
-Vanilla/BBB owner hash 与 formal receipt 的行转为 `equivalent`；任一 receipt 失效时必须
-恢复真实开放状态，不得用旧截图、测试数量、历史 ABBA 或 full gate 单独保留 `equivalent`。
+状态：`active`。唯一开放项是账本的 `macos-native-retina-stability`；平台、生命周期、
+音频、安全预算与有界队列按各自 gate/stamp 和 Wiki 合同维护，不在这里保存完成史。
+macOS 与 Linux 是声明平台，Windows 是账本附 Vanilla/产品依据的 `not-needed`。
 
-实现阶段仍一次关闭一个有界 slice；每提交只跑 affected focused/integration、fmt、lint、
-diff review/check，并在既有 checkpoint 批次 full gate。planner 从 owner/path
-依赖闭包生成 changed-path→Mechanism ID→validation class；无关改动可复用未受影响中间 receipt，
-中央 owner、测试、capture schema/settings/input 或 binary/load identity 变化只失效对应域。
-实现完成但未正式 sweep 的行保持 `partial`，开放原因只由 acceptance report 派生。
+Retina 性能基础设施固定为 crates.io wgpu/core/hal/types/naga 30.0.0；不得恢复 0.19、
+path patch、vendor 或直接 `wgpu-hal` 依赖。当前 BBB baseline 是 full-gated
+`5b1903221`，release SHA-256 为
+`849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
+固定 FPS noise margin 为 0.8465%，且任何新 margin 最大不得超过 1%。
 
-只有 acceptance 的 `implementation_blocking_ids` 为空，才形成 clean、full-gated code freeze；再串行运行 protocol/world/lifecycle、
-resources/platform、rendering 三类 domain evidence sweep。共享 artifact 可以覆盖多个 Mechanism ID，
-但必须双向列出 ID；失败证据保留，失败只重跑该域。正式两轮 ABBA 只能在 camera/world/workload、
-冻结 ROI、结构与 draw gate 全过后集中执行。最终 `check --require-artifacts --require-complete
---require-final-head` 重新核对 clean gated HEAD，开发期 scoped reuse 不降低交付标准。
-每个 ABBA raw run 必须先绑定已提交且 full-gated 的 `evidence-sweep` acceptance receipt；
-summary/lint 复核其 commit/blob hash，禁止采集后补写前置状态。
-receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态，但冻结的 owner、required projection、
-route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
-任何 code/tool/fixture 差异都必须回到对应 domain sweep。
-当前 macOS Retina 路线严格串行：A 已在 schema-3 profiler 链加入 encode-before-wait、previous-submission-wait、surface-acquire、presentation-tail、submit/present/GPU-poll、render-total/interval 的逐帧 raw、p50/p95/p99/stddev，以及 phase[N]→next interval[N+1] correlation；full-gated `f0cc03ad7` 的真实 2560x1600 probe 由 full-gated `c7aa715af` 复算，`frame-phase-diagnostic.json` 指向 submission wait/acquire，未改调度。B 的保持行为阶段已由 full-gated `9802b1ef5` 收敛为 `FrameFlightController`，锁定 Immediate 单 in-flight、FIFO/Linux、wait→acquire→submit→present 与 surface-error 语义；后续策略必须独立测量，不默认多帧或后台 acquire。
-C 仅在 A 指向 encode/upload 时启用 submission-safe 对齐 upload pages，保持 geometry/order/material、grow-only/empty fail-closed 并量化 writes/bytes/replacements；D 仅在 GPU pass/copy 证据触发，以静态 FramePlan 保持 `FRAME_STEPS`、透明/材质/draw evidence，不建通用 render graph。candidate 先过 ≤1% 预声明 BBB A/B、视觉/workload 与绝对尾部非回退才进 Vanilla ABBA；提高 FPS 但恶化 input latency、p95/p99 或 hitch 一律拒绝。
-wgpu 30 是不可回退的基础设施与性能起点：不得恢复 0.19、path patch、vendor 或直接 `wgpu-hal` 依赖。后续 B→C→C→B×2 的 baseline/candidate 必须都解析为 registry wgpu/core/hal/types/naga 30.0.0，并逐 run 绑定 binary/runtime receipt、相同 `PassBoundary` timestamp strategy、实际 2560x1600 CAMetalLayer drawable、Immediate/hint 2、三个 drawable、单 in-flight、同 workload 与 AC Power；任一身份或 measurement-scope 不匹配先于性能比较拒绝。margin 只从 wgpu 30 baseline 重复采集噪声预声明且最大 1%；combined、scene、round、nearest pair 与逐 scene pair 的 FPS/绝对 App/GPU stability 全过后才进入官方 Java ABBA。下一单一有界 slice 由现有 phase evidence 选择 FrameFlightController 调度候选，保持同一 GPU measurement scope；禁止用 sleep/pacing/cap/VSync、降 workload 或复用已拒绝策略压低尾部。
-clean/full-gated `d2f210805` 的 exact lifecycle 与 platform/visual/workload/draw sweep 均通过，后三者共用同一 release、world/replay/settings/scene identity；绑定 full-gated `a0781a7eb` consistency receipt 的两轮 Java→BBB→BBB→Java、MangoHud/perf 与双侧 GPU trace 亦通过，formal summary SHA-256 为 `c5930d19a414fad69cc1f402d5a8a3bd5ffc5094c732d643f06c74f0042bcb54`。两条 performance 行已具备逐机制关闭证据；历史 `675cbfc53` 结果仅保留为回归基线。
-audio schema-3 formal receipt 已在 clean/full-gated exact `d2f210805` 通过实际 ALSA PCI PCM、受控 plug→dmix→hw、Vanilla 双 HRTF 分支与 BBB 六测试（SHA-256 `5b6b5939304c957bb6e5a2dba3751503505ee03d2d0e9aa45c1c80b9ba44f474`）；四条 ELD 未连接如实记录且不以 null/dummy 代替，`audio-sound-manager-engine` 已关闭。
-Windows 经用户裁决为非目标，平台面已删除、构建即拒绝，账本 `not-needed`；macOS 与 Linux
-是声明的开发平台。macOS exact `afe29aa32` release/lifecycle/Cocoa/Metal/Quartz/OpenAL report 已通过且 limitation 为空；native-Retina 性能路线独立保留实际 drawable 身份与不匹配拒绝证据。
-官方 26.1 离线启动、共同 replay/capture 合同、当前 host/tool hash 与 GPU-duration
-采集链由 Wiki 等负载机制页维护；不得把 MangoHud
-present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
+当前有界候选只调整 `FrameFlightController` 的 command-buffer 边界：macOS Immediate
+在等待上一 submission 前 finalize 已编码的主工作，drawable acquire 后只编码
+presentation tail；两段必须保持同一次 queue submission、单 in-flight、hint 2、实际三个
+drawable 与 wait→acquire→submit→present。FIFO、Linux、surface fallback、GPU
+`PassBoundary` measurement scope、可见 geometry/order/material/workload 与输入生命周期不变。
 
-已有维护证据：
+候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
+unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝
+binary/runtime dependency receipt、drawable、surface、timestamp strategy 或 workload 身份
+不一致，再检查 combined、三个 scene、两个 round、全部 nearest pair 及逐 scene pair。
+FPS 使用预声明 margin；App/GPU 的 p50/p95/p99、stddev、p99-p50、1% low 与 hitch 不得
+回退，CV 仅诊断。提高 FPS 但恶化 input latency、绝对尾部或 hitch 的候选必须拒绝；禁止
+sleep、pacing、cap、VSync 或降低工作量。只有所有 BBB A/B scope 通过才运行正式
+Java→BBB→BBB→Java ABBA。
 
-- packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
-  原子回滚和诊断由协议测试、Wiki 资源机制页、focused budget/recovery tests 及 full gate
-  维护；
-- simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
-  shutdown/join 与 panic propagation 由 Wiki 边界页、runtime counters 和 focused tests
-  维护；
-- repo-native before/after 与 runtime observation 已有稳定基线；同载门禁要求
-  每次性能变化重新验证共同 workload，不能通过减少可见或 resident 工作伪造
-  胜负结论；
-- `scripts/lifecycle-soak-gate.sh` 依 Wiki 测试门禁页、场景 manifest 与 checkout-local
-  report 组合
-  五轮真实 live playable、
-  quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程
-  指标趋势与 clean exit（趋势判据要 post-warmup 采样够多才有意义，见测试门禁页）；`last-lifecycle-soak`/checkout-local report 是 maintenance
-  证据，fixture 重放不能替代该 gate。
-- `scripts/platform-acceptance-gate.sh` 依 Wiki 测试门禁页声明并验收
-  Linux x86_64 / Wayland /
-  Vulkan / windowed external-multiplayer 行：fresh locked release build、
-  build-info、headless probe、完整 live/quit、实际 backend 日志、输入语义
-  focused receipts、真实 `wl_seat` 的 focus/keyboard/pointer-button/
-  relative-motion/clipboard receipts、DPI-transition 与 fullscreen 的双侧
-  receipts、输入法合成的 IME receipts 与 lifecycle-soak 证据统一写入
-  report/stamp；这些 receipts 由 seat 驱动的 live run 产出，且该 run 不得发任何
-  合成 `input.*`。该行 limitation 集合为空。
-
-维护触发只来自上述 gate/stamp 回退、已声明行/构建配置/runtime owner 变化，或
-账本 deferred 重启条件满足；不能由宽泛 soak、性能、平台愿景重新生成 ready
-工作。active=0 时走工作流第 4 步的机械终止判据。
+该候选关闭后再开始 committed direct-dependency receipt 与依赖现代化审计；每次只处理一个
+有界依赖组，优先 winit 0.30，其后 pollster、认证/网络、glam、hecs、音频/归档/开发工具，
+并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。
