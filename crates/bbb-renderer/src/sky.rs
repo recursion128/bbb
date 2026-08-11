@@ -53,8 +53,8 @@ fn sky_depth_stencil_state() -> Option<wgpu::DepthStencilState> {
     // attachment — so the pipelines must declare its format to satisfy wgpu.
     Some(wgpu::DepthStencilState {
         format: crate::gpu::DEPTH_FORMAT,
-        depth_write_enabled: false,
-        depth_compare: wgpu::CompareFunction::Always,
+        depth_write_enabled: Some(false),
+        depth_compare: Some(wgpu::CompareFunction::Always),
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     })
@@ -1159,8 +1159,10 @@ fn create_selected_sky_pipeline(
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-sky-pipeline-layout"),
-        bind_group_layouts,
-        push_constant_ranges: &[],
+        bind_group_layouts: &crate::pipeline_builder::optional_bind_group_layouts(
+            bind_group_layouts,
+        ),
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1168,8 +1170,9 @@ fn create_selected_sky_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode: sky_cull_mode(),
@@ -1179,14 +1182,16 @@ fn create_selected_sky_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -1411,14 +1416,14 @@ pub(super) fn create_end_sky_texture_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),
             rows_per_image: Some(height),
@@ -1479,14 +1484,14 @@ pub(super) fn create_celestial_atlas_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &atlas.rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(atlas.width * 4),
             rows_per_image: Some(atlas.height),
@@ -1505,7 +1510,7 @@ pub(super) fn create_celestial_atlas_gpu(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -2102,8 +2107,8 @@ mod tests {
     fn sky_pipelines_match_vanilla_disc_and_sunrise_state() {
         let depth = sky_depth_stencil_state().expect("sky declares the main pass depth format");
         assert_eq!(depth.format, crate::gpu::DEPTH_FORMAT);
-        assert!(!depth.depth_write_enabled);
-        assert_eq!(depth.depth_compare, wgpu::CompareFunction::Always);
+        assert_eq!(depth.depth_write_enabled, Some(false));
+        assert_eq!(depth.depth_compare, Some(wgpu::CompareFunction::Always));
         assert_eq!(sky_cull_mode(), Some(wgpu::Face::Back));
         assert!(sky_disc_blend_state().is_none());
 
@@ -2729,21 +2734,23 @@ mod tests {
     fn request_test_device() -> Option<wgpu::Device> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
-        }))?;
-        let Ok((device, _queue)) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
+            apply_limit_buckets: false,
+        }))
+        .ok()?;
+        let Ok((device, _queue)) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("bbb-sky-test-device"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::downlevel_defaults(),
-            },
-            None,
-        )) else {
+                ..Default::default()
+            }))
+        else {
             return None;
         };
         Some(device)

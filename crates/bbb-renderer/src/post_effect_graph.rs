@@ -421,6 +421,7 @@ impl CompiledGraph {
                 label: Some("bbb-post-effect-graph-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: output_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -430,6 +431,7 @@ impl CompiledGraph {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             render_pass.set_pipeline(&pass.pipeline);
             render_pass.set_bind_group(0, &bind_group, &[]);
@@ -590,8 +592,8 @@ impl CompiledPass {
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("bbb-post-effect-pass-pipeline-layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
         let vertex_module = create_glsl_module(
             device,
@@ -610,7 +612,8 @@ impl CompiledPass {
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &vertex_module,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 buffers: &[],
             },
             primitive: wgpu::PrimitiveState {
@@ -622,14 +625,16 @@ impl CompiledPass {
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment_module,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         });
 
         let sampler_info = UniformBuffer::new(
@@ -707,6 +712,7 @@ fn clear_internal_targets(
                 label: Some("bbb-post-effect-target-clear"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &target.color_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(argb_color(target.descriptor.clear_color_argb)),
@@ -716,6 +722,7 @@ fn clear_internal_targets(
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
         }
         if let Some(depth) = &target.depth_sample_view {
@@ -723,6 +730,7 @@ fn clear_internal_targets(
                 label: Some("bbb-post-effect-depth-sample-clear"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: depth,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
@@ -732,6 +740,7 @@ fn clear_internal_targets(
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
         }
         if target.descriptor.persistent {
@@ -825,7 +834,7 @@ fn create_static_texture(
     queue.write_texture(
         texture.as_image_copy(),
         &image.rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(
                 image.size[0]
@@ -893,7 +902,7 @@ fn create_sampler(device: &wgpu::Device, label: &str, bilinear: bool) -> wgpu::S
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: filter,
         min_filter: filter,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     })
 }
@@ -958,11 +967,7 @@ pub(crate) fn create_glsl_module(
     let module = frontend.parse(&options, &source).map_err(|errors| {
         anyhow::anyhow!(
             "resource GLSL parse failed: {}",
-            errors
-                .into_iter()
-                .map(|error| error.to_string())
-                .collect::<Vec<_>>()
-                .join("; ")
+            errors.emit_to_string(&source)
         )
     })?;
     wgpu::naga::valid::Validator::new(
@@ -981,12 +986,14 @@ pub(crate) fn capture_gpu_errors<T>(
     device: &wgpu::Device,
     operation: impl FnOnce() -> Result<T>,
 ) -> Result<T> {
-    device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-    device.push_error_scope(wgpu::ErrorFilter::Validation);
+    let out_of_memory_scope = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+    let validation_scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let result = operation();
-    let validation = device.pop_error_scope();
-    let out_of_memory = device.pop_error_scope();
-    let _ = device.poll(wgpu::Maintain::Wait);
+    let validation = validation_scope.pop();
+    let out_of_memory = out_of_memory_scope.pop();
+    device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .context("wait for resource GPU validation")?;
     let validation = pollster::block_on(validation);
     let out_of_memory = pollster::block_on(out_of_memory);
     if let Some(error) = validation {

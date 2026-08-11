@@ -372,6 +372,7 @@ impl Renderer {
                 label: Some(LIGHTMAP_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.lightmap.view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -381,6 +382,7 @@ impl Renderer {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(&self.lightmap_pipeline);
             stats.pipeline_switches += 1;
@@ -397,6 +399,7 @@ impl Renderer {
                 label: Some("bbb-native-terrain-opaque-group-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: main_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(self.clear.into()),
@@ -413,6 +416,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             if self.sky_environment.end_sky_visible() {
@@ -1057,6 +1061,7 @@ impl Renderer {
                 label: Some(OPAQUE_PARTICLE_MAIN_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: main_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -1073,6 +1078,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(&self.opaque_particle_pipeline);
             stats.pipeline_switches += 1;
@@ -1166,13 +1172,13 @@ impl Renderer {
             return;
         }
         encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.depth._texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::DepthOnly,
             },
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.translucent_target.depth._texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
@@ -1187,13 +1193,13 @@ impl Renderer {
 
         if item_entity_depth_work {
             encoder.copy_texture_to_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &self.depth._texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::DepthOnly,
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &self.item_entity_target.depth._texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
@@ -1209,13 +1215,13 @@ impl Renderer {
 
         if particle_depth_work {
             encoder.copy_texture_to_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &self.depth._texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::DepthOnly,
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &self.particle_target.depth._texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
@@ -1259,6 +1265,7 @@ impl Renderer {
                 label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: main_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -1275,6 +1282,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             self.draw_entity_translucent_features(
                 &mut pass,
@@ -1430,6 +1438,7 @@ impl Renderer {
             label: Some(DEBUG_FILLED_BOX_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.main_target.view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -1446,6 +1455,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.debug_filled_box_pipeline);
         stats.pipeline_switches += 1;
@@ -1501,6 +1511,7 @@ impl Renderer {
             label: Some(DEBUG_TEXT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.main_target.view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -1517,6 +1528,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.debug_text_pipeline);
         stats.pipeline_switches += 1;
@@ -1574,6 +1586,7 @@ impl Renderer {
                 label: Some(ITEM_ENTITY_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: item_entity_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: if improved {
@@ -1596,6 +1609,7 @@ impl Renderer {
                 ),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             self.draw_entity_item_entity_target_features(
                 &mut pass,
@@ -1704,6 +1718,7 @@ impl Renderer {
             label: Some("bbb-native-block-destroy-overlay-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: main_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -1720,6 +1735,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.block_destroy_pipeline);
         stats.pipeline_switches += 1;
@@ -1826,6 +1842,7 @@ impl Renderer {
                 label: Some("bbb-native-resident-map-text-feature-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: main_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -1842,6 +1859,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             self.draw_resident_map_text(
                 &mut pass,
@@ -1891,6 +1909,7 @@ impl Renderer {
                 label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.entity_outline_target.view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -1907,6 +1926,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             if let Some(atlas) = &self.entity_model_texture_atlas {
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
@@ -1973,6 +1993,7 @@ impl Renderer {
             label: Some(BLOCK_SELECTION_BEFORE_TRANSLUCENT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: color_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -1989,6 +2010,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_bind_group(0, &self.terrain_bind_group, &[]);
         if let Some(secondary) = &selection.secondary_vertex_buffer {
@@ -2023,6 +2045,7 @@ impl Renderer {
                 label: Some(TRANSLUCENT_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: translucent_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: if improved {
@@ -2043,6 +2066,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             if !self.terrain_translucent.is_empty() {
                 pass.set_pipeline(&self.terrain_translucent_pipeline);
@@ -2134,6 +2158,7 @@ impl Renderer {
                 label: Some(ITEM_ENTITY_LINE_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: item_entity_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -2150,6 +2175,7 @@ impl Renderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
             if let Some(secondary) = block_selection_after_translucent
@@ -2337,6 +2363,7 @@ impl Renderer {
                 label: Some(PARTICLE_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: particle_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: if improved {
@@ -2359,6 +2386,7 @@ impl Renderer {
                 ),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             if let Some(vertex_buffer) =
                 has_translucent_particles.then(|| self.frame_translucent_particle_vertices.buffer())
@@ -2616,6 +2644,7 @@ impl Renderer {
                     label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &self.entity_outline_target.swap_view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -2625,6 +2654,7 @@ impl Renderer {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&self.entity_outline_sobel_pipeline);
                 stats.pipeline_switches += 1;
@@ -2638,6 +2668,7 @@ impl Renderer {
                     label: Some(ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &self.entity_outline_target.view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -2647,6 +2678,7 @@ impl Renderer {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&self.entity_outline_blur_horizontal_pipeline);
                 stats.pipeline_switches += 1;
@@ -2660,6 +2692,7 @@ impl Renderer {
                     label: Some(ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &self.entity_outline_target.swap_view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -2669,6 +2702,7 @@ impl Renderer {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&self.entity_outline_blur_vertical_pipeline);
                 stats.pipeline_switches += 1;
@@ -2682,6 +2716,7 @@ impl Renderer {
                     label: Some(ENTITY_OUTLINE_BLIT_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &self.entity_outline_target.view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -2691,6 +2726,7 @@ impl Renderer {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&self.entity_outline_blit_pipeline);
                 stats.pipeline_switches += 1;
@@ -2713,6 +2749,7 @@ impl Renderer {
             label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.main_target.view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -2722,6 +2759,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.entity_outline_composite_pipeline);
         stats.pipeline_switches += 1;
@@ -2747,6 +2785,7 @@ impl Renderer {
                         label: Some(CLOUDS_PASS_LABEL),
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                             view: color_view,
+                            depth_slice: None,
                             resolve_target: None,
                             ops: wgpu::Operations {
                                 load: if improved {
@@ -2771,6 +2810,7 @@ impl Renderer {
                         }),
                         occlusion_query_set: None,
                         timestamp_writes: None,
+                        multiview_mask: None,
                     });
                     let cloud_pipeline = match self.cloud_shape {
                         CloudShape::Flat => &self.cloud_flat_pipeline,
@@ -2852,6 +2892,7 @@ impl Renderer {
                 label: Some(WEATHER_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: weather_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: if improved {
@@ -2885,6 +2926,7 @@ impl Renderer {
                 ),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             if let (Some(mesh), true) = (&lightning_mesh, has_lightning_buffers) {
                 let vertex_buffer = self.frame_lightning_vertices.buffer().expect("uploaded");
@@ -2991,6 +3033,7 @@ impl Renderer {
                 label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.transparency_final_target.view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -3000,6 +3043,7 @@ impl Renderer {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(&self.transparency_combine_pipeline);
             stats.pipeline_switches += 1;
@@ -3020,6 +3064,7 @@ impl Renderer {
                 label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.transparency_final_target.view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -3029,6 +3074,7 @@ impl Renderer {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(&self.transparency_combine_pipeline);
             pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[]);
@@ -3039,6 +3085,7 @@ impl Renderer {
                 label: Some(TRANSPARENCY_GRAPH_BLIT_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.main_target.view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -3048,6 +3095,7 @@ impl Renderer {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(&self.transparency_blit_pipeline);
             pass.set_bind_group(0, &self.transparency_final_target.bind_group, &[]);
@@ -3105,6 +3153,7 @@ impl Renderer {
             label: Some(DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: color_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3121,6 +3170,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.debug_text_pipeline);
         stats.pipeline_switches += 1;
@@ -3188,6 +3238,7 @@ impl Renderer {
             label: Some(FIRST_PERSON_ITEM_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: presentation_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3204,6 +3255,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
 
         if let (Some(mesh), Some(atlas)) = (
@@ -3402,6 +3454,7 @@ impl Renderer {
             label: Some(SCREEN_EFFECT_OVERLAY_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: presentation_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3411,6 +3464,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.screen_effect_pipeline);
         stats.pipeline_switches += 1;
@@ -3549,6 +3603,7 @@ impl Renderer {
             label: Some(VIGNETTE_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: presentation_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3558,6 +3613,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.vignette_pipeline);
         stats.pipeline_switches += 1;
@@ -3595,6 +3651,7 @@ impl Renderer {
             label: Some(WIN_SCREEN_PORTAL_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: presentation_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3604,6 +3661,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.hud_win_portal_pipeline);
         pass.set_bind_group(0, &atlas.bind_group, &[]);
@@ -3798,6 +3856,7 @@ impl Renderer {
             label: Some(WIN_SCREEN_VIGNETTE_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: presentation_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3807,6 +3866,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.vignette_pipeline);
         pass.set_bind_group(0, &texture.bind_group, &[]);
@@ -3829,6 +3889,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
     }
 
@@ -3848,6 +3909,7 @@ impl Renderer {
             label: Some(label),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: surface_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3857,6 +3919,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
         let (draw_calls, switches) = self.draw_hud_commands(&mut pass, vertex_buffer, commands);
@@ -3884,6 +3947,7 @@ impl Renderer {
             label: Some(label),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: surface_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -3900,6 +3964,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         self.draw_resident_item_models(
             &mut pass,
@@ -3982,6 +4047,7 @@ impl Renderer {
                     label: Some(SCREEN_BLUR_HORIZONTAL_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &self.screen_blur_target.swap_view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -3991,6 +4057,7 @@ impl Renderer {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&self.screen_blur_horizontal_pipeline);
                 pass.set_bind_group(0, &self.screen_blur_target.bind_group, &[]);
@@ -4008,6 +4075,7 @@ impl Renderer {
                     label: Some(SCREEN_BLUR_VERTICAL_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: destination,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -4017,6 +4085,7 @@ impl Renderer {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&self.screen_blur_vertical_pipeline);
                 pass.set_bind_group(0, &self.screen_blur_target.swap_bind_group, &[]);
@@ -4113,6 +4182,7 @@ impl Renderer {
             label: Some(TRANSPARENCY_BLIT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &surface_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -4122,6 +4192,7 @@ impl Renderer {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.transparency_blit_pipeline);
         pass.set_bind_group(0, bind_group, &[]);
@@ -4343,6 +4414,7 @@ impl Renderer {
             label: Some(label),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -4359,6 +4431,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         })
     }
 
@@ -4530,6 +4603,7 @@ impl Renderer {
             label: Some("bbb-native-resident-item-model-main-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.main_target.view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -4546,6 +4620,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         self.draw_resident_item_models(&mut pass, target, phases, atlases, stats);
     }
@@ -4782,6 +4857,7 @@ impl Renderer {
             label: Some("bbb-native-item-model-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -4798,6 +4874,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         self.draw_item_model_frame_buffers(&mut pass, pipeline, &buffers, bind_group);
     }
@@ -4817,6 +4894,7 @@ impl Renderer {
             label: Some("bbb-native-item-model-glint-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -4833,6 +4911,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         self.draw_item_model_glint_frame_buffers(&mut pass, &buffers, bind_group);
     }
@@ -6080,6 +6159,8 @@ mod tests {
             LifecycleSoakSurfaceError::Lost,
             LifecycleSoakSurfaceError::Outdated,
             LifecycleSoakSurfaceError::Timeout,
+            LifecycleSoakSurfaceError::Occluded,
+            LifecycleSoakSurfaceError::Suboptimal,
         ] {
             renderer.inject_lifecycle_soak_surface_error(error);
             renderer.render(None).unwrap();
@@ -6088,11 +6169,20 @@ mod tests {
         assert_eq!(counters.surface_lost, 1);
         assert_eq!(counters.surface_outdated, 1);
         assert_eq!(counters.surface_timeouts, 1);
-        assert_eq!(counters.surface_reconfigurations, 2);
-        assert_eq!(counters.surface_frames_skipped, 3);
+        assert_eq!(counters.surface_reconfigurations, 3);
+        assert_eq!(counters.surface_frames_skipped, 5);
         assert_eq!(counters.frame_index, 0);
 
         renderer.render(None).unwrap();
+        assert_eq!(renderer.counters().frame_index, 1);
+
+        renderer.inject_lifecycle_soak_surface_error(LifecycleSoakSurfaceError::Validation);
+        let error = renderer
+            .render(None)
+            .expect_err("surface validation must fail closed");
+        assert!(error
+            .to_string()
+            .contains("surface acquisition validation error"));
         assert_eq!(renderer.counters().frame_index, 1);
     }
 

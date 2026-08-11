@@ -25,7 +25,7 @@ pub(crate) fn standalone_sampler_descriptor(
         address_mode_w: address_mode,
         mag_filter: filter,
         min_filter: filter,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         lod_min_clamp: 0.0,
         lod_max_clamp: 0.0,
         ..Default::default()
@@ -55,7 +55,7 @@ mod tests {
                 assert_eq!(descriptor.address_mode_w, expected_address);
                 assert_eq!(descriptor.min_filter, expected_filter);
                 assert_eq!(descriptor.mag_filter, expected_filter);
-                assert_eq!(descriptor.mipmap_filter, wgpu::FilterMode::Nearest);
+                assert_eq!(descriptor.mipmap_filter, wgpu::MipmapFilterMode::Nearest);
                 assert_eq!(
                     (descriptor.lod_min_clamp, descriptor.lod_max_clamp),
                     (0.0, 0.0)

@@ -774,26 +774,23 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::PRIMARY,
-        ..Default::default()
+        ..wgpu::InstanceDescriptor::new_without_display_handle()
     });
-    let Some(adapter) =
-        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-        }))
-    else {
+    let Ok(adapter) = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::LowPower,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+        apply_limit_buckets: false,
+    })) else {
         // No GPU / software adapter on this machine — skip rather than fail the suite.
         return;
     };
-    let Ok((device, queue)) = pollster::block_on(adapter.request_device(
-        &wgpu::DeviceDescriptor {
-            label: Some("bbb-dissolve-test-device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-        },
-        None,
-    )) else {
+    let Ok((device, queue)) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+        label: Some("bbb-dissolve-test-device"),
+        required_features: wgpu::Features::empty(),
+        required_limits: wgpu::Limits::downlevel_defaults(),
+        ..Default::default()
+    })) else {
         return;
     };
 
@@ -852,14 +849,14 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &atlas_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &atlas_rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(atlas_layout.width * 4),
             rows_per_image: Some(atlas_layout.height),
@@ -880,7 +877,7 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -980,6 +977,7 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
                 label: Some("dissolve-test-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &color_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         // Blue background — distinct from the red base texture.
@@ -1002,6 +1000,7 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
@@ -1011,15 +1010,15 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
             pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
         }
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &color_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(HEIGHT),
@@ -1034,8 +1033,11 @@ fn ender_dragon_dissolve_pipeline_erodes_pixels_by_mask_alpha() {
         queue.submit(std::iter::once(encoder.finish()));
         let slice = readback.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::Maintain::Wait);
-        let bytes = slice.get_mapped_range().to_vec();
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        let bytes = slice
+            .get_mapped_range()
+            .expect("mapped GPU readback")
+            .to_vec();
         readback.unmap();
         bytes
     };

@@ -210,6 +210,22 @@ interval 相关系数 0.847，证明两个 drawable 反而把显著等待转移�
 `662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`；候选已拒绝、默认
 三个 drawable 恢复，不进入官方 Java ABBA。
 
+后续基础设施不再维护本地 wgpu-hal 0.19.5 backport，而是完整迁移到 crates.io wgpu
+30.0.0。repo 的 [dependency receipt](../../evidence/dependency-receipts/wgpu-30.0.0.json)
+把 wgpu、wgpu-core、wgpu-hal、wgpu-types、naga 的 registry version/checksum 与
+Cargo.toml/Cargo.lock hash 固定下来，并记录 wgpu 30 首次发布的 Metal
+completion-handler/condition-variable wait 修复 commit
+`e0a6065c65b5b6c2e92ee7052ed084cd8910d486`。runtime 同时从 BBB `--build-info` 和
+renderer log 输出该 receipt；正式采集还从 wgpu 安装后的 AppKit layer tree 只读查询
+CAMetalLayer `drawableSize` 与 `maximumDrawableCount`，不再把 hint+1 单独称为实际值。
+
+`macos-native-retina-bbb-ab-v3` 保留 v1/v2 parser，并针对 0.19 baseline→wgpu 30
+candidate 强制 B-C-C-B×2 每轮记录 binary hash、runtime versions/provenance、Immediate、
+hint 2、expected/actual drawable count 3、actual 2560x1600 drawable 与单 in-flight budget。
+任一 dependency/surface/workload mismatch 都先于 FPS 或稳定性比较拒绝。该迁移不授权
+多帧排队、后台 acquire、upload arena、FramePlan 或 render graph；即使性能不通过，也保留
+通过正确性/full gate 的 wgpu 30 基础设施，再按 phase evidence 选择单一有界优化。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

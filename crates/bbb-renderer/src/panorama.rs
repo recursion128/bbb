@@ -124,7 +124,7 @@ impl PanoramaGpu {
             // invert every displayed face. The asymmetric offscreen test owns
             // this backend compensation rather than a source-string guard.
             queue.write_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
@@ -135,7 +135,7 @@ impl PanoramaGpu {
                     aspect: wgpu::TextureAspect::All,
                 },
                 rgba,
-                wgpu::ImageDataLayout {
+                wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(face_width * 4),
                     rows_per_image: Some(face_height),
@@ -150,6 +150,7 @@ impl PanoramaGpu {
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("bbb-panorama-cubemap-view"),
             dimension: Some(wgpu::TextureViewDimension::Cube),
+            usage: None,
             base_mip_level: 0,
             mip_level_count: Some(1),
             base_array_layer: 0,
@@ -232,6 +233,7 @@ impl PanoramaGpu {
             label: Some("bbb-panorama-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: target,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -241,6 +243,7 @@ impl PanoramaGpu {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind_group, &[]);

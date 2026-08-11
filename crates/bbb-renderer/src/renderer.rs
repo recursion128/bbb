@@ -163,6 +163,14 @@ use crate::{
     },
 };
 
+pub const WGPU_VERSION: &str = "30.0.0";
+pub const WGPU_CORE_VERSION: &str = "30.0.0";
+pub const WGPU_HAL_VERSION: &str = "30.0.0";
+pub const WGPU_TYPES_VERSION: &str = "30.0.0";
+pub const NAGA_VERSION: &str = "30.0.0";
+pub const WGPU_METAL_FENCE_UPSTREAM_COMMIT: &str = "e0a6065c65b5b6c2e92ee7052ed084cd8910d486";
+pub const WGPU_METAL_FENCE_STRATEGY: &str = "completion-handler-condition-variable";
+
 /// Immutable projection of Vanilla's per-frame transparency routing decision.
 ///
 /// `LevelRenderer` owns the actual target selection; native startup only
@@ -194,15 +202,21 @@ pub enum LifecycleSoakSurfaceError {
     Lost,
     Outdated,
     Timeout,
+    Occluded,
+    Suboptimal,
+    Validation,
 }
 
 #[cfg(feature = "lifecycle-soak")]
 impl LifecycleSoakSurfaceError {
-    fn into_surface_error(self) -> wgpu::SurfaceError {
+    fn into_surface_status(self) -> wgpu::SurfaceStatus {
         match self {
-            Self::Lost => wgpu::SurfaceError::Lost,
-            Self::Outdated => wgpu::SurfaceError::Outdated,
-            Self::Timeout => wgpu::SurfaceError::Timeout,
+            Self::Lost => wgpu::SurfaceStatus::Lost,
+            Self::Outdated => wgpu::SurfaceStatus::Outdated,
+            Self::Timeout => wgpu::SurfaceStatus::Timeout,
+            Self::Occluded => wgpu::SurfaceStatus::Occluded,
+            Self::Suboptimal => wgpu::SurfaceStatus::Suboptimal,
+            Self::Validation => wgpu::SurfaceStatus::Validation,
         }
     }
 }
@@ -456,7 +470,7 @@ pub struct Renderer {
     pub(super) level_frame_route: LevelFrameRoute,
     pub(super) counters: RendererCounters,
     #[cfg(feature = "lifecycle-soak")]
-    pub(super) lifecycle_soak_surface_faults: std::collections::VecDeque<wgpu::SurfaceError>,
+    pub(super) lifecycle_soak_surface_faults: std::collections::VecDeque<wgpu::SurfaceStatus>,
     pub(super) started_at: Instant,
     pub(super) gpu_timing: Option<GpuFrameTiming>,
     /// Enables detailed CPU phase timestamps together with GPU diagnostics.
@@ -1557,7 +1571,7 @@ impl Renderer {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         let surface = unsafe {
             instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::from_window(window)?)?
@@ -1567,9 +1581,10 @@ impl Renderer {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
-            .ok_or_else(|| anyhow!("no suitable GPU adapter"))?;
+            .map_err(|error| anyhow!("no suitable GPU adapter: {error}"))?;
         let adapter_info = adapter.get_info();
         tracing::info!(
             adapter_name = %adapter_info.name,
@@ -1585,24 +1600,40 @@ impl Renderer {
 
         let required_features = optional_gpu_timing_features(adapter.features());
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("bbb-native-device"),
-                    required_features,
-                    required_limits: wgpu::Limits::downlevel_defaults()
-                        .using_resolution(adapter.limits()),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("bbb-native-device"),
+                required_features,
+                required_limits: wgpu::Limits::downlevel_defaults()
+                    .using_resolution(adapter.limits()),
+                ..Default::default()
+            })
             .await?;
 
         let caps = surface.get_capabilities(&adapter);
         let format = choose_format(&caps.formats)?;
         let present_mode = choose_present_mode(&caps.present_modes, vsync_enabled)?;
         tracing::info!(
+            wgpu_version = WGPU_VERSION,
+            wgpu_core_version = WGPU_CORE_VERSION,
+            wgpu_hal_version = WGPU_HAL_VERSION,
+            wgpu_types_version = WGPU_TYPES_VERSION,
+            naga_version = NAGA_VERSION,
+            upstream_metal_fence_commit = WGPU_METAL_FENCE_UPSTREAM_COMMIT,
+            upstream_metal_fence_strategy = WGPU_METAL_FENCE_STRATEGY,
+            "renderer dependency receipt"
+        );
+        tracing::info!(
             ?present_mode,
             supported_present_modes = ?caps.present_modes,
             desired_maximum_frame_latency = 2,
+            expected_metal_drawable_count = 3,
+            in_flight_submission_budget = if cfg!(target_os = "macos")
+                && present_mode == wgpu::PresentMode::Immediate
+            {
+                1
+            } else {
+                0
+            },
             "renderer surface presentation selected"
         );
         let alpha_mode = caps
@@ -1619,6 +1650,7 @@ impl Renderer {
             present_mode,
             alpha_mode,
             view_formats: vec![],
+            color_space: wgpu::SurfaceColorSpace::Auto,
             // Keep wgpu's default queue-depth hint. VSync-off selection still maps to the
             // platform's immediate present path, while a larger hint did not improve the
             // common-X11 benchmark and would add an unproven behavioral variable.
@@ -1702,7 +1734,7 @@ impl Renderer {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
         let lightmap_hud_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -3236,7 +3268,7 @@ impl Renderer {
     #[cfg(feature = "lifecycle-soak")]
     pub fn inject_lifecycle_soak_surface_error(&mut self, error: LifecycleSoakSurfaceError) {
         self.lifecycle_soak_surface_faults
-            .push_back(error.into_surface_error());
+            .push_back(error.into_surface_status());
     }
 
     #[cfg(feature = "lifecycle-soak")]

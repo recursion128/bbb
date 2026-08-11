@@ -99,6 +99,17 @@ impl<'a> RenderPipelineBuilder<'a> {
         let (color_format, blend) = self
             .color_target
             .expect("render pipeline builder requires a color target");
+        let bind_group_layouts = bind_group_layouts
+            .iter()
+            .copied()
+            .map(Some)
+            .collect::<Vec<_>>();
+        let vertex_buffers = self
+            .vertex_buffers
+            .iter()
+            .cloned()
+            .map(Some)
+            .collect::<Vec<_>>();
         let shader = self
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -109,8 +120,8 @@ impl<'a> RenderPipelineBuilder<'a> {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(layout_label),
-                bind_group_layouts,
-                push_constant_ranges: &[],
+                bind_group_layouts: &bind_group_layouts,
+                immediate_size: 0,
             });
 
         self.device
@@ -119,8 +130,9 @@ impl<'a> RenderPipelineBuilder<'a> {
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &shader,
-                    entry_point: "vs_main",
-                    buffers: self.vertex_buffers,
+                    entry_point: Some("vs_main"),
+                    compilation_options: Default::default(),
+                    buffers: &vertex_buffers,
                 },
                 primitive: wgpu::PrimitiveState {
                     topology: self.topology,
@@ -131,14 +143,16 @@ impl<'a> RenderPipelineBuilder<'a> {
                 multisample: wgpu::MultisampleState::default(),
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
-                    entry_point: "fs_main",
+                    entry_point: Some("fs_main"),
+                    compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: color_format,
                         blend,
                         write_mask: self.color_write_mask,
                     })],
                 }),
-                multiview: None,
+                multiview_mask: None,
+                cache: None,
             })
     }
 }
@@ -151,9 +165,21 @@ pub(crate) fn depth_stencil_state(
 ) -> wgpu::DepthStencilState {
     wgpu::DepthStencilState {
         format,
-        depth_write_enabled,
-        depth_compare,
+        depth_write_enabled: Some(depth_write_enabled),
+        depth_compare: Some(depth_compare),
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     }
+}
+
+pub(crate) fn optional_bind_group_layouts<'a>(
+    layouts: &'a [&'a wgpu::BindGroupLayout],
+) -> Vec<Option<&'a wgpu::BindGroupLayout>> {
+    layouts.iter().copied().map(Some).collect()
+}
+
+pub(crate) fn optional_vertex_layouts<'a>(
+    layouts: &[wgpu::VertexBufferLayout<'a>],
+) -> Vec<Option<wgpu::VertexBufferLayout<'a>>> {
+    layouts.iter().cloned().map(Some).collect()
 }

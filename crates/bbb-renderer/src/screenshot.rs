@@ -94,15 +94,15 @@ impl Renderer {
         });
 
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(padded_bytes_per_row),
                     rows_per_image: Some(height),
@@ -138,12 +138,16 @@ impl Renderer {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = tx.send(result);
         });
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .context("wait for screenshot readback")?;
         rx.recv()
             .context("screenshot map callback dropped")?
             .map_err(|err| anyhow!("map screenshot buffer: {err}"))?;
 
-        let mapped = slice.get_mapped_range();
+        let mapped = slice
+            .get_mapped_range()
+            .map_err(|err| anyhow!("access mapped screenshot buffer: {err}"))?;
         let mut rgba = Vec::with_capacity((pending.width * pending.height * 4) as usize);
         for row in mapped
             .chunks(pending.padded_bytes_per_row as usize)

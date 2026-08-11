@@ -1185,26 +1185,23 @@ fn first_person_player_arm_renders_visible_pixels() {
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::PRIMARY,
-        ..Default::default()
+        ..wgpu::InstanceDescriptor::new_without_display_handle()
     });
-    let Some(adapter) =
-        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-        }))
-    else {
+    let Ok(adapter) = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::LowPower,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+        apply_limit_buckets: false,
+    })) else {
         // No GPU / software adapter on this machine — skip rather than fail the suite.
         return;
     };
-    let Ok((device, queue)) = pollster::block_on(adapter.request_device(
-        &wgpu::DeviceDescriptor {
-            label: Some("bbb-first-person-arm-test-device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-        },
-        None,
-    )) else {
+    let Ok((device, queue)) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+        label: Some("bbb-first-person-arm-test-device"),
+        required_features: wgpu::Features::empty(),
+        required_limits: wgpu::Limits::downlevel_defaults(),
+        ..Default::default()
+    })) else {
         return;
     };
 
@@ -1309,14 +1306,14 @@ fn first_person_player_arm_renders_visible_pixels() {
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &atlas_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &atlas_rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(atlas_layout.width * 4),
             rows_per_image: Some(atlas_layout.height),
@@ -1408,6 +1405,7 @@ fn first_person_player_arm_renders_visible_pixels() {
             label: Some("fp-arm-test-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &color_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     // Blue background — distinct from the green arm.
@@ -1430,6 +1428,7 @@ fn first_person_player_arm_renders_visible_pixels() {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
@@ -1439,15 +1438,15 @@ fn first_person_player_arm_renders_visible_pixels() {
         pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
     }
     encoder.copy_texture_to_buffer(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &color_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyBuffer {
+        wgpu::TexelCopyBufferInfo {
             buffer: &readback,
-            layout: wgpu::ImageDataLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row),
                 rows_per_image: Some(HEIGHT),
@@ -1463,8 +1462,8 @@ fn first_person_player_arm_renders_visible_pixels() {
 
     let slice = readback.slice(..);
     slice.map_async(wgpu::MapMode::Read, |_| {});
-    device.poll(wgpu::Maintain::Wait);
-    let data = slice.get_mapped_range();
+    let _ = device.poll(wgpu::PollType::wait_indefinitely());
+    let data = slice.get_mapped_range().expect("mapped GPU readback");
     let pixel = |x: u32, y: u32| -> [u8; 4] {
         let o = (y * bytes_per_row + x * 4) as usize;
         [data[o], data[o + 1], data[o + 2], data[o + 3]]

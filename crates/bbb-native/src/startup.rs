@@ -14,12 +14,13 @@ use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
 use bbb_renderer::{
-    TerrainTextureFiltering, VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
+    TerrainTextureFiltering, NAGA_VERSION, VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
     VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
     VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
     VANILLA_MAX_CLOUD_RANGE_CHUNKS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_CLOUD_RANGE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS, WGPU_CORE_VERSION, WGPU_HAL_VERSION,
+    WGPU_METAL_FENCE_STRATEGY, WGPU_METAL_FENCE_UPSTREAM_COMMIT, WGPU_TYPES_VERSION, WGPU_VERSION,
 };
 use bbb_world::TutorialStep;
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser, ValueEnum};
@@ -1696,6 +1697,13 @@ pub(crate) struct BuildInfo {
     data_pack_format: String,
     target_os: &'static str,
     target_arch: &'static str,
+    wgpu_version: &'static str,
+    wgpu_core_version: &'static str,
+    wgpu_hal_version: &'static str,
+    wgpu_types_version: &'static str,
+    naga_version: &'static str,
+    upstream_metal_fence_commit: &'static str,
+    upstream_metal_fence_strategy: &'static str,
 }
 
 impl BuildInfo {
@@ -1710,6 +1718,13 @@ impl BuildInfo {
             data_pack_format: bbb_protocol::MC_DATA_PACK_FORMAT.to_vanilla_string(),
             target_os: std::env::consts::OS,
             target_arch: std::env::consts::ARCH,
+            wgpu_version: WGPU_VERSION,
+            wgpu_core_version: WGPU_CORE_VERSION,
+            wgpu_hal_version: WGPU_HAL_VERSION,
+            wgpu_types_version: WGPU_TYPES_VERSION,
+            naga_version: NAGA_VERSION,
+            upstream_metal_fence_commit: WGPU_METAL_FENCE_UPSTREAM_COMMIT,
+            upstream_metal_fence_strategy: WGPU_METAL_FENCE_STRATEGY,
         }
     }
 }
@@ -2467,6 +2482,19 @@ mod tests {
         );
         assert_eq!(value["target_os"], std::env::consts::OS);
         assert_eq!(value["target_arch"], std::env::consts::ARCH);
+        assert_eq!(value["wgpu_version"], "30.0.0");
+        assert_eq!(value["wgpu_core_version"], "30.0.0");
+        assert_eq!(value["wgpu_hal_version"], "30.0.0");
+        assert_eq!(value["wgpu_types_version"], "30.0.0");
+        assert_eq!(value["naga_version"], "30.0.0");
+        assert_eq!(
+            value["upstream_metal_fence_commit"],
+            "e0a6065c65b5b6c2e92ee7052ed084cd8910d486"
+        );
+        assert_eq!(
+            value["upstream_metal_fence_strategy"],
+            "completion-handler-condition-variable"
+        );
     }
 
     #[test]

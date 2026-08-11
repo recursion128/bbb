@@ -4,12 +4,10 @@ use std::{
     time::Duration,
 };
 
-// wgpu-hal 0.19 passes Metal's absolute query-range end as NSRange.length when
-// resolving a non-zero range. Give every asynchronous slot its own query set
-// so all resolves start at zero until the workspace upgrades to a backend with
-// the upstream range-length fix. Eight slots keep the uncapped macOS renderer
-// from dropping timestamp samples while Metal finishes asynchronous readback;
-// the query sets and readback buffers remain tiny and do not alter render work.
+// Give every asynchronous slot its own zero-based query set. Eight slots keep
+// the uncapped renderer from dropping timestamp samples while the backend
+// finishes asynchronous readback; the query sets and readback buffers remain
+// tiny and do not alter render work.
 const SLOT_COUNT: usize = 8;
 const QUERIES_PER_FRAME: u32 = 12;
 const TOTAL_ONLY_QUERIES_PER_FRAME: u32 = 2;
@@ -162,7 +160,9 @@ impl GpuFrameTiming {
             return Duration::ZERO;
         }
         let started_at = std::time::Instant::now();
-        device.poll(wgpu::Maintain::Poll);
+        if let Err(error) = device.poll(wgpu::PollType::Poll) {
+            tracing::warn!(%error, "GPU timing poll failed");
+        }
         loop {
             match self.completions.try_recv() {
                 Ok(completion) => self.finish_mapping(completion),
@@ -284,41 +284,47 @@ impl GpuFrameTiming {
             return;
         };
         if completion.result.is_ok() {
-            let mapped = slot.readback.slice(..).get_mapped_range();
-            let query_bytes = self.queries_per_frame as usize * std::mem::size_of::<u64>();
-            let timestamps = mapped
-                .get(..query_bytes)
-                .and_then(|bytes| bytemuck::try_cast_slice::<u8, u64>(bytes).ok());
-            if self.enabled {
-                let end_index = if detailed_stages {
-                    QUERIES_PER_FRAME as usize - 1
-                } else {
-                    TOTAL_ONLY_QUERIES_PER_FRAME as usize - 1
-                };
-                let duration = timestamps.and_then(|timestamps| {
-                    gpu_duration_from_timestamps(
-                        [timestamps[0], timestamps[end_index]],
-                        self.timestamp_period_nanos,
-                    )
-                });
-                self.latest_utilization = duration.and_then(|duration| {
-                    gpu_utilization_from_duration(duration, cpu_duration_nanos)
-                });
-                if let Some(duration) = duration {
-                    if self.completed_durations.len() == SLOT_COUNT {
-                        self.completed_durations.pop_front();
+            if let Ok(mapped) = slot.readback.slice(..).get_mapped_range() {
+                let query_bytes = self.queries_per_frame as usize * std::mem::size_of::<u64>();
+                let timestamps = mapped
+                    .get(..query_bytes)
+                    .and_then(|bytes| bytemuck::try_cast_slice::<u8, u64>(bytes).ok());
+                if self.enabled {
+                    let end_index = if detailed_stages {
+                        QUERIES_PER_FRAME as usize - 1
+                    } else {
+                        TOTAL_ONLY_QUERIES_PER_FRAME as usize - 1
+                    };
+                    let duration = timestamps.and_then(|timestamps| {
+                        gpu_duration_from_timestamps(
+                            [timestamps[0], timestamps[end_index]],
+                            self.timestamp_period_nanos,
+                        )
+                    });
+                    self.latest_utilization = duration.and_then(|duration| {
+                        gpu_utilization_from_duration(duration, cpu_duration_nanos)
+                    });
+                    if let Some(duration) = duration {
+                        if self.completed_durations.len() == SLOT_COUNT {
+                            self.completed_durations.pop_front();
+                        }
+                        self.completed_durations.push_back(duration);
                     }
-                    self.completed_durations.push_back(duration);
+                    if detailed_stages {
+                        stage_sample = timestamps
+                            .and_then(|timestamps| timestamps.try_into().ok())
+                            .and_then(|timestamps| {
+                                gpu_stage_nanos_from_timestamps(
+                                    timestamps,
+                                    self.timestamp_period_nanos,
+                                )
+                            });
+                    }
                 }
-                if detailed_stages {
-                    stage_sample = timestamps
-                        .and_then(|timestamps| timestamps.try_into().ok())
-                        .and_then(|timestamps| {
-                            gpu_stage_nanos_from_timestamps(timestamps, self.timestamp_period_nanos)
-                        });
-                }
+                drop(mapped);
+            } else {
+                self.latest_utilization = None;
             }
-            drop(mapped);
             slot.readback.unmap();
         } else {
             self.latest_utilization = None;
@@ -407,7 +413,12 @@ fn nearest_rank_percentile(sorted_samples: &[u64], percentile: usize) -> u64 {
 }
 
 pub(super) fn optional_gpu_timing_features(adapter_features: wgpu::Features) -> wgpu::Features {
-    adapter_features & wgpu::Features::TIMESTAMP_QUERY
+    let encoder_timestamps =
+        wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS;
+    adapter_features
+        .contains(encoder_timestamps)
+        .then_some(encoder_timestamps)
+        .unwrap_or_default()
 }
 
 fn gpu_duration_from_timestamps(
@@ -477,26 +488,25 @@ mod tests {
     fn request_timestamp_test_device() -> Option<(wgpu::Device, wgpu::Queue)> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
-        }))?;
+            apply_limit_buckets: false,
+        }))
+        .ok()?;
         let required_features = optional_gpu_timing_features(adapter.features());
         if !required_features.contains(wgpu::Features::TIMESTAMP_QUERY) {
             return None;
         }
-        pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("bbb-gpu-timing-test-device"),
-                required_features,
-                required_limits:
-                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
-            },
-            None,
-        ))
+        pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("bbb-gpu-timing-test-device"),
+            required_features,
+            required_limits: wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            ..Default::default()
+        }))
         .ok()
     }
 
@@ -510,7 +520,15 @@ mod tests {
             optional_gpu_timing_features(
                 wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TEXTURE_COMPRESSION_BC
             ),
-            wgpu::Features::TIMESTAMP_QUERY
+            wgpu::Features::empty()
+        );
+        assert_eq!(
+            optional_gpu_timing_features(
+                wgpu::Features::TIMESTAMP_QUERY
+                    | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS
+                    | wgpu::Features::TEXTURE_COMPRESSION_BC
+            ),
+            wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS
         );
     }
 
@@ -645,7 +663,7 @@ mod tests {
             timing.after_submit(token, Duration::from_millis(16));
         }
 
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
         let _ = timing.poll(&device);
         assert!(timing
             .slots

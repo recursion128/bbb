@@ -235,7 +235,9 @@ pub use crate::player_skin::{
 pub use crate::renderer::LifecycleSoakSurfaceError;
 pub use crate::renderer::{
     LevelFrameRoute, Renderer, RendererCameraFrame, RendererFrameProfile, TerrainChunkMeshOwner,
-    TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTextureFiltering,
+    TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTextureFiltering, NAGA_VERSION,
+    WGPU_CORE_VERSION, WGPU_HAL_VERSION, WGPU_METAL_FENCE_STRATEGY,
+    WGPU_METAL_FENCE_UPSTREAM_COMMIT, WGPU_TYPES_VERSION, WGPU_VERSION,
 };
 pub use crate::screen_blur::{
     VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,

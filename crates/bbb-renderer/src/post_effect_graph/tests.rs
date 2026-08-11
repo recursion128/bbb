@@ -158,7 +158,7 @@ fn post_effect_graph_executes_selected_custom_shader_pixels_in_pass_order() {
     queue.write_texture(
         target.as_image_copy(),
         &[40, 80, 160, 255].repeat(16),
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(16),
             rows_per_image: Some(4),
@@ -255,7 +255,7 @@ void main() {
     queue.write_texture(
         source.as_image_copy(),
         &pixels,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(16),
             rows_per_image: Some(4),
@@ -846,21 +846,21 @@ fn selected_generation_rollback_restores_exact_previous_owner_and_counters() {
 fn request_test_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::PRIMARY,
-        ..Default::default()
+        ..wgpu::InstanceDescriptor::new_without_display_handle()
     });
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::LowPower,
         compatible_surface: None,
         force_fallback_adapter: false,
-    }))?;
-    pollster::block_on(adapter.request_device(
-        &wgpu::DeviceDescriptor {
-            label: Some("bbb-post-effect-test-device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-        },
-        None,
-    ))
+        apply_limit_buckets: false,
+    }))
+    .ok()?;
+    pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+        label: Some("bbb-post-effect-test-device"),
+        required_features: wgpu::Features::empty(),
+        required_limits: wgpu::Limits::downlevel_defaults(),
+        ..Default::default()
+    }))
     .ok()
 }
 
@@ -895,9 +895,9 @@ fn read_pixels(
     });
     encoder.copy_texture_to_buffer(
         texture.as_image_copy(),
-        wgpu::ImageCopyBuffer {
+        wgpu::TexelCopyBufferInfo {
             buffer: &readback,
-            layout: wgpu::ImageDataLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(PADDED_BYTES_PER_ROW),
                 rows_per_image: Some(height),
@@ -915,9 +915,9 @@ fn read_pixels(
     slice.map_async(wgpu::MapMode::Read, move |result| {
         sender.send(result).unwrap();
     });
-    let _ = device.poll(wgpu::Maintain::Wait);
+    let _ = device.poll(wgpu::PollType::wait_indefinitely());
     receiver.recv().unwrap().unwrap();
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped GPU readback");
     let row_bytes = usize::try_from(width).unwrap() * 4;
     let pixels = mapped
         .chunks_exact(usize::try_from(PADDED_BYTES_PER_ROW).unwrap())

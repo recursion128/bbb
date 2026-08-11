@@ -1120,8 +1120,8 @@ fn create_selected_item_pipeline(
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-item-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout), Some(lightmap_bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1129,8 +1129,9 @@ fn create_selected_item_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode: ITEM_MODEL_PIPELINE_CULL_MODE,
@@ -1144,14 +1145,16 @@ fn create_selected_item_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(blend),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -1687,14 +1690,14 @@ fn create_glint_texture_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),
             rows_per_image: Some(height),
@@ -2109,25 +2112,26 @@ fn fs_main() -> @location(0) vec4<f32> {
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
-        let Some(adapter) =
+        let Ok(adapter) =
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: None,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             }))
         else {
             return;
         };
-        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
+        let Ok((device, queue)) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("bbb-glint-owner-test-device"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::downlevel_defaults(),
-            },
-            None,
-        )) else {
+                ..Default::default()
+            }))
+        else {
             return;
         };
         let layout = create_terrain_bind_group_layout(&device);
@@ -2195,6 +2199,7 @@ fn fs_main() -> @location(0) vec4<f32> {
                     label: Some("bbb-glint-owner-test-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -2204,21 +2209,22 @@ fn fs_main() -> @location(0) vec4<f32> {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&pipeline);
                 pass.set_bind_group(0, bind_group, &[]);
                 pass.draw(0..3, 0..1);
             }
             encoder.copy_texture_to_buffer(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyBuffer {
+                wgpu::TexelCopyBufferInfo {
                     buffer: &readback,
-                    layout: wgpu::ImageDataLayout {
+                    layout: wgpu::TexelCopyBufferLayout {
                         offset: 0,
                         bytes_per_row: Some(PADDED_BYTES_PER_ROW),
                         rows_per_image: Some(1),
@@ -2233,8 +2239,8 @@ fn fs_main() -> @location(0) vec4<f32> {
             queue.submit(std::iter::once(encoder.finish()));
             let slice = readback.slice(..);
             slice.map_async(wgpu::MapMode::Read, |_| {});
-            device.poll(wgpu::Maintain::Wait);
-            let data = slice.get_mapped_range();
+            let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            let data = slice.get_mapped_range().expect("mapped GPU readback");
             let pixel = [data[0], data[1], data[2], data[3]];
             drop(data);
             readback.unmap();
@@ -2434,26 +2440,27 @@ fn fs_main() -> @location(0) vec4<f32> {
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
-        let Some(adapter) =
+        let Ok(adapter) =
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: None,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             }))
         else {
             // No GPU / software adapter on this machine — skip rather than fail the suite.
             return;
         };
-        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
+        let Ok((device, queue)) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("bbb-first-person-item-test-device"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::downlevel_defaults(),
-            },
-            None,
-        )) else {
+                ..Default::default()
+            }))
+        else {
             return;
         };
 
@@ -2610,6 +2617,7 @@ fn fs_main() -> @location(0) vec4<f32> {
                     label: Some("fp-item-test-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &color_view,
+                        depth_slice: None,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             // Blue background — distinct from the red item icon.
@@ -2632,6 +2640,7 @@ fn fs_main() -> @location(0) vec4<f32> {
                     }),
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 pass.set_pipeline(&pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
@@ -2641,15 +2650,15 @@ fn fs_main() -> @location(0) vec4<f32> {
                 pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
             }
             encoder.copy_texture_to_buffer(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &color_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyBuffer {
+                wgpu::TexelCopyBufferInfo {
                     buffer: &readback,
-                    layout: wgpu::ImageDataLayout {
+                    layout: wgpu::TexelCopyBufferLayout {
                         offset: 0,
                         bytes_per_row: Some(bytes_per_row),
                         rows_per_image: Some(HEIGHT),
@@ -2664,8 +2673,11 @@ fn fs_main() -> @location(0) vec4<f32> {
             queue.submit(std::iter::once(encoder.finish()));
             let slice = readback.slice(..);
             slice.map_async(wgpu::MapMode::Read, |_| {});
-            device.poll(wgpu::Maintain::Wait);
-            let data = slice.get_mapped_range().to_vec();
+            let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            let data = slice
+                .get_mapped_range()
+                .expect("mapped GPU readback")
+                .to_vec();
             readback.unmap();
             data
         };

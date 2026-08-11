@@ -215,8 +215,8 @@ pub(crate) fn create_world_border_pipeline_with_shaders(
         )?;
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("bbb-selected-world-border-layout"),
-            bind_group_layouts: &[bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(bind_group_layout)],
+            immediate_size: 0,
         });
         return Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -224,8 +224,9 @@ pub(crate) fn create_world_border_pipeline_with_shaders(
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &vertex,
-                    entry_point: "main",
-                    buffers: &[world_border_vertex_layout()],
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(world_border_vertex_layout())],
                 },
                 primitive: wgpu::PrimitiveState {
                     cull_mode: WORLD_BORDER_CULL_MODE,
@@ -233,22 +234,24 @@ pub(crate) fn create_world_border_pipeline_with_shaders(
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: DEPTH_FORMAT,
-                    depth_write_enabled: WORLD_BORDER_DEPTH_WRITE_ENABLED,
-                    depth_compare: WORLD_BORDER_DEPTH_COMPARE,
+                    depth_write_enabled: Some(WORLD_BORDER_DEPTH_WRITE_ENABLED),
+                    depth_compare: Some(WORLD_BORDER_DEPTH_COMPARE),
                     stencil: wgpu::StencilState::default(),
                     bias: WORLD_BORDER_DEPTH_BIAS,
                 }),
                 multisample: wgpu::MultisampleState::default(),
                 fragment: Some(wgpu::FragmentState {
                     module: &fragment,
-                    entry_point: "main",
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
                         blend: Some(WORLD_BORDER_BLEND),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
-                multiview: None,
+                multiview_mask: None,
+                cache: None,
             }),
         );
     }
@@ -261,8 +264,8 @@ pub(crate) fn create_world_border_pipeline_with_shaders(
             .cull_mode(WORLD_BORDER_CULL_MODE)
             .depth_stencil(wgpu::DepthStencilState {
                 format: DEPTH_FORMAT,
-                depth_write_enabled: WORLD_BORDER_DEPTH_WRITE_ENABLED,
-                depth_compare: WORLD_BORDER_DEPTH_COMPARE,
+                depth_write_enabled: Some(WORLD_BORDER_DEPTH_WRITE_ENABLED),
+                depth_compare: Some(WORLD_BORDER_DEPTH_COMPARE),
                 stencil: wgpu::StencilState::default(),
                 bias: WORLD_BORDER_DEPTH_BIAS,
             })
@@ -317,14 +320,14 @@ pub(crate) fn create_world_border_texture_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),
             rows_per_image: Some(height),

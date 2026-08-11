@@ -417,8 +417,8 @@ fn create_selected_cloud_pipeline(
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-cloud-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout, cloud_bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout), Some(cloud_bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -426,8 +426,9 @@ fn create_selected_cloud_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: &[cloud_face_vertex_layout()],
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(cloud_face_vertex_layout())],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -441,14 +442,16 @@ fn create_selected_cloud_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(CLOUD_TARGET_BLEND),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -1302,22 +1305,21 @@ mod tests {
     fn request_test_device() -> Option<wgpu::Device> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
-        }))?;
-        pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("bbb-cloud-test-device"),
-                required_features: wgpu::Features::empty(),
-                required_limits:
-                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
-            },
-            None,
-        ))
+            apply_limit_buckets: false,
+        }))
+        .ok()?;
+        pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("bbb-cloud-test-device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            ..Default::default()
+        }))
         .ok()
         .map(|(device, _queue)| device)
     }

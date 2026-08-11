@@ -303,14 +303,14 @@ fn create_vignette_texture_gpu(
         .checked_mul(4)
         .ok_or_else(|| anyhow!("vignette texture row size overflow"))?;
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(bytes_per_row),
             rows_per_image: Some(height),

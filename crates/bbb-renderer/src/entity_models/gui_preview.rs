@@ -513,7 +513,7 @@ impl HudEntityPreviewPipTarget {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
         let blit_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -753,6 +753,7 @@ impl Renderer {
             label: Some(HUD_ENTITY_PREVIEW_PIP_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &target.color_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -771,6 +772,7 @@ impl Renderer {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
 
         if let (Some(geometry), Some(static_bind_group)) =
@@ -1268,15 +1270,15 @@ mod tests {
             mapped_at_creation: false,
         });
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &target._color_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(PADDED_BYTES_PER_ROW),
                     rows_per_image: Some(HEIGHT),
@@ -1291,8 +1293,8 @@ mod tests {
         renderer.queue.submit(std::iter::once(encoder.finish()));
         let slice = readback.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        renderer.device.poll(wgpu::Maintain::Wait);
-        let data = slice.get_mapped_range();
+        let _ = renderer.device.poll(wgpu::PollType::wait_indefinitely());
+        let data = slice.get_mapped_range().expect("mapped GPU readback");
         let has_red_item_pixel = data
             .chunks_exact(PADDED_BYTES_PER_ROW as usize)
             .take(HEIGHT as usize)
@@ -1448,15 +1450,15 @@ mod tests {
             mapped_at_creation: false,
         });
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &target._color_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(BYTES_PER_ROW),
                     rows_per_image: Some(height),
@@ -1471,8 +1473,8 @@ mod tests {
         renderer.queue.submit(std::iter::once(encoder.finish()));
         let slice = readback.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        renderer.device.poll(wgpu::Maintain::Wait);
-        let data = slice.get_mapped_range();
+        let _ = renderer.device.poll(wgpu::PollType::wait_indefinitely());
+        let data = slice.get_mapped_range().expect("mapped GPU readback");
         let pixels = data
             .chunks_exact(BYTES_PER_ROW as usize)
             .take(height as usize)

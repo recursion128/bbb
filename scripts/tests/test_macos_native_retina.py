@@ -1,5 +1,6 @@
 import importlib.util
 import hashlib
+import copy
 import json
 import struct
 import subprocess
@@ -238,7 +239,69 @@ def candidate_evidence() -> dict[str, object]:
     }
 
 
+def wgpu30_candidate_evidence() -> dict[str, object]:
+    evidence = copy.deepcopy(candidate_evidence())
+    evidence["schema"] = retina.WGPU30_CANDIDATE_AB_SCHEMA
+    evidence["candidate_bbb_binary_sha256"] = "b" * 64
+    evidence["candidate_dependency_receipt"] = (
+        retina.load_committed_wgpu_dependency_receipt()
+    )
+    evidence["candidate_dependency_receipt_sha256"] = retina.file_digest(
+        retina.WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"
+    )
+    evidence["scheduling_contract"] = {
+        "status": "passed",
+        "platform": "macos",
+        "present_mode": "Immediate",
+        "baseline_desired_maximum_frame_latency": 2,
+        "candidate_desired_maximum_frame_latency": 2,
+        "baseline_expected_metal_drawable_count": 3,
+        "candidate_expected_metal_drawable_count": 3,
+        "baseline_actual_metal_drawable_count": 3,
+        "candidate_actual_metal_drawable_count": 3,
+        "baseline_in_flight_submission_budget": 1,
+        "candidate_in_flight_submission_budget": 1,
+        "queue_depth_increased": False,
+        "wait_acquire_submit_present_order_unchanged": True,
+        "input_latency_policy": "unchanged-single-in-flight",
+    }
+    runtime_receipt = {
+        **retina.WGPU_COMPONENT_VERSIONS,
+        "upstream_metal_fence_commit": retina.WGPU_METAL_FENCE_COMMIT,
+        "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+    }
+    for run in evidence["runs"]:
+        run["surface_presentation"] = {
+            "api": "metal",
+            "present_mode": "Immediate",
+            "desired_maximum_frame_latency": 2,
+            "expected_metal_drawable_count": 3,
+            "actual_metal_drawable_count": 3,
+            "actual_drawable_pixels": [2560, 1600],
+            "in_flight_submission_budget": 1,
+        }
+        run["binary_sha256"] = evidence[f'{run["variant"]}_bbb_binary_sha256']
+        if run["variant"] == "candidate":
+            run["runtime_dependency_receipt"] = dict(runtime_receipt)
+    return evidence
+
+
 class DisplayProbeTests(unittest.TestCase):
+    def test_committed_wgpu30_dependency_receipt_matches_registry_lock(self):
+        receipt = retina.load_committed_wgpu_dependency_receipt()
+
+        self.assertEqual(
+            {name: entry["version"] for name, entry in receipt["packages"].items()},
+            retina.WGPU_COMPONENT_VERSIONS,
+        )
+        self.assertFalse(receipt["local_wgpu_hal_patch"])
+        self.assertFalse(receipt["vendored_wgpu_hal"])
+        self.assertFalse(receipt["direct_wgpu_hal_dependency"])
+        self.assertEqual(
+            receipt["upstream_metal_fence_strategy"]["commit"],
+            retina.WGPU_METAL_FENCE_COMMIT,
+        )
+
     def test_checked_in_profile_contract_is_exact(self):
         contract = retina.load_profile_contract()
         self.assertEqual(contract["formal_order"], list(retina.FORMAL_ORDER))
@@ -460,12 +523,32 @@ class ProfilerTests(unittest.TestCase):
         presentation = retina._surface_presentation_from_log(
             "bbb",
             "renderer surface presentation selected present_mode=Immediate "
-            "supported_present_modes=[Fifo, Immediate] desired_maximum_frame_latency=1",
+            "supported_present_modes=[Fifo, Immediate] desired_maximum_frame_latency=2 "
+            "expected_metal_drawable_count=3 in_flight_submission_budget=1\n"
+            "native Metal layer presentation observed drawable_width=2560.0 "
+            "drawable_height=1600.0 maximum_drawable_count=3",
         )
 
         self.assertEqual(presentation["present_mode"], "Immediate")
-        self.assertEqual(presentation["desired_maximum_frame_latency"], 1)
-        self.assertEqual(presentation["expected_metal_drawable_count"], 2)
+        self.assertEqual(presentation["desired_maximum_frame_latency"], 2)
+        self.assertEqual(presentation["expected_metal_drawable_count"], 3)
+        self.assertEqual(presentation["actual_metal_drawable_count"], 3)
+        self.assertEqual(presentation["actual_drawable_pixels"], [2560, 1600])
+        self.assertEqual(presentation["in_flight_submission_budget"], 1)
+
+    def test_runtime_dependency_receipt_parses_all_wgpu_components(self):
+        receipt = retina._runtime_dependency_receipt_from_log(
+            "renderer dependency receipt wgpu_version=30.0.0 "
+            "wgpu_core_version=30.0.0 wgpu_hal_version=30.0.0 "
+            "wgpu_types_version=30.0.0 naga_version=30.0.0 "
+            f"upstream_metal_fence_commit={retina.WGPU_METAL_FENCE_COMMIT} "
+            "upstream_metal_fence_strategy=completion-handler-condition-variable"
+        )
+
+        self.assertEqual(receipt["wgpu-hal"], "30.0.0")
+        self.assertEqual(
+            receipt["upstream_metal_fence_commit"], retina.WGPU_METAL_FENCE_COMMIT
+        )
 
     def test_surface_presentation_log_missing_contract_is_rejected(self):
         with self.assertRaisesRegex(
@@ -734,6 +817,49 @@ class FormalValidationTests(unittest.TestCase):
         result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
 
         self.assertEqual(result["status"], "passed")
+
+    def test_wgpu30_candidate_requires_matching_dependency_and_runtime_receipts(self):
+        evidence = wgpu30_candidate_evidence()
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+
+        evidence["runs"][1]["runtime_dependency_receipt"]["wgpu-hal"] = "0.19.5"
+        failed = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+        self.assertIn(
+            "bbb_candidate_surface_run_mismatch",
+            {item["code"] for item in failed["failures"]},
+        )
+
+    def test_wgpu30_candidate_rejects_actual_drawable_count_before_metrics(self):
+        evidence = wgpu30_candidate_evidence()
+        evidence["parity_contract"]["drawable_pixels"] = [1920, 1200]
+        evidence["comparisons"] = "not-performance-evidence"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(
+            {item["code"] for item in result["failures"]},
+            {"bbb_candidate_parity_contract_mismatch"},
+        )
+
+    def test_wgpu30_candidate_rejects_missing_actual_surface_values_per_run(self):
+        evidence = wgpu30_candidate_evidence()
+        del evidence["runs"][2]["surface_presentation"]["actual_metal_drawable_count"]
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_surface_run_mismatch"
+        )
+        self.assertEqual(failure["run"], 3)
+        self.assertIn(
+            "surface_presentation.actual_metal_drawable_count",
+            {item["field"] for item in failure["mismatches"]},
+        )
 
     def test_candidate_cv_alone_is_diagnostic_when_absolute_metrics_improve(self):
         result = retina.validate_candidate_fps_evidence(candidate_evidence(), "c" * 40)

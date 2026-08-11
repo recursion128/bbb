@@ -41,7 +41,7 @@ const TERRAIN_CUTOUT_ALPHA_THRESHOLD: &str = "0.5";
 const TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD: &str = "0.01";
 const TERRAIN_ATLAS_MAG_FILTER: wgpu::FilterMode = wgpu::FilterMode::Linear;
 const TERRAIN_ATLAS_MIN_FILTER: wgpu::FilterMode = wgpu::FilterMode::Linear;
-const TERRAIN_ATLAS_MIPMAP_FILTER: wgpu::FilterMode = wgpu::FilterMode::Linear;
+const TERRAIN_ATLAS_MIPMAP_FILTER: wgpu::MipmapFilterMode = wgpu::MipmapFilterMode::Linear;
 
 const TERRAIN_SHADER: &str = r#"
 struct Camera {
@@ -565,7 +565,7 @@ pub(super) fn write_texture_atlas_mip_patches_gpu(
     for patch in patches {
         validate_atlas_mip_patch(width, height, mip_level_count, patch)?;
         queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: patch.level,
                 origin: wgpu::Origin3d {
@@ -576,7 +576,7 @@ pub(super) fn write_texture_atlas_mip_patches_gpu(
                 aspect: wgpu::TextureAspect::All,
             },
             &patch.rgba,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(patch.rect.width * 4),
                 rows_per_image: Some(patch.rect.height),
@@ -693,14 +693,14 @@ fn write_texture_rgba(
     rgba: &[u8],
 ) {
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture,
             mip_level,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),
             rows_per_image: Some(height),
@@ -929,11 +929,11 @@ fn create_selected_terrain_pipeline(
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-terrain-pipeline-layout"),
         bind_group_layouts: &[
-            camera_bind_group_layout,
-            lightmap_bind_group_layout,
-            section_bind_group_layout,
+            Some(camera_bind_group_layout),
+            Some(lightmap_bind_group_layout),
+            Some(section_bind_group_layout),
         ],
-        push_constant_ranges: &[],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -941,8 +941,9 @@ fn create_selected_terrain_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: &[terrain_vertex_layout()],
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(terrain_vertex_layout())],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode: TERRAIN_PIPELINE_CULL_MODE,
@@ -956,14 +957,16 @@ fn create_selected_terrain_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -1177,7 +1180,7 @@ mod tests {
         assert!(rgss.contains("smoothstep(min_pixel_size, min_pixel_size * 2.0"));
         assert_eq!(TERRAIN_ATLAS_MAG_FILTER, wgpu::FilterMode::Linear);
         assert_eq!(TERRAIN_ATLAS_MIN_FILTER, wgpu::FilterMode::Linear);
-        assert_eq!(TERRAIN_ATLAS_MIPMAP_FILTER, wgpu::FilterMode::Linear);
+        assert_eq!(TERRAIN_ATLAS_MIPMAP_FILTER, wgpu::MipmapFilterMode::Linear);
     }
 
     #[test]

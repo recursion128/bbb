@@ -235,6 +235,18 @@ restoring any row to `equivalent`.
   this two-drawable strategy may not be reused. Evidence:
   `low-latency-surface-ac-candidate.json` (SHA-256
   `662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`).
+  The active infrastructure step is now the crates.io wgpu 30.0.0 migration;
+  the rejected local wgpu-hal 0.19.5 backport is not a maintained option.
+  Its committed dependency receipt is
+  `docs/evidence/dependency-receipts/wgpu-30.0.0.json`, including the upstream
+  Metal condition-variable fence commit provenance. Candidate schema v3 keeps
+  v1/v2 historical validation, but additionally rejects a run before metrics
+  unless the binary/runtime dependency receipts, 2560x1600 CAMetalLayer
+  drawable, actual maximum drawable count 3, Immediate mode, latency hint 2,
+  single in-flight budget and workload contract all match. After a clean full
+  gate, run AC-only B-C-C-B twice against the fixed 0.19 binary. A failed
+  performance result retains wgpu 30 and becomes the evidence-backed restart
+  condition for one bounded optimization slice; it does not reopen the fork.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

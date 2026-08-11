@@ -25,6 +25,7 @@ import struct
 import subprocess
 import sys
 import time
+import tomllib
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -89,7 +90,12 @@ BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458
 MAX_BASELINE_FPS_MARGIN = 0.01
 LEGACY_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
 CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v2"
-ACCEPTED_CANDIDATE_AB_SCHEMAS = (LEGACY_CANDIDATE_AB_SCHEMA, CANDIDATE_AB_SCHEMA)
+WGPU30_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v3"
+ACCEPTED_CANDIDATE_AB_SCHEMAS = (
+    LEGACY_CANDIDATE_AB_SCHEMA,
+    CANDIDATE_AB_SCHEMA,
+    WGPU30_CANDIDATE_AB_SCHEMA,
+)
 CANDIDATE_AB_ORDER = ("baseline", "candidate", "candidate", "baseline") * 2
 CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
 FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
@@ -117,10 +123,113 @@ PROFILE_CONTRACT_PATH = (
     / "macos-native-retina-26.1.json"
 )
 REPO_ROOT = Path(__file__).resolve().parents[1]
+WGPU_DEPENDENCY_RECEIPT_PATH = (
+    REPO_ROOT / "docs" / "evidence" / "dependency-receipts" / "wgpu-30.0.0.json"
+)
+WGPU_COMPONENT_VERSIONS = {
+    "naga": "30.0.0",
+    "wgpu": "30.0.0",
+    "wgpu-core": "30.0.0",
+    "wgpu-hal": "30.0.0",
+    "wgpu-types": "30.0.0",
+}
+WGPU_REGISTRY_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
+WGPU_METAL_FENCE_COMMIT = "e0a6065c65b5b6c2e92ee7052ed084cd8910d486"
+WGPU_METAL_FENCE_STRATEGY = "completion-handler condition-variable wait"
 
 
 class RetinaAcceptanceError(RuntimeError):
     """The native-Retina contract or one of its evidence files is invalid."""
+
+
+def workspace_wgpu_dependency_receipt(repo: Path = REPO_ROOT) -> dict[str, object]:
+    cargo_toml_path = repo / "Cargo.toml"
+    cargo_lock_path = repo / "Cargo.lock"
+    try:
+        cargo_toml_bytes = cargo_toml_path.read_bytes()
+        cargo_lock_bytes = cargo_lock_path.read_bytes()
+        manifest = tomllib.loads(cargo_toml_bytes.decode("utf-8"))
+        lock = tomllib.loads(cargo_lock_bytes.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise RetinaAcceptanceError(f"cannot read Cargo dependency receipt: {error}") from error
+
+    requirement = manifest.get("workspace", {}).get("dependencies", {}).get("wgpu")
+    if requirement != "30.0.0":
+        raise RetinaAcceptanceError(
+            f"workspace wgpu dependency must be exactly 30.0.0, got {requirement!r}"
+        )
+    packages = lock.get("package")
+    if not isinstance(packages, list):
+        raise RetinaAcceptanceError("Cargo.lock lacks package receipts")
+    resolved: dict[str, dict[str, str]] = {}
+    for name, expected_version in WGPU_COMPONENT_VERSIONS.items():
+        matches = [entry for entry in packages if entry.get("name") == name]
+        if len(matches) != 1:
+            raise RetinaAcceptanceError(
+                f"Cargo.lock must resolve exactly one {name}, got {len(matches)}"
+            )
+        entry = matches[0]
+        version = entry.get("version")
+        source = entry.get("source")
+        checksum = entry.get("checksum")
+        if version != expected_version or source != WGPU_REGISTRY_SOURCE:
+            raise RetinaAcceptanceError(
+                f"Cargo.lock resolved {name} {version!r} from {source!r}, "
+                f"expected registry {expected_version}"
+            )
+        if not isinstance(checksum, str) or re.fullmatch(r"[0-9a-f]{64}", checksum) is None:
+            raise RetinaAcceptanceError(f"Cargo.lock {name} checksum is missing")
+        resolved[name] = {"version": version, "checksum": checksum}
+
+    patch = manifest.get("patch", {}).get("crates-io", {})
+    local_patch = isinstance(patch, Mapping) and "wgpu-hal" in patch
+    manifest_paths = [cargo_toml_path, *sorted((repo / "crates").glob("*/Cargo.toml"))]
+    direct_hal = any(
+        re.search(r"(?m)^\s*wgpu-hal\s*=", path.read_text(encoding="utf-8"))
+        for path in manifest_paths
+    )
+    vendored_hal = (repo / "third_party" / "wgpu-hal-0.19.5").exists()
+    if local_patch or direct_hal or vendored_hal:
+        raise RetinaAcceptanceError(
+            "wgpu 30 receipt forbids patched, direct, or vendored wgpu-hal"
+        )
+    return {
+        "schema": 1,
+        "workspace_dependency": "wgpu = 30.0.0",
+        "cargo_toml_sha256": hashlib.sha256(cargo_toml_bytes).hexdigest(),
+        "cargo_lock_sha256": hashlib.sha256(cargo_lock_bytes).hexdigest(),
+        "registry_source": WGPU_REGISTRY_SOURCE,
+        "packages": resolved,
+        "local_wgpu_hal_patch": False,
+        "vendored_wgpu_hal": False,
+        "direct_wgpu_hal_dependency": False,
+        "upstream_metal_fence_strategy": {
+            "first_release": "wgpu 30.0.0",
+            "commit": WGPU_METAL_FENCE_COMMIT,
+            "title": "fix(metal): Wait using a condition variable instead of polling",
+            "strategy": WGPU_METAL_FENCE_STRATEGY,
+            "fixes_issue": 8119,
+            "commit_url": (
+                "https://github.com/gfx-rs/wgpu/commit/"
+                f"{WGPU_METAL_FENCE_COMMIT}"
+            ),
+            "release_url": "https://github.com/gfx-rs/wgpu/releases/tag/v30.0.0",
+        },
+    }
+
+
+def load_committed_wgpu_dependency_receipt(
+    path: Path = WGPU_DEPENDENCY_RECEIPT_PATH,
+    repo: Path = REPO_ROOT,
+) -> dict[str, object]:
+    try:
+        committed = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RetinaAcceptanceError(f"cannot read wgpu dependency receipt {path}: {error}") from error
+    actual = workspace_wgpu_dependency_receipt(repo)
+    if committed != actual:
+        raise RetinaAcceptanceError("committed wgpu dependency receipt differs from Cargo files")
+    return committed
 
 
 def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, object]:
@@ -1556,6 +1665,8 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
 
     if evidence.get("schema") == LEGACY_CANDIDATE_AB_SCHEMA:
         return []
+    if evidence.get("schema") == WGPU30_CANDIDATE_AB_SCHEMA:
+        return _wgpu30_candidate_receipt_and_scheduling_failures(evidence)
     contract = evidence.get("scheduling_contract")
     if not isinstance(contract, Mapping):
         return [{"code": "bbb_candidate_scheduling_contract_missing"}]
@@ -1634,6 +1745,133 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
                 for field, value in expected_presentation
                 if presentation.get(field) != value
             )
+        if run_mismatches:
+            failures.append(
+                {
+                    "code": "bbb_candidate_surface_run_mismatch",
+                    "run": sequence,
+                    "mismatches": run_mismatches,
+                }
+            )
+    return failures
+
+
+def _wgpu30_candidate_receipt_and_scheduling_failures(
+    evidence: Mapping[str, object],
+) -> list[dict[str, object]]:
+    failures: list[dict[str, object]] = []
+    try:
+        committed_receipt = load_committed_wgpu_dependency_receipt()
+    except RetinaAcceptanceError as error:
+        return [{"code": "bbb_candidate_dependency_receipt_invalid", "error": str(error)}]
+    if evidence.get("candidate_dependency_receipt") != committed_receipt:
+        failures.append({"code": "bbb_candidate_dependency_receipt_mismatch"})
+    expected_receipt_sha256 = file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256")
+    if evidence.get("candidate_dependency_receipt_sha256") != expected_receipt_sha256:
+        failures.append({"code": "bbb_candidate_dependency_receipt_hash_mismatch"})
+
+    contract = evidence.get("scheduling_contract")
+    if not isinstance(contract, Mapping):
+        failures.append({"code": "bbb_candidate_scheduling_contract_missing"})
+        return failures
+    expected_contract: tuple[tuple[str, object], ...] = (
+        ("status", "passed"),
+        ("platform", "macos"),
+        ("present_mode", "Immediate"),
+        ("baseline_desired_maximum_frame_latency", 2),
+        ("candidate_desired_maximum_frame_latency", 2),
+        ("baseline_expected_metal_drawable_count", 3),
+        ("candidate_expected_metal_drawable_count", 3),
+        ("baseline_actual_metal_drawable_count", 3),
+        ("candidate_actual_metal_drawable_count", 3),
+        ("baseline_in_flight_submission_budget", 1),
+        ("candidate_in_flight_submission_budget", 1),
+        ("queue_depth_increased", False),
+        ("wait_acquire_submit_present_order_unchanged", True),
+        ("input_latency_policy", "unchanged-single-in-flight"),
+    )
+    mismatches = [
+        {"field": field, "expected": expected, "actual": contract.get(field)}
+        for field, expected in expected_contract
+        if contract.get(field) != expected
+    ]
+    if mismatches:
+        failures.append(
+            {"code": "bbb_candidate_scheduling_contract_mismatch", "mismatches": mismatches}
+        )
+
+    runs = evidence.get("runs")
+    if not isinstance(runs, list) or len(runs) != len(CANDIDATE_AB_ORDER):
+        failures.append(
+            {
+                "code": "bbb_candidate_surface_runs_missing",
+                "expected_count": len(CANDIDATE_AB_ORDER),
+                "actual_count": len(runs) if isinstance(runs, list) else None,
+            }
+        )
+        return failures
+    expected_candidate_versions = WGPU_COMPONENT_VERSIONS
+    for sequence, (run, expected_variant) in enumerate(
+        zip(runs, CANDIDATE_AB_ORDER, strict=True), start=1
+    ):
+        run_mismatches: list[dict[str, object]] = []
+        if not isinstance(run, Mapping):
+            failures.append({"code": "bbb_candidate_surface_run_malformed", "run": sequence})
+            continue
+        for field, expected in (("sequence", sequence), ("variant", expected_variant), ("status", "passed")):
+            if run.get(field) != expected:
+                run_mismatches.append(
+                    {"field": field, "expected": expected, "actual": run.get(field)}
+                )
+        presentation = run.get("surface_presentation")
+        if not isinstance(presentation, Mapping):
+            run_mismatches.append(
+                {"field": "surface_presentation", "expected": "mapping", "actual": presentation}
+            )
+        else:
+            expected_presentation: tuple[tuple[str, object], ...] = (
+                ("api", "metal"),
+                ("present_mode", "Immediate"),
+                ("desired_maximum_frame_latency", 2),
+                ("expected_metal_drawable_count", 3),
+                ("actual_metal_drawable_count", 3),
+                ("actual_drawable_pixels", [2560, 1600]),
+                ("in_flight_submission_budget", 1),
+            )
+            run_mismatches.extend(
+                {
+                    "field": f"surface_presentation.{field}",
+                    "expected": expected,
+                    "actual": presentation.get(field),
+                }
+                for field, expected in expected_presentation
+                if presentation.get(field) != expected
+            )
+        binary_sha256 = run.get("binary_sha256")
+        expected_binary_sha256 = evidence.get(f"{expected_variant}_bbb_binary_sha256")
+        if binary_sha256 != expected_binary_sha256:
+            run_mismatches.append(
+                {
+                    "field": "binary_sha256",
+                    "expected": expected_binary_sha256,
+                    "actual": binary_sha256,
+                }
+            )
+        if expected_variant == "candidate":
+            runtime = run.get("runtime_dependency_receipt")
+            expected_runtime = {
+                **expected_candidate_versions,
+                "upstream_metal_fence_commit": WGPU_METAL_FENCE_COMMIT,
+                "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+            }
+            if runtime != expected_runtime:
+                run_mismatches.append(
+                    {
+                        "field": "runtime_dependency_receipt",
+                        "expected": expected_runtime,
+                        "actual": runtime,
+                    }
+                )
         if run_mismatches:
             failures.append(
                 {
@@ -2422,22 +2660,94 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
             "present_mode": "device-controlled",
             "desired_maximum_frame_latency": None,
             "expected_metal_drawable_count": None,
+            "actual_metal_drawable_count": None,
+            "actual_drawable_pixels": None,
+            "in_flight_submission_budget": None,
         }
     line = re.search(
         r"renderer surface presentation selected[^\n]*present_mode=([A-Za-z]+)[^\n]*"
-        r"desired_maximum_frame_latency=([0-9]+)",
+        r"desired_maximum_frame_latency=([0-9]+)[^\n]*"
+        r"expected_metal_drawable_count=([0-9]+)[^\n]*"
+        r"in_flight_submission_budget=([0-9]+)",
         text,
     )
     if line is None:
         raise RetinaAcceptanceError("BBB log lacks surface presentation contract")
     latency = int(line.group(2))
+    observed = re.search(
+        r"native Metal layer presentation observed[^\n]*drawable_width=([0-9.]+)[^\n]*"
+        r"drawable_height=([0-9.]+)[^\n]*maximum_drawable_count=([0-9]+)",
+        text,
+    )
+    if observed is None:
+        raise RetinaAcceptanceError("BBB log lacks actual CAMetalLayer presentation evidence")
+    drawable = [round(float(observed.group(1))), round(float(observed.group(2)))]
     return {
         "api": "metal",
         "present_mode": line.group(1),
         "desired_maximum_frame_latency": latency,
-        "expected_metal_drawable_count": latency + 1,
-        "count_basis": "wgpu-hal 0.19 Metal maximum_frame_latency + 1",
+        "expected_metal_drawable_count": int(line.group(3)),
+        "actual_metal_drawable_count": int(observed.group(3)),
+        "actual_drawable_pixels": drawable,
+        "in_flight_submission_budget": int(line.group(4)),
+        "count_basis": "runtime CAMetalLayer maximumDrawableCount observation",
     }
+
+
+def _runtime_dependency_receipt_from_log(text: str) -> dict[str, str]:
+    line = re.search(r"renderer dependency receipt[^\n]*", text)
+    if line is None:
+        raise RetinaAcceptanceError("BBB log lacks runtime dependency receipt")
+
+    def field(name: str) -> str:
+        match = re.search(rf'{name}=(?:"([^"]+)"|([^ ]+))', line.group(0))
+        if match is None:
+            raise RetinaAcceptanceError(f"BBB runtime dependency receipt lacks {name}")
+        return (match.group(1) or match.group(2)).strip()
+
+    return {
+        "wgpu": field("wgpu_version"),
+        "wgpu-core": field("wgpu_core_version"),
+        "wgpu-hal": field("wgpu_hal_version"),
+        "wgpu-types": field("wgpu_types_version"),
+        "naga": field("naga_version"),
+        "upstream_metal_fence_commit": field("upstream_metal_fence_commit"),
+        "upstream_metal_fence_strategy": field("upstream_metal_fence_strategy"),
+    }
+
+
+def load_bbb_build_info(binary: Path) -> dict[str, object]:
+    completed = subprocess.run(
+        (str(binary), "--build-info"),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise RetinaAcceptanceError(
+            f"BBB --build-info failed with exit {completed.returncode}: {completed.stderr.strip()}"
+        )
+    try:
+        value = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise RetinaAcceptanceError(f"BBB --build-info is not JSON: {error}") from error
+    expected = {
+        "wgpu_version": "30.0.0",
+        "wgpu_core_version": "30.0.0",
+        "wgpu_hal_version": "30.0.0",
+        "wgpu_types_version": "30.0.0",
+        "naga_version": "30.0.0",
+        "upstream_metal_fence_commit": WGPU_METAL_FENCE_COMMIT,
+        "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+    }
+    mismatches = {
+        field: {"expected": expected_value, "actual": value.get(field)}
+        for field, expected_value in expected.items()
+        if value.get(field) != expected_value
+    }
+    if mismatches:
+        raise RetinaAcceptanceError(f"BBB --build-info dependency mismatch: {mismatches}")
+    return value
 
 
 def _write_profile_samples(
@@ -2733,6 +3043,19 @@ def _run_client(
             result["surface_presentation"] = None
             result.setdefault("validation_failures", []).append(str(error))
             result["status"] = "failed"
+        if client == "bbb":
+            try:
+                result["runtime_dependency_receipt"] = _runtime_dependency_receipt_from_log(
+                    client_text
+                )
+                load_committed_wgpu_dependency_receipt()
+                result["committed_dependency_receipt"] = {
+                    "path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
+                    "sha256": file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"),
+                }
+            except RetinaAcceptanceError as error:
+                result.setdefault("validation_failures", []).append(str(error))
+                result["status"] = "failed"
         result["effective_window_mode"] = (
             "windowed-fallback"
             if client == "vanilla"
@@ -2762,6 +3085,8 @@ def run_formal(
     if artifact_root.exists() and any(artifact_root.iterdir()):
         raise RetinaAcceptanceError(f"formal artifact root is not empty: {artifact_root}")
     capture_commit = require_clean_full_gated_head()
+    dependency_receipt = load_committed_wgpu_dependency_receipt()
+    bbb_build_info = load_bbb_build_info(bbb_binary)
     candidate_fps_evidence = None
     if capture_commit != BASELINE_BBB_COMMIT:
         if candidate_fps_evidence_path is None:
@@ -2833,6 +3158,10 @@ def run_formal(
                     "replay_sha256": file_digest(replay_path, "sha256"),
                     "world_snapshot": asdict(snapshot),
                     "natives": [asdict(entry) for entry in natives],
+                    "bbb_build_info": bbb_build_info,
+                    "wgpu_dependency_receipt_sha256": file_digest(
+                        WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"
+                    ),
                     "runs": run_paths,
                 }
             )
@@ -2861,6 +3190,12 @@ def run_formal(
             "world_snapshot": asdict(snapshot),
             "bbb_binary": str(bbb_binary),
             "bbb_binary_sha256": file_digest(bbb_binary, "sha256"),
+            "bbb_build_info": bbb_build_info,
+            "wgpu_dependency_receipt": dependency_receipt,
+            "wgpu_dependency_receipt_path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
+            "wgpu_dependency_receipt_sha256": file_digest(
+                WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"
+            ),
         }
     )
     report_path = artifact_root / "report.json"
@@ -2871,6 +3206,7 @@ def run_formal(
 def _detect_command(args: argparse.Namespace) -> int:
     display = probe_builtin_display()
     profile_contract = load_profile_contract()
+    dependency_receipt = load_committed_wgpu_dependency_receipt()
     report = {
         "schema": SCHEMA,
         "profile": PROFILE_ID,
@@ -2883,8 +3219,30 @@ def _detect_command(args: argparse.Namespace) -> int:
             display, server_port=args.server_port, control_port=args.control_port
         ),
         "settings": settings_identity(),
+        "wgpu_dependency_receipt": dependency_receipt,
+        "wgpu_dependency_receipt_path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
+        "wgpu_dependency_receipt_sha256": file_digest(
+            WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"
+        ),
     }
     payload = canonical_json_bytes(report)
+    if args.output is None:
+        sys.stdout.buffer.write(payload)
+    else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_bytes(payload)
+    return 0
+
+
+def _dependency_receipt_command(args: argparse.Namespace) -> int:
+    receipt = load_committed_wgpu_dependency_receipt()
+    payload = canonical_json_bytes(
+        {
+            "receipt": receipt,
+            "path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
+            "sha256": file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"),
+        }
+    )
     if args.output is None:
         sys.stdout.buffer.write(payload)
     else:
@@ -3008,6 +3366,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     detect.add_argument("--output", type=Path)
     detect.add_argument("--server-port", type=int, default=25565)
     detect.add_argument("--control-port", type=int, default=24454)
+    dependency_receipt = subparsers.add_parser("dependency-receipt")
+    dependency_receipt.add_argument("--output", type=Path)
     summarize = subparsers.add_parser("summarize")
     summarize.add_argument("--manifest", type=Path, required=True)
     summarize.add_argument("--output", type=Path, required=True)
@@ -3045,6 +3405,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "detect":
             return _detect_command(args)
+        if args.command == "dependency-receipt":
+            return _dependency_receipt_command(args)
         if args.command == "summarize":
             return _summarize_command(args)
         if args.command == "revalidate":

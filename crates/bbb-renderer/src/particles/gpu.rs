@@ -260,8 +260,8 @@ pub(crate) fn create_selected_particle_pipeline(
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-particle-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout), Some(lightmap_bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -269,8 +269,9 @@ pub(crate) fn create_selected_particle_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: &[vertex_layout],
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(vertex_layout)],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -284,14 +285,16 @@ pub(crate) fn create_selected_particle_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -322,14 +325,14 @@ pub(crate) fn create_particle_atlas_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),
             rows_per_image: Some(height),
@@ -348,7 +351,7 @@ pub(crate) fn create_particle_atlas_gpu(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -391,14 +394,14 @@ pub(crate) fn update_particle_atlas_gpu(
 ) -> Result<()> {
     validate_particle_atlas_rgba(atlas.width, atlas.height, rgba)?;
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &atlas.texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(atlas.width * 4),
             rows_per_image: Some(atlas.height),

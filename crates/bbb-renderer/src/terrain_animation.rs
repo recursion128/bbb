@@ -200,7 +200,7 @@ impl TerrainAtlasAnimationGpu {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
         let atlas_width = plan.atlas_width;
@@ -288,7 +288,7 @@ impl TerrainAtlasAnimationGpu {
                         mip,
                     )?;
                     queue.write_texture(
-                        wgpu::ImageCopyTexture {
+                        wgpu::TexelCopyTextureInfo {
                             texture: &texture,
                             mip_level: level as u32,
                             origin: wgpu::Origin3d {
@@ -299,7 +299,7 @@ impl TerrainAtlasAnimationGpu {
                             aspect: wgpu::TextureAspect::All,
                         },
                         &mip.rgba,
-                        wgpu::ImageDataLayout {
+                        wgpu::TexelCopyBufferLayout {
                             offset: 0,
                             bytes_per_row: Some(mip.width * 4),
                             rows_per_image: Some(mip.height),
@@ -336,6 +336,7 @@ impl TerrainAtlasAnimationGpu {
                 label: Some("bbb-terrain-animation-source-frames-view"),
                 format: Some(wgpu::TextureFormat::Rgba8Unorm),
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
+                usage: None,
                 aspect: wgpu::TextureAspect::All,
                 base_mip_level: 0,
                 mip_level_count: Some(mip_level_count),
@@ -459,6 +460,7 @@ impl TerrainAtlasAnimationGpu {
                 label: Some("bbb-terrain-animation-atlas-mip"),
                 format: Some(wgpu::TextureFormat::Rgba8Unorm),
                 dimension: Some(wgpu::TextureViewDimension::D2),
+                usage: None,
                 aspect: wgpu::TextureAspect::All,
                 base_mip_level: level,
                 mip_level_count: Some(1),
@@ -469,6 +471,7 @@ impl TerrainAtlasAnimationGpu {
                 label: Some("bbb-terrain-animation-atlas-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -478,6 +481,7 @@ impl TerrainAtlasAnimationGpu {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             if let Some(bundle) = self.interpolate_bundles.get(level as usize) {
                 pass.execute_bundles(std::iter::once(bundle));
@@ -761,25 +765,26 @@ mod tests {
     fn gpu_interpolated_animation_bundle_updates_content_and_replicated_gutter() {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
-        let Some(adapter) =
+        let Ok(adapter) =
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: None,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             }))
         else {
             return;
         };
-        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
+        let Ok((device, queue)) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("bbb-terrain-animation-test-device"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::downlevel_defaults(),
-            },
-            None,
-        )) else {
+                ..Default::default()
+            }))
+        else {
             return;
         };
         let initial = [200, 0, 0, 255].repeat(16);
@@ -851,15 +856,15 @@ mod tests {
             mapped_at_creation: false,
         });
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &atlas.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(4),
@@ -877,12 +882,12 @@ mod tests {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
         receiver
             .recv()
             .expect("map callback")
             .expect("map readback");
-        let mapped = slice.get_mapped_range();
+        let mapped = slice.get_mapped_range().expect("mapped GPU readback");
         for y in 0..4usize {
             for x in 0..4usize {
                 let offset = y * bytes_per_row as usize + x * 4;

@@ -93,6 +93,14 @@ validator 拒绝全部 22 个 FPS scope 和 44 个绝对稳定性比较。combin
 `662d716afdf23442713dbab6ed70892948db8246949c00b36ddaaabe9c08a939`）。默认 hint 2
 已恢复，该候选不进入 Vanilla ABBA。
 
+wgpu 30 基础设施候选使用 `macos-native-retina-bbb-ab-v3`。它向后接受 v1/v2 失败报告，
+但新 capture 必须绑定 committed registry dependency receipt、两侧 binary hash、candidate
+`--build-info` 与 renderer runtime receipt。surface contract 除配置的 Immediate/hint 2/
+single-in-flight 外，还从实际 CAMetalLayer 读取 2560x1600 `drawableSize` 和
+`maximumDrawableCount=3`；缺失或不匹配时 validator 在解析任何 FPS comparison 前返回
+blocker。只有 AC Power 的 B-C-C-B×2 在 combined、三个 scene、两个 round、全部 nearest
+pair 与逐 scene pair 的 FPS/绝对 App/GPU stability scope 全过，才允许正式 Java ABBA。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。

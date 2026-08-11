@@ -2026,8 +2026,8 @@ pub(crate) fn create_selected_position_color_pipeline(
         compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-position-color-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2035,8 +2035,9 @@ pub(crate) fn create_selected_position_color_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: &[vertex_layout],
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(vertex_layout)],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -2050,14 +2051,16 @@ pub(crate) fn create_selected_position_color_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2075,8 +2078,8 @@ pub(crate) fn create_selected_position_tex_color_pipeline(
         compile_selected_shader_stages(device, label, &shaders.vertex, &shaders.fragment)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-position-tex-color-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2084,22 +2087,25 @@ pub(crate) fn create_selected_position_tex_color_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2139,8 +2145,10 @@ pub(crate) fn create_selected_entity_pipeline(
         compile_selected_shader_stages(device, label, &vertex_source, &fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-entity-pipeline-layout"),
-        bind_group_layouts,
-        push_constant_ranges: &[],
+        bind_group_layouts: &crate::pipeline_builder::optional_bind_group_layouts(
+            bind_group_layouts,
+        ),
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2148,8 +2156,9 @@ pub(crate) fn create_selected_entity_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -2163,14 +2172,16 @@ pub(crate) fn create_selected_entity_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
                     write_mask: color_write_mask,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2195,8 +2206,8 @@ pub(crate) fn create_selected_end_portal_pipeline(
         compile_selected_shader_stages(device, label, &vertex_source, &fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-end-portal-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2204,8 +2215,9 @@ pub(crate) fn create_selected_end_portal_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -2221,14 +2233,16 @@ pub(crate) fn create_selected_end_portal_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2248,8 +2262,8 @@ pub(crate) fn create_selected_outline_pipeline(
         compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-outline-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2257,8 +2271,9 @@ pub(crate) fn create_selected_outline_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -2272,14 +2287,16 @@ pub(crate) fn create_selected_outline_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2299,8 +2316,8 @@ pub(crate) fn create_selected_line_pipeline(
         compile_selected_shader_stages(device, label, &shaders.vertex, &shaders.fragment)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-line-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2308,8 +2325,9 @@ pub(crate) fn create_selected_line_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: &[vertex_layout],
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(vertex_layout)],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -2326,14 +2344,16 @@ pub(crate) fn create_selected_line_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2354,8 +2374,10 @@ pub(crate) fn create_selected_text_pipeline(
         compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-text-pipeline-layout"),
-        bind_group_layouts,
-        push_constant_ranges: &[],
+        bind_group_layouts: &crate::pipeline_builder::optional_bind_group_layouts(
+            bind_group_layouts,
+        ),
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2363,8 +2385,9 @@ pub(crate) fn create_selected_text_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: &[vertex_layout],
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(vertex_layout)],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,
@@ -2374,14 +2397,16 @@ pub(crate) fn create_selected_text_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -2401,8 +2426,10 @@ pub(crate) fn create_selected_glint_pipeline(
         compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-glint-pipeline-layout"),
-        bind_group_layouts,
-        push_constant_ranges: &[],
+        bind_group_layouts: &crate::pipeline_builder::optional_bind_group_layouts(
+            bind_group_layouts,
+        ),
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2410,8 +2437,9 @@ pub(crate) fn create_selected_glint_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
-                buffers: vertex_layouts,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &crate::pipeline_builder::optional_vertex_layouts(vertex_layouts),
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode: None,
@@ -2427,14 +2455,16 @@ pub(crate) fn create_selected_glint_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(SELECTED_GLINT_BLEND),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }

@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::counters::RendererCounters;
 
@@ -50,19 +50,44 @@ impl RenderSurface {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         counters: &mut RendererCounters,
-        injected_fault: Option<wgpu::SurfaceError>,
+        injected_fault: Option<wgpu::SurfaceStatus>,
     ) -> Result<Option<FrameTarget>> {
         let acquired = match injected_fault {
-            Some(error) => Err(error),
+            Some(status) => InjectedOrAcquiredSurface::Status(status),
             None => match self {
-                Self::Window(surface) => surface.get_current_texture().map(FrameTarget::Surface),
+                Self::Window(surface) => match surface.get_current_texture() {
+                    wgpu::CurrentSurfaceTexture::Success(frame) => {
+                        InjectedOrAcquiredSurface::Frame(FrameTarget::Surface(frame))
+                    }
+                    wgpu::CurrentSurfaceTexture::Suboptimal(frame) => {
+                        drop(frame);
+                        InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Suboptimal)
+                    }
+                    wgpu::CurrentSurfaceTexture::Timeout => {
+                        InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Timeout)
+                    }
+                    wgpu::CurrentSurfaceTexture::Occluded => {
+                        InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Occluded)
+                    }
+                    wgpu::CurrentSurfaceTexture::Outdated => {
+                        InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Outdated)
+                    }
+                    wgpu::CurrentSurfaceTexture::Lost => {
+                        InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Lost)
+                    }
+                    wgpu::CurrentSurfaceTexture::Validation => {
+                        InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Validation)
+                    }
+                },
                 #[cfg(test)]
-                Self::Offscreen(texture) => Ok(FrameTarget::Offscreen(texture.clone())),
+                Self::Offscreen(texture) => {
+                    InjectedOrAcquiredSurface::Frame(FrameTarget::Offscreen(texture.clone()))
+                }
             },
         };
         match acquired {
-            Ok(frame) => Ok(Some(frame)),
-            Err(wgpu::SurfaceError::Lost) => {
+            InjectedOrAcquiredSurface::Frame(frame) => Ok(Some(frame)),
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Lost) => {
                 counters.surface_lost = counters.surface_lost.saturating_add(1);
                 counters.surface_reconfigurations =
                     counters.surface_reconfigurations.saturating_add(1);
@@ -70,7 +95,7 @@ impl RenderSurface {
                 self.configure(device, config);
                 Ok(None)
             }
-            Err(wgpu::SurfaceError::Outdated) => {
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Outdated) => {
                 counters.surface_outdated = counters.surface_outdated.saturating_add(1);
                 counters.surface_reconfigurations =
                     counters.surface_reconfigurations.saturating_add(1);
@@ -78,12 +103,28 @@ impl RenderSurface {
                 self.configure(device, config);
                 Ok(None)
             }
-            Err(wgpu::SurfaceError::Timeout) => {
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Timeout) => {
                 counters.surface_timeouts = counters.surface_timeouts.saturating_add(1);
                 counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
                 Ok(None)
             }
-            Err(error) => Err(error.into()),
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Occluded) => {
+                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
+                Ok(None)
+            }
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Suboptimal) => {
+                counters.surface_reconfigurations =
+                    counters.surface_reconfigurations.saturating_add(1);
+                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
+                self.configure(device, config);
+                Ok(None)
+            }
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Validation) => {
+                Err(anyhow!("surface acquisition validation error"))
+            }
+            InjectedOrAcquiredSurface::Status(wgpu::SurfaceStatus::Good) => Err(anyhow!(
+                "surface acquisition reported success without a texture"
+            )),
         }
     }
 
@@ -111,6 +152,11 @@ impl RenderSurface {
     }
 }
 
+enum InjectedOrAcquiredSurface {
+    Frame(FrameTarget),
+    Status(wgpu::SurfaceStatus),
+}
+
 /// One frame's acquired color target: a swapchain frame to present, or the
 /// offscreen texture (readback harness) where present is a no-op.
 pub(super) enum FrameTarget {
@@ -128,9 +174,9 @@ impl FrameTarget {
         }
     }
 
-    fn present(self) {
+    fn present(self, queue: &wgpu::Queue) {
         match self {
-            Self::Surface(frame) => frame.present(),
+            Self::Surface(frame) => queue.present(frame),
             #[cfg(test)]
             Self::Offscreen(_) => {}
         }
@@ -182,22 +228,36 @@ impl FrameFlightController {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         counters: &mut RendererCounters,
-        injected_fault: Option<wgpu::SurfaceError>,
+        injected_fault: Option<wgpu::SurfaceStatus>,
         profile_wait: bool,
         render_encoding_started_at: Instant,
     ) -> FrameFlightAcquisition {
-        let previous_submission =
+        let previous_submission_result =
             self.wait_for_previous_submission(device, config.present_mode, profile_wait);
         let render_duration_before_surface = render_encoding_started_at.elapsed();
-        let surface_acquire_started_at = Instant::now();
-        let frame = surface.acquire_frame(device, config, counters, injected_fault);
+        let (previous_submission, frame, surface_acquire) = match previous_submission_result {
+            Ok(previous_submission) => {
+                let surface_acquire_started_at = Instant::now();
+                let frame = surface.acquire_frame(device, config, counters, injected_fault);
+                (
+                    previous_submission,
+                    frame,
+                    surface_acquire_started_at.elapsed(),
+                )
+            }
+            Err(error) => (
+                PreviousSubmissionSynchronization::default(),
+                Err(error),
+                Duration::ZERO,
+            ),
+        };
         FrameFlightAcquisition {
             frame,
             previous_submission_poll: previous_submission.poll,
             previous_submission_blocking_wait: previous_submission.blocking_wait,
             previous_submission_wait: previous_submission.total,
             render_duration_before_surface,
-            surface_acquire: surface_acquire_started_at.elapsed(),
+            surface_acquire,
         }
     }
 
@@ -206,7 +266,7 @@ impl FrameFlightController {
         device: &wgpu::Device,
         present_mode: wgpu::PresentMode,
         profile_wait: bool,
-    ) -> PreviousSubmissionSynchronization {
+    ) -> Result<PreviousSubmissionSynchronization> {
         #[cfg(target_os = "macos")]
         {
             let budget = in_flight_budget(FrameFlightPlatform::CURRENT, present_mode);
@@ -215,11 +275,18 @@ impl FrameFlightController {
                 if let Some(submission) = self.previous_submission.take() {
                     let synchronization_started_at = profile_wait.then(Instant::now);
                     let wait_started_at = profile_wait.then(Instant::now);
-                    device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
+                    let poll_result = device.poll(wgpu::PollType::Wait {
+                        submission_index: Some(submission.clone()),
+                        timeout: None,
+                    });
                     let blocking_wait = wait_started_at
                         .map(|started_at| started_at.elapsed())
                         .unwrap_or_default();
-                    return PreviousSubmissionSynchronization {
+                    if let Err(error) = poll_result {
+                        self.previous_submission = Some(submission);
+                        return Err(error.into());
+                    }
+                    return Ok(PreviousSubmissionSynchronization {
                         // Schema v2 retains the rejected completion-poll phase
                         // as an explicit zero rather than changing old columns.
                         poll: Duration::ZERO,
@@ -227,15 +294,15 @@ impl FrameFlightController {
                         total: synchronization_started_at
                             .map(|started_at| started_at.elapsed())
                             .unwrap_or_default(),
-                    };
+                    });
                 }
             }
-            PreviousSubmissionSynchronization::default()
+            Ok(PreviousSubmissionSynchronization::default())
         }
         #[cfg(not(target_os = "macos"))]
         {
             let _ = (device, present_mode, profile_wait);
-            PreviousSubmissionSynchronization::default()
+            Ok(PreviousSubmissionSynchronization::default())
         }
     }
 
@@ -256,7 +323,7 @@ impl FrameFlightController {
         let queue_submit = submit_started_at.elapsed();
 
         let present_started_at = Instant::now();
-        frame.present();
+        frame.present(queue);
         FrameFlightSubmission {
             queue_submit,
             swap_buffers_present: present_started_at.elapsed(),
@@ -327,10 +394,11 @@ mod tests {
             .map(|offset| submit + offset)
             .unwrap();
         let present = source[record_submission..]
-            .find("frame.present()")
+            .find("frame.present(queue)")
             .map(|offset| record_submission + offset)
             .unwrap();
         assert!(submit < record_submission && record_submission < present);
+        assert!(source.contains("Self::Surface(frame) => queue.present(frame)"));
     }
 
     #[test]
@@ -339,14 +407,37 @@ mod tests {
         let wait = source.find("fn wait_for_previous_submission(").unwrap();
         let submit = source.find("pub(super) fn submit_and_present(").unwrap();
         let body = &source[wait..submit];
-        let blocking_wait = body
-            .find("wgpu::Maintain::WaitForSubmissionIndex(submission)")
-            .unwrap();
+        let blocking_wait = body.find("wgpu::PollType::Wait").unwrap();
         assert!(blocking_wait > 0);
-        assert!(!body.contains("wgpu::Maintain::Poll"));
+        assert!(!body.contains("wgpu::PollType::Poll"));
         assert!(!body.contains("is_queue_empty"));
         assert!(body.contains("self.previous_submission.take()"));
+        assert!(body.contains("submission_index: Some(submission.clone())"));
+        assert!(body.contains("timeout: None"));
+        assert!(body.contains("self.previous_submission = Some(submission)"));
         assert!(body.contains("poll: Duration::ZERO"));
+    }
+
+    #[test]
+    fn wgpu30_surface_statuses_are_all_handled_fail_closed() {
+        let source = include_str!("frame_flight.rs");
+        for status in [
+            "Success(frame)",
+            "Suboptimal(frame)",
+            "Timeout",
+            "Occluded",
+            "Outdated",
+            "Lost",
+            "Validation",
+        ] {
+            assert!(
+                source.contains(&format!("wgpu::CurrentSurfaceTexture::{status}")),
+                "missing CurrentSurfaceTexture::{status}"
+            );
+        }
+        assert!(source.contains("SurfaceStatus::Suboptimal"));
+        assert!(source.contains("SurfaceStatus::Occluded"));
+        assert!(source.contains("surface acquisition validation error"));
     }
 
     #[test]

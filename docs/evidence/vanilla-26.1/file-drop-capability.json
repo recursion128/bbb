@@ -5,16 +5,16 @@
       "source": {
         "anchors": [
           {
-            "line": 2613,
+            "line": 2634,
             "symbol": "window-event adapter"
           },
           {
-            "line": 2608,
+            "line": 2629,
             "symbol": "Linux Java 25 scope ruling"
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "6c1b08b815f9fb9a6721d3e606f729f02ea7da8c85a5053069341d6fd8cef9bc"
+        "sha256": "e4011470ee4d5f4c3be239e990b0def1a697168b630c60255dea7bd7cdc40506"
       },
       "successful_path_event_consumed": false,
       "valid_path_values_consumed": false,
@@ -176,7 +176,7 @@
   "generator_inputs": [
     {
       "path": "Cargo.lock",
-      "sha256": "4b4378ed86ae39c6026b0c54df2bf748db302d724e8ddffe942f2b7cc62d7b02"
+      "sha256": "f5f8de14d91c1ee8a5e446121ffea731919cab1426dd7017ef5ca7a42f68c687"
     },
     {
       "path": "scripts/file_drop_capability.py",

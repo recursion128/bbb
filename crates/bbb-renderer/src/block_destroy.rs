@@ -187,8 +187,8 @@ pub(crate) fn create_block_destroy_pipeline_with_shaders(
         )?;
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("bbb-selected-block-destroy-layout"),
-            bind_group_layouts: &[terrain_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(terrain_bind_group_layout)],
+            immediate_size: 0,
         });
         return Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -196,8 +196,9 @@ pub(crate) fn create_block_destroy_pipeline_with_shaders(
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &vertex,
-                    entry_point: "main",
-                    buffers: &[block_destroy_vertex_layout()],
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(block_destroy_vertex_layout())],
                 },
                 primitive: wgpu::PrimitiveState {
                     cull_mode: BLOCK_DESTROY_CULL_MODE,
@@ -214,14 +215,16 @@ pub(crate) fn create_block_destroy_pipeline_with_shaders(
                 multisample: wgpu::MultisampleState::default(),
                 fragment: Some(wgpu::FragmentState {
                     module: &fragment,
-                    entry_point: "main",
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
                         blend: Some(BLOCK_DESTROY_CRUMBLING_BLEND),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
-                multiview: None,
+                multiview_mask: None,
+                cache: None,
             }),
         );
     }

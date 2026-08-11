@@ -560,7 +560,7 @@ fn create_sampler(device: &wgpu::Device, label: &str, linear: bool) -> wgpu::Sam
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: filter,
         min_filter: filter,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     })
 }
@@ -931,6 +931,7 @@ fn draw_fullscreen(
         label: Some(label),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
             view: destination,
+            depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -940,6 +941,7 @@ fn draw_fullscreen(
         depth_stencil_attachment: None,
         occlusion_query_set: None,
         timestamp_writes: None,
+        multiview_mask: None,
     });
     pass.set_pipeline(pipeline);
     pass.set_bind_group(0, bind_group, &[]);

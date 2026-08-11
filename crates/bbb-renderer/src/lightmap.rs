@@ -210,8 +210,8 @@ fn create_selected_lightmap_pipeline(
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-lightmap-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(bind_group_layout)],
+        immediate_size: 0,
     });
     Ok(
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -219,7 +219,8 @@ fn create_selected_lightmap_pipeline(
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &vertex,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 buffers: &[],
             },
             primitive: wgpu::PrimitiveState::default(),
@@ -227,14 +228,16 @@ fn create_selected_lightmap_pipeline(
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: LIGHTMAP_FORMAT,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
+            cache: None,
         }),
     )
 }
@@ -265,14 +268,14 @@ pub(super) fn create_lightmap_gpu(
     });
     let initial_white = [255u8; (LIGHTMAP_TEXTURE_SIZE * LIGHTMAP_TEXTURE_SIZE * 4) as usize];
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &initial_white,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(4 * LIGHTMAP_TEXTURE_SIZE),
             rows_per_image: Some(LIGHTMAP_TEXTURE_SIZE),
@@ -291,7 +294,7 @@ pub(super) fn create_lightmap_gpu(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -528,15 +531,15 @@ mod tests {
                 label: Some("bbb-lightmap-test-readback"),
             });
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &renderer.lightmap._texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(padded_bytes_per_row),
                     rows_per_image: Some(LIGHTMAP_TEXTURE_SIZE),
@@ -555,9 +558,9 @@ mod tests {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).unwrap();
         });
-        renderer.device.poll(wgpu::Maintain::Wait);
+        let _ = renderer.device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().unwrap().unwrap();
-        let mapped = slice.get_mapped_range();
+        let mapped = slice.get_mapped_range().expect("mapped GPU readback");
         let mut pixels =
             Vec::with_capacity((unpadded_bytes_per_row * LIGHTMAP_TEXTURE_SIZE) as usize);
         for row in mapped

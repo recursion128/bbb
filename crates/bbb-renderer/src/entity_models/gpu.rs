@@ -4426,14 +4426,14 @@ fn create_entity_model_texture_atlas_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(layout.width * 4),
             rows_per_image: Some(layout.height),
@@ -4527,14 +4527,14 @@ fn create_dynamic_player_skin_atlas_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(layout.width * 4),
             rows_per_image: Some(layout.height),
@@ -4628,14 +4628,14 @@ fn create_dynamic_player_texture_atlas_gpu(
         view_formats: &[],
     });
     queue.write_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         &rgba,
-        wgpu::ImageDataLayout {
+        wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(layout.width * 4),
             rows_per_image: Some(layout.height),
@@ -4764,7 +4764,7 @@ fn create_entity_model_texture_sampler(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     })
 }
@@ -6591,7 +6591,7 @@ mod tests {
             "address_mode_w: wgpu::AddressMode::ClampToEdge",
             "mag_filter: wgpu::FilterMode::Nearest",
             "min_filter: wgpu::FilterMode::Nearest",
-            "mipmap_filter: wgpu::FilterMode::Nearest",
+            "mipmap_filter: wgpu::MipmapFilterMode::Nearest",
         ] {
             assert!(
                 helper_source.contains(state),

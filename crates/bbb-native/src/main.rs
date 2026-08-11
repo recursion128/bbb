@@ -1091,6 +1091,27 @@ fn run_client(mut args: startup::Args) -> Result<()> {
     if startup_surface_size != renderer.physical_surface_size() {
         renderer.resize(startup_surface_size)?;
     }
+    #[cfg(target_os = "macos")]
+    {
+        use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+        let presentation = window.window_handle().ok().and_then(|handle| {
+            let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
+                return None;
+            };
+            bbb_platform_macos::metal_layer_presentation(handle.ns_view).ok()
+        });
+        if let Some(presentation) = presentation {
+            tracing::info!(
+                drawable_width = presentation.drawable_width,
+                drawable_height = presentation.drawable_height,
+                maximum_drawable_count = presentation.maximum_drawable_count,
+                "native Metal layer presentation observed"
+            );
+        } else {
+            tracing::warn!("native Metal layer presentation probe unavailable");
+        }
+    }
     tracing::info!(
         window_width = startup_window_size.width,
         window_height = startup_window_size.height,

@@ -251,7 +251,7 @@ pub(super) fn create_entity_outline_target(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let linear_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -261,7 +261,7 @@ pub(super) fn create_entity_outline_target(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let bind_group = create_entity_outline_texture_bind_group(
@@ -396,8 +396,8 @@ pub(super) fn create_entity_outline_composite_pipeline(
         )?;
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("bbb-selected-entity-outline-composite-layout"),
-            bind_group_layouts: &[bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(bind_group_layout)],
+            immediate_size: 0,
         });
         return Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -405,7 +405,8 @@ pub(super) fn create_entity_outline_composite_pipeline(
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &vertex,
-                    entry_point: "main",
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
                     buffers: &[],
                 },
                 primitive: wgpu::PrimitiveState::default(),
@@ -413,14 +414,16 @@ pub(super) fn create_entity_outline_composite_pipeline(
                 multisample: wgpu::MultisampleState::default(),
                 fragment: Some(wgpu::FragmentState {
                     module: &fragment,
-                    entry_point: "main",
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
                         blend: Some(ENTITY_OUTLINE_COMPOSITE_BLEND),
                         write_mask: ENTITY_OUTLINE_COMPOSITE_WRITE_MASK,
                     })],
                 }),
-                multiview: None,
+                multiview_mask: None,
+                cache: None,
             }),
         );
     }
