@@ -166,7 +166,12 @@ restoring any row to `equivalent`.
   official client measured in that same ABBA run. BBB duration attribution must
   remain tied to one GPU query submission; the official side retains unmodified
   26.1 F3+L semantics. Lowering visible/resident work, quality or resolution is
-  not an optimization.
+  not an optimization. The fresh full-gated `d698c8db0` report keeps 152.029
+  FPS, zero BBB hitches, application p95/p99 8.627/10.583 ms and GPU p95/p99
+  0.661/0.805 ms, all better than the same-run official values, but remains
+  active because application CV is 0.1864 versus 0.1177 and GPU CV is 0.3237
+  versus 0.0932. The current report SHA-256 is
+  `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

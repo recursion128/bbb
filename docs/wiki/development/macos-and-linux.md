@@ -99,6 +99,16 @@ Java 26.1 使用 OpenGL / Apple M1。八轮的 world/replay/settings/resource-pa
 13.281/10.353 ms。报告 SHA-256 为
 `84713476aff92e2fce1ecfc5df3ecbef6cc250149ce2f4610c91c828503b016b`。
 
+2026-08-11 在 full-gated `d698c8db0` 上以完全相同的 2560x1600、两轮
+Java→BBB→BBB→Java 合同复测。BBB 为 152.029 FPS，application frame-time
+p95/p99 为 8.627/10.583 ms，1% low 为 79.617 FPS，>=33.333 ms 卡顿为 0；
+官方对应为 80.838 FPS、15.070/16.542 ms、56.079 FPS、1 次。BBB GPU
+duration p95/p99 为 0.661/0.805 ms、卡顿为 0，官方为 12.456/13.400 ms、
+1 次。绝对尾延迟已优于官方且 FPS 高于既有 120.738 基线，但稳定性优化仍为
+active：application CV 为 0.1864/0.1177（BBB/官方），GPU CV 为
+0.3237/0.0932。当前独立报告 SHA-256 为
+`2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。
