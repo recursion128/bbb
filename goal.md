@@ -505,11 +505,12 @@ path patch、vendor 或直接 `wgpu-hal` 依赖。当前 BBB baseline 是 full-g
 `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
 固定 FPS noise margin 为 0.8465%，且任何新 margin 最大不得超过 1%。
 
-当前有界候选只调整 `FrameFlightController` 的 command-buffer 边界：macOS Immediate
-在等待上一 submission 前 finalize 已编码的主工作，drawable acquire 后只编码
-presentation tail；两段必须保持同一次 queue submission、单 in-flight、hint 2、实际三个
-drawable 与 wait→acquire→submit→present。FIFO、Linux、surface fallback、GPU
-`PassBoundary` measurement scope、可见 geometry/order/material/workload 与输入生命周期不变。
+当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。下一有界
+slice 只扩展 profiler-only flight-latency 归因：通过 wgpu 30 公共 completion callback 记录
+render start→GPU submission completion、实际在途深度与 callback delivery delay；未开启 profiler
+时不注册 callback，不改变 FIFO/Linux、surface fallback、GPU `PassBoundary` measurement scope、
+可见 geometry/order/material/workload 或输入生命周期。该测量先以 budget 1 做配对非回退验证，
+再决定是否有依据测试其它明确 queue budget；不能把 submit/present call 返回时间冒充实际显示时间。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝
@@ -520,6 +521,6 @@ FPS 使用预声明 margin；App/GPU 的 p50/p95/p99、stddev、p99-p50、1% low
 sleep、pacing、cap、VSync 或降低工作量。只有所有 BBB A/B scope 通过才运行正式
 Java→BBB→BBB→Java ABBA。
 
-该候选关闭后再开始 committed direct-dependency receipt 与依赖现代化审计；每次只处理一个
+Retina active 项关闭后再开始 committed direct-dependency receipt 与依赖现代化审计；每次只处理一个
 有界依赖组，优先 winit 0.30，其后 pollster、认证/网络、glam、hecs、音频/归档/开发工具，
 并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。

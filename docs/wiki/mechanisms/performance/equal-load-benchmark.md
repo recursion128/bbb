@@ -103,11 +103,14 @@ registry wgpu/core/hal/types/naga 30.0.0，并逐 run 绑定 dependency receipt�
 FPS/稳定性比较前 fail-closed；combined、三个 scene、两个 round、全部 nearest pair 与逐
 scene pair 的 FPS/绝对 App/GPU scope 全过后，才允许正式 Java ABBA。
 
-当前 v4 candidate 的变量只有 macOS Immediate 的 command-buffer finalize 边界：main
-encoder 在 budget-one wait 前结束，drawable acquire 后另一个 encoder 只写 presentation
-tail，两者进入同一次 queue submission。逐 run 仍须证明 budget 1、hint 2、三个实际
-drawable 与 `PassBoundary` strategy；该边界不能被解释为多帧排队，也不能改变输入延迟
-政策、可见 workload 或 GPU duration scope。
+一次 gated command-buffer-boundary diagnostic 在最近 C→B 配对中保持 wgpu 30、budget 1、
+hint 2、实际三个 drawable 与 `PassBoundary` strategy。combined FPS 从 194.454 提升到
+205.274，但 App p99/stddev/p99-p50/1% low 与 GPU mean/p50/p95 回退；combined/scene 共
+28 个绝对失败，所以按预声明流程在正式 B→C→C→B×2 前拒绝。报告是
+[`prefinish-command-buffer-ac-diagnostic.json`](../../../evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json)，
+SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。后续先补
+profiler-only GPU completion age/in-flight-depth 归因，不能用 submit/present call 返回时间
+代替实际显示或输入延迟证据。
 
 ## 生命周期和 fallback
 

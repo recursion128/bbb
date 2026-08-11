@@ -250,14 +250,19 @@ restoring any row to `equivalent`.
   unless the binary/runtime dependency receipts, 2560x1600 CAMetalLayer
   drawable, actual maximum drawable count 3, Immediate mode, latency hint 2,
   single in-flight budget, `PassBoundary` GPU timestamp strategy and workload
-  contract all match. The active bounded candidate finalizes the already
-  encoded main command buffer before the exact budget-one wait on macOS
-  Immediate, then records only the presentation tail after drawable acquire.
-  Both buffers remain in one `Queue::submit`, so queue depth, input-latency
-  policy, wait/acquire/submit/present order and the `PassBoundary` measurement
-  scope do not change; FIFO and Linux retain one encoder. The three previously
-  rejected policies remain forbidden. Only a v4 all-scope pass can authorize
-  official Java ABBA.
+  contract all match. A budget-one command-buffer-boundary diagnostic at gated
+  `62555c6bf` improved combined FPS from 194.454 to 205.274, but regressed App
+  p99/stddev/p99-p50/1%-low and GPU mean/p50/p95 in the nearest C-to-B pair.
+  Its 28 combined/scene failures reject it before B-C-C-B x2 and official Java
+  ABBA; the raw-hash-backed report is
+  `docs/evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json`
+  at SHA-256
+  `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`.
+  The accepted one-encoder behavior is restored. The next bounded slice is
+  profiler-only completion-age/in-flight-depth attribution on budget one; it
+  must not call submit/present return time actual display latency. The three
+  previously rejected scheduling policies remain forbidden. Only a v4
+  all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

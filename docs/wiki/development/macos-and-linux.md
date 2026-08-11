@@ -233,11 +233,14 @@ baseline。四次 AC repeat 为 195.828/194.414/194.422/194.180 FPS，预声明 
 0.8465%。以后 baseline/candidate 每个 run 都必须解析到 registry wgpu/core/hal/types/naga
 30.0.0，绑定相同 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、
 单 in-flight、2560x1600 fullscreen 和同一 workload；任一 identity/scope mismatch 都在解析
-FPS 前拒绝。当前有界 candidate 只在 macOS Immediate 将已编码的 main command buffer
-在 exact budget-one wait 前 finalize；drawable acquire 后的新 encoder 只承载 presentation
-tail，两段仍由同一次 `Queue::submit` 提交。它不增加 queue depth 或输入延迟预算，不改变
-wait→acquire→submit→present、surface fallback、`PassBoundary` measurement scope，且 FIFO/
-Linux 仍使用原单 encoder。candidate 必须先通过 v4 全 scope A/B，绝不回退 0.19。
+FPS 前拒绝。full-gated `62555c6bf` 的 command-buffer-boundary diagnostic 保持 budget 1
+和一次 submit，combined FPS 194.454→205.274，但最近 C→B 配对的 App p99/stddev/p99-p50/
+1% low 与 GPU mean/p50/p95 回退；combined/scene 共 28 个绝对指标失败。因此不进入正式
+B→C→C→B×2 或 Java ABBA，单 encoder 行为已 fix-forward 恢复。raw-hash-backed 报告为
+[`prefinish-command-buffer-ac-diagnostic.json`](../../evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json)，
+SHA-256 `a33af85ee8c5b48a96af3c1086e2dcec72c1435f07b03cb50c49ff59c0607c96`。
+下一有界 slice 只在 profiler 开启时记录 submission completion age 与实际 in-flight depth，
+先以 budget 1 验证测量开销；绝不回退 0.19，也不把 submit/present 返回时间称为实际显示延迟。
 
 ## 第二平台 cross-check
 

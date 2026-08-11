@@ -282,9 +282,6 @@ impl Renderer {
         self.panorama_pass(&mut encoder, &mut stats);
         self.hud_passes(&mut encoder, &mut stats)?;
         self.win_screen_vignette_pass(&mut encoder, &mut stats);
-        let mut encoding =
-            self.frame_flight
-                .prepare_for_acquire(&self.device, self.config.present_mode, encoder);
         let cpu_encode_before_wait = self
             .frame_phase_profiling_enabled
             .then(|| render_encoding_started_at.elapsed())
@@ -325,21 +322,17 @@ impl Renderer {
             }
         };
         let render_encoding_resumed_at = std::time::Instant::now();
-        self.transparency_blit_pass(&frame, encoding.presentation_encoder(), &mut stats);
+        self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
-            timing.mark_stage(
-                encoding.presentation_encoder(),
-                token,
-                GpuFrameStage::PresentationTailEnd,
-            );
+            timing.mark_stage(&mut encoder, token, GpuFrameStage::PresentationTailEnd);
         }
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
-            timing.finish_encoding(encoding.presentation_encoder(), token);
+            timing.finish_encoding(&mut encoder, token);
         }
         let presentation_tail_encode = render_encoding_resumed_at.elapsed();
         let render_duration = render_duration_before_surface + presentation_tail_encode;
         let result = self.finish_frame(
-            encoding,
+            encoder,
             frame,
             screenshot,
             stats,
@@ -4210,7 +4203,7 @@ impl Renderer {
 
     fn finish_frame(
         &mut self,
-        mut encoding: crate::frame_flight::FrameFlightEncoding,
+        mut encoder: wgpu::CommandEncoder,
         frame: FrameTarget,
         screenshot: Option<&Path>,
         stats: FrameDrawStats,
@@ -4225,9 +4218,7 @@ impl Renderer {
         render_started_at: std::time::Instant,
     ) -> Result<()> {
         let readback = match screenshot {
-            Some(path) => match self
-                .prepare_screenshot_copy(encoding.presentation_encoder(), frame.texture())
-            {
+            Some(path) => match self.prepare_screenshot_copy(&mut encoder, frame.texture()) {
                 Ok(readback) => Some((readback, path)),
                 Err(error) => {
                     if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
@@ -4241,7 +4232,7 @@ impl Renderer {
 
         let submission = self
             .frame_flight
-            .submit_and_present(&self.queue, encoding, frame);
+            .submit_and_present(&self.queue, encoder, frame);
         let present_duration = submission.queue_submit;
         let swap_buffers_duration = submission.swap_buffers_present;
         self.last_frame_profile.render = render_duration;
