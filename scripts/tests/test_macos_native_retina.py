@@ -198,6 +198,38 @@ def candidate_evidence() -> dict[str, object]:
             "draw_workload_match": True,
             "input_match": True,
         },
+        "scheduling_contract": {
+            "status": "passed",
+            "platform": "macos",
+            "present_mode": "Immediate",
+            "baseline_desired_maximum_frame_latency": 2,
+            "candidate_desired_maximum_frame_latency": 1,
+            "baseline_expected_metal_drawable_count": 3,
+            "candidate_expected_metal_drawable_count": 2,
+            "baseline_in_flight_submission_budget": 1,
+            "candidate_in_flight_submission_budget": 1,
+            "queue_depth_increased": False,
+            "wait_acquire_submit_present_order_unchanged": True,
+            "input_latency_policy": "wgpu-documented-low-latency-surface-hint",
+        },
+        "runs": [
+            {
+                "sequence": sequence,
+                "variant": variant,
+                "status": "passed",
+                "surface_presentation": {
+                    "api": "metal",
+                    "present_mode": "Immediate",
+                    "desired_maximum_frame_latency": (
+                        2 if variant == "baseline" else 1
+                    ),
+                    "expected_metal_drawable_count": (
+                        3 if variant == "baseline" else 2
+                    ),
+                },
+            }
+            for sequence, variant in enumerate(retina.CANDIDATE_AB_ORDER, start=1)
+        ],
         "comparisons": comparisons,
         "absolute_stability": {
             "policy": retina.CANDIDATE_STABILITY_POLICY,
@@ -424,6 +456,23 @@ class ProfilerTests(unittest.TestCase):
 
         self.assertEqual(adapter, {"device": "Apple M1", "api": "metal"})
 
+    def test_surface_presentation_log_records_requested_metal_drawable_count(self):
+        presentation = retina._surface_presentation_from_log(
+            "bbb",
+            "renderer surface presentation selected present_mode=Immediate "
+            "supported_present_modes=[Fifo, Immediate] desired_maximum_frame_latency=1",
+        )
+
+        self.assertEqual(presentation["present_mode"], "Immediate")
+        self.assertEqual(presentation["desired_maximum_frame_latency"], 1)
+        self.assertEqual(presentation["expected_metal_drawable_count"], 2)
+
+    def test_surface_presentation_log_missing_contract_is_rejected(self):
+        with self.assertRaisesRegex(
+            retina.RetinaAcceptanceError, "lacks surface presentation contract"
+        ):
+            retina._surface_presentation_from_log("bbb", "renderer ready")
+
     def test_vanilla_shaped_and_bbb_shaped_archives_share_parser(self):
         with tempfile.TemporaryDirectory() as directory:
             profile = Path(directory) / "profile.zip"
@@ -611,6 +660,80 @@ class FormalValidationTests(unittest.TestCase):
             "bbb_candidate_fps_regression",
             {item["code"] for item in result["failures"]},
         )
+
+    def test_candidate_v2_requires_low_latency_surface_contract(self):
+        evidence = candidate_evidence()
+        del evidence["scheduling_contract"]
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertIn(
+            "bbb_candidate_scheduling_contract_missing",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_candidate_v2_rejects_queue_depth_or_drawable_count_mismatch(self):
+        evidence = candidate_evidence()
+        evidence["scheduling_contract"]["queue_depth_increased"] = True
+        evidence["scheduling_contract"]["candidate_expected_metal_drawable_count"] = 3
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_scheduling_contract_mismatch"
+        )
+        self.assertEqual(
+            {item["field"] for item in failure["mismatches"]},
+            {"queue_depth_increased", "candidate_expected_metal_drawable_count"},
+        )
+
+    def test_candidate_v2_rejects_observed_run_surface_mismatch(self):
+        evidence = candidate_evidence()
+        evidence["runs"][2]["surface_presentation"][
+            "desired_maximum_frame_latency"
+        ] = 2
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_surface_run_mismatch"
+        )
+        self.assertEqual(failure["run"], 3)
+        self.assertEqual(
+            failure["mismatches"],
+            [
+                {
+                    "field": "surface_presentation.desired_maximum_frame_latency",
+                    "expected": 1,
+                    "actual": 2,
+                }
+            ],
+        )
+
+    def test_candidate_v2_rejects_missing_observed_run_surface(self):
+        evidence = candidate_evidence()
+        del evidence["runs"][0]["surface_presentation"]
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertIn(
+            "bbb_candidate_surface_run_mismatch",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_candidate_v1_history_remains_revalidatable_without_surface_contract(self):
+        evidence = candidate_evidence()
+        evidence["schema"] = retina.LEGACY_CANDIDATE_AB_SCHEMA
+        del evidence["scheduling_contract"]
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
 
     def test_candidate_cv_alone_is_diagnostic_when_absolute_metrics_improve(self):
         result = retina.validate_candidate_fps_evidence(candidate_evidence(), "c" * 40)

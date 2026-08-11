@@ -40,6 +40,18 @@
     "F3-up"
   ],
   "drawable_mismatch_policy": "block-without-comparison",
+  "candidate_bbb_ab": {
+    "schema": "macos-native-retina-bbb-ab-v2",
+    "legacy_schema": "macos-native-retina-bbb-ab-v1",
+    "surface_policy": "macos-immediate-low-latency",
+    "baseline_desired_maximum_frame_latency": 2,
+    "candidate_desired_maximum_frame_latency": 1,
+    "baseline_expected_metal_drawable_count": 3,
+    "candidate_expected_metal_drawable_count": 2,
+    "in_flight_submission_budget": 1,
+    "queue_depth_increased": false,
+    "input_latency_policy": "wgpu-documented-low-latency-surface-hint"
+  },
   "frame_phase_diagnostics": {
     "schema": "renderer-frame-phases-v2",
     "archive_path": "client/metrics/frame_phases.csv",

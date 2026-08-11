@@ -221,6 +221,15 @@ restoring any row to `equivalent`.
   policy reports its rejected poll phase as zero and restores the exact
   blocking fence. A future Slice B policy needs a new lifecycle, queue-depth
   and input-latency contract; neither rejected strategy may be reused.
+  The next bounded candidate does not increase that queue. Wgpu 0.19 documents
+  `desired_maximum_frame_latency=1` as its low-latency presentation hint, and
+  its Metal backend maps the supported value to two CAMetalLayer drawables
+  instead of the default three. BBB requests one only for macOS Immediate;
+  FIFO, Linux, wait/acquire/submit/present order and the explicit one-submission
+  budget remain unchanged. Candidate A/B schema v2 must attest baseline/candidate
+  hints 2/1, expected drawable counts 3/2 and `queue_depth_increased=false`;
+  legacy v1 evidence remains revalidatable. Retain the candidate only if every
+  AC combined/scene/round/pair FPS and absolute-stability scope passes.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

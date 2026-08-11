@@ -63,7 +63,7 @@ use crate::{
         EntityModelTranslucentDrawRange, EntityShadowSurface, EntityShadowTextureGpu,
         FirstPersonPlayerArm, HudEntityPreviewPipTarget,
     },
-    frame_flight::{FrameFlightController, RenderSurface},
+    frame_flight::{desired_maximum_frame_latency, FrameFlightController, RenderSurface},
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
         create_terrain_atlas_mips_gpu, create_terrain_bind_group, create_terrain_bind_group_layout,
@@ -1599,10 +1599,11 @@ impl Renderer {
         let caps = surface.get_capabilities(&adapter);
         let format = choose_format(&caps.formats)?;
         let present_mode = choose_present_mode(&caps.present_modes, vsync_enabled)?;
+        let desired_maximum_frame_latency = desired_maximum_frame_latency(present_mode);
         tracing::info!(
             ?present_mode,
             supported_present_modes = ?caps.present_modes,
-            desired_maximum_frame_latency = 2,
+            desired_maximum_frame_latency,
             "renderer surface presentation selected"
         );
         let alpha_mode = caps
@@ -1619,10 +1620,10 @@ impl Renderer {
             present_mode,
             alpha_mode,
             view_formats: vec![],
-            // Keep wgpu's default queue-depth hint. VSync-off selection still maps to the
-            // platform's immediate present path, while a larger hint did not improve the
-            // common-X11 benchmark and would add an unproven behavioral variable.
-            desired_maximum_frame_latency: 2,
+            // Keep the default everywhere except macOS Immediate. That release path
+            // requests wgpu's documented low-latency value without increasing the
+            // controller's explicit one-submission budget.
+            desired_maximum_frame_latency,
         };
         surface.configure(&device, &config);
         let present_modes = caps.present_modes;

@@ -188,6 +188,22 @@ Vanilla `Minecraft.java:1338-1356` 仍是顺序锚点：main target blit、GPU p
 swap/`RenderSystem.flipFrame` 先完成，显式 FPS limiter 最后运行；该 Metal 内部策略不改变
 这一可见 present/cap 顺序。
 
+第三项 Slice B candidate 不提高 FrameFlightController 的 submission budget，而只缩小
+Metal presentation engine 的 drawable 队列。wgpu-types 0.19.2 对
+`desired_maximum_frame_latency=1` 的权威说明是“low latency from frame recording to frame
+display”；wgpu-hal 0.19.5 Metal capabilities 在支持 maximum drawable count 的系统给出
+`1..=2`，configure 时执行 `maximum_frame_latency + 1`，所以 baseline 2 对应三个
+CAMetalLayer drawables，candidate 1 对应两个。当前实现仅在 macOS Immediate 请求 1；
+Linux Immediate、FIFO/FifoRelaxed/Mailbox/Auto 模式与 offscreen 仍为 2，显式 in-flight
+submission budget 仍为 1，wait→acquire→submit→present 和 surface fallback 不变。
+
+`macos-native-retina-bbb-ab-v2` 报告在性能比较前要求这组 2→1、3→2、budget 1→1、
+`queue_depth_increased=false` 合同；run report 从 BBB log 记录 present mode、请求 hint 与
+wgpu Metal 预期 drawable count，validator 按 B-C-C-B×2 逐 run 核对，不能由顶层合同
+代替实际观测。历史 v1 candidate report 不补造该字段，仍按 v1 规则
+复核。该低延迟候选同样必须先过接电 2560x1600 的全部 22 个 BBB A/B scope，失败即正常
+fix-forward，成功才进入官方 Java ABBA。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

@@ -76,6 +76,14 @@ Vanilla ABBA 前拒绝。四次 baseline 重复噪声超过 1% 时必须重采�
 `scripts/macos_native_retina.py candidate-check --report <report> --candidate-commit <sha>`
 独立复核。
 
+新的低延迟 surface candidate 使用向后兼容的 `macos-native-retina-bbb-ab-v2`：v1 历史
+证据继续接受原字段，v2 额外强制 macOS Immediate、baseline/candidate
+`desired_maximum_frame_latency=2/1`、wgpu Metal 预期 drawable count 3/2、两侧显式
+submission budget 均为 1、未增加 queue depth 且 lifecycle 顺序不变。运行日志缺失
+surface presentation 字段时 fail-closed；validator 还按 B-C-C-B×2 顺序逐 run 核对实际
+观测到的 2/1 hint 与 3/2 预期 drawable count，不能只信顶层声明。这组字段只证明调度
+合同，不能替代 22-scope FPS/绝对稳定性比较。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。

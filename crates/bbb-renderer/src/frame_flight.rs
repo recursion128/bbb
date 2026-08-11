@@ -9,21 +9,39 @@ use crate::counters::RendererCounters;
 /// it; FIFO already supplies presentation backpressure.
 #[cfg(any(target_os = "macos", test))]
 const MACOS_IMMEDIATE_IN_FLIGHT_BUDGET: usize = 1;
+const DEFAULT_MAXIMUM_FRAME_LATENCY: u32 = 2;
+const MACOS_IMMEDIATE_MAXIMUM_FRAME_LATENCY: u32 = 1;
 
-#[cfg(any(target_os = "macos", test))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum FrameFlightPlatform {
     MacOs,
     Other,
 }
 
-#[cfg(any(target_os = "macos", test))]
 impl FrameFlightPlatform {
     const CURRENT: Self = if cfg!(target_os = "macos") {
         Self::MacOs
     } else {
         Self::Other
     };
+}
+
+/// Requests the backend's low-latency presentation queue only for the exact
+/// macOS Immediate release path. Wgpu 0.19 maps one to two CAMetalLayer
+/// drawables where supported; every FIFO/Linux path keeps the default hint.
+pub(super) fn desired_maximum_frame_latency(present_mode: wgpu::PresentMode) -> u32 {
+    desired_maximum_frame_latency_for(FrameFlightPlatform::CURRENT, present_mode)
+}
+
+fn desired_maximum_frame_latency_for(
+    platform: FrameFlightPlatform,
+    present_mode: wgpu::PresentMode,
+) -> u32 {
+    if platform == FrameFlightPlatform::MacOs && present_mode == wgpu::PresentMode::Immediate {
+        MACOS_IMMEDIATE_MAXIMUM_FRAME_LATENCY
+    } else {
+        DEFAULT_MAXIMUM_FRAME_LATENCY
+    }
 }
 
 #[cfg(any(target_os = "macos", test))]
@@ -266,7 +284,48 @@ impl FrameFlightController {
 
 #[cfg(test)]
 mod tests {
-    use super::{in_flight_budget, FrameFlightPlatform, MACOS_IMMEDIATE_IN_FLIGHT_BUDGET};
+    use super::{
+        desired_maximum_frame_latency_for, in_flight_budget, FrameFlightPlatform,
+        DEFAULT_MAXIMUM_FRAME_LATENCY, MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
+        MACOS_IMMEDIATE_MAXIMUM_FRAME_LATENCY,
+    };
+
+    #[test]
+    fn only_macos_immediate_requests_the_low_latency_surface_queue() {
+        assert_eq!(MACOS_IMMEDIATE_MAXIMUM_FRAME_LATENCY, 1);
+        assert_eq!(DEFAULT_MAXIMUM_FRAME_LATENCY, 2);
+        assert_eq!(
+            desired_maximum_frame_latency_for(
+                FrameFlightPlatform::MacOs,
+                wgpu::PresentMode::Immediate,
+            ),
+            1
+        );
+        assert_eq!(
+            desired_maximum_frame_latency_for(
+                FrameFlightPlatform::Other,
+                wgpu::PresentMode::Immediate,
+            ),
+            2
+        );
+        for mode in [
+            wgpu::PresentMode::Fifo,
+            wgpu::PresentMode::FifoRelaxed,
+            wgpu::PresentMode::Mailbox,
+            wgpu::PresentMode::AutoVsync,
+            wgpu::PresentMode::AutoNoVsync,
+        ] {
+            assert_eq!(
+                desired_maximum_frame_latency_for(FrameFlightPlatform::MacOs, mode),
+                2,
+                "{mode:?} retains the default queue hint"
+            );
+            assert_eq!(
+                desired_maximum_frame_latency_for(FrameFlightPlatform::Other, mode),
+                2
+            );
+        }
+    }
 
     #[test]
     fn only_macos_immediate_has_the_existing_single_submission_budget() {

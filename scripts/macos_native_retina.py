@@ -87,7 +87,10 @@ BASELINE_BBB_COMMIT = "d698c8db0d219f035c7597726c76225c6cd70abc"
 BASELINE_BBB_REPORT_SHA256 = "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b"
 BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97"
 MAX_BASELINE_FPS_MARGIN = 0.01
-CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
+LEGACY_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
+CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v2"
+ACCEPTED_CANDIDATE_AB_SCHEMAS = (LEGACY_CANDIDATE_AB_SCHEMA, CANDIDATE_AB_SCHEMA)
+CANDIDATE_AB_ORDER = ("baseline", "candidate", "candidate", "baseline") * 2
 CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
 FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
 FRAME_PHASE_COLUMNS = (
@@ -1548,6 +1551,100 @@ def _candidate_parity_failures(evidence: Mapping[str, object]) -> list[dict[str,
     )
 
 
+def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[str, object]]:
+    """Validate the v2 low-latency surface candidate without invalidating v1 history."""
+
+    if evidence.get("schema") == LEGACY_CANDIDATE_AB_SCHEMA:
+        return []
+    contract = evidence.get("scheduling_contract")
+    if not isinstance(contract, Mapping):
+        return [{"code": "bbb_candidate_scheduling_contract_missing"}]
+    expected: tuple[tuple[str, object], ...] = (
+        ("status", "passed"),
+        ("platform", "macos"),
+        ("present_mode", "Immediate"),
+        ("baseline_desired_maximum_frame_latency", 2),
+        ("candidate_desired_maximum_frame_latency", 1),
+        ("baseline_expected_metal_drawable_count", 3),
+        ("candidate_expected_metal_drawable_count", 2),
+        ("baseline_in_flight_submission_budget", 1),
+        ("candidate_in_flight_submission_budget", 1),
+        ("queue_depth_increased", False),
+        ("wait_acquire_submit_present_order_unchanged", True),
+        ("input_latency_policy", "wgpu-documented-low-latency-surface-hint"),
+    )
+    mismatches = [
+        {"field": field, "expected": expected_value, "actual": contract.get(field)}
+        for field, expected_value in expected
+        if contract.get(field) != expected_value
+    ]
+    failures = (
+        [{"code": "bbb_candidate_scheduling_contract_mismatch", "mismatches": mismatches}]
+        if mismatches
+        else []
+    )
+    runs = evidence.get("runs")
+    if not isinstance(runs, list) or len(runs) != len(CANDIDATE_AB_ORDER):
+        failures.append(
+            {
+                "code": "bbb_candidate_surface_runs_missing",
+                "expected_count": len(CANDIDATE_AB_ORDER),
+                "actual_count": len(runs) if isinstance(runs, list) else None,
+            }
+        )
+        return failures
+    for sequence, (run, expected_variant) in enumerate(
+        zip(runs, CANDIDATE_AB_ORDER, strict=True), start=1
+    ):
+        if not isinstance(run, Mapping):
+            failures.append(
+                {"code": "bbb_candidate_surface_run_malformed", "run": sequence}
+            )
+            continue
+        expected_latency = 2 if expected_variant == "baseline" else 1
+        expected_drawables = expected_latency + 1
+        presentation = run.get("surface_presentation")
+        run_mismatches: list[dict[str, object]] = []
+        expected_run: tuple[tuple[str, object], ...] = (
+            ("variant", expected_variant),
+            ("status", "passed"),
+        )
+        run_mismatches.extend(
+            {"field": field, "expected": value, "actual": run.get(field)}
+            for field, value in expected_run
+            if run.get(field) != value
+        )
+        if not isinstance(presentation, Mapping):
+            run_mismatches.append(
+                {"field": "surface_presentation", "expected": "mapping", "actual": presentation}
+            )
+        else:
+            expected_presentation: tuple[tuple[str, object], ...] = (
+                ("api", "metal"),
+                ("present_mode", "Immediate"),
+                ("desired_maximum_frame_latency", expected_latency),
+                ("expected_metal_drawable_count", expected_drawables),
+            )
+            run_mismatches.extend(
+                {
+                    "field": f"surface_presentation.{field}",
+                    "expected": value,
+                    "actual": presentation.get(field),
+                }
+                for field, value in expected_presentation
+                if presentation.get(field) != value
+            )
+        if run_mismatches:
+            failures.append(
+                {
+                    "code": "bbb_candidate_surface_run_mismatch",
+                    "run": sequence,
+                    "mismatches": run_mismatches,
+                }
+            )
+    return failures
+
+
 def _candidate_metric_stability_comparison(
     baseline: Mapping[str, object],
     candidate: Mapping[str, object],
@@ -1777,8 +1874,10 @@ def validate_candidate_fps_evidence(
             "failures": parity_failures,
         }
     failures: list[dict[str, object]] = []
-    if evidence.get("schema") != CANDIDATE_AB_SCHEMA:
+    if evidence.get("schema") not in ACCEPTED_CANDIDATE_AB_SCHEMAS:
         failures.append({"code": "bbb_candidate_schema_mismatch"})
+    else:
+        failures.extend(_candidate_scheduling_failures(evidence))
     if evidence.get("baseline_bbb_commit") != BASELINE_BBB_COMMIT:
         failures.append({"code": "bbb_baseline_commit_mismatch"})
     if evidence.get("baseline_bbb_report_sha256") != BASELINE_BBB_REPORT_SHA256:
@@ -2316,6 +2415,31 @@ def _adapter_from_log(client: str, text: str, fallback: str) -> dict[str, str]:
     }
 
 
+def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
+    if client != "bbb":
+        return {
+            "api": "opengl",
+            "present_mode": "device-controlled",
+            "desired_maximum_frame_latency": None,
+            "expected_metal_drawable_count": None,
+        }
+    line = re.search(
+        r"renderer surface presentation selected[^\n]*present_mode=([A-Za-z]+)[^\n]*"
+        r"desired_maximum_frame_latency=([0-9]+)",
+        text,
+    )
+    if line is None:
+        raise RetinaAcceptanceError("BBB log lacks surface presentation contract")
+    latency = int(line.group(2))
+    return {
+        "api": "metal",
+        "present_mode": line.group(1),
+        "desired_maximum_frame_latency": latency,
+        "expected_metal_drawable_count": latency + 1,
+        "count_basis": "wgpu-hal 0.19 Metal maximum_frame_latency + 1",
+    }
+
+
 def _write_profile_samples(
     path: Path, profile_path: Path, segment: str, cpu_nanos: int
 ) -> dict[str, object]:
@@ -2603,6 +2727,12 @@ def _run_client(
             else ""
         )
         result["adapter"] = _adapter_from_log(client, client_text, display.metal_device)
+        try:
+            result["surface_presentation"] = _surface_presentation_from_log(client, client_text)
+        except RetinaAcceptanceError as error:
+            result["surface_presentation"] = None
+            result.setdefault("validation_failures", []).append(str(error))
+            result["status"] = "failed"
         result["effective_window_mode"] = (
             "windowed-fallback"
             if client == "vanilla"
