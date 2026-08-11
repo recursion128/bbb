@@ -451,29 +451,19 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 ### P2：非实体客户端行为 closeout
 
-状态：`closed`。packet/registry/item/entity generated coverage 无 open row；`ClientLevel`
-census 18 条 route（121 owner）与 `LocalPlayer`/`MultiPlayerGameMode`/`Minecraft`
-interaction census 22 条 route（149 owner）已全部 `equivalent`，重开判据在各 matrix 行。
-新增 Vanilla owner、route 状态回退或矩阵行重开条件触发时重开本节。
+状态：`closed`。新增 Vanilla owner、route 状态回退或对应 matrix 行的重开条件触发时，
+把具体差异登记为 active 并重开本节。
 
 ### P2：屏幕、HUD、字体与截图
 
-状态：`closed`。字体/CJK 与 text shaping、block-entity registration 27 owner、多人可达
-screen 五 route、`Gui` 72 owner 五条 `hud-*` route 与 `GameRenderer` step surface 四条
-route（frame-order/extract-surface/level-pass/effects-screenshot，52 decision owner 全挂
-implementation/test evidence，`getMinecraft` 归 direct support）均 `equivalent` 关闭
-（见 archive 与 matrix 行重开判据）。2026-08-05 用户重开的两项已落地关闭：vanilla 地形
-texture filtering 面（`textureFiltering` 三模式 + `maxAnisotropyBit` 采样器/着色器/
-atlas padding）与全屏 screen 上的 toast/F3 overlay 收集路径（见 archive）。
+状态：`closed`。对应 matrix route、owner/evidence 映射、地形过滤合同或全屏
+toast/F3 overlay 合同回退时，把具体差异登记为 active 并重开本节。
 
 ### P3：动态资源 presentation breadth
 
-状态：`closed`。selected/startup/server pack、indexed default vanilla provider、push/pop、
-原子 immutable resource generation、font/language/sound 与动态 presentation owner 已由 Wiki
-资源机制页、focused tests 和 playable diagnostics 覆盖并转入维护。20 个 reload-listener consumer
-已完成逐族 prepare/apply/rollback 审计；root window icon 已由 vanilla-only catalog 接入
-native startup，X11 原子发布 Vanilla 五尺寸 ARGB family；indexed panorama 经唯一 CPU catalog 与 renderer-private generation 服务可达
-断线页。built-in pack ZIP 与 Realms 对应 surface 仍按账本保留为 `not-needed`。
+状态：`closed`。资源 generation、reload consumer、pack stack、window icon、panorama 或
+对应 presentation owner 的既有合同回退时，把具体差异登记为 active 并重开本节；
+built-in pack ZIP 与 Realms 对应 surface 按账本保持 `not-needed`。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
   immutable resource generation；`BuiltInRegistries.BLOCK` / `ENTITY_TYPE`
@@ -505,13 +495,14 @@ path patch、vendor 或直接 `wgpu-hal` 依赖。当前 BBB baseline 是 full-g
 `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
 固定 FPS noise margin 为 0.8465%，且任何新 margin 最大不得超过 1%。
 
-当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。下一有界
-slice 只扩展 profiler-only flight-latency 归因：通过 wgpu 30 公共 completion callback 记录
+当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。当前候选的
+profiler-only flight-latency 归因通过 wgpu 30 公共 completion callback 记录
 render/submit→callback 被运行时观察的时间、callback→wait 返回尾部、实际在途深度与丢失计数；
-它不是硬件完成瞬间、实际显示、光子或输入延迟。未开启 profiler
-时不注册 callback，不改变 FIFO/Linux、surface fallback、GPU `PassBoundary` measurement scope、
-可见 geometry/order/material/workload 或输入生命周期。该测量先以 budget 1 做配对非回退验证，
-再决定是否有依据测试其它明确 queue budget；不能把 submit/present call 返回时间冒充实际显示时间。
+它不是硬件完成瞬间、实际显示、光子或输入延迟。未开启 profiler 时不得注册 callback，
+不得改变 FIFO/Linux、surface fallback、GPU `PassBoundary` measurement scope、可见
+geometry/order/material/workload 或输入生命周期。候选先以 budget 1 完成采集合同 smoke 与配对
+非回退验证，再决定是否有依据测试其它明确 queue budget；不能把 submit/present call 返回时间
+冒充实际显示时间。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝
