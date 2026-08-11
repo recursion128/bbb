@@ -148,13 +148,21 @@ pub(super) struct GpuFrameTiming {
 
 impl GpuFrameTiming {
     pub(super) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<Self> {
+        let detailed_stages =
+            tracing::enabled!(target: "bbb_renderer::gpu_timing", tracing::Level::DEBUG);
+        Self::new_with_detailed_stages(device, queue, detailed_stages)
+    }
+
+    fn new_with_detailed_stages(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        detailed_stages: bool,
+    ) -> Option<Self> {
         timestamp_write_strategy(device.features()).map(|timestamp_write_strategy| {
             tracing::info!(
                 strategy = ?timestamp_write_strategy,
                 "renderer GPU timestamp strategy selected"
             );
-            let detailed_stages =
-                tracing::enabled!(target: "bbb_renderer::gpu_timing", tracing::Level::DEBUG);
             let queries_per_frame = queries_per_frame(detailed_stages);
             let query_bytes = u64::from(queries_per_frame) * std::mem::size_of::<u64>() as u64;
             let query_sets = (0..SLOT_COUNT)
@@ -829,8 +837,10 @@ mod tests {
             eprintln!("skipping GPU timestamp test without a compatible adapter");
             return;
         };
-        let mut timing = GpuFrameTiming::new(&device, &queue).expect("timestamp timing");
+        let mut timing = GpuFrameTiming::new_with_detailed_stages(&device, &queue, true)
+            .expect("timestamp timing");
         assert_eq!(timing.query_sets.len(), SLOT_COUNT);
+        assert_eq!(timing.queries_per_frame, QUERIES_PER_FRAME);
         assert_eq!(
             timing.timestamp_write_strategy,
             timestamp_write_strategy(device.features()).expect("device timestamp strategy")
@@ -887,6 +897,25 @@ mod tests {
         assert!(profiles
             .iter()
             .all(|profile| profile.application_frame_interval == Duration::from_millis(16)));
-        assert!(profiles.iter().all(|profile| profile.stages.is_none()));
+        for profile in profiles {
+            let stages = profile.stages.expect("detailed stage profile");
+            let stage_total = [
+                stages.terrain_atlas_animation,
+                stages.opaque_world,
+                stages.opaque_particles,
+                stages.feature_depth_copies,
+                stages.entity_translucent_features,
+                stages.remaining_feature_targets,
+                stages.clouds,
+                stages.weather,
+                stages.transparency_combine,
+                stages.presentation_tail,
+                stages.encoder_tail,
+            ]
+            .into_iter()
+            .map(|duration| duration.as_nanos())
+            .sum::<u128>();
+            assert!(stage_total.abs_diff(profile.duration.as_nanos()) <= STAGE_COUNT as u128);
+        }
     }
 }
