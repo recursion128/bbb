@@ -140,7 +140,9 @@ capture commit `f0cc03ad7` 与 lag-1 analysis commit `c7aa715af` 均已 full gat
 5.025/5.808/6.874 ms；逐场景 wait→next-interval correlation 为
 0.567/0.589/0.682。surface acquire p99 为 3.450/2.820/2.182 ms，相关性为
 0.546/0.417/0.290。encode-before-wait p99 不超过 0.719 ms且三场景相关性为负；因此只触发
-保持行为的 FrameFlightController 重构，未触发 upload arena、FramePlan 或任何排队策略。
+保持行为的 FrameFlightController 重构。full-gated `9802b1ef5` 已把 Immediate 单 in-flight
+budget、wait/acquire、surface fallback 与 submit/present 收敛到该 owner，顺序和调度未变；
+upload arena、FramePlan、多帧排队与后台 acquire 仍未触发。
 
 ## 第二平台 cross-check
 

@@ -189,8 +189,10 @@ restoring any row to `equivalent`.
   only. The full-gated `f0cc03ad7` 2560x1600 probe, re-analyzed by full-gated
   `c7aa715af`, records submission-wait next-interval correlation
   0.567/0.589/0.682 and acquire correlation 0.546/0.417/0.290 across the three
-  scenes. This triggers Slice B's behavior-preserving controller refactor but
-  does not authorize a queue-depth or scheduling policy change. Slice C is not
+  scenes. Slice B's behavior-preserving controller refactor is full-gated at
+  `9802b1ef5`; it retains one macOS Immediate in-flight submission, FIFO/Linux,
+  wait/acquire/submit/present order and surface-error behavior, so it does not
+  itself authorize a queue-depth or scheduling policy change. Slice C is not
   triggered because encode-before-wait p99 is at most 0.719 ms with negative
   next-interval correlation; Slice D has no pass/copy trigger evidence.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,

@@ -516,7 +516,7 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-当前 macOS Retina 路线严格串行：A 已在 schema-3 profiler 链加入 encode-before-wait、previous-submission-wait、surface-acquire、presentation-tail、submit/present/GPU-poll、render-total/interval 的逐帧 raw、p50/p95/p99/stddev，以及 phase[N]→next interval[N+1] correlation；full-gated `f0cc03ad7` 的真实 2560x1600 probe 由 full-gated `c7aa715af` 复算，`frame-phase-diagnostic.json` 指向 submission wait/acquire，未改调度。B 已触发，当前只允许保持 Immediate 单 in-flight、FIFO/Linux、顺序/surface-error 的等价 `FrameFlightController` 重构，不默认多帧或后台 acquire。
+当前 macOS Retina 路线严格串行：A 已在 schema-3 profiler 链加入 encode-before-wait、previous-submission-wait、surface-acquire、presentation-tail、submit/present/GPU-poll、render-total/interval 的逐帧 raw、p50/p95/p99/stddev，以及 phase[N]→next interval[N+1] correlation；full-gated `f0cc03ad7` 的真实 2560x1600 probe 由 full-gated `c7aa715af` 复算，`frame-phase-diagnostic.json` 指向 submission wait/acquire，未改调度。B 的保持行为阶段已由 full-gated `9802b1ef5` 收敛为 `FrameFlightController`，锁定 Immediate 单 in-flight、FIFO/Linux、wait→acquire→submit→present 与 surface-error 语义；后续策略必须独立测量，不默认多帧或后台 acquire。
 C 仅在 A 指向 encode/upload 时启用 submission-safe 对齐 upload pages，保持 geometry/order/material、grow-only/empty fail-closed 并量化 writes/bytes/replacements；D 仅在 GPU pass/copy 证据触发，以静态 FramePlan 保持 `FRAME_STEPS`、透明/材质/draw evidence，不建通用 render graph。
 candidate 先过 ≤1% 预声明 BBB A/B、视觉/workload 与绝对尾部非回退才进 Vanilla ABBA；提高 FPS 但恶化 input latency、p95/p99 或 hitch 一律拒绝。
 

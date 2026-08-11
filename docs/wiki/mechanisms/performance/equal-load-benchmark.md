@@ -52,8 +52,9 @@ interval[N+1] 计算，并将同-row prior correlation 单列；官方 archive �
 阶段数据只作调度归因，不能单独成为性能胜负结论。
 当前 repo evidence `docs/evidence/macos-native-retina/frame-phase-diagnostic.json` 来自
 full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715af` 按 lag-1
-口径复算；它只触发保持现有行为的 flight-controller 重构，不是正式 BBB/Vanilla
-性能比较，也不替代后续 paired BBB A/B 或 Java→BBB→BBB→Java ABBA。
+口径复算；它触发的等价 flight-controller 重构已在 full-gated `9802b1ef5` 完成，仍保持
+单 in-flight 与 wait→acquire→submit→present。该 probe 不是正式 BBB/Vanilla 性能比较，
+也不替代后续独立策略的 paired BBB A/B 或 Java→BBB→BBB→Java ABBA。
 
 ## 生命周期和 fallback
 
