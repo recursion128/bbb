@@ -1811,6 +1811,12 @@ def _wgpu30_candidate_receipt_and_scheduling_failures(
         )
         return failures
     expected_candidate_versions = WGPU_COMPONENT_VERSIONS
+    rebuilt_baseline_sha256 = evidence.get("actual_rebuilt_baseline_binary_sha256")
+    if (
+        not isinstance(rebuilt_baseline_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", rebuilt_baseline_sha256) is None
+    ):
+        failures.append({"code": "bbb_candidate_rebuilt_baseline_binary_hash_missing"})
     for sequence, (run, expected_variant) in enumerate(
         zip(runs, CANDIDATE_AB_ORDER, strict=True), start=1
     ):
@@ -1848,7 +1854,11 @@ def _wgpu30_candidate_receipt_and_scheduling_failures(
                 if presentation.get(field) != expected
             )
         binary_sha256 = run.get("binary_sha256")
-        expected_binary_sha256 = evidence.get(f"{expected_variant}_bbb_binary_sha256")
+        expected_binary_sha256 = (
+            rebuilt_baseline_sha256
+            if expected_variant == "baseline"
+            else evidence.get("candidate_bbb_binary_sha256")
+        )
         if binary_sha256 != expected_binary_sha256:
             run_mismatches.append(
                 {
@@ -2664,33 +2674,58 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
             "actual_drawable_pixels": None,
             "in_flight_submission_budget": None,
         }
-    line = re.search(
-        r"renderer surface presentation selected[^\n]*present_mode=([A-Za-z]+)[^\n]*"
-        r"desired_maximum_frame_latency=([0-9]+)[^\n]*"
-        r"expected_metal_drawable_count=([0-9]+)[^\n]*"
-        r"in_flight_submission_budget=([0-9]+)",
-        text,
-    )
+    line = re.search(r"renderer surface presentation selected[^\n]*", text)
     if line is None:
         raise RetinaAcceptanceError("BBB log lacks surface presentation contract")
-    latency = int(line.group(2))
+    line_text = line.group(0)
+
+    def required_integer(name: str) -> int:
+        match = re.search(rf"{name}=([0-9]+)", line_text)
+        if match is None:
+            raise RetinaAcceptanceError(f"BBB surface presentation contract lacks {name}")
+        return int(match.group(1))
+
+    present_mode_match = re.search(r"present_mode=([A-Za-z]+)", line_text)
+    if present_mode_match is None:
+        raise RetinaAcceptanceError("BBB surface presentation contract lacks present_mode")
+    latency = required_integer("desired_maximum_frame_latency")
+    expected_count_match = re.search(r"expected_metal_drawable_count=([0-9]+)", line_text)
+    budget_match = re.search(r"in_flight_submission_budget=([0-9]+)", line_text)
+    has_wgpu30_contract = expected_count_match is not None or budget_match is not None
+    if has_wgpu30_contract and (expected_count_match is None or budget_match is None):
+        raise RetinaAcceptanceError("BBB wgpu 30 surface presentation contract is incomplete")
     observed = re.search(
-        r"native Metal layer presentation observed[^\n]*drawable_width=([0-9.]+)[^\n]*"
+        r"(?:native|external) Metal layer presentation observed[^\n]*"
+        r"drawable_width=([0-9.]+)[^\n]*"
         r"drawable_height=([0-9.]+)[^\n]*maximum_drawable_count=([0-9]+)",
         text,
     )
-    if observed is None:
+    if has_wgpu30_contract and observed is None:
         raise RetinaAcceptanceError("BBB log lacks actual CAMetalLayer presentation evidence")
-    drawable = [round(float(observed.group(1))), round(float(observed.group(2)))]
+    drawable = (
+        [round(float(observed.group(1))), round(float(observed.group(2)))]
+        if observed is not None
+        else None
+    )
     return {
         "api": "metal",
-        "present_mode": line.group(1),
+        "present_mode": present_mode_match.group(1),
         "desired_maximum_frame_latency": latency,
-        "expected_metal_drawable_count": int(line.group(3)),
-        "actual_metal_drawable_count": int(observed.group(3)),
+        "expected_metal_drawable_count": (
+            int(expected_count_match.group(1))
+            if expected_count_match is not None
+            else latency + 1
+        ),
+        "actual_metal_drawable_count": int(observed.group(3)) if observed is not None else None,
         "actual_drawable_pixels": drawable,
-        "in_flight_submission_budget": int(line.group(4)),
-        "count_basis": "runtime CAMetalLayer maximumDrawableCount observation",
+        "in_flight_submission_budget": (
+            int(budget_match.group(1)) if budget_match is not None else None
+        ),
+        "count_basis": (
+            "runtime CAMetalLayer maximumDrawableCount observation"
+            if observed is not None
+            else "legacy configured expectation; not actual evidence"
+        ),
     }
 
 
@@ -3045,14 +3080,17 @@ def _run_client(
             result["status"] = "failed"
         if client == "bbb":
             try:
-                result["runtime_dependency_receipt"] = _runtime_dependency_receipt_from_log(
-                    client_text
-                )
-                load_committed_wgpu_dependency_receipt()
-                result["committed_dependency_receipt"] = {
-                    "path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
-                    "sha256": file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"),
-                }
+                if "renderer dependency receipt" in client_text:
+                    result["runtime_dependency_receipt"] = _runtime_dependency_receipt_from_log(
+                        client_text
+                    )
+                    load_committed_wgpu_dependency_receipt()
+                    result["committed_dependency_receipt"] = {
+                        "path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
+                        "sha256": file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256"),
+                    }
+                else:
+                    result["runtime_dependency_receipt"] = None
             except RetinaAcceptanceError as error:
                 result.setdefault("validation_failures", []).append(str(error))
                 result["status"] = "failed"

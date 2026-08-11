@@ -100,6 +100,9 @@ single-in-flight 外，还从实际 CAMetalLayer 读取 2560x1600 `drawableSize`
 `maximumDrawableCount=3`；缺失或不匹配时 validator 在解析任何 FPS comparison 前返回
 blocker。只有 AC Power 的 B-C-C-B×2 在 combined、三个 scene、两个 round、全部 nearest
 pair 与逐 scene pair 的 FPS/绝对 App/GPU stability scope 全过，才允许正式 Java ABBA。
+当前 binary 原生记录；固定 0.19 baseline 使用首个 `nextDrawable` 后立即自恢复的 capture
+probe 只读同一 layer。canonical 历史 binary hash 与本机重建 hash 分列，逐 baseline run
+必须绑定后者，source commit/report 身份仍固定为既有 baseline。
 
 ## 生命周期和 fallback
 

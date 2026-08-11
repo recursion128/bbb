@@ -218,10 +218,15 @@ completion-handler/condition-variable wait 修复 commit
 `e0a6065c65b5b6c2e92ee7052ed084cd8910d486`。runtime 同时从 BBB `--build-info` 和
 renderer log 输出该 receipt；正式采集还从 wgpu 安装后的 AppKit layer tree 只读查询
 CAMetalLayer `drawableSize` 与 `maximumDrawableCount`，不再把 hint+1 单独称为实际值。
+固定 0.19 baseline 不重写源码；capture 只通过
+`scripts/fixtures/official-client-benchmark/metal-layer-probe.m` 在第一次
+`nextDrawable` 时读取同一 CAMetalLayer，立即恢复原 IMP，再进入预热和正式采样。
 
 `macos-native-retina-bbb-ab-v3` 保留 v1/v2 parser，并针对 0.19 baseline→wgpu 30
 candidate 强制 B-C-C-B×2 每轮记录 binary hash、runtime versions/provenance、Immediate、
 hint 2、expected/actual drawable count 3、actual 2560x1600 drawable 与单 in-flight budget。
+历史发布 binary hash 继续固定身份；本机重建 hash 独立记录并绑定每个 baseline run，
+不得把不同工具链的重建产物伪称为历史发布二进制。
 任一 dependency/surface/workload mismatch 都先于 FPS 或稳定性比较拒绝。该迁移不授权
 多帧排队、后台 acquire、upload arena、FramePlan 或 render graph；即使性能不通过，也保留
 通过正确性/full gate 的 wgpu 30 基础设施，再按 phase evidence 选择单一有界优化。

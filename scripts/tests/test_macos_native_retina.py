@@ -242,6 +242,7 @@ def candidate_evidence() -> dict[str, object]:
 def wgpu30_candidate_evidence() -> dict[str, object]:
     evidence = copy.deepcopy(candidate_evidence())
     evidence["schema"] = retina.WGPU30_CANDIDATE_AB_SCHEMA
+    evidence["actual_rebuilt_baseline_binary_sha256"] = "a" * 64
     evidence["candidate_bbb_binary_sha256"] = "b" * 64
     evidence["candidate_dependency_receipt"] = (
         retina.load_committed_wgpu_dependency_receipt()
@@ -280,13 +281,40 @@ def wgpu30_candidate_evidence() -> dict[str, object]:
             "actual_drawable_pixels": [2560, 1600],
             "in_flight_submission_budget": 1,
         }
-        run["binary_sha256"] = evidence[f'{run["variant"]}_bbb_binary_sha256']
+        run["binary_sha256"] = (
+            evidence["actual_rebuilt_baseline_binary_sha256"]
+            if run["variant"] == "baseline"
+            else evidence["candidate_bbb_binary_sha256"]
+        )
         if run["variant"] == "candidate":
             run["runtime_dependency_receipt"] = dict(runtime_receipt)
     return evidence
 
 
 class DisplayProbeTests(unittest.TestCase):
+    def test_legacy_metal_layer_probe_restores_the_hot_path_after_one_observation(self):
+        source = (
+            REPO_ROOT
+            / "scripts"
+            / "fixtures"
+            / "official-client-benchmark"
+            / "metal-layer-probe.m"
+        ).read_text(encoding="utf-8")
+
+        observer = source.index("static id bbb_observe_next_drawable")
+        constructor = source.index("bbb_install_metal_layer_probe")
+        restore = source.index(
+            "method_setImplementation(\n        bbb_next_drawable_method, "
+            "bbb_next_drawable_implementation",
+            observer,
+        )
+        observed_log = source.index("external Metal layer presentation observed", observer)
+        original_call = source.index("bbb_next_drawable_implementation)(layer, selector)", observer)
+        self.assertLess(observer, restore)
+        self.assertLess(restore, observed_log)
+        self.assertLess(observed_log, original_call)
+        self.assertIn("@selector(nextDrawable)", source[constructor:])
+
     def test_committed_wgpu30_dependency_receipt_matches_registry_lock(self):
         receipt = retina.load_committed_wgpu_dependency_receipt()
 
@@ -549,6 +577,31 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(
             receipt["upstream_metal_fence_commit"], retina.WGPU_METAL_FENCE_COMMIT
         )
+
+    def test_legacy_surface_log_uses_external_actual_layer_observation(self):
+        presentation = retina._surface_presentation_from_log(
+            "bbb",
+            "renderer surface presentation selected present_mode=Immediate "
+            "desired_maximum_frame_latency=2\n"
+            "external Metal layer presentation observed drawable_width=2560.0 "
+            "drawable_height=1600.0 maximum_drawable_count=3",
+        )
+
+        self.assertEqual(presentation["expected_metal_drawable_count"], 3)
+        self.assertEqual(presentation["actual_metal_drawable_count"], 3)
+        self.assertEqual(presentation["actual_drawable_pixels"], [2560, 1600])
+        self.assertIsNone(presentation["in_flight_submission_budget"])
+
+    def test_legacy_surface_log_does_not_promote_expectation_to_actual_evidence(self):
+        presentation = retina._surface_presentation_from_log(
+            "bbb",
+            "renderer surface presentation selected present_mode=Immediate "
+            "desired_maximum_frame_latency=2",
+        )
+
+        self.assertEqual(presentation["expected_metal_drawable_count"], 3)
+        self.assertIsNone(presentation["actual_metal_drawable_count"])
+        self.assertIsNone(presentation["actual_drawable_pixels"])
 
     def test_surface_presentation_log_missing_contract_is_rejected(self):
         with self.assertRaisesRegex(
@@ -831,6 +884,28 @@ class FormalValidationTests(unittest.TestCase):
             "bbb_candidate_surface_run_mismatch",
             {item["code"] for item in failed["failures"]},
         )
+
+    def test_wgpu30_candidate_binds_runs_to_the_rebuilt_baseline_binary(self):
+        evidence = wgpu30_candidate_evidence()
+
+        self.assertNotEqual(
+            evidence["actual_rebuilt_baseline_binary_sha256"],
+            evidence["baseline_bbb_binary_sha256"],
+        )
+        self.assertEqual(
+            retina.validate_candidate_fps_evidence(evidence, "c" * 40)["status"],
+            "passed",
+        )
+
+        evidence["runs"][0]["binary_sha256"] = evidence["baseline_bbb_binary_sha256"]
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_surface_run_mismatch"
+        )
+        self.assertEqual(failure["run"], 1)
+        self.assertIn("binary_sha256", {item["field"] for item in failure["mismatches"]})
 
     def test_wgpu30_candidate_rejects_actual_drawable_count_before_metrics(self):
         evidence = wgpu30_candidate_evidence()
