@@ -30,6 +30,7 @@ trait DynamicEntityTextureUploader {
         &mut self,
         images: Vec<DynamicEntityTextureImage>,
     ) -> Result<()>;
+    fn finish_upload_batch(&mut self) -> Result<()>;
 }
 
 impl DynamicEntityTextureUploader for Renderer {
@@ -42,6 +43,10 @@ impl DynamicEntityTextureUploader for Renderer {
         images: Vec<DynamicEntityTextureImage>,
     ) -> Result<()> {
         Renderer::upload_dynamic_entity_textures(self, images)
+    }
+
+    fn finish_upload_batch(&mut self) -> Result<()> {
+        Renderer::finish_upload_batch(self)
     }
 }
 
@@ -330,7 +335,9 @@ impl NativeEntityVariantTextureRuntime {
             );
         }
 
-        let result = uploader.upload_dynamic_entity_textures(uploads);
+        let result = uploader
+            .upload_dynamic_entity_textures(uploads)
+            .and_then(|()| uploader.finish_upload_batch());
         for id in &ids {
             let entry = self
                 .entries
@@ -417,7 +424,8 @@ impl NativeEntityVariantTextureRuntime {
                     )),
                     rgba: image.rgba,
                 })
-            });
+            })
+            .and_then(|()| uploader.finish_upload_batch());
 
         let entry = self
             .entries
@@ -509,6 +517,8 @@ mod tests {
         images: Vec<DynamicEntityTextureImage>,
         fail_after: Option<usize>,
         batch_calls: usize,
+        finish_calls: usize,
+        fail_finish: bool,
     }
 
     impl DynamicEntityTextureUploader for TestUploader {
@@ -537,6 +547,15 @@ mod tests {
             }
             Ok(())
         }
+
+        fn finish_upload_batch(&mut self) -> Result<()> {
+            self.finish_calls += 1;
+            if self.fail_finish {
+                Err(anyhow!("test upload completion failure"))
+            } else {
+                Ok(())
+            }
+        }
     }
 
     #[test]
@@ -564,6 +583,8 @@ mod tests {
             images: Vec::new(),
             fail_after: Some(1),
             batch_calls: 0,
+            finish_calls: 0,
+            fail_finish: false,
         };
         let mut world = WorldStore::new();
         world.record_registry_entries(
@@ -699,6 +720,7 @@ mod tests {
         runtime.synchronize_with_uploader(&world, &mut uploader);
 
         assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.finish_calls, 1);
         assert_eq!(uploader.images.len(), 2, "missingno plus the trim sprite");
         assert_eq!(uploader.images[1].size, [64, 32]);
         let trim = runtime
@@ -708,7 +730,46 @@ mod tests {
 
         runtime.synchronize_with_uploader(&world, &mut uploader);
         assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.finish_calls, 1);
         assert_eq!(uploader.images.len(), 2);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_entries_stay_failed_when_upload_completion_fails() {
+        let root = unique_temp_dir("entity-atlas-upload-completion");
+        let sources = root.join("sources/26.1");
+        let atlas_path = sources.join("assets/minecraft/atlases/banner_patterns.json");
+        std::fs::create_dir_all(atlas_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &atlas_path,
+            r#"{"sources":[{"type":"minecraft:single","resource":"example:entity/banner/custom"}]}"#,
+        )
+        .unwrap();
+        write_png(
+            &sources.join("assets/example/textures/entity/banner/custom.png"),
+            16,
+            16,
+        );
+        let roots = fixture_pack_roots(&root, &sources);
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader {
+            fail_finish: true,
+            ..TestUploader::default()
+        };
+
+        runtime.synchronize_with_uploader(&WorldStore::new(), &mut uploader);
+
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.finish_calls, 1);
+        assert_eq!(
+            runtime.status("example:entity/banner/custom"),
+            Some(EntityVariantTextureStatus::Failed)
+        );
+        assert!(runtime
+            .ready_banner_pattern_texture("example:entity/banner/custom")
+            .is_none());
 
         std::fs::remove_dir_all(root).unwrap();
     }

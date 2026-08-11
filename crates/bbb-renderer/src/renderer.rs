@@ -3267,6 +3267,22 @@ impl Renderer {
         self.counters.clone()
     }
 
+    /// Submits queued resource writes and waits for that upload-only
+    /// submission to finish. Startup/resource-generation callers use this at
+    /// logical batch boundaries so native `Queue::write_*` staging allocations
+    /// do not all remain live until the first presented frame.
+    ///
+    /// This submission does not acquire or present a surface texture and does
+    /// not participate in `FrameFlightController`'s presented-frame budget.
+    pub fn finish_upload_batch(&self) -> Result<()> {
+        let submission = self.queue.submit([]);
+        self.device.poll(wgpu::PollType::Wait {
+            submission_index: Some(submission),
+            timeout: None,
+        })?;
+        Ok(())
+    }
+
     #[cfg(feature = "lifecycle-soak")]
     pub fn inject_lifecycle_soak_surface_error(&mut self, error: LifecycleSoakSurfaceError) {
         self.lifecycle_soak_surface_faults
@@ -5076,6 +5092,29 @@ mod tests {
             LevelFrameRoute::for_options(true, true),
             LevelFrameRoute::Regular
         );
+    }
+
+    #[test]
+    fn upload_batch_completion_uses_an_exact_upload_only_submission() {
+        let source = include_str!("renderer.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]\nmod tests")
+            .expect("renderer production/test boundary")
+            .0;
+        let completion = production
+            .split_once("    pub fn finish_upload_batch(&self) -> Result<()> {")
+            .expect("upload batch completion owner")
+            .1
+            .split_once("\n    }")
+            .expect("upload batch completion body")
+            .0;
+
+        assert!(completion.contains("self.queue.submit([])"));
+        assert!(completion.contains("wgpu::PollType::Wait"));
+        assert!(completion.contains("submission_index: Some(submission)"));
+        assert!(completion.contains("timeout: None"));
+        assert!(!completion.contains("acquire_frame"));
+        assert!(!completion.contains("present"));
     }
 
     #[test]

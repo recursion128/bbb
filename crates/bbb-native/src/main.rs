@@ -1162,6 +1162,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
         args.client_mipmap_levels,
         terrain_atlas_base_padding,
     );
+    renderer.finish_upload_batch()?;
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
         if let Some(items) = &item_runtime {
@@ -1176,6 +1177,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
             japanese_variants: args.client_japanese_glyph_variants,
         },
     );
+    renderer.finish_upload_batch()?;
     load_panorama(&mut renderer, pack_roots.as_ref());
     renderer.set_default_text_right_to_left(
         item_runtime
@@ -1225,6 +1227,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
             }
         }
     }
+    renderer.finish_upload_batch()?;
     if let Some(roots) = pack_roots.as_ref() {
         roots
             .ensure_resource_data_admitted()
@@ -3163,6 +3166,51 @@ mod tests {
         assert_eq!(
             platform_surface_size("macos", true, preferred, PhysicalSize::new(0, 0)),
             PhysicalSize::new(0, 0)
+        );
+    }
+
+    #[test]
+    fn startup_resource_groups_complete_before_the_first_presented_frame() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let startup = production
+            .split_once("let mut terrain_textures = load_terrain_textures(")
+            .expect("terrain startup upload")
+            .1;
+        let first_finish = startup
+            .find("renderer.finish_upload_batch()?")
+            .expect("terrain upload completion");
+        let hud = startup
+            .find("load_hud_textures(")
+            .expect("HUD startup upload");
+        let second_finish = startup[first_finish + 1..]
+            .find("renderer.finish_upload_batch()?")
+            .map(|offset| first_finish + 1 + offset)
+            .expect("HUD upload completion");
+        let entity = startup
+            .find("load_entity_model_textures(")
+            .expect("entity startup upload");
+        let third_finish = startup[second_finish + 1..]
+            .find("renderer.finish_upload_batch()?")
+            .map(|offset| second_finish + 1 + offset)
+            .expect("remaining startup upload completion");
+        let event_loop = startup
+            .find("event_loop.run(")
+            .expect("first presented-frame event loop");
+
+        assert!(first_finish < hud);
+        assert!(hud < second_finish);
+        assert!(second_finish < entity);
+        assert!(entity < third_finish);
+        assert!(third_finish < event_loop);
+        assert_eq!(
+            startup[..event_loop]
+                .matches("renderer.finish_upload_batch()?")
+                .count(),
+            3
         );
     }
 

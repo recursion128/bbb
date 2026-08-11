@@ -222,6 +222,33 @@ mod tests {
     }
 
     #[test]
+    fn completed_upload_batch_remains_visible_to_the_next_frame() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("upload crosshair");
+
+        renderer
+            .finish_upload_batch()
+            .expect("complete upload-only submission");
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+
+        let center = pixels.pixel(8, 8);
+        assert!(
+            center[0] > 128 && center[2] < 128,
+            "completed upload should feed the next frame, got {center:?}"
+        );
+    }
+
+    #[test]
     fn offscreen_regular_and_improved_routes_preserve_clear_color_identity() {
         let Some(mut renderer) = Renderer::new_offscreen(24, 20) else {
             return;
