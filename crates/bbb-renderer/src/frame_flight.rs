@@ -483,10 +483,11 @@ impl FrameFlightController {
                 index: submission,
                 completion_observation_id,
             });
-            let in_flight_depth_at_submit = u32::from(self.previous_submission.is_some());
-            debug_assert_eq!(
-                in_flight_depth_at_submit,
-                in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode)
+            let in_flight_depth_at_submit =
+                in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode);
+            debug_assert!(
+                in_flight_depth_at_submit == 0 || self.previous_submission.is_some(),
+                "an active flight budget must own its submitted fence"
             );
             in_flight_depth_at_submit
         };
