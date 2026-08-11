@@ -5420,9 +5420,11 @@ mod tests {
             .split_once("\n#[cfg(test)]\nmod tests")
             .expect("renderer production/test boundary")
             .0;
-        assert!(production
-            .contains("wgpu::SurfaceTargetUnsafe::from_display_and_window(window, window)?"));
-        assert!(!production.contains("wgpu::SurfaceTargetUnsafe::from_window(window)?"));
+        let compact = production.split_whitespace().collect::<String>();
+        assert!(
+            compact.contains("wgpu::SurfaceTargetUnsafe::from_display_and_window(window,window,)?")
+        );
+        assert!(!compact.contains("wgpu::SurfaceTargetUnsafe::from_window(window)?"));
     }
 
     #[test]
