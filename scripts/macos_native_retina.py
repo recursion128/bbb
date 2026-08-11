@@ -87,6 +87,8 @@ BASELINE_BBB_COMMIT = "d698c8db0d219f035c7597726c76225c6cd70abc"
 BASELINE_BBB_REPORT_SHA256 = "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b"
 BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97"
 MAX_BASELINE_FPS_MARGIN = 0.01
+CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
+CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
 FRAME_PHASE_SCHEMA = "renderer-frame-phases-v1"
 FRAME_PHASE_COLUMNS = (
     "application_frame_interval",
@@ -1491,6 +1493,259 @@ def evaluate_candidate_fps_noninferiority(
     }
 
 
+def _candidate_required_scopes() -> set[tuple[str, str]]:
+    required = {("combined", "combined")}
+    required.update(("scene", segment) for segment in CAPTURE_SEGMENTS)
+    required.update(
+        ("abba_round", f"round-{round_index}")
+        for round_index in range(1, len(FORMAL_ROUNDS) + 1)
+    )
+    for pair_index in range(1, len(FORMAL_RUN_PAIRS) + 1):
+        required.add(("run_pair", f"pair-{pair_index}-all-scenes"))
+        required.update(
+            ("run_pair", f"pair-{pair_index}-{segment}")
+            for segment in CAPTURE_SEGMENTS
+        )
+    return required
+
+
+def _candidate_parity_failures(evidence: Mapping[str, object]) -> list[dict[str, object]]:
+    parity = evidence.get("parity_contract")
+    if not isinstance(parity, Mapping):
+        return [{"code": "bbb_candidate_parity_contract_missing"}]
+    expected: tuple[tuple[str, object], ...] = (
+        ("status", "passed"),
+        ("drawable_pixels", [2560, 1600]),
+        ("window_mode", "fullscreen"),
+        ("vsync", False),
+        ("framerate_limit", "unlimited"),
+        ("scene_match", True),
+        ("workload_hashes_match", True),
+        ("draw_workload_match", True),
+        ("input_match", True),
+    )
+    mismatches = [
+        {"field": field, "expected": expected_value, "actual": parity.get(field)}
+        for field, expected_value in expected
+        if parity.get(field) != expected_value
+    ]
+    return (
+        [{"code": "bbb_candidate_parity_contract_mismatch", "mismatches": mismatches}]
+        if mismatches
+        else []
+    )
+
+
+def _candidate_metric_stability_comparison(
+    baseline: Mapping[str, object],
+    candidate: Mapping[str, object],
+    metric: str,
+    fps_margin: float,
+) -> dict[str, object]:
+    lower_is_better = ["p50_ms", "p95_ms", "p99_ms", "stddev_ms", "p99_minus_p50_ms"]
+    if metric == "gpu_duration":
+        lower_is_better.insert(0, "mean_ms")
+    checks: list[dict[str, object]] = []
+    for field in lower_is_better:
+        baseline_value = float(baseline[field])
+        candidate_value = float(candidate[field])
+        if not all(math.isfinite(value) and value >= 0.0 for value in (baseline_value, candidate_value)):
+            raise RetinaAcceptanceError(f"candidate {metric} {field} must be finite and non-negative")
+        checks.append(
+            {
+                "field": field,
+                "direction": "lower-or-equal",
+                "baseline": baseline_value,
+                "candidate": candidate_value,
+                "passed": candidate_value <= baseline_value,
+            }
+        )
+    if metric == "application_frame_time":
+        baseline_mean = float(baseline["mean_ms"])
+        candidate_mean = float(candidate["mean_ms"])
+        maximum_candidate_mean = baseline_mean / (1.0 - fps_margin)
+        checks.append(
+            {
+                "field": "mean_ms",
+                "direction": "lower-with-predeclared-fps-margin",
+                "baseline": baseline_mean,
+                "candidate": candidate_mean,
+                "maximum_candidate": maximum_candidate_mean,
+                "passed": candidate_mean <= maximum_candidate_mean,
+            }
+        )
+        baseline_low = float(baseline["one_percent_low_fps"])
+        candidate_low = float(candidate["one_percent_low_fps"])
+        checks.append(
+            {
+                "field": "one_percent_low_fps",
+                "direction": "higher-or-equal",
+                "baseline": baseline_low,
+                "candidate": candidate_low,
+                "passed": candidate_low >= baseline_low,
+            }
+        )
+    baseline_hitches = baseline["hitch_counts"]
+    candidate_hitches = candidate["hitch_counts"]
+    if not isinstance(baseline_hitches, Mapping) or not isinstance(candidate_hitches, Mapping):
+        raise RetinaAcceptanceError(f"candidate {metric} hitch counts are malformed")
+    for threshold in (f">={value:.3f}ms" for value in HITCH_THRESHOLDS_MS):
+        baseline_value = int(baseline_hitches[threshold])
+        candidate_value = int(candidate_hitches[threshold])
+        checks.append(
+            {
+                "field": f"hitch_counts.{threshold}",
+                "direction": "lower-or-equal",
+                "baseline": baseline_value,
+                "candidate": candidate_value,
+                "passed": candidate_value <= baseline_value,
+            }
+        )
+    failed = [str(check["field"]) for check in checks if not check["passed"]]
+    baseline_cv = float(baseline["coefficient_of_variation"])
+    candidate_cv = float(candidate["coefficient_of_variation"])
+    cv_worse = candidate_cv > baseline_cv
+    if not cv_worse:
+        cv_classification = "not-worse"
+    elif failed:
+        cv_classification = "diagnostic-coincident-with-absolute-regression"
+    else:
+        cv_classification = "diagnostic-only-absolute-metrics-pass"
+    improved = any(
+        (
+            check["candidate"] < check["baseline"]
+            if check["direction"].startswith("lower")
+            else check["candidate"] > check["baseline"]
+        )
+        for check in checks
+        if check["field"] != "mean_ms" or metric == "gpu_duration"
+    )
+    return {
+        "status": "passed" if not failed else "failed",
+        "baseline": dict(baseline),
+        "candidate": dict(candidate),
+        "checks": checks,
+        "failed_absolute_metrics": failed,
+        "has_absolute_improvement": improved,
+        "coefficient_of_variation": {
+            "baseline": baseline_cv,
+            "candidate": candidate_cv,
+            "candidate_is_worse": cv_worse,
+            "classification": cv_classification,
+            "blocking_by_itself": False,
+        },
+    }
+
+
+def validate_candidate_stability_evidence(
+    evidence: Mapping[str, object], fps_margin: float
+) -> dict[str, object]:
+    acceptance = evidence.get("absolute_stability")
+    if not isinstance(acceptance, Mapping):
+        return {
+            "status": "failed",
+            "results": [],
+            "failures": [{"code": "bbb_candidate_absolute_stability_missing"}],
+        }
+    scopes = acceptance.get("scopes")
+    if not isinstance(scopes, list):
+        return {
+            "status": "failed",
+            "results": [],
+            "failures": [{"code": "bbb_candidate_absolute_scopes_missing"}],
+        }
+    required = _candidate_required_scopes()
+    observed: set[tuple[str, str]] = set()
+    results: list[dict[str, object]] = []
+    failures: list[dict[str, object]] = []
+    if acceptance.get("policy") != CANDIDATE_STABILITY_POLICY:
+        failures.append({"code": "bbb_candidate_absolute_policy_mismatch"})
+    combined_improved = False
+    for scope in scopes:
+        if not isinstance(scope, Mapping):
+            failures.append({"code": "bbb_candidate_absolute_scope_malformed"})
+            continue
+        scope_key = (str(scope.get("scope_type")), str(scope.get("scope_id")))
+        if scope_key in observed:
+            failures.append(
+                {"code": "bbb_candidate_absolute_scope_duplicate", "scope": list(scope_key)}
+            )
+        observed.add(scope_key)
+        metrics = scope.get("metrics")
+        if not isinstance(metrics, Mapping):
+            failures.append(
+                {"code": "bbb_candidate_absolute_scope_malformed", "scope": list(scope_key)}
+            )
+            continue
+        comparisons: dict[str, object] = {}
+        for metric in ("application_frame_time", "gpu_duration"):
+            values = metrics.get(metric)
+            try:
+                if not isinstance(values, Mapping):
+                    raise RetinaAcceptanceError(f"missing {metric}")
+                baseline = values["baseline"]
+                candidate = values["candidate"]
+                if not isinstance(baseline, Mapping) or not isinstance(candidate, Mapping):
+                    raise RetinaAcceptanceError(f"malformed {metric} summaries")
+                comparison = _candidate_metric_stability_comparison(
+                    baseline, candidate, metric, fps_margin
+                )
+            except (KeyError, TypeError, ValueError, RetinaAcceptanceError) as error:
+                failures.append(
+                    {
+                        "code": "bbb_candidate_absolute_scope_malformed",
+                        "scope": list(scope_key),
+                        "metric": metric,
+                        "error": str(error),
+                    }
+                )
+                continue
+            comparisons[metric] = comparison
+            if scope_key == ("combined", "combined") and comparison["has_absolute_improvement"]:
+                combined_improved = True
+            failed = comparison["failed_absolute_metrics"]
+            if failed:
+                failures.append(
+                    {
+                        "code": "bbb_candidate_absolute_stability_regression",
+                        "scope": list(scope_key),
+                        "metric": metric,
+                        "failed_metrics": list(failed),
+                    }
+                )
+        results.append(
+            {
+                "scope_type": scope_key[0],
+                "scope_id": scope_key[1],
+                "metrics": comparisons,
+            }
+        )
+    missing = sorted(required - observed)
+    if missing:
+        failures.append(
+            {
+                "code": "bbb_candidate_absolute_required_scopes_missing",
+                "scopes": [list(item) for item in missing],
+            }
+        )
+    unexpected = sorted(observed - required)
+    if unexpected:
+        failures.append(
+            {
+                "code": "bbb_candidate_absolute_scopes_unexpected",
+                "scopes": [list(item) for item in unexpected],
+            }
+        )
+    if not combined_improved:
+        failures.append({"code": "bbb_candidate_absolute_improvement_missing"})
+    return {
+        "status": "passed" if not failures else "failed",
+        "required_scopes": [list(item) for item in sorted(required)],
+        "results": results,
+        "failures": failures,
+    }
+
+
 def validate_candidate_fps_evidence(
     evidence: Mapping[str, object] | None, candidate_commit: str
 ) -> dict[str, object]:
@@ -1499,7 +1754,19 @@ def validate_candidate_fps_evidence(
             "status": "failed",
             "failures": [{"code": "bbb_baseline_comparison_missing"}],
         }
+    parity_failures = _candidate_parity_failures(evidence)
+    if parity_failures:
+        return {
+            "status": "failed",
+            "candidate_bbb_commit": candidate_commit,
+            "maximum_margin": MAX_BASELINE_FPS_MARGIN,
+            "results": [],
+            "stability": None,
+            "failures": parity_failures,
+        }
     failures: list[dict[str, object]] = []
+    if evidence.get("schema") != CANDIDATE_AB_SCHEMA:
+        failures.append({"code": "bbb_candidate_schema_mismatch"})
     if evidence.get("baseline_bbb_commit") != BASELINE_BBB_COMMIT:
         failures.append({"code": "bbb_baseline_commit_mismatch"})
     if evidence.get("baseline_bbb_report_sha256") != BASELINE_BBB_REPORT_SHA256:
@@ -1519,6 +1786,10 @@ def validate_candidate_fps_evidence(
         margin = float(evidence.get("baseline_repeat_noise_margin"))
     except (TypeError, ValueError):
         margin = math.nan
+    margin_is_valid = math.isfinite(margin) and 0.0 <= margin <= MAX_BASELINE_FPS_MARGIN
+    if not margin_is_valid:
+        failures.append({"code": "bbb_candidate_margin_out_of_range"})
+    comparison_margin = margin if margin_is_valid else 0.0
     repeat_values = evidence.get("baseline_repeat_mean_fps")
     if not isinstance(repeat_values, list) or len(repeat_values) < 4:
         failures.append({"code": "bbb_baseline_noise_repeats_missing"})
@@ -1528,7 +1799,15 @@ def validate_candidate_fps_evidence(
             if not all(math.isfinite(value) and value > 0.0 for value in repeats):
                 raise ValueError("non-positive baseline repeat")
             measured_noise = (max(repeats) - min(repeats)) / statistics.fmean(repeats)
-            derived_margin = min(measured_noise, MAX_BASELINE_FPS_MARGIN)
+            derived_margin = measured_noise
+            if measured_noise > MAX_BASELINE_FPS_MARGIN:
+                failures.append(
+                    {
+                        "code": "bbb_baseline_noise_exceeds_maximum",
+                        "measured": measured_noise,
+                        "maximum": MAX_BASELINE_FPS_MARGIN,
+                    }
+                )
             if not math.isclose(margin, derived_margin, rel_tol=1e-12, abs_tol=1e-12):
                 failures.append(
                     {
@@ -1544,19 +1823,23 @@ def validate_candidate_fps_evidence(
     if not isinstance(comparisons, list):
         failures.append({"code": "bbb_candidate_comparisons_missing"})
     else:
-        required = {("combined", "combined"), * (("scene", segment) for segment in CAPTURE_SEGMENTS)}
+        required = _candidate_required_scopes()
         observed: set[tuple[str, str]] = set()
         for entry in comparisons:
             if not isinstance(entry, Mapping):
                 failures.append({"code": "bbb_candidate_comparison_malformed"})
                 continue
             scope = (str(entry.get("scope_type")), str(entry.get("scope_id")))
+            if scope in observed:
+                failures.append(
+                    {"code": "bbb_candidate_comparison_duplicate", "scope": list(scope)}
+                )
             observed.add(scope)
             try:
                 result = evaluate_candidate_fps_noninferiority(
                     float(entry["baseline_mean_fps"]),
                     float(entry["candidate_mean_fps"]),
-                    margin,
+                    comparison_margin,
                 )
             except (KeyError, TypeError, ValueError, RetinaAcceptanceError) as error:
                 failures.append(
@@ -1574,8 +1857,16 @@ def validate_candidate_fps_evidence(
             failures.append(
                 {"code": "bbb_candidate_required_scopes_missing", "scopes": [list(item) for item in missing]}
             )
-        if not any(result["scope_type"] == "run_pair" for result in results):
-            failures.append({"code": "bbb_candidate_interleaved_pairs_missing"})
+        unexpected = sorted(observed - required)
+        if unexpected:
+            failures.append(
+                {
+                    "code": "bbb_candidate_comparisons_unexpected",
+                    "scopes": [list(item) for item in unexpected],
+                }
+            )
+    stability = validate_candidate_stability_evidence(evidence, comparison_margin)
+    failures.extend(stability["failures"])
     return {
         "status": "passed" if not failures else "failed",
         "baseline_bbb_commit": BASELINE_BBB_COMMIT,
@@ -1584,6 +1875,7 @@ def validate_candidate_fps_evidence(
         "candidate_bbb_commit": candidate_commit,
         "maximum_margin": MAX_BASELINE_FPS_MARGIN,
         "results": results,
+        "stability": stability,
         "failures": failures,
     }
 
@@ -2540,6 +2832,20 @@ def _revalidate_command(args: argparse.Namespace) -> int:
     return 0 if report["status"] == "passed" else 2
 
 
+def _candidate_check_command(args: argparse.Namespace) -> int:
+    evidence = _load_object(args.report, "BBB baseline/candidate A/B evidence")
+    result = validate_candidate_fps_evidence(evidence, args.candidate_commit)
+    result["evidence_report"] = str(args.report)
+    result["evidence_report_sha256"] = file_digest(args.report, "sha256")
+    payload = canonical_json_bytes(result)
+    if args.output is None:
+        sys.stdout.buffer.write(payload)
+    else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_bytes(payload)
+    return 0 if result["status"] == "passed" else 2
+
+
 def _run_command(args: argparse.Namespace) -> int:
     report = run_formal(
         artifact_root=args.artifact_root,
@@ -2568,6 +2874,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     revalidate.add_argument("--report", type=Path, required=True)
     revalidate.add_argument("--output", type=Path, required=True)
     revalidate.add_argument("--bbb-baseline-ab-report", type=Path)
+    candidate_check = subparsers.add_parser("candidate-check")
+    candidate_check.add_argument("--report", type=Path, required=True)
+    candidate_check.add_argument("--candidate-commit", required=True)
+    candidate_check.add_argument("--output", type=Path)
     run = subparsers.add_parser("run")
     run.add_argument("--artifact-root", type=Path, required=True)
     run.add_argument("--vanilla-root", type=Path, required=True)
@@ -2597,6 +2907,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _summarize_command(args)
         if args.command == "revalidate":
             return _revalidate_command(args)
+        if args.command == "candidate-check":
+            return _candidate_check_command(args)
         if args.command == "run":
             return _run_command(args)
         raise AssertionError(args.command)

@@ -56,6 +56,19 @@ full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715
 单 in-flight 与 wait→acquire→submit→present。该 probe 不是正式 BBB/Vanilla 性能比较，
 也不替代后续独立策略的 paired BBB A/B 或 Java→BBB→BBB→Java ABBA。
 
+候选 A/B 使用独立 `macos-native-retina-bbb-ab-v1` report schema。`candidate-check`
+先拒绝 2560x1600 drawable、fullscreen、VSync/cap、场景、workload/draw 和 input
+parity 不匹配；只有 parity 通过才比较性能。FPS 与 App/GPU 绝对稳定性都必须包含
+combined、三个 scene、两个 ABBA round，以及四个 nearest pair 的 all-scenes 和逐 scene
+scope。App
+mean 只使用预声明 FPS margin，p50/p95/p99/stddev/p99-p50/1% low/hitch 不借用该
+margin；GPU mean/p50/p95/p99/stddev/p99-p50/hitch 同样逐 scope 非回退。CV 永远保留
+为诊断字段，绝对指标全部通过时不单独阻止；缺任一 scope 或任一 pair 失败均在正式
+Vanilla ABBA 前拒绝。四次 baseline 重复噪声超过 1% 时必须重采，不能截断成 1% 后
+继续验收。可用
+`scripts/macos_native_retina.py candidate-check --report <report> --candidate-commit <sha>`
+独立复核。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。

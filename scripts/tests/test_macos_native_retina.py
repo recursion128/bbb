@@ -91,6 +91,63 @@ def write_bbb_phase_profile(path: Path) -> None:
         )
 
 
+def candidate_evidence() -> dict[str, object]:
+    baseline = retina.summarize_durations_ms([9.0, 11.0])
+    candidate = retina.summarize_durations_ms([0.8, 1.2])
+    scopes = []
+    comparisons = []
+    for scope_type, scope_id in sorted(retina._candidate_required_scopes()):
+        scopes.append(
+            {
+                "scope_type": scope_type,
+                "scope_id": scope_id,
+                "metrics": {
+                    metric: {
+                        "baseline": dict(baseline),
+                        "candidate": dict(candidate),
+                    }
+                    for metric in ("application_frame_time", "gpu_duration")
+                },
+            }
+        )
+        comparisons.append(
+            {
+                "scope_type": scope_type,
+                "scope_id": scope_id,
+                "baseline_mean_fps": 100.0,
+                "candidate_mean_fps": 100.0,
+            }
+        )
+    return {
+        "schema": retina.CANDIDATE_AB_SCHEMA,
+        "baseline_bbb_commit": retina.BASELINE_BBB_COMMIT,
+        "baseline_bbb_report_sha256": retina.BASELINE_BBB_REPORT_SHA256,
+        "baseline_bbb_binary_sha256": retina.BASELINE_BBB_BINARY_SHA256,
+        "candidate_bbb_commit": "c" * 40,
+        "pairing": "interleaved-baseline-candidate",
+        "margin_declared_before_capture": True,
+        "baseline_repeat_raw_sha256": "a" * 64,
+        "baseline_repeat_mean_fps": [100.0, 100.5, 99.5, 100.0],
+        "baseline_repeat_noise_margin": 0.01,
+        "parity_contract": {
+            "status": "passed",
+            "drawable_pixels": [2560, 1600],
+            "window_mode": "fullscreen",
+            "vsync": False,
+            "framerate_limit": "unlimited",
+            "scene_match": True,
+            "workload_hashes_match": True,
+            "draw_workload_match": True,
+            "input_match": True,
+        },
+        "comparisons": comparisons,
+        "absolute_stability": {
+            "policy": retina.CANDIDATE_STABILITY_POLICY,
+            "scopes": scopes,
+        },
+    }
+
+
 class DisplayProbeTests(unittest.TestCase):
     def test_checked_in_profile_contract_is_exact(self):
         contract = retina.load_profile_contract()
@@ -464,45 +521,150 @@ class FormalValidationTests(unittest.TestCase):
         self.assertEqual(result["minimum_candidate_mean_fps"], 99.0)
 
     def test_candidate_report_rejects_interleaved_fps_regression(self):
-        evidence = {
-            "baseline_bbb_commit": retina.BASELINE_BBB_COMMIT,
-            "baseline_bbb_report_sha256": retina.BASELINE_BBB_REPORT_SHA256,
-            "baseline_bbb_binary_sha256": retina.BASELINE_BBB_BINARY_SHA256,
-            "candidate_bbb_commit": "c" * 40,
-            "pairing": "interleaved-baseline-candidate",
-            "margin_declared_before_capture": True,
-            "baseline_repeat_raw_sha256": "a" * 64,
-            "baseline_repeat_mean_fps": [100.0, 100.5, 99.5, 100.0],
-            "baseline_repeat_noise_margin": 0.01,
-            "comparisons": [
-                {
-                    "scope_type": "combined",
-                    "scope_id": "combined",
-                    "baseline_mean_fps": 100.0,
-                    "candidate_mean_fps": 98.9,
-                },
-                *[
-                    {
-                        "scope_type": "scene",
-                        "scope_id": segment,
-                        "baseline_mean_fps": 100.0,
-                        "candidate_mean_fps": 100.0,
-                    }
-                    for segment in retina.CAPTURE_SEGMENTS
-                ],
-                {
-                    "scope_type": "run_pair",
-                    "scope_id": "pair-1",
-                    "baseline_mean_fps": 100.0,
-                    "candidate_mean_fps": 100.0,
-                },
-            ],
-        }
+        evidence = candidate_evidence()
+        combined = next(
+            item
+            for item in evidence["comparisons"]
+            if item["scope_type"] == "combined"
+        )
+        combined["candidate_mean_fps"] = 98.9
 
         result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
 
         self.assertEqual(result["status"], "failed")
-        self.assertIn("bbb_candidate_fps_regression", {item["code"] for item in result["failures"]})
+        self.assertIn(
+            "bbb_candidate_fps_regression",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_candidate_cv_alone_is_diagnostic_when_absolute_metrics_improve(self):
+        result = retina.validate_candidate_fps_evidence(candidate_evidence(), "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+        combined = next(
+            scope
+            for scope in result["stability"]["results"]
+            if scope["scope_type"] == "combined"
+        )
+        app_cv = combined["metrics"]["application_frame_time"][
+            "coefficient_of_variation"
+        ]
+        self.assertTrue(app_cv["candidate_is_worse"])
+        self.assertEqual(
+            app_cv["classification"], "diagnostic-only-absolute-metrics-pass"
+        )
+        self.assertFalse(app_cv["blocking_by_itself"])
+
+    def test_candidate_cv_and_absolute_tail_regression_are_rejected(self):
+        evidence = candidate_evidence()
+        combined = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        combined["metrics"]["application_frame_time"]["candidate"] = (
+            retina.summarize_durations_ms([0.1, 3.9])
+        )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_absolute_stability_regression"
+        )
+        self.assertEqual(failure["scope"], ["combined", "combined"])
+        self.assertIn("stddev_ms", failure["failed_metrics"])
+        self.assertIn("p99_minus_p50_ms", failure["failed_metrics"])
+
+    def test_candidate_failed_run_pair_cannot_be_hidden_by_combined(self):
+        evidence = candidate_evidence()
+        failed_scope = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_id"] == "pair-1-static_orbit"
+        )
+        failed_scope["metrics"]["application_frame_time"]["candidate"] = (
+            retina.summarize_durations_ms([0.1, 3.9])
+        )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(
+            any(
+                item.get("scope") == ["run_pair", "pair-1-static_orbit"]
+                for item in result["failures"]
+            )
+        )
+
+    def test_candidate_failed_abba_round_cannot_be_hidden_by_combined(self):
+        evidence = candidate_evidence()
+        failed_scope = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_id"] == "round-2"
+        )
+        failed_scope["metrics"]["gpu_duration"]["candidate"] = (
+            retina.summarize_durations_ms([0.1, 3.9])
+        )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(
+            any(
+                item.get("scope") == ["abba_round", "round-2"]
+                for item in result["failures"]
+            )
+        )
+
+    def test_candidate_required_scopes_cannot_be_omitted(self):
+        evidence = candidate_evidence()
+        evidence["comparisons"] = [
+            item
+            for item in evidence["comparisons"]
+            if item["scope_id"] != "pair-4-chunk_boundary_crossing"
+        ]
+        evidence["absolute_stability"]["scopes"] = [
+            item
+            for item in evidence["absolute_stability"]["scopes"]
+            if item["scope_id"] != "pair-4-chunk_boundary_crossing"
+        ]
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+        codes = {item["code"] for item in result["failures"]}
+
+        self.assertIn("bbb_candidate_required_scopes_missing", codes)
+        self.assertIn("bbb_candidate_absolute_required_scopes_missing", codes)
+
+    def test_candidate_baseline_noise_above_one_percent_requires_recapture(self):
+        evidence = candidate_evidence()
+        evidence["baseline_repeat_mean_fps"] = [100.0, 102.0, 98.0, 100.0]
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertIn(
+            "bbb_baseline_noise_exceeds_maximum",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_candidate_parity_mismatch_preempts_performance_comparison(self):
+        evidence = candidate_evidence()
+        evidence["parity_contract"]["drawable_pixels"] = [1920, 1200]
+        evidence["comparisons"] = "intentionally malformed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertEqual(
+            {item["code"] for item in result["failures"]},
+            {"bbb_candidate_parity_contract_mismatch"},
+        )
 
     def test_drawable_mismatch_blocks_and_withholds_comparison(self):
         runs = [self.run_record(client) for client in retina.FORMAL_ORDER]

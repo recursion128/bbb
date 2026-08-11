@@ -144,6 +144,25 @@ capture commit `f0cc03ad7` 与 lag-1 analysis commit `c7aa715af` 均已 full gat
 budget、wait/acquire、surface fallback 与 submit/present 收敛到该 owner，顺序和调度未变；
 upload arena、FramePlan、多帧排队与后台 acquire 仍未触发。
 
+Slice B 的首个独立策略只把 macOS Immediate 的 drawable acquire 提前到 previous
+submission wait 之前，仍保持单 in-flight 且不启用后台 acquire。full-gated candidate
+`ff7c7c968` 在 AC Power 下完成 baseline→candidate→candidate→baseline 两轮交错 A/B，
+随后由正常 fix-forward commit `6851825cd` 恢复原顺序并 full gate。
+[AC steady baseline](../../evidence/macos-native-retina/ac-steady-baseline.json) 的四次
+重复 FPS 为 154.546/154.917/154.657/155.073，预声明噪声 margin 为 0.3404%；其
+SHA-256 为 `69e4186722cd649c080235b2588ccab7a75669440b01533f77b64827b3a25a93`。
+
+[AC candidate report](../../evidence/macos-native-retina/acquire-before-wait-ac-candidate.json)
+中 combined FPS 为 baseline 155.168、candidate 155.152（-0.010%，非劣），但 App
+p95/p99/stddev/p99-p50 由 8.240/9.987/1.199/3.701 ms 回退到
+8.280/10.467/1.231/4.190 ms，1% low 从 78.088 降到 75.675 FPS；GPU
+mean/p95/p99/p99-p50 也从 0.473/0.699/0.886/0.404 ms 回退到
+0.479/0.712/0.891/0.408 ms。四个 all-scene pair 的 FPS delta 为
+-0.069%/+0.239%/+0.035%/-0.246%，两个 ABBA round 的 delta 为 +0.085%/-0.106%；
+两个 round 的 App/GPU 绝对稳定性都失败，另有 pair-1 static 与 pair-4 preloaded 两个
+scene-pair 超过固定 margin。因此在正式 Vanilla ABBA 前拒绝。报告 SHA-256 为
+`163dfb5557ad8002a5f097db6c627dbc6268744b76a9c36c2549fa46c510fe07`。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

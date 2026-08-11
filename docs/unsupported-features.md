@@ -194,7 +194,20 @@ restoring any row to `equivalent`.
   wait/acquire/submit/present order and surface-error behavior, so it does not
   itself authorize a queue-depth or scheduling policy change. Slice C is not
   triggered because encode-before-wait p99 is at most 0.719 ms with negative
-  next-interval correlation; Slice D has no pass/copy trigger evidence.
+  next-interval correlation; Slice D has no pass/copy trigger evidence. The
+  full-gated `ff7c7c968` acquire-before-wait policy was rejected by an AC Power
+  paired A/B capture, then restored by full-gated fix-forward `6851825cd`. The
+  AC steady baseline fixes a 0.3404% FPS margin; candidate combined FPS was
+  noninferior (-0.010%), but App p95/p99/stddev/p99-p50/1% low and GPU
+  mean/p95/p99/p99-p50 regressed; both ABBA rounds failed absolute stability,
+  with two scene-pair FPS failures. The report
+  is `docs/evidence/macos-native-retina/acquire-before-wait-ac-candidate.json`
+  at SHA-256
+  `163dfb5557ad8002a5f097db6c627dbc6268744b76a9c36c2549fa46c510fe07`;
+  it is rejected before formal Vanilla ABBA. Reopen Slice B scheduling only for
+  a separately predeclared policy whose lifecycle/input-latency contract is
+  focused-tested and whose paired A/B passes every combined/scene/run-pair FPS
+  and absolute-stability scope; do not reuse acquire-before-wait as a candidate.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and
