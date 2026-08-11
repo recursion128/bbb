@@ -13,7 +13,7 @@ use std::sync::Arc;
 use anyhow::{bail, Result};
 use winit::dpi::PhysicalSize;
 
-use crate::renderer::RenderSurface;
+use crate::frame_flight::RenderSurface;
 use crate::screenshot::ScreenshotPixels;
 use crate::Renderer;
 

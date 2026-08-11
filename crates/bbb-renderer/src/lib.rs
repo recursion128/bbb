@@ -10,6 +10,7 @@ mod debug_textures;
 mod entity_models;
 mod exports;
 mod frame_buffers;
+mod frame_flight;
 mod generated_item;
 mod gpu;
 mod gpu_timing;

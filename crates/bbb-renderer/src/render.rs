@@ -5,7 +5,7 @@ use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 
 use crate::frame_buffers::FrameDataBuffer;
-use crate::renderer::FrameTarget;
+use crate::frame_flight::FrameTarget;
 use crate::screen_blur::write_screen_blur_radius;
 use crate::{
     clouds::CloudShape,
@@ -38,14 +38,6 @@ use crate::{
 enum TerrainOpaqueGroupLayer {
     Solid,
     Cutout,
-}
-
-/// Bound uncapped CAMetalLayer work to one completed render submission before
-/// asking for the next drawable. FIFO already supplies presentation
-/// backpressure, and non-Metal backends retain their existing queue behavior.
-#[cfg(any(target_os = "macos", test))]
-fn should_serialize_macos_immediate_submission(present_mode: wgpu::PresentMode) -> bool {
-    cfg!(target_os = "macos") && present_mode == wgpu::PresentMode::Immediate
 }
 
 /// Converts a logical-GUI scissor rectangle into physical attachment pixels
@@ -294,30 +286,19 @@ impl Renderer {
             .frame_phase_profiling_enabled
             .then(|| render_encoding_started_at.elapsed())
             .unwrap_or_default();
-        let mut previous_submission_wait = std::time::Duration::ZERO;
-        #[cfg(target_os = "macos")]
-        if should_serialize_macos_immediate_submission(self.config.present_mode) {
-            if let Some(submission) = self.previous_frame_submission.take() {
-                let wait_started_at = self
-                    .frame_phase_profiling_enabled
-                    .then(std::time::Instant::now);
-                self.device
-                    .poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
-                previous_submission_wait = wait_started_at
-                    .map(|started_at| started_at.elapsed())
-                    .unwrap_or_default();
-            }
-        }
-        let render_duration_before_surface = render_encoding_started_at.elapsed();
-        let surface_acquire_started_at = std::time::Instant::now();
-        let acquired_frame = self.surface.acquire_frame(
+        let acquired = self.frame_flight.acquire_frame(
+            &mut self.surface,
             &self.device,
             &self.config,
             &mut self.counters,
             injected_fault,
+            self.frame_phase_profiling_enabled,
+            render_encoding_started_at,
         );
-        self.last_frame_profile.surface_acquire = surface_acquire_started_at.elapsed();
-        let frame = match acquired_frame {
+        let previous_submission_wait = acquired.previous_submission_wait;
+        let render_duration_before_surface = acquired.render_duration_before_surface;
+        self.last_frame_profile.surface_acquire = acquired.surface_acquire;
+        let frame = match acquired.frame {
             Ok(Some(frame)) => frame,
             Ok(None) => {
                 if let Some(animation) = self.terrain_atlas_animation.as_mut() {
@@ -4172,18 +4153,11 @@ impl Renderer {
             None => None,
         };
 
-        let present_started_at = std::time::Instant::now();
-        let submission = self.queue.submit(Some(encoder.finish()));
-        #[cfg(target_os = "macos")]
-        {
-            self.previous_frame_submission = Some(submission);
-        }
-        #[cfg(not(target_os = "macos"))]
-        let _ = submission;
-        let present_duration = present_started_at.elapsed();
-        let swap_buffers_started_at = std::time::Instant::now();
-        frame.present();
-        let swap_buffers_duration = swap_buffers_started_at.elapsed();
+        let submission = self
+            .frame_flight
+            .submit_and_present(&self.queue, encoder, frame);
+        let present_duration = submission.queue_submit;
+        let swap_buffers_duration = submission.swap_buffers_present;
         self.last_frame_profile.render = render_duration;
         self.last_frame_profile.present = present_duration;
         self.last_frame_profile.swap_buffers = swap_buffers_duration;
@@ -5913,27 +5887,9 @@ impl Renderer {
 #[cfg(test)]
 mod tests {
     use super::{
-        physical_scissor_from_gui, should_serialize_macos_immediate_submission, Renderer,
-        TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
+        physical_scissor_from_gui, Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
     };
     use winit::dpi::PhysicalSize;
-
-    #[test]
-    fn submission_backpressure_is_limited_to_macos_immediate_present() {
-        assert_eq!(
-            should_serialize_macos_immediate_submission(wgpu::PresentMode::Immediate),
-            cfg!(target_os = "macos")
-        );
-        for mode in [
-            wgpu::PresentMode::Fifo,
-            wgpu::PresentMode::FifoRelaxed,
-            wgpu::PresentMode::Mailbox,
-            wgpu::PresentMode::AutoVsync,
-            wgpu::PresentMode::AutoNoVsync,
-        ] {
-            assert!(!should_serialize_macos_immediate_submission(mode));
-        }
-    }
 
     #[test]
     fn empty_item_and_particle_targets_do_not_claim_depth_work() {
@@ -6278,7 +6234,7 @@ mod tests {
 
         // Count `self.<method>(` call sites in render()'s body. Every frame
         // step is invoked this way; other `self.` uses in render() (e.g.
-        // `self.surface.acquire_frame(...)`, or `self\n    .device\n    \
+        // `self.frame_flight.acquire_frame(...)`, or `self\n    .device\n    \
         // .create_command_encoder(...)`) never match because a `.` or a
         // line break sits between the identifier and the `(`, so this stays
         // an exact count of step calls without needing a regex crate.
@@ -6324,7 +6280,7 @@ mod tests {
             .find("self.transparency_combine_pass")
             .expect("offscreen transparency combine");
         let acquire = render_body
-            .find("self.surface.acquire_frame")
+            .find("self.frame_flight.acquire_frame")
             .expect("window surface acquisition");
         let hud = render_body
             .find("self.hud_passes")
@@ -9011,7 +8967,7 @@ mod tests {
             .expect("first-person presentation is scheduled");
         let hud = render.find("self.hud_passes").expect("GUI is scheduled");
         let acquire = render
-            .find("self.surface.acquire_frame")
+            .find("self.frame_flight.acquire_frame")
             .expect("surface is acquired for presentation");
         let blit = render
             .find("self.transparency_blit_pass")
@@ -9067,35 +9023,27 @@ mod tests {
         let cpu_boundary = render
             .find("let cpu_encode_before_wait")
             .expect("CPU encode boundary");
-        let submission_wait = render
-            .find("WaitForSubmissionIndex(submission)")
-            .expect("Immediate previous-submission wait");
         let acquire = render
-            .find("self.surface.acquire_frame")
-            .expect("surface acquire");
+            .find("self.frame_flight.acquire_frame")
+            .expect("wait and surface acquire owner");
         let presentation_tail = render
             .find("self.transparency_blit_pass")
             .expect("presentation tail");
         let finish = render.find("self.finish_frame").expect("finish call");
         assert!(
-            cpu_boundary < submission_wait
-                && submission_wait < acquire
-                && acquire < presentation_tail
-                && presentation_tail < finish
+            cpu_boundary < acquire && acquire < presentation_tail && presentation_tail < finish
         );
 
         let finish_owner = &source[finish_start..];
         let submit = finish_owner
-            .find("self.queue.submit")
-            .expect("queue submission");
-        let present = finish_owner
-            .find("frame.present()")
-            .expect("drawable present");
-        assert!(submit < present);
+            .find(".submit_and_present(&self.queue, encoder, frame)")
+            .expect("controller-owned queue submission and drawable present");
+        assert!(submit > finish_owner.find("prepare_screenshot_copy").unwrap());
         assert!(
             render.contains(".frame_phase_profiling_enabled")
-                && render.contains(".then(std::time::Instant::now)"),
-            "the extra wait timestamp is absent when diagnostics are disabled"
+                && render.contains("acquired.previous_submission_wait")
+                && render.contains("acquired.surface_acquire"),
+            "controller phase measurements remain projected into the frame profile"
         );
     }
 

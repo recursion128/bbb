@@ -63,6 +63,7 @@ use crate::{
         EntityModelTranslucentDrawRange, EntityShadowSurface, EntityShadowTextureGpu,
         FirstPersonPlayerArm, HudEntityPreviewPipTarget,
     },
+    frame_flight::{FrameFlightController, RenderSurface},
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
         create_terrain_atlas_mips_gpu, create_terrain_bind_group, create_terrain_bind_group_layout,
@@ -162,15 +163,6 @@ use crate::{
     },
 };
 
-/// Where `render()` sends the frame's color output. Production always draws
-/// into the window swapchain; whole-frame readback tests swap in a plain
-/// offscreen texture so the full frame-step sequence runs without a window.
-pub(super) enum RenderSurface {
-    Window(wgpu::Surface<'static>),
-    #[cfg(test)]
-    Offscreen(std::sync::Arc<wgpu::Texture>),
-}
-
 /// Immutable projection of Vanilla's per-frame transparency routing decision.
 ///
 /// `LevelRenderer` owns the actual target selection; native startup only
@@ -211,102 +203,6 @@ impl LifecycleSoakSurfaceError {
             Self::Lost => wgpu::SurfaceError::Lost,
             Self::Outdated => wgpu::SurfaceError::Outdated,
             Self::Timeout => wgpu::SurfaceError::Timeout,
-        }
-    }
-}
-
-impl RenderSurface {
-    /// Acquires this frame's color target. `Ok(None)` means "skip this frame"
-    /// — the swapchain was lost/outdated (reconfigured here, vanilla-style) or
-    /// timed out — preserving the pre-harness `render()` surface semantics.
-    pub(super) fn acquire_frame(
-        &mut self,
-        device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
-        counters: &mut RendererCounters,
-        injected_fault: Option<wgpu::SurfaceError>,
-    ) -> Result<Option<FrameTarget>> {
-        let acquired = match injected_fault {
-            Some(error) => Err(error),
-            None => match self {
-                Self::Window(surface) => surface.get_current_texture().map(FrameTarget::Surface),
-                #[cfg(test)]
-                Self::Offscreen(texture) => Ok(FrameTarget::Offscreen(texture.clone())),
-            },
-        };
-        match acquired {
-            Ok(frame) => Ok(Some(frame)),
-            Err(wgpu::SurfaceError::Lost) => {
-                counters.surface_lost = counters.surface_lost.saturating_add(1);
-                counters.surface_reconfigurations =
-                    counters.surface_reconfigurations.saturating_add(1);
-                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
-                self.configure(device, config);
-                Ok(None)
-            }
-            Err(wgpu::SurfaceError::Outdated) => {
-                counters.surface_outdated = counters.surface_outdated.saturating_add(1);
-                counters.surface_reconfigurations =
-                    counters.surface_reconfigurations.saturating_add(1);
-                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
-                self.configure(device, config);
-                Ok(None)
-            }
-            Err(wgpu::SurfaceError::Timeout) => {
-                counters.surface_timeouts = counters.surface_timeouts.saturating_add(1);
-                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
-                Ok(None)
-            }
-            Err(error) => Err(error.into()),
-        }
-    }
-
-    pub(super) fn configure(&mut self, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) {
-        match self {
-            Self::Window(surface) => surface.configure(device, config),
-            #[cfg(test)]
-            Self::Offscreen(texture) => {
-                *texture = std::sync::Arc::new(device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("bbb-offscreen-frame-target"),
-                    size: wgpu::Extent3d {
-                        width: config.width,
-                        height: config.height,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: config.format,
-                    usage: config.usage,
-                    view_formats: &[],
-                }));
-            }
-        }
-    }
-}
-
-/// One frame's acquired color target: a swapchain frame to present, or the
-/// offscreen texture (readback harness) where present is a no-op.
-pub(super) enum FrameTarget {
-    Surface(wgpu::SurfaceTexture),
-    #[cfg(test)]
-    Offscreen(std::sync::Arc<wgpu::Texture>),
-}
-
-impl FrameTarget {
-    pub(super) fn texture(&self) -> &wgpu::Texture {
-        match self {
-            Self::Surface(frame) => &frame.texture,
-            #[cfg(test)]
-            Self::Offscreen(texture) => texture.as_ref(),
-        }
-    }
-
-    pub(super) fn present(self) {
-        match self {
-            Self::Surface(frame) => frame.present(),
-            #[cfg(test)]
-            Self::Offscreen(_) => {}
         }
     }
 }
@@ -561,8 +457,7 @@ pub struct Renderer {
     /// Normal frames retain the legacy aggregate profile without paying for
     /// the extra macOS fence timestamp or render-call completion timestamp.
     pub(super) frame_phase_profiling_enabled: bool,
-    #[cfg(target_os = "macos")]
-    pub(super) previous_frame_submission: Option<wgpu::SubmissionIndex>,
+    pub(super) frame_flight: FrameFlightController,
     pub(super) last_frame_profile: RendererFrameProfile,
     pub(super) last_frame_started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
@@ -2452,8 +2347,7 @@ impl Renderer {
             started_at: Instant::now(),
             gpu_timing,
             frame_phase_profiling_enabled: false,
-            #[cfg(target_os = "macos")]
-            previous_frame_submission: None,
+            frame_flight: FrameFlightController::new(),
             last_frame_profile: RendererFrameProfile::default(),
             last_frame_started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
