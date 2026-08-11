@@ -68,9 +68,45 @@ def write_bbb_profile(path: Path) -> None:
 def write_bbb_phase_profile(path: Path) -> None:
     columns = list(retina.FRAME_PHASE_COLUMNS)
     rows = [
-        [10_000_000, 4_000_000, 1_000_000, 100_000, 200_000, 300_000, 20_000, 30_000, 5_800_000],
-        [20_000_000, 5_000_000, 2_000_000, 200_000, 300_000, 400_000, 30_000, 40_000, 8_000_000],
-        [30_000_000, 6_000_000, 3_000_000, 300_000, 400_000, 500_000, 40_000, 50_000, 10_200_000],
+        [
+            10_000_000,
+            4_000_000,
+            1_000_000,
+            250_000,
+            750_000,
+            100_000,
+            200_000,
+            300_000,
+            20_000,
+            30_000,
+            5_800_000,
+        ],
+        [
+            20_000_000,
+            5_000_000,
+            2_000_000,
+            500_000,
+            1_500_000,
+            200_000,
+            300_000,
+            400_000,
+            30_000,
+            40_000,
+            8_000_000,
+        ],
+        [
+            30_000_000,
+            6_000_000,
+            3_000_000,
+            750_000,
+            2_250_000,
+            300_000,
+            400_000,
+            500_000,
+            40_000,
+            50_000,
+            10_200_000,
+        ],
     ]
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr(
@@ -88,6 +124,28 @@ def write_bbb_phase_profile(path: Path) -> None:
                 f"{tick}," + ",".join(str(value) for value in values) + "\n"
                 for tick, values in enumerate(rows, start=1)
             ),
+        )
+
+
+def write_invalid_bbb_phase_partition(path: Path) -> None:
+    columns = list(retina.FRAME_PHASE_COLUMNS)
+    values = dict.fromkeys(columns, 0)
+    values.update(
+        {
+            "application_frame_interval": 10_000_000,
+            "previous_submission_wait": 1_000_000,
+            "previous_submission_poll": 750_000,
+            "previous_submission_blocking_wait": 750_000,
+        }
+    )
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("client/metrics/ticking.csv", "@tick,ticktime\n1,10000000\n")
+        archive.writestr("client/metrics/gpu.csv", "@tick,gpuDuration\n1,1000000\n")
+        archive.writestr(
+            "client/metrics/frame_phases.csv",
+            "@tick," + ",".join(columns) + "\n1,"
+            + ",".join(str(values[column]) for column in columns)
+            + "\n",
         )
 
 
@@ -403,6 +461,23 @@ class ProfilerTests(unittest.TestCase):
         self.assertAlmostEqual(
             queue_submit["next_application_frame_interval_correlation"], 1.0
         )
+        self.assertEqual(
+            parsed["frame_phases"]["previous_submission_poll"]["p99_ms"], 0.75
+        )
+        self.assertEqual(
+            parsed["frame_phases"]["previous_submission_blocking_wait"]["p99_ms"],
+            2.25,
+        )
+
+    def test_frame_phase_partition_rejects_subphases_exceeding_total(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_invalid_bbb_phase_partition(profile)
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "exceeds total synchronization"
+            ):
+                retina.parse_profiler_archive(profile)
 
     def test_frame_phase_correlation_targets_the_next_render_start_interval(self):
         summary = retina.summarize_frame_phase_ms(
@@ -761,7 +836,7 @@ class FormalValidationTests(unittest.TestCase):
 
         self.assertFalse(report["metrics_publishable"])
         self.assertIn(
-            "lacks required renderer-frame-phases-v1 evidence",
+            "lacks required renderer-frame-phases-v2 evidence",
             report["blockers"][0]["error"],
         )
 

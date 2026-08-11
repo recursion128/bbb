@@ -89,11 +89,13 @@ BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458
 MAX_BASELINE_FPS_MARGIN = 0.01
 CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
 CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
-FRAME_PHASE_SCHEMA = "renderer-frame-phases-v1"
+FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
 FRAME_PHASE_COLUMNS = (
     "application_frame_interval",
     "cpu_encode_before_wait",
     "previous_submission_wait",
+    "previous_submission_poll",
+    "previous_submission_blocking_wait",
     "surface_acquire",
     "presentation_tail_encode",
     "queue_submit",
@@ -853,6 +855,16 @@ def profiler_samples(path: Path) -> dict[str, object]:
         if any(interval[tick] != ticking[tick] for tick in expected_ticks):
             raise RetinaAcceptanceError(
                 "frame phase application interval differs from profiler ticktime"
+            )
+        total_sync = frame_phase_rows["previous_submission_wait"]
+        completion_poll = frame_phase_rows["previous_submission_poll"]
+        blocking_wait = frame_phase_rows["previous_submission_blocking_wait"]
+        if any(
+            completion_poll[tick] + blocking_wait[tick] > total_sync[tick]
+            for tick in expected_ticks
+        ):
+            raise RetinaAcceptanceError(
+                "frame phase submission poll plus blocking wait exceeds total synchronization"
             )
         ordered_ticks = sorted(expected_ticks)
         result["frame_phases"] = {

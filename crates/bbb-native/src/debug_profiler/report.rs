@@ -208,6 +208,11 @@ impl DebugProfilerFrameMetrics {
                 ),
                 ("cpu_encode_before_wait", phases.cpu_encode_before_wait),
                 ("previous_submission_wait", phases.previous_submission_wait),
+                ("previous_submission_poll", phases.previous_submission_poll),
+                (
+                    "previous_submission_blocking_wait",
+                    phases.previous_submission_blocking_wait,
+                ),
                 ("surface_acquire", phases.surface_acquire),
                 ("presentation_tail_encode", phases.presentation_tail_encode),
                 ("queue_submit", phases.queue_submit),
@@ -486,6 +491,8 @@ mod tests {
                         application_frame_interval: 100.0,
                         cpu_encode_before_wait: 50.0,
                         previous_submission_wait: 20.0,
+                        previous_submission_poll: 8.0,
+                        previous_submission_blocking_wait: 12.0,
                         surface_acquire: 3.0,
                         presentation_tail_encode: 4.0,
                         queue_submit: 5.0,
@@ -551,7 +558,7 @@ mod tests {
         assert!(files["chunk rendering"]
             .contains("@tick,lastViewDistance,renderedChunks,totalChunks\n1,12,5,8\n2,12,6,9\n"));
         assert!(files["frame phases"].contains(
-            "@tick,application_frame_interval,cpu_encode_before_wait,gpu_async_poll,presentation_tail_encode,previous_submission_wait,queue_submit,render_call_total,surface_acquire,swap_buffers_present\n1,100,50,7,4,20,5,95,3,6\n"
+            "@tick,application_frame_interval,cpu_encode_before_wait,gpu_async_poll,presentation_tail_encode,previous_submission_blocking_wait,previous_submission_poll,previous_submission_wait,queue_submit,render_call_total,surface_acquire,swap_buffers_present\n1,100,50,7,4,12,8,20,5,95,3,6\n"
         ));
     }
 

@@ -208,6 +208,12 @@ restoring any row to `equivalent`.
   a separately predeclared policy whose lifecycle/input-latency contract is
   focused-tested and whose paired A/B passes every combined/scene/run-pair FPS
   and absolute-stability scope; do not reuse acquire-before-wait as a candidate.
+  The next bounded candidate keeps budget one and the same lifecycle order,
+  using a non-blocking completion poll before the exact prior-submission fence
+  wait. Frame-phase schema v2 records poll and conditional blocking-wait
+  durations separately and rejects a per-frame partition exceeding total
+  synchronization. Retain this policy only if its AC paired A/B passes; it does
+  not authorize multiple in-flight frames.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

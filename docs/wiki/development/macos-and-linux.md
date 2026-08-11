@@ -163,6 +163,17 @@ mean/p95/p99/p99-p50 也从 0.473/0.699/0.886/0.404 ms 回退到
 scene-pair 超过固定 margin。因此在正式 Vanilla ABBA 前拒绝。报告 SHA-256 为
 `163dfb5557ad8002a5f097db6c627dbc6268744b76a9c36c2549fa46c510fe07`。
 
+下一项有界 candidate 仍保持 macOS Immediate 单 in-flight 和
+wait→acquire→submit→present：先用 `Device::poll(Poll)` 非阻塞检查上一 submission；只有
+queue 仍 busy 才执行原 `WaitForSubmissionIndex`。frame-phase schema v2 将
+`previous_submission_poll` 与 `previous_submission_blocking_wait` 从 total
+`previous_submission_wait` 中分列；validator 逐 tick 要求 poll+blocking 不超过 total，并
+继续校验 archive/raw sidecar/summary。该策略不改变 FIFO/Linux、drawable 时机或 queue
+depth，因此不引入额外排队输入延迟；仍必须通过独立 AC paired A/B 后才能保留。
+Vanilla `Minecraft.java:1338-1356` 仍是顺序锚点：main target blit、GPU profile end、
+swap/`RenderSystem.flipFrame` 先完成，显式 FPS limiter 最后运行；该 Metal 内部策略不改变
+这一可见 present/cap 顺序。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

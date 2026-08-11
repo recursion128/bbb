@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 const SAMPLE_COUNT: usize = 600;
-const PHASE_COUNT: usize = 14;
+const PHASE_COUNT: usize = 16;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct FramePhaseSample {
@@ -19,6 +19,8 @@ pub(crate) struct FramePhaseSample {
     pub(crate) render_call_total: Duration,
     pub(crate) cpu_encode_before_wait: Duration,
     pub(crate) previous_submission_wait: Duration,
+    pub(crate) previous_submission_poll: Duration,
+    pub(crate) previous_submission_blocking_wait: Duration,
     pub(crate) surface_acquire: Duration,
     pub(crate) presentation_tail_encode: Duration,
     pub(crate) queue_submit: Duration,
@@ -38,6 +40,8 @@ impl FramePhaseSample {
             duration_nanos(self.render_call_total),
             duration_nanos(self.cpu_encode_before_wait),
             duration_nanos(self.previous_submission_wait),
+            duration_nanos(self.previous_submission_poll),
+            duration_nanos(self.previous_submission_blocking_wait),
             duration_nanos(self.surface_acquire),
             duration_nanos(self.presentation_tail_encode),
             duration_nanos(self.queue_submit),
@@ -132,40 +136,56 @@ impl FramePhaseDiagnostics {
                 summaries[6].prior_interval_correlation,
             previous_submission_wait_next_interval_correlation =
                 summaries[6].next_interval_correlation,
-            surface_acquire_p50_us = micros(summaries[7].p50),
-            surface_acquire_p95_us = micros(summaries[7].p95),
-            surface_acquire_p99_us = micros(summaries[7].p99),
-            surface_acquire_stddev_us = nanos_to_micros(summaries[7].stddev),
-            surface_acquire_prior_interval_correlation = summaries[7].prior_interval_correlation,
-            surface_acquire_next_interval_correlation = summaries[7].next_interval_correlation,
-            presentation_tail_encode_p50_us = micros(summaries[8].p50),
-            presentation_tail_encode_p95_us = micros(summaries[8].p95),
-            presentation_tail_encode_p99_us = micros(summaries[8].p99),
-            presentation_tail_encode_stddev_us = nanos_to_micros(summaries[8].stddev),
-            presentation_tail_encode_prior_interval_correlation =
+            previous_submission_poll_p50_us = micros(summaries[7].p50),
+            previous_submission_poll_p95_us = micros(summaries[7].p95),
+            previous_submission_poll_p99_us = micros(summaries[7].p99),
+            previous_submission_poll_stddev_us = nanos_to_micros(summaries[7].stddev),
+            previous_submission_poll_prior_interval_correlation =
+                summaries[7].prior_interval_correlation,
+            previous_submission_poll_next_interval_correlation =
+                summaries[7].next_interval_correlation,
+            previous_submission_blocking_wait_p50_us = micros(summaries[8].p50),
+            previous_submission_blocking_wait_p95_us = micros(summaries[8].p95),
+            previous_submission_blocking_wait_p99_us = micros(summaries[8].p99),
+            previous_submission_blocking_wait_stddev_us = nanos_to_micros(summaries[8].stddev),
+            previous_submission_blocking_wait_prior_interval_correlation =
                 summaries[8].prior_interval_correlation,
-            presentation_tail_encode_next_interval_correlation =
+            previous_submission_blocking_wait_next_interval_correlation =
                 summaries[8].next_interval_correlation,
-            queue_submit_p50_us = micros(summaries[9].p50),
-            queue_submit_p95_us = micros(summaries[9].p95),
-            queue_submit_p99_us = micros(summaries[9].p99),
-            queue_submit_stddev_us = nanos_to_micros(summaries[9].stddev),
-            queue_submit_prior_interval_correlation = summaries[9].prior_interval_correlation,
-            queue_submit_next_interval_correlation = summaries[9].next_interval_correlation,
-            swap_buffers_present_p50_us = micros(summaries[10].p50),
-            swap_buffers_present_p95_us = micros(summaries[10].p95),
-            swap_buffers_present_p99_us = micros(summaries[10].p99),
-            swap_buffers_present_stddev_us = nanos_to_micros(summaries[10].stddev),
-            swap_buffers_present_prior_interval_correlation =
+            surface_acquire_p50_us = micros(summaries[9].p50),
+            surface_acquire_p95_us = micros(summaries[9].p95),
+            surface_acquire_p99_us = micros(summaries[9].p99),
+            surface_acquire_stddev_us = nanos_to_micros(summaries[9].stddev),
+            surface_acquire_prior_interval_correlation = summaries[9].prior_interval_correlation,
+            surface_acquire_next_interval_correlation = summaries[9].next_interval_correlation,
+            presentation_tail_encode_p50_us = micros(summaries[10].p50),
+            presentation_tail_encode_p95_us = micros(summaries[10].p95),
+            presentation_tail_encode_p99_us = micros(summaries[10].p99),
+            presentation_tail_encode_stddev_us = nanos_to_micros(summaries[10].stddev),
+            presentation_tail_encode_prior_interval_correlation =
                 summaries[10].prior_interval_correlation,
-            swap_buffers_present_next_interval_correlation =
+            presentation_tail_encode_next_interval_correlation =
                 summaries[10].next_interval_correlation,
-            gpu_async_poll_p50_us = micros(summaries[11].p50),
-            gpu_async_poll_p95_us = micros(summaries[11].p95),
-            gpu_async_poll_p99_us = micros(summaries[11].p99),
-            gpu_async_poll_stddev_us = nanos_to_micros(summaries[11].stddev),
-            gpu_async_poll_prior_interval_correlation = summaries[11].prior_interval_correlation,
-            gpu_async_poll_next_interval_correlation = summaries[11].next_interval_correlation,
+            queue_submit_p50_us = micros(summaries[11].p50),
+            queue_submit_p95_us = micros(summaries[11].p95),
+            queue_submit_p99_us = micros(summaries[11].p99),
+            queue_submit_stddev_us = nanos_to_micros(summaries[11].stddev),
+            queue_submit_prior_interval_correlation = summaries[11].prior_interval_correlation,
+            queue_submit_next_interval_correlation = summaries[11].next_interval_correlation,
+            swap_buffers_present_p50_us = micros(summaries[12].p50),
+            swap_buffers_present_p95_us = micros(summaries[12].p95),
+            swap_buffers_present_p99_us = micros(summaries[12].p99),
+            swap_buffers_present_stddev_us = nanos_to_micros(summaries[12].stddev),
+            swap_buffers_present_prior_interval_correlation =
+                summaries[12].prior_interval_correlation,
+            swap_buffers_present_next_interval_correlation =
+                summaries[12].next_interval_correlation,
+            gpu_async_poll_p50_us = micros(summaries[13].p50),
+            gpu_async_poll_p95_us = micros(summaries[13].p95),
+            gpu_async_poll_p99_us = micros(summaries[13].p99),
+            gpu_async_poll_stddev_us = nanos_to_micros(summaries[13].stddev),
+            gpu_async_poll_prior_interval_correlation = summaries[13].prior_interval_correlation,
+            gpu_async_poll_next_interval_correlation = summaries[13].next_interval_correlation,
             "renderer CPU phase tail diagnostics"
         );
         self.clear();

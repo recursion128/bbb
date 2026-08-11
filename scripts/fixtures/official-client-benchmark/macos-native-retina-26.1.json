@@ -41,13 +41,15 @@
   ],
   "drawable_mismatch_policy": "block-without-comparison",
   "frame_phase_diagnostics": {
-    "schema": "renderer-frame-phases-v1",
+    "schema": "renderer-frame-phases-v2",
     "archive_path": "client/metrics/frame_phases.csv",
     "units": "nanoseconds",
     "columns": [
       "application_frame_interval",
       "cpu_encode_before_wait",
       "previous_submission_wait",
+      "previous_submission_poll",
+      "previous_submission_blocking_wait",
       "surface_acquire",
       "presentation_tail_encode",
       "queue_submit",

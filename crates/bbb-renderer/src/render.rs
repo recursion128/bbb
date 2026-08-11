@@ -295,6 +295,8 @@ impl Renderer {
             self.frame_phase_profiling_enabled,
             render_encoding_started_at,
         );
+        let previous_submission_poll = acquired.previous_submission_poll;
+        let previous_submission_blocking_wait = acquired.previous_submission_blocking_wait;
         let previous_submission_wait = acquired.previous_submission_wait;
         let render_duration_before_surface = acquired.render_duration_before_surface;
         self.last_frame_profile.surface_acquire = acquired.surface_acquire;
@@ -338,6 +340,8 @@ impl Renderer {
             frame_interval,
             render_duration,
             cpu_encode_before_wait,
+            previous_submission_poll,
+            previous_submission_blocking_wait,
             previous_submission_wait,
             presentation_tail_encode,
             render_started_at,
@@ -4136,6 +4140,8 @@ impl Renderer {
         frame_interval: std::time::Duration,
         render_duration: std::time::Duration,
         cpu_encode_before_wait: std::time::Duration,
+        previous_submission_poll: std::time::Duration,
+        previous_submission_blocking_wait: std::time::Duration,
         previous_submission_wait: std::time::Duration,
         presentation_tail_encode: std::time::Duration,
         render_started_at: std::time::Instant,
@@ -4162,6 +4168,9 @@ impl Renderer {
         self.last_frame_profile.present = present_duration;
         self.last_frame_profile.swap_buffers = swap_buffers_duration;
         self.last_frame_profile.cpu_encode_before_wait = cpu_encode_before_wait;
+        self.last_frame_profile.previous_submission_poll = previous_submission_poll;
+        self.last_frame_profile.previous_submission_blocking_wait =
+            previous_submission_blocking_wait;
         self.last_frame_profile.previous_submission_wait = previous_submission_wait;
         self.last_frame_profile.presentation_tail_encode = presentation_tail_encode;
         self.last_frame_profile.queue_submit = present_duration;

@@ -2141,6 +2141,9 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                         render_call_total: renderer_frame_profile.render_call_total,
                         cpu_encode_before_wait: renderer_frame_profile.cpu_encode_before_wait,
                         previous_submission_wait: renderer_frame_profile.previous_submission_wait,
+                        previous_submission_poll: renderer_frame_profile.previous_submission_poll,
+                        previous_submission_blocking_wait: renderer_frame_profile
+                            .previous_submission_blocking_wait,
                         surface_acquire: renderer_frame_profile.surface_acquire,
                         presentation_tail_encode: renderer_frame_profile.presentation_tail_encode,
                         queue_submit: renderer_frame_profile.queue_submit,
@@ -2245,6 +2248,16 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                             DebugProfilerSectionSample {
                                 path: &["frame", "previousSubmissionWait"],
                                 duration: renderer_frame_profile.previous_submission_wait,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "previousSubmissionPoll"],
+                                duration: renderer_frame_profile.previous_submission_poll,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "previousSubmissionBlockingWait"],
+                                duration: renderer_frame_profile.previous_submission_blocking_wait,
                                 record_in_report: true,
                             },
                             DebugProfilerSectionSample {

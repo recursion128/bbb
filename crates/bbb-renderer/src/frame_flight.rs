@@ -139,6 +139,8 @@ impl FrameTarget {
 
 pub(super) struct FrameFlightAcquisition {
     pub(super) frame: Result<Option<FrameTarget>>,
+    pub(super) previous_submission_poll: Duration,
+    pub(super) previous_submission_blocking_wait: Duration,
     pub(super) previous_submission_wait: Duration,
     /// Legacy render duration boundary: CPU encoding plus the previous
     /// submission wait, stopping immediately before drawable acquisition.
@@ -151,10 +153,17 @@ pub(super) struct FrameFlightSubmission {
     pub(super) swap_buffers_present: Duration,
 }
 
+#[derive(Default)]
+struct PreviousSubmissionSynchronization {
+    poll: Duration,
+    blocking_wait: Duration,
+    total: Duration,
+}
+
 /// Owns the backend frame-flight lifecycle without owning visible frame work.
-/// This first slice deliberately preserves the previous one-submission macOS
-/// Immediate behavior; later scheduling policies must be separate measured
-/// candidates.
+/// macOS Immediate retains one in-flight submission. The current bounded policy
+/// first polls completion without blocking and waits on the exact prior fence
+/// only while that submission remains active.
 pub(super) struct FrameFlightController {
     #[cfg(target_os = "macos")]
     previous_submission: Option<wgpu::SubmissionIndex>,
@@ -178,14 +187,16 @@ impl FrameFlightController {
         profile_wait: bool,
         render_encoding_started_at: Instant,
     ) -> FrameFlightAcquisition {
-        let previous_submission_wait =
+        let previous_submission =
             self.wait_for_previous_submission(device, config.present_mode, profile_wait);
         let render_duration_before_surface = render_encoding_started_at.elapsed();
         let surface_acquire_started_at = Instant::now();
         let frame = surface.acquire_frame(device, config, counters, injected_fault);
         FrameFlightAcquisition {
             frame,
-            previous_submission_wait,
+            previous_submission_poll: previous_submission.poll,
+            previous_submission_blocking_wait: previous_submission.blocking_wait,
+            previous_submission_wait: previous_submission.total,
             render_duration_before_surface,
             surface_acquire: surface_acquire_started_at.elapsed(),
         }
@@ -196,26 +207,43 @@ impl FrameFlightController {
         device: &wgpu::Device,
         present_mode: wgpu::PresentMode,
         profile_wait: bool,
-    ) -> Duration {
+    ) -> PreviousSubmissionSynchronization {
         #[cfg(target_os = "macos")]
         {
             let budget = in_flight_budget(FrameFlightPlatform::CURRENT, present_mode);
             debug_assert!(budget.is_none() || budget == Some(1));
             if budget == Some(1) {
                 if let Some(submission) = self.previous_submission.take() {
-                    let wait_started_at = profile_wait.then(Instant::now);
-                    device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
-                    return wait_started_at
+                    let synchronization_started_at = profile_wait.then(Instant::now);
+                    let poll_started_at = profile_wait.then(Instant::now);
+                    let queue_empty = device.poll(wgpu::Maintain::Poll).is_queue_empty();
+                    let poll = poll_started_at
                         .map(|started_at| started_at.elapsed())
                         .unwrap_or_default();
+                    let blocking_wait = if queue_empty {
+                        Duration::ZERO
+                    } else {
+                        let wait_started_at = profile_wait.then(Instant::now);
+                        device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
+                        wait_started_at
+                            .map(|started_at| started_at.elapsed())
+                            .unwrap_or_default()
+                    };
+                    return PreviousSubmissionSynchronization {
+                        poll,
+                        blocking_wait,
+                        total: synchronization_started_at
+                            .map(|started_at| started_at.elapsed())
+                            .unwrap_or_default(),
+                    };
                 }
             }
-            Duration::ZERO
+            PreviousSubmissionSynchronization::default()
         }
         #[cfg(not(target_os = "macos"))]
         {
             let _ = (device, present_mode, profile_wait);
-            Duration::ZERO
+            PreviousSubmissionSynchronization::default()
         }
     }
 
@@ -311,6 +339,21 @@ mod tests {
             .map(|offset| record_submission + offset)
             .unwrap();
         assert!(submit < record_submission && record_submission < present);
+    }
+
+    #[test]
+    fn completion_poll_only_skips_the_blocking_wait_when_the_queue_is_empty() {
+        let source = include_str!("frame_flight.rs");
+        let wait = source.find("fn wait_for_previous_submission(").unwrap();
+        let submit = source.find("pub(super) fn submit_and_present(").unwrap();
+        let body = &source[wait..submit];
+        let poll = body.find("wgpu::Maintain::Poll").unwrap();
+        let queue_empty = body.find("if queue_empty").unwrap();
+        let blocking_wait = body
+            .find("wgpu::Maintain::WaitForSubmissionIndex(submission)")
+            .unwrap();
+        assert!(poll < queue_empty && queue_empty < blocking_wait);
+        assert!(body.contains("self.previous_submission.take()"));
     }
 
     #[test]

@@ -50,6 +50,9 @@ validator 从 hashed archive 与 raw sidecar 重新派生各阶段 p50/p95/p99/s
 render-start interval 描述当前工作之前刚结束的区间，归因相关性按 phase[N] 对下一条
 interval[N+1] 计算，并将同-row prior correlation 单列；官方 archive 不伪造 BBB 内部阶段。
 阶段数据只作调度归因，不能单独成为性能胜负结论。
+当前 frame-phase schema v2 进一步把 macOS Immediate 上一 submission 的 non-blocking
+completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
+`poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。
 当前 repo evidence `docs/evidence/macos-native-retina/frame-phase-diagnostic.json` 来自
 full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715af` 按 lag-1
 口径复算；它触发的等价 flight-controller 重构已在 full-gated `9802b1ef5` 完成，仍保持
