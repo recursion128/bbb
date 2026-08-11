@@ -40,6 +40,14 @@ enum TerrainOpaqueGroupLayer {
     Cutout,
 }
 
+/// Bound uncapped CAMetalLayer work to one completed render submission before
+/// asking for the next drawable. FIFO already supplies presentation
+/// backpressure, and non-Metal backends retain their existing queue behavior.
+#[cfg(any(target_os = "macos", test))]
+fn should_serialize_macos_immediate_submission(present_mode: wgpu::PresentMode) -> bool {
+    cfg!(target_os = "macos") && present_mode == wgpu::PresentMode::Immediate
+}
+
 /// Converts a logical-GUI scissor rectangle into physical attachment pixels
 /// using the exact `physical / gui` ratio, clamped to the attachment. HUD
 /// vertices are generated in logical GUI pixels (`Window.setGuiScale`) and the
@@ -281,6 +289,13 @@ impl Renderer {
         self.panorama_pass(&mut encoder, &mut stats);
         self.hud_passes(&mut encoder, &mut stats)?;
         self.win_screen_vignette_pass(&mut encoder, &mut stats);
+        #[cfg(target_os = "macos")]
+        if should_serialize_macos_immediate_submission(self.config.present_mode) {
+            if let Some(submission) = self.previous_frame_submission.take() {
+                self.device
+                    .poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
+            }
+        }
         let render_duration_before_surface = render_encoding_started_at.elapsed();
         let surface_acquire_started_at = std::time::Instant::now();
         let acquired_frame = self.surface.acquire_frame(
@@ -4137,7 +4152,13 @@ impl Renderer {
         };
 
         let present_started_at = std::time::Instant::now();
-        self.queue.submit(Some(encoder.finish()));
+        let submission = self.queue.submit(Some(encoder.finish()));
+        #[cfg(target_os = "macos")]
+        {
+            self.previous_frame_submission = Some(submission);
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = submission;
         let present_duration = present_started_at.elapsed();
         let swap_buffers_started_at = std::time::Instant::now();
         frame.present();
@@ -5863,9 +5884,27 @@ impl Renderer {
 #[cfg(test)]
 mod tests {
     use super::{
-        physical_scissor_from_gui, Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
+        physical_scissor_from_gui, should_serialize_macos_immediate_submission, Renderer,
+        TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
     };
     use winit::dpi::PhysicalSize;
+
+    #[test]
+    fn submission_backpressure_is_limited_to_macos_immediate_present() {
+        assert_eq!(
+            should_serialize_macos_immediate_submission(wgpu::PresentMode::Immediate),
+            cfg!(target_os = "macos")
+        );
+        for mode in [
+            wgpu::PresentMode::Fifo,
+            wgpu::PresentMode::FifoRelaxed,
+            wgpu::PresentMode::Mailbox,
+            wgpu::PresentMode::AutoVsync,
+            wgpu::PresentMode::AutoNoVsync,
+        ] {
+            assert!(!should_serialize_macos_immediate_submission(mode));
+        }
+    }
 
     #[test]
     fn empty_item_and_particle_targets_do_not_claim_depth_work() {

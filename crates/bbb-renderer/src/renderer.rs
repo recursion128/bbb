@@ -543,6 +543,8 @@ pub struct Renderer {
     pub(super) lifecycle_soak_surface_faults: std::collections::VecDeque<wgpu::SurfaceError>,
     pub(super) started_at: Instant,
     pub(super) gpu_timing: Option<GpuFrameTiming>,
+    #[cfg(target_os = "macos")]
+    pub(super) previous_frame_submission: Option<wgpu::SubmissionIndex>,
     pub(super) last_frame_profile: RendererFrameProfile,
     pub(super) last_frame_started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
@@ -2431,6 +2433,8 @@ impl Renderer {
             lifecycle_soak_surface_faults: std::collections::VecDeque::new(),
             started_at: Instant::now(),
             gpu_timing,
+            #[cfg(target_os = "macos")]
+            previous_frame_submission: None,
             last_frame_profile: RendererFrameProfile::default(),
             last_frame_started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
