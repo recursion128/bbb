@@ -126,7 +126,9 @@ raw-backed schema-2 [stability report](../../evidence/macos-native-retina/stabil
 `presentation_tail_encode`、`queue_submit`、`swap_buffers_present`、
 `gpu_async_poll`、`render_call_total` 与 `application_frame_interval`；validator
 要求 archive、raw sidecar 与报告 summary 逐值一致，再输出每阶段
-p50/p95/p99/stddev 及其与 application interval 的 Pearson correlation。旧 schema-1
+p50/p95/p99/stddev。render 入口的 interval 已在本帧工作开始前结束，因此主相关性明确按
+phase[N]→application interval[N+1] 计算；同 row 的 prior-interval correlation 只保留作
+时序诊断。旧 schema-1
 capture 与 schema-2 重判仍可复核；只有当前 schema 的 BBB capture 缺阶段列时才拒绝。
 这些字段只在 GPU HUD 或正式 profiler 开启时采集，不改变 Immediate 单 in-flight、
 drawable acquire、submit、present、surface-error 或 Linux 路径。

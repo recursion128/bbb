@@ -184,8 +184,9 @@ restoring any row to `equivalent`.
   carry hashed per-frame encode-before-wait, previous-submission-wait,
   surface-acquire, presentation-tail, queue-submit, present, GPU-poll,
   render-total and application-interval samples. The validator re-derives
-  p50/p95/p99/stddev and paired interval correlation from that archive and raw
-  sidecar. It does not authorize a scheduling change; Slice B remains gated
+  p50/p95/p99/stddev and phase[N]-to-next-interval[N+1] correlation from that
+  archive and raw sidecar; same-row correlation is prior-interval diagnostic
+  only. It does not authorize a scheduling change; Slice B remains gated
   until a real diagnostic probe identifies a flight-lifecycle phase as a
   dominant tail source.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,

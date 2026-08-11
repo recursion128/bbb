@@ -46,8 +46,9 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
 macOS schema-3 BBB profiler 另输出 `frame_phases.csv`，将 encode-before-wait、
 previous-submission wait、surface acquire、presentation tail、queue submit、drawable
 present、async GPU poll 与完整 render call 从旧 aggregate `frame/render` 中拆开。Retina
-validator 从 hashed archive 与 raw sidecar 重新派生各阶段 p50/p95/p99/stddev，并按同一
-tick 与 application-frame interval 计算相关性；官方 archive 不伪造 BBB 内部阶段。
+validator 从 hashed archive 与 raw sidecar 重新派生各阶段 p50/p95/p99/stddev。由于
+render-start interval 描述当前工作之前刚结束的区间，归因相关性按 phase[N] 对下一条
+interval[N+1] 计算，并将同-row prior correlation 单列；官方 archive 不伪造 BBB 内部阶段。
 阶段数据只作调度归因，不能单独成为性能胜负结论。
 
 ## 生命周期和 fallback

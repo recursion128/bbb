@@ -344,8 +344,18 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(queue_submit["p50_ms"], 0.4)
         self.assertEqual(queue_submit["p95_ms"], 0.5)
         self.assertAlmostEqual(
-            queue_submit["application_frame_interval_correlation"], 1.0
+            queue_submit["next_application_frame_interval_correlation"], 1.0
         )
+
+    def test_frame_phase_correlation_targets_the_next_render_start_interval(self):
+        summary = retina.summarize_frame_phase_ms(
+            [1.0, 2.0, 3.0, 4.0], [100.0, 10.0, 20.0, 30.0]
+        )
+
+        self.assertAlmostEqual(
+            summary["next_application_frame_interval_correlation"], 1.0
+        )
+        self.assertLess(summary["prior_application_frame_interval_correlation"], 0.0)
 
     def test_png_dimensions_read_actual_framebuffer_pixels(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -640,7 +650,7 @@ class FormalValidationTests(unittest.TestCase):
         combined = diagnostics["scopes"][0]["phases"]
         self.assertEqual(combined["previous_submission_wait"]["p99_ms"], 3.0)
         self.assertAlmostEqual(
-            combined["queue_submit"]["application_frame_interval_correlation"],
+            combined["queue_submit"]["next_application_frame_interval_correlation"],
             1.0,
         )
 

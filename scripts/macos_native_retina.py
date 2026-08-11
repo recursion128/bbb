@@ -141,6 +141,8 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "columns": list(FRAME_PHASE_COLUMNS),
             "required_client": "bbb",
             "correlation_target": "application_frame_interval",
+            "primary_correlation": "phase[n]-to-interval[n+1]",
+            "phase_to_interval_lag_frames": 1,
         },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
@@ -725,7 +727,11 @@ def pearson_correlation(left: Sequence[float], right: Sequence[float]) -> float:
 
 
 def summarize_frame_phase_ms(
-    values: Sequence[float], application_intervals: Sequence[float]
+    values: Sequence[float],
+    application_intervals: Sequence[float],
+    *,
+    next_phase_values: Sequence[float] | None = None,
+    next_application_intervals: Sequence[float] | None = None,
 ) -> dict[str, object]:
     if (
         not values
@@ -736,6 +742,22 @@ def summarize_frame_phase_ms(
         raise RetinaAcceptanceError(
             "frame phase samples must be finite, non-negative, and paired with positive intervals"
         )
+    if next_phase_values is None and next_application_intervals is None:
+        next_phase_values = values[:-1]
+        next_application_intervals = application_intervals[1:]
+    if (
+        next_phase_values is None
+        or next_application_intervals is None
+        or len(next_phase_values) != len(next_application_intervals)
+        or any(not math.isfinite(value) or value < 0 for value in next_phase_values)
+        or any(
+            not math.isfinite(value) or value <= 0
+            for value in next_application_intervals
+        )
+    ):
+        raise RetinaAcceptanceError(
+            "next-frame correlation samples must be finite, paired, and temporally aligned"
+        )
     ordered = sorted(values)
     return {
         "samples": len(values),
@@ -744,8 +766,11 @@ def summarize_frame_phase_ms(
         "p95_ms": percentile(ordered, 95),
         "p99_ms": percentile(ordered, 99),
         "stddev_ms": statistics.pstdev(values) if len(values) > 1 else 0.0,
-        "application_frame_interval_correlation": pearson_correlation(
+        "prior_application_frame_interval_correlation": pearson_correlation(
             values, application_intervals
+        ),
+        "next_application_frame_interval_correlation": pearson_correlation(
+            next_phase_values, next_application_intervals
         ),
     }
 
@@ -1152,17 +1177,32 @@ def _frame_phase_scope_summary(
         for run_number, profile_segment in selected
         for value in matrix[(run_number, profile_segment, "application_frame_interval")]
     ]
-    return {
-        phase: summarize_frame_phase_ms(
-            [
-                value
-                for run_number, profile_segment in selected
-                for value in matrix[(run_number, profile_segment, phase)]
-            ],
+    summaries = {}
+    for phase in FRAME_PHASE_COLUMNS:
+        values = [
+            value
+            for run_number, profile_segment in selected
+            for value in matrix[(run_number, profile_segment, phase)]
+        ]
+        next_phase_values = [
+            value
+            for run_number, profile_segment in selected
+            for value in matrix[(run_number, profile_segment, phase)][:-1]
+        ]
+        next_application_intervals = [
+            value
+            for run_number, profile_segment in selected
+            for value in matrix[
+                (run_number, profile_segment, "application_frame_interval")
+            ][1:]
+        ]
+        summaries[phase] = summarize_frame_phase_ms(
+            values,
             intervals,
+            next_phase_values=next_phase_values,
+            next_application_intervals=next_application_intervals,
         )
-        for phase in FRAME_PHASE_COLUMNS
-    }
+    return summaries
 
 
 def _build_frame_phase_diagnostics(
@@ -1200,6 +1240,8 @@ def _build_frame_phase_diagnostics(
         "schema": FRAME_PHASE_SCHEMA,
         "units": "milliseconds",
         "correlation_target": "application_frame_interval",
+        "primary_correlation": "phase[n]-to-interval[n+1]",
+        "phase_to_interval_lag_frames": 1,
         "scopes": scopes,
     }
 

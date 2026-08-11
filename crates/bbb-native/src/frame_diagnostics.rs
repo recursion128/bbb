@@ -114,42 +114,58 @@ impl FramePhaseDiagnostics {
             render_call_total_p95_us = micros(summaries[4].p95),
             render_call_total_p99_us = micros(summaries[4].p99),
             render_call_total_stddev_us = nanos_to_micros(summaries[4].stddev),
-            render_call_total_interval_correlation = summaries[4].interval_correlation,
+            render_call_total_prior_interval_correlation = summaries[4].prior_interval_correlation,
+            render_call_total_next_interval_correlation = summaries[4].next_interval_correlation,
             cpu_encode_before_wait_p50_us = micros(summaries[5].p50),
             cpu_encode_before_wait_p95_us = micros(summaries[5].p95),
             cpu_encode_before_wait_p99_us = micros(summaries[5].p99),
             cpu_encode_before_wait_stddev_us = nanos_to_micros(summaries[5].stddev),
-            cpu_encode_before_wait_interval_correlation = summaries[5].interval_correlation,
+            cpu_encode_before_wait_prior_interval_correlation =
+                summaries[5].prior_interval_correlation,
+            cpu_encode_before_wait_next_interval_correlation =
+                summaries[5].next_interval_correlation,
             previous_submission_wait_p50_us = micros(summaries[6].p50),
             previous_submission_wait_p95_us = micros(summaries[6].p95),
             previous_submission_wait_p99_us = micros(summaries[6].p99),
             previous_submission_wait_stddev_us = nanos_to_micros(summaries[6].stddev),
-            previous_submission_wait_interval_correlation = summaries[6].interval_correlation,
+            previous_submission_wait_prior_interval_correlation =
+                summaries[6].prior_interval_correlation,
+            previous_submission_wait_next_interval_correlation =
+                summaries[6].next_interval_correlation,
             surface_acquire_p50_us = micros(summaries[7].p50),
             surface_acquire_p95_us = micros(summaries[7].p95),
             surface_acquire_p99_us = micros(summaries[7].p99),
             surface_acquire_stddev_us = nanos_to_micros(summaries[7].stddev),
-            surface_acquire_interval_correlation = summaries[7].interval_correlation,
+            surface_acquire_prior_interval_correlation = summaries[7].prior_interval_correlation,
+            surface_acquire_next_interval_correlation = summaries[7].next_interval_correlation,
             presentation_tail_encode_p50_us = micros(summaries[8].p50),
             presentation_tail_encode_p95_us = micros(summaries[8].p95),
             presentation_tail_encode_p99_us = micros(summaries[8].p99),
             presentation_tail_encode_stddev_us = nanos_to_micros(summaries[8].stddev),
-            presentation_tail_encode_interval_correlation = summaries[8].interval_correlation,
+            presentation_tail_encode_prior_interval_correlation =
+                summaries[8].prior_interval_correlation,
+            presentation_tail_encode_next_interval_correlation =
+                summaries[8].next_interval_correlation,
             queue_submit_p50_us = micros(summaries[9].p50),
             queue_submit_p95_us = micros(summaries[9].p95),
             queue_submit_p99_us = micros(summaries[9].p99),
             queue_submit_stddev_us = nanos_to_micros(summaries[9].stddev),
-            queue_submit_interval_correlation = summaries[9].interval_correlation,
+            queue_submit_prior_interval_correlation = summaries[9].prior_interval_correlation,
+            queue_submit_next_interval_correlation = summaries[9].next_interval_correlation,
             swap_buffers_present_p50_us = micros(summaries[10].p50),
             swap_buffers_present_p95_us = micros(summaries[10].p95),
             swap_buffers_present_p99_us = micros(summaries[10].p99),
             swap_buffers_present_stddev_us = nanos_to_micros(summaries[10].stddev),
-            swap_buffers_present_interval_correlation = summaries[10].interval_correlation,
+            swap_buffers_present_prior_interval_correlation =
+                summaries[10].prior_interval_correlation,
+            swap_buffers_present_next_interval_correlation =
+                summaries[10].next_interval_correlation,
             gpu_async_poll_p50_us = micros(summaries[11].p50),
             gpu_async_poll_p95_us = micros(summaries[11].p95),
             gpu_async_poll_p99_us = micros(summaries[11].p99),
             gpu_async_poll_stddev_us = nanos_to_micros(summaries[11].stddev),
-            gpu_async_poll_interval_correlation = summaries[11].interval_correlation,
+            gpu_async_poll_prior_interval_correlation = summaries[11].prior_interval_correlation,
+            gpu_async_poll_next_interval_correlation = summaries[11].next_interval_correlation,
             "renderer CPU phase tail diagnostics"
         );
         self.clear();
@@ -184,7 +200,8 @@ struct PhaseSummary {
     p95: u64,
     p99: u64,
     stddev: f64,
-    interval_correlation: f64,
+    prior_interval_correlation: f64,
+    next_interval_correlation: f64,
 }
 
 fn phase_summary(samples: &[u64], interval: &[u64]) -> PhaseSummary {
@@ -198,7 +215,12 @@ fn phase_summary(samples: &[u64], interval: &[u64]) -> PhaseSummary {
         p95: nearest_rank_percentile(&ordered, 95),
         p99: nearest_rank_percentile(&ordered, 99),
         stddev: population_stddev(samples),
-        interval_correlation: pearson_correlation(samples, interval),
+        prior_interval_correlation: pearson_correlation(samples, interval),
+        next_interval_correlation: if samples.len() > 1 && interval.len() == samples.len() {
+            pearson_correlation(&samples[..samples.len() - 1], &interval[1..])
+        } else {
+            0.0
+        },
     }
 }
 
@@ -307,11 +329,12 @@ mod tests {
     }
 
     #[test]
-    fn frame_phase_summary_preserves_pairing_for_interval_correlation() {
-        let interval = [10, 20, 30, 40];
+    fn frame_phase_summary_correlates_current_work_with_the_next_render_start_interval() {
+        let interval = [100, 10, 20, 30];
         let summary = phase_summary(&[1, 2, 3, 4], &interval);
         assert_eq!((summary.p50, summary.p95, summary.p99), (2, 4, 4));
-        assert!((summary.interval_correlation - 1.0).abs() < f64::EPSILON);
-        assert!((pearson_correlation(&[4, 3, 2, 1], &interval) + 1.0).abs() < f64::EPSILON);
+        assert!((summary.next_interval_correlation - 1.0).abs() < f64::EPSILON);
+        assert!(summary.prior_interval_correlation < 0.0);
+        assert!((pearson_correlation(&[4, 3, 2, 1], &[10, 20, 30, 40]) + 1.0).abs() < f64::EPSILON);
     }
 }

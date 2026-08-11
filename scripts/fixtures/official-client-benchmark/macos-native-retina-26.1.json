@@ -56,7 +56,9 @@
       "render_call_total"
     ],
     "required_client": "bbb",
-    "correlation_target": "application_frame_interval"
+    "correlation_target": "application_frame_interval",
+    "primary_correlation": "phase[n]-to-interval[n+1]",
+    "phase_to_interval_lag_frames": 1
   },
   "stability_acceptance": {
     "policy": "absolute-tail-v2",
