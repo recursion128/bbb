@@ -2145,11 +2145,12 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                         gpu_poll: renderer_frame_profile.gpu_async,
                         publish: profiler_publish_duration,
                     });
-                    let profiler_frame_duration = renderer_frame_profile
-                        .frame_interval
-                        .max(profiler_frame_work_duration);
-                    let profiler_frame_limiter_duration =
-                        profiler_frame_duration.saturating_sub(profiler_frame_work_duration);
+                    let (profiler_frame_duration, profiler_frame_limiter_duration) =
+                        frame_diagnostics::profiler_frame_timing(
+                            renderer_frame_profile.frame_interval,
+                            profiler_frame_work_duration,
+                            frame_interval.is_some(),
+                        );
                     let newest_publication = shared_publication.load();
                     let publication_generation_lag = newest_publication
                         .generation

@@ -49,6 +49,25 @@ pub(crate) struct FramePhaseDiagnostics {
     samples: [Vec<u64>; PHASE_COUNT],
 }
 
+/// Match Vanilla's metrics-recorder tick window on an event-loop renderer.
+///
+/// Vanilla starts the tick sampler before `pollEvents` and ends it after
+/// `runTick`, so consecutive samples partition wall-clock time. BBB's
+/// `frame_work` starts later, inside `RedrawRequested`; using the larger of it
+/// and the render-start interval double-counts work across adjacent frames.
+/// The render-start interval is therefore the application-frame sample. Only
+/// an explicit client cap may own the residual `frameLimiter` section.
+pub(crate) fn profiler_frame_timing(
+    frame_interval: Duration,
+    frame_work: Duration,
+    limiter_enabled: bool,
+) -> (Duration, Duration) {
+    let limiter = limiter_enabled
+        .then(|| frame_interval.saturating_sub(frame_work))
+        .unwrap_or(Duration::ZERO);
+    (frame_interval, limiter)
+}
+
 impl Default for FramePhaseDiagnostics {
     fn default() -> Self {
         Self {
@@ -142,8 +161,31 @@ fn micros(nanos: u64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{nearest_rank_percentile, FramePhaseDiagnostics, FramePhaseSample, SAMPLE_COUNT};
+    use super::{
+        nearest_rank_percentile, profiler_frame_timing, FramePhaseDiagnostics, FramePhaseSample,
+        SAMPLE_COUNT,
+    };
     use std::time::Duration;
+
+    #[test]
+    fn profiler_ticktime_partitions_render_starts_without_double_counting_work() {
+        assert_eq!(
+            profiler_frame_timing(Duration::from_millis(6), Duration::from_millis(11), false,),
+            (Duration::from_millis(6), Duration::ZERO)
+        );
+    }
+
+    #[test]
+    fn profiler_frame_limiter_is_owned_only_by_an_explicit_cap() {
+        assert_eq!(
+            profiler_frame_timing(Duration::from_millis(16), Duration::from_millis(5), true,),
+            (Duration::from_millis(16), Duration::from_millis(11))
+        );
+        assert_eq!(
+            profiler_frame_timing(Duration::from_millis(16), Duration::from_millis(5), false,),
+            (Duration::from_millis(16), Duration::ZERO)
+        );
+    }
 
     #[test]
     fn disabled_frame_diagnostics_retain_no_samples() {

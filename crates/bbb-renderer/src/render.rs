@@ -221,7 +221,14 @@ impl Renderer {
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::OpaqueParticlesEnd);
         }
-        self.copy_main_depth_to_feature_targets(&mut encoder);
+        let item_entity_depth_work = Self::item_entity_target_has_depth_work(self);
+        let particle_depth_work =
+            Self::particle_target_has_depth_work(self, &particle_vertex_batches);
+        self.copy_main_depth_to_feature_targets(
+            &mut encoder,
+            item_entity_depth_work,
+            particle_depth_work,
+        );
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::FeatureDepthCopiesEnd);
         }
@@ -235,14 +242,19 @@ impl Renderer {
         }
         self.debug_filled_box_pass(&mut encoder, &mut stats);
         self.debug_text_pass(&mut encoder, &mut stats);
-        self.item_entity_target_pass(&mut encoder, &mut stats);
+        self.item_entity_target_pass(&mut encoder, &mut stats, item_entity_depth_work);
         self.block_destroy_overlay_pass(&mut encoder, &mut stats);
         self.ordered_custom_and_text_feature_pass(&mut encoder, &mut stats);
         self.entity_outline_target_pass(&mut encoder, &mut stats);
         self.block_selection_before_translucent_pass(&mut encoder, &mut stats);
         self.translucent_target_pass(&mut encoder, &mut stats);
         self.item_entity_line_target_pass(&mut encoder, &mut stats);
-        self.particle_target_pass(&mut encoder, &mut stats, particle_vertex_batches);
+        self.particle_target_pass(
+            &mut encoder,
+            &mut stats,
+            particle_vertex_batches,
+            particle_depth_work,
+        );
         self.entity_outline_post_chain(&mut encoder, &mut stats)?;
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::FeatureTargetsEnd);
@@ -1057,7 +1069,82 @@ impl Renderer {
         particle_vertex_batches
     }
 
-    fn copy_main_depth_to_feature_targets(&self, encoder: &mut wgpu::CommandEncoder) {
+    fn item_entity_target_has_depth_work(&self) -> bool {
+        use crate::item_models::{ItemModelDrawPhase, ItemModelDrawTarget};
+
+        !self.entity_model_sorted_item_entity_draws.is_empty()
+            || self.entity_model_item_entity_translucent_mesh.is_some()
+            || self
+                .entity_model_item_entity_translucent_cull_mesh
+                .is_some()
+            || self
+                .entity_dynamic_player_skin_item_entity_translucent_mesh
+                .is_some()
+            || self
+                .entity_dynamic_player_skin_item_entity_translucent_cull_mesh
+                .is_some()
+            || self
+                .entity_dynamic_player_texture_item_entity_translucent_mesh
+                .is_some()
+            || self
+                .entity_dynamic_player_texture_item_entity_translucent_cull_mesh
+                .is_some()
+            || !self.block_item_model_translucent_meshes.is_empty()
+            || !self.flat_item_model_translucent_meshes.is_empty()
+            || !self.item_model_glint_translucent_meshes.is_empty()
+            || !self.item_entity_billboards.is_empty()
+            || self.block_selection.is_some()
+            || self.chunk_border_outline.is_some()
+            || self.entity_scene_outline.is_some()
+            || (self.camera_pose.is_some()
+                && (!self.entity_model_instances.is_empty() || !self.debug_lines.is_empty()))
+            || self.item_model_residency.draws().iter().any(|draw| {
+                matches!(
+                    (draw.target, draw.phase),
+                    (
+                        ItemModelDrawTarget::World,
+                        ItemModelDrawPhase::Translucent
+                            | ItemModelDrawPhase::TranslucentNoCull
+                            | ItemModelDrawPhase::GlintTranslucent
+                    ) | (
+                        ItemModelDrawTarget::BlockFeature,
+                        ItemModelDrawPhase::Translucent
+                    )
+                )
+            })
+    }
+
+    fn particle_target_has_depth_work(
+        &self,
+        particle_vertex_batches: &ParticleVertexBatches,
+    ) -> bool {
+        !particle_vertex_batches.translucent.vertices.is_empty()
+            || self.particles.has_active_instances()
+            || !self.item_pickup_block_item_model_meshes.is_empty()
+            || !self
+                .item_pickup_block_item_model_translucent_meshes
+                .is_empty()
+            || !self.item_pickup_flat_item_model_meshes.is_empty()
+            || !self
+                .item_pickup_flat_item_model_translucent_meshes
+                .is_empty()
+            || !self.item_pickup_item_model_glint_meshes.is_empty()
+            || !self
+                .item_pickup_item_model_glint_translucent_meshes
+                .is_empty()
+            || self
+                .item_model_residency
+                .draws()
+                .iter()
+                .any(|draw| draw.target == crate::item_models::ItemModelDrawTarget::Particle)
+    }
+
+    fn copy_main_depth_to_feature_targets(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        item_entity_depth_work: bool,
+        particle_depth_work: bool,
+    ) {
         if !self.level_frame_route.uses_improved_transparency() {
             return;
         }
@@ -1081,45 +1168,49 @@ impl Renderer {
             },
         );
 
-        encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
-                texture: &self.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::ImageCopyTexture {
-                texture: &self.item_entity_target.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::Extent3d {
-                width: self.config.width.max(1),
-                height: self.config.height.max(1),
-                depth_or_array_layers: 1,
-            },
-        );
+        if item_entity_depth_work {
+            encoder.copy_texture_to_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &self.depth._texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                },
+                wgpu::ImageCopyTexture {
+                    texture: &self.item_entity_target.depth._texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                },
+                wgpu::Extent3d {
+                    width: self.config.width.max(1),
+                    height: self.config.height.max(1),
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
 
-        encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
-                texture: &self.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::ImageCopyTexture {
-                texture: &self.particle_target.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::Extent3d {
-                width: self.config.width.max(1),
-                height: self.config.height.max(1),
-                depth_or_array_layers: 1,
-            },
-        );
+        if particle_depth_work {
+            encoder.copy_texture_to_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &self.depth._texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                },
+                wgpu::ImageCopyTexture {
+                    texture: &self.particle_target.depth._texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                },
+                wgpu::Extent3d {
+                    width: self.config.width.max(1),
+                    height: self.config.height.max(1),
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
     }
 
     fn entity_translucent_feature_pass(
@@ -1424,6 +1515,7 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        has_depth_work: bool,
     ) {
         let improved = self.level_frame_route.uses_improved_transparency();
         let (item_entity_view, item_entity_depth_view) = if improved {
@@ -1475,14 +1567,16 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: item_entity_depth_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
+                depth_stencil_attachment: has_depth_work.then_some(
+                    wgpu::RenderPassDepthStencilAttachment {
+                        view: item_entity_depth_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    },
+                ),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
@@ -2127,6 +2221,7 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
         particle_vertex_batches: ParticleVertexBatches,
+        has_depth_work: bool,
     ) {
         let improved = self.level_frame_route.uses_improved_transparency();
         let (particle_view, particle_depth_view) = if improved {
@@ -2235,14 +2330,16 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: particle_depth_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
+                depth_stencil_attachment: has_depth_work.then_some(
+                    wgpu::RenderPassDepthStencilAttachment {
+                        view: particle_depth_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    },
+                ),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
@@ -2731,6 +2828,8 @@ impl Renderer {
                 bytemuck::cast_slice(&mesh.indices),
             )
         });
+        let has_depth_work =
+            has_weather_buffers || has_lightning_buffers || has_world_border_buffers;
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(WEATHER_TARGET_PASS_LABEL),
@@ -2746,23 +2845,27 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: weather_depth_view,
-                    depth_ops: Some(wgpu::Operations {
-                        // Vanilla's frame-graph `RenderTargetDescriptor.prepare` clears every
-                        // internal target to depth 1.0. In the improved route,
-                        // `LevelRenderer.addMainPass` copies main depth only to translucent,
-                        // item-entity, and particles; weather keeps independent depth. The regular
-                        // route instead renders weather directly against loaded main depth.
-                        load: if improved {
-                            wgpu::LoadOp::Clear(1.0)
-                        } else {
-                            wgpu::LoadOp::Load
-                        },
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
+                depth_stencil_attachment: has_depth_work.then_some(
+                    wgpu::RenderPassDepthStencilAttachment {
+                        view: weather_depth_view,
+                        depth_ops: Some(wgpu::Operations {
+                            // Vanilla's frame-graph `RenderTargetDescriptor.prepare` clears every
+                            // internal target to depth 1.0. In the improved route,
+                            // `LevelRenderer.addMainPass` copies main depth only to translucent,
+                            // item-entity, and particles; weather keeps independent depth. The
+                            // regular route instead renders weather directly against loaded main
+                            // depth. A clear-only transparent target has no fragment whose depth
+                            // can reach the combine shader, so it owns no depth attachment.
+                            load: if improved {
+                                wgpu::LoadOp::Clear(1.0)
+                            } else {
+                                wgpu::LoadOp::Load
+                            },
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    },
+                ),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
@@ -5763,6 +5866,49 @@ mod tests {
         physical_scissor_from_gui, Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
     };
     use winit::dpi::PhysicalSize;
+
+    #[test]
+    fn empty_item_and_particle_targets_do_not_claim_depth_work() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 12) else {
+            return;
+        };
+        let mut particle_batches = renderer.collect_particle_vertex_batches();
+        assert!(!renderer.item_entity_target_has_depth_work());
+        assert!(!renderer.particle_target_has_depth_work(&particle_batches));
+
+        renderer
+            .item_entity_billboards
+            .push(crate::item_entities::ItemEntityBillboard::single(
+                [0.0, 0.0, 0.0],
+                crate::item_entities::ItemEntityUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            ));
+        assert!(renderer.item_entity_target_has_depth_work());
+        renderer.item_entity_billboards.clear();
+        renderer.set_block_selection(Some(crate::selection::BlockSelectionRenderState {
+            boxes: vec![crate::selection::SelectionBox {
+                min: [0.0, 0.0, 0.0],
+                max: [1.0, 1.0, 1.0],
+            }],
+            phase: crate::selection::BlockSelectionPhase::BeforeTranslucent,
+            line_width: 2.5,
+            high_contrast: false,
+        }));
+        assert!(renderer.item_entity_target_has_depth_work());
+
+        particle_batches
+            .translucent
+            .vertices
+            .push(crate::particles::ParticleVertex {
+                position: [0.0, 0.0, 0.0],
+                uv: [0.0, 0.0],
+                color: [1.0, 1.0, 1.0, 1.0],
+                light: [1.0, 1.0],
+            });
+        assert!(renderer.particle_target_has_depth_work(&particle_batches));
+    }
 
     #[test]
     fn physical_scissor_from_gui_scales_with_the_exact_gui_ratio() {

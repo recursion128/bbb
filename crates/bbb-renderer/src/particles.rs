@@ -1203,6 +1203,10 @@ impl ParticleRuntimeState {
         self.pending_sound_events.drain(..).collect()
     }
 
+    pub(crate) fn has_active_instances(&self) -> bool {
+        !self.active_instances.is_empty()
+    }
+
     #[cfg(test)]
     pub(crate) fn pending_spawns(&self) -> &VecDeque<ParticleSpawnCommand> {
         &self.pending_spawns

@@ -7,8 +7,10 @@ use std::{
 // wgpu-hal 0.19 passes Metal's absolute query-range end as NSRange.length when
 // resolving a non-zero range. Give every asynchronous slot its own query set
 // so all resolves start at zero until the workspace upgrades to a backend with
-// the upstream range-length fix. This preserves the three-slot sampling ring.
-const SLOT_COUNT: usize = 3;
+// the upstream range-length fix. Eight slots keep the uncapped macOS renderer
+// from dropping timestamp samples while Metal finishes asynchronous readback;
+// the query sets and readback buffers remain tiny and do not alter render work.
+const SLOT_COUNT: usize = 8;
 const QUERIES_PER_FRAME: u32 = 12;
 const TOTAL_ONLY_QUERIES_PER_FRAME: u32 = 2;
 const RESOLVE_SLOT_BYTES: u64 = wgpu::QUERY_RESOLVE_BUFFER_ALIGNMENT;
@@ -584,8 +586,8 @@ mod tests {
     }
 
     #[test]
-    fn gpu_timing_keeps_three_slots_for_zero_based_query_sets() {
-        assert_eq!(SLOT_COUNT, 3);
+    fn gpu_timing_keeps_enough_zero_based_query_sets_for_async_readback() {
+        assert_eq!(SLOT_COUNT, 8);
         assert_eq!(zero_based_query_range(queries_per_frame(false)), 0..2);
         assert_eq!(
             zero_based_query_range(queries_per_frame(true)),
