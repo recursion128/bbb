@@ -9015,7 +9015,7 @@ mod tests {
     }
 
     #[test]
-    fn frame_phase_profiling_observes_without_reordering_the_submission_lifecycle() {
+    fn frame_phase_profiling_tracks_controller_owned_lifecycle_boundaries() {
         let source = include_str!("render.rs");
         let render_start = source.find("pub fn render(").expect("render entry point");
         let finish_start = source.find("fn finish_frame(").expect("finish owner");

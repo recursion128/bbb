@@ -10,20 +10,35 @@ use crate::counters::RendererCounters;
 #[cfg(any(target_os = "macos", test))]
 const MACOS_IMMEDIATE_IN_FLIGHT_BUDGET: usize = 1;
 
-#[cfg(any(target_os = "macos", test))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum FrameFlightPlatform {
     MacOs,
     Other,
 }
 
-#[cfg(any(target_os = "macos", test))]
 impl FrameFlightPlatform {
     const CURRENT: Self = if cfg!(target_os = "macos") {
         Self::MacOs
     } else {
         Self::Other
     };
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AcquisitionOrder {
+    WaitBeforeAcquire,
+    AcquireBeforeWait,
+}
+
+fn acquisition_order(
+    platform: FrameFlightPlatform,
+    present_mode: wgpu::PresentMode,
+) -> AcquisitionOrder {
+    if platform == FrameFlightPlatform::MacOs && present_mode == wgpu::PresentMode::Immediate {
+        AcquisitionOrder::AcquireBeforeWait
+    } else {
+        AcquisitionOrder::WaitBeforeAcquire
+    }
 }
 
 #[cfg(any(target_os = "macos", test))]
@@ -47,19 +62,25 @@ pub(super) enum RenderSurface {
 impl RenderSurface {
     fn acquire_frame(
         &mut self,
-        device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
-        counters: &mut RendererCounters,
         injected_fault: Option<wgpu::SurfaceError>,
-    ) -> Result<Option<FrameTarget>> {
-        let acquired = match injected_fault {
+    ) -> std::result::Result<FrameTarget, wgpu::SurfaceError> {
+        match injected_fault {
             Some(error) => Err(error),
             None => match self {
                 Self::Window(surface) => surface.get_current_texture().map(FrameTarget::Surface),
                 #[cfg(test)]
                 Self::Offscreen(texture) => Ok(FrameTarget::Offscreen(texture.clone())),
             },
-        };
+        }
+    }
+
+    fn resolve_acquired_frame(
+        &mut self,
+        acquired: std::result::Result<FrameTarget, wgpu::SurfaceError>,
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        counters: &mut RendererCounters,
+    ) -> Result<Option<FrameTarget>> {
         match acquired {
             Ok(frame) => Ok(Some(frame)),
             Err(wgpu::SurfaceError::Lost) => {
@@ -140,8 +161,8 @@ impl FrameTarget {
 pub(super) struct FrameFlightAcquisition {
     pub(super) frame: Result<Option<FrameTarget>>,
     pub(super) previous_submission_wait: Duration,
-    /// Legacy render duration boundary: CPU encoding plus the previous
-    /// submission wait, stopping immediately before drawable acquisition.
+    /// Legacy aggregate render duration component: CPU encoding plus the
+    /// previous-submission wait, explicitly excluding drawable acquisition.
     pub(super) render_duration_before_surface: Duration,
     pub(super) surface_acquire: Duration,
 }
@@ -152,9 +173,9 @@ pub(super) struct FrameFlightSubmission {
 }
 
 /// Owns the backend frame-flight lifecycle without owning visible frame work.
-/// This first slice deliberately preserves the previous one-submission macOS
-/// Immediate behavior; later scheduling policies must be separate measured
-/// candidates.
+/// The macOS Immediate candidate keeps the one-submission budget but acquires
+/// the next drawable before waiting for that submission. This lets Metal's
+/// drawable acquisition overlap completion without adding queued GPU work.
 pub(super) struct FrameFlightController {
     #[cfg(target_os = "macos")]
     previous_submission: Option<wgpu::SubmissionIndex>,
@@ -178,16 +199,50 @@ impl FrameFlightController {
         profile_wait: bool,
         render_encoding_started_at: Instant,
     ) -> FrameFlightAcquisition {
-        let previous_submission_wait =
-            self.wait_for_previous_submission(device, config.present_mode, profile_wait);
-        let render_duration_before_surface = render_encoding_started_at.elapsed();
-        let surface_acquire_started_at = Instant::now();
-        let frame = surface.acquire_frame(device, config, counters, injected_fault);
+        let (acquired, previous_submission_wait, surface_acquire) =
+            match acquisition_order(FrameFlightPlatform::CURRENT, config.present_mode) {
+                AcquisitionOrder::WaitBeforeAcquire => {
+                    let previous_submission_wait = self.wait_for_previous_submission(
+                        device,
+                        config.present_mode,
+                        profile_wait,
+                    );
+                    let surface_acquire_started_at = Instant::now();
+                    let acquired = surface.acquire_frame(injected_fault);
+                    (
+                        acquired,
+                        previous_submission_wait,
+                        surface_acquire_started_at.elapsed(),
+                    )
+                }
+                AcquisitionOrder::AcquireBeforeWait => {
+                    let surface_acquire_started_at = Instant::now();
+                    let acquired = surface.acquire_frame(injected_fault);
+                    let surface_acquire = surface_acquire_started_at.elapsed();
+                    let previous_submission_wait = self.wait_for_previous_submission(
+                        device,
+                        config.present_mode,
+                        profile_wait,
+                    );
+                    (acquired, previous_submission_wait, surface_acquire)
+                }
+            };
+        // Preserve the legacy aggregate `render` field even though the two
+        // independently reported phases now execute in the opposite order.
+        let render_duration_before_surface = render_encoding_started_at
+            .elapsed()
+            .saturating_sub(surface_acquire);
+        let resolve_started_at = acquired.is_err().then(Instant::now);
+        let frame = surface.resolve_acquired_frame(acquired, device, config, counters);
+        let surface_acquire = surface_acquire
+            + resolve_started_at
+                .map(|started_at| started_at.elapsed())
+                .unwrap_or_default();
         FrameFlightAcquisition {
             frame,
             previous_submission_wait,
             render_duration_before_surface,
-            surface_acquire: surface_acquire_started_at.elapsed(),
+            surface_acquire,
         }
     }
 
@@ -246,7 +301,10 @@ impl FrameFlightController {
 
 #[cfg(test)]
 mod tests {
-    use super::{in_flight_budget, FrameFlightPlatform, MACOS_IMMEDIATE_IN_FLIGHT_BUDGET};
+    use super::{
+        acquisition_order, in_flight_budget, AcquisitionOrder, FrameFlightPlatform,
+        MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
+    };
 
     #[test]
     fn only_macos_immediate_has_the_existing_single_submission_budget() {
@@ -276,26 +334,58 @@ mod tests {
     }
 
     #[test]
-    fn controller_source_pins_wait_acquire_submit_present_order() {
+    fn acquire_before_wait_candidate_is_limited_to_macos_immediate() {
+        assert_eq!(
+            acquisition_order(FrameFlightPlatform::MacOs, wgpu::PresentMode::Immediate),
+            AcquisitionOrder::AcquireBeforeWait
+        );
+        assert_eq!(
+            acquisition_order(FrameFlightPlatform::Other, wgpu::PresentMode::Immediate),
+            AcquisitionOrder::WaitBeforeAcquire
+        );
+        for mode in [
+            wgpu::PresentMode::Fifo,
+            wgpu::PresentMode::FifoRelaxed,
+            wgpu::PresentMode::Mailbox,
+            wgpu::PresentMode::AutoVsync,
+            wgpu::PresentMode::AutoNoVsync,
+        ] {
+            assert_eq!(
+                acquisition_order(FrameFlightPlatform::MacOs, mode),
+                AcquisitionOrder::WaitBeforeAcquire
+            );
+            assert_eq!(
+                acquisition_order(FrameFlightPlatform::Other, mode),
+                AcquisitionOrder::WaitBeforeAcquire
+            );
+        }
+    }
+
+    #[test]
+    fn controller_source_pins_candidate_and_submission_lifecycle_order() {
         let source = include_str!("frame_flight.rs");
         let controller = source.find("impl FrameFlightController").unwrap();
         let acquire_start = source[controller..]
             .find("pub(super) fn acquire_frame(")
             .map(|offset| controller + offset)
             .unwrap();
-        let wait_start = source[acquire_start..]
-            .find("self.wait_for_previous_submission")
+        let candidate = source[acquire_start..]
+            .find("AcquisitionOrder::AcquireBeforeWait =>")
             .map(|offset| acquire_start + offset)
             .unwrap();
-        let legacy_render_boundary = source[wait_start..]
-            .find("render_encoding_started_at.elapsed()")
-            .map(|offset| wait_start + offset)
-            .unwrap();
-        let surface_acquire = source[wait_start..]
+        let surface_acquire = source[candidate..]
             .find("surface.acquire_frame")
-            .map(|offset| wait_start + offset)
+            .map(|offset| candidate + offset)
             .unwrap();
-        assert!(wait_start < legacy_render_boundary && legacy_render_boundary < surface_acquire);
+        let wait = source[surface_acquire..]
+            .find("self.wait_for_previous_submission")
+            .map(|offset| surface_acquire + offset)
+            .unwrap();
+        let resolve = source[wait..]
+            .find("surface.resolve_acquired_frame")
+            .map(|offset| wait + offset)
+            .unwrap();
+        assert!(surface_acquire < wait && wait < resolve);
 
         let submit_start = source.find("pub(super) fn submit_and_present(").unwrap();
         let submit = source[submit_start..]
