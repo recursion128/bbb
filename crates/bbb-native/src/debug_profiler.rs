@@ -6,7 +6,7 @@ use std::{
 };
 
 use bbb_control::RendererCounters;
-use bbb_renderer::{HudDebugProfilerChart, HudDebugProfilerSlice};
+use bbb_renderer::{HudDebugProfilerChart, HudDebugProfilerSlice, RendererFrameProfile};
 
 use self::report::{
     ProfilingReport, ProfilingReportCompletion, ProfilingReportWriter, RecordedDeviation,
@@ -45,6 +45,36 @@ pub(crate) struct DebugProfilerFrameMetrics {
     pub(crate) compile_queue_size: Option<f64>,
     pub(crate) gpu_utilization: Option<f64>,
     pub(crate) gpu_duration_nanos: Option<f64>,
+    pub(crate) frame_phases: Option<DebugProfilerFramePhases>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct DebugProfilerFramePhases {
+    pub(crate) application_frame_interval: f64,
+    pub(crate) cpu_encode_before_wait: f64,
+    pub(crate) previous_submission_wait: f64,
+    pub(crate) surface_acquire: f64,
+    pub(crate) presentation_tail_encode: f64,
+    pub(crate) queue_submit: f64,
+    pub(crate) swap_buffers_present: f64,
+    pub(crate) gpu_async_poll: f64,
+    pub(crate) render_call_total: f64,
+}
+
+impl From<RendererFrameProfile> for DebugProfilerFramePhases {
+    fn from(profile: RendererFrameProfile) -> Self {
+        Self {
+            application_frame_interval: duration_nanos(profile.frame_interval) as f64,
+            cpu_encode_before_wait: duration_nanos(profile.cpu_encode_before_wait) as f64,
+            previous_submission_wait: duration_nanos(profile.previous_submission_wait) as f64,
+            surface_acquire: duration_nanos(profile.surface_acquire) as f64,
+            presentation_tail_encode: duration_nanos(profile.presentation_tail_encode) as f64,
+            queue_submit: duration_nanos(profile.queue_submit) as f64,
+            swap_buffers_present: duration_nanos(profile.swap_buffers_present) as f64,
+            gpu_async_poll: duration_nanos(profile.gpu_async_poll) as f64,
+            render_call_total: duration_nanos(profile.render_call_total) as f64,
+        }
+    }
 }
 
 impl DebugProfilerFrameMetrics {
@@ -54,6 +84,7 @@ impl DebugProfilerFrameMetrics {
         render_distance_chunks: u32,
         gpu_utilization: Option<f64>,
         gpu_duration: Option<Duration>,
+        frame_profile: RendererFrameProfile,
     ) -> Self {
         Self {
             tick_time_nanos: duration_nanos(tick_time) as f64,
@@ -64,6 +95,7 @@ impl DebugProfilerFrameMetrics {
             compile_queue_size: Some(counters.terrain_mesh_queue_depth as f64),
             gpu_utilization: finite_metric(gpu_utilization),
             gpu_duration_nanos: gpu_duration.map(|duration| duration_nanos(duration) as f64),
+            frame_phases: Some(frame_profile.into()),
             ..Self::default()
         }
     }

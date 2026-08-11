@@ -191,6 +191,7 @@ impl Renderer {
         self.last_frame_profile = crate::renderer::RendererFrameProfile {
             frame_interval,
             gpu_async,
+            gpu_async_poll: gpu_async,
             ..crate::renderer::RendererFrameProfile::default()
         };
         #[cfg(feature = "lifecycle-soak")]
@@ -289,11 +290,22 @@ impl Renderer {
         self.panorama_pass(&mut encoder, &mut stats);
         self.hud_passes(&mut encoder, &mut stats)?;
         self.win_screen_vignette_pass(&mut encoder, &mut stats);
+        let cpu_encode_before_wait = self
+            .frame_phase_profiling_enabled
+            .then(|| render_encoding_started_at.elapsed())
+            .unwrap_or_default();
+        let mut previous_submission_wait = std::time::Duration::ZERO;
         #[cfg(target_os = "macos")]
         if should_serialize_macos_immediate_submission(self.config.present_mode) {
             if let Some(submission) = self.previous_frame_submission.take() {
+                let wait_started_at = self
+                    .frame_phase_profiling_enabled
+                    .then(std::time::Instant::now);
                 self.device
                     .poll(wgpu::Maintain::WaitForSubmissionIndex(submission));
+                previous_submission_wait = wait_started_at
+                    .map(|started_at| started_at.elapsed())
+                    .unwrap_or_default();
             }
         }
         let render_duration_before_surface = render_encoding_started_at.elapsed();
@@ -334,7 +346,8 @@ impl Renderer {
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.finish_encoding(&mut encoder, token);
         }
-        let render_duration = render_duration_before_surface + render_encoding_resumed_at.elapsed();
+        let presentation_tail_encode = render_encoding_resumed_at.elapsed();
+        let render_duration = render_duration_before_surface + presentation_tail_encode;
         let result = self.finish_frame(
             encoder,
             frame,
@@ -343,6 +356,10 @@ impl Renderer {
             gpu_frame,
             frame_interval,
             render_duration,
+            cpu_encode_before_wait,
+            previous_submission_wait,
+            presentation_tail_encode,
+            render_started_at,
         );
         if result.is_ok() && update_lightmap {
             self.lightmap_dirty = false;
@@ -4137,6 +4154,10 @@ impl Renderer {
         gpu_frame: Option<crate::gpu_timing::GpuFrameToken>,
         frame_interval: std::time::Duration,
         render_duration: std::time::Duration,
+        cpu_encode_before_wait: std::time::Duration,
+        previous_submission_wait: std::time::Duration,
+        presentation_tail_encode: std::time::Duration,
+        render_started_at: std::time::Instant,
     ) -> Result<()> {
         let readback = match screenshot {
             Some(path) => match self.prepare_screenshot_copy(&mut encoder, frame.texture()) {
@@ -4166,6 +4187,11 @@ impl Renderer {
         self.last_frame_profile.render = render_duration;
         self.last_frame_profile.present = present_duration;
         self.last_frame_profile.swap_buffers = swap_buffers_duration;
+        self.last_frame_profile.cpu_encode_before_wait = cpu_encode_before_wait;
+        self.last_frame_profile.previous_submission_wait = previous_submission_wait;
+        self.last_frame_profile.presentation_tail_encode = presentation_tail_encode;
+        self.last_frame_profile.queue_submit = present_duration;
+        self.last_frame_profile.swap_buffers_present = swap_buffers_duration;
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.after_submit(token, frame_interval);
         }
@@ -4235,6 +4261,9 @@ impl Renderer {
             + stats.post_effect_depth_copy_draw_calls
             + stats.lightmap_draw_calls;
         self.counters.pipeline_switches = stats.pipeline_switches;
+        if self.frame_phase_profiling_enabled {
+            self.last_frame_profile.render_call_total = render_started_at.elapsed();
+        }
         Ok(())
     }
 
@@ -9026,6 +9055,47 @@ mod tests {
             source[finish_owner..]
                 .contains("prepare_screenshot_copy(&mut encoder, frame.texture())"),
             "screenshot readback remains after the final present blit and includes GUI"
+        );
+    }
+
+    #[test]
+    fn frame_phase_profiling_observes_without_reordering_the_submission_lifecycle() {
+        let source = include_str!("render.rs");
+        let render_start = source.find("pub fn render(").expect("render entry point");
+        let finish_start = source.find("fn finish_frame(").expect("finish owner");
+        let render = &source[render_start..finish_start];
+        let cpu_boundary = render
+            .find("let cpu_encode_before_wait")
+            .expect("CPU encode boundary");
+        let submission_wait = render
+            .find("WaitForSubmissionIndex(submission)")
+            .expect("Immediate previous-submission wait");
+        let acquire = render
+            .find("self.surface.acquire_frame")
+            .expect("surface acquire");
+        let presentation_tail = render
+            .find("self.transparency_blit_pass")
+            .expect("presentation tail");
+        let finish = render.find("self.finish_frame").expect("finish call");
+        assert!(
+            cpu_boundary < submission_wait
+                && submission_wait < acquire
+                && acquire < presentation_tail
+                && presentation_tail < finish
+        );
+
+        let finish_owner = &source[finish_start..];
+        let submit = finish_owner
+            .find("self.queue.submit")
+            .expect("queue submission");
+        let present = finish_owner
+            .find("frame.present()")
+            .expect("drawable present");
+        assert!(submit < present);
+        assert!(
+            render.contains(".frame_phase_profiling_enabled")
+                && render.contains(".then(std::time::Instant::now)"),
+            "the extra wait timestamp is absent when diagnostics are disabled"
         );
     }
 

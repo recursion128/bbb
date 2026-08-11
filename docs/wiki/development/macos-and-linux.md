@@ -120,6 +120,17 @@ FPS baseline，candidate 还必须先提供交错 baseline/candidate A/B，不�
 raw-backed schema-2 [stability report](../../evidence/macos-native-retina/stability-report.json)
 的 SHA-256 为 `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`。
 
+后续 schema 3 capture 在 BBB 的 profiler zip 中增加
+`client/metrics/frame_phases.csv`。每个 application frame 成对记录
+`cpu_encode_before_wait`、`previous_submission_wait`、`surface_acquire`、
+`presentation_tail_encode`、`queue_submit`、`swap_buffers_present`、
+`gpu_async_poll`、`render_call_total` 与 `application_frame_interval`；validator
+要求 archive、raw sidecar 与报告 summary 逐值一致，再输出每阶段
+p50/p95/p99/stddev 及其与 application interval 的 Pearson correlation。旧 schema-1
+capture 与 schema-2 重判仍可复核；只有当前 schema 的 BBB capture 缺阶段列时才拒绝。
+这些字段只在 GPU HUD 或正式 profiler 开启时采集，不改变 Immediate 单 in-flight、
+drawable acquire、submit、present、surface-error 或 Linux 路径。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

@@ -160,7 +160,7 @@ restoring any row to `equivalent`.
 - `macos-native-retina-stability` is active against the accepted 2560x1600
   report. Preserve the exact fullscreen drawable, world/replay, scene, view
   distance, quality, resource pack, input, VSync-off and unlimited-cap contract.
-  Complete only when the schema-2 validator finds no absolute-stability failure
+  Complete only when the current validator finds no absolute-stability failure
   in combined, scene, ABBA-round or nearest-run-pair scopes. Application metrics
   are mean FPS/frame time, p50/p95/p99, 1% low, stddev, p99-p50 and hitches;
   GPU metrics are mean, p50/p95/p99, stddev, p99-p50 and hitches. CV remains
@@ -180,6 +180,14 @@ restoring any row to `equivalent`.
   its raw-backed schema-2 revalidation is
   `docs/evidence/macos-native-retina/stability-report.json` at SHA-256
   `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`.
+  Slice A is instrumentation-only: schema 3 requires BBB profiling archives to
+  carry hashed per-frame encode-before-wait, previous-submission-wait,
+  surface-acquire, presentation-tail, queue-submit, present, GPU-poll,
+  render-total and application-interval samples. The validator re-derives
+  p50/p95/p99/stddev and paired interval correlation from that archive and raw
+  sidecar. It does not authorize a scheduling change; Slice B remains gated
+  until a real diagnostic probe identifies a flight-lifecycle phase as a
+  dominant tail source.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

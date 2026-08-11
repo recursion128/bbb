@@ -43,6 +43,13 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
    candidate 还要先完成交错 BBB-baseline A/B，FPS margin 由至少四次 baseline 重复噪声
    预先派生并封顶 1%。
 
+macOS schema-3 BBB profiler 另输出 `frame_phases.csv`，将 encode-before-wait、
+previous-submission wait、surface acquire、presentation tail、queue submit、drawable
+present、async GPU poll 与完整 render call 从旧 aggregate `frame/render` 中拆开。Retina
+validator 从 hashed archive 与 raw sidecar 重新派生各阶段 p50/p95/p99/stddev，并按同一
+tick 与 application-frame interval 计算相关性；官方 archive 不伪造 BBB 内部阶段。
+阶段数据只作调度归因，不能单独成为性能胜负结论。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。
@@ -91,7 +98,7 @@ CLI、replay schema/顺序/hash、pose 序列、MangoHud/perf/ftrace parser、pe
 low、hitch、per-frame normalization、invalid reason 与 cleanup；
 `scripts.tests.test_macos_native_retina` 另覆盖 panel-native/drawable 先行拒绝、raw/archive
 互证、stddev 与 p99-p50 派生、CV-only 非阻塞、绝对回退、逐 run scope 及 BBB baseline
-FPS 非劣。
+FPS 非劣，以及 frame-phase 列/配对 tick/sidecar/schema 拒绝与阶段统计相关性。
 
 ### 当前 `d2f210805` exact-HEAD 一致性 sweep
 

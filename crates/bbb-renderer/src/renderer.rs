@@ -319,6 +319,20 @@ pub struct RendererFrameProfile {
     pub render: Duration,
     pub present: Duration,
     pub swap_buffers: Duration,
+    /// CPU command encoding before the macOS Immediate submission fence.
+    pub cpu_encode_before_wait: Duration,
+    /// Time blocked on the preceding macOS Immediate submission, when any.
+    pub previous_submission_wait: Duration,
+    /// Final swapchain blit and timestamp encoding after surface acquisition.
+    pub presentation_tail_encode: Duration,
+    /// `Queue::submit`, including command-buffer finalization.
+    pub queue_submit: Duration,
+    /// Surface drawable presentation (`SurfaceTexture::present`).
+    pub swap_buffers_present: Duration,
+    /// Async GPU timestamp completion polling at render entry.
+    pub gpu_async_poll: Duration,
+    /// Complete successful `Renderer::render` call, including its publication tail.
+    pub render_call_total: Duration,
 }
 
 /// Complete camera-uniform inputs extracted for one presented frame.
@@ -543,6 +557,10 @@ pub struct Renderer {
     pub(super) lifecycle_soak_surface_faults: std::collections::VecDeque<wgpu::SurfaceError>,
     pub(super) started_at: Instant,
     pub(super) gpu_timing: Option<GpuFrameTiming>,
+    /// Enables detailed CPU phase timestamps together with GPU diagnostics.
+    /// Normal frames retain the legacy aggregate profile without paying for
+    /// the extra macOS fence timestamp or render-call completion timestamp.
+    pub(super) frame_phase_profiling_enabled: bool,
     #[cfg(target_os = "macos")]
     pub(super) previous_frame_submission: Option<wgpu::SubmissionIndex>,
     pub(super) last_frame_profile: RendererFrameProfile,
@@ -2433,6 +2451,7 @@ impl Renderer {
             lifecycle_soak_surface_faults: std::collections::VecDeque::new(),
             started_at: Instant::now(),
             gpu_timing,
+            frame_phase_profiling_enabled: false,
             #[cfg(target_os = "macos")]
             previous_frame_submission: None,
             last_frame_profile: RendererFrameProfile::default(),
@@ -3342,6 +3361,7 @@ impl Renderer {
         if let Some(timing) = self.gpu_timing.as_mut() {
             timing.set_enabled(enabled);
         }
+        self.frame_phase_profiling_enabled = enabled;
     }
 
     pub fn set_level_frame_route(&mut self, route: LevelFrameRoute) {

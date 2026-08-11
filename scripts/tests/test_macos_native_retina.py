@@ -65,6 +65,32 @@ def write_bbb_profile(path: Path) -> None:
         )
 
 
+def write_bbb_phase_profile(path: Path) -> None:
+    columns = list(retina.FRAME_PHASE_COLUMNS)
+    rows = [
+        [10_000_000, 4_000_000, 1_000_000, 100_000, 200_000, 300_000, 20_000, 30_000, 5_800_000],
+        [20_000_000, 5_000_000, 2_000_000, 200_000, 300_000, 400_000, 30_000, 40_000, 8_000_000],
+        [30_000_000, 6_000_000, 3_000_000, 300_000, 400_000, 500_000, 40_000, 50_000, 10_200_000],
+    ]
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "client/metrics/ticking.csv",
+            "@tick,ticktime\n1,10000000\n2,20000000\n3,30000000\n",
+        )
+        archive.writestr(
+            "client/metrics/gpu.csv",
+            "@tick,gpuDuration\n1,3000000\n2,4000000\n3,5000000\n",
+        )
+        archive.writestr(
+            "client/metrics/frame_phases.csv",
+            "@tick," + ",".join(columns) + "\n"
+            + "".join(
+                f"{tick}," + ",".join(str(value) for value in values) + "\n"
+                for tick, values in enumerate(rows, start=1)
+            ),
+        )
+
+
 class DisplayProbeTests(unittest.TestCase):
     def test_checked_in_profile_contract_is_exact(self):
         contract = retina.load_profile_contract()
@@ -306,6 +332,21 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(parsed["gpu_duration"]["mean_ms"], 4.5)
         self.assertIn("directly", parsed["gpu_duration_scope"])
 
+    def test_bbb_frame_phases_derive_tail_stats_and_interval_correlation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile)
+
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(parsed["frame_phase_schema"], retina.FRAME_PHASE_SCHEMA)
+        queue_submit = parsed["frame_phases"]["queue_submit"]
+        self.assertEqual(queue_submit["p50_ms"], 0.4)
+        self.assertEqual(queue_submit["p95_ms"], 0.5)
+        self.assertAlmostEqual(
+            queue_submit["application_frame_interval_correlation"], 1.0
+        )
+
     def test_png_dimensions_read_actual_framebuffer_pixels(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "frame.png"
@@ -515,6 +556,93 @@ class FormalValidationTests(unittest.TestCase):
             24,
         )
         self.assertEqual(report["comparison"]["bbb"]["gpu_duration"]["p95_ms"], 5.0)
+
+    def test_current_bbb_capture_rejects_missing_frame_phase_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "profile.zip"
+            write_profile(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": [10.0, 20.0]}), encoding="utf-8"
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": [5.0, 5.0]}), encoding="utf-8"
+            )
+            runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+            for run in runs:
+                run["schema"] = retina.SCHEMA
+                run["profiles"] = [
+                    self.profile_record(
+                        profile,
+                        frame_samples,
+                        gpu_samples,
+                        segment,
+                        [10.0, 20.0],
+                        [5.0, 5.0],
+                    )
+                    for segment in retina.CAPTURE_SEGMENTS
+                ]
+
+            report = retina.validate_and_summarize(display(), runs)
+
+        self.assertFalse(report["metrics_publishable"])
+        self.assertIn(
+            "lacks required renderer-frame-phases-v1 evidence",
+            report["blockers"][0]["error"],
+        )
+
+    def test_current_frame_phase_sidecar_is_rederived_into_report_scopes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "profile.zip"
+            write_bbb_phase_profile(profile)
+            samples = retina.profiler_samples(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            phase_samples = root / "phases.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": samples["application_frame_time"]}),
+                encoding="utf-8",
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": samples["gpu_duration"]}),
+                encoding="utf-8",
+            )
+            phase_samples.write_text(
+                json.dumps({"milliseconds": samples["frame_phases"]}),
+                encoding="utf-8",
+            )
+            runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+            for run in runs:
+                run["schema"] = retina.SCHEMA
+                profiles = []
+                for segment in retina.CAPTURE_SEGMENTS:
+                    record = retina.parse_profiler_archive(profile)
+                    record.update(
+                        {
+                            "segment": segment,
+                            "application_frame_time_samples": str(frame_samples),
+                            "gpu_duration_samples": str(gpu_samples),
+                            "frame_phase_samples": str(phase_samples),
+                            "process_cpu_time_ms": 12.0,
+                            "process_cpu_frame_time": {"frames": 3, "mean_ms": 4.0},
+                        }
+                    )
+                    profiles.append(record)
+                run["profiles"] = profiles
+
+            report = retina.validate_and_summarize(display(), runs)
+
+        diagnostics = report["frame_phase_diagnostics"]
+        self.assertEqual(diagnostics["schema"], retina.FRAME_PHASE_SCHEMA)
+        combined = diagnostics["scopes"][0]["phases"]
+        self.assertEqual(combined["previous_submission_wait"]["p99_ms"], 3.0)
+        self.assertAlmostEqual(
+            combined["queue_submit"]["application_frame_interval_correlation"],
+            1.0,
+        )
 
     def test_failed_run_pair_cannot_be_hidden_by_combined_or_scene_aggregate(self):
         def write_values(

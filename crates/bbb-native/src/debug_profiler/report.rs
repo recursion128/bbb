@@ -200,6 +200,24 @@ impl DebugProfilerFrameMetrics {
         if let Some(value) = finite_metric(self.gpu_duration_nanos) {
             insert_metric(&mut categories, "gpu", "gpuDuration", value);
         }
+        if let Some(phases) = &self.frame_phases {
+            for (name, value) in [
+                (
+                    "application_frame_interval",
+                    phases.application_frame_interval,
+                ),
+                ("cpu_encode_before_wait", phases.cpu_encode_before_wait),
+                ("previous_submission_wait", phases.previous_submission_wait),
+                ("surface_acquire", phases.surface_acquire),
+                ("presentation_tail_encode", phases.presentation_tail_encode),
+                ("queue_submit", phases.queue_submit),
+                ("swap_buffers_present", phases.swap_buffers_present),
+                ("gpu_async_poll", phases.gpu_async_poll),
+                ("render_call_total", phases.render_call_total),
+            ] {
+                insert_metric(&mut categories, "frame phases", name, value);
+            }
+        }
         categories
     }
 }
@@ -441,7 +459,7 @@ mod tests {
     use zip::ZipArchive;
 
     use super::*;
-    use crate::debug_profiler::DebugProfilerSectionSample;
+    use crate::debug_profiler::{DebugProfilerFramePhases, DebugProfilerSectionSample};
 
     static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
@@ -464,6 +482,17 @@ mod tests {
                     rendered_chunks: Some(5.0),
                     last_view_distance: Some(12.0),
                     compile_queue_size: Some(2.0),
+                    frame_phases: Some(DebugProfilerFramePhases {
+                        application_frame_interval: 100.0,
+                        cpu_encode_before_wait: 50.0,
+                        previous_submission_wait: 20.0,
+                        surface_acquire: 3.0,
+                        presentation_tail_encode: 4.0,
+                        queue_submit: 5.0,
+                        swap_buffers_present: 6.0,
+                        gpu_async_poll: 7.0,
+                        render_call_total: 95.0,
+                    }),
                     ..DebugProfilerFrameMetrics::default()
                 },
             ),
@@ -521,6 +550,9 @@ mod tests {
         );
         assert!(files["chunk rendering"]
             .contains("@tick,lastViewDistance,renderedChunks,totalChunks\n1,12,5,8\n2,12,6,9\n"));
+        assert!(files["frame phases"].contains(
+            "@tick,application_frame_interval,cpu_encode_before_wait,gpu_async_poll,presentation_tail_encode,previous_submission_wait,queue_submit,render_call_total,surface_acquire,swap_buffers_present\n1,100,50,7,4,20,5,95,3,6\n"
+        ));
     }
 
     #[test]
@@ -542,6 +574,7 @@ mod tests {
             "client/profiling.txt",
             "client/metrics/ticking.csv",
             "client/metrics/chunk_rendering.csv",
+            "client/metrics/frame_phases.csv",
             "client/deviations/ticktime/2@000000.txt",
         ] {
             assert!(archive.by_name(name).is_ok(), "missing {name}");

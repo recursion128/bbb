@@ -2115,6 +2115,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                             args.render_distance_chunks,
                             gpu_utilization,
                             completed_gpu_duration,
+                            renderer_frame_profile,
                         )
                     });
                     simulation_mailbox.update_backend_telemetry(renderer_counters, audio_counters);
@@ -2137,12 +2138,15 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                         frame_work: profiler_frame_work_duration,
                         update: profiler_update_duration,
                         extract: native_render_profile.extract,
-                        render_call: profiler_render_duration,
+                        render_call_total: renderer_frame_profile.render_call_total,
+                        cpu_encode_before_wait: renderer_frame_profile.cpu_encode_before_wait,
+                        previous_submission_wait: renderer_frame_profile.previous_submission_wait,
                         surface_acquire: renderer_frame_profile.surface_acquire,
-                        render_encode: renderer_frame_profile.render,
-                        queue_submit: renderer_frame_profile.present,
-                        swap_buffers: renderer_frame_profile.swap_buffers,
-                        gpu_poll: renderer_frame_profile.gpu_async,
+                        presentation_tail_encode: renderer_frame_profile.presentation_tail_encode,
+                        queue_submit: renderer_frame_profile.queue_submit,
+                        swap_buffers_present: renderer_frame_profile.swap_buffers_present,
+                        gpu_async_poll: renderer_frame_profile.gpu_async_poll,
+                        legacy_render_encode: renderer_frame_profile.render,
                         publish: profiler_publish_duration,
                     });
                     let (profiler_frame_duration, profiler_frame_limiter_duration) =
@@ -2193,7 +2197,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                                 Some(render_publication.generation);
                         }
                         let mut sections =
-                            Vec::with_capacity(latest_simulation_profile_sections.len() + 10);
+                            Vec::with_capacity(latest_simulation_profile_sections.len() + 16);
                         sections.extend(latest_simulation_profile_sections.iter().map(|section| {
                             DebugProfilerSectionSample {
                                 path: section.path,
@@ -2231,6 +2235,26 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                             DebugProfilerSectionSample {
                                 path: &["frame", "render"],
                                 duration: renderer_frame_profile.render,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "cpuEncodeBeforeWait"],
+                                duration: renderer_frame_profile.cpu_encode_before_wait,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "previousSubmissionWait"],
+                                duration: renderer_frame_profile.previous_submission_wait,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "presentationTailEncode"],
+                                duration: renderer_frame_profile.presentation_tail_encode,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "renderCallTotal"],
+                                duration: renderer_frame_profile.render_call_total,
                                 record_in_report: true,
                             },
                             DebugProfilerSectionSample {

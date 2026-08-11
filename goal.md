@@ -516,7 +516,7 @@ receipt 前后的 closure metadata 可更新 matrix/ledger/goal 的真实状态�
 route/scope ruling、inventory source 与 validation-class 语义 hash 不得变化；最终 metadata HEAD 仍须 clean full gate，
 任何 code/tool/fixture 差异都必须回到对应 domain sweep。
 
-当前 macOS Retina 路线严格串行：A 独立采 encode-before-wait、previous-submission-wait、surface-acquire、presentation-tail、submit/present/GPU-poll、render-total/interval 的 p50/p95/p99/stddev/correlation，只 diagnostic 不改调度；B 仅在 A 指向 flight 调度时，以保持 Immediate 单 in-flight、FIFO/Linux、顺序/surface-error 的等价 `FrameFlightController` 起步，不默认多帧或后台 acquire。
+当前 macOS Retina 路线严格串行：A 已在 schema-3 profiler 链加入 encode-before-wait、previous-submission-wait、surface-acquire、presentation-tail、submit/present/GPU-poll、render-total/interval 的逐帧 raw、p50/p95/p99/stddev/correlation；只 diagnostic 不改调度，真实 probe 与归因结论仍待固定。B 仅在 A 的 probe 指向 flight 调度时，以保持 Immediate 单 in-flight、FIFO/Linux、顺序/surface-error 的等价 `FrameFlightController` 起步，不默认多帧或后台 acquire。
 C 仅在 A 指向 encode/upload 时启用 submission-safe 对齐 upload pages，保持 geometry/order/material、grow-only/empty fail-closed 并量化 writes/bytes/replacements；D 仅在 GPU pass/copy 证据触发，以静态 FramePlan 保持 `FRAME_STEPS`、透明/材质/draw evidence，不建通用 render graph。
 candidate 先过 ≤1% 预声明 BBB A/B、视觉/workload 与绝对尾部非回退才进 Vanilla ABBA；提高 FPS 但恶化 input latency、p95/p99 或 hitch 一律拒绝。
 

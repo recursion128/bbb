@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 const SAMPLE_COUNT: usize = 600;
-const PHASE_COUNT: usize = 11;
+const PHASE_COUNT: usize = 14;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct FramePhaseSample {
@@ -16,12 +16,15 @@ pub(crate) struct FramePhaseSample {
     pub(crate) frame_work: Duration,
     pub(crate) update: Duration,
     pub(crate) extract: Duration,
-    pub(crate) render_call: Duration,
+    pub(crate) render_call_total: Duration,
+    pub(crate) cpu_encode_before_wait: Duration,
+    pub(crate) previous_submission_wait: Duration,
     pub(crate) surface_acquire: Duration,
-    pub(crate) render_encode: Duration,
+    pub(crate) presentation_tail_encode: Duration,
     pub(crate) queue_submit: Duration,
-    pub(crate) swap_buffers: Duration,
-    pub(crate) gpu_poll: Duration,
+    pub(crate) swap_buffers_present: Duration,
+    pub(crate) gpu_async_poll: Duration,
+    pub(crate) legacy_render_encode: Duration,
     pub(crate) publish: Duration,
 }
 
@@ -32,12 +35,15 @@ impl FramePhaseSample {
             duration_nanos(self.frame_work),
             duration_nanos(self.update),
             duration_nanos(self.extract),
-            duration_nanos(self.render_call),
+            duration_nanos(self.render_call_total),
+            duration_nanos(self.cpu_encode_before_wait),
+            duration_nanos(self.previous_submission_wait),
             duration_nanos(self.surface_acquire),
-            duration_nanos(self.render_encode),
+            duration_nanos(self.presentation_tail_encode),
             duration_nanos(self.queue_submit),
-            duration_nanos(self.swap_buffers),
-            duration_nanos(self.gpu_poll),
+            duration_nanos(self.swap_buffers_present),
+            duration_nanos(self.gpu_async_poll),
+            duration_nanos(self.legacy_render_encode),
             duration_nanos(self.publish),
         ]
     }
@@ -96,37 +102,54 @@ impl FramePhaseDiagnostics {
         if self.samples[0].len() < SAMPLE_COUNT {
             return;
         }
-        for samples in &mut self.samples {
-            samples.sort_unstable();
-        }
-        let p95: [u64; PHASE_COUNT] =
-            std::array::from_fn(|index| nearest_rank_percentile(&self.samples[index], 95));
-        let p99: [u64; PHASE_COUNT] =
-            std::array::from_fn(|index| nearest_rank_percentile(&self.samples[index], 99));
+        let summaries: [PhaseSummary; PHASE_COUNT] =
+            std::array::from_fn(|index| phase_summary(&self.samples[index], &self.samples[0]));
         tracing::debug!(
             samples = SAMPLE_COUNT,
-            frame_interval_p95_us = micros(p95[0]),
-            frame_interval_p99_us = micros(p99[0]),
-            frame_work_p95_us = micros(p95[1]),
-            frame_work_p99_us = micros(p99[1]),
-            update_p95_us = micros(p95[2]),
-            update_p99_us = micros(p99[2]),
-            extract_p95_us = micros(p95[3]),
-            extract_p99_us = micros(p99[3]),
-            render_call_p95_us = micros(p95[4]),
-            render_call_p99_us = micros(p99[4]),
-            surface_acquire_p95_us = micros(p95[5]),
-            surface_acquire_p99_us = micros(p99[5]),
-            render_encode_p95_us = micros(p95[6]),
-            render_encode_p99_us = micros(p99[6]),
-            queue_submit_p95_us = micros(p95[7]),
-            queue_submit_p99_us = micros(p99[7]),
-            swap_buffers_p95_us = micros(p95[8]),
-            swap_buffers_p99_us = micros(p99[8]),
-            gpu_poll_p95_us = micros(p95[9]),
-            gpu_poll_p99_us = micros(p99[9]),
-            publish_p95_us = micros(p95[10]),
-            publish_p99_us = micros(p99[10]),
+            frame_interval_p50_us = micros(summaries[0].p50),
+            frame_interval_p95_us = micros(summaries[0].p95),
+            frame_interval_p99_us = micros(summaries[0].p99),
+            frame_interval_stddev_us = nanos_to_micros(summaries[0].stddev),
+            render_call_total_p50_us = micros(summaries[4].p50),
+            render_call_total_p95_us = micros(summaries[4].p95),
+            render_call_total_p99_us = micros(summaries[4].p99),
+            render_call_total_stddev_us = nanos_to_micros(summaries[4].stddev),
+            render_call_total_interval_correlation = summaries[4].interval_correlation,
+            cpu_encode_before_wait_p50_us = micros(summaries[5].p50),
+            cpu_encode_before_wait_p95_us = micros(summaries[5].p95),
+            cpu_encode_before_wait_p99_us = micros(summaries[5].p99),
+            cpu_encode_before_wait_stddev_us = nanos_to_micros(summaries[5].stddev),
+            cpu_encode_before_wait_interval_correlation = summaries[5].interval_correlation,
+            previous_submission_wait_p50_us = micros(summaries[6].p50),
+            previous_submission_wait_p95_us = micros(summaries[6].p95),
+            previous_submission_wait_p99_us = micros(summaries[6].p99),
+            previous_submission_wait_stddev_us = nanos_to_micros(summaries[6].stddev),
+            previous_submission_wait_interval_correlation = summaries[6].interval_correlation,
+            surface_acquire_p50_us = micros(summaries[7].p50),
+            surface_acquire_p95_us = micros(summaries[7].p95),
+            surface_acquire_p99_us = micros(summaries[7].p99),
+            surface_acquire_stddev_us = nanos_to_micros(summaries[7].stddev),
+            surface_acquire_interval_correlation = summaries[7].interval_correlation,
+            presentation_tail_encode_p50_us = micros(summaries[8].p50),
+            presentation_tail_encode_p95_us = micros(summaries[8].p95),
+            presentation_tail_encode_p99_us = micros(summaries[8].p99),
+            presentation_tail_encode_stddev_us = nanos_to_micros(summaries[8].stddev),
+            presentation_tail_encode_interval_correlation = summaries[8].interval_correlation,
+            queue_submit_p50_us = micros(summaries[9].p50),
+            queue_submit_p95_us = micros(summaries[9].p95),
+            queue_submit_p99_us = micros(summaries[9].p99),
+            queue_submit_stddev_us = nanos_to_micros(summaries[9].stddev),
+            queue_submit_interval_correlation = summaries[9].interval_correlation,
+            swap_buffers_present_p50_us = micros(summaries[10].p50),
+            swap_buffers_present_p95_us = micros(summaries[10].p95),
+            swap_buffers_present_p99_us = micros(summaries[10].p99),
+            swap_buffers_present_stddev_us = nanos_to_micros(summaries[10].stddev),
+            swap_buffers_present_interval_correlation = summaries[10].interval_correlation,
+            gpu_async_poll_p50_us = micros(summaries[11].p50),
+            gpu_async_poll_p95_us = micros(summaries[11].p95),
+            gpu_async_poll_p99_us = micros(summaries[11].p99),
+            gpu_async_poll_stddev_us = nanos_to_micros(summaries[11].stddev),
+            gpu_async_poll_interval_correlation = summaries[11].interval_correlation,
             "renderer CPU phase tail diagnostics"
         );
         self.clear();
@@ -155,15 +178,80 @@ fn nearest_rank_percentile(sorted_samples: &[u64], percentile: usize) -> u64 {
     sorted_samples[rank.saturating_sub(1).min(sorted_samples.len() - 1)]
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct PhaseSummary {
+    p50: u64,
+    p95: u64,
+    p99: u64,
+    stddev: f64,
+    interval_correlation: f64,
+}
+
+fn phase_summary(samples: &[u64], interval: &[u64]) -> PhaseSummary {
+    if samples.is_empty() {
+        return PhaseSummary::default();
+    }
+    let mut ordered = samples.to_vec();
+    ordered.sort_unstable();
+    PhaseSummary {
+        p50: nearest_rank_percentile(&ordered, 50),
+        p95: nearest_rank_percentile(&ordered, 95),
+        p99: nearest_rank_percentile(&ordered, 99),
+        stddev: population_stddev(samples),
+        interval_correlation: pearson_correlation(samples, interval),
+    }
+}
+
+fn population_stddev(samples: &[u64]) -> f64 {
+    if samples.len() < 2 {
+        return 0.0;
+    }
+    let mean = samples.iter().map(|value| *value as f64).sum::<f64>() / samples.len() as f64;
+    let variance = samples
+        .iter()
+        .map(|value| (*value as f64 - mean).powi(2))
+        .sum::<f64>()
+        / samples.len() as f64;
+    variance.sqrt()
+}
+
+fn pearson_correlation(left: &[u64], right: &[u64]) -> f64 {
+    if left.len() != right.len() || left.len() < 2 {
+        return 0.0;
+    }
+    let left_mean = left.iter().map(|value| *value as f64).sum::<f64>() / left.len() as f64;
+    let right_mean = right.iter().map(|value| *value as f64).sum::<f64>() / right.len() as f64;
+    let mut covariance = 0.0;
+    let mut left_square_sum = 0.0;
+    let mut right_square_sum = 0.0;
+    for (left, right) in left.iter().zip(right) {
+        let left_delta = *left as f64 - left_mean;
+        let right_delta = *right as f64 - right_mean;
+        covariance += left_delta * right_delta;
+        left_square_sum += left_delta * left_delta;
+        right_square_sum += right_delta * right_delta;
+    }
+    let divisor = (left_square_sum * right_square_sum).sqrt();
+    if divisor == 0.0 {
+        0.0
+    } else {
+        covariance / divisor
+    }
+}
+
 fn micros(nanos: u64) -> f64 {
     nanos as f64 / 1_000.0
+}
+
+fn nanos_to_micros(nanos: f64) -> f64 {
+    nanos / 1_000.0
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        nearest_rank_percentile, profiler_frame_timing, FramePhaseDiagnostics, FramePhaseSample,
-        SAMPLE_COUNT,
+        nearest_rank_percentile, pearson_correlation, phase_summary, profiler_frame_timing,
+        FramePhaseDiagnostics, FramePhaseSample, SAMPLE_COUNT,
     };
     use std::time::Duration;
 
@@ -216,5 +304,14 @@ mod tests {
         assert_eq!(nearest_rank_percentile(&samples, 95), 95);
         assert_eq!(nearest_rank_percentile(&samples, 99), 99);
         assert_eq!(nearest_rank_percentile(&[], 99), 0);
+    }
+
+    #[test]
+    fn frame_phase_summary_preserves_pairing_for_interval_correlation() {
+        let interval = [10, 20, 30, 40];
+        let summary = phase_summary(&[1, 2, 3, 4], &interval);
+        assert_eq!((summary.p50, summary.p95, summary.p99), (2, 4, 4));
+        assert!((summary.interval_correlation - 1.0).abs() < f64::EPSILON);
+        assert!((pearson_correlation(&[4, 3, 2, 1], &interval) + 1.0).abs() < f64::EPSILON);
     }
 }

@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "profile": "macos-native-retina",
   "minecraft_version": "26.1",
   "display": {
@@ -40,6 +40,24 @@
     "F3-up"
   ],
   "drawable_mismatch_policy": "block-without-comparison",
+  "frame_phase_diagnostics": {
+    "schema": "renderer-frame-phases-v1",
+    "archive_path": "client/metrics/frame_phases.csv",
+    "units": "nanoseconds",
+    "columns": [
+      "application_frame_interval",
+      "cpu_encode_before_wait",
+      "previous_submission_wait",
+      "surface_acquire",
+      "presentation_tail_encode",
+      "queue_submit",
+      "swap_buffers_present",
+      "gpu_async_poll",
+      "render_call_total"
+    ],
+    "required_client": "bbb",
+    "correlation_target": "application_frame_interval"
+  },
   "stability_acceptance": {
     "policy": "absolute-tail-v2",
     "cv_role": "diagnostic-only-when-absolute-metrics-pass",

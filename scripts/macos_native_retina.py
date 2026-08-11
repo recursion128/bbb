@@ -67,7 +67,7 @@ from official_client_benchmark import (
     write_vanilla_options,
 )
 
-SCHEMA = 2
+SCHEMA = 3
 PROFILE_ID = "macos-native-retina"
 FORMAL_ORDER = ("vanilla", "bbb", "bbb", "vanilla") * 2
 FORMAL_ROUNDS = ((1, 2, 3, 4), (5, 6, 7, 8))
@@ -87,6 +87,18 @@ BASELINE_BBB_COMMIT = "d698c8db0d219f035c7597726c76225c6cd70abc"
 BASELINE_BBB_REPORT_SHA256 = "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b"
 BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97"
 MAX_BASELINE_FPS_MARGIN = 0.01
+FRAME_PHASE_SCHEMA = "renderer-frame-phases-v1"
+FRAME_PHASE_COLUMNS = (
+    "application_frame_interval",
+    "cpu_encode_before_wait",
+    "previous_submission_wait",
+    "surface_acquire",
+    "presentation_tail_encode",
+    "queue_submit",
+    "swap_buffers_present",
+    "gpu_async_poll",
+    "render_call_total",
+)
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 F2_KEY_CODE = 120
 F3_KEY_CODE = 99
@@ -122,6 +134,14 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         "formal_order": list(FORMAL_ORDER),
         "capture_segments": list(CAPTURE_SEGMENTS),
         "drawable_mismatch_policy": "block-without-comparison",
+        "frame_phase_diagnostics": {
+            "schema": FRAME_PHASE_SCHEMA,
+            "archive_path": "client/metrics/frame_phases.csv",
+            "units": "nanoseconds",
+            "columns": list(FRAME_PHASE_COLUMNS),
+            "required_client": "bbb",
+            "correlation_target": "application_frame_interval",
+        },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
             "cv_role": "diagnostic-only-when-absolute-metrics-pass",
@@ -689,12 +709,54 @@ def summarize_durations_ms(values: Sequence[float]) -> dict[str, object]:
     }
 
 
+def pearson_correlation(left: Sequence[float], right: Sequence[float]) -> float:
+    if len(left) != len(right) or len(left) < 2:
+        return 0.0
+    left_mean = statistics.fmean(left)
+    right_mean = statistics.fmean(right)
+    covariance = sum(
+        (left_value - left_mean) * (right_value - right_mean)
+        for left_value, right_value in zip(left, right, strict=True)
+    )
+    left_square_sum = sum((value - left_mean) ** 2 for value in left)
+    right_square_sum = sum((value - right_mean) ** 2 for value in right)
+    divisor = math.sqrt(left_square_sum * right_square_sum)
+    return covariance / divisor if divisor else 0.0
+
+
+def summarize_frame_phase_ms(
+    values: Sequence[float], application_intervals: Sequence[float]
+) -> dict[str, object]:
+    if (
+        not values
+        or len(values) != len(application_intervals)
+        or any(not math.isfinite(value) or value < 0 for value in values)
+        or any(not math.isfinite(value) or value <= 0 for value in application_intervals)
+    ):
+        raise RetinaAcceptanceError(
+            "frame phase samples must be finite, non-negative, and paired with positive intervals"
+        )
+    ordered = sorted(values)
+    return {
+        "samples": len(values),
+        "mean_ms": statistics.fmean(values),
+        "p50_ms": percentile(ordered, 50),
+        "p95_ms": percentile(ordered, 95),
+        "p99_ms": percentile(ordered, 99),
+        "stddev_ms": statistics.pstdev(values) if len(values) > 1 else 0.0,
+        "application_frame_interval_correlation": pearson_correlation(
+            values, application_intervals
+        ),
+    }
+
+
 def profiler_samples(path: Path) -> dict[str, object]:
     try:
         archive = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as error:
         raise RetinaAcceptanceError(f"cannot open profiling archive {path}: {error}") from error
     gpu = None
+    frame_phase_rows: dict[str, dict[int, float]] | None = None
     with archive:
         ticking = _read_metric_csv(archive, "/metrics/ticking.csv", "ticktime")
         try:
@@ -702,6 +764,22 @@ def profiler_samples(path: Path) -> dict[str, object]:
         except RetinaAcceptanceError:
             gpu_duration = None
             gpu = _read_metric_csv(archive, "/metrics/gpu.csv", "gpuUtilization")
+        phase_names = [
+            name
+            for name in archive.namelist()
+            if name.endswith("/metrics/frame_phases.csv")
+        ]
+        if phase_names:
+            if len(phase_names) != 1:
+                raise RetinaAcceptanceError(
+                    "profiling archive must contain at most one frame_phases.csv"
+                )
+            frame_phase_rows = {
+                column: _read_metric_csv(
+                    archive, "/metrics/frame_phases.csv", column
+                )
+                for column in FRAME_PHASE_COLUMNS
+            }
     if gpu_duration is not None:
         frame_ms = [ticking[tick] / 1_000_000.0 for tick in sorted(ticking)]
         gpu_ms = [
@@ -732,22 +810,49 @@ def profiler_samples(path: Path) -> dict[str, object]:
         )
     if not gpu_ms:
         raise RetinaAcceptanceError("profiling archive contains no positive GPU timer sample")
-    return {
+    result: dict[str, object] = {
         "application_frame_time": frame_ms,
         "gpu_duration": gpu_ms,
         "gpu_duration_scope": gpu_duration_scope,
     }
+    if frame_phase_rows is not None:
+        expected_ticks = set(ticking)
+        for column, rows in frame_phase_rows.items():
+            if set(rows) != expected_ticks:
+                raise RetinaAcceptanceError(
+                    f"frame phase {column} ticks differ from application frames"
+                )
+        interval = frame_phase_rows["application_frame_interval"]
+        if any(interval[tick] != ticking[tick] for tick in expected_ticks):
+            raise RetinaAcceptanceError(
+                "frame phase application interval differs from profiler ticktime"
+            )
+        ordered_ticks = sorted(expected_ticks)
+        result["frame_phases"] = {
+            column: [rows[tick] / 1_000_000.0 for tick in ordered_ticks]
+            for column, rows in frame_phase_rows.items()
+        }
+    return result
 
 
 def parse_profiler_archive(path: Path) -> dict[str, object]:
     samples = profiler_samples(path)
-    return {
+    parsed: dict[str, object] = {
         "path": str(path),
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "application_frame_time": summarize_durations_ms(samples["application_frame_time"]),
         "gpu_duration": summarize_durations_ms(samples["gpu_duration"]),
         "gpu_duration_scope": samples["gpu_duration_scope"],
     }
+    frame_phases = samples.get("frame_phases")
+    if isinstance(frame_phases, Mapping):
+        application_intervals = frame_phases["application_frame_interval"]
+        parsed["frame_phase_schema"] = FRAME_PHASE_SCHEMA
+        parsed["frame_phases"] = {
+            phase: summarize_frame_phase_ms(values, application_intervals)
+            for phase, values in frame_phases.items()
+        }
+    return parsed
 
 
 def settings_identity() -> dict[str, object]:
@@ -885,7 +990,11 @@ def _validate_stored_summary(
 
 def _materialize_formal_samples(
     runs: Sequence[Mapping[str, object]],
-) -> tuple[list[dict[str, object]], dict[tuple[int, str, str], list[float]]]:
+) -> tuple[
+    list[dict[str, object]],
+    dict[tuple[int, str, str], list[float]],
+    dict[tuple[int, str, str], list[float]],
+]:
     """Reparse and normalize every archive exactly once.
 
     Raw sidecars are not trusted as an alternate source: their values must be
@@ -896,6 +1005,7 @@ def _materialize_formal_samples(
 
     normalized_runs: list[dict[str, object]] = []
     matrix: dict[tuple[int, str, str], list[float]] = {}
+    phase_matrix: dict[tuple[int, str, str], list[float]] = {}
     for run_number, run in enumerate(runs, start=1):
         profiles = run.get("profiles")
         if not isinstance(profiles, list):
@@ -948,12 +1058,150 @@ def _materialize_formal_samples(
                 )
                 normalized_profile[metric] = summary
                 matrix[(run_number, segment, metric)] = materialized
+            archive_phases = archive_samples.get("frame_phases")
+            try:
+                run_schema = int(run.get("capture_schema", run.get("schema", 0)))
+            except (TypeError, ValueError):
+                run_schema = 0
+            phase_required = run.get("client") == "bbb" and run_schema >= SCHEMA
+            if phase_required and not isinstance(archive_phases, Mapping):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} {segment} lacks required {FRAME_PHASE_SCHEMA} evidence"
+                )
+            if isinstance(archive_phases, Mapping):
+                if profile.get("frame_phase_schema") != FRAME_PHASE_SCHEMA:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame phase schema differs"
+                    )
+                sidecar_value = profile.get("frame_phase_samples")
+                if not isinstance(sidecar_value, str):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} lacks frame phase raw samples"
+                    )
+                raw = _load_object(Path(sidecar_value), "frame phase raw samples")
+                raw_phases = raw.get("milliseconds")
+                if not isinstance(raw_phases, Mapping):
+                    raise RetinaAcceptanceError("frame phase raw samples are malformed")
+                materialized_phases = {
+                    str(phase): [float(value) for value in values]
+                    for phase, values in raw_phases.items()
+                    if isinstance(values, list)
+                }
+                expected_phases = {
+                    str(phase): [float(value) for value in values]
+                    for phase, values in archive_phases.items()
+                }
+                if materialized_phases != expected_phases:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame phase sidecar differs from archive"
+                    )
+                if set(materialized_phases) != set(FRAME_PHASE_COLUMNS):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame phase columns differ"
+                    )
+                application_intervals = materialized_phases[
+                    "application_frame_interval"
+                ]
+                phase_summaries = {
+                    phase: summarize_frame_phase_ms(values, application_intervals)
+                    for phase, values in materialized_phases.items()
+                }
+                stored_phases = profile.get("frame_phases")
+                if not isinstance(stored_phases, Mapping):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} lacks frame phase summaries"
+                    )
+                for phase, summary in phase_summaries.items():
+                    _validate_stored_summary(
+                        stored_phases.get(phase),
+                        summary,
+                        label=f"run {run_number} {segment} frame phase {phase}",
+                    )
+                    phase_matrix[(run_number, segment, phase)] = materialized_phases[
+                        phase
+                    ]
+                normalized_profile["frame_phase_schema"] = FRAME_PHASE_SCHEMA
+                normalized_profile["frame_phases"] = phase_summaries
             normalized_profiles.append(normalized_profile)
         normalized_run = dict(run)
+        normalized_run["capture_schema"] = run.get("capture_schema", run.get("schema", 0))
         normalized_run["schema"] = SCHEMA
         normalized_run["profiles"] = normalized_profiles
         normalized_runs.append(normalized_run)
-    return normalized_runs, matrix
+    return normalized_runs, matrix, phase_matrix
+
+
+def _frame_phase_scope_summary(
+    matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+    run_numbers: Sequence[int],
+    segment: str | None,
+) -> dict[str, object]:
+    selected = [
+        (run_number, profile_segment)
+        for run_number in run_numbers
+        if runs[run_number - 1].get("client") == "bbb"
+        for profile_segment in CAPTURE_SEGMENTS
+        if segment is None or profile_segment == segment
+        if (run_number, profile_segment, "application_frame_interval") in matrix
+    ]
+    if not selected:
+        return {}
+    intervals = [
+        value
+        for run_number, profile_segment in selected
+        for value in matrix[(run_number, profile_segment, "application_frame_interval")]
+    ]
+    return {
+        phase: summarize_frame_phase_ms(
+            [
+                value
+                for run_number, profile_segment in selected
+                for value in matrix[(run_number, profile_segment, phase)]
+            ],
+            intervals,
+        )
+        for phase in FRAME_PHASE_COLUMNS
+    }
+
+
+def _build_frame_phase_diagnostics(
+    matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+) -> dict[str, object] | None:
+    all_runs = tuple(range(1, len(runs) + 1))
+    combined = _frame_phase_scope_summary(matrix, runs, all_runs, None)
+    if not combined:
+        return None
+    scopes = [
+        {"scope_type": "combined", "scope_id": "combined", "phases": combined}
+    ]
+    scopes.extend(
+        {
+            "scope_type": "scene",
+            "scope_id": segment,
+            "phases": _frame_phase_scope_summary(matrix, runs, all_runs, segment),
+        }
+        for segment in CAPTURE_SEGMENTS
+    )
+    for run_number, run in enumerate(runs, start=1):
+        if run.get("client") != "bbb":
+            continue
+        scopes.append(
+            {
+                "scope_type": "run",
+                "scope_id": f"run-{run_number}",
+                "phases": _frame_phase_scope_summary(
+                    matrix, runs, (run_number,), None
+                ),
+            }
+        )
+    return {
+        "schema": FRAME_PHASE_SCHEMA,
+        "units": "milliseconds",
+        "correlation_target": "application_frame_interval",
+        "scopes": scopes,
+    }
 
 
 def _scoped_summary(
@@ -1433,10 +1681,13 @@ def validate_and_summarize(
             "blockers": reasons,
             "comparison": None,
             "stability_acceptance": None,
+            "frame_phase_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     try:
-        normalized_runs, sample_matrix = _materialize_formal_samples(runs)
+        normalized_runs, sample_matrix, frame_phase_matrix = _materialize_formal_samples(
+            runs
+        )
     except RetinaAcceptanceError as error:
         blocker = {"code": "raw_evidence_integrity_failure", "error": str(error)}
         return {
@@ -1447,6 +1698,7 @@ def validate_and_summarize(
             "blockers": [blocker],
             "comparison": None,
             "stability_acceptance": None,
+            "frame_phase_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     all_runs = tuple(range(1, len(normalized_runs) + 1))
@@ -1467,6 +1719,9 @@ def validate_and_summarize(
         for client in ("vanilla", "bbb")
     }
     stability = _build_stability_acceptance(sample_matrix, normalized_runs)
+    frame_phase_diagnostics = _build_frame_phase_diagnostics(
+        frame_phase_matrix, normalized_runs
+    )
     if bbb_commit == BASELINE_BBB_COMMIT:
         baseline_comparison = {
             "role": "established-baseline",
@@ -1494,6 +1749,7 @@ def validate_and_summarize(
         "blockers": performance_blockers,
         "comparison": comparison,
         "stability_acceptance": stability,
+        "frame_phase_diagnostics": frame_phase_diagnostics,
         "bbb_baseline_comparison": baseline_comparison,
     }
 
@@ -1720,10 +1976,16 @@ def _write_profile_samples(
     samples = profiler_samples(profile_path)
     entry = parse_profiler_archive(profile_path)
     entry["segment"] = segment
-    for metric, milliseconds in samples.items():
+    for metric in ("application_frame_time", "gpu_duration", "gpu_duration_scope"):
+        milliseconds = samples[metric]
         output = path / f"{segment}-{metric}-samples.json"
         output.write_bytes(canonical_json_bytes({"milliseconds": milliseconds}))
         entry[f"{metric}_samples"] = str(output)
+    frame_phases = samples.get("frame_phases")
+    if isinstance(frame_phases, Mapping):
+        output = path / f"{segment}-frame-phases-samples.json"
+        output.write_bytes(canonical_json_bytes({"milliseconds": frame_phases}))
+        entry["frame_phase_samples"] = str(output)
     frame_count = len(samples["application_frame_time"])
     entry["process_cpu_time_ms"] = cpu_nanos / 1_000_000.0
     entry["process_cpu_frame_time"] = {
