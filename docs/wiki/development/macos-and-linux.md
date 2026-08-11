@@ -133,6 +133,15 @@ capture 与 schema-2 重判仍可复核；只有当前 schema 的 BBB capture �
 这些字段只在 GPU HUD 或正式 profiler 开启时采集，不改变 Immediate 单 in-flight、
 drawable acquire、submit、present、surface-error 或 Linux 路径。
 
+首份真实阶段归因见
+[frame-phase diagnostic](../../evidence/macos-native-retina/frame-phase-diagnostic.json)：
+capture commit `f0cc03ad7` 与 lag-1 analysis commit `c7aa715af` 均已 full gate，三场景
+共 4,588 帧、实际 drawable 2560x1600。combined submission wait mean/p95/p99 为
+5.025/5.808/6.874 ms；逐场景 wait→next-interval correlation 为
+0.567/0.589/0.682。surface acquire p99 为 3.450/2.820/2.182 ms，相关性为
+0.546/0.417/0.290。encode-before-wait p99 不超过 0.719 ms且三场景相关性为负；因此只触发
+保持行为的 FrameFlightController 重构，未触发 upload arena、FramePlan 或任何排队策略。
+
 ## 第二平台 cross-check
 
 Linux 主机看不见 `cfg(target_os = "macos")` 后面的代码，这些代码因此可能无声腐坏。

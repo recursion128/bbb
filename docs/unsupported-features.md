@@ -186,9 +186,13 @@ restoring any row to `equivalent`.
   render-total and application-interval samples. The validator re-derives
   p50/p95/p99/stddev and phase[N]-to-next-interval[N+1] correlation from that
   archive and raw sidecar; same-row correlation is prior-interval diagnostic
-  only. It does not authorize a scheduling change; Slice B remains gated
-  until a real diagnostic probe identifies a flight-lifecycle phase as a
-  dominant tail source.
+  only. The full-gated `f0cc03ad7` 2560x1600 probe, re-analyzed by full-gated
+  `c7aa715af`, records submission-wait next-interval correlation
+  0.567/0.589/0.682 and acquire correlation 0.546/0.417/0.290 across the three
+  scenes. This triggers Slice B's behavior-preserving controller refactor but
+  does not authorize a queue-depth or scheduling policy change. Slice C is not
+  triggered because encode-before-wait p99 is at most 0.719 ms with negative
+  next-interval correlation; Slice D has no pass/copy trigger evidence.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

@@ -50,6 +50,10 @@ validator 从 hashed archive 与 raw sidecar 重新派生各阶段 p50/p95/p99/s
 render-start interval 描述当前工作之前刚结束的区间，归因相关性按 phase[N] 对下一条
 interval[N+1] 计算，并将同-row prior correlation 单列；官方 archive 不伪造 BBB 内部阶段。
 阶段数据只作调度归因，不能单独成为性能胜负结论。
+当前 repo evidence `docs/evidence/macos-native-retina/frame-phase-diagnostic.json` 来自
+full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715af` 按 lag-1
+口径复算；它只触发保持现有行为的 flight-controller 重构，不是正式 BBB/Vanilla
+性能比较，也不替代后续 paired BBB A/B 或 Java→BBB→BBB→Java ABBA。
 
 ## 生命周期和 fallback
 
