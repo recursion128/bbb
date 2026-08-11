@@ -1574,7 +1574,9 @@ impl Renderer {
             ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         let surface = unsafe {
-            instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::from_window(window)?)?
+            instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::from_display_and_window(
+                window, window,
+            )?)?
         };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -5409,6 +5411,18 @@ mod tests {
         assert!(!production.contains("ManuallyDrop<"));
         assert!(!production.contains("std::mem::forget("));
         assert!(!production.contains("fn close_backend"));
+    }
+
+    #[test]
+    fn window_surface_creation_passes_both_wgpu_30_raw_handles() {
+        let source = include_str!("renderer.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]\nmod tests")
+            .expect("renderer production/test boundary")
+            .0;
+        assert!(production
+            .contains("wgpu::SurfaceTargetUnsafe::from_display_and_window(window, window)?"));
+        assert!(!production.contains("wgpu::SurfaceTargetUnsafe::from_window(window)?"));
     }
 
     #[test]
