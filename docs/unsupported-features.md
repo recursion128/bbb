@@ -342,7 +342,7 @@ restoring any row to `equivalent`.
   SHA-256
   `fa3c2e39f8c61261c547c461000f50c8056445fa5685da17d30dfb9db4c461d3`.
   It is rejected before official Java ABBA; the accepted render-submission fence
-  must be restored while v3 remains readable. Detailed query/callback paths remain
+  is restored while v3 remains readable. Detailed query/callback paths remain
   off outside explicit diagnostics. Only a distinct v4 all-scope pass can
   authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,

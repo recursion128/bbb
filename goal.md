@@ -500,12 +500,11 @@ profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：�
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
 十一段有序 `PassBoundary` duration；`renderer-input-latency-v1` 使用单调 sequence/timestamp
 有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
-return，并固定把终点声明为软件边界而非 display/photon latency。当前唯一动作是把 macOS
-Immediate 的 owned fence 收敛回 full-gated baseline 的 render-submission fence，同时保留
-frame-phase v3 的 `post_present_fence_submit` 兼容字段、旧 v1/v2 evidence 读取和既有失败报告复验；
-接受策略必须把该 phase 报为零。完成 focused tests、正常提交和 full gate 后，只有新的、预声明且
-有 phase/lifecycle 依据的有界 candidate 才能重开采集。未开启详细诊断时保持两个 timestamp
-query；不得改变 surface fallback 或可见 geometry。
+return，并固定把终点声明为软件边界而非 display/photon latency。当前没有 ready scheduling
+candidate：macOS Immediate 固定使用 full-gated baseline 的 render-submission fence，
+frame-phase v3 的 `post_present_fence_submit` 兼容字段报零，旧 v1/v2 evidence 和既有失败报告继续
+可复验。只有新的、预声明且有 phase/lifecycle 依据的有界 candidate 才能重开采集；未开启详细
+诊断时保持两个 timestamp query，不得改变 surface fallback 或可见 geometry。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝

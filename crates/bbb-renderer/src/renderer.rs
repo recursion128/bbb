@@ -245,8 +245,8 @@ pub struct RendererFrameProfile {
     pub queue_submit: Duration,
     /// Surface drawable presentation (`SurfaceTexture::present`).
     pub swap_buffers_present: Duration,
-    /// macOS Immediate only: empty queue submission whose fence is ordered
-    /// after wgpu's internal Metal present command buffer.
+    /// Reserved compatibility phase for the rejected post-present fence policy.
+    /// The accepted render-submission fence reports zero here.
     pub post_present_fence_submit: Duration,
     /// Async GPU timestamp completion polling at render entry.
     pub gpu_async_poll: Duration,
@@ -1729,13 +1729,7 @@ impl Renderer {
             } else {
                 0
             },
-            submission_fence_strategy = if cfg!(target_os = "macos")
-                && present_mode == wgpu::PresentMode::Immediate
-            {
-                "post-present-empty-submit-fence"
-            } else {
-                "render-submission-fence"
-            },
+            submission_fence_strategy = "render-submission-fence",
             "renderer surface presentation selected"
         );
         let alpha_mode = caps

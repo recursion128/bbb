@@ -4249,7 +4249,6 @@ impl Renderer {
             encoder,
             frame,
             self.config.present_mode,
-            self.frame_phase_profiling_enabled,
             self.submission_completion_profiling_enabled,
             render_started_at,
         );

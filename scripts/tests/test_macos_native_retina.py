@@ -539,7 +539,7 @@ class DisplayProbeTests(unittest.TestCase):
                 "baseline_submission_fence_strategy":
                     "render-submission-fence-legacy-log",
                 "candidate_submission_fence_strategy":
-                    "post-present-empty-submit-fence",
+                    "render-submission-fence",
                 "queue_depth_increased": False,
                 "wait_acquire_submit_present_order_unchanged": True,
                 "input_latency_policy": "unchanged-single-in-flight",
@@ -799,7 +799,7 @@ class ProfilerTests(unittest.TestCase):
             "renderer surface presentation selected present_mode=Immediate "
             "supported_present_modes=[Fifo, Immediate] desired_maximum_frame_latency=2 "
             "expected_metal_drawable_count=3 in_flight_submission_budget=1 "
-            'submission_fence_strategy="post-present-empty-submit-fence"\n'
+            'submission_fence_strategy="render-submission-fence"\n'
             "native Metal layer presentation observed drawable_width=2560.0 "
             "drawable_height=1600.0 maximum_drawable_count=3",
         )
@@ -812,7 +812,7 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(presentation["in_flight_submission_budget"], 1)
         self.assertEqual(
             presentation["submission_fence_strategy"],
-            "post-present-empty-submit-fence",
+            "render-submission-fence",
         )
 
     def test_runtime_dependency_receipt_parses_all_wgpu_components(self):
@@ -1478,6 +1478,27 @@ class FormalValidationTests(unittest.TestCase):
         self.assertIn(
             "surface_presentation.submission_fence_strategy",
             {item["field"] for item in mismatch["mismatches"]},
+        )
+
+    def test_wgpu30_restored_render_submission_fence_receipt_passes(self):
+        evidence = wgpu30_optimization_evidence()
+        evidence["scheduling_contract"].update(
+            {
+                "baseline_submission_fence_strategy":
+                    "render-submission-fence-legacy-log",
+                "candidate_submission_fence_strategy": "render-submission-fence",
+            }
+        )
+        for run in evidence["runs"]:
+            run["surface_presentation"]["submission_fence_strategy"] = (
+                "render-submission-fence-legacy-log"
+                if run["variant"] == "baseline"
+                else "render-submission-fence"
+            )
+
+        self.assertEqual(
+            retina.validate_candidate_fps_evidence(evidence, "c" * 40)["status"],
+            "passed",
         )
 
     def test_wgpu30_optimization_rejects_a_019_baseline_before_metrics(self):

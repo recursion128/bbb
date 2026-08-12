@@ -2896,25 +2896,25 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
         "baseline_submission_fence_strategy" in contract
         or "candidate_submission_fence_strategy" in contract
     ):
-        fence_strategies = {
-            "baseline": "render-submission-fence-legacy-log",
-            "candidate": "post-present-empty-submit-fence",
-        }
-        for variant, expected in fence_strategies.items():
+        fence_strategies = {}
+        for variant in ("baseline", "candidate"):
             field = f"{variant}_submission_fence_strategy"
-            if contract.get(field) != expected:
+            expected = contract.get(field)
+            if not isinstance(expected, str) or not expected:
                 failures.append(
                     {
                         "code": "bbb_candidate_scheduling_contract_mismatch",
                         "mismatches": [
                             {
                                 "field": field,
-                                "expected": expected,
-                                "actual": contract.get(field),
+                                "expected": "non-empty predeclared strategy",
+                                "actual": expected,
                             }
                         ],
                     }
                 )
+            else:
+                fence_strategies[variant] = expected
 
     expected_runtime = {
         **WGPU_COMPONENT_VERSIONS,
@@ -2980,7 +2980,7 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
                 for field, expected in expected_presentation
                 if presentation.get(field) != expected
             )
-            if fence_strategies is not None:
+            if fence_strategies is not None and expected_variant in fence_strategies:
                 expected_fence_strategy = fence_strategies[expected_variant]
                 if presentation.get("submission_fence_strategy") != expected_fence_strategy:
                     run_mismatches.append(
