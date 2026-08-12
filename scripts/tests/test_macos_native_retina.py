@@ -407,6 +407,76 @@ def wgpu30_optimization_evidence() -> dict[str, object]:
     return evidence
 
 
+def wgpu30_two_flight_evidence() -> dict[str, object]:
+    evidence = wgpu30_optimization_evidence()
+    evidence["scheduling_contract"].update(
+        {
+            "candidate_in_flight_submission_budget": 2,
+            "baseline_submission_fence_strategy":
+                "render-submission-fence-legacy-log",
+            "candidate_submission_fence_strategy":
+                "oldest-render-submission-fence-budget-2",
+            "queue_depth_increased": True,
+            "input_latency_policy": "paired-software-boundary-noninferior",
+        }
+    )
+    for run in evidence["runs"]:
+        if run["variant"] == "baseline":
+            run["surface_presentation"]["submission_fence_strategy"] = (
+                "render-submission-fence-legacy-log"
+            )
+        else:
+            run["surface_presentation"]["in_flight_submission_budget"] = 2
+            run["surface_presentation"]["submission_fence_strategy"] = (
+                "oldest-render-submission-fence-budget-2"
+            )
+    baseline_latency = retina.summarize_durations_ms([8.0, 10.0])
+    candidate_latency = retina.summarize_durations_ms([7.0, 9.0])
+
+    def latency_summary(stage: dict[str, object]) -> dict[str, object]:
+        return {
+            "sample_count": 2,
+            "superseded_events": 0,
+            "out_of_order_events": 0,
+            "terminal_boundary": retina.INPUT_LATENCY_TERMINAL_BOUNDARY,
+            "stages": {"enqueue_to_present_call_return": dict(stage)},
+        }
+
+    evidence["input_latency_guard"] = {
+        "schema": retina.INPUT_LATENCY_AB_SCHEMA,
+        "status": "passed",
+        "terminal_boundary": retina.INPUT_LATENCY_TERMINAL_BOUNDARY,
+        "pairing": "interleaved-baseline-candidate",
+        "formal_order": list(retina.CANDIDATE_AB_ORDER),
+        "baseline_bbb_commit": retina.INPUT_LATENCY_BASELINE_COMMIT,
+        "baseline_bbb_binary_sha256": retina.INPUT_LATENCY_BASELINE_BINARY_SHA256,
+        "baseline_bbb_report_sha256": retina.INPUT_LATENCY_BASELINE_REPORT_SHA256,
+        "candidate_bbb_commit": evidence["candidate_bbb_commit"],
+        "candidate_bbb_binary_sha256": evidence["candidate_bbb_binary_sha256"],
+        "baseline_raw_sha256": "d" * 64,
+        "candidate_raw_sha256": "e" * 64,
+        "parity_contract": {
+            "status": "passed",
+            "drawable_pixels": [2560, 1600],
+            "window_mode": "fullscreen",
+            "vsync": False,
+            "framerate_limit": "unlimited",
+            "workload_hashes_match": True,
+            "input_match": True,
+        },
+        "scopes": [
+            {
+                "scope_type": scope_type,
+                "scope_id": scope_id,
+                "baseline": latency_summary(baseline_latency),
+                "candidate": latency_summary(candidate_latency),
+            }
+            for scope_type, scope_id in sorted(retina._candidate_required_scopes())
+        ],
+    }
+    return evidence
+
+
 class ConsolePreflightTests(unittest.TestCase):
     def test_ioreg_console_lock_parser_accepts_explicit_boolean_states(self):
         self.assertTrue(
@@ -535,19 +605,27 @@ class DisplayProbeTests(unittest.TestCase):
                 "baseline_actual_metal_drawable_count": 3,
                 "candidate_actual_metal_drawable_count": 3,
                 "baseline_in_flight_submission_budget": 1,
-                "candidate_in_flight_submission_budget": 1,
+                "candidate_in_flight_submission_budget": 2,
                 "baseline_submission_fence_strategy":
                     "render-submission-fence-legacy-log",
                 "candidate_submission_fence_strategy":
-                    "render-submission-fence",
-                "queue_depth_increased": False,
+                    "oldest-render-submission-fence-budget-2",
+                "queue_depth_increased": True,
                 "wait_acquire_submit_present_order_unchanged": True,
-                "input_latency_policy": "unchanged-single-in-flight",
+                "input_latency_policy": "paired-software-boundary-noninferior",
             },
         )
         self.assertEqual(
             contract["frame_flight_diagnostics"]["timestamp_semantics"],
             "wgpu-callback-observation-not-hardware-completion",
+        )
+        self.assertEqual(
+            contract["input_latency_candidate_guard"]["schema"],
+            retina.INPUT_LATENCY_AB_SCHEMA,
+        )
+        self.assertEqual(
+            contract["input_latency_candidate_guard"]["formal_order"],
+            list(retina.CANDIDATE_AB_ORDER),
         )
         self.assertEqual(
             contract["gpu_stage_diagnostics"]["schema"],
@@ -798,8 +876,8 @@ class ProfilerTests(unittest.TestCase):
             "bbb",
             "renderer surface presentation selected present_mode=Immediate "
             "supported_present_modes=[Fifo, Immediate] desired_maximum_frame_latency=2 "
-            "expected_metal_drawable_count=3 in_flight_submission_budget=1 "
-            'submission_fence_strategy="render-submission-fence"\n'
+            "expected_metal_drawable_count=3 in_flight_submission_budget=2 "
+            'submission_fence_strategy="oldest-render-submission-fence-budget-2"\n'
             "native Metal layer presentation observed drawable_width=2560.0 "
             "drawable_height=1600.0 maximum_drawable_count=3",
         )
@@ -809,10 +887,10 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(presentation["expected_metal_drawable_count"], 3)
         self.assertEqual(presentation["actual_metal_drawable_count"], 3)
         self.assertEqual(presentation["actual_drawable_pixels"], [2560, 1600])
-        self.assertEqual(presentation["in_flight_submission_budget"], 1)
+        self.assertEqual(presentation["in_flight_submission_budget"], 2)
         self.assertEqual(
             presentation["submission_fence_strategy"],
-            "render-submission-fence",
+            "oldest-render-submission-fence-budget-2",
         )
 
     def test_runtime_dependency_receipt_parses_all_wgpu_components(self):
@@ -1126,20 +1204,39 @@ class ProfilerTests(unittest.TestCase):
             ):
                 retina.parse_profiler_archive(profile)
 
-    def test_frame_flight_rejects_non_budget_one_depth(self):
+    def test_frame_flight_accepts_two_flight_depth(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(
+                profile,
+                flight_rows=[
+                    [0, 0, 0, 2, 0, 0, 0],
+                    [6_000_000, 4_000_000, 100_000, 2, 1, 0, 0],
+                    [7_000_000, 5_000_000, 200_000, 2, 1, 0, 0],
+                ],
+            )
+
+            parsed = retina.parse_profiler_archive(profile)
+
+            self.assertEqual(
+                parsed["frame_flight"]["counts"]["in_flight_depth_at_submit"]["minimum"],
+                2,
+            )
+
+    def test_frame_flight_rejects_depth_above_supported_budget(self):
         with tempfile.TemporaryDirectory() as directory:
             profile = Path(directory) / "profile.zip"
             write_bbb_phase_profile(
                 profile,
                 flight_rows=[
                     [0, 0, 0, 1, 0, 0, 0],
-                    [6_000_000, 4_000_000, 100_000, 2, 1, 0, 0],
+                    [6_000_000, 4_000_000, 100_000, 3, 1, 0, 0],
                     [7_000_000, 5_000_000, 200_000, 1, 1, 0, 0],
                 ],
             )
 
             with self.assertRaisesRegex(
-                retina.RetinaAcceptanceError, "in-flight depth must remain one"
+                retina.RetinaAcceptanceError, "in-flight depth must be one or two"
             ):
                 retina.parse_profiler_archive(profile)
 
@@ -1438,6 +1535,84 @@ class FormalValidationTests(unittest.TestCase):
         self.assertEqual(
             result["baseline_bbb_binary_sha256"],
             retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+        )
+
+    def test_wgpu30_two_flight_candidate_requires_and_passes_input_latency_guard(self):
+        evidence = wgpu30_two_flight_evidence()
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+
+    def test_wgpu30_two_flight_candidate_rejects_missing_input_guard_before_metrics(self):
+        evidence = wgpu30_two_flight_evidence()
+        del evidence["input_latency_guard"]
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertIn(
+            "bbb_candidate_input_latency_guard_missing",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_wgpu30_two_flight_candidate_rejects_input_p99_regression(self):
+        evidence = wgpu30_two_flight_evidence()
+        scope = evidence["input_latency_guard"]["scopes"][0]
+        scope["candidate"]["stages"]["enqueue_to_present_call_return"]["p99_ms"] = 11.0
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        failure = next(
+            failure
+            for failure in result["failures"]
+            if failure["code"] == "bbb_candidate_input_latency_regression"
+        )
+        self.assertIn("p99_ms", failure["failed_metrics"])
+
+    def test_wgpu30_two_flight_failed_pair_cannot_be_hidden_by_combined_input(self):
+        evidence = wgpu30_two_flight_evidence()
+        scope = next(
+            scope
+            for scope in evidence["input_latency_guard"]["scopes"]
+            if scope["scope_id"] == "pair-1-static_orbit"
+        )
+        scope["candidate"]["stages"]["enqueue_to_present_call_return"]["stddev_ms"] = 9.0
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            failure
+            for failure in result["failures"]
+            if failure["code"] == "bbb_candidate_input_latency_regression"
+        )
+        self.assertEqual(failure["scope"], ["run_pair", "pair-1-static_orbit"])
+        self.assertIn("stddev_ms", failure["failed_metrics"])
+
+    def test_wgpu30_two_flight_candidate_rejects_run_budget_mismatch_before_metrics(self):
+        evidence = wgpu30_two_flight_evidence()
+        candidate_run = next(
+            run for run in evidence["runs"] if run["variant"] == "candidate"
+        )
+        candidate_run["surface_presentation"]["in_flight_submission_budget"] = 1
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        failure = next(
+            failure
+            for failure in result["failures"]
+            if failure["code"] == "bbb_candidate_surface_run_mismatch"
+        )
+        self.assertIn(
+            "surface_presentation.in_flight_submission_budget",
+            {mismatch["field"] for mismatch in failure["mismatches"]},
         )
 
     def test_wgpu30_post_present_fence_receipt_preempts_metrics_on_mismatch(self):
@@ -2033,6 +2208,9 @@ class FormalValidationTests(unittest.TestCase):
                 if run["client"] == "bbb":
                     run["required_gpu_stage_schema"] = retina.GPU_STAGE_SCHEMA
                     run["required_input_latency_schema"] = retina.INPUT_LATENCY_SCHEMA
+                    run["surface_presentation"] = {
+                        "in_flight_submission_budget": 1,
+                    }
                     run["launch_argv"] = [
                         "bbb-native",
                         "--renderer-input-latency-diagnostics",
@@ -2056,6 +2234,14 @@ class FormalValidationTests(unittest.TestCase):
                     profiles.append(record)
                 run["profiles"] = profiles
 
+            first_bbb = next(run for run in runs if run["client"] == "bbb")
+            first_bbb["surface_presentation"]["in_flight_submission_budget"] = 2
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError,
+                "frame flight depth differs from declared in-flight budget 2",
+            ):
+                retina._materialize_formal_samples(runs)
+            first_bbb["surface_presentation"]["in_flight_submission_budget"] = 1
             report = retina.validate_and_summarize(display(), runs)
 
         diagnostics = report["frame_phase_diagnostics"]

@@ -78,7 +78,10 @@ validator 过滤这些 placeholder 后要求 sequence 严格递增、阶段和�
 sidecar 一致，并输出 combined/scene/run 的 p50/p95/p99/stddev、superseded 与 out-of-order。
 终点固定表述为 `present-call-return-software-boundary-not-display-or-photon`：它不包含 compositor、
 scanout、面板或光子延迟。未启用时 enqueue 不读取时钟，详细 receipt 不进入热路径；该诊断不改变
-输入应用、workload、queue budget 或 wait→acquire→submit→present 顺序。
+输入应用、workload 或 wait→acquire→submit→present 顺序。任何 queue-budget candidate 都必须用
+相同 instrumentation 与输入 replay 做独立 B→C→C→B×2，且在 combined、scene、round、nearest
+pair 全部 scope 上证明 end-to-end mean/p50/p95/p99/stddev/p99-p50、hitch、sample count、
+superseded 与 out-of-order 非劣，不能仅凭 FPS 接受。
 frame-phase schema v2 把 macOS Immediate 上一 submission 的 non-blocking
 completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
 `poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。
@@ -195,7 +198,11 @@ p50/p95/p99/stddev 为 0.0135/1.8045/5.6820/1.0139 ms，对下一 application in
 [`input-latency-ac-diagnostic.json`](../../../evidence/macos-native-retina/input-latency-ac-diagnostic.json)
 （SHA-256 `be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24`）。该报告不是候选
 FPS/稳定性验收，终点不含 compositor、scanout、面板或光子；它只为后续独立 acquire-policy
-candidate 提供输入软件路径非劣门禁，且不授权增加 queue depth。
+candidate 提供输入软件路径非劣门禁。当前有界 Slice B candidate 只把 macOS Immediate 的
+controller-owned render-submission budget 从一提高到二：达到容量才等待最老 exact fence；
+latency hint 2、三个 drawable、wait→acquire→submit→present、FIFO/Linux 与 workload 均保持。
+正式性能比较前必须先通过上述同仪器输入延迟门禁；缺失 guard、任一 scope 回退或逐 run 实际
+budget/depth 不符都会在解析 FPS 前拒绝。
 
 ## 生命周期和 fallback
 

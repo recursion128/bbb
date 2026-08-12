@@ -188,6 +188,17 @@ INPUT_LATENCY_COUNT_COLUMNS = (
     "present_call_return_software_boundary",
 )
 INPUT_LATENCY_COLUMNS = INPUT_LATENCY_DURATION_COLUMNS + INPUT_LATENCY_COUNT_COLUMNS
+INPUT_LATENCY_AB_SCHEMA = "renderer-input-latency-ab-v1"
+INPUT_LATENCY_TERMINAL_BOUNDARY = (
+    "present-call-return-software-boundary-not-display-or-photon"
+)
+INPUT_LATENCY_BASELINE_COMMIT = "331be198397d9284c2bb93b96ebb9fb58d265e96"
+INPUT_LATENCY_BASELINE_BINARY_SHA256 = (
+    "231a2e71ffc7a8fb84446673e1ab85f21ca02f21691f11ad4edaefd721e31ae8"
+)
+INPUT_LATENCY_BASELINE_REPORT_SHA256 = (
+    "be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24"
+)
 BBB_RUNTIME_LOG_FILTERS = (
     "bbb_native=info",
     "bbb_renderer=info",
@@ -412,6 +423,29 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "activation": "--renderer-input-latency-diagnostics",
             "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
             "coalescing": "newest-event-with-explicit-superseded-count",
+        },
+        "input_latency_candidate_guard": {
+            "schema": INPUT_LATENCY_AB_SCHEMA,
+            "required_when_candidate_in_flight_budget_exceeds": 1,
+            "baseline_bbb_commit": INPUT_LATENCY_BASELINE_COMMIT,
+            "baseline_bbb_binary_sha256": INPUT_LATENCY_BASELINE_BINARY_SHA256,
+            "baseline_bbb_report_sha256": INPUT_LATENCY_BASELINE_REPORT_SHA256,
+            "terminal_boundary": INPUT_LATENCY_TERMINAL_BOUNDARY,
+            "formal_order": list(CANDIDATE_AB_ORDER),
+            "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
+            "required_end_to_end_metrics": [
+                "mean_ms",
+                "p50_ms",
+                "p95_ms",
+                "p99_ms",
+                "stddev_ms",
+                "p99_minus_p50_ms",
+                "hitch_counts",
+                "sample_count",
+                "superseded_events",
+                "out_of_order_events",
+            ],
+            "mismatch_policy": "reject-before-performance-comparison",
         },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
@@ -1469,9 +1503,9 @@ def profiler_samples(path: Path) -> dict[str, object]:
                 raise RetinaAcceptanceError(
                     "frame flight delivered callback lacks a positive observation age"
                 )
-            if depth != 1.0:
+            if not depth.is_integer() or depth not in (1.0, 2.0):
                 raise RetinaAcceptanceError(
-                    "frame flight macOS Immediate in-flight depth must remain one"
+                    "frame flight macOS Immediate in-flight depth must be one or two"
                 )
             if dropped < 0.0 or not dropped.is_integer():
                 raise RetinaAcceptanceError(
@@ -1948,6 +1982,21 @@ def _materialize_formal_samples(
                 if materialized_flight != expected_flight:
                     raise RetinaAcceptanceError(
                         f"run {run_number} {segment} frame flight sidecar differs from archive"
+                    )
+                presentation = run.get("surface_presentation")
+                declared_budget = (
+                    presentation.get("in_flight_submission_budget")
+                    if isinstance(presentation, Mapping)
+                    else None
+                )
+                expected_depth = 1 if declared_budget is None else declared_budget
+                if expected_depth not in (1, 2) or any(
+                    depth != float(expected_depth)
+                    for depth in materialized_flight["in_flight_depth_at_submit"]
+                ):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame flight depth differs from "
+                        f"declared in-flight budget {expected_depth!r}"
                     )
                 if not isinstance(archive_phases, Mapping):
                     raise RetinaAcceptanceError(
@@ -2841,6 +2890,189 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
     return failures
 
 
+def _input_latency_guard_failures(
+    evidence: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """Validate the independent same-instrument input-latency A/B receipt."""
+
+    guard = evidence.get("input_latency_guard")
+    if not isinstance(guard, Mapping):
+        return [{"code": "bbb_candidate_input_latency_guard_missing"}]
+    failures: list[dict[str, object]] = []
+    expected: tuple[tuple[str, object], ...] = (
+        ("schema", INPUT_LATENCY_AB_SCHEMA),
+        ("status", "passed"),
+        ("terminal_boundary", INPUT_LATENCY_TERMINAL_BOUNDARY),
+        ("pairing", "interleaved-baseline-candidate"),
+        ("formal_order", list(CANDIDATE_AB_ORDER)),
+        ("baseline_bbb_commit", INPUT_LATENCY_BASELINE_COMMIT),
+        ("baseline_bbb_binary_sha256", INPUT_LATENCY_BASELINE_BINARY_SHA256),
+        ("baseline_bbb_report_sha256", INPUT_LATENCY_BASELINE_REPORT_SHA256),
+        ("candidate_bbb_commit", evidence.get("candidate_bbb_commit")),
+        ("candidate_bbb_binary_sha256", evidence.get("candidate_bbb_binary_sha256")),
+    )
+    mismatches = [
+        {"field": field, "expected": value, "actual": guard.get(field)}
+        for field, value in expected
+        if guard.get(field) != value
+    ]
+    for field in ("baseline_raw_sha256", "candidate_raw_sha256"):
+        value = guard.get(field)
+        if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+            mismatches.append(
+                {"field": field, "expected": "64-character SHA-256", "actual": value}
+            )
+    parity = guard.get("parity_contract")
+    parity_expected: tuple[tuple[str, object], ...] = (
+        ("status", "passed"),
+        ("drawable_pixels", [2560, 1600]),
+        ("window_mode", "fullscreen"),
+        ("vsync", False),
+        ("framerate_limit", "unlimited"),
+        ("workload_hashes_match", True),
+        ("input_match", True),
+    )
+    if not isinstance(parity, Mapping):
+        mismatches.append(
+            {"field": "parity_contract", "expected": "mapping", "actual": parity}
+        )
+    else:
+        mismatches.extend(
+            {
+                "field": f"parity_contract.{field}",
+                "expected": value,
+                "actual": parity.get(field),
+            }
+            for field, value in parity_expected
+            if parity.get(field) != value
+        )
+    if mismatches:
+        failures.append(
+            {"code": "bbb_candidate_input_latency_guard_mismatch", "mismatches": mismatches}
+        )
+
+    scopes = guard.get("scopes")
+    if not isinstance(scopes, list):
+        failures.append({"code": "bbb_candidate_input_latency_scopes_missing"})
+        return failures
+    required = _candidate_required_scopes()
+    observed: set[tuple[str, str]] = set()
+    lower_or_equal = (
+        "mean_ms",
+        "p50_ms",
+        "p95_ms",
+        "p99_ms",
+        "stddev_ms",
+        "p99_minus_p50_ms",
+    )
+    for entry in scopes:
+        if not isinstance(entry, Mapping):
+            failures.append({"code": "bbb_candidate_input_latency_scope_malformed"})
+            continue
+        scope = (str(entry.get("scope_type")), str(entry.get("scope_id")))
+        if scope in observed:
+            failures.append(
+                {"code": "bbb_candidate_input_latency_scope_duplicate", "scope": list(scope)}
+            )
+        observed.add(scope)
+        baseline = entry.get("baseline")
+        candidate = entry.get("candidate")
+        if not isinstance(baseline, Mapping) or not isinstance(candidate, Mapping):
+            failures.append(
+                {"code": "bbb_candidate_input_latency_scope_malformed", "scope": list(scope)}
+            )
+            continue
+        try:
+            baseline_stage = baseline["stages"]["enqueue_to_present_call_return"]
+            candidate_stage = candidate["stages"]["enqueue_to_present_call_return"]
+            if not isinstance(baseline_stage, Mapping) or not isinstance(
+                candidate_stage, Mapping
+            ):
+                raise TypeError("end-to-end stage is not a mapping")
+            regressed: list[str] = []
+            for field in lower_or_equal:
+                baseline_value = float(baseline_stage[field])
+                candidate_value = float(candidate_stage[field])
+                if (
+                    not math.isfinite(baseline_value)
+                    or not math.isfinite(candidate_value)
+                    or baseline_value < 0.0
+                    or candidate_value < 0.0
+                ):
+                    raise ValueError(f"{field} is not finite and non-negative")
+                if candidate_value > baseline_value:
+                    regressed.append(field)
+            baseline_hitches = baseline_stage["hitch_counts"]
+            candidate_hitches = candidate_stage["hitch_counts"]
+            if not isinstance(baseline_hitches, Mapping) or not isinstance(
+                candidate_hitches, Mapping
+            ):
+                raise TypeError("hitch counts are not mappings")
+            if set(candidate_hitches) != set(baseline_hitches):
+                raise ValueError("hitch thresholds differ")
+            for threshold in baseline_hitches:
+                baseline_count = int(baseline_hitches[threshold])
+                candidate_count = int(candidate_hitches[threshold])
+                if baseline_count < 0 or candidate_count < 0:
+                    raise ValueError("hitch counts must be non-negative")
+                if candidate_count > baseline_count:
+                    regressed.append(f"hitch_counts.{threshold}")
+            baseline_samples = int(baseline["sample_count"])
+            candidate_samples = int(candidate["sample_count"])
+            if baseline_samples <= 0 or candidate_samples <= 0:
+                raise ValueError("sample counts must be positive")
+            if candidate_samples < baseline_samples:
+                regressed.append("sample_count")
+            baseline_superseded = int(baseline["superseded_events"])
+            candidate_superseded = int(candidate["superseded_events"])
+            if baseline_superseded < 0 or candidate_superseded < 0:
+                raise ValueError("superseded event counts must be non-negative")
+            if candidate_superseded > baseline_superseded:
+                regressed.append("superseded_events")
+            if int(baseline["out_of_order_events"]) != 0 or int(
+                candidate["out_of_order_events"]
+            ) != 0:
+                regressed.append("out_of_order_events")
+            if baseline.get("terminal_boundary") != INPUT_LATENCY_TERMINAL_BOUNDARY or (
+                candidate.get("terminal_boundary") != INPUT_LATENCY_TERMINAL_BOUNDARY
+            ):
+                regressed.append("terminal_boundary")
+        except (KeyError, TypeError, ValueError) as error:
+            failures.append(
+                {
+                    "code": "bbb_candidate_input_latency_scope_malformed",
+                    "scope": list(scope),
+                    "error": str(error),
+                }
+            )
+            continue
+        if regressed:
+            failures.append(
+                {
+                    "code": "bbb_candidate_input_latency_regression",
+                    "scope": list(scope),
+                    "failed_metrics": regressed,
+                }
+            )
+    missing = sorted(required - observed)
+    if missing:
+        failures.append(
+            {
+                "code": "bbb_candidate_input_latency_required_scopes_missing",
+                "scopes": [list(scope) for scope in missing],
+            }
+        )
+    unexpected = sorted(observed - required)
+    if unexpected:
+        failures.append(
+            {
+                "code": "bbb_candidate_input_latency_scopes_unexpected",
+                "scopes": [list(scope) for scope in unexpected],
+            }
+        )
+    return failures
+
+
 def _wgpu30_optimization_receipt_and_scheduling_failures(
     evidence: Mapping[str, object],
 ) -> list[dict[str, object]]:
@@ -2877,10 +3109,7 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
         ("baseline_actual_metal_drawable_count", 3),
         ("candidate_actual_metal_drawable_count", 3),
         ("baseline_in_flight_submission_budget", 1),
-        ("candidate_in_flight_submission_budget", 1),
-        ("queue_depth_increased", False),
         ("wait_acquire_submit_present_order_unchanged", True),
-        ("input_latency_policy", "unchanged-single-in-flight"),
     )
     mismatches = [
         {"field": field, "expected": expected, "actual": contract.get(field)}
@@ -2891,6 +3120,46 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
         failures.append(
             {"code": "bbb_candidate_scheduling_contract_mismatch", "mismatches": mismatches}
         )
+    candidate_budget = contract.get("candidate_in_flight_submission_budget")
+    expected_policy = (
+        (False, "unchanged-single-in-flight")
+        if candidate_budget == 1
+        else (True, "paired-software-boundary-noninferior")
+        if candidate_budget == 2
+        else None
+    )
+    if expected_policy is None:
+        failures.append(
+            {
+                "code": "bbb_candidate_scheduling_contract_mismatch",
+                "mismatches": [
+                    {
+                        "field": "candidate_in_flight_submission_budget",
+                        "expected": "1 or 2",
+                        "actual": candidate_budget,
+                    }
+                ],
+            }
+        )
+    else:
+        queue_depth_increased, input_latency_policy = expected_policy
+        policy_mismatches = [
+            {"field": field, "expected": expected, "actual": contract.get(field)}
+            for field, expected in (
+                ("queue_depth_increased", queue_depth_increased),
+                ("input_latency_policy", input_latency_policy),
+            )
+            if contract.get(field) != expected
+        ]
+        if policy_mismatches:
+            failures.append(
+                {
+                    "code": "bbb_candidate_scheduling_contract_mismatch",
+                    "mismatches": policy_mismatches,
+                }
+            )
+        if candidate_budget == 2:
+            failures.extend(_input_latency_guard_failures(evidence))
     fence_strategies: dict[str, str] | None = None
     if (
         "baseline_submission_fence_strategy" in contract
@@ -2957,6 +3226,7 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
                     {"field": field, "expected": expected, "actual": run.get(field)}
                 )
         presentation = run.get("surface_presentation")
+        expected_budget = 1 if expected_variant == "baseline" else candidate_budget
         expected_presentation: tuple[tuple[str, object], ...] = (
             ("api", "metal"),
             ("present_mode", "Immediate"),
@@ -2964,7 +3234,7 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
             ("expected_metal_drawable_count", 3),
             ("actual_metal_drawable_count", 3),
             ("actual_drawable_pixels", [2560, 1600]),
-            ("in_flight_submission_budget", 1),
+            ("in_flight_submission_budget", expected_budget),
         )
         if not isinstance(presentation, Mapping):
             run_mismatches.append(

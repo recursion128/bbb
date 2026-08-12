@@ -249,8 +249,8 @@ restoring any row to `equivalent`.
   rejects a run before metrics
   unless the binary/runtime dependency receipts, 2560x1600 CAMetalLayer
   drawable, actual maximum drawable count 3, Immediate mode, latency hint 2,
-  single in-flight budget, `PassBoundary` GPU timestamp strategy and workload
-  contract all match. A budget-one command-buffer-boundary diagnostic at gated
+  declared/runtime in-flight budget, `PassBoundary` GPU timestamp strategy and
+  workload contract all match. A budget-one command-buffer-boundary diagnostic at gated
   `62555c6bf` improved combined FPS from 194.454 to 205.274, but regressed App
   p99/stddev/p99-p50/1%-low and GPU mean/p50/p95 in the nearest C-to-B pair.
   Its 28 combined/scene failures reject it before B-C-C-B x2 and official Java
@@ -345,6 +345,15 @@ restoring any row to `equivalent`.
   is restored while v3 remains readable. Detailed query/callback paths remain
   off outside explicit diagnostics. Only a distinct v4 all-scope pass can
   authorize official Java ABBA.
+  The current bounded Slice B candidate raises only the macOS Immediate
+  controller-owned render-submission budget from one to two. It waits for the
+  oldest exact fence only at capacity while retaining latency hint two, three
+  Metal drawables, wait/acquire/submit/present order, FIFO/Linux behavior and
+  visible workload. Before its fixed-baseline performance comparison can be
+  accepted, an independent same-instrument B-C-C-B x2 input-latency guard must
+  pass combined, scene, round and every nearest-pair scope; missing evidence,
+  any end-to-end absolute-latency/hitch/loss regression, or a declared/runtime/
+  profiler depth mismatch rejects the candidate before FPS metrics.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

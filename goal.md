@@ -495,16 +495,19 @@ full-gated wgpu 30 BBB baseline 比较，固定 FPS noise margin 为 0.8465%，�
 margin 最大不得超过 1%。baseline commit、binary hash、重复采集数据与失败
 candidate 只记录在账本、evidence 和归档，不写入本文件。
 
-当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。诊断面由
+当前有界 Slice B candidate 只在 macOS Immediate 将 controller-owned render-submission
+预算从一提高到二：达到容量才等待最老 exact fence，仍保持单 encoder、latency hint 2、三个
+drawable 与 wait→acquire→submit→present；FIFO、Linux、surface fallback 和可见 workload 不变。
+不得增加后台 acquire、额外 marker submit 或第三帧。诊断面由
 profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
 十一段有序 `PassBoundary` duration；`renderer-input-latency-v1` 使用单调 sequence/timestamp
 有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
-return，并固定把终点声明为软件边界而非 display/photon latency。当前没有 ready scheduling
-candidate：macOS Immediate 固定使用 full-gated baseline 的 render-submission fence，
-frame-phase v3 的 `post_present_fence_submit` 兼容字段报零，旧 v1/v2 evidence 和既有失败报告继续
-可复验。只有新的、预声明且有 phase/lifecycle 依据的有界 candidate 才能重开采集；未开启详细
-诊断时保持两个 timestamp query，不得改变 surface fallback 或可见 geometry。
+return，并固定把终点声明为软件边界而非 display/photon latency。两帧 candidate 必须先与账本
+锁定的同仪器单帧 baseline 做完整 B→C→C→B×2 输入软件延迟非劣验证；combined、三场景、两轮与
+全部 nearest pair 的 mean/p50/p95/p99/stddev/p99-p50、hitch、样本丢失/替换均不得回退。
+frame-phase v3 的 `post_present_fence_submit` 兼容字段继续报零，旧 v1/v2 evidence 和既有失败报告
+继续可复验；未开启详细诊断时保持两个 timestamp query，不得改变 surface fallback 或可见 geometry。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝

@@ -1,6 +1,8 @@
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
+use std::collections::VecDeque;
+#[cfg(target_os = "macos")]
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     mpsc::{self, Receiver, SyncSender},
@@ -12,12 +14,12 @@ use anyhow::{anyhow, Result};
 use crate::counters::RendererCounters;
 
 #[cfg(target_os = "macos")]
-const COMPLETION_OBSERVATION_CAPACITY: usize = 1;
+const COMPLETION_OBSERVATION_CAPACITY: usize = MACOS_IMMEDIATE_IN_FLIGHT_BUDGET;
 
-/// The explicit in-flight budget retained by the behavior-preserving first
-/// FrameFlightController slice. Only uncapped CAMetalLayer presentation uses
-/// it; FIFO already supplies presentation backpressure.
-const MACOS_IMMEDIATE_IN_FLIGHT_BUDGET: usize = 1;
+/// The bounded scheduling candidate permits the CPU to prepare one frame while
+/// the prior render submission completes. Only uncapped CAMetalLayer
+/// presentation uses it; FIFO already supplies presentation backpressure.
+const MACOS_IMMEDIATE_IN_FLIGHT_BUDGET: usize = 2;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum FrameFlightPlatform {
@@ -44,8 +46,23 @@ fn in_flight_budget(
 fn in_flight_depth_after_submit(
     platform: FrameFlightPlatform,
     present_mode: wgpu::PresentMode,
+    retained_before_submit: usize,
 ) -> u32 {
-    u32::from(in_flight_budget(platform, present_mode).is_some())
+    let Some(budget) = in_flight_budget(platform, present_mode) else {
+        return 0;
+    };
+    debug_assert!(retained_before_submit < budget);
+    u32::try_from((retained_before_submit + 1).min(budget)).unwrap_or(u32::MAX)
+}
+
+fn submissions_to_retire_before_acquire(
+    platform: FrameFlightPlatform,
+    present_mode: wgpu::PresentMode,
+    retained: usize,
+) -> usize {
+    in_flight_budget(platform, present_mode)
+        .map(|budget| retained.saturating_sub(budget.saturating_sub(1)))
+        .unwrap_or_default()
 }
 
 /// Where `render()` sends the frame's color output. Production always draws
@@ -263,15 +280,17 @@ struct PendingSubmission {
 }
 
 /// Owns the backend frame-flight lifecycle without owning visible frame work.
-/// macOS Immediate retains one in-flight submission and waits on the exact
-/// prior render-submission fence before drawable acquisition.
+/// macOS Immediate retains at most two in-flight submissions and waits on the
+/// oldest exact render-submission fence only when it reaches that capacity.
 pub(super) struct FrameFlightController {
     #[cfg(target_os = "macos")]
-    previous_submission: Option<PendingSubmission>,
+    pending_submissions: VecDeque<PendingSubmission>,
     #[cfg(target_os = "macos")]
     completion_sender: SyncSender<SubmissionCompletionObservation>,
     #[cfg(target_os = "macos")]
     completion_receiver: Receiver<SubmissionCompletionObservation>,
+    #[cfg(target_os = "macos")]
+    deferred_completion_observations: VecDeque<SubmissionCompletionObservation>,
     #[cfg(target_os = "macos")]
     completion_observations_dropped: Arc<AtomicU64>,
     #[cfg(target_os = "macos")]
@@ -285,11 +304,15 @@ impl FrameFlightController {
             mpsc::sync_channel(COMPLETION_OBSERVATION_CAPACITY);
         Self {
             #[cfg(target_os = "macos")]
-            previous_submission: None,
+            pending_submissions: VecDeque::with_capacity(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET),
             #[cfg(target_os = "macos")]
             completion_sender,
             #[cfg(target_os = "macos")]
             completion_receiver,
+            #[cfg(target_os = "macos")]
+            deferred_completion_observations: VecDeque::with_capacity(
+                MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
+            ),
             #[cfg(target_os = "macos")]
             completion_observations_dropped: Arc::new(AtomicU64::new(0)),
             #[cfg(target_os = "macos")]
@@ -357,9 +380,20 @@ impl FrameFlightController {
         #[cfg(target_os = "macos")]
         {
             let budget = in_flight_budget(FrameFlightPlatform::CURRENT, present_mode);
-            debug_assert!(budget.is_none() || budget == Some(1));
-            if budget == Some(1) {
-                if let Some(submission) = self.previous_submission.take() {
+            let retire_count = submissions_to_retire_before_acquire(
+                FrameFlightPlatform::CURRENT,
+                present_mode,
+                self.pending_submissions.len(),
+            );
+            if budget.is_none() {
+                self.pending_submissions.clear();
+                self.drain_completion_observations();
+                self.completion_observations_dropped
+                    .store(0, Ordering::Relaxed);
+            }
+            if retire_count > 0 {
+                debug_assert_eq!(retire_count, 1);
+                if let Some(submission) = self.pending_submissions.pop_front() {
                     let synchronization_started_at = profile_wait.then(Instant::now);
                     let wait_started_at = profile_wait.then(Instant::now);
                     let poll_result = device.poll(wgpu::PollType::Wait {
@@ -370,7 +404,7 @@ impl FrameFlightController {
                         .map(|started_at| started_at.elapsed())
                         .unwrap_or_default();
                     if let Err(error) = poll_result {
-                        self.previous_submission = Some(submission);
+                        self.pending_submissions.push_front(submission);
                         return Err(error.into());
                     }
                     let callback = profile_completion
@@ -429,23 +463,36 @@ impl FrameFlightController {
 
     #[cfg(target_os = "macos")]
     fn take_completion_observation(
-        &self,
+        &mut self,
         expected_id: Option<u64>,
     ) -> Option<SubmissionCompletionObservation> {
         let Some(expected_id) = expected_id else {
             self.drain_completion_observations();
             return None;
         };
+        self.deferred_completion_observations
+            .retain(|observation| observation.id >= expected_id);
+        if let Some(index) = self
+            .deferred_completion_observations
+            .iter()
+            .position(|observation| observation.id == expected_id)
+        {
+            return self.deferred_completion_observations.remove(index);
+        }
         while let Ok(observation) = self.completion_receiver.try_recv() {
             if observation.id == expected_id {
                 return Some(observation);
+            }
+            if observation.id > expected_id {
+                self.deferred_completion_observations.push_back(observation);
             }
         }
         None
     }
 
     #[cfg(target_os = "macos")]
-    fn drain_completion_observations(&self) {
+    fn drain_completion_observations(&mut self) {
+        self.deferred_completion_observations.clear();
         while self.completion_receiver.try_recv().is_ok() {}
     }
 
@@ -482,22 +529,29 @@ impl FrameFlightController {
                 } else {
                     None
                 };
-            self.previous_submission = Some(PendingSubmission {
-                index: submission,
-                completion_observation_id,
-            });
-            let in_flight_depth_at_submit =
-                in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode);
-            debug_assert!(
-                in_flight_depth_at_submit == 0 || self.previous_submission.is_some(),
-                "an active flight budget must own its submitted fence"
+            let retained_before_submit = self.pending_submissions.len();
+            if in_flight_budget(FrameFlightPlatform::CURRENT, present_mode).is_some() {
+                self.pending_submissions.push_back(PendingSubmission {
+                    index: submission,
+                    completion_observation_id,
+                });
+            }
+            let in_flight_depth_at_submit = in_flight_depth_after_submit(
+                FrameFlightPlatform::CURRENT,
+                present_mode,
+                retained_before_submit,
+            );
+            debug_assert_eq!(
+                usize::try_from(in_flight_depth_at_submit).unwrap_or(usize::MAX),
+                self.pending_submissions.len(),
+                "an active flight budget must own every submitted fence"
             );
             in_flight_depth_at_submit
         };
         #[cfg(not(target_os = "macos"))]
         let in_flight_depth_at_submit = {
             let _ = (submission, profile_completion, render_started_at);
-            in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode)
+            in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode, 0)
         };
         let queue_submitted_at = Instant::now();
         let queue_submit = queue_submitted_at.saturating_duration_since(submit_started_at);
@@ -520,28 +574,60 @@ impl FrameFlightController {
 #[cfg(test)]
 mod tests {
     use super::{
-        in_flight_budget, in_flight_depth_after_submit, FrameFlightPlatform,
-        MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
+        in_flight_budget, in_flight_depth_after_submit, submissions_to_retire_before_acquire,
+        FrameFlightPlatform, MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
     };
 
     #[test]
-    fn only_macos_immediate_has_the_existing_single_submission_budget() {
-        assert_eq!(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET, 1);
+    fn only_macos_immediate_has_the_bounded_two_submission_budget() {
+        assert_eq!(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET, 2);
         assert_eq!(
             in_flight_budget(FrameFlightPlatform::MacOs, wgpu::PresentMode::Immediate),
-            Some(1)
+            Some(2)
         );
         assert_eq!(
             in_flight_budget(FrameFlightPlatform::Other, wgpu::PresentMode::Immediate),
             None
         );
         assert_eq!(
-            in_flight_depth_after_submit(FrameFlightPlatform::MacOs, wgpu::PresentMode::Immediate,),
+            in_flight_depth_after_submit(
+                FrameFlightPlatform::MacOs,
+                wgpu::PresentMode::Immediate,
+                0,
+            ),
             1
         );
         assert_eq!(
-            in_flight_depth_after_submit(FrameFlightPlatform::Other, wgpu::PresentMode::Immediate,),
+            in_flight_depth_after_submit(
+                FrameFlightPlatform::MacOs,
+                wgpu::PresentMode::Immediate,
+                1,
+            ),
+            2
+        );
+        assert_eq!(
+            in_flight_depth_after_submit(
+                FrameFlightPlatform::Other,
+                wgpu::PresentMode::Immediate,
+                0,
+            ),
             0
+        );
+        assert_eq!(
+            submissions_to_retire_before_acquire(
+                FrameFlightPlatform::MacOs,
+                wgpu::PresentMode::Immediate,
+                1,
+            ),
+            0
+        );
+        assert_eq!(
+            submissions_to_retire_before_acquire(
+                FrameFlightPlatform::MacOs,
+                wgpu::PresentMode::Immediate,
+                2,
+            ),
+            1
         );
         for mode in [
             wgpu::PresentMode::Fifo,
@@ -587,7 +673,7 @@ mod tests {
             .map(|offset| submit_start + offset)
             .unwrap();
         let record_submission = source[submit..]
-            .find("self.previous_submission = Some(PendingSubmission")
+            .find("self.pending_submissions.push_back(PendingSubmission")
             .map(|offset| submit + offset)
             .unwrap();
         let present = source[record_submission..]
@@ -615,10 +701,10 @@ mod tests {
         assert!(blocking_wait > 0);
         assert!(!body.contains("wgpu::PollType::Poll"));
         assert!(!body.contains("is_queue_empty"));
-        assert!(body.contains("self.previous_submission.take()"));
+        assert!(body.contains("self.pending_submissions.pop_front()"));
         assert!(body.contains("submission_index: Some(submission.index.clone())"));
         assert!(body.contains("timeout: None"));
-        assert!(body.contains("self.previous_submission = Some(submission)"));
+        assert!(body.contains("self.pending_submissions.push_front(submission)"));
         assert!(body.contains("poll: Duration::ZERO"));
     }
 
@@ -675,7 +761,7 @@ mod tests {
             .map(|offset| immediate + offset)
             .expect("wgpu completion observation");
         let record = body[callback..]
-            .find("self.previous_submission = Some(PendingSubmission")
+            .find("self.pending_submissions.push_back(PendingSubmission")
             .map(|offset| callback + offset)
             .expect("submission ownership");
         let present = body[record..]
@@ -697,17 +783,7 @@ mod tests {
             send_completion_observation, FrameFlightController, SubmissionCompletionObservation,
         };
 
-        let controller = FrameFlightController::new();
-        controller
-            .completion_sender
-            .try_send(SubmissionCompletionObservation {
-                id: 1,
-                render_to_callback: Duration::from_millis(3),
-                submit_to_callback: Duration::from_millis(1),
-                callback_at: Instant::now(),
-            })
-            .unwrap();
-        assert!(controller.take_completion_observation(Some(2)).is_none());
+        let mut controller = FrameFlightController::new();
         controller
             .completion_sender
             .try_send(SubmissionCompletionObservation {
@@ -717,6 +793,19 @@ mod tests {
                 callback_at: Instant::now(),
             })
             .unwrap();
+        controller
+            .completion_sender
+            .try_send(SubmissionCompletionObservation {
+                id: 1,
+                render_to_callback: Duration::from_millis(3),
+                submit_to_callback: Duration::from_millis(1),
+                callback_at: Instant::now(),
+            })
+            .unwrap();
+        let first = controller
+            .take_completion_observation(Some(1))
+            .expect("older observation remains matchable after a newer callback");
+        assert_eq!(first.id, 1);
         let matched = controller
             .take_completion_observation(Some(2))
             .expect("matching observation");
@@ -735,7 +824,7 @@ mod tests {
         assert!(controller.take_completion_observation(None).is_none());
         assert!(controller.completion_receiver.try_recv().is_err());
 
-        for id in 3..=4 {
+        for id in 3..=5 {
             send_completion_observation(
                 &controller.completion_sender,
                 &controller.completion_observations_dropped,

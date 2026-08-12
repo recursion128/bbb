@@ -58,12 +58,49 @@
     "baseline_actual_metal_drawable_count": 3,
     "candidate_actual_metal_drawable_count": 3,
     "baseline_in_flight_submission_budget": 1,
-    "candidate_in_flight_submission_budget": 1,
+    "candidate_in_flight_submission_budget": 2,
     "baseline_submission_fence_strategy": "render-submission-fence-legacy-log",
-    "candidate_submission_fence_strategy": "render-submission-fence",
-    "queue_depth_increased": false,
+    "candidate_submission_fence_strategy": "oldest-render-submission-fence-budget-2",
+    "queue_depth_increased": true,
     "wait_acquire_submit_present_order_unchanged": true,
-    "input_latency_policy": "unchanged-single-in-flight"
+    "input_latency_policy": "paired-software-boundary-noninferior"
+  },
+  "input_latency_candidate_guard": {
+    "schema": "renderer-input-latency-ab-v1",
+    "required_when_candidate_in_flight_budget_exceeds": 1,
+    "baseline_bbb_commit": "331be198397d9284c2bb93b96ebb9fb58d265e96",
+    "baseline_bbb_binary_sha256": "231a2e71ffc7a8fb84446673e1ab85f21ca02f21691f11ad4edaefd721e31ae8",
+    "baseline_bbb_report_sha256": "be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24",
+    "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
+    "formal_order": [
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline",
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline"
+    ],
+    "required_scopes": [
+      "combined",
+      "scene",
+      "abba_round",
+      "run_pair"
+    ],
+    "required_end_to_end_metrics": [
+      "mean_ms",
+      "p50_ms",
+      "p95_ms",
+      "p99_ms",
+      "stddev_ms",
+      "p99_minus_p50_ms",
+      "hitch_counts",
+      "sample_count",
+      "superseded_events",
+      "out_of_order_events"
+    ],
+    "mismatch_policy": "reject-before-performance-comparison"
   },
   "frame_phase_diagnostics": {
     "schema": "renderer-frame-phases-v3",
