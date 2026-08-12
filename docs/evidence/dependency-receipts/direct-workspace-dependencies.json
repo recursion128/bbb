@@ -1,0 +1,2757 @@
+{
+  "schema": 1,
+  "audit_as_of": "2026-08-12",
+  "inputs": {
+    "Cargo.toml_sha256": "89e4934c4d2882be3622c8bf2082a3529d3b2c19d3a52151e0750d3b99c8675a",
+    "Cargo.lock_sha256": "f5f8de14d91c1ee8a5e446121ffea731919cab1426dd7017ef5ca7a42f68c687",
+    "cargo_metadata": "cargo metadata --format-version 1 --locked",
+    "latest_release_rule": "crates.io max_stable_version; prerelease and yanked excluded",
+    "rustsec_database_commit": "d0861df1eab469d3c58d6b836ce48b5766e5f217",
+    "rustsec_command": "cargo audit 0.22.2 audit --json"
+  },
+  "workspace_msrv": "1.97",
+  "direct_registry_dependency_count": 55,
+  "dependencies": [
+    {
+      "name": "al-sys",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.6.1",
+      "locked": {
+        "version": "0.6.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ff8d9b0f4d10264c060ee5614dedb6b7695f366e93be6549c48f58981da39023"
+      },
+      "latest_stable": {
+        "version": "0.6.1",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/al-sys"
+      },
+      "first_introduced_commit": "27a9513dbb91233c82cf5fc110baca2aa7e0fa1f",
+      "latest_constraint_commit": "27a9513dbb91233c82cf5fc110baca2aa7e0fa1f",
+      "dependency_classes": [
+        "optional",
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "performance"
+      ],
+      "maintenance": {
+        "state": "latest-stable-low-activity",
+        "note": "latest release is from 2019 and it pulls the unmaintained rental crate"
+      },
+      "advisories": [
+        {
+          "id": "RUSTSEC-2021-0134",
+          "kind": "transitive-unmaintained",
+          "package": "rental 0.5.6",
+          "reachability": "optional device audio backend"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "retain-low-activity",
+        "rationale": "latest release is from 2019 and it pulls the unmaintained rental crate"
+      }
+    },
+    {
+      "name": "anyhow",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.0.102",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+      },
+      "latest_stable": {
+        "version": "1.0.104",
+        "rust_version": "1.68",
+        "source": "https://crates.io/api/v1/crates/anyhow"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio",
+        "bbb-control",
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net",
+        "bbb-pack",
+        "bbb-platform-macos",
+        "bbb-render-types",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [
+        {
+          "id": "RUSTSEC-2026-0190",
+          "kind": "direct-unsound",
+          "package": "anyhow 1.0.102",
+          "patched": ">=1.0.103",
+          "reachability": "affected downcast_mut API is not used, but lock refresh is required"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.68"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "arboard",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "3.6.1",
+      "locked": {
+        "version": "3.6.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "0348a1c054491f4bfe6ab86a7b6ab1e44e45d899005de92f58b3df180b36ddaf"
+      },
+      "latest_stable": {
+        "version": "3.6.1",
+        "rust_version": "1.71.0",
+        "source": "https://crates.io/api/v1/crates/arboard"
+      },
+      "first_introduced_commit": "c5c8a108cb80dbed8b30fc8486a8193b99eb9ac7",
+      "latest_constraint_commit": "c5c8a108cb80dbed8b30fc8486a8193b99eb9ac7",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "arc-swap",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.9.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "c049c0be4daef0b145cb3555416b3b8ef5b7888a38aea1a3a155801fe7b0810b"
+      },
+      "latest_stable": {
+        "version": "1.9.2",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/arc-swap"
+      },
+      "first_introduced_commit": "4c9edf0a41fa17f0ccf5f94dc13102499270a14d",
+      "latest_constraint_commit": "4c9edf0a41fa17f0ccf5f94dc13102499270a14d",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-control",
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "base64",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.22",
+      "locked": {
+        "version": "0.22.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+      },
+      "latest_stable": {
+        "version": "0.23.1",
+        "rust_version": "1.71.0",
+        "source": "https://crates.io/api/v1/crates/base64"
+      },
+      "first_introduced_commit": "47e2bbf896913caa20102e59e925b400c36a3b1d",
+      "latest_constraint_commit": "47e2bbf896913caa20102e59e925b400c36a3b1d",
+      "dependency_classes": [
+        "dev",
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio",
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "retain-intentional",
+        "rationale": "not in an approved migration group; reopen for an advisory, required API, or platform contract"
+      }
+    },
+    {
+      "name": "bytemuck",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.25.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "c8efb64bd706a16a1bdde310ae86b351e4d21550d98d056f22f8a7f7a2183fec"
+      },
+      "latest_stable": {
+        "version": "1.25.2",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/bytemuck"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "bytes",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.11.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
+      },
+      "latest_stable": {
+        "version": "1.12.1",
+        "rust_version": "1.57",
+        "source": "https://crates.io/api/v1/crates/bytes"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-net",
+        "bbb-protocol"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.57"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "chrono",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.4",
+      "locked": {
+        "version": "0.4.45",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
+      },
+      "latest_stable": {
+        "version": "0.4.45",
+        "rust_version": "1.62.0",
+        "source": "https://crates.io/api/v1/crates/chrono"
+      },
+      "first_introduced_commit": "77d00b26aa536aca5349f675e51096d667d06729",
+      "latest_constraint_commit": "77d00b26aa536aca5349f675e51096d667d06729",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.62.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "chrono-tz",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.10",
+      "locked": {
+        "version": "0.10.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "a6139a8597ed92cf816dfb33f5dd6cf0bb93a6adc938f11039f371bc5bcd26c3"
+      },
+      "latest_stable": {
+        "version": "0.10.4",
+        "rust_version": "1.65",
+        "source": "https://crates.io/api/v1/crates/chrono-tz"
+      },
+      "first_introduced_commit": "196468e333e99cc96e7d809cefd695c02f137a83",
+      "latest_constraint_commit": "196468e333e99cc96e7d809cefd695c02f137a83",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "clap",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "4",
+      "locked": {
+        "version": "4.6.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1ddb117e43bbf7dacf0a4190fef4d345b9bad68dfc649cb349e7d17d28428e51"
+      },
+      "latest_stable": {
+        "version": "4.6.6",
+        "rust_version": "1.85",
+        "source": "https://crates.io/api/v1/crates/clap"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "criterion",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.5",
+      "locked": {
+        "version": "0.5.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
+      },
+      "latest_stable": {
+        "version": "0.8.2",
+        "rust_version": "1.86",
+        "source": "https://crates.io/api/v1/crates/criterion"
+      },
+      "first_introduced_commit": "4fa2ea8f3986c6098a97b715cc8c386da8a1d7b4",
+      "latest_constraint_commit": "4fa2ea8f3986c6098a97b715cc8c386da8a1d7b4",
+      "dependency_classes": [
+        "dev"
+      ],
+      "workspace_members": [
+        "bbb-renderer",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [
+        {
+          "id": "RUSTSEC-2026-0204",
+          "kind": "transitive-vulnerability",
+          "package": "crossbeam-epoch 0.9.18",
+          "patched": ">=0.9.20",
+          "reachability": "development benchmarks only"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.86"
+      },
+      "modernization": {
+        "group": "development-benchmark",
+        "decision": "upgrade-planned",
+        "rationale": "bounded development-benchmark migration with focused parity tests"
+      }
+    },
+    {
+      "name": "flate2",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.1.9",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
+      },
+      "latest_stable": {
+        "version": "1.1.9",
+        "rust_version": "1.67.0",
+        "source": "https://crates.io/api/v1/crates/flate2"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-protocol"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.67.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "glam",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.29",
+      "locked": {
+        "version": "0.29.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
+      },
+      "latest_stable": {
+        "version": "0.33.3",
+        "rust_version": "1.68.2",
+        "source": "https://crates.io/api/v1/crates/glam"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.68.2"
+      },
+      "modernization": {
+        "group": "performance-glam",
+        "decision": "upgrade-planned",
+        "rationale": "bounded performance-glam migration with focused parity tests"
+      }
+    },
+    {
+      "name": "hecs",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.10",
+      "locked": {
+        "version": "0.10.5",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "e1cbc675ee8d97b4d206a985137f8ad59666538f56f906474f554467a63c776d"
+      },
+      "latest_stable": {
+        "version": "0.11.1",
+        "rust_version": "1.81",
+        "source": "https://crates.io/api/v1/crates/hecs"
+      },
+      "first_introduced_commit": "970cfe102bab062f8e19a0c4873227d9fcba81d6",
+      "latest_constraint_commit": "970cfe102bab062f8e19a0c4873227d9fcba81d6",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [
+        {
+          "id": "crates.io-yanked",
+          "kind": "transitive-yanked",
+          "package": "spin 0.9.8",
+          "reachability": "runtime ECS dependency"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.81"
+      },
+      "modernization": {
+        "group": "performance-hecs",
+        "decision": "upgrade-planned",
+        "rationale": "bounded performance-hecs migration with focused parity tests"
+      }
+    },
+    {
+      "name": "hexf-parse",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.2.1",
+      "locked": {
+        "version": "0.2.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
+      },
+      "latest_stable": {
+        "version": "0.2.1",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/hexf-parse"
+      },
+      "first_introduced_commit": "c65674e0498a37ae2e48e698869ec7275d854f6c",
+      "latest_constraint_commit": "c65674e0498a37ae2e48e698869ec7275d854f6c",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "latest-stable-low-activity",
+        "note": "latest release is from 2021; retain while the tiny parser API stays sufficient"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "retain-low-activity",
+        "rationale": "latest release is from 2021; retain while the tiny parser API stays sufficient"
+      }
+    },
+    {
+      "name": "icu_calendar",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.2",
+      "locked": {
+        "version": "2.2.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "a2b2acc6263f494f1df50685b53ff8e57869e47d5c6fe39c23d518ae9a4f3e45"
+      },
+      "latest_stable": {
+        "version": "2.2.1",
+        "rust_version": "1.86",
+        "source": "https://crates.io/api/v1/crates/icu_calendar"
+      },
+      "first_introduced_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "latest_constraint_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.86"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "icu_datetime",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.2",
+      "locked": {
+        "version": "2.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "989d56ea5bbc43ae2b4e0388874b002884eaf4ed3a76c84a6c8c5ad575e04d72"
+      },
+      "latest_stable": {
+        "version": "2.2.0",
+        "rust_version": "1.86",
+        "source": "https://crates.io/api/v1/crates/icu_datetime"
+      },
+      "first_introduced_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "latest_constraint_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.86"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "icu_decimal",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.2",
+      "locked": {
+        "version": "2.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "288247df2e32aa776ac54fdd64de552149ac43cb840f2761811f0e8d09719dd4"
+      },
+      "latest_stable": {
+        "version": "2.2.0",
+        "rust_version": "1.86",
+        "source": "https://crates.io/api/v1/crates/icu_decimal"
+      },
+      "first_introduced_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "latest_constraint_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.86"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "icu_locale",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.2",
+      "locked": {
+        "version": "2.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "d5a396343c7208121dc86e35623d3dfe19814a7613cfd14964994cdc9c9a2e26"
+      },
+      "latest_stable": {
+        "version": "2.2.0",
+        "rust_version": "1.86",
+        "source": "https://crates.io/api/v1/crates/icu_locale"
+      },
+      "first_introduced_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "latest_constraint_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.86"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "icu_time",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.2",
+      "locked": {
+        "version": "2.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ec3af0c141da0a61d4f6970cd1d5f4b388b17ea22f8124f8f6049d3d5147586a"
+      },
+      "latest_stable": {
+        "version": "2.2.0",
+        "rust_version": "1.86",
+        "source": "https://crates.io/api/v1/crates/icu_time"
+      },
+      "first_introduced_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "latest_constraint_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.86"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "image",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.25",
+      "locked": {
+        "version": "0.25.10",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
+      },
+      "latest_stable": {
+        "version": "0.25.10",
+        "rust_version": "1.88.0",
+        "source": "https://crates.io/api/v1/crates/image"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "dev",
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-pack",
+        "bbb-render-types",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.88.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "isocountry",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.3.2",
+      "locked": {
+        "version": "0.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1ea1dc4bf0fb4904ba83ffdb98af3d9c325274e92e6e295e4151e86c96363e04"
+      },
+      "latest_stable": {
+        "version": "0.3.2",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/isocountry"
+      },
+      "first_introduced_commit": "141f798c30652f4461c4482bf5979b75a9c9561d",
+      "latest_constraint_commit": "141f798c30652f4461c4482bf5979b75a9c9561d",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "latest-stable-low-activity",
+        "note": "latest release is from 2020; retain while the locale-country mapping stays sufficient"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "retain-low-activity",
+        "rationale": "latest release is from 2020; retain while the locale-country mapping stays sufficient"
+      }
+    },
+    {
+      "name": "kira",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.12.1",
+      "locked": {
+        "version": "0.12.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "065632c16b39f4c00bc5514de0698474d1b6c36120743a154c78ca27ffc1ffe1"
+      },
+      "latest_stable": {
+        "version": "0.12.3",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/kira"
+      },
+      "first_introduced_commit": "61bd6e53b9e72683c9f7c02b010922d84759fe7e",
+      "latest_constraint_commit": "61bd6e53b9e72683c9f7c02b010922d84759fe7e",
+      "dependency_classes": [
+        "optional",
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "performance"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "libc",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.2",
+      "locked": {
+        "version": "0.2.186",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+      },
+      "latest_stable": {
+        "version": "0.2.189",
+        "rust_version": "1.65",
+        "source": "https://crates.io/api/v1/crates/libc"
+      },
+      "first_introduced_commit": "f11478474980aeb5decc3892adf4dd6c94060e41",
+      "latest_constraint_commit": "f11478474980aeb5decc3892adf4dd6c94060e41",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "md5",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.7",
+      "locked": {
+        "version": "0.7.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+      },
+      "latest_stable": {
+        "version": "0.8.1",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/md5"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-protocol"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "upgrade-planned",
+        "rationale": "bounded authentication-network migration with focused parity tests"
+      }
+    },
+    {
+      "name": "num-bigint",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.4",
+      "locked": {
+        "version": "0.4.8",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "c89e69e7e0f03bea5ef08013795c25018e101932225a656383bd384495ecc367"
+      },
+      "latest_stable": {
+        "version": "0.5.1",
+        "rust_version": "1.60",
+        "source": "https://crates.io/api/v1/crates/num-bigint"
+      },
+      "first_introduced_commit": "731e00d5e2f22f8024877463fc0db88c000c9c2f",
+      "latest_constraint_commit": "731e00d5e2f22f8024877463fc0db88c000c9c2f",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-protocol"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.60"
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "upgrade-planned",
+        "rationale": "bounded authentication-network migration with focused parity tests"
+      }
+    },
+    {
+      "name": "objc2",
+      "manifest": "crates/bbb-platform-macos/Cargo.toml",
+      "manifest_constraint": "0.6.4",
+      "locked": {
+        "version": "0.6.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "3a12a8ed07aefc768292f076dc3ac8c48f3781c8f2d5851dd3d98950e8c5a89f"
+      },
+      "latest_stable": {
+        "version": "0.6.4",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/objc2"
+      },
+      "first_introduced_commit": "4e7e35b66b9c9db29f2c9d14c049dc6b8046454b",
+      "latest_constraint_commit": "4e7e35b66b9c9db29f2c9d14c049dc6b8046454b",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-platform-macos"
+      ],
+      "platform_impact": [
+        "macos"
+      ],
+      "domain_impact": [
+        "platform"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "objc2-app-kit",
+      "manifest": "crates/bbb-platform-macos/Cargo.toml",
+      "manifest_constraint": "0.3.2",
+      "locked": {
+        "version": "0.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c"
+      },
+      "latest_stable": {
+        "version": "0.3.2",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/objc2-app-kit"
+      },
+      "first_introduced_commit": "4e7e35b66b9c9db29f2c9d14c049dc6b8046454b",
+      "latest_constraint_commit": "4e7e35b66b9c9db29f2c9d14c049dc6b8046454b",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-platform-macos"
+      ],
+      "platform_impact": [
+        "macos"
+      ],
+      "domain_impact": [
+        "platform"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "objc2-foundation",
+      "manifest": "crates/bbb-platform-macos/Cargo.toml",
+      "manifest_constraint": "0.3.2",
+      "locked": {
+        "version": "0.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
+      },
+      "latest_stable": {
+        "version": "0.3.2",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/objc2-foundation"
+      },
+      "first_introduced_commit": "4e7e35b66b9c9db29f2c9d14c049dc6b8046454b",
+      "latest_constraint_commit": "4e7e35b66b9c9db29f2c9d14c049dc6b8046454b",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-platform-macos"
+      ],
+      "platform_impact": [
+        "macos"
+      ],
+      "domain_impact": [
+        "platform"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "pollster",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.3",
+      "locked": {
+        "version": "0.3.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
+      },
+      "latest_stable": {
+        "version": "1.0.1",
+        "rust_version": "1.69",
+        "source": "https://crates.io/api/v1/crates/pollster"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.69"
+      },
+      "modernization": {
+        "group": "bootstrap-blocking",
+        "decision": "upgrade-planned",
+        "rationale": "bounded bootstrap-blocking migration with focused parity tests"
+      }
+    },
+    {
+      "name": "rand",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.8",
+      "locked": {
+        "version": "0.8.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "22f6172bdec972074665ed81ed53b71da00bfc44b65a753cfde883ec4c702a1a"
+      },
+      "latest_stable": {
+        "version": "0.10.2",
+        "rust_version": "1.85",
+        "source": "https://crates.io/api/v1/crates/rand"
+      },
+      "first_introduced_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
+      "latest_constraint_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
+      "dependency_classes": [
+        "dev"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85"
+      },
+      "modernization": {
+        "group": "development-random",
+        "decision": "upgrade-planned",
+        "rationale": "bounded development-random migration with focused parity tests"
+      }
+    },
+    {
+      "name": "regex",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.12.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "e10754a14b9137dd7b1e3e5b0493cc9171fdd105e0ab477f51b72e7f3ac0e276"
+      },
+      "latest_stable": {
+        "version": "1.13.1",
+        "rust_version": "1.65",
+        "source": "https://crates.io/api/v1/crates/regex"
+      },
+      "first_introduced_commit": "b7bb474493d8d11e4be522ad9baa799c44093931",
+      "latest_constraint_commit": "b7bb474493d8d11e4be522ad9baa799c44093931",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-pack",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "reqwest",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.12",
+      "locked": {
+        "version": "0.12.28",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
+      },
+      "latest_stable": {
+        "version": "0.13.4",
+        "rust_version": "1.85.0",
+        "source": "https://crates.io/api/v1/crates/reqwest"
+      },
+      "first_introduced_commit": "d2de52191dae9bab1d54d26b295e2327297a4fa3",
+      "latest_constraint_commit": "a4e42b9c6f8a263499bdf5e2b9c7d9af4c69a17e",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85.0"
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "upgrade-planned",
+        "rationale": "bounded authentication-network migration with focused parity tests"
+      }
+    },
+    {
+      "name": "rsa",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.9",
+      "locked": {
+        "version": "0.9.10",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "b8573f03f5883dcaebdfcf4725caa1ecb9c15b2ef50c43a07b816e06799bb12d"
+      },
+      "latest_stable": {
+        "version": "0.9.10",
+        "rust_version": "1.65",
+        "source": "https://crates.io/api/v1/crates/rsa"
+      },
+      "first_introduced_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
+      "latest_constraint_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-net",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [
+        {
+          "id": "RUSTSEC-2023-0071",
+          "kind": "direct-vulnerability",
+          "package": "rsa 0.9.10",
+          "patched": null,
+          "reachability": "production uses public-key verification; private-key operations are test fixtures"
+        },
+        {
+          "id": "crates.io-yanked",
+          "kind": "transitive-yanked",
+          "package": "spin 0.9.8 via num-bigint-dig",
+          "reachability": "runtime public-key parsing and verification"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65"
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "retain-intentional",
+        "rationale": "0.9.10 is the latest stable release; the unpatched timing advisory does not cover BBB's production public-key verification path"
+      }
+    },
+    {
+      "name": "ryu",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.0.23",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+      },
+      "latest_stable": {
+        "version": "1.0.23",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/ryu"
+      },
+      "first_introduced_commit": "731e00d5e2f22f8024877463fc0db88c000c9c2f",
+      "latest_constraint_commit": "731e00d5e2f22f8024877463fc0db88c000c9c2f",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-protocol"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "serde",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.0.228",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
+      },
+      "latest_stable": {
+        "version": "1.0.229",
+        "rust_version": "1.56",
+        "source": "https://crates.io/api/v1/crates/serde"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio",
+        "bbb-control",
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net",
+        "bbb-pack",
+        "bbb-protocol",
+        "bbb-render-types",
+        "bbb-renderer",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.56"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "serde_json",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.0.149",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
+      },
+      "latest_stable": {
+        "version": "1.0.151",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/serde_json"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-control",
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net",
+        "bbb-pack",
+        "bbb-protocol",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "sha1",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.10",
+      "locked": {
+        "version": "0.10.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "a978451301f4db1d02937a4ab3ccce137717b81826e79b7d49ffe3244a13c3b8"
+      },
+      "latest_stable": {
+        "version": "0.11.0",
+        "rust_version": "1.85",
+        "source": "https://crates.io/api/v1/crates/sha1"
+      },
+      "first_introduced_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
+      "latest_constraint_commit": "47e2bbf896913caa20102e59e925b400c36a3b1d",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-net",
+        "bbb-pack",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85"
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "upgrade-planned",
+        "rationale": "bounded authentication-network migration with focused parity tests"
+      }
+    },
+    {
+      "name": "sha2",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.10",
+      "locked": {
+        "version": "0.10.9",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+      },
+      "latest_stable": {
+        "version": "0.11.0",
+        "rust_version": "1.85",
+        "source": "https://crates.io/api/v1/crates/sha2"
+      },
+      "first_introduced_commit": "0b1c0a5611f902025eaacdac8d5222d672532bab",
+      "latest_constraint_commit": "0b1c0a5611f902025eaacdac8d5222d672532bab",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-renderer",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85"
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "upgrade-planned",
+        "rationale": "bounded authentication-network migration with focused parity tests"
+      }
+    },
+    {
+      "name": "symphonia",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.5.5",
+      "locked": {
+        "version": "0.5.5",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "5773a4c030a19d9bfaa090f49746ff35c75dfddfa700df7a5939d5e076a57039"
+      },
+      "latest_stable": {
+        "version": "0.6.0",
+        "rust_version": "1.85",
+        "source": "https://crates.io/api/v1/crates/symphonia"
+      },
+      "first_introduced_commit": "2dc288a45d84237a2db1bf8bf071e9858ffebd1d",
+      "latest_constraint_commit": "2dc288a45d84237a2db1bf8bf071e9858ffebd1d",
+      "dependency_classes": [
+        "optional",
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "performance"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [
+        {
+          "id": "crates.io-yanked",
+          "kind": "transitive-yanked",
+          "package": "spin 0.9.8",
+          "reachability": "runtime Ogg/Vorbis decoding"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85"
+      },
+      "modernization": {
+        "group": "audio-decoder",
+        "decision": "upgrade-planned",
+        "rationale": "bounded audio-decoder migration with focused parity tests"
+      }
+    },
+    {
+      "name": "sys-locale",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.3.2",
+      "locked": {
+        "version": "0.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "8eab9a99a024a169fe8a903cf9d4a3b3601109bcc13bd9e3c6fff259138626c4"
+      },
+      "latest_stable": {
+        "version": "0.3.2",
+        "rust_version": "1.56",
+        "source": "https://crates.io/api/v1/crates/sys-locale"
+      },
+      "first_introduced_commit": "141f798c30652f4461c4482bf5979b75a9c9561d",
+      "latest_constraint_commit": "141f798c30652f4461c4482bf5979b75a9c9561d",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.56"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "thiserror",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2",
+      "locked": {
+        "version": "2.0.18",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
+      },
+      "latest_stable": {
+        "version": "2.0.20",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/thiserror"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-audio",
+        "bbb-native",
+        "bbb-protocol",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "tokio",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.52.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "110a78583f19d5cdb2c5ccf321d1290344e71313c6c37d43520d386027d18386"
+      },
+      "latest_stable": {
+        "version": "1.53.1",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/tokio"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-control",
+        "bbb-native",
+        "bbb-net"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "tracing",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.1",
+      "locked": {
+        "version": "0.1.44",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
+      },
+      "latest_stable": {
+        "version": "0.1.44",
+        "rust_version": "1.65.0",
+        "source": "https://crates.io/api/v1/crates/tracing"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-control",
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "tracing-subscriber",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.3",
+      "locked": {
+        "version": "0.3.23",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "cb7f578e5945fb242538965c2d0b04418d38ec25c79d160cd279bf0731c8d319"
+      },
+      "latest_stable": {
+        "version": "0.3.23",
+        "rust_version": "1.65.0",
+        "source": "https://crates.io/api/v1/crates/tracing-subscriber"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "unicode-bidi",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.3.18",
+      "locked": {
+        "version": "0.3.18",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "5c1cb5db39152898a79168971543b1cb5020dff7fe43c8dc468b0885f5e29df5"
+      },
+      "latest_stable": {
+        "version": "0.3.18",
+        "rust_version": "1.47.0",
+        "source": "https://crates.io/api/v1/crates/unicode-bidi"
+      },
+      "first_introduced_commit": "3046598bd8df33f45240749559552aa99bb1bec2",
+      "latest_constraint_commit": "3046598bd8df33f45240749559552aa99bb1bec2",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-render-types"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.47.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "unicode-character-database",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.1.0",
+      "locked": {
+        "version": "0.1.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "8d889cfe89cd76e26f0ed744dfee87eb4f5a4435980ebce58dba7df903258807"
+      },
+      "latest_stable": {
+        "version": "0.1.0",
+        "rust_version": "1.17",
+        "source": "https://crates.io/api/v1/crates/unicode-character-database"
+      },
+      "first_introduced_commit": "3046598bd8df33f45240749559552aa99bb1bec2",
+      "latest_constraint_commit": "3046598bd8df33f45240749559552aa99bb1bec2",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-render-types"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "latest-stable-low-activity",
+        "note": "latest release is from 2022; pinned Unicode table remains intentional"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.17"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "retain-low-activity",
+        "rationale": "latest release is from 2022; pinned Unicode table remains intentional"
+      }
+    },
+    {
+      "name": "unicode_names2",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "=3.1.0",
+      "locked": {
+        "version": "3.1.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "82c3e18d850bb6ebd57735e5654f0af65e572b05c2397e7b2b1a7c6a792cc29c"
+      },
+      "latest_stable": {
+        "version": "3.1.0",
+        "rust_version": "1.65.0",
+        "source": "https://crates.io/api/v1/crates/unicode_names2"
+      },
+      "first_introduced_commit": "b978bbf55d166ec492f2a899d0a4565ba660ee52",
+      "latest_constraint_commit": "b978bbf55d166ec492f2a899d0a4565ba660ee52",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-protocol"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.65.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "url",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2",
+      "locked": {
+        "version": "2.5.8",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+      },
+      "latest_stable": {
+        "version": "2.5.8",
+        "rust_version": "1.63",
+        "source": "https://crates.io/api/v1/crates/url"
+      },
+      "first_introduced_commit": "4c28c36aa314ccfb1c3f32303fdea87f02ac8ad0",
+      "latest_constraint_commit": "4c28c36aa314ccfb1c3f32303fdea87f02ac8ad0",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native",
+        "bbb-protocol",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.63"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "uuid",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "1",
+      "locked": {
+        "version": "1.23.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ddd74a9687298c6858e9b88ec8935ec45d22e8fd5e6394fa1bd4e99a87789c76"
+      },
+      "latest_stable": {
+        "version": "1.24.0",
+        "rust_version": "1.85.0",
+        "source": "https://crates.io/api/v1/crates/uuid"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-control",
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-net",
+        "bbb-protocol",
+        "bbb-world"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.85.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "compatible-lock-refresh",
+        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+      }
+    },
+    {
+      "name": "wgpu",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "30.0.0",
+      "locked": {
+        "version": "30.0.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "6d8f4bd44d92da5270f03409dba9f952dab24f128e05d6a554926101d1bf9114"
+      },
+      "latest_stable": {
+        "version": "30.0.0",
+        "rust_version": "1.87.0",
+        "source": "https://crates.io/api/v1/crates/wgpu"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "71b4caa1bd8672bd2b1652bcf9f00862004a1b94",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.87.0"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "winit",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.29",
+      "locked": {
+        "version": "0.29.15",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "0d59ad965a635657faf09c8f062badd885748428933dad8e8bdd64064d92e5ca"
+      },
+      "latest_stable": {
+        "version": "0.30.13",
+        "rust_version": "1.70.0",
+        "source": "https://crates.io/api/v1/crates/winit"
+      },
+      "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native",
+        "bbb-renderer"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [
+        {
+          "id": "RUSTSEC-2026-0194",
+          "kind": "linux-transitive-vulnerability",
+          "package": "quick-xml 0.39.3",
+          "patched": ">=0.41.0",
+          "reachability": "Linux Wayland build chain"
+        },
+        {
+          "id": "RUSTSEC-2026-0195",
+          "kind": "linux-transitive-vulnerability",
+          "package": "quick-xml 0.39.3",
+          "patched": ">=0.41.0",
+          "reachability": "Linux Wayland build chain"
+        },
+        {
+          "id": "RUSTSEC-2026-0186",
+          "kind": "linux-transitive-unsound",
+          "package": "memmap2 0.9.10",
+          "patched": ">=0.9.11",
+          "reachability": "Linux window backend"
+        },
+        {
+          "id": "RUSTSEC-2026-0192",
+          "kind": "linux-transitive-unmaintained",
+          "package": "ttf-parser 0.25.1",
+          "reachability": "Linux client-side decorations"
+        }
+      ],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.70.0"
+      },
+      "modernization": {
+        "group": "window-lifecycle",
+        "decision": "upgrade-planned",
+        "rationale": "bounded window-lifecycle migration with focused parity tests"
+      }
+    },
+    {
+      "name": "writeable",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.6",
+      "locked": {
+        "version": "0.6.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
+      },
+      "latest_stable": {
+        "version": "0.6.3",
+        "rust_version": "1.82",
+        "source": "https://crates.io/api/v1/crates/writeable"
+      },
+      "first_introduced_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "latest_constraint_commit": "934105fe55d58fa8cdce31c939acc8fc76857208",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "low-compatible-line",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.82"
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
+      }
+    },
+    {
+      "name": "x11-dl",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.21.0",
+      "locked": {
+        "version": "2.21.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "38735924fedd5314a6e548792904ed8c6de6636285cb9fec04d5b1db85c1516f"
+      },
+      "latest_stable": {
+        "version": "2.21.0",
+        "rust_version": null,
+        "source": "https://crates.io/api/v1/crates/x11-dl"
+      },
+      "first_introduced_commit": "035b7bb884e0d5e9ed9d4cbd14122c0750e5643e",
+      "latest_constraint_commit": "035b7bb884e0d5e9ed9d4cbd14122c0750e5643e",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-native"
+      ],
+      "platform_impact": [
+        "linux"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "latest-stable-low-activity",
+        "note": "latest release is from 2023; X11 remains a reachable non-release implementation detail"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": null
+      },
+      "modernization": {
+        "group": "compatible-or-retained",
+        "decision": "retain-low-activity",
+        "rationale": "latest release is from 2023; X11 remains a reachable non-release implementation detail"
+      }
+    },
+    {
+      "name": "zip",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "2.4.2",
+      "locked": {
+        "version": "2.4.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+      },
+      "latest_stable": {
+        "version": "8.6.0",
+        "rust_version": "1.88",
+        "source": "https://crates.io/api/v1/crates/zip"
+      },
+      "first_introduced_commit": "9b60a8883381ef39c1b28bad950fb48f9dfa3a29",
+      "latest_constraint_commit": "9b60a8883381ef39c1b28bad950fb48f9dfa3a29",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-native",
+        "bbb-pack"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "audio",
+        "authentication",
+        "performance",
+        "platform",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "high-major-or-pre-1.0-minor",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.88"
+      },
+      "modernization": {
+        "group": "archive",
+        "decision": "upgrade-planned",
+        "rationale": "bounded archive migration with focused parity tests"
+      }
+    }
+  ]
+}
