@@ -767,6 +767,10 @@ class DisplayProbeTests(unittest.TestCase):
         self.assertEqual(contract["formal_order"], list(retina.FORMAL_ORDER))
         self.assertEqual(contract["drawable_mismatch_policy"], "block-without-comparison")
         self.assertEqual(
+            contract["screenshot_settle_seconds"],
+            retina.SCREENSHOT_SETTLE_SECONDS,
+        )
+        self.assertEqual(
             contract["stability_acceptance"]["policy"],
             retina.STABILITY_POLICY,
         )
@@ -1114,6 +1118,20 @@ class LaunchContractTests(unittest.TestCase):
                 ((None, retina.F2_KEY_CODE, True), True),
                 ((None, retina.F2_KEY_CODE, False), True),
             ],
+        )
+
+    def test_capture_contract_settles_completed_screenshot_before_profiler(self):
+        contract = retina.launch_contract(
+            display(), server_port=25565, control_port=24454
+        )
+
+        self.assertEqual(
+            contract["common"]["screenshot_settle_seconds"],
+            retina.SCREENSHOT_SETTLE_SECONDS,
+        )
+        self.assertIn(
+            "wait for the completed PNG, settle 2 seconds",
+            contract["common"]["input_script"][0],
         )
 
 

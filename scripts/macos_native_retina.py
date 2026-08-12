@@ -83,6 +83,11 @@ CAPTURE_SEGMENTS = (
 )
 WARMUP_SECONDS = 30
 PROFILE_SECONDS = 10
+# F2 readback and PNG encoding exercise the same GPU/device and filesystem that
+# the formal profiler observes.  Waiting after the completed file (on both
+# clients) keeps that validation work outside the F3+L sample window while the
+# replay remains inside the same capture segment.
+SCREENSHOT_SETTLE_SECONDS = 2.0
 UNLIMITED_FPS_SENTINEL = 260
 HITCH_THRESHOLDS_MS = (33.333, 50.0, 100.0)
 STABILITY_POLICY = "product-playability-v3"
@@ -386,6 +391,7 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         "framerate_limit_sentinel": UNLIMITED_FPS_SENTINEL,
         "warmup_seconds": WARMUP_SECONDS,
         "profile_seconds": PROFILE_SECONDS,
+        "screenshot_settle_seconds": SCREENSHOT_SETTLE_SECONDS,
         "formal_order": list(FORMAL_ORDER),
         "capture_segments": list(CAPTURE_SEGMENTS),
         "drawable_mismatch_policy": "block-without-comparison",
@@ -997,9 +1003,10 @@ def launch_contract(
         "framerate_limit_sentinel": UNLIMITED_FPS_SENTINEL,
         "warmup_seconds": WARMUP_SECONDS,
         "profile_seconds": PROFILE_SECONDS,
+        "screenshot_settle_seconds": SCREENSHOT_SETTLE_SECONDS,
         "capture_segments": list(CAPTURE_SEGMENTS),
         "input_script": [
-            "at each capture_start, post to exact client pid: F2 screenshot, then hold F3 and tap L",
+            "at each capture_start, post to exact client pid: F2 screenshot, wait for the completed PNG, settle 2 seconds, then hold F3 and tap L",
         ],
     }
     official = (
@@ -5172,6 +5179,8 @@ def _run_client(
     input_script = {
         "events": ["F2", "F3-down", "L-down", "L-up", "F3-up"],
         "at_markers": [f"{segment}:capture_start" for segment in CAPTURE_SEGMENTS],
+        "screenshot_completion": "wait-for-complete-png-before-profiler",
+        "screenshot_settle_seconds": SCREENSHOT_SETTLE_SECONDS,
         "targeting": "CoreGraphics keyboard events posted directly to exact client pid",
     }
     result: dict[str, object] = {
@@ -5190,6 +5199,7 @@ def _run_client(
         "framerate_limit": "unlimited",
         "framerate_limit_sentinel": UNLIMITED_FPS_SENTINEL,
         "warmup_seconds": WARMUP_SECONDS,
+        "screenshot_settle_seconds": SCREENSHOT_SETTLE_SECONDS,
         "replay_sha256": canonical_sha256(replay),
         "world_sha256": str(source_manifest["world_hash"]),
         "settings_sha256": str(settings["sha256"]),
@@ -5323,6 +5333,10 @@ def _run_client(
                         f"{client} drawable {dimensions[0]}x{dimensions[1]} differs from "
                         f"target {target_width}x{target_height}"
                     )
+                # Keep screenshot readback/encoding and its drawable pressure
+                # out of the formal F3+L window.  The exact same fixed settle
+                # applies to Vanilla and BBB and is part of input_script_sha256.
+                time.sleep(SCREENSHOT_SETTLE_SECONDS)
                 counters_before = (
                     _control_request(control_port, "renderer.counters")
                     if client == "bbb"

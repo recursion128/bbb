@@ -17,6 +17,7 @@
   "framerate_limit_sentinel": 260,
   "warmup_seconds": 30,
   "profile_seconds": 10,
+  "screenshot_settle_seconds": 2.0,
   "formal_order": [
     "vanilla",
     "bbb",
