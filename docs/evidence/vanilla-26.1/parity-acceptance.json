@@ -405,7 +405,7 @@
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+      "bbb_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
       "digest_kind": "gate-receipt-line-v1",
       "exists": true,
       "invalid_reasons": [],
@@ -535,8 +535,8 @@
         "world-client-session-services"
       ],
       "path": ".git/bbb/gate-log.tsv",
-      "receipt": "2026-08-12T07:32:15Z\t99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7\tclean\ttotal:36s,vanilla-verify:4s,host-doctor:1s,docs-lint:5s,fmt:7s,scripts-lint:skip,scripts-tests:skip,diff-check:0s,check:0s,cross-check:skip,test:19s",
-      "sha256": "1f80a035bb68bb029c0b3d46da6bd59ecc34c51c1e24e84105fdd189134da21a",
+      "receipt": "2026-08-12T08:38:33Z\t5f61d65447d9794a5214c791f08f1df0373b0235\tclean\ttotal:125s,vanilla-verify:5s,host-doctor:0s,docs-lint:5s,fmt:7s,scripts-lint:0s,scripts-tests:88s,diff-check:0s,check:0s,cross-check:skip,test:20s",
+      "sha256": "45db8bd94c7233ed84a52f2fae9e242a813d55faa8c2b031524a2b585e23a1df",
       "valid": true
     },
     {
@@ -8702,1472 +8702,16 @@
       "valid": false
     }
   ],
-  "bbb_evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+  "bbb_evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
   "change_impact": {
-    "affected_mechanism_ids": [
-      "audio-client-level-sound-routing",
-      "audio-sound-manager-engine",
-      "coverage-external-client-census",
-      "debug-integrated-server-mirrors",
-      "diagnostics-client-level-report",
-      "diagnostics-client-only-inspection-exclusions",
-      "diagnostics-crash-runtime",
-      "docs-chinese-mechanism-wiki",
-      "entities-fixed-type-surface",
-      "hud-frame-extract-order",
-      "hud-hotbar-selection",
-      "hud-overlay-effects",
-      "hud-player-vitals",
-      "hud-text-and-lists",
-      "identity-profile-key-lifecycle",
-      "identity-skin-presentation",
-      "input-debug-key-actions",
-      "input-key-mapping",
-      "input-keyboard-routing",
-      "input-mouse-routing",
-      "interaction-block-breaking",
-      "interaction-carried-slot-sync",
-      "interaction-container-actions",
-      "interaction-creative-actions",
-      "interaction-entity-actions",
-      "interaction-game-mode-guards",
-      "interaction-game-mode-lifecycle",
-      "interaction-item-use",
-      "interaction-pick-actions",
-      "interaction-prediction-sequence",
-      "interaction-primary-action-routing",
-      "interaction-server-authority-exclusions",
-      "items-server-owned-effects",
-      "items-versioned-property-surface",
-      "lifecycle-client-runtime",
-      "lifecycle-client-task-handoff",
-      "lifecycle-session-replacement",
-      "movement-remote-type-exceptions",
-      "performance-gpu-execution-duration",
-      "performance-official-equal-load",
-      "persistence-options-apply",
-      "persistence-options-derived",
-      "persistence-options-file",
-      "persistence-options-unconsumed",
-      "persistence-server-list",
-      "platform-linux-seat-matrix",
-      "platform-macos-release",
-      "platform-window-chrome",
-      "platform-window-display-mode",
-      "platform-window-lifecycle",
-      "platform-window-surface-state",
-      "platform-windows-release",
-      "player-local-camera-targeting",
-      "player-local-client-status-options",
-      "player-local-environment-effects",
-      "player-local-input-movement",
-      "player-local-inventory-actions",
-      "player-local-item-use-state",
-      "player-local-movement-reporting",
-      "player-local-permission-chat-state",
-      "player-local-session-respawn",
-      "player-local-vehicle-control",
-      "player-local-vitals-status",
-      "player-local-world-edit-ui",
-      "protocol-client-state-flow",
-      "protocol-configuration-handler-decisions",
-      "protocol-framing-no-world-state",
-      "protocol-listener-contracts",
-      "protocol-login-handler-decisions",
-      "protocol-packet-tables",
-      "protocol-play-handler-decisions",
-      "protocol-serverbound-call-sites",
-      "registries-built-in-catalogs",
-      "registries-synchronized-data",
-      "registries-unsynchronized-fixed-identities",
-      "rendering-block-entity-registration",
-      "rendering-block-model-pipeline",
-      "rendering-camera-fluid-fog",
-      "rendering-chunk-layer-routing",
-      "rendering-client-biome-tint",
-      "rendering-client-block-entity-tracking",
-      "rendering-client-level-dirty-handoff",
-      "rendering-client-particle-routing",
-      "rendering-effects-screenshot",
-      "rendering-entity-layer-registration",
-      "rendering-entity-renderer-registration",
-      "rendering-extract-surface",
-      "rendering-fluid-mesh",
-      "rendering-frame-order",
-      "rendering-level-backend-lifecycle",
-      "rendering-level-diagnostics-gizmos",
-      "rendering-level-effect-lifecycle",
-      "rendering-level-frame-graph",
-      "rendering-level-light-query",
-      "rendering-level-pass",
-      "rendering-level-scene-projection",
-      "rendering-level-section-lifecycle",
-      "rendering-nondeterministic-golden-exclusions",
-      "rendering-official-noop-surfaces",
-      "rendering-particle-provider-registration",
-      "resources-default-pack-stack",
-      "resources-indexed-built-in-packs",
-      "resources-indexed-panorama",
-      "resources-indexed-realms",
-      "resources-indexed-vanilla-provider",
-      "resources-language-manager",
-      "resources-offline-asset-trust",
-      "resources-reload-listeners",
-      "resources-reload-recovery",
-      "resources-runtime-mipmap-update",
-      "resources-server-pack-lifecycle",
-      "resources-window-icons",
-      "resources-world-list-favicons",
-      "scope-client-level-noop-hooks",
-      "scope-multiplayer-server-list",
-      "scope-options-ui",
-      "scope-realms",
-      "scope-singleplayer-integrated",
-      "scope-support-accessors",
-      "scope-telemetry-upload",
-      "scope-title-screen",
-      "security-secure-chat-reporting",
-      "startup-client-bootstrap",
-      "startup-session-identity",
-      "ui-accessibility-surface",
-      "ui-bidirectional-shaping",
-      "ui-chat-screen-surface",
-      "ui-clipboard-surface",
-      "ui-container-server-authority-exclusions",
-      "ui-context-entity-type",
-      "ui-death-screen-surface",
-      "ui-disconnected-screen-surface",
-      "ui-font-manager",
-      "ui-font-provider-pipeline",
-      "ui-local-time-icu",
-      "ui-menu-screen-registration",
-      "ui-pause-screen-surface",
-      "ui-screen-lifecycle",
-      "world-client-ambient-animation",
-      "world-client-chunk-light-lifecycle",
-      "world-client-clock-weather",
-      "world-client-entity-lifecycle",
-      "world-client-level-events",
-      "world-client-level-lifecycle",
-      "world-client-map-data",
-      "world-client-respawn-data",
-      "world-client-session-services"
-    ],
-    "base_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
-    "changed_paths": [
-      "AGENTS.md",
-      "docs/README.md",
-      "docs/evidence/macos-native-retina/ac-steady-baseline.json",
-      "docs/evidence/macos-native-retina/acquire-before-wait-ac-candidate.json",
-      "docs/evidence/macos-native-retina/callback-observation-ac-candidate.json",
-      "docs/evidence/macos-native-retina/completion-poll-ac-candidate.json",
-      "docs/evidence/macos-native-retina/frame-phase-diagnostic.json",
-      "docs/evidence/macos-native-retina/gpu-stage-ac-diagnostic.json",
-      "docs/evidence/macos-native-retina/input-latency-ac-diagnostic.json",
-      "docs/evidence/macos-native-retina/low-latency-surface-ac-candidate.json",
-      "docs/evidence/macos-native-retina/post-present-fence-ac-candidate.json",
-      "docs/evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json",
-      "docs/evidence/macos-native-retina/product-acceptance-report.json",
-      "docs/evidence/macos-native-retina/report.json",
-      "docs/evidence/macos-native-retina/stability-report.json",
-      "docs/evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json",
-      "docs/evidence/macos-native-retina/transparency-empty-fast-path-ac-candidate.json",
-      "docs/evidence/macos-native-retina/two-flight-input-latency-ac-candidate.json",
-      "docs/evidence/macos-native-retina/wgpu30-ac-candidate.json",
-      "docs/goal-archive.md",
-      "docs/unsupported-features.md",
-      "docs/wiki/README.md",
-      "docs/wiki/architecture/client-boundaries.md",
-      "docs/wiki/architecture/offline-runtime.md",
-      "docs/wiki/archive/README.md",
-      "docs/wiki/decisions/README.md",
-      "docs/wiki/development/document-inventory.md",
-      "docs/wiki/development/documentation-workflow.md",
-      "docs/wiki/development/macos-and-linux.md",
-      "docs/wiki/development/repository-map.md",
-      "docs/wiki/development/testing-and-gates.md",
-      "docs/wiki/development/vanilla-workspace.md",
-      "docs/wiki/mechanism-template.md",
-      "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
-      "docs/wiki/mechanisms/protocol/client-state-flow.md",
-      "docs/wiki/mechanisms/rendering/block-rendering.md",
-      "docs/wiki/mechanisms/resources/offline-asset-trust.md",
-      "docs/wiki/parity/vanilla-26.1-matrix.md",
-      "goal.md",
-      "scripts/docs-lint.sh",
-      "scripts/docs_wiki_lint.py",
-      "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
-      "scripts/macos_native_retina.py",
-      "scripts/tests/test_docs_lint.py"
-    ],
-    "functional_affected_mechanism_ids": [
-      "audio-client-level-sound-routing",
-      "audio-sound-manager-engine",
-      "coverage-external-client-census",
-      "debug-integrated-server-mirrors",
-      "diagnostics-client-level-report",
-      "diagnostics-client-only-inspection-exclusions",
-      "diagnostics-crash-runtime",
-      "docs-chinese-mechanism-wiki",
-      "entities-fixed-type-surface",
-      "hud-frame-extract-order",
-      "hud-hotbar-selection",
-      "hud-overlay-effects",
-      "hud-player-vitals",
-      "hud-text-and-lists",
-      "identity-profile-key-lifecycle",
-      "identity-skin-presentation",
-      "input-debug-key-actions",
-      "input-key-mapping",
-      "input-keyboard-routing",
-      "input-mouse-routing",
-      "interaction-block-breaking",
-      "interaction-carried-slot-sync",
-      "interaction-container-actions",
-      "interaction-creative-actions",
-      "interaction-entity-actions",
-      "interaction-game-mode-guards",
-      "interaction-game-mode-lifecycle",
-      "interaction-item-use",
-      "interaction-pick-actions",
-      "interaction-prediction-sequence",
-      "interaction-primary-action-routing",
-      "interaction-server-authority-exclusions",
-      "items-server-owned-effects",
-      "items-versioned-property-surface",
-      "lifecycle-client-runtime",
-      "lifecycle-client-task-handoff",
-      "lifecycle-session-replacement",
-      "movement-remote-type-exceptions",
-      "performance-gpu-execution-duration",
-      "performance-official-equal-load",
-      "persistence-options-apply",
-      "persistence-options-derived",
-      "persistence-options-file",
-      "persistence-options-unconsumed",
-      "persistence-server-list",
-      "platform-linux-seat-matrix",
-      "platform-macos-release",
-      "platform-window-chrome",
-      "platform-window-display-mode",
-      "platform-window-lifecycle",
-      "platform-window-surface-state",
-      "platform-windows-release",
-      "player-local-camera-targeting",
-      "player-local-client-status-options",
-      "player-local-environment-effects",
-      "player-local-input-movement",
-      "player-local-inventory-actions",
-      "player-local-item-use-state",
-      "player-local-movement-reporting",
-      "player-local-permission-chat-state",
-      "player-local-session-respawn",
-      "player-local-vehicle-control",
-      "player-local-vitals-status",
-      "player-local-world-edit-ui",
-      "protocol-client-state-flow",
-      "protocol-configuration-handler-decisions",
-      "protocol-framing-no-world-state",
-      "protocol-listener-contracts",
-      "protocol-login-handler-decisions",
-      "protocol-packet-tables",
-      "protocol-play-handler-decisions",
-      "protocol-serverbound-call-sites",
-      "registries-built-in-catalogs",
-      "registries-synchronized-data",
-      "registries-unsynchronized-fixed-identities",
-      "rendering-block-entity-registration",
-      "rendering-block-model-pipeline",
-      "rendering-camera-fluid-fog",
-      "rendering-chunk-layer-routing",
-      "rendering-client-biome-tint",
-      "rendering-client-block-entity-tracking",
-      "rendering-client-level-dirty-handoff",
-      "rendering-client-particle-routing",
-      "rendering-effects-screenshot",
-      "rendering-entity-layer-registration",
-      "rendering-entity-renderer-registration",
-      "rendering-extract-surface",
-      "rendering-fluid-mesh",
-      "rendering-frame-order",
-      "rendering-level-backend-lifecycle",
-      "rendering-level-diagnostics-gizmos",
-      "rendering-level-effect-lifecycle",
-      "rendering-level-frame-graph",
-      "rendering-level-light-query",
-      "rendering-level-pass",
-      "rendering-level-scene-projection",
-      "rendering-level-section-lifecycle",
-      "rendering-nondeterministic-golden-exclusions",
-      "rendering-official-noop-surfaces",
-      "rendering-particle-provider-registration",
-      "resources-default-pack-stack",
-      "resources-indexed-built-in-packs",
-      "resources-indexed-panorama",
-      "resources-indexed-realms",
-      "resources-indexed-vanilla-provider",
-      "resources-language-manager",
-      "resources-offline-asset-trust",
-      "resources-reload-listeners",
-      "resources-reload-recovery",
-      "resources-runtime-mipmap-update",
-      "resources-server-pack-lifecycle",
-      "resources-window-icons",
-      "resources-world-list-favicons",
-      "scope-client-level-noop-hooks",
-      "scope-multiplayer-server-list",
-      "scope-options-ui",
-      "scope-realms",
-      "scope-singleplayer-integrated",
-      "scope-support-accessors",
-      "scope-telemetry-upload",
-      "scope-title-screen",
-      "security-secure-chat-reporting",
-      "startup-client-bootstrap",
-      "startup-session-identity",
-      "ui-accessibility-surface",
-      "ui-bidirectional-shaping",
-      "ui-chat-screen-surface",
-      "ui-clipboard-surface",
-      "ui-container-server-authority-exclusions",
-      "ui-context-entity-type",
-      "ui-death-screen-surface",
-      "ui-disconnected-screen-surface",
-      "ui-font-manager",
-      "ui-font-provider-pipeline",
-      "ui-local-time-icu",
-      "ui-menu-screen-registration",
-      "ui-pause-screen-surface",
-      "ui-screen-lifecycle",
-      "world-client-ambient-animation",
-      "world-client-chunk-light-lifecycle",
-      "world-client-clock-weather",
-      "world-client-entity-lifecycle",
-      "world-client-level-events",
-      "world-client-level-lifecycle",
-      "world-client-map-data",
-      "world-client-respawn-data",
-      "world-client-session-services"
-    ],
-    "functional_changed_paths": [
-      "AGENTS.md",
-      "scripts/docs-lint.sh",
-      "scripts/docs_wiki_lint.py",
-      "scripts/tests/test_docs_lint.py"
-    ],
-    "path_impacts": [
-      {
-        "mechanism_ids": [],
-        "path": "AGENTS.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/README.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/ac-steady-baseline.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/acquire-before-wait-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/callback-observation-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/completion-poll-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/frame-phase-diagnostic.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/gpu-stage-ac-diagnostic.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/input-latency-ac-diagnostic.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/low-latency-surface-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/post-present-fence-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/prefinish-command-buffer-ac-diagnostic.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/product-acceptance-report.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/report.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/stability-report.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/transparency-empty-fast-path-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/two-flight-input-latency-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/evidence/macos-native-retina/wgpu30-ac-candidate.json",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/goal-archive.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "coverage-external-client-census",
-          "debug-integrated-server-mirrors",
-          "diagnostics-client-level-report",
-          "diagnostics-client-only-inspection-exclusions",
-          "diagnostics-crash-runtime",
-          "docs-chinese-mechanism-wiki",
-          "entities-fixed-type-surface",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "identity-profile-key-lifecycle",
-          "identity-skin-presentation",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "interaction-server-authority-exclusions",
-          "items-server-owned-effects",
-          "items-versioned-property-surface",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "movement-remote-type-exceptions",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "platform-windows-release",
-          "player-local-camera-targeting",
-          "player-local-client-status-options",
-          "player-local-environment-effects",
-          "player-local-input-movement",
-          "player-local-inventory-actions",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-permission-chat-state",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "player-local-vitals-status",
-          "player-local-world-edit-ui",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-framing-no-world-state",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "registries-built-in-catalogs",
-          "registries-synchronized-data",
-          "registries-unsynchronized-fixed-identities",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-nondeterministic-golden-exclusions",
-          "rendering-official-noop-surfaces",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-built-in-packs",
-          "resources-indexed-panorama",
-          "resources-indexed-realms",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-runtime-mipmap-update",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "resources-world-list-favicons",
-          "scope-client-level-noop-hooks",
-          "scope-multiplayer-server-list",
-          "scope-options-ui",
-          "scope-realms",
-          "scope-singleplayer-integrated",
-          "scope-support-accessors",
-          "scope-telemetry-upload",
-          "scope-title-screen",
-          "security-secure-chat-reporting",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "ui-accessibility-surface",
-          "ui-bidirectional-shaping",
-          "ui-chat-screen-surface",
-          "ui-clipboard-surface",
-          "ui-container-server-authority-exclusions",
-          "ui-context-entity-type",
-          "ui-death-screen-surface",
-          "ui-disconnected-screen-surface",
-          "ui-font-manager",
-          "ui-font-provider-pipeline",
-          "ui-local-time-icu",
-          "ui-menu-screen-registration",
-          "ui-pause-screen-surface",
-          "ui-screen-lifecycle",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "docs/unsupported-features.md",
-        "reasons": [
-          "central-owner",
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "draw-evidence",
-          "focused-evidence",
-          "full-gate",
-          "protocol-state-receipt",
-          "release-identity",
-          "resource-platform-receipt",
-          "vanilla-owner",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/README.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "diagnostics-client-level-report",
-          "identity-skin-presentation",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "player-local-camera-targeting",
-          "player-local-environment-effects",
-          "player-local-input-movement",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-permission-chat-state",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "rendering-block-entity-registration",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "ui-death-screen-surface",
-          "ui-screen-lifecycle",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "docs/wiki/architecture/client-boundaries.md",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "security-secure-chat-reporting"
-        ],
-        "path": "docs/wiki/architecture/offline-runtime.md",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "bbb-owner",
-          "focused-evidence",
-          "full-gate",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/archive/README.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/decisions/README.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/development/document-inventory.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/development/documentation-workflow.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/development/macos-and-linux.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/development/repository-map.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/development/testing-and-gates.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/development/vanilla-workspace.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [],
-        "path": "docs/wiki/mechanism-template.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load"
-        ],
-        "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "protocol-client-state-flow",
-          "protocol-play-handler-decisions"
-        ],
-        "path": "docs/wiki/mechanisms/protocol/client-state-flow.md",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "rendering-block-model-pipeline",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle"
-        ],
-        "path": "docs/wiki/mechanisms/rendering/block-rendering.md",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "resources-default-pack-stack",
-          "resources-indexed-built-in-packs",
-          "resources-indexed-panorama",
-          "resources-indexed-realms",
-          "resources-indexed-vanilla-provider",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-window-icons"
-        ],
-        "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "coverage-external-client-census",
-          "debug-integrated-server-mirrors",
-          "diagnostics-client-level-report",
-          "diagnostics-client-only-inspection-exclusions",
-          "diagnostics-crash-runtime",
-          "docs-chinese-mechanism-wiki",
-          "entities-fixed-type-surface",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "identity-profile-key-lifecycle",
-          "identity-skin-presentation",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "interaction-server-authority-exclusions",
-          "items-server-owned-effects",
-          "items-versioned-property-surface",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "movement-remote-type-exceptions",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "platform-windows-release",
-          "player-local-camera-targeting",
-          "player-local-client-status-options",
-          "player-local-environment-effects",
-          "player-local-input-movement",
-          "player-local-inventory-actions",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-permission-chat-state",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "player-local-vitals-status",
-          "player-local-world-edit-ui",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-framing-no-world-state",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "registries-built-in-catalogs",
-          "registries-synchronized-data",
-          "registries-unsynchronized-fixed-identities",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-nondeterministic-golden-exclusions",
-          "rendering-official-noop-surfaces",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-built-in-packs",
-          "resources-indexed-panorama",
-          "resources-indexed-realms",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-runtime-mipmap-update",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "resources-world-list-favicons",
-          "scope-client-level-noop-hooks",
-          "scope-multiplayer-server-list",
-          "scope-options-ui",
-          "scope-realms",
-          "scope-singleplayer-integrated",
-          "scope-support-accessors",
-          "scope-telemetry-upload",
-          "scope-title-screen",
-          "security-secure-chat-reporting",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "ui-accessibility-surface",
-          "ui-bidirectional-shaping",
-          "ui-chat-screen-surface",
-          "ui-clipboard-surface",
-          "ui-container-server-authority-exclusions",
-          "ui-context-entity-type",
-          "ui-death-screen-surface",
-          "ui-disconnected-screen-surface",
-          "ui-font-manager",
-          "ui-font-provider-pipeline",
-          "ui-local-time-icu",
-          "ui-menu-screen-registration",
-          "ui-pause-screen-surface",
-          "ui-screen-lifecycle",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "docs/wiki/parity/vanilla-26.1-matrix.md",
-        "reasons": [
-          "central-owner"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract"
-        ]
-      },
-      {
-        "mechanism_ids": [],
-        "path": "goal.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "coverage-external-client-census",
-          "debug-integrated-server-mirrors",
-          "diagnostics-client-level-report",
-          "diagnostics-client-only-inspection-exclusions",
-          "diagnostics-crash-runtime",
-          "docs-chinese-mechanism-wiki",
-          "entities-fixed-type-surface",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "identity-profile-key-lifecycle",
-          "identity-skin-presentation",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "interaction-server-authority-exclusions",
-          "items-server-owned-effects",
-          "items-versioned-property-surface",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "movement-remote-type-exceptions",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "platform-windows-release",
-          "player-local-camera-targeting",
-          "player-local-client-status-options",
-          "player-local-environment-effects",
-          "player-local-input-movement",
-          "player-local-inventory-actions",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-permission-chat-state",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "player-local-vitals-status",
-          "player-local-world-edit-ui",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-framing-no-world-state",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "registries-built-in-catalogs",
-          "registries-synchronized-data",
-          "registries-unsynchronized-fixed-identities",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-nondeterministic-golden-exclusions",
-          "rendering-official-noop-surfaces",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-built-in-packs",
-          "resources-indexed-panorama",
-          "resources-indexed-realms",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-runtime-mipmap-update",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "resources-world-list-favicons",
-          "scope-client-level-noop-hooks",
-          "scope-multiplayer-server-list",
-          "scope-options-ui",
-          "scope-realms",
-          "scope-singleplayer-integrated",
-          "scope-support-accessors",
-          "scope-telemetry-upload",
-          "scope-title-screen",
-          "security-secure-chat-reporting",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "ui-accessibility-surface",
-          "ui-bidirectional-shaping",
-          "ui-chat-screen-surface",
-          "ui-clipboard-surface",
-          "ui-container-server-authority-exclusions",
-          "ui-context-entity-type",
-          "ui-death-screen-surface",
-          "ui-disconnected-screen-surface",
-          "ui-font-manager",
-          "ui-font-provider-pipeline",
-          "ui-local-time-icu",
-          "ui-menu-screen-registration",
-          "ui-pause-screen-surface",
-          "ui-screen-lifecycle",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "scripts/docs-lint.sh",
-        "reasons": [
-          "central-owner"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "coverage-external-client-census",
-          "debug-integrated-server-mirrors",
-          "diagnostics-client-level-report",
-          "diagnostics-client-only-inspection-exclusions",
-          "diagnostics-crash-runtime",
-          "docs-chinese-mechanism-wiki",
-          "entities-fixed-type-surface",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "identity-profile-key-lifecycle",
-          "identity-skin-presentation",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "interaction-server-authority-exclusions",
-          "items-server-owned-effects",
-          "items-versioned-property-surface",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "movement-remote-type-exceptions",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "platform-windows-release",
-          "player-local-camera-targeting",
-          "player-local-client-status-options",
-          "player-local-environment-effects",
-          "player-local-input-movement",
-          "player-local-inventory-actions",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-permission-chat-state",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "player-local-vitals-status",
-          "player-local-world-edit-ui",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-framing-no-world-state",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "registries-built-in-catalogs",
-          "registries-synchronized-data",
-          "registries-unsynchronized-fixed-identities",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-nondeterministic-golden-exclusions",
-          "rendering-official-noop-surfaces",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-built-in-packs",
-          "resources-indexed-panorama",
-          "resources-indexed-realms",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-runtime-mipmap-update",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "resources-world-list-favicons",
-          "scope-client-level-noop-hooks",
-          "scope-multiplayer-server-list",
-          "scope-options-ui",
-          "scope-realms",
-          "scope-singleplayer-integrated",
-          "scope-support-accessors",
-          "scope-telemetry-upload",
-          "scope-title-screen",
-          "security-secure-chat-reporting",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "ui-accessibility-surface",
-          "ui-bidirectional-shaping",
-          "ui-chat-screen-surface",
-          "ui-clipboard-surface",
-          "ui-container-server-authority-exclusions",
-          "ui-context-entity-type",
-          "ui-death-screen-surface",
-          "ui-disconnected-screen-surface",
-          "ui-font-manager",
-          "ui-font-provider-pipeline",
-          "ui-local-time-icu",
-          "ui-menu-screen-registration",
-          "ui-pause-screen-surface",
-          "ui-screen-lifecycle",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "scripts/docs_wiki_lint.py",
-        "reasons": [
-          "central-owner",
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "vanilla-owner"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-particle-provider-registration"
-        ],
-        "path": "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
-        "reasons": [
-          "central-owner"
-        ],
-        "required_validation_classes": [
-          "draw-evidence",
-          "performance-abba",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [],
-        "path": "scripts/macos_native_retina.py",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "docs-chinese-mechanism-wiki"
-        ],
-        "path": "scripts/tests/test_docs_lint.py",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "focused-evidence",
-          "full-gate"
-        ]
-      }
-    ],
-    "required_validation_classes": [
-      "acceptance-contract",
-      "bbb-owner",
-      "draw-evidence",
-      "focused-evidence",
-      "full-gate",
-      "performance-abba",
-      "protocol-state-receipt",
-      "release-identity",
-      "resource-platform-receipt",
-      "vanilla-owner",
-      "visual-workload"
-    ],
-    "validation_only_changed_paths": [
-      "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
-      "scripts/macos_native_retina.py"
-    ]
+    "affected_mechanism_ids": [],
+    "base_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
+    "changed_paths": [],
+    "functional_affected_mechanism_ids": [],
+    "functional_changed_paths": [],
+    "path_impacts": [],
+    "required_validation_classes": [],
+    "validation_only_changed_paths": []
   },
   "commands": {
     "change_plan": "scripts/python python scripts/parity_acceptance.py plan --base-commit <commit>",
@@ -10219,9 +8763,7 @@
         "repo:scripts/tests/test_official_client_benchmark.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/client_options.rs",
@@ -10298,7 +8840,7 @@
           }
         ],
         "dependency_closure_sha256": "e7407378f0e27d1034a1622c58be41f7b080250f2148bfeb8047d0c881bbdada",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
           "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
@@ -10502,9 +9044,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/main.rs",
@@ -10589,7 +9129,7 @@
           }
         ],
         "dependency_closure_sha256": "bbd3305574f54d040688e2eda1bd2f15aaa60778c41e3a67958b25fd35a1e244",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/main.rs#fn run_client",
           "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
@@ -10804,7 +9344,7 @@
           }
         ],
         "dependency_closure_sha256": "4e233942123316d08a608a956314eff34b622e4448846c9cf83d6b111e11c849",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
           "crates/bbb-native/src/network_runtime.rs#idle_shutdown_is_idempotent",
@@ -11085,7 +9625,7 @@
           }
         ],
         "dependency_closure_sha256": "bd773e7b3a890fcd379c1ce0e56853f38bd99010a81909d15bb5637a1a2228f4",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -11286,7 +9826,7 @@
           }
         ],
         "dependency_closure_sha256": "7b85dcc97ed7c54121e24a67759e895868e04fb70e0e30d51dd65a09772b1bcc",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
@@ -11447,9 +9987,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-pack/src/asset_index.rs",
@@ -11494,7 +10032,7 @@
           }
         ],
         "dependency_closure_sha256": "9c80180a60fea42dd2fde7e86e6660b693804ed25dd064dc5cf0ba26966fbd09",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs",
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
@@ -11652,10 +10190,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-pack/src/resources.rs",
@@ -11712,7 +10247,7 @@
           }
         ],
         "dependency_closure_sha256": "8b0812a37ee72495c1e115ababd95f40320ef5cd6712e1b8747a3ebecbd6d1f9",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs#fn list_resources",
           "crates/bbb-pack/src/resources.rs#fn resource_file",
@@ -11869,9 +10404,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-pack/src/resources.rs",
@@ -11889,7 +10422,7 @@
           }
         ],
         "dependency_closure_sha256": "951ecd848f069178efa66bc590178cb64a0d56a60671effc2c37640e6990bce9",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -12039,10 +10572,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-item-model/src/font.rs",
@@ -12263,7 +10793,7 @@
           }
         ],
         "dependency_closure_sha256": "a123c2a3d35677e30b2108932badfed420f2a1f5f85760ca9a9debe318e4d412",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -12604,7 +11134,7 @@
           }
         ],
         "dependency_closure_sha256": "3a333de06f47ae26127f1869547db53758b2573820b4c9389bc4e8427def3cb4",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -12762,9 +11292,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime/textures.rs",
@@ -12790,7 +11318,7 @@
           }
         ],
         "dependency_closure_sha256": "7506e4f4baa2906c617503c6383035dca26bbdbc2c6773c06e09be398ec75ff4",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -12885,9 +11413,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_pack_runtime.rs",
@@ -13030,7 +11556,7 @@
           }
         ],
         "dependency_closure_sha256": "6ef64d04778e7d7bc8f8d0bf9b95fe639a343e704e4bc7e862a7612418904dec",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -13667,7 +12193,7 @@
           }
         ],
         "dependency_closure_sha256": "332eb6b9a7776e9d62258c6edd3a338f8d0e2c23764ea9051927b4e9a253b3d4",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/simulation/input_commands.rs",
           "crates/bbb-pack/src/language.rs",
@@ -13915,7 +12441,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
@@ -14081,7 +12607,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
@@ -14411,7 +12937,7 @@
           }
         ],
         "dependency_closure_sha256": "5dd4286facb1a921b1b3e1b0505a5087cffbecdfbd66eb80332d8163268d0698",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -15216,9 +13742,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/window_icon.rs",
@@ -15258,7 +13782,7 @@
           }
         ],
         "dependency_closure_sha256": "ef5a8fb53103a372b97193148219ebd01a5cb8e76fe726ef0c9dbc99b506bc31",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
           "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
@@ -15415,9 +13939,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/hud_assets.rs",
@@ -15528,7 +14050,7 @@
           }
         ],
         "dependency_closure_sha256": "0eb74840a5f395c367c524ef87458dcac89b52b8a5756caf5584806fa5f578aa",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
           "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
@@ -15738,9 +14260,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -15751,7 +14271,7 @@
           }
         ],
         "dependency_closure_sha256": "cbb451f91bf97ea2fcaea4db159d0c88cd7474dc447defc1361edbd028d3ce57",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -15818,9 +14338,7 @@
         "repo:docs/wiki/mechanisms/resources/offline-asset-trust.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/resources/offline-asset-trust.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/wiki/mechanisms/resources/offline-asset-trust.md",
@@ -15831,7 +14349,7 @@
           }
         ],
         "dependency_closure_sha256": "cbb451f91bf97ea2fcaea4db159d0c88cd7474dc447defc1361edbd028d3ce57",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -17804,7 +16322,7 @@
           }
         ],
         "dependency_closure_sha256": "5f1defb2749e11b50097722b046e6cc4b53e07b608374b8c93b8c8a27475cc4a",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json"
@@ -20546,7 +19064,7 @@
           }
         ],
         "dependency_closure_sha256": "3377cc822396419ad9ecbee27f40f9c269f7c4f5f9fc1865838e5b3aaf5fd668",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -23198,7 +21716,7 @@
           }
         ],
         "dependency_closure_sha256": "b25b55cb6ef08fdfa3d7a2cb3cb3ceb196002ac5384e3eb10f69a334a4b6be42",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -25675,7 +24193,7 @@
           }
         ],
         "dependency_closure_sha256": "247f535eed86c75be74411a60e551f07c06aea8fd9237ba3ccfcbdb83e91242e",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json"
@@ -26490,9 +25008,7 @@
         "repo:scripts/tests/test_item_catalog.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/protocol/client-state-flow.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/runtime.rs",
@@ -28170,7 +26686,7 @@
           }
         ],
         "dependency_closure_sha256": "5d4823a10ee5c9c3b820adfc9aea09c24dbb4e799b211e0b26bdc32361c0c763",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -28978,9 +27494,7 @@
         "repo:docs/wiki/mechanisms/protocol/client-state-flow.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/protocol/client-state-flow.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/simulation/publication.rs",
@@ -29012,7 +27526,7 @@
           }
         ],
         "dependency_closure_sha256": "72bc9cd11c1afea216669aef2f698be9e1f2e18d8e7436f451b72dc2448e6325",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -31051,7 +29565,7 @@
           }
         ],
         "dependency_closure_sha256": "1c4cc92033c728b1b82743bafd1680dc8d889a9647e2b3047a10d9111a09a794",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -31698,9 +30212,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -31711,7 +30223,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -31818,7 +30330,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -32007,7 +30519,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -32109,9 +30621,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -32122,7 +30632,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32201,9 +30711,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/level_load_runtime.rs",
@@ -32287,7 +30795,7 @@
           }
         ],
         "dependency_closure_sha256": "f2339d27fdd055c3396a7a6c6832b6f3ff7689aef575fe4cef5c38655972ff45",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32441,9 +30949,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime.rs",
@@ -32493,7 +30999,7 @@
           }
         ],
         "dependency_closure_sha256": "a6a526a5ea8b606580b33da09ec08d9cb72a081a571696f6e6f568cf03b3a12f",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32671,9 +31177,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime.rs",
@@ -32731,7 +31235,7 @@
           }
         ],
         "dependency_closure_sha256": "b2bb9f11d833788bc61d98551ceb495cbb9aff13237520378ec714c8c233c773",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32887,9 +31391,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-world/src/entities.rs",
@@ -32961,7 +31463,7 @@
           }
         ],
         "dependency_closure_sha256": "a5c9a7de0034d1c243d189e42772e1445ba29dcb8511d9905aca5026bfadead0",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33142,9 +31644,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/environment_animate_runtime.rs",
@@ -33209,7 +31709,7 @@
           }
         ],
         "dependency_closure_sha256": "906797252922a8ac683f29eded2bab04555219bacf9f423ef254d7ef25ce0d94",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33389,9 +31889,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -33490,7 +31988,7 @@
           }
         ],
         "dependency_closure_sha256": "6fa5e93ca5034edb4d27f9c3b7c5e444c36dc7b1b7cd4ada4fde930de893a465",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33620,9 +32118,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/item_frames.rs",
@@ -33669,7 +32165,7 @@
           }
         ],
         "dependency_closure_sha256": "dc9bd32d1bc32b1d601901e12c0a33ba1adb69c9bc35e3c4c15306fba994b192",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33797,9 +32293,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/particle_runtime/explosion.rs",
@@ -33860,7 +32354,7 @@
           }
         ],
         "dependency_closure_sha256": "874b5af9956e1c02fadee1987d8712f38c1ff5ba9d542f1b51abbd142bf706d8",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -33989,9 +32483,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime/events/client_state/tests.rs",
@@ -34067,7 +32559,7 @@
           }
         ],
         "dependency_closure_sha256": "2bbc72dbdb2b6a8180e88341ba68740b53484efe8e49f2de03b2a6f4200e45e6",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34235,9 +32727,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/block_entity_visibility.rs",
@@ -34258,7 +32748,7 @@
           }
         ],
         "dependency_closure_sha256": "393236b9b2bf30e75680bb7d0924cb05ea296132961cb5617009c7195651f88c",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34387,9 +32877,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -34443,7 +32931,7 @@
           }
         ],
         "dependency_closure_sha256": "423b0bfd9e59a29a8564661c1de9528302be2a65a85b7a5408637e89932d5476",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34674,7 +33162,7 @@
           }
         ],
         "dependency_closure_sha256": "79d2fb80eab2b8876a138264d01603a2fd9fe7a51a0bc5cb5f5e78159d54a1b9",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -34812,9 +33300,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/biome_tint.rs",
@@ -34900,7 +33386,7 @@
           }
         ],
         "dependency_closure_sha256": "e46a992495cc93726d105cd63199676d5ff87faf38b58a3699ba8c997b477b7f",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -35075,9 +33561,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/runtime.rs",
@@ -35131,7 +33615,7 @@
           }
         ],
         "dependency_closure_sha256": "b123253f1a3c994ce1bac68a2110c4286b94e31445e50d0fed1a7c3c5a9d9a3c",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -35281,9 +33765,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/crash_report.rs",
@@ -35322,7 +33804,7 @@
           }
         ],
         "dependency_closure_sha256": "48dc462ef19ab4a361b97cc45f61589c83def724231829afb8b194f32d3793f6",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -35457,9 +33939,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -35526,7 +34006,7 @@
           }
         ],
         "dependency_closure_sha256": "9e8b25bc63bbad354d3b6891a744094639b5ac6d640123fd0b29cf9c16cfc06b",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -35682,7 +34162,7 @@
           }
         ],
         "dependency_closure_sha256": "cd0ab69d03dc58b40f1d5bf4d24a94f2114ef308b36e085ff3bfe7afec0cc51a",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -35780,9 +34260,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -35818,7 +34296,7 @@
           }
         ],
         "dependency_closure_sha256": "c8b9f810c2e2a0f3bb93dfc9cf1c0e8c2dbe8f30e8ada8b85abfe30d6ed38877",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -35936,9 +34414,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/movement.rs",
@@ -35987,7 +34463,7 @@
           }
         ],
         "dependency_closure_sha256": "2d2f19ccf664e377443b98e1813fdf3bdec2263e4da4801255e880b48dd56ffc",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -36186,9 +34662,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/movement.rs",
@@ -36255,7 +34729,7 @@
           }
         ],
         "dependency_closure_sha256": "5a4cf13e50b13ac47e0f1806531729a4424b53a467c628b4b373e17ce1d76a1e",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -36400,9 +34874,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -36464,7 +34936,7 @@
           }
         ],
         "dependency_closure_sha256": "1adb3a4a6180921c2e7bc46cb7c9ae037faa4385db47e65990675fff9ff5228d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36607,7 +35079,7 @@
           }
         ],
         "dependency_closure_sha256": "662c5e9f6452bcd5a32028507d02cd073904dae6637e46e8df20120de9b081c1",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -36692,9 +35164,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -36754,7 +35224,7 @@
           }
         ],
         "dependency_closure_sha256": "806e396f1daa573f2bf511867db46f8e42d5cdd6f8203bd77a0ab2721e9eb611",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36944,7 +35414,7 @@
           }
         ],
         "dependency_closure_sha256": "0ca814d9df57c7e18446cfe6b27643d20679a04580d8b2075d7dd21da2db3ec0",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -37170,7 +35640,7 @@
           }
         ],
         "dependency_closure_sha256": "63f3683b02b57ddb814ac65105710fa2f16e79ab22bea54622ed85abb9ca25db",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -37327,9 +35797,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/environment_audio_runtime.rs",
@@ -37433,7 +35901,7 @@
           }
         ],
         "dependency_closure_sha256": "d83c31db0c058f05eb2dddd57b981661b0c681997918ad05155d04326c79dc0f",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -37578,9 +36046,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -37636,7 +36102,7 @@
           }
         ],
         "dependency_closure_sha256": "e4d91b22390fde8b77fe5b29e6d398945399b48c5200ae6bc35702856e22b714",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -37781,9 +36247,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -37843,7 +36307,7 @@
           }
         ],
         "dependency_closure_sha256": "4bee8a0f7f4d05a09c8f44f76222f1b3a51ee195bdd75f60c6d1160d290cae63",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -37979,9 +36443,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -38060,7 +36522,7 @@
           }
         ],
         "dependency_closure_sha256": "a94c749edd86ed0c6926645cab9e678e9d12314fa08c850469039096ca59342f",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -38183,9 +36645,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/mouse.rs",
@@ -38254,7 +36714,7 @@
           }
         ],
         "dependency_closure_sha256": "6aad9df727335240d33d474a74d58a0ac7b3df0052c964934b6ad469e25d77d5",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -38457,9 +36917,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -38524,7 +36982,7 @@
           }
         ],
         "dependency_closure_sha256": "407ce2c086432fbc7d18ff1db8b76990b5f04e2fdddf33b45aa5cebc9133be67",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -38687,9 +37145,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -38723,7 +37179,7 @@
           }
         ],
         "dependency_closure_sha256": "43318c2daf96658a022a73f449fa8ed9c02c3f5b6d39a8b070829d5d16dcf207",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -38816,9 +37272,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -38854,7 +37308,7 @@
           }
         ],
         "dependency_closure_sha256": "e20b528cfaacbf72525440252da4de8cc243d1518ecdbc66c8209f0fbe3c33a7",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -38965,9 +37419,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -39003,7 +37455,7 @@
           }
         ],
         "dependency_closure_sha256": "cf260d1f4e426acf6c111b51ab2ce88b800269c868ea45139404978e53efb550",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -39122,9 +37574,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -39166,7 +37616,7 @@
           }
         ],
         "dependency_closure_sha256": "54ac6239c13975b6cc0c8e27cb2148a0d76af3150770d70e4a4277fab0cef9ec",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -39290,9 +37740,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/inventory/creative.rs",
@@ -39320,7 +37768,7 @@
           }
         ],
         "dependency_closure_sha256": "eba9b50399d685fe55dcb4d2021bd06d282600122830c72875625fd3a5bcb6c2",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -39413,9 +37861,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -39443,7 +37889,7 @@
           }
         ],
         "dependency_closure_sha256": "baef7de61e5ed87c0ad2d7145846f484064aceb5a541be502c367b7aa534032c",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -39554,9 +38000,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/mouse.rs",
@@ -39577,7 +38021,7 @@
           }
         ],
         "dependency_closure_sha256": "24a1e73477523d3adfd267517a113a560ca96a3fb46da10f2dd9876d49a2bea2",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -39953,7 +38397,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -40929,7 +39373,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -41924,7 +40368,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -42836,9 +41280,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/banner_scene.rs",
@@ -43078,7 +41520,7 @@
           }
         ],
         "dependency_closure_sha256": "e58078852d72f8dc3cbbcced7295c31eeb6dde58c7ce6b7fca4a17bf47ef1f2d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -43573,7 +42015,7 @@
           }
         ],
         "dependency_closure_sha256": "20945e2c78546812a2d510c3c2735525d9759978d242c8a0ea5342041e5eb608",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -43874,9 +42316,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/runtime.rs",
@@ -44098,7 +42538,7 @@
           }
         ],
         "dependency_closure_sha256": "2727a3be445d95c21d4f4bebca2248d892356bbd1f2223e49f6276029813db26",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -44782,7 +43222,7 @@
           }
         ],
         "dependency_closure_sha256": "12fd1cf6d51816ee61d8cb609a4a1e1b8b81ddbdbc021b492a80644063cb5742",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -45107,7 +43547,7 @@
           }
         ],
         "dependency_closure_sha256": "2fe2445d49e359d7f6bdd0e9248dba8a5c2423941b4213fac3c3b8d3dfa5a61f",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -45336,7 +43776,7 @@
           }
         ],
         "dependency_closure_sha256": "b3b542b3878c018c12ac61de2176aa1fe2e64b57d2cb30c9987781570f9f0ce0",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -45660,7 +44100,7 @@
           }
         ],
         "dependency_closure_sha256": "24d4128e378a26e8e1d67df6f26179298cf0b1fd333ef1df1c0fd129967154c2",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -46046,7 +44486,7 @@
           }
         ],
         "dependency_closure_sha256": "0d13a5c8c878a3ea2e71959bdbf4cd50aaf3abfa1b382872b8e702b65a384f84",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -46355,9 +44795,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -46484,7 +44922,7 @@
           }
         ],
         "dependency_closure_sha256": "624f897fa919f05cc67f318e7572a3239c212817f9f007c281744007734fcb50",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -46785,9 +45223,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -46914,7 +45350,7 @@
           }
         ],
         "dependency_closure_sha256": "23b25c4599240e7e68da4c2e8e7451918e9cfb93a139aeb4293e195d76f13c86",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -47255,9 +45691,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -47471,7 +45905,7 @@
           }
         ],
         "dependency_closure_sha256": "bf90625b4f79791fc228c22ff32656013a5127aa1695f46792027b910a14848e",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -47820,9 +46254,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -47883,7 +46315,7 @@
           }
         ],
         "dependency_closure_sha256": "355a4a7a7c748313396250dd8c22c18a596ac9757785bef3d4da13afdd068c78",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -48059,9 +46491,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -48129,7 +46559,7 @@
           }
         ],
         "dependency_closure_sha256": "3b0da4b57f64d1d5240de7d7762683e092994fd27c8fc730b73af07c5af2b3a0",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -48356,9 +46786,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-renderer/src/offscreen.rs",
@@ -48404,7 +46832,7 @@
           }
         ],
         "dependency_closure_sha256": "07f4560e45b7b63ea473e828fc14898682755bb5383300ed3a991fb8273b0890",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -48640,9 +47068,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/block_entity_visibility.rs",
@@ -48736,7 +47162,7 @@
           }
         ],
         "dependency_closure_sha256": "aa709f2232d8e018ffdd90db12c9a34923d46c10dda2c3b024bc543c593bb0b1",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -48973,9 +47399,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime/tests.rs",
@@ -49019,7 +47443,7 @@
           }
         ],
         "dependency_closure_sha256": "95813e10793449df6d4f4c61c6bad45d3a7d6486d0bea15aa4474e467398ba70",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -49179,9 +47603,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/entity_scene.rs",
@@ -49252,7 +47674,7 @@
           }
         ],
         "dependency_closure_sha256": "13e14938f323502e2d31d7755f23366d1efe58b74c6c7325bc79c5771b6034b3",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -49405,9 +47827,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime/render_extract.rs",
@@ -49467,7 +47887,7 @@
           }
         ],
         "dependency_closure_sha256": "163b431139dc80be4a9db3407ca95a99779cdaa4c83cc33dceb67135818ee19d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -49604,9 +48024,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/rendering/block-rendering.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-renderer/src/terrain/mesh/tests.rs",
@@ -49631,7 +48049,7 @@
           }
         ],
         "dependency_closure_sha256": "3e1cb0bcc5b86fcac2bff37033e9634bce4cd7c3337124d682ad0d618d7fd0b2",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -49841,7 +48259,7 @@
           }
         ],
         "dependency_closure_sha256": "13696b1e0fe2f877bc77396dcdca306afdb98c9f1b52f230adc5e35a6085dcba",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
           "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
@@ -50064,7 +48482,7 @@
           }
         ],
         "dependency_closure_sha256": "3a1b670abe258b94b49097de8344ca5dedd8636bdc8f0f79db44eb499bbb46f7",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -50273,7 +48691,7 @@
           }
         ],
         "dependency_closure_sha256": "fc118221d6232392f66bd9a928819979069815215a059cd51abff9ffecc8ae12",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/camera_fov.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -50619,7 +49037,7 @@
           }
         ],
         "dependency_closure_sha256": "302905a39e54d74af692f61818f0b11a6351671dacde22b4a6fa9b270fffbbcf",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
@@ -50791,7 +49209,7 @@
           }
         ],
         "dependency_closure_sha256": "fe74525bab6753e00b0629cbcc5219aaae1d810b4001c42988b759210c90cc78",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -50934,9 +49352,7 @@
         "repo:scripts/playable_gate.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/death_screen.rs",
@@ -50985,7 +49401,7 @@
           }
         ],
         "dependency_closure_sha256": "5767e51d48213ebfe54fc4bea4a6e7f1580821ac5c9855edc932e5b9794e1cec",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -51158,7 +49574,7 @@
           }
         ],
         "dependency_closure_sha256": "9ab45f9ab7af4dc1507bdb52c7ad91aa4fefeff902bbb670cffdb1fa73755212",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -51306,7 +49722,7 @@
           }
         ],
         "dependency_closure_sha256": "a004d23fb88cf57ac28bb53007d52ba879c8d98b81cec9d87135adfe9af09ba5",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -51427,9 +49843,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -51488,7 +49902,7 @@
           }
         ],
         "dependency_closure_sha256": "845da25495b24bec8d2d409aceb2f6fefe84a4e34915e6ef9a29026d512b790e",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -51605,7 +50019,7 @@
           }
         ],
         "dependency_closure_sha256": "fa7f9e3e7ae61f35f3452ee996cfb5801c128eddc7380f44854f448c6701fe0c",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-render-types/src/text_visual_order.rs",
           "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
@@ -51849,7 +50263,7 @@
           }
         ],
         "dependency_closure_sha256": "e1c12968ae36aed7f8d0a275422e481feabb9c7b81ea03a4e5692c9be23e1971",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -52133,7 +50547,7 @@
           }
         ],
         "dependency_closure_sha256": "71f8c947f48f101c81c2edc8c414204c23f1b9cab46d61966d8e92206eb9ebe6",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -52276,7 +50690,7 @@
           }
         ],
         "dependency_closure_sha256": "a7cfc1a20da96fd9a662bdffcf41b27cc0536cbdd47299e4d099edfbf097df0e",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
           "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
@@ -52389,7 +50803,7 @@
           }
         ],
         "dependency_closure_sha256": "7387c0e0741b5bdbd73c6cd2018505a409f8dae7388ff4823c3f742210e374ec",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
           "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
@@ -52557,7 +50971,7 @@
           }
         ],
         "dependency_closure_sha256": "99434f4bb1b54ce48b63c5d1616cb5fcfb5bfa75379fc2961842254890cfa1f2",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -52841,7 +51255,7 @@
           }
         ],
         "dependency_closure_sha256": "ce74f64e9f41197206b7542af246566bb70aac0dc45b9152cb5ece818350a410",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -53148,7 +51562,7 @@
           }
         ],
         "dependency_closure_sha256": "6e1058f4b2d3cb3c42e33fe52f1490d6cd369a0ce101dd626900e79f5e12aae6",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -53483,7 +51897,7 @@
           }
         ],
         "dependency_closure_sha256": "577cb0708295a95372e4aa6f4a1d6d3a3af9eb868dc395106469368e5a097834",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -53826,7 +52240,7 @@
           }
         ],
         "dependency_closure_sha256": "442d925800d7220f05a2e089b183c7d5e3fcff00410c26515c0fbee5db887d33",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -54088,7 +52502,7 @@
           }
         ],
         "dependency_closure_sha256": "b431bc30288a099af5f67a1ec1f25e0ffc1dc252a3b66e9b615ff9efa9e1e67f",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -54356,7 +52770,7 @@
           }
         ],
         "dependency_closure_sha256": "b71977adf789a92409dce908ede5cc74b0623acec5bcb072d8ed8c4702db03a9",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -54652,7 +53066,7 @@
           }
         ],
         "dependency_closure_sha256": "c97370939711e657a55caa1951f94048f566972ac5b995a41601f27867aeb8ea",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -54846,7 +53260,7 @@
           }
         ],
         "dependency_closure_sha256": "a668258f275bf6857e3ee7b871745759e750a4fed634da3ebe665272979791fa",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -55149,7 +53563,7 @@
           }
         ],
         "dependency_closure_sha256": "df3b8876b46787126e18c893239388e763062240e2d7d7e35ff4caf5179eb861",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -55589,7 +54003,7 @@
           }
         ],
         "dependency_closure_sha256": "f3069d3fa2fe5699a2c5eeb19b9fccc552bdf5b081e3d1c6673492cef55eec3b",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -56001,7 +54415,7 @@
           }
         ],
         "dependency_closure_sha256": "091704a83ef0363bd7213856912789434eadf116044e4fbedfe687eac3c8ee35",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -56153,7 +54567,7 @@
           }
         ],
         "dependency_closure_sha256": "d5759085251fe280760f5f14f3deb530b1fea81c4df125b29e9feba230709a6b",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -56283,9 +54697,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -56296,7 +54708,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -56380,9 +54792,7 @@
         "repo:docs/wiki/architecture/client-boundaries.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/architecture/client-boundaries.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-item-model/src/item_runtime/tests.rs",
@@ -56409,7 +54819,7 @@
           }
         ],
         "dependency_closure_sha256": "1efe28328f0e65af7f859cc6b449e6a57db8bff6eea9517f2cf3ecb9114ae973",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
@@ -56538,10 +54948,7 @@
         "repo:crates/bbb-world/src/client/social.rs"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "docs/wiki/architecture/offline-runtime.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -56799,7 +55206,7 @@
           }
         ],
         "dependency_closure_sha256": "14044586b6350daa7a99548bf9021bbabea7ececfe904c84b44928def68e3edc",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -57263,7 +55670,7 @@
           }
         ],
         "dependency_closure_sha256": "d94f6c0e7e8a459b67df72ee17e8c6afd41ca0e6449fb4b6293bd13e50c324c8",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -57428,9 +55835,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/evidence/macos-native-retina/current-wgpu30-baseline.json",
@@ -57464,7 +55869,7 @@
           }
         ],
         "dependency_closure_sha256": "f616918df728d83273b0f54b29542efa93ae7e26ab6f047cf0ff7ef1be446433",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/evidence/macos-native-retina/current-wgpu30-baseline.json",
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
@@ -57622,9 +56027,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
@@ -57650,7 +56053,7 @@
           }
         ],
         "dependency_closure_sha256": "884893614701f8ff0bd2d041d88ca692ef5bc9ed64bf6298e638a97bb06177dc",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/gpu_duration_capture.py",
@@ -57922,7 +56325,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -58115,7 +56518,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -58247,9 +56650,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58260,7 +56661,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58331,9 +56732,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58344,7 +56743,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58441,9 +56840,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58454,7 +56851,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58586,9 +56983,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58599,7 +56994,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58771,9 +57166,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58784,7 +57177,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58883,9 +57276,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58896,7 +57287,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58969,9 +57360,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -58982,7 +57371,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59076,9 +57465,7 @@
         "repo:scripts/client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -59096,7 +57483,7 @@
           }
         ],
         "dependency_closure_sha256": "3d476bbe1f3915fe7f273b0ceae1ee4d812633813761d065a7364a1ded346c45",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -59429,9 +57816,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -59442,7 +57827,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59515,9 +57900,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -59528,7 +57911,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59655,9 +58038,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -59668,7 +58049,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59771,9 +58152,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -59784,7 +58163,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59883,9 +58262,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -59896,7 +58273,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60015,9 +58392,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -60028,7 +58403,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60095,9 +58470,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -60108,7 +58481,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60235,9 +58608,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -60248,7 +58619,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60319,9 +58690,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -60332,7 +58701,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60403,9 +58772,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -60416,7 +58783,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60485,9 +58852,7 @@
         "repo:docs/unsupported-features.md"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -60498,7 +58863,7 @@
           }
         ],
         "dependency_closure_sha256": "a1be3126227672cf3595464201f619aa335abe9636cd3ab66025aeb657d0000d",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -60630,9 +58995,7 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/docs_wiki_lint.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "scripts/bbb_tools/executable_identity.py",
@@ -60672,7 +59035,7 @@
           }
         ],
         "dependency_closure_sha256": "0f44ecf79dd8edadb860f4a2c3f6bbfafa6f54df74637af7cb91cbc20b3a4a1b",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -61121,10 +59484,7 @@
         "repo:scripts/tests/test_parity_acceptance.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/docs_wiki_lint.py",
-          "scripts/tests/test_docs_lint.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "scripts/docs_wiki_lint.py",
@@ -61158,7 +59518,7 @@
           }
         ],
         "dependency_closure_sha256": "263fb0f82af33209b65797f566b6537d3eb71f8bdc8eeb264a929b88af7d4f6a",
-        "evidence_commit": "99404ca16b1a7cdf5ffbef229bd27d68cdf4f9c7",
+        "evidence_commit": "5f61d65447d9794a5214c791f08f1df0373b0235",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
           "scripts/parity_acceptance.py#mechanism_source_hashes",
@@ -61186,7 +59546,7 @@
           ],
           "kind": "state-trace",
           "scenario_id": "focused-docs-chinese-mechanism-wiki",
-          "status": "invalid"
+          "status": "passed"
         }
       ],
       "final_conclusion": "open",
@@ -61195,70 +59555,70 @@
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_broken_wiki_link_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_duplicate_mechanism_id_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_equivalent_row_without_locatable_evidence_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_inventory_mechanism_without_matrix_row_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_open_parity_state_without_ledger_or_goal_route_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_parity_matrix_hardcoded_generated_counts_fail",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_stale_bbb_evidence_symbol_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_stale_inventory_source_hash_fails",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_docs_lint.py#test_valid_zero_ready_maintenance_state_passes",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "d3ab98bf80b7663f8065e581aa2032d20d01d9739065c028355e24961443d368"
         },
         {
           "command": "scripts/dev test python --suite all",
           "ignored": false,
           "reference": "scripts/tests/test_parity_acceptance.py#test_docs_workflow_does_not_invent_vanilla_owner_from_evidence_prose",
-          "result": "focused-evidence-pending",
+          "result": "passed-via-full-gate",
           "source_sha256": "c73b186e342cc95e67051aa13fdacc7e8708c1000e94af69e36f76aa7255b3a9"
         }
       ],
@@ -61271,7 +59631,6 @@
       },
       "mechanism_id": "docs-chinese-mechanism-wiki",
       "open_reasons": [
-        "focused-evidence-pending",
         "formal-receipt-pending"
       ],
       "required_validation_classes": [
@@ -61391,7 +59750,7 @@
         "docs-chinese-mechanism-wiki"
       ],
       "scenario_id": "focused-docs-chinese-mechanism-wiki",
-      "status": "invalid"
+      "status": "passed"
     },
     {
       "artifact_ids": [
@@ -65319,7 +63678,6 @@
     "consistency_gate_passed": false,
     "formal_performance_allowed": false,
     "implementation_blocking_ids": [
-      "docs-chinese-mechanism-wiki",
       "resources-default-pack-stack"
     ],
     "implementation_ready": false,
