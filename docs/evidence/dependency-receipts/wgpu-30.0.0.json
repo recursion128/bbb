@@ -1,1 +1,41 @@
-{"cargo_lock_sha256":"edbaa27e7b2a079f26adcded64ea28d779c341e740c3f94474ccdcdc6305e8fd","cargo_toml_sha256":"c7d85d7687b7d38a169f15e563393e5b12196e9a35b83323303d666035ad3a4f","direct_wgpu_hal_dependency":false,"local_wgpu_hal_patch":false,"packages":{"naga":{"checksum":"23bf0a141a9ab6f07dbb492db53245e464bc9db42f407772d9ae03d83a2c1033","version":"30.0.0"},"wgpu":{"checksum":"6d8f4bd44d92da5270f03409dba9f952dab24f128e05d6a554926101d1bf9114","version":"30.0.0"},"wgpu-core":{"checksum":"08763620e76fc980bca7bf84de82568614487a53172dd968d89187282eb87fa2","version":"30.0.0"},"wgpu-hal":{"checksum":"cf765132d8d5f50e192e7880464890c13f4e7457aafe8e5466e8174586e9f101","version":"30.0.0"},"wgpu-types":{"checksum":"1a9c93c2b35edde326df60ffdee4c0f5864eac3011d6768b70d43f028ad93565","version":"30.0.0"}},"registry_source":"registry+https://github.com/rust-lang/crates.io-index","schema":1,"upstream_metal_fence_strategy":{"commit":"e0a6065c65b5b6c2e92ee7052ed084cd8910d486","commit_url":"https://github.com/gfx-rs/wgpu/commit/e0a6065c65b5b6c2e92ee7052ed084cd8910d486","first_release":"wgpu 30.0.0","fixes_issue":8119,"release_url":"https://github.com/gfx-rs/wgpu/releases/tag/v30.0.0","strategy":"completion-handler condition-variable wait","title":"fix(metal): Wait using a condition variable instead of polling"},"vendored_wgpu_hal":false,"workspace_dependency":"wgpu = 30.0.0"}
+{
+  "schema": 1,
+  "workspace_dependency": "wgpu = 30.0.0",
+  "cargo_toml_sha256": "7a54f6aa431d14ec10e479e42f38fdeb0b22f7fa4e36e2f89a7bbbfc72feea0b",
+  "cargo_lock_sha256": "6e1966ac3233c3cf4ea096bec2f60215cb30ef74dce5f9251e1a62c66dbdabbf",
+  "registry_source": "registry+https://github.com/rust-lang/crates.io-index",
+  "packages": {
+    "naga": {
+      "version": "30.0.0",
+      "checksum": "23bf0a141a9ab6f07dbb492db53245e464bc9db42f407772d9ae03d83a2c1033"
+    },
+    "wgpu": {
+      "version": "30.0.0",
+      "checksum": "6d8f4bd44d92da5270f03409dba9f952dab24f128e05d6a554926101d1bf9114"
+    },
+    "wgpu-core": {
+      "version": "30.0.0",
+      "checksum": "08763620e76fc980bca7bf84de82568614487a53172dd968d89187282eb87fa2"
+    },
+    "wgpu-hal": {
+      "version": "30.0.0",
+      "checksum": "cf765132d8d5f50e192e7880464890c13f4e7457aafe8e5466e8174586e9f101"
+    },
+    "wgpu-types": {
+      "version": "30.0.0",
+      "checksum": "1a9c93c2b35edde326df60ffdee4c0f5864eac3011d6768b70d43f028ad93565"
+    }
+  },
+  "local_wgpu_hal_patch": false,
+  "vendored_wgpu_hal": false,
+  "direct_wgpu_hal_dependency": false,
+  "upstream_metal_fence_strategy": {
+    "first_release": "wgpu 30.0.0",
+    "commit": "e0a6065c65b5b6c2e92ee7052ed084cd8910d486",
+    "title": "fix(metal): Wait using a condition variable instead of polling",
+    "strategy": "completion-handler condition-variable wait",
+    "fixes_issue": 8119,
+    "commit_url": "https://github.com/gfx-rs/wgpu/commit/e0a6065c65b5b6c2e92ee7052ed084cd8910d486",
+    "release_url": "https://github.com/gfx-rs/wgpu/releases/tag/v30.0.0"
+  }
+}

@@ -2,8 +2,8 @@
   "schema": 1,
   "audit_as_of": "2026-08-12",
   "inputs": {
-    "Cargo.toml_sha256": "c7d85d7687b7d38a169f15e563393e5b12196e9a35b83323303d666035ad3a4f",
-    "Cargo.lock_sha256": "edbaa27e7b2a079f26adcded64ea28d779c341e740c3f94474ccdcdc6305e8fd",
+    "Cargo.toml_sha256": "7a54f6aa431d14ec10e479e42f38fdeb0b22f7fa4e36e2f89a7bbbfc72feea0b",
+    "Cargo.lock_sha256": "6e1966ac3233c3cf4ea096bec2f60215cb30ef74dce5f9251e1a62c66dbdabbf",
     "cargo_metadata": "cargo metadata --format-version 1 --locked",
     "latest_release_rule": "crates.io max_stable_version; prerelease and yanked excluded",
     "rustsec_database_commit": "d0861df1eab469d3c58d6b836ce48b5766e5f217",
@@ -1427,11 +1427,11 @@
     {
       "name": "pollster",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.3",
+      "manifest_constraint": "1.0.1",
       "locked": {
-        "version": "0.3.0",
+        "version": "1.0.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
+        "checksum": "bc6355899e1c9462875b6757c79f3caa011a1fdae12bbb1a2e72dd1f234f8336"
       },
       "latest_stable": {
         "version": "1.0.1",
@@ -1463,14 +1463,14 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.69"
       },
       "modernization": {
         "group": "bootstrap-blocking",
-        "decision": "upgrade-planned",
-        "rationale": "bounded bootstrap-blocking migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded bootstrap-blocking migration is resolved at latest stable"
       }
     },
     {
