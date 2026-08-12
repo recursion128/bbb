@@ -247,13 +247,15 @@ SHA-256 为 `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`�
 几乎紧邻 wait 返回，surface acquire 才是对下一 application interval 相关性最强的 CPU phase；
 GPU scope 的失败要求先定位具体 GPU owner。
 
-下一有界诊断使用 `renderer-gpu-stages-v1`：只有显式 capture 才通过
-`bbb_renderer::gpu_timing=debug` 把原总时长两个 timestamp query 扩为十二个
-`PassBoundary` 边界，记录同一 submission 的 application interval、总 GPU duration 与十一段
-pass/stage duration。archive/raw/schema/逐行 stage sum 必须互证，报告按 combined、scene、run
-给出 p50/p95/p99/stddev、p99-p50、占比及同 submission 相关性。普通路径仍为两个 query；不改
-pass/order/material/workload、单 in-flight 或 wait→acquire→submit→present。归因后一次只选择
-一个有界 renderer candidate；绝不回退 0.19，也不直接放宽 submission budget。
+`renderer-gpu-stages-v1` 诊断已完成 8/8 个接电、fullscreen 2560x1600 有效 run。十个
+额外 marker pass 使详细路径不能作为性能 candidate：22 个 FPS scope 与 44 个绝对
+稳定性 scope 均拒绝它。它的同 submission 归因仍可用：transparency combine 的 combined
+mean 为 2.396 ms（占 56.05%）、p99 为 3.410 ms；opaque world 的 combined p99 为
+2.363 ms，与总 GPU duration 相关性为 0.760，chunk-boundary 中分别为 2.449 ms/0.869。
+报告为 [`gpu-stage-ac-diagnostic.json`](../../evidence/macos-native-retina/gpu-stage-ac-diagnostic.json)，
+SHA-256 `c0a1a336c74faacdf42cd17bf21509b410ec798afedb5aee86d41a7914e7a5cb`。普通路径仍只有两个
+query。下一单一有界 candidate 只将五个可选透明层的 depth fetch 延迟到该像素 alpha
+非零之后；六张纹理、插入顺序、深度排序、预乘 alpha 混合、pass/draw/workload 均不变。
 
 ## 第二平台 cross-check
 

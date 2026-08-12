@@ -268,15 +268,22 @@ restoring any row to `equivalent`.
   `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`.
   `renderer-frame-flight-v1` remains diagnostic: callback-to-wait is negligible,
   while surface acquire is the strongest next-interval correlate; none of these
-  timestamps claims actual display or photon latency. The current bounded action
-  is a full-gated `renderer-gpu-stages-v1` probe that attributes the same
-  submission's total to eleven ordered `PassBoundary` intervals and preserves
-  the original application interval. Choose one renderer candidate only after
-  combined/scene/run stage tails identify its owner. Keep the detailed query and
-  callback paths off when profiling is disabled. A queue-budget experiment
-  additionally requires an executable input-to-render/present latency contract.
-  The three previously rejected scheduling policies remain forbidden. Only a v4
-  all-scope pass can authorize official Java ABBA.
+  timestamps claims actual display or photon latency. The
+  `renderer-gpu-stages-v1` AC probe completed 8/8 valid fullscreen 2560x1600
+  runs. Its ten extra diagnostic marker passes intentionally make it ineligible
+  as a performance candidate: all 22 FPS and all 44 absolute-stability scopes
+  reject the instrumented path. The same-submission attribution identifies
+  transparency combine as the fixed GPU owner (combined mean 2.396 ms, 56.05%,
+  p99 3.410 ms) and opaque world as the dynamic tail owner (combined p99
+  2.363 ms and total-GPU correlation 0.760; chunk-boundary p99 2.449 ms and
+  correlation 0.869). Evidence is
+  `docs/evidence/macos-native-retina/gpu-stage-ac-diagnostic.json` at SHA-256
+  `c0a1a336c74faacdf42cd17bf21509b410ec798afedb5aee86d41a7914e7a5cb`.
+  The next single bounded candidate keeps all six textures, layer order, depth
+  ordering, premultiplied blend, pass order and draw/workload evidence, but
+  defers each optional layer's depth fetch until its sampled alpha is non-zero.
+  Detailed query/callback paths remain off outside explicit diagnostics. Only a
+  v4 all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

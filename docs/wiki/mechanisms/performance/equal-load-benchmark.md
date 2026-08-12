@@ -131,9 +131,14 @@ FPS 和 App 绝对指标改善，但 pair-2 FPS 及多项逐 scene/pair App/GPU 
 ABBA 前拒绝。报告是
 [`callback-observation-ac-candidate.json`](../../../evidence/macos-native-retina/callback-observation-ac-candidate.json)，
 SHA-256 `37f4070b0ddfe5f57cd4d2c0a2353ba01c787305533c4e1716b4c5834fdc7505`。callback 几乎紧邻
-wait 返回，surface acquire 对下一 application interval 的相关性最强；由于 GPU duration
-scope 同时失败，下一步先用 `renderer-gpu-stages-v1` 定位具体 GPU 尾部 owner，不能直接放宽
-submission budget，也不能把 callback、submit 或 present 返回时间称为实际显示延迟。
+wait 返回，surface acquire 对下一 application interval 的相关性最强。随后的
+`renderer-gpu-stages-v1` 诊断以 8/8 个有效 run 将同 submission 归因到十一段；其详细
+marker 路径因 22 个 FPS 与 44 个绝对稳定性 scope 失败而不是 candidate。报告
+[`gpu-stage-ac-diagnostic.json`](../../../evidence/macos-native-retina/gpu-stage-ac-diagnostic.json)（SHA-256
+`c0a1a336c74faacdf42cd17bf21509b410ec798afedb5aee86d41a7914e7a5cb`）显示 transparency combine 占
+combined GPU mean 56.05%，opaque world 则是动态尾部 owner。因此下一个有界 candidate 只延迟
+alpha 为零的可选透明层 depth fetch，不改 submission budget、pass/draw/workload，也不把
+callback、submit 或 present 返回时间称为实际显示延迟。
 
 ## 生命周期和 fallback
 

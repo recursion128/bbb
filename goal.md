@@ -490,17 +490,17 @@ built-in pack ZIP 与 Realms 对应 surface 按账本保持 `not-needed`。
 macOS 与 Linux 是声明平台，Windows 是账本附 Vanilla/产品依据的 `not-needed`。
 
 Retina 性能基础设施固定为 crates.io wgpu/core/hal/types/naga 30.0.0；不得恢复 0.19、
-path patch、vendor 或直接 `wgpu-hal` 依赖。当前 BBB baseline 是 full-gated
-`5b1903221`，release SHA-256 为
-`849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
-固定 FPS noise margin 为 0.8465%，且任何新 margin 最大不得超过 1%。
+path patch、vendor 或直接 `wgpu-hal` 依赖。后续 candidate 只与账本/evidence 锁定的
+full-gated wgpu 30 BBB baseline 比较，固定 FPS noise margin 为 0.8465%，任何新
+margin 最大不得超过 1%。baseline commit、binary hash、重复采集数据与失败
+candidate 只记录在账本、evidence 和归档，不写入本文件。
 
 当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。诊断面由
 profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
-十一段有序 `PassBoundary` duration。下一步只采集 full-gated GPU-stage diagnostic probe，按
-combined/scene/run 的 p50/p95/p99/stddev、p99-p50、占比和相关性定位尾部 owner，再选择一个
-有界 renderer 优化；不得借诊断改动 pass/order/material/workload。未开启详细诊断时保持两个
+十一段有序 `PassBoundary` duration。当前唯一动作是根据最新已归档的 GPU-stage evidence，
+审计 transparency-combine 与 opaque-world 的真实消费者，然后只选择一个不减少可见
+workload 的有界 renderer candidate。未开启详细诊断时保持两个
 timestamp query，未开启 profiler 时不得增加热路径 query/callback；不得改变 FIFO/Linux、
 surface fallback、可见 geometry 或输入生命周期。任何 queue-budget 候选还必须先建立可执行的
 input-to-render/present latency 合同；不能把 callback、submit 或 present 返回时间冒充实际显示。
