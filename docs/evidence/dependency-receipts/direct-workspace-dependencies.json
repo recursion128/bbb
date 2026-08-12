@@ -639,7 +639,7 @@
         "source": "https://crates.io/api/v1/crates/glam"
       },
       "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
-      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "0bdc6ec720def32193a927c497962c89f2ff9a66",
       "dependency_classes": [
         "runtime"
       ],
