@@ -322,6 +322,13 @@ restoring any row to `equivalent`.
   `be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24`.
   This diagnostic does not authorize a deeper queue or claim candidate performance;
   any acquire-policy experiment remains an independent full-gated candidate.
+  The current bounded experiment uses frame-phase schema v3 to record a
+  `post_present_fence_submit` phase. On macOS Immediate only, an empty same-queue
+  submit is placed after wgpu's internal Metal present command buffer and its
+  fence becomes the next frame's single owned wait point. Queue budget one,
+  latency hint two, three drawables, input/workload, FIFO and Linux remain fixed.
+  New captures require v3; the validator recognizes historical v2 archives from
+  their exact column set and never fabricates the new phase for old evidence.
   Detailed query/callback paths remain off outside explicit diagnostics. Only a
   v4 all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,

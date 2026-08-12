@@ -77,6 +77,7 @@ pub(crate) struct DebugProfilerFramePhases {
     pub(crate) presentation_tail_encode: f64,
     pub(crate) queue_submit: f64,
     pub(crate) swap_buffers_present: f64,
+    pub(crate) post_present_fence_submit: f64,
     pub(crate) gpu_async_poll: f64,
     pub(crate) render_call_total: f64,
 }
@@ -144,6 +145,7 @@ impl From<RendererFrameProfile> for DebugProfilerFramePhases {
             presentation_tail_encode: duration_nanos(profile.presentation_tail_encode) as f64,
             queue_submit: duration_nanos(profile.queue_submit) as f64,
             swap_buffers_present: duration_nanos(profile.swap_buffers_present) as f64,
+            post_present_fence_submit: duration_nanos(profile.post_present_fence_submit) as f64,
             gpu_async_poll: duration_nanos(profile.gpu_async_poll) as f64,
             render_call_total: duration_nanos(profile.render_call_total) as f64,
         }

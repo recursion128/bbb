@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 const SAMPLE_COUNT: usize = 600;
-const PHASE_COUNT: usize = 19;
+const PHASE_COUNT: usize = 20;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct FramePhaseSample {
@@ -25,6 +25,7 @@ pub(crate) struct FramePhaseSample {
     pub(crate) presentation_tail_encode: Duration,
     pub(crate) queue_submit: Duration,
     pub(crate) swap_buffers_present: Duration,
+    pub(crate) post_present_fence_submit: Duration,
     pub(crate) gpu_async_poll: Duration,
     pub(crate) legacy_render_encode: Duration,
     pub(crate) publish: Duration,
@@ -49,6 +50,7 @@ impl FramePhaseSample {
             duration_nanos(self.presentation_tail_encode),
             duration_nanos(self.queue_submit),
             duration_nanos(self.swap_buffers_present),
+            duration_nanos(self.post_present_fence_submit),
             duration_nanos(self.gpu_async_poll),
             duration_nanos(self.legacy_render_encode),
             duration_nanos(self.publish),
@@ -186,31 +188,39 @@ impl FramePhaseDiagnostics {
                 summaries[12].prior_interval_correlation,
             swap_buffers_present_next_interval_correlation =
                 summaries[12].next_interval_correlation,
-            gpu_async_poll_p50_us = micros(summaries[13].p50),
-            gpu_async_poll_p95_us = micros(summaries[13].p95),
-            gpu_async_poll_p99_us = micros(summaries[13].p99),
-            gpu_async_poll_stddev_us = nanos_to_micros(summaries[13].stddev),
-            gpu_async_poll_prior_interval_correlation = summaries[13].prior_interval_correlation,
-            gpu_async_poll_next_interval_correlation = summaries[13].next_interval_correlation,
-            retired_submission_render_to_callback_p50_us = micros(summaries[16].p50),
-            retired_submission_render_to_callback_p95_us = micros(summaries[16].p95),
-            retired_submission_render_to_callback_p99_us = micros(summaries[16].p99),
-            retired_submission_render_to_callback_stddev_us = nanos_to_micros(summaries[16].stddev),
+            post_present_fence_submit_p50_us = micros(summaries[13].p50),
+            post_present_fence_submit_p95_us = micros(summaries[13].p95),
+            post_present_fence_submit_p99_us = micros(summaries[13].p99),
+            post_present_fence_submit_stddev_us = nanos_to_micros(summaries[13].stddev),
+            post_present_fence_submit_prior_interval_correlation =
+                summaries[13].prior_interval_correlation,
+            post_present_fence_submit_next_interval_correlation =
+                summaries[13].next_interval_correlation,
+            gpu_async_poll_p50_us = micros(summaries[14].p50),
+            gpu_async_poll_p95_us = micros(summaries[14].p95),
+            gpu_async_poll_p99_us = micros(summaries[14].p99),
+            gpu_async_poll_stddev_us = nanos_to_micros(summaries[14].stddev),
+            gpu_async_poll_prior_interval_correlation = summaries[14].prior_interval_correlation,
+            gpu_async_poll_next_interval_correlation = summaries[14].next_interval_correlation,
+            retired_submission_render_to_callback_p50_us = micros(summaries[17].p50),
+            retired_submission_render_to_callback_p95_us = micros(summaries[17].p95),
+            retired_submission_render_to_callback_p99_us = micros(summaries[17].p99),
+            retired_submission_render_to_callback_stddev_us = nanos_to_micros(summaries[17].stddev),
             retired_submission_render_to_callback_next_interval_correlation =
-                summaries[16].next_interval_correlation,
-            retired_submission_submit_to_callback_p50_us = micros(summaries[17].p50),
-            retired_submission_submit_to_callback_p95_us = micros(summaries[17].p95),
-            retired_submission_submit_to_callback_p99_us = micros(summaries[17].p99),
-            retired_submission_submit_to_callback_stddev_us = nanos_to_micros(summaries[17].stddev),
-            retired_submission_submit_to_callback_next_interval_correlation =
                 summaries[17].next_interval_correlation,
-            retired_submission_callback_to_wait_return_p50_us = micros(summaries[18].p50),
-            retired_submission_callback_to_wait_return_p95_us = micros(summaries[18].p95),
-            retired_submission_callback_to_wait_return_p99_us = micros(summaries[18].p99),
-            retired_submission_callback_to_wait_return_stddev_us =
-                nanos_to_micros(summaries[18].stddev),
-            retired_submission_callback_to_wait_return_next_interval_correlation =
+            retired_submission_submit_to_callback_p50_us = micros(summaries[18].p50),
+            retired_submission_submit_to_callback_p95_us = micros(summaries[18].p95),
+            retired_submission_submit_to_callback_p99_us = micros(summaries[18].p99),
+            retired_submission_submit_to_callback_stddev_us = nanos_to_micros(summaries[18].stddev),
+            retired_submission_submit_to_callback_next_interval_correlation =
                 summaries[18].next_interval_correlation,
+            retired_submission_callback_to_wait_return_p50_us = micros(summaries[19].p50),
+            retired_submission_callback_to_wait_return_p95_us = micros(summaries[19].p95),
+            retired_submission_callback_to_wait_return_p99_us = micros(summaries[19].p99),
+            retired_submission_callback_to_wait_return_stddev_us =
+                nanos_to_micros(summaries[19].stddev),
+            retired_submission_callback_to_wait_return_next_interval_correlation =
+                summaries[19].next_interval_correlation,
             "renderer CPU phase tail diagnostics"
         );
         self.clear();

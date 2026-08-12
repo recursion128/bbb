@@ -79,13 +79,19 @@ sidecar 一致，并输出 combined/scene/run 的 p50/p95/p99/stddev、supersede
 终点固定表述为 `present-call-return-software-boundary-not-display-or-photon`：它不包含 compositor、
 scanout、面板或光子延迟。未启用时 enqueue 不读取时钟，详细 receipt 不进入热路径；该诊断不改变
 输入应用、workload、queue budget 或 wait→acquire→submit→present 顺序。
-当前 frame-phase schema v2 进一步把 macOS Immediate 上一 submission 的 non-blocking
+frame-phase schema v2 把 macOS Immediate 上一 submission 的 non-blocking
 completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
 `poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。
 该 schema 不授权 completion-poll 策略：full-gated `36bd347d7` 的接电 paired A/B 仅在
 110/17,252 候选帧跳过 blocking wait，并产生 49 条 FPS/绝对稳定性 failure，已由
 `completion-poll-ac-candidate.json` 在 Vanilla ABBA 前拒绝。恢复后的固定 budget-one
 策略将 poll 列写零，继续保留 blocking/total 诊断与旧 Linux/report 兼容。
+当前 schema v3 在 v2 基础上新增 `post_present_fence_submit`：macOS Immediate 可在 wgpu
+内部 Metal present command buffer 后追加同 queue 的空 submission，并让下一帧等待该 marker
+fence；该列只量化 marker submit 的 CPU 调用时长，不把 present-call return 误称为实际显示完成。
+parser 按 archive 的精确列集合识别 v2/v3；新 BBB capture 显式要求 v3，历史 v2 archive 继续
+按原列复验。混合 wgpu30 baseline/candidate 报告只在双方共同 phase 上做 combined 聚合，逐 run
+仍保留 candidate 的 marker phase，禁止以缺列补零伪造历史样本。
 当前 repo evidence `docs/evidence/macos-native-retina/frame-phase-diagnostic.json` 来自
 full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715af` 按 lag-1
 口径复算；它触发的等价 flight-controller 重构已在 full-gated `9802b1ef5` 完成，仍保持

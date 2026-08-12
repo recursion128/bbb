@@ -245,6 +245,10 @@ impl DebugProfilerFrameMetrics {
                 ("presentation_tail_encode", phases.presentation_tail_encode),
                 ("queue_submit", phases.queue_submit),
                 ("swap_buffers_present", phases.swap_buffers_present),
+                (
+                    "post_present_fence_submit",
+                    phases.post_present_fence_submit,
+                ),
                 ("gpu_async_poll", phases.gpu_async_poll),
                 ("render_call_total", phases.render_call_total),
             ] {
@@ -592,6 +596,7 @@ mod tests {
                         presentation_tail_encode: 4.0,
                         queue_submit: 5.0,
                         swap_buffers_present: 6.0,
+                        post_present_fence_submit: 9.0,
                         gpu_async_poll: 7.0,
                         render_call_total: 95.0,
                     }),
@@ -688,7 +693,7 @@ mod tests {
         assert!(files["chunk rendering"]
             .contains("@tick,lastViewDistance,renderedChunks,totalChunks\n1,12,5,8\n2,12,6,9\n"));
         assert!(files["frame phases"].contains(
-            "@tick,application_frame_interval,cpu_encode_before_wait,gpu_async_poll,presentation_tail_encode,previous_submission_blocking_wait,previous_submission_poll,previous_submission_wait,queue_submit,render_call_total,surface_acquire,swap_buffers_present\n1,100,50,7,4,12,8,20,5,95,3,6\n"
+            "@tick,application_frame_interval,cpu_encode_before_wait,gpu_async_poll,post_present_fence_submit,presentation_tail_encode,previous_submission_blocking_wait,previous_submission_poll,previous_submission_wait,queue_submit,render_call_total,surface_acquire,swap_buffers_present\n1,100,50,7,9,4,12,8,20,5,95,3,6\n"
         ));
         assert!(files["frame flight"].contains(
             "@tick,callback_to_wait_return,completion_observation_expected,completion_observation_missing,completion_observations_dropped,in_flight_depth_at_submit,render_to_callback_observed,submit_to_callback_observed\n1,2,1,0,0,1,80,30\n"

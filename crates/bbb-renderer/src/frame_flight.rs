@@ -48,6 +48,13 @@ fn in_flight_depth_after_submit(
     u32::from(in_flight_budget(platform, present_mode).is_some())
 }
 
+fn requires_post_present_fence(
+    platform: FrameFlightPlatform,
+    present_mode: wgpu::PresentMode,
+) -> bool {
+    platform == FrameFlightPlatform::MacOs && present_mode == wgpu::PresentMode::Immediate
+}
+
 /// Where `render()` sends the frame's color output. Production always draws
 /// into the window swapchain; whole-frame readback tests swap in a plain
 /// offscreen texture so the full frame-step sequence runs without a window.
@@ -218,6 +225,7 @@ pub(super) struct FrameFlightAcquisition {
 pub(super) struct FrameFlightSubmission {
     pub(super) queue_submit: Duration,
     pub(super) swap_buffers_present: Duration,
+    pub(super) post_present_fence_submit: Duration,
     pub(super) in_flight_depth_at_submit: u32,
     pub(super) queue_submitted_at: Instant,
     pub(super) present_call_returned_at: Instant,
@@ -262,8 +270,8 @@ struct PendingSubmission {
 }
 
 /// Owns the backend frame-flight lifecycle without owning visible frame work.
-/// macOS Immediate retains one in-flight submission and waits on the exact
-/// prior fence before drawable acquisition.
+/// macOS Immediate retains one in-flight frame and waits on the exact marker
+/// fence ordered after its present before the next drawable acquisition.
 pub(super) struct FrameFlightController {
     #[cfg(target_os = "macos")]
     previous_submission: Option<PendingSubmission>,
@@ -454,11 +462,42 @@ impl FrameFlightController {
         encoder: wgpu::CommandEncoder,
         frame: FrameTarget,
         present_mode: wgpu::PresentMode,
+        profile_phases: bool,
         profile_completion: bool,
         render_started_at: Instant,
     ) -> FrameFlightSubmission {
         let submit_started_at = Instant::now();
-        let submission = queue.submit(Some(encoder.finish()));
+        let render_submission = queue.submit(Some(encoder.finish()));
+        let queue_submitted_at = Instant::now();
+        let queue_submit = queue_submitted_at.saturating_duration_since(submit_started_at);
+
+        let present_started_at = Instant::now();
+        frame.present(queue);
+        let present_call_returned_at = Instant::now();
+
+        #[cfg(target_os = "macos")]
+        let (submission_to_wait, post_present_fence_submit) =
+            if requires_post_present_fence(FrameFlightPlatform::CURRENT, present_mode) {
+                // wgpu's Metal backend commits presentation on its own command
+                // buffer. An empty submit on the same queue places the owned fence
+                // after that present without increasing BBB's one-frame budget.
+                let marker_started_at = profile_phases.then(Instant::now);
+                let marker = queue.submit(std::iter::empty::<wgpu::CommandBuffer>());
+                (
+                    marker,
+                    marker_started_at
+                        .map(|started_at| started_at.elapsed())
+                        .unwrap_or_default(),
+                )
+            } else {
+                (render_submission, Duration::ZERO)
+            };
+        #[cfg(not(target_os = "macos"))]
+        let post_present_fence_submit = {
+            let _ = (render_submission, profile_phases);
+            Duration::ZERO
+        };
+
         #[cfg(target_os = "macos")]
         let in_flight_depth_at_submit = {
             let completion_observation_id =
@@ -482,7 +521,7 @@ impl FrameFlightController {
                     None
                 };
             self.previous_submission = Some(PendingSubmission {
-                index: submission,
+                index: submission_to_wait,
                 completion_observation_id,
             });
             let in_flight_depth_at_submit =
@@ -495,19 +534,14 @@ impl FrameFlightController {
         };
         #[cfg(not(target_os = "macos"))]
         let in_flight_depth_at_submit = {
-            let _ = (submission, profile_completion, render_started_at);
+            let _ = (profile_completion, render_started_at);
             in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode)
         };
-        let queue_submitted_at = Instant::now();
-        let queue_submit = queue_submitted_at.saturating_duration_since(submit_started_at);
-
-        let present_started_at = Instant::now();
-        frame.present(queue);
-        let present_call_returned_at = Instant::now();
         FrameFlightSubmission {
             queue_submit,
             swap_buffers_present: present_call_returned_at
                 .saturating_duration_since(present_started_at),
+            post_present_fence_submit,
             in_flight_depth_at_submit,
             queue_submitted_at,
             present_call_returned_at,
@@ -518,8 +552,8 @@ impl FrameFlightController {
 #[cfg(test)]
 mod tests {
     use super::{
-        in_flight_budget, in_flight_depth_after_submit, FrameFlightPlatform,
-        MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
+        in_flight_budget, in_flight_depth_after_submit, requires_post_present_fence,
+        FrameFlightPlatform, MACOS_IMMEDIATE_IN_FLIGHT_BUDGET,
     };
 
     #[test]
@@ -558,6 +592,30 @@ mod tests {
     }
 
     #[test]
+    fn only_macos_immediate_places_the_owned_fence_after_present() {
+        assert!(requires_post_present_fence(
+            FrameFlightPlatform::MacOs,
+            wgpu::PresentMode::Immediate
+        ));
+        assert!(!requires_post_present_fence(
+            FrameFlightPlatform::Other,
+            wgpu::PresentMode::Immediate
+        ));
+        for mode in [
+            wgpu::PresentMode::Fifo,
+            wgpu::PresentMode::FifoRelaxed,
+            wgpu::PresentMode::Mailbox,
+            wgpu::PresentMode::AutoVsync,
+            wgpu::PresentMode::AutoNoVsync,
+        ] {
+            assert!(!requires_post_present_fence(
+                FrameFlightPlatform::MacOs,
+                mode
+            ));
+        }
+    }
+
+    #[test]
     fn controller_source_pins_wait_acquire_submit_present_order() {
         let source = include_str!("frame_flight.rs");
         let controller = source.find("impl FrameFlightController").unwrap();
@@ -584,15 +642,23 @@ mod tests {
             .find("queue.submit")
             .map(|offset| submit_start + offset)
             .unwrap();
-        let record_submission = source[submit..]
-            .find("self.previous_submission = Some(PendingSubmission")
+        let present = source[submit..]
+            .find("frame.present(queue)")
             .map(|offset| submit + offset)
             .unwrap();
-        let present = source[record_submission..]
-            .find("frame.present(queue)")
-            .map(|offset| record_submission + offset)
+        let post_present_marker = source[present..]
+            .find("queue.submit(std::iter::empty::<wgpu::CommandBuffer>())")
+            .map(|offset| present + offset)
             .unwrap();
-        assert!(submit < record_submission && record_submission < present);
+        let record_submission = source[post_present_marker..]
+            .find("self.previous_submission = Some(PendingSubmission")
+            .map(|offset| post_present_marker + offset)
+            .unwrap();
+        assert!(
+            submit < present
+                && present < post_present_marker
+                && post_present_marker < record_submission
+        );
         assert!(source.contains("Self::Surface(frame) => queue.present(frame)"));
     }
 
@@ -643,6 +709,9 @@ mod tests {
         let body = &source[wait..submit];
         assert!(body.contains("profile_wait.then(Instant::now)"));
         assert!(!body.contains("Instant::now();"));
+
+        let body = &source[submit..source[submit..].find("#[cfg(test)]").unwrap() + submit];
+        assert!(body.contains("profile_phases.then(Instant::now)"));
     }
 
     #[test]
@@ -669,11 +738,10 @@ mod tests {
             .find("self.previous_submission = Some(PendingSubmission")
             .map(|offset| callback + offset)
             .expect("submission ownership");
-        let present = body[record..]
+        let present = body[..callback]
             .find("frame.present(queue)")
-            .map(|offset| record + offset)
             .expect("drawable present");
-        assert!(guard < immediate && immediate < callback && callback < record && record < present);
+        assert!(present < guard && guard < immediate && immediate < callback && callback < record);
     }
 
     #[cfg(target_os = "macos")]

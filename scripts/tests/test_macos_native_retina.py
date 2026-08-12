@@ -72,6 +72,7 @@ def write_bbb_profile(path: Path) -> None:
 def write_bbb_phase_profile(
     path: Path,
     *,
+    legacy_phase_schema: bool = False,
     include_flight: bool = False,
     include_gpu_stages: bool = False,
     flight_rows: list[list[int]] | None = None,
@@ -80,7 +81,11 @@ def write_bbb_phase_profile(
     include_input_latency: bool = False,
     input_latency_rows: list[list[int]] | None = None,
 ) -> None:
-    columns = list(retina.FRAME_PHASE_COLUMNS)
+    columns = list(
+        retina.LEGACY_FRAME_PHASE_COLUMNS
+        if legacy_phase_schema
+        else retina.FRAME_PHASE_COLUMNS
+    )
     rows = [
         [
             10_000_000,
@@ -92,6 +97,7 @@ def write_bbb_phase_profile(
             200_000,
             300_000,
             20_000,
+            50_000,
             30_000,
             5_800_000,
         ],
@@ -105,6 +111,7 @@ def write_bbb_phase_profile(
             300_000,
             400_000,
             30_000,
+            60_000,
             40_000,
             8_000_000,
         ],
@@ -118,10 +125,13 @@ def write_bbb_phase_profile(
             400_000,
             500_000,
             40_000,
+            70_000,
             50_000,
             10_200_000,
         ],
     ]
+    if legacy_phase_schema:
+        rows = [row[:9] + row[10:] for row in rows]
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr(
             "client/metrics/ticking.csv",
@@ -526,6 +536,10 @@ class DisplayProbeTests(unittest.TestCase):
                 "candidate_actual_metal_drawable_count": 3,
                 "baseline_in_flight_submission_budget": 1,
                 "candidate_in_flight_submission_budget": 1,
+                "baseline_submission_fence_strategy":
+                    "render-submission-fence-legacy-log",
+                "candidate_submission_fence_strategy":
+                    "post-present-empty-submit-fence",
                 "queue_depth_increased": False,
                 "wait_acquire_submit_present_order_unchanged": True,
                 "input_latency_policy": "unchanged-single-in-flight",
@@ -784,7 +798,8 @@ class ProfilerTests(unittest.TestCase):
             "bbb",
             "renderer surface presentation selected present_mode=Immediate "
             "supported_present_modes=[Fifo, Immediate] desired_maximum_frame_latency=2 "
-            "expected_metal_drawable_count=3 in_flight_submission_budget=1\n"
+            "expected_metal_drawable_count=3 in_flight_submission_budget=1 "
+            'submission_fence_strategy="post-present-empty-submit-fence"\n'
             "native Metal layer presentation observed drawable_width=2560.0 "
             "drawable_height=1600.0 maximum_drawable_count=3",
         )
@@ -795,6 +810,10 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(presentation["actual_metal_drawable_count"], 3)
         self.assertEqual(presentation["actual_drawable_pixels"], [2560, 1600])
         self.assertEqual(presentation["in_flight_submission_budget"], 1)
+        self.assertEqual(
+            presentation["submission_fence_strategy"],
+            "post-present-empty-submit-fence",
+        )
 
     def test_runtime_dependency_receipt_parses_all_wgpu_components(self):
         receipt = retina._runtime_dependency_receipt_from_log(
@@ -823,6 +842,10 @@ class ProfilerTests(unittest.TestCase):
         self.assertEqual(presentation["actual_metal_drawable_count"], 3)
         self.assertEqual(presentation["actual_drawable_pixels"], [2560, 1600])
         self.assertIsNone(presentation["in_flight_submission_budget"])
+        self.assertEqual(
+            presentation["submission_fence_strategy"],
+            "render-submission-fence-legacy-log",
+        )
 
     def test_legacy_surface_log_does_not_promote_expectation_to_actual_evidence(self):
         presentation = retina._surface_presentation_from_log(
@@ -878,6 +901,24 @@ class ProfilerTests(unittest.TestCase):
         self.assertAlmostEqual(
             queue_submit["next_application_frame_interval_correlation"], 1.0
         )
+        self.assertEqual(
+            parsed["frame_phases"]["post_present_fence_submit"]["p99_ms"], 0.07
+        )
+
+    def test_legacy_v2_frame_phase_archive_remains_parseable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, legacy_phase_schema=True)
+
+            samples = retina.profiler_samples(profile)
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(samples["frame_phase_schema"], retina.LEGACY_FRAME_PHASE_SCHEMA)
+        self.assertEqual(parsed["frame_phase_schema"], retina.LEGACY_FRAME_PHASE_SCHEMA)
+        self.assertEqual(
+            set(parsed["frame_phases"]), set(retina.LEGACY_FRAME_PHASE_COLUMNS)
+        )
+        self.assertNotIn("post_present_fence_submit", parsed["frame_phases"])
         self.assertEqual(
             parsed["frame_phases"]["previous_submission_poll"]["p99_ms"], 0.75
         )
@@ -1399,6 +1440,46 @@ class FormalValidationTests(unittest.TestCase):
             retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
         )
 
+    def test_wgpu30_post_present_fence_receipt_preempts_metrics_on_mismatch(self):
+        evidence = wgpu30_optimization_evidence()
+        evidence["scheduling_contract"].update(
+            {
+                "baseline_submission_fence_strategy":
+                    "render-submission-fence-legacy-log",
+                "candidate_submission_fence_strategy":
+                    "post-present-empty-submit-fence",
+            }
+        )
+        for run in evidence["runs"]:
+            run["surface_presentation"]["submission_fence_strategy"] = (
+                "render-submission-fence-legacy-log"
+                if run["variant"] == "baseline"
+                else "post-present-empty-submit-fence"
+            )
+
+        self.assertEqual(
+            retina.validate_candidate_fps_evidence(evidence, "c" * 40)["status"],
+            "passed",
+        )
+        evidence["runs"][1]["surface_presentation"]["submission_fence_strategy"] = (
+            "render-submission-fence"
+        )
+        evidence["comparisons"] = "must not be parsed"
+
+        failed = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(failed["results"], [])
+        self.assertIsNone(failed["stability"])
+        mismatch = next(
+            item
+            for item in failed["failures"]
+            if item["code"] == "bbb_candidate_surface_run_mismatch"
+        )
+        self.assertIn(
+            "surface_presentation.submission_fence_strategy",
+            {item["field"] for item in mismatch["mismatches"]},
+        )
+
     def test_wgpu30_optimization_rejects_a_019_baseline_before_metrics(self):
         evidence = wgpu30_optimization_evidence()
         evidence["baseline_bbb_commit"] = retina.BASELINE_BBB_COMMIT
@@ -1694,9 +1775,60 @@ class FormalValidationTests(unittest.TestCase):
 
         self.assertFalse(report["metrics_publishable"])
         self.assertIn(
-            "lacks required renderer-frame-phases-v2 evidence",
+            "lacks required supported frame phase evidence",
             report["blockers"][0]["error"],
         )
+
+    def test_legacy_v2_phase_evidence_materializes_but_cannot_satisfy_v3_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "legacy-phase.zip"
+            write_bbb_phase_profile(profile, legacy_phase_schema=True)
+            samples = retina.profiler_samples(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            phase_samples = root / "phases.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": samples["application_frame_time"]}),
+                encoding="utf-8",
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": samples["gpu_duration"]}),
+                encoding="utf-8",
+            )
+            phase_samples.write_text(
+                json.dumps({"milliseconds": samples["frame_phases"]}),
+                encoding="utf-8",
+            )
+            run = self.run_record("bbb")
+            run["schema"] = retina.SCHEMA
+            run["profiles"] = []
+            for segment in retina.CAPTURE_SEGMENTS:
+                record = retina.parse_profiler_archive(profile)
+                record.update(
+                    {
+                        "segment": segment,
+                        "application_frame_time_samples": str(frame_samples),
+                        "gpu_duration_samples": str(gpu_samples),
+                        "frame_phase_samples": str(phase_samples),
+                    }
+                )
+                run["profiles"].append(record)
+
+            normalized, *_ = retina._materialize_formal_samples([run])
+            self.assertTrue(
+                all(
+                    profile["frame_phase_schema"]
+                    == retina.LEGACY_FRAME_PHASE_SCHEMA
+                    for profile in normalized[0]["profiles"]
+                )
+            )
+            run["required_frame_phase_schema"] = retina.FRAME_PHASE_SCHEMA
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError,
+                "requires renderer-frame-phases-v3 but archive uses renderer-frame-phases-v2",
+            ):
+                retina._materialize_formal_samples([run])
 
     def test_declared_instrumented_capture_rejects_missing_frame_flight_archive(self):
         with tempfile.TemporaryDirectory() as directory:

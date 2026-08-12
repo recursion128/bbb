@@ -500,13 +500,14 @@ profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：�
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
 十一段有序 `PassBoundary` duration；`renderer-input-latency-v1` 使用单调 sequence/timestamp
 有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
-return，并固定把终点声明为软件边界而非 display/photon latency。当前唯一动作是审计一个新的、
-有机制依据的 acquire-policy 假设；它必须保持 queue budget 1、三个 drawable、latency hint 2、
-可见 workload 与输入语义，并复用既有 input-latency 非劣门禁。不得重跑账本已经拒绝的策略。
-只有 upstream 生命周期合同与现有 phase evidence 能同时说明该假设可能降低 acquire 绝对尾部，
-才允许将其实现为单一独立 candidate；否则明确报告无 ready candidate 的 blocker，不做无界试错。
-未开启详细诊断时保持两个 timestamp query；不得改变 FIFO/Linux、surface fallback 或可见
-geometry。
+return，并固定把终点声明为软件边界而非 display/photon latency。当前唯一动作是验证
+post-present fence candidate：macOS Immediate 在 present 后追加同 Metal queue 的空 submission，
+下一帧等待该 marker fence，使 owned fence 覆盖 wgpu 独立提交的 present command buffer。
+它必须保持 queue budget 1、三个 drawable、latency hint 2、可见 workload、输入语义与
+wait→acquire→submit→present 主顺序；FIFO/Linux 不追加 marker。frame-phase v3 单列 marker
+submit duration，旧 v1/v2 evidence 继续可读。先完成 focused tests、提交与 full gate，再按既定
+AC B→C→C→B×2 判定；任一 FPS、输入延迟或绝对稳定性 scope 回退即拒绝并 fix-forward。
+未开启详细诊断时保持两个 timestamp query；不得改变 surface fallback 或可见 geometry。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝

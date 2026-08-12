@@ -4249,6 +4249,7 @@ impl Renderer {
             encoder,
             frame,
             self.config.present_mode,
+            self.frame_phase_profiling_enabled,
             self.submission_completion_profiling_enabled,
             render_started_at,
         );
@@ -4265,6 +4266,7 @@ impl Renderer {
         self.last_frame_profile.presentation_tail_encode = presentation_tail_encode;
         self.last_frame_profile.queue_submit = present_duration;
         self.last_frame_profile.swap_buffers_present = swap_buffers_duration;
+        self.last_frame_profile.post_present_fence_submit = submission.post_present_fence_submit;
         self.last_frame_profile.in_flight_depth_at_submit = submission.in_flight_depth_at_submit;
         self.last_frame_profile.input_latency = self.input_latency.complete(
             submission.queue_submitted_at,

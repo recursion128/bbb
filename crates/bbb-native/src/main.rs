@@ -2183,6 +2183,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                         presentation_tail_encode: renderer_frame_profile.presentation_tail_encode,
                         queue_submit: renderer_frame_profile.queue_submit,
                         swap_buffers_present: renderer_frame_profile.swap_buffers_present,
+                        post_present_fence_submit: renderer_frame_profile.post_present_fence_submit,
                         gpu_async_poll: renderer_frame_profile.gpu_async_poll,
                         legacy_render_encode: renderer_frame_profile.render,
                         publish: profiler_publish_duration,
@@ -2304,6 +2305,11 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                             DebugProfilerSectionSample {
                                 path: &["frame", "presentationTailEncode"],
                                 duration: renderer_frame_profile.presentation_tail_encode,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "postPresentFenceSubmit"],
+                                duration: renderer_frame_profile.post_present_fence_submit,
                                 record_in_report: true,
                             },
                             DebugProfilerSectionSample {

@@ -118,8 +118,8 @@ WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256 = (
 WGPU30_GPU_TIMESTAMP_STRATEGY = "PassBoundary"
 CANDIDATE_AB_ORDER = ("baseline", "candidate", "candidate", "baseline") * 2
 CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
-FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
-FRAME_PHASE_COLUMNS = (
+LEGACY_FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
+LEGACY_FRAME_PHASE_COLUMNS = (
     "application_frame_interval",
     "cpu_encode_before_wait",
     "previous_submission_wait",
@@ -132,6 +132,16 @@ FRAME_PHASE_COLUMNS = (
     "gpu_async_poll",
     "render_call_total",
 )
+FRAME_PHASE_SCHEMA = "renderer-frame-phases-v3"
+FRAME_PHASE_COLUMNS = (
+    *LEGACY_FRAME_PHASE_COLUMNS[:-2],
+    "post_present_fence_submit",
+    *LEGACY_FRAME_PHASE_COLUMNS[-2:],
+)
+FRAME_PHASE_CONTRACTS = {
+    LEGACY_FRAME_PHASE_SCHEMA: LEGACY_FRAME_PHASE_COLUMNS,
+    FRAME_PHASE_SCHEMA: FRAME_PHASE_COLUMNS,
+}
 FRAME_FLIGHT_SCHEMA = "renderer-frame-flight-v1"
 FRAME_FLIGHT_DURATION_COLUMNS = (
     "render_to_callback_observed",
@@ -936,6 +946,34 @@ def _read_metric_csv(archive: zipfile.ZipFile, suffix: str, column: str) -> dict
     return rows
 
 
+def _frame_phase_contract_from_archive(
+    archive: zipfile.ZipFile,
+) -> tuple[str, tuple[str, ...]] | None:
+    names = [
+        name for name in archive.namelist() if name.endswith("/metrics/frame_phases.csv")
+    ]
+    if not names:
+        return None
+    if len(names) != 1:
+        raise RetinaAcceptanceError(
+            "profiling archive must contain at most one frame_phases.csv"
+        )
+    text = archive.read(names[0]).decode("utf-8")
+    try:
+        header = next(csv.reader(text.splitlines()))
+    except (StopIteration, csv.Error) as error:
+        raise RetinaAcceptanceError("frame phase CSV header is malformed") from error
+    if not header or header[0] != "@tick" or len(header) != len(set(header)):
+        raise RetinaAcceptanceError("frame phase CSV header is malformed")
+    observed = set(header[1:])
+    for schema, columns in FRAME_PHASE_CONTRACTS.items():
+        if observed == set(columns):
+            return schema, columns
+    raise RetinaAcceptanceError(
+        f"frame phase columns do not match a supported schema: {sorted(observed)}"
+    )
+
+
 def percentile(values: Sequence[float], percent: int) -> float:
     if not values or not 0 < percent <= 100:
         raise RetinaAcceptanceError("percentile requires samples and a rank in 1..100")
@@ -1248,6 +1286,7 @@ def profiler_samples(path: Path) -> dict[str, object]:
     except (OSError, zipfile.BadZipFile) as error:
         raise RetinaAcceptanceError(f"cannot open profiling archive {path}: {error}") from error
     gpu = None
+    frame_phase_schema: str | None = None
     frame_phase_rows: dict[str, dict[int, float]] | None = None
     frame_flight_rows: dict[str, dict[int, float]] | None = None
     gpu_stage_rows: dict[str, dict[int, float]] | None = None
@@ -1259,21 +1298,14 @@ def profiler_samples(path: Path) -> dict[str, object]:
         except RetinaAcceptanceError:
             gpu_duration = None
             gpu = _read_metric_csv(archive, "/metrics/gpu.csv", "gpuUtilization")
-        phase_names = [
-            name
-            for name in archive.namelist()
-            if name.endswith("/metrics/frame_phases.csv")
-        ]
-        if phase_names:
-            if len(phase_names) != 1:
-                raise RetinaAcceptanceError(
-                    "profiling archive must contain at most one frame_phases.csv"
-                )
+        frame_phase_contract = _frame_phase_contract_from_archive(archive)
+        if frame_phase_contract is not None:
+            frame_phase_schema, frame_phase_columns = frame_phase_contract
             frame_phase_rows = {
                 column: _read_metric_csv(
                     archive, "/metrics/frame_phases.csv", column
                 )
-                for column in FRAME_PHASE_COLUMNS
+                for column in frame_phase_columns
             }
         flight_names = [
             name
@@ -1359,6 +1391,7 @@ def profiler_samples(path: Path) -> dict[str, object]:
         "gpu_duration_scope": gpu_duration_scope,
     }
     if frame_phase_rows is not None:
+        assert frame_phase_schema is not None
         expected_ticks = set(ticking)
         for column, rows in frame_phase_rows.items():
             if set(rows) != expected_ticks:
@@ -1385,6 +1418,7 @@ def profiler_samples(path: Path) -> dict[str, object]:
             column: [rows[tick] / 1_000_000.0 for tick in ordered_ticks]
             for column, rows in frame_phase_rows.items()
         }
+        result["frame_phase_schema"] = frame_phase_schema
     if frame_flight_rows is not None:
         if frame_phase_rows is None:
             raise RetinaAcceptanceError(
@@ -1552,7 +1586,7 @@ def parse_profiler_archive(path: Path) -> dict[str, object]:
     frame_phases = samples.get("frame_phases")
     if isinstance(frame_phases, Mapping):
         application_intervals = frame_phases["application_frame_interval"]
-        parsed["frame_phase_schema"] = FRAME_PHASE_SCHEMA
+        parsed["frame_phase_schema"] = samples["frame_phase_schema"]
         parsed["frame_phases"] = {
             phase: summarize_frame_phase_ms(values, application_intervals)
             for phase, values in frame_phases.items()
@@ -1795,12 +1829,34 @@ def _materialize_formal_samples(
             except (TypeError, ValueError):
                 run_schema = 0
             phase_required = run.get("client") == "bbb" and run_schema >= SCHEMA
+            required_phase_schema = run.get("required_frame_phase_schema")
+            if (
+                required_phase_schema is not None
+                and required_phase_schema not in FRAME_PHASE_CONTRACTS
+            ):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} declares unknown frame phase schema"
+                )
             if phase_required and not isinstance(archive_phases, Mapping):
                 raise RetinaAcceptanceError(
-                    f"run {run_number} {segment} lacks required {FRAME_PHASE_SCHEMA} evidence"
+                    f"run {run_number} {segment} lacks required "
+                    f"{required_phase_schema or 'supported frame phase'} evidence"
                 )
             if isinstance(archive_phases, Mapping):
-                if profile.get("frame_phase_schema") != FRAME_PHASE_SCHEMA:
+                archive_phase_schema = archive_samples.get("frame_phase_schema")
+                if archive_phase_schema not in FRAME_PHASE_CONTRACTS:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} frame phase schema is unknown"
+                    )
+                if (
+                    required_phase_schema is not None
+                    and archive_phase_schema != required_phase_schema
+                ):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} requires {required_phase_schema} "
+                        f"but archive uses {archive_phase_schema}"
+                    )
+                if profile.get("frame_phase_schema") != archive_phase_schema:
                     raise RetinaAcceptanceError(
                         f"run {run_number} {segment} frame phase schema differs"
                     )
@@ -1826,7 +1882,8 @@ def _materialize_formal_samples(
                     raise RetinaAcceptanceError(
                         f"run {run_number} {segment} frame phase sidecar differs from archive"
                     )
-                if set(materialized_phases) != set(FRAME_PHASE_COLUMNS):
+                expected_phase_columns = FRAME_PHASE_CONTRACTS[archive_phase_schema]
+                if set(materialized_phases) != set(expected_phase_columns):
                     raise RetinaAcceptanceError(
                         f"run {run_number} {segment} frame phase columns differ"
                     )
@@ -1851,7 +1908,7 @@ def _materialize_formal_samples(
                     phase_matrix[(run_number, segment, phase)] = materialized_phases[
                         phase
                     ]
-                normalized_profile["frame_phase_schema"] = FRAME_PHASE_SCHEMA
+                normalized_profile["frame_phase_schema"] = archive_phase_schema
                 normalized_profile["frame_phases"] = phase_summaries
             archive_flight = archive_samples.get("frame_flight")
             required_flight_schema = run.get("required_frame_flight_schema")
@@ -2064,8 +2121,16 @@ def _frame_phase_scope_summary(
         for run_number, profile_segment in selected
         for value in matrix[(run_number, profile_segment, "application_frame_interval")]
     ]
+    available_phases = tuple(
+        phase
+        for phase in FRAME_PHASE_COLUMNS
+        if all(
+            (run_number, profile_segment, phase) in matrix
+            for run_number, profile_segment in selected
+        )
+    )
     summaries = {}
-    for phase in FRAME_PHASE_COLUMNS:
+    for phase in available_phases:
         values = [
             value
             for run_number, profile_segment in selected
@@ -2123,8 +2188,21 @@ def _build_frame_phase_diagnostics(
                 ),
             }
         )
+    observed_current = any(key[2] == "post_present_fence_submit" for key in matrix)
+    observed_legacy = any(
+        key[2] == "application_frame_interval"
+        and (key[0], key[1], "post_present_fence_submit") not in matrix
+        for key in matrix
+    )
+    schema = (
+        "renderer-frame-phases-mixed-v2-v3"
+        if observed_current and observed_legacy
+        else FRAME_PHASE_SCHEMA
+        if observed_current
+        else LEGACY_FRAME_PHASE_SCHEMA
+    )
     return {
-        "schema": FRAME_PHASE_SCHEMA,
+        "schema": schema,
         "units": "milliseconds",
         "correlation_target": "application_frame_interval",
         "primary_correlation": "phase[n]-to-interval[n+1]",
@@ -2813,6 +2891,30 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
         failures.append(
             {"code": "bbb_candidate_scheduling_contract_mismatch", "mismatches": mismatches}
         )
+    fence_strategies: dict[str, str] | None = None
+    if (
+        "baseline_submission_fence_strategy" in contract
+        or "candidate_submission_fence_strategy" in contract
+    ):
+        fence_strategies = {
+            "baseline": "render-submission-fence-legacy-log",
+            "candidate": "post-present-empty-submit-fence",
+        }
+        for variant, expected in fence_strategies.items():
+            field = f"{variant}_submission_fence_strategy"
+            if contract.get(field) != expected:
+                failures.append(
+                    {
+                        "code": "bbb_candidate_scheduling_contract_mismatch",
+                        "mismatches": [
+                            {
+                                "field": field,
+                                "expected": expected,
+                                "actual": contract.get(field),
+                            }
+                        ],
+                    }
+                )
 
     expected_runtime = {
         **WGPU_COMPONENT_VERSIONS,
@@ -2878,6 +2980,16 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
                 for field, expected in expected_presentation
                 if presentation.get(field) != expected
             )
+            if fence_strategies is not None:
+                expected_fence_strategy = fence_strategies[expected_variant]
+                if presentation.get("submission_fence_strategy") != expected_fence_strategy:
+                    run_mismatches.append(
+                        {
+                            "field": "surface_presentation.submission_fence_strategy",
+                            "expected": expected_fence_strategy,
+                            "actual": presentation.get("submission_fence_strategy"),
+                        }
+                    )
         expected_binary_sha256 = (
             WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256
             if expected_variant == "baseline"
@@ -3914,6 +4026,9 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
     latency = required_integer("desired_maximum_frame_latency")
     expected_count_match = re.search(r"expected_metal_drawable_count=([0-9]+)", line_text)
     budget_match = re.search(r"in_flight_submission_budget=([0-9]+)", line_text)
+    fence_strategy_match = re.search(
+        r'submission_fence_strategy=(?:"([^"]+)"|([^ ]+))', line_text
+    )
     has_wgpu30_contract = expected_count_match is not None or budget_match is not None
     if has_wgpu30_contract and (expected_count_match is None or budget_match is None):
         raise RetinaAcceptanceError("BBB wgpu 30 surface presentation contract is incomplete")
@@ -3943,6 +4058,11 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
         "actual_drawable_pixels": drawable,
         "in_flight_submission_budget": (
             int(budget_match.group(1)) if budget_match is not None else None
+        ),
+        "submission_fence_strategy": (
+            (fence_strategy_match.group(1) or fence_strategy_match.group(2))
+            if fence_strategy_match is not None
+            else "render-submission-fence-legacy-log"
         ),
         "count_basis": (
             "runtime CAMetalLayer maximumDrawableCount observation"
@@ -4101,12 +4221,15 @@ def _run_client(
     audit: object,
     natives_dir: Path,
     timeout: float,
+    required_frame_phase_schema: str | None = FRAME_PHASE_SCHEMA,
     require_frame_flight: bool = False,
     require_gpu_stages: bool = False,
     require_input_latency: bool = False,
 ) -> dict[str, object]:
     if client not in {"vanilla", "bbb"}:
         raise RetinaAcceptanceError(f"unsupported formal client {client!r}")
+    if required_frame_phase_schema not in (None, *FRAME_PHASE_CONTRACTS):
+        raise RetinaAcceptanceError("unknown required frame phase schema")
     require_unlocked_macos_console()
     if artifact_dir.exists() and any(artifact_dir.iterdir()):
         raise RetinaAcceptanceError(f"run directory is not empty: {artifact_dir}")
@@ -4182,6 +4305,9 @@ def _run_client(
         "input_script": input_script,
         "screenshots": [],
         "profiles": [],
+        "required_frame_phase_schema": (
+            required_frame_phase_schema if client == "bbb" else None
+        ),
         "required_frame_flight_schema": (
             FRAME_FLIGHT_SCHEMA if client == "bbb" and require_frame_flight else None
         ),
