@@ -254,8 +254,15 @@ mean 为 2.396 ms（占 56.05%）、p99 为 3.410 ms；opaque world 的 combined
 2.363 ms，与总 GPU duration 相关性为 0.760，chunk-boundary 中分别为 2.449 ms/0.869。
 报告为 [`gpu-stage-ac-diagnostic.json`](../../evidence/macos-native-retina/gpu-stage-ac-diagnostic.json)，
 SHA-256 `c0a1a336c74faacdf42cd17bf21509b410ec798afedb5aee86d41a7914e7a5cb`。普通路径仍只有两个
-query。下一单一有界 candidate 只将五个可选透明层的 depth fetch 延迟到该像素 alpha
-非零之后；六张纹理、插入顺序、深度排序、预乘 alpha 混合、pass/draw/workload 均不变。
+query。逐层条件 depth-fetch candidate 完成 8/8 个有效 run，但产生 41 条 validator failure。combined
+FPS 192.488→192.681，App p95/p99/stddev 改善，但 App p50 从 4.8438 升至
+4.8499 ms，GPU p50/p95/stddev 从 3.7858/4.5307/1.0083 升至
+3.7868/4.5448/1.0301 ms；pair-3 preloaded 是唯一 FPS 失败。CV 只与绝对 GPU 回退同时
+诊断，不是单独 blocker。报告
+[`transparency-depth-fetch-ac-candidate.json`](../../evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json)，
+SHA-256 `d0332b5d61285b8feeda1103fe561e9bd5c86ce5ed37ce463de77355b8ed0c80`。逐层分支已恢复为
+原无条件 depth fetch，不得复用。下一个有界 candidate 只可测试一个“五层 alpha 全零”整像素
+快速路径；活跃路径、六张纹理、排序/混合、pass/draw/workload 保持不变。
 
 ## 第二平台 cross-check
 

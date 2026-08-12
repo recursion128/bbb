@@ -136,9 +136,13 @@ wait 返回，surface acquire 对下一 application interval 的相关性最强�
 marker 路径因 22 个 FPS 与 44 个绝对稳定性 scope 失败而不是 candidate。报告
 [`gpu-stage-ac-diagnostic.json`](../../../evidence/macos-native-retina/gpu-stage-ac-diagnostic.json)（SHA-256
 `c0a1a336c74faacdf42cd17bf21509b410ec798afedb5aee86d41a7914e7a5cb`）显示 transparency combine 占
-combined GPU mean 56.05%，opaque world 则是动态尾部 owner。因此下一个有界 candidate 只延迟
-alpha 为零的可选透明层 depth fetch，不改 submission budget、pass/draw/workload，也不把
-callback、submit 或 present 返回时间称为实际显示延迟。
+combined GPU mean 56.05%，opaque world 则是动态尾部 owner。随后的逐层条件 depth-fetch
+candidate 在 8/8 个同分辨率/同 workload run 中 combined FPS 小幅改善，却产生 41 条
+validator failure，因此不进入 Java ABBA。报告
+[`transparency-depth-fetch-ac-candidate.json`](../../../evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json)（SHA-256
+`d0332b5d61285b8feeda1103fe561e9bd5c86ce5ed37ce463de77355b8ed0c80`）。逐层分支已 fix-forward 恢复；
+下一有界方向只测试单一“五层 alpha 全零”快速路径，不改 submission budget、活跃路径、
+pass/draw/workload，也不把 callback、submit 或 present 返回时间称为实际显示延迟。
 
 ## 生命周期和 fallback
 

@@ -279,9 +279,22 @@ restoring any row to `equivalent`.
   correlation 0.869). Evidence is
   `docs/evidence/macos-native-retina/gpu-stage-ac-diagnostic.json` at SHA-256
   `c0a1a336c74faacdf42cd17bf21509b410ec798afedb5aee86d41a7914e7a5cb`.
-  The next single bounded candidate keeps all six textures, layer order, depth
-  ordering, premultiplied blend, pass order and draw/workload evidence, but
-  defers each optional layer's depth fetch until its sampled alpha is non-zero.
+  The per-layer conditional-depth candidate completed 8/8 valid AC runs with
+  exact surface/workload parity but produced 41 validator failures: combined FPS
+  improved 192.488→192.681 and App p95/p99/stddev improved, while App p50
+  regressed 4.8438→4.8499 ms and GPU p50/p95/stddev regressed
+  3.7858→3.7868/4.5307→4.5448/1.0083→1.0301 ms. Static and preloaded
+  scene tails, chunk-boundary GPU stddev, round 2, and many nearest-pair scopes
+  also failed; pair-3 preloaded FPS was the sole FPS rejection. CV was
+  diagnostic coincident with those absolute GPU failures, never the sole
+  blocker. Evidence is
+  `docs/evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json`
+  at SHA-256
+  `d0332b5d61285b8feeda1103fe561e9bd5c86ce5ed37ce463de77355b8ed0c80`.
+  The per-layer branch is restored to the accepted unconditional-depth path and
+  may not be reused. The next bounded candidate may test one coherent all-five-
+  layers-empty fast path while leaving the active path, all six textures, layer
+  order, depth sort, premultiplied blend, pass order and draw/workload unchanged.
   Detailed query/callback paths remain off outside explicit diagnostics. Only a
   v4 all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,

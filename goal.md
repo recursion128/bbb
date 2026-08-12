@@ -498,9 +498,10 @@ candidate 只记录在账本、evidence 和归档，不写入本文件。
 当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。诊断面由
 profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
-十一段有序 `PassBoundary` duration。当前唯一动作是根据最新已归档的 GPU-stage evidence，
-审计 transparency-combine 与 opaque-world 的真实消费者，然后只选择一个不减少可见
-workload 的有界 renderer candidate。未开启详细诊断时保持两个
+十一段有序 `PassBoundary` duration。当前唯一动作是评估 transparency-combine 的单一
+“五个可选层 alpha 全零”快速路径：只允许一个整像素分支，活跃路径保持原始无条件
+depth fetch 和插入排序，不得再用逐层分支。先用 focused shader/pixel tests 证明零层与
+活跃层输出等价，再作为独立 candidate 测量。未开启详细诊断时保持两个
 timestamp query，未开启 profiler 时不得增加热路径 query/callback；不得改变 FIFO/Linux、
 surface fallback、可见 geometry 或输入生命周期。任何 queue-budget 候选还必须先建立可执行的
 input-to-render/present latency 合同；不能把 callback、submit 或 present 返回时间冒充实际显示。
