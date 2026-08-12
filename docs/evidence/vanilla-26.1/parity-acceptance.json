@@ -405,11 +405,11 @@
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+      "bbb_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
       "digest_kind": "gate-receipt-line-v1",
       "exists": true,
       "invalid_reasons": [
-        "no clean full-gate receipt for c85956c981dc0cbabcfc8e59154e21f4e490b62a"
+        "no clean full-gate receipt for 3643ace9521dad90117f1c704dceb8124e8cb544"
       ],
       "kind": "gate",
       "mechanism_ids": [
@@ -1034,7 +1034,7 @@
       ],
       "path": "crates/bbb-item-model/src/skin_runtime.rs",
       "scenario_ids": [],
-      "sha256": "b66f6c1fc56f2cacd49c0409881587093f5d446fa16e63db86b645b0262b8ea6",
+      "sha256": "c6d9faf950ba55023862b0df160e6177befa4622c85b1328e09701d2e407f97e",
       "valid": true
     },
     {
@@ -3543,7 +3543,7 @@
       ],
       "path": "crates/bbb-net/src/resource_pack.rs",
       "scenario_ids": [],
-      "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87",
+      "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6",
       "valid": true
     },
     {
@@ -3562,7 +3562,7 @@
       ],
       "path": "crates/bbb-net/src/services_profile_keys.rs",
       "scenario_ids": [],
-      "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf",
+      "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89",
       "valid": true
     },
     {
@@ -8020,7 +8020,7 @@
       "generator_inputs": [
         {
           "path": "Cargo.lock",
-          "sha256": "6e1966ac3233c3cf4ea096bec2f60215cb30ef74dce5f9251e1a62c66dbdabbf"
+          "sha256": "7eb4310ab4bd7c7fb5248003183a605231324b58759945228e3a996d2104bb8f"
         },
         {
           "path": "scripts/file_drop_capability.py",
@@ -8039,7 +8039,7 @@
       ],
       "path": "docs/evidence/vanilla-26.1/file-drop-capability.json",
       "scenario_ids": [],
-      "sha256": "77f6770fbc99299f9164851dd35b85fa9911ae555681aa8c0c63c04d29e9351e",
+      "sha256": "2e6bfe899f0fc767cf16cf66d88f7336334db75b7a5d70013031ae7186b9f35a",
       "valid": true
     },
     {
@@ -8704,50 +8704,15 @@
       "valid": false
     }
   ],
-  "bbb_evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+  "bbb_evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
   "change_impact": {
-    "affected_mechanism_ids": [
-      "hud-frame-extract-order",
-      "platform-window-lifecycle"
-    ],
-    "base_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
-    "changed_paths": [
-      "docs/evidence/vanilla-26.1/file-drop-capability.json"
-    ],
+    "affected_mechanism_ids": [],
+    "base_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
+    "changed_paths": [],
     "functional_affected_mechanism_ids": [],
     "functional_changed_paths": [],
-    "path_impacts": [
-      {
-        "mechanism_ids": [
-          "hud-frame-extract-order",
-          "platform-window-lifecycle"
-        ],
-        "path": "docs/evidence/vanilla-26.1/file-drop-capability.json",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "draw-evidence",
-          "focused-evidence",
-          "full-gate",
-          "release-identity",
-          "vanilla-owner",
-          "visual-workload"
-        ]
-      }
-    ],
-    "required_validation_classes": [
-      "acceptance-contract",
-      "bbb-owner",
-      "draw-evidence",
-      "focused-evidence",
-      "full-gate",
-      "release-identity",
-      "vanilla-owner",
-      "visual-workload"
-    ],
+    "path_impacts": [],
+    "required_validation_classes": [],
     "validation_only_changed_paths": []
   },
   "commands": {
@@ -8849,7 +8814,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "docs/unsupported-features.md",
@@ -8876,8 +8841,8 @@
             "sha256": "76cea162624574bb57082bec10e0de30b627cce146b8f614fc8c946053384b9d"
           }
         ],
-        "dependency_closure_sha256": "cc915883ac86220140c8f82d207c77c4efc3bfc9d3e5ec4a86a62b5ab5697dff",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "66dd1e921ef09f909ed0bf1a070fb0e0642cc49ac261ebe2d9232a2755aae2bf",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
           "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
@@ -8889,9 +8854,9 @@
           "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
           "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
         ],
-        "focused_test_contract_sha256": "a4059dc9d89fab8721020f5d485454b95f1347746c6af60fdfd59c075674073a",
+        "focused_test_contract_sha256": "f97af6bf2f10721dc4384bae1f09095cbbe3f0b2a6e7760176893c83387c630c",
         "owner": "`bbb-native::startup/main/client_options`",
-        "owner_contract_sha256": "8fad1ffe71ee5120da289301bbf0c8c5be8dd436c528bc57e5703f7a572a7d6b"
+        "owner_contract_sha256": "ec27f76f71e7000d3a857fedd58b94c23382576ab673fb8b368f1a50464a2e14"
       },
       "differential_scenarios": [
         {
@@ -8995,7 +8960,7 @@
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#vanilla_proxy_arguments_fall_back_and_require_both_credentials",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/dev test python --suite all",
@@ -9130,7 +9095,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/types/connection.rs",
@@ -9166,8 +9131,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "0b72eb788a2ea3ef2531f34e1fb816ad837e31eebce487b2afbc1cb4d100ab8d",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "bae33e1f8ccaa962fc48218d61a55db3b0d4e5db10934e9fe7f32d78b2fb9991",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/main.rs#fn run_client",
           "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
@@ -9176,9 +9141,9 @@
           "crates/bbb-net/src/types/connection.rs#pub struct ClientIdentity",
           "scripts/tests/test_client_mechanism_inventory.py#test_startup_identity_owner_census_is_exact_and_has_per_owner_evidence"
         ],
-        "focused_test_contract_sha256": "80464da6edd98118dc2eff7c9a4af05fedc046668f631013a99ba3d4ff3e58e9",
+        "focused_test_contract_sha256": "07abe6ccce5e764326afeaccc4e3d1d286652ecae60e9aacc44848edee492b67",
         "owner": "`bbb-net::ClientIdentity` → net/world/server-pack",
-        "owner_contract_sha256": "2574ca305c42f287e175b946b6be789609c1467691aaee1a47936a1719053158"
+        "owner_contract_sha256": "bc6506fd04fa3d1a6885080ea2bec40b819ba98334b609f7fb2e30a39784cd1a"
       },
       "differential_scenarios": [
         {
@@ -9247,7 +9212,7 @@
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net explicit_launcher_identity_is_preserved_for_login_instead_of_rederived",
@@ -9383,7 +9348,7 @@
           }
         ],
         "dependency_closure_sha256": "4e233942123316d08a608a956314eff34b622e4448846c9cf83d6b111e11c849",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
           "crates/bbb-native/src/network_runtime.rs#idle_shutdown_is_idempotent",
@@ -9665,7 +9630,7 @@
           }
         ],
         "dependency_closure_sha256": "bd773e7b3a890fcd379c1ce0e56853f38bd99010a81909d15bb5637a1a2228f4",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -9867,7 +9832,7 @@
           }
         ],
         "dependency_closure_sha256": "7b85dcc97ed7c54121e24a67759e895868e04fb70e0e30d51dd65a09772b1bcc",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
@@ -10074,7 +10039,7 @@
           }
         ],
         "dependency_closure_sha256": "9c80180a60fea42dd2fde7e86e6660b693804ed25dd064dc5cf0ba26966fbd09",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs",
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
@@ -10290,7 +10255,7 @@
           }
         ],
         "dependency_closure_sha256": "baf1f9a96888393105d12f92d79a932804c4a5672da5ff743c8d9327be8185b8",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs#fn list_resources",
           "crates/bbb-pack/src/resources.rs#fn resource_file",
@@ -10466,7 +10431,7 @@
           }
         ],
         "dependency_closure_sha256": "951ecd848f069178efa66bc590178cb64a0d56a60671effc2c37640e6990bce9",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -10837,7 +10802,7 @@
           }
         ],
         "dependency_closure_sha256": "86965e219d28b14c0b93902af546c6ca4edbef0e55408697e67d8c68e442ab9c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -11179,7 +11144,7 @@
           }
         ],
         "dependency_closure_sha256": "3a333de06f47ae26127f1869547db53758b2573820b4c9389bc4e8427def3cb4",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -11364,7 +11329,7 @@
           }
         ],
         "dependency_closure_sha256": "d47d35c06e0f18777242b0d4dcd08796e2b27c3c5e7b5e7566b33b3e391047b3",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -11511,7 +11476,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-pack/src/resources.rs",
@@ -11601,8 +11566,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "a1251ab3112b7affca32692abf21404df4016426f670da7b0559bdce3a55a809",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "003680f0fee8c3db6866b2760b3c7a296cdaa758c4ed777e25d4474cd1f1e703",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -11641,9 +11606,9 @@
           "scripts/playable_gate.py",
           "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
         ],
-        "focused_test_contract_sha256": "5cc71f5030a0d10ec6955164a02e147c6fc1574b3ad1df58c0224369425f2922",
+        "focused_test_contract_sha256": "648f5785183c9d53aeaed9bb31dcfce22fab056a3c270346edabb155d44b528c",
         "owner": "`bbb-net::resource_pack`、native pack runtime、`bbb-pack::server_pack`",
-        "owner_contract_sha256": "07e35a8bcd1cb89c1d21d4046dcc6424eff5da0ecc277dde5a19ea149d1cba57"
+        "owner_contract_sha256": "0d367e346debca3ca01b00eb54524d29ca256845701a72274ce8d77fc50a66e2"
       },
       "differential_scenarios": [
         {
@@ -11829,84 +11794,84 @@
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#matching_requested_cache_bypasses_the_network_download_size_limit",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#requested_hash_mismatch_preserves_vanilla_target_for_next_validation",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net requested_hash_target_race_preserves_vanilla_non_truncating_create",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#requested_hash_target_race_preserves_vanilla_non_truncating_create",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_cache_initialization_vacuums_old_duplicates_and_preserves_log",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_download_enforces_stream_limit_without_content_length",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_enforces_stream_limit_without_content_length",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_download_log_records_vanilla_file_and_error_shapes",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_log_records_vanilla_file_and_error_shapes",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_download_removes_bad_requested_cache_before_network_failure",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_removes_bad_requested_cache_before_network_failure",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_reports_vanilla_progress_order_for_network_and_cache",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_uses_vanilla_socks_proxy_and_redacts_credentials",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net server_pack_download_verifies_hash_headers_and_reuses_cache",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#server_pack_download_verifies_hash_headers_and_reuses_cache",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net unhashed_download_touches_an_existing_content_addressed_file",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#unhashed_download_touches_an_existing_content_addressed_file",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net vanilla_proxy_arguments_fall_back_and_require_both_credentials",
           "ignored": false,
           "reference": "crates/bbb-net/src/resource_pack.rs#vanilla_proxy_arguments_fall_back_and_require_both_credentials",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+          "source_sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-pack options_zip_is_indexed_directly_and_materializes_only_consumed_entries",
@@ -12240,7 +12205,7 @@
           }
         ],
         "dependency_closure_sha256": "617d63622edcef0404850d4398c87fde71bc89dd433529c2d9958f3c17869ab1",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/simulation/input_commands.rs",
           "crates/bbb-pack/src/language.rs",
@@ -12489,7 +12454,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
@@ -12656,7 +12621,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
@@ -12987,7 +12952,7 @@
           }
         ],
         "dependency_closure_sha256": "1dec8158e0332fb9ad0533ee007e894c34604cc67b1469857c859cffb4555177",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -13833,7 +13798,7 @@
           }
         ],
         "dependency_closure_sha256": "ef5a8fb53103a372b97193148219ebd01a5cb8e76fe726ef0c9dbc99b506bc31",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
           "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
@@ -14102,7 +14067,7 @@
           }
         ],
         "dependency_closure_sha256": "0eb74840a5f395c367c524ef87458dcac89b52b8a5756caf5584806fa5f578aa",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
           "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
@@ -14324,7 +14289,7 @@
           }
         ],
         "dependency_closure_sha256": "cbb451f91bf97ea2fcaea4db159d0c88cd7474dc447defc1361edbd028d3ce57",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -14402,7 +14367,7 @@
           }
         ],
         "dependency_closure_sha256": "cbb451f91bf97ea2fcaea4db159d0c88cd7474dc447defc1361edbd028d3ce57",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -15208,14 +15173,14 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/services_profile_keys.rs",
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf"
+            "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89"
           },
           {
             "path": "crates/bbb-net/src/status.rs",
@@ -16374,15 +16339,15 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "b5b013cb22c1462ba2945d4fe5e152b42dd5ba3e4ce967530f59ff95ed3af9a4",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "6e8fe1ab2b49724e53dd04bcdebec1a18fd83e83d41c092cc7798a8e5803f063",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json"
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "generated protocol catalog",
-        "owner_contract_sha256": "b7870b8bfaa39b585f37e880fab8f96d4d786c5fbdc7cbda758f9dc8389fc569"
+        "owner_contract_sha256": "d679ffa567cf9cedb1da0d33ad9ec6585a3c11702e9e187aef8b93bd73fe9f7a"
       },
       "differential_scenarios": [
         {
@@ -17944,14 +17909,14 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/services_profile_keys.rs",
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf"
+            "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89"
           },
           {
             "path": "crates/bbb-net/src/status.rs",
@@ -19117,8 +19082,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "0047596aff940cac84a655691d0e7ed8c61b54ffd2700014c4b8e9ed949d6f15",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "f18583b10c38106ef93a45029cb9b0396ee4ecaa7e5b7d47676bf3656003121a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -19129,7 +19094,7 @@
         ],
         "focused_test_contract_sha256": "358902fd326252d21be094628a1c6bd5bd3fb8e0f612a215d109b34723553ab2",
         "owner": "protocol/net/world dispatch",
-        "owner_contract_sha256": "cdd085fe22a54e5c25b699b6f4a9d1db8bb3583af86d890f4bb121d2df081f91"
+        "owner_contract_sha256": "94e5ee6c62c86bd8ff8245cf16f98a1803af6b1879e0d04644d709ea60368f52"
       },
       "differential_scenarios": [
         {
@@ -20605,14 +20570,14 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/services_profile_keys.rs",
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf"
+            "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89"
           },
           {
             "path": "crates/bbb-net/src/status.rs",
@@ -21770,8 +21735,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "795d1e04fcc44c387be9157a4075a95f78fa879c48ec33a61aaf02cfa806108c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "d85173b25894b03380a6edab3965e164b461bb4595727adb1606e15acfd5bc31",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -21779,7 +21744,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "`bbb-net` login state machine",
-        "owner_contract_sha256": "f805fe00d5645b58d7230181be919b15b073634d53dea4d87ccce59065cf5bba"
+        "owner_contract_sha256": "0eff977d999aab0ba50294da91300516fbd44404363221d92c788852c7ec5e1e"
       },
       "differential_scenarios": [
         {
@@ -23083,14 +23048,14 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/services_profile_keys.rs",
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf"
+            "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89"
           },
           {
             "path": "crates/bbb-net/src/status.rs",
@@ -24248,15 +24213,15 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "bf3649f443c2aedf5e4f8a17c819f6aa2903f67a72a603497e449768aff60898",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "a61bc7da95444f0f215abecf9b3f40f15fd37ed5632a8fc723ecab3a3d68d31d",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json"
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "net configuration state machine + canonical world registry commit",
-        "owner_contract_sha256": "ed9002ea4c1e9ec72ba60fa9c82dc1d667e17ab63d154dc7b2236923968b42b7"
+        "owner_contract_sha256": "3e3c89c0bed513f754dc059168e1d5cb6077c6c0e43f593b8c5e7a3ae849712f"
       },
       "differential_scenarios": [
         {
@@ -25562,14 +25527,14 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/services_profile_keys.rs",
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf"
+            "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89"
           },
           {
             "path": "crates/bbb-net/src/status.rs",
@@ -26742,8 +26707,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "46f3e59c1c7e2d5aa5e0826096fb7f0d99466c486f56ddf28ba74447b0927399",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "8c3e1237683967928530dc3de1294c81f75ac56ec5113dc6fc33d9f88eeff7f0",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -26752,7 +26717,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "`WorldStore::apply_play_packet`、native effects",
-        "owner_contract_sha256": "7113720c5ce6f1179713d2824a656a9041d08b8cef3c96c4696c1cb010f91272"
+        "owner_contract_sha256": "d4717613da7e162d90ddd50f6e0763505a25d8273b65a04b4ea108f9aa7a5da5"
       },
       "differential_scenarios": [
         {
@@ -27584,7 +27549,7 @@
           }
         ],
         "dependency_closure_sha256": "72bc9cd11c1afea216669aef2f698be9e1f2e18d8e7436f451b72dc2448e6325",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -28450,14 +28415,14 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "d0b8c82bd5c8937e7d2cd56ae950c0da997b6ea82b940bedcb8a43337e84da87"
+            "sha256": "27d4f1db3082ff60bae3e0e1a2b991090ef295b9887ba41d5a709bda584c1fc6"
           },
           {
             "path": "crates/bbb-net/src/services_profile_keys.rs",
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "7a3bd84529986b525ec50896644354ea1312b1e71c313c107770bb7e7c63c1bf"
+            "sha256": "55a6ae63b09e7fbfa991d03b0eddce8676d012dc1dc32bdc65de971f973abd89"
           },
           {
             "path": "crates/bbb-net/src/status.rs",
@@ -29623,8 +29588,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "c18f31551a8a2cb3f67b1b4af38278db66586ec632fb3c7cc9da1d594c0524f6",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "98440dabb1b9ca4198ce5a4fb6cb348f318ef8d98a581f3dee58e597fb1da001",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -29636,7 +29601,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "native input/net command surface",
-        "owner_contract_sha256": "d8caced581719cd8e1e607b2801807eabc95e53b6ce3a4a3ffcf9dd253ff207a"
+        "owner_contract_sha256": "5a3307aedd69de1e973a1d497a723590fa280281f7b18c69a3403642a0092c9c"
       },
       "differential_scenarios": [
         {
@@ -30283,7 +30248,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -30390,7 +30355,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -30580,7 +30545,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -30694,7 +30659,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -30857,7 +30822,7 @@
           }
         ],
         "dependency_closure_sha256": "24127fc7ca4a7f8270a17912ca5a6ce96ed9742f29bafceb89b552150b3bfcfc",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -31062,7 +31027,7 @@
           }
         ],
         "dependency_closure_sha256": "962d68c78d6d79d009a776f2570b08574501939abad472de0b41450d0b845ee0",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -31299,7 +31264,7 @@
           }
         ],
         "dependency_closure_sha256": "4891fd8f3614a4f5bf73409cb941ce978b3440c6561e2195c5110ace1dee1997",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -31528,7 +31493,7 @@
           }
         ],
         "dependency_closure_sha256": "e30bd8c42ed3872671588e63d6d709d528b1a0d4f1ae17eadfe6fcb1d959a35b",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -31775,7 +31740,7 @@
           }
         ],
         "dependency_closure_sha256": "2795872bc19441ae614ceb1fdbd5a6e954b7b5f0af1f1b0ebd0cfaf52e7f6275",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32055,7 +32020,7 @@
           }
         ],
         "dependency_closure_sha256": "9aa3aad988efa737e64b75fe87cae07f4702021d11295a63e6a787d1c07fce62",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32233,7 +32198,7 @@
           }
         ],
         "dependency_closure_sha256": "2901a9e87011b6b2b78b645fb693bd5a08db155d089f70d24ae35ea7be3fdb50",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32423,7 +32388,7 @@
           }
         ],
         "dependency_closure_sha256": "34f7cff13d3d96c5675bdbd7b583847d35f1d718552843e782295611d28d31b3",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -32629,7 +32594,7 @@
           }
         ],
         "dependency_closure_sha256": "651e2e1669db661ad5bc77e989b61ad3d7d6e47034ea4a6bf35219462034fb32",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -32819,7 +32784,7 @@
           }
         ],
         "dependency_closure_sha256": "2b64032bce5bc810524e8ac140174161bd74f61b93880deae3b0c7d7d81f5dab",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33003,7 +32968,7 @@
           }
         ],
         "dependency_closure_sha256": "2823ee3fd9f65e14f20d1f2677589c91165c380feb78457c57c0a75185f68f2f",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33235,7 +33200,7 @@
           }
         ],
         "dependency_closure_sha256": "79d2fb80eab2b8876a138264d01603a2fd9fe7a51a0bc5cb5f5e78159d54a1b9",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -33460,7 +33425,7 @@
           }
         ],
         "dependency_closure_sha256": "f598a60dfde45628b9a8a3c4d47cbbcd7f269941b42bcadd7e781d1102c3f16e",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -33690,7 +33655,7 @@
           }
         ],
         "dependency_closure_sha256": "54394f5a200bc05ad4798b30908ee2e4e459d9c17c568383c6e8613307581afa",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -33880,7 +33845,7 @@
           }
         ],
         "dependency_closure_sha256": "ba741c7e046ccf1064758fe2ad90000c2fafba9d336907b76f5d789814fe03c9",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -34083,7 +34048,7 @@
           }
         ],
         "dependency_closure_sha256": "0987dcc0be19fa54f0bf8308e187f83c22e6d7109a36b09c3a30dbb5cf295045",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -34240,7 +34205,7 @@
           }
         ],
         "dependency_closure_sha256": "cd0ab69d03dc58b40f1d5bf4d24a94f2114ef308b36e085ff3bfe7afec0cc51a",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -34375,7 +34340,7 @@
           }
         ],
         "dependency_closure_sha256": "2203f25e54616546a6c278c1c6d5bd9bc1ec0dfc1b23b60dbbd0b6217e4c4268",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34543,7 +34508,7 @@
           }
         ],
         "dependency_closure_sha256": "90762a1526b8e292fd36ff4d7dc5d9227ea6e0f523de20b5680fb19165093fd9",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -34810,7 +34775,7 @@
           }
         ],
         "dependency_closure_sha256": "c0d404fb73be3659203cdd1ba9c74f49c2f7b04b1e51caa6cc6631bbba136bd9",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -35018,7 +34983,7 @@
           }
         ],
         "dependency_closure_sha256": "b7a704e0f75e1f9a087bd824684d652c002706e62f0d96f99d6906ace6fbb3b2",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -35162,7 +35127,7 @@
           }
         ],
         "dependency_closure_sha256": "662c5e9f6452bcd5a32028507d02cd073904dae6637e46e8df20120de9b081c1",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -35308,7 +35273,7 @@
           }
         ],
         "dependency_closure_sha256": "9fc2c7e55d6db0bb0028e846c74224434a35126652d95de4675883a999be05ec",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -35499,7 +35464,7 @@
           }
         ],
         "dependency_closure_sha256": "0ca814d9df57c7e18446cfe6b27643d20679a04580d8b2075d7dd21da2db3ec0",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -35726,7 +35691,7 @@
           }
         ],
         "dependency_closure_sha256": "63f3683b02b57ddb814ac65105710fa2f16e79ab22bea54622ed85abb9ca25db",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -35988,7 +35953,7 @@
           }
         ],
         "dependency_closure_sha256": "94626927dd1e50f81bbd6eb42ff064fd53e18295d47a7c13615d5101fb0b3d42",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -36190,7 +36155,7 @@
           }
         ],
         "dependency_closure_sha256": "aa34925e8f0435f415488dfd343c76e472d7bf5dafea3596c91a1b8e3e4b3cf7",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -36396,7 +36361,7 @@
           }
         ],
         "dependency_closure_sha256": "3aa563bac51f3aa1588d2ade7f6061b28fbf36dcea5c85bc78d2a3f1f4d90f31",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36612,7 +36577,7 @@
           }
         ],
         "dependency_closure_sha256": "e78b8e1e307589df5269a0f6df72721a79dbfa0cac4612699ff801d891611aa0",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36805,7 +36770,7 @@
           }
         ],
         "dependency_closure_sha256": "b99c6a664d01c7f239dbd5d220ef1a316ea0e6eaf54db2bec5d3fae3c1c2b52a",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -37074,7 +37039,7 @@
           }
         ],
         "dependency_closure_sha256": "5dfb8fac2a9d13cbcd9190763bd5a42fc5f994204709c58e9f4eaf6f171659a4",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -37272,7 +37237,7 @@
           }
         ],
         "dependency_closure_sha256": "950ebd544038948e811de9d10db1ae60109e2566a3ce5c79f507c247ac02a1bc",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -37402,7 +37367,7 @@
           }
         ],
         "dependency_closure_sha256": "df9c616087cfad1d4440bdd567f476972a67031c6ac093ea511d4baef544b638",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -37550,7 +37515,7 @@
           }
         ],
         "dependency_closure_sha256": "42c56ec1b923b7dbec34332a3d4bb22fcb91df8beec86cf6a43cf1f192328741",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -37712,7 +37677,7 @@
           }
         ],
         "dependency_closure_sha256": "d27d24d689741f0df98060dcf215c02a6066e61bb7f823d6608d5c2519feeb1d",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -37865,7 +37830,7 @@
           }
         ],
         "dependency_closure_sha256": "11a269bf666fcca08c1463a0e7df797c89d5e1109e6ede8ce6bfed823c39610e",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -37987,7 +37952,7 @@
           }
         ],
         "dependency_closure_sha256": "9b55298bc55f2f78c55ff8150d04f86cb22c1508e0e6df1371e1de70b4e9df60",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -38120,7 +38085,7 @@
           }
         ],
         "dependency_closure_sha256": "653deb630a0cf993b3c02ee8f006ba6b834d686ed4216998fcd2dd267ffbe82c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -38497,7 +38462,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -39474,7 +39439,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -40470,7 +40435,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -41623,7 +41588,7 @@
           }
         ],
         "dependency_closure_sha256": "d5bb54c79c9f4b73f2d19ef839d6002e22e4f9b8c4308854c1a338dbe3487da4",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -42119,7 +42084,7 @@
           }
         ],
         "dependency_closure_sha256": "20945e2c78546812a2d510c3c2735525d9759978d242c8a0ea5342041e5eb608",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -42421,9 +42386,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/evidence/vanilla-26.1/file-drop-capability.json"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/runtime.rs",
@@ -42618,7 +42581,7 @@
               "matrix-evidence",
               "owner-implementation"
             ],
-            "sha256": "77f6770fbc99299f9164851dd35b85fa9911ae555681aa8c0c63c04d29e9351e"
+            "sha256": "2e6bfe899f0fc767cf16cf66d88f7336334db75b7a5d70013031ae7186b9f35a"
           },
           {
             "path": "docs/unsupported-features.md",
@@ -42644,15 +42607,15 @@
             "sha256": "b2f22b209c87dfbe2e6f42d3505ac03f08e0c2b9a80f8c4ddcf12b58f42410ab"
           }
         ],
-        "dependency_closure_sha256": "f3d4d6646a6b53a32c9e93ee005c60f488100a2381e140473503ad8921f82039",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "4289b12db5939d2d3aa150f457c29bf0e317fc1cc5165f154e4c6b62ae147d01",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
         ],
         "focused_test_contract_sha256": "4e6eec56b90f7a485b239de97ef0642aef8e364ad32b55f2d418a99ad03f1dcf",
         "owner": "`bbb-native::runtime::render_extract` + shared toast runtime + independent NowPlaying runtime + renderer",
-        "owner_contract_sha256": "8aa260a2d26b6a276e1eb2907777ff21b0d46e8c333ed0f93a90fc909c297a41"
+        "owner_contract_sha256": "7bd91af5c6ed9639988af1743e49cfc27143dce12e75e0d356444f26c020ee99"
       },
       "differential_scenarios": [
         {
@@ -43330,7 +43293,7 @@
           }
         ],
         "dependency_closure_sha256": "12fd1cf6d51816ee61d8cb609a4a1e1b8b81ddbdbc021b492a80644063cb5742",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -43656,7 +43619,7 @@
           }
         ],
         "dependency_closure_sha256": "2fe2445d49e359d7f6bdd0e9248dba8a5c2423941b4213fac3c3b8d3dfa5a61f",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -43886,7 +43849,7 @@
           }
         ],
         "dependency_closure_sha256": "b3b542b3878c018c12ac61de2176aa1fe2e64b57d2cb30c9987781570f9f0ce0",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -44211,7 +44174,7 @@
           }
         ],
         "dependency_closure_sha256": "24d4128e378a26e8e1d67df6f26179298cf0b1fd333ef1df1c0fd129967154c2",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -44598,7 +44561,7 @@
           }
         ],
         "dependency_closure_sha256": "fb78ec97dafb7ef1873bf84e33b12c57d42d9eaed725934f36122c11fa77ca53",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -45035,7 +44998,7 @@
           }
         ],
         "dependency_closure_sha256": "aa0f20f6eb400a097656c21f1685d2f7c4f3c9a99ea9b7eea7e3f58a82762d26",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -45464,7 +45427,7 @@
           }
         ],
         "dependency_closure_sha256": "a5e893ff9913490a75ff9566d54d62f2e52ab79a1d217574f0c0e308d2eee722",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -46020,7 +45983,7 @@
           }
         ],
         "dependency_closure_sha256": "083bb169c410477816dd66f6cad23b02ff81cd620566a21c2ff9852bb10b4c43",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -46431,7 +46394,7 @@
           }
         ],
         "dependency_closure_sha256": "355a4a7a7c748313396250dd8c22c18a596ac9757785bef3d4da13afdd068c78",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -46676,7 +46639,7 @@
           }
         ],
         "dependency_closure_sha256": "3b0da4b57f64d1d5240de7d7762683e092994fd27c8fc730b73af07c5af2b3a0",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -46950,7 +46913,7 @@
           }
         ],
         "dependency_closure_sha256": "07f4560e45b7b63ea473e828fc14898682755bb5383300ed3a991fb8273b0890",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -47281,7 +47244,7 @@
           }
         ],
         "dependency_closure_sha256": "aa709f2232d8e018ffdd90db12c9a34923d46c10dda2c3b024bc543c593bb0b1",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -47563,7 +47526,7 @@
           }
         ],
         "dependency_closure_sha256": "95813e10793449df6d4f4c61c6bad45d3a7d6486d0bea15aa4474e467398ba70",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -47795,7 +47758,7 @@
           }
         ],
         "dependency_closure_sha256": "13e14938f323502e2d31d7755f23366d1efe58b74c6c7325bc79c5771b6034b3",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -48009,7 +47972,7 @@
           }
         ],
         "dependency_closure_sha256": "163b431139dc80be4a9db3407ca95a99779cdaa4c83cc33dceb67135818ee19d",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -48172,7 +48135,7 @@
           }
         ],
         "dependency_closure_sha256": "3e1cb0bcc5b86fcac2bff37033e9634bce4cd7c3337124d682ad0d618d7fd0b2",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -48383,7 +48346,7 @@
           }
         ],
         "dependency_closure_sha256": "13696b1e0fe2f877bc77396dcdca306afdb98c9f1b52f230adc5e35a6085dcba",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
           "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
@@ -48607,7 +48570,7 @@
           }
         ],
         "dependency_closure_sha256": "3a1b670abe258b94b49097de8344ca5dedd8636bdc8f0f79db44eb499bbb46f7",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -48817,7 +48780,7 @@
           }
         ],
         "dependency_closure_sha256": "fc118221d6232392f66bd9a928819979069815215a059cd51abff9ffecc8ae12",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/camera_fov.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -49164,7 +49127,7 @@
           }
         ],
         "dependency_closure_sha256": "302905a39e54d74af692f61818f0b11a6351671dacde22b4a6fa9b270fffbbcf",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
@@ -49337,7 +49300,7 @@
           }
         ],
         "dependency_closure_sha256": "fe74525bab6753e00b0629cbcc5219aaae1d810b4001c42988b759210c90cc78",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -49530,7 +49493,7 @@
           }
         ],
         "dependency_closure_sha256": "57809a85049a24e2602df81c01fd45a60fcc11cdeb2f49ebf009cbc0fe3cd50c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -49704,7 +49667,7 @@
           }
         ],
         "dependency_closure_sha256": "9ab45f9ab7af4dc1507bdb52c7ad91aa4fefeff902bbb670cffdb1fa73755212",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -49853,7 +49816,7 @@
           }
         ],
         "dependency_closure_sha256": "a004d23fb88cf57ac28bb53007d52ba879c8d98b81cec9d87135adfe9af09ba5",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -50034,7 +49997,7 @@
           }
         ],
         "dependency_closure_sha256": "00f4f50033bae75053716e7bc7ad3dd0fdf6f30c88fb6640ffda86ac94fb32e1",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -50152,7 +50115,7 @@
           }
         ],
         "dependency_closure_sha256": "fa7f9e3e7ae61f35f3452ee996cfb5801c128eddc7380f44854f448c6701fe0c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-render-types/src/text_visual_order.rs",
           "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
@@ -50397,7 +50360,7 @@
           }
         ],
         "dependency_closure_sha256": "654ec3cf77f3e94be943a2a82b5a0ccb6aa24942b21c714e330729596bfcb38f",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -50682,7 +50645,7 @@
           }
         ],
         "dependency_closure_sha256": "f36c7ce929819b541a08a43c16446fb946c54c7b552f199f2e472de6b90af855",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -50826,7 +50789,7 @@
           }
         ],
         "dependency_closure_sha256": "a7cfc1a20da96fd9a662bdffcf41b27cc0536cbdd47299e4d099edfbf097df0e",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
           "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
@@ -50940,7 +50903,7 @@
           }
         ],
         "dependency_closure_sha256": "7387c0e0741b5bdbd73c6cd2018505a409f8dae7388ff4823c3f742210e374ec",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
           "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
@@ -51109,7 +51072,7 @@
           }
         ],
         "dependency_closure_sha256": "7592c44be41a3acad890d255377d2dfb0b6ae0d92e2878f1c5aaf77ee2c21339",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -51394,7 +51357,7 @@
           }
         ],
         "dependency_closure_sha256": "d1140fa2d691a3d3b600f10c2a7af1abdf3328f1d9c9f89343d9120db08b71a2",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -51702,7 +51665,7 @@
           }
         ],
         "dependency_closure_sha256": "27513f00903180e2681d6d0eae182830fdcd0f58eeb4826b8b78346558f2ab58",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -52038,7 +52001,7 @@
           }
         ],
         "dependency_closure_sha256": "d7eefd307d27556edad3670a89a068d7be559b0178333b4e08a125d56263ebdc",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -52295,9 +52258,7 @@
         "repo:docs/evidence/vanilla-26.1/file-drop-capability.json"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/evidence/vanilla-26.1/file-drop-capability.json"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/crash_report.rs",
@@ -52380,18 +52341,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "77f6770fbc99299f9164851dd35b85fa9911ae555681aa8c0c63c04d29e9351e"
+            "sha256": "2e6bfe899f0fc767cf16cf66d88f7336334db75b7a5d70013031ae7186b9f35a"
           }
         ],
-        "dependency_closure_sha256": "8046509dd9b29bb896c43fcb50eeaef9dd15bfe0a694230002798392b931356c",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "2b5eb0929d41ae0e520716329a8bf04011aa21825e079b617567dead62663fd5",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
         ],
         "focused_test_contract_sha256": "0dfc469ccd1a0e922627bb72fa89c5e1bf08ec335fbe75d77f598a6286a9a9e2",
         "owner": "native platform/winit",
-        "owner_contract_sha256": "41fd12080164fa2380d4c5f195f3f8dab836f420788ba82efe2dedd803a74287"
+        "owner_contract_sha256": "a682ed6d36a3adff32e3568d9bf9a64471041cacd5fede8ec9340595a1a555e1"
       },
       "differential_scenarios": [
         {
@@ -52647,7 +52608,7 @@
           }
         ],
         "dependency_closure_sha256": "43fb81e2bc3f8257dd8340741a005d22dbe5133280793c17fa7baae67edf41a2",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -52916,7 +52877,7 @@
           }
         ],
         "dependency_closure_sha256": "7ceccf9478dbb93003235c1d38562b8deffea74767ddc89aa65fa768b81b62dd",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -53213,7 +53174,7 @@
           }
         ],
         "dependency_closure_sha256": "7d721d45e0e854e5c48be0876d2d29dc37cecdb0a98eaed16df0e9069d56a7cf",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -53408,7 +53369,7 @@
           }
         ],
         "dependency_closure_sha256": "171e84b13851319414f9253b1fe502809f72a4528af9094f30a5d0f721854c12",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -53712,7 +53673,7 @@
           }
         ],
         "dependency_closure_sha256": "ced44dd79e5ea11bb33ae703bde8459ac76980d49a106e49f95ecbdc409afb71",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -54153,7 +54114,7 @@
           }
         ],
         "dependency_closure_sha256": "b0ecc3bdb763de5473e9bb84957c739e7dae0a76d2c8d6f1669b2527079aabb4",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -54566,7 +54527,7 @@
           }
         ],
         "dependency_closure_sha256": "091704a83ef0363bd7213856912789434eadf116044e4fbedfe687eac3c8ee35",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -54719,7 +54680,7 @@
           }
         ],
         "dependency_closure_sha256": "6236229e28937ec6685a9a3d45d28ea4a0bbdd1b9ad65bf4a861b7220394436b",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -54861,7 +54822,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -54961,7 +54922,7 @@
               "focused-test",
               "matrix-evidence"
             ],
-            "sha256": "b66f6c1fc56f2cacd49c0409881587093f5d446fa16e63db86b645b0262b8ea6"
+            "sha256": "c6d9faf950ba55023862b0df160e6177befa4622c85b1328e09701d2e407f97e"
           },
           {
             "path": "docs/wiki/architecture/client-boundaries.md",
@@ -54971,8 +54932,8 @@
             "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "aad69e2adc3b1be20ea339f9e1cbc439200ffb62eca9935cac9d00a2c782dbfe",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "dependency_closure_sha256": "55e7cdb3b3d0d4e6fc5b430ce78f14afa8335f53b57c7e48eb245b149cf61f77",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
@@ -54981,9 +54942,9 @@
           "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_url_and_cache_identity_match_authlib_and_guava",
           "docs/wiki/architecture/client-boundaries.md"
         ],
-        "focused_test_contract_sha256": "63d2d75ff139d906ab7b8340e29d810b42f41ba9294aaa04b571d1db05f36976",
+        "focused_test_contract_sha256": "b056c745df29597c70d582b4885d31984ecb6cf16608322614de0247e2328c2b",
         "owner": "`bbb-item-model::skin_runtime`→native→renderer",
-        "owner_contract_sha256": "f245fec5cb09ed762530545f83bd64c4acb59a75301efb677cdb64301f8b2435"
+        "owner_contract_sha256": "370b944846b58abb28e9610be3e38b1f4bc1cf23cb70d7fdb00f3747383b9dd2"
       },
       "differential_scenarios": [
         {
@@ -55018,14 +54979,14 @@
           "ignored": false,
           "reference": "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_property_trust_matches_services_signature_states",
           "result": "focused-evidence-pending",
-          "source_sha256": "b66f6c1fc56f2cacd49c0409881587093f5d446fa16e63db86b645b0262b8ea6"
+          "source_sha256": "c6d9faf950ba55023862b0df160e6177befa4622c85b1328e09701d2e407f97e"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-item-model profile_texture_url_and_cache_identity_match_authlib_and_guava",
           "ignored": false,
           "reference": "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_url_and_cache_identity_match_authlib_and_guava",
           "result": "focused-evidence-pending",
-          "source_sha256": "b66f6c1fc56f2cacd49c0409881587093f5d446fa16e63db86b645b0262b8ea6"
+          "source_sha256": "c6d9faf950ba55023862b0df160e6177befa4622c85b1328e09701d2e407f97e"
         }
       ],
       "matrix": {
@@ -55360,7 +55321,7 @@
           }
         ],
         "dependency_closure_sha256": "2b0bab47526be0c650dfbbf45b7bce078258f9da30c715c005ede9183a1ba77e",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -55825,7 +55786,7 @@
           }
         ],
         "dependency_closure_sha256": "d94f6c0e7e8a459b67df72ee17e8c6afd41ca0e6449fb4b6293bd13e50c324c8",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -56025,7 +55986,7 @@
           }
         ],
         "dependency_closure_sha256": "f616918df728d83273b0f54b29542efa93ae7e26ab6f047cf0ff7ef1be446433",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/evidence/macos-native-retina/current-wgpu30-baseline.json",
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
@@ -56210,7 +56171,7 @@
           }
         ],
         "dependency_closure_sha256": "884893614701f8ff0bd2d041d88ca692ef5bc9ed64bf6298e638a97bb06177dc",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/gpu_duration_capture.py",
@@ -56483,7 +56444,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -56677,7 +56638,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -56821,7 +56782,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -56903,7 +56864,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57011,7 +56972,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57154,7 +57115,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57337,7 +57298,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57447,7 +57408,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57531,7 +57492,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57643,7 +57604,7 @@
           }
         ],
         "dependency_closure_sha256": "9195e182b6b3f4a17d324f040d1066ab4b3733aa28ceb17de1326a1a36a41432",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -57987,7 +57948,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58071,7 +58032,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58209,7 +58170,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58323,7 +58284,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58433,7 +58394,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58563,7 +58524,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58641,7 +58602,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58779,7 +58740,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58861,7 +58822,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58943,7 +58904,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59023,7 +58984,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59195,7 +59156,7 @@
           }
         ],
         "dependency_closure_sha256": "0f44ecf79dd8edadb860f4a2c3f6bbfafa6f54df74637af7cb91cbc20b3a4a1b",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -59679,7 +59640,7 @@
           }
         ],
         "dependency_closure_sha256": "263fb0f82af33209b65797f566b6537d3eb71f8bdc8eeb264a929b88af7d4f6a",
-        "evidence_commit": "c85956c981dc0cbabcfc8e59154e21f4e490b62a",
+        "evidence_commit": "3643ace9521dad90117f1c704dceb8124e8cb544",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
           "scripts/parity_acceptance.py#mechanism_source_hashes",
