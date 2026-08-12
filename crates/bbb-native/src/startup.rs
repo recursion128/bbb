@@ -41,8 +41,8 @@ use crate::camera_fov::{
 use crate::window_surface;
 use winit::{
     dpi::PhysicalSize,
-    event_loop::EventLoop,
-    window::{Fullscreen, Window, WindowBuilder},
+    event_loop::{ActiveEventLoop, EventLoop},
+    window::{Fullscreen, Window},
 };
 
 use crate::{
@@ -2414,20 +2414,20 @@ impl WindowConfig {
 /// failure is handled where it occurs and flows into the guarded crash
 /// report.
 pub(crate) fn build_window(
-    event_loop: &EventLoop<()>,
+    event_loop: &ActiveEventLoop,
     config: &WindowConfig,
     initial_fullscreen: Option<Fullscreen>,
 ) -> Result<Window> {
-    WindowBuilder::new()
+    let attributes = Window::default_attributes()
         .with_title(config.title.clone())
         .with_inner_size(config.physical_size())
-        .with_fullscreen(initial_fullscreen)
-        .build(event_loop)
+        .with_fullscreen(initial_fullscreen);
+    event_loop
+        .create_window(attributes)
         .context("create native window")
 }
 
-pub(crate) fn spawn_frame_tick(event_loop: &EventLoop<()>) {
-    let event_proxy = event_loop.create_proxy();
+pub(crate) fn spawn_frame_tick(event_proxy: winit::event_loop::EventLoopProxy<()>) {
     thread::spawn(move || {
         while event_proxy.send_event(()).is_ok() {
             thread::sleep(Duration::from_millis(16));

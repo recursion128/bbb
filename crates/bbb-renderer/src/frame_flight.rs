@@ -54,6 +54,7 @@ fn in_flight_depth_after_submit(
     u32::try_from((retained_before_submit + 1).min(budget)).unwrap_or(u32::MAX)
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn submissions_to_retire_before_acquire(
     platform: FrameFlightPlatform,
     present_mode: wgpu::PresentMode,

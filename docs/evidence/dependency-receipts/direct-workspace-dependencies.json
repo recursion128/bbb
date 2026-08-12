@@ -2,8 +2,8 @@
   "schema": 1,
   "audit_as_of": "2026-08-12",
   "inputs": {
-    "Cargo.toml_sha256": "89e4934c4d2882be3622c8bf2082a3529d3b2c19d3a52151e0750d3b99c8675a",
-    "Cargo.lock_sha256": "f5f8de14d91c1ee8a5e446121ffea731919cab1426dd7017ef5ca7a42f68c687",
+    "Cargo.toml_sha256": "c7d85d7687b7d38a169f15e563393e5b12196e9a35b83323303d666035ad3a4f",
+    "Cargo.lock_sha256": "edbaa27e7b2a079f26adcded64ea28d779c341e740c3f94474ccdcdc6305e8fd",
     "cargo_metadata": "cargo metadata --format-version 1 --locked",
     "latest_release_rule": "crates.io max_stable_version; prerelease and yanked excluded",
     "rustsec_database_commit": "d0861df1eab469d3c58d6b836ce48b5766e5f217",
@@ -2534,11 +2534,11 @@
     {
       "name": "winit",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.29",
+      "manifest_constraint": "0.30.13",
       "locked": {
-        "version": "0.29.15",
+        "version": "0.30.13",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "0d59ad965a635657faf09c8f062badd885748428933dad8e8bdd64064d92e5ca"
+        "checksum": "a6755fa58a9f8350bd1e472d4c3fcc25f824ec358933bba33306d0b63df5978d"
       },
       "latest_stable": {
         "version": "0.30.13",
@@ -2598,14 +2598,14 @@
         }
       ],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.70.0"
       },
       "modernization": {
         "group": "window-lifecycle",
-        "decision": "upgrade-planned",
-        "rationale": "bounded window-lifecycle migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded window-lifecycle migration is resolved at latest stable"
       }
     },
     {

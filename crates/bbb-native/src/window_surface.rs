@@ -10,7 +10,7 @@
 
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    monitor::{MonitorHandle, VideoMode},
+    monitor::{MonitorHandle, VideoModeHandle},
     window::CursorIcon,
 };
 
@@ -114,7 +114,7 @@ pub(crate) const fn vanilla_total_color_bits(winit_bit_depth: u16) -> u32 {
     winit_bit_depth as u32
 }
 
-/// The winit `VideoMode` surface facts `Monitor.getPreferredVidMode`
+/// The winit `VideoModeHandle` surface facts `Monitor.getPreferredVidMode`
 /// (Monitor.java:45-57) compares: resolution, refresh rate in hertz, and the
 /// total colour bits after the platform encoding is normalized to GLFW's
 /// `redBits + greenBits + blueBits` convention.
@@ -127,7 +127,7 @@ pub(crate) struct VideoModeFacts {
 }
 
 impl VideoModeFacts {
-    pub(crate) fn from_winit(video_mode: &VideoMode) -> Self {
+    pub(crate) fn from_winit(video_mode: &VideoModeHandle) -> Self {
         Self {
             width: video_mode.size().width,
             height: video_mode.size().height,
@@ -236,7 +236,7 @@ pub(crate) fn fullscreen_choice(
 pub(crate) fn find_exact_video_mode<'m>(
     preferred: PreferredVideoMode,
     monitor: Option<&'m MonitorHandle>,
-) -> Option<VideoMode> {
+) -> Option<VideoModeHandle> {
     monitor?.video_modes().find_map(|mode| {
         VideoModeFacts::from_winit(&mode)
             .exactly_matches(preferred)

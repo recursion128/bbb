@@ -5,16 +5,16 @@
       "source": {
         "anchors": [
           {
-            "line": 2660,
+            "line": 2739,
             "symbol": "window-event adapter"
           },
           {
-            "line": 2655,
+            "line": 2734,
             "symbol": "Linux Java 25 scope ruling"
           }
         ],
         "path": "crates/bbb-native/src/main.rs",
-        "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+        "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
       },
       "successful_path_event_consumed": false,
       "valid_path_values_consumed": false,
@@ -25,14 +25,14 @@
         "contract": "no file-drop WindowEvent implementation",
         "scope": "not-needed: no observable declared-screen effect",
         "source_tree": {
-          "file_count": 19,
+          "file_count": 20,
           "path": "src/platform_impl/linux/wayland",
           "searched_events": [
             "DroppedFile",
             "HoveredFile",
             "HoveredFileCancelled"
           ],
-          "sha256_tree": "844c87ee8c9ba0a58bd513151c27a840f736aefc5e10e5252a331ce8edb140a5"
+          "sha256_tree": "ffba104a01fb1c85a37fa37f0939fea08fd19e813fa6fb5edc668f9d77a229b4"
         }
       },
       "linux-x11": {
@@ -54,38 +54,38 @@
           {
             "anchors": [
               {
-                "line": 525,
+                "line": 543,
                 "symbol": "drop dispatch accepts only Ok"
               },
               {
-                "line": 529,
+                "line": 547,
                 "symbol": "success-only public event"
               },
               {
-                "line": 592,
+                "line": 607,
                 "symbol": "parse result retained internally"
               }
             ],
             "path": "src/platform_impl/linux/x11/event_processor.rs",
-            "sha256": "edd6847d26cdd22e9efed78868e4e16cbcfb66e45b1478c9c45ea4e0f4d0a6ad"
+            "sha256": "eefe47e789dae7cd56f3579eb292935d6237c886d486688ed2649b2aa6a76237"
           },
           {
             "anchors": [
               {
-                "line": 52,
+                "line": 49,
                 "symbol": "fallible batch result"
               },
               {
-                "line": 156,
+                "line": 146,
                 "symbol": "parse_data"
               },
               {
-                "line": 26,
+                "line": 23,
                 "symbol": "invalid UTF-8 is representable internally"
               }
             ],
             "path": "src/platform_impl/linux/x11/dnd.rs",
-            "sha256": "2998a081b0adbd9116e71488008fcb4c161232a5da23d5758f3860fecba7edff"
+            "sha256": "89b186416d72fb36ecfaa350cae884949b1445d7a7b99a926eadba861d550243"
           }
         ]
       },
@@ -99,20 +99,20 @@
         "source": {
           "anchors": [
             {
-              "line": 196,
+              "line": 382,
               "symbol": "one event per NSString"
             },
             {
-              "line": 197,
+              "line": 383,
               "symbol": "NSString converts directly to PathBuf"
             },
             {
-              "line": 224,
+              "line": 413,
               "symbol": "success-only public event"
             }
           ],
           "path": "src/platform_impl/macos/window_delegate.rs",
-          "sha256": "d318b400d2c897123c19984c6f0cadc58fc4d795bdec16a57524f12eba334efc"
+          "sha256": "791c8112b5eb95d4c5bf7efff3f458432cdfd77598053c3d756ae610323f36ae"
         }
       },
       "windows": {
@@ -125,27 +125,27 @@
         "source": {
           "anchors": [
             {
-              "line": 174,
+              "line": 163,
               "symbol": "success-only callback"
             },
             {
-              "line": 157,
+              "line": 146,
               "symbol": "one event per converted filename"
             },
             {
-              "line": 212,
+              "line": 201,
               "symbol": "non-file and GetData failures return None"
             }
           ],
           "path": "src/platform_impl/windows/drop_handler.rs",
-          "sha256": "40695228ea4d0b7c52a58239b440e5da617987bee9d4994ecad87826da8f71a0"
+          "sha256": "47abcad8770ba1d5ec8c877c8e725aa330c472ef07ec4ffcb60c1e7ae33c41c8"
         }
       }
     },
     "dependency": {
       "name": "winit",
-      "registry_checksum": "0d59ad965a635657faf09c8f062badd885748428933dad8e8bdd64064d92e5ca",
-      "version": "0.29.15"
+      "registry_checksum": "a6755fa58a9f8350bd1e472d4c3fcc25f824ec358933bba33306d0b63df5978d",
+      "version": "0.30.13"
     },
     "public_event_contract": {
       "batch_identity_exposed": false,
@@ -156,31 +156,31 @@
     "public_event_source": {
       "anchors": [
         {
-          "line": 306,
+          "line": 152,
           "symbol": "WindowEvent"
         },
         {
-          "line": 341,
+          "line": 180,
           "symbol": "DroppedFile(PathBuf)"
         },
         {
-          "line": 339,
+          "line": 178,
           "symbol": "one event per file"
         }
       ],
       "path": "src/event.rs",
-      "sha256": "9272e9056760124e0780f754380cb932ae94aa06af6583f9a982c91005e88e47"
+      "sha256": "ff5c577343a725173a539c797e243fa8f6150c02181d904bddb9d82581a7a61e"
     }
   },
   "generated_by": "scripts/generate-file-drop-capability.py",
   "generator_inputs": [
     {
       "path": "Cargo.lock",
-      "sha256": "f5f8de14d91c1ee8a5e446121ffea731919cab1426dd7017ef5ca7a42f68c687"
+      "sha256": "edbaa27e7b2a079f26adcded64ea28d779c341e740c3f94474ccdcdc6305e8fd"
     },
     {
       "path": "scripts/file_drop_capability.py",
-      "sha256": "1c87d8cb3ed2f26d6986b4b2fa67049cb55c6cfbff4a91b4fcd770a3f782a8db"
+      "sha256": "96a0e84ccc796b50d67bf9595cc4c5809a5df6ae1c8780580b6f848b1c704aad"
     },
     {
       "path": "scripts/generate-file-drop-capability.py",

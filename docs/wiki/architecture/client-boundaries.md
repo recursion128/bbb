@@ -862,7 +862,7 @@ suppressed 数、retained bytes（512 KiB）和最终 UTF-8 文本（1 MiB）都
 原子 no-clobber 发布，重名追加序号。
 
 fatal event 先请求 event-loop exit；`LoopExiting` join simulation，closure drop 释放
-renderer/audio/window，`event_loop.run` 返回后外层 runtime 才持久化。保存成功退出 1，写失败
+renderer/audio/window，`event_loop.run_app` 返回后外层 runtime 才持久化。保存成功退出 1，写失败
 仍把 bounded report 输出 stderr 并退出 2；正常 close/quit、probe/status/build-info 成功不产报告。
 focused process test 与 production-binary acceptance 都验证“失败生成一份且非零退出，下一进程
 成功且不覆盖旧报告”。

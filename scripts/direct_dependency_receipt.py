@@ -362,6 +362,8 @@ def _decision(name: str, locked: str, latest: str, constraint: str) -> tuple[str
             "BBB's production public-key verification path",
         )
     if name in PLANNED:
+        if locked == latest:
+            return "upgraded", f"bounded {GROUPS[name]} migration is resolved at latest stable"
         return "upgrade-planned", f"bounded {GROUPS[name]} migration with focused parity tests"
     if locked == latest:
         if name in LOW_ACTIVITY:

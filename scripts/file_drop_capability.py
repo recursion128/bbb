@@ -19,7 +19,7 @@ import zipfile
 
 
 VANILLA_VERSION = "26.1"
-WINIT_VERSION = "0.29.15"
+WINIT_VERSION = "0.30.13"
 LWJGL_VERSION = "3.4.1"
 LWJGL_COMMIT = "b800ccffab14396fc529ddb6c931b7c5c5226763"
 GLFW_COMMIT = "9352d8fe93cd443be18157abe81f16500549aec0"
@@ -570,7 +570,7 @@ def build_report(
         {
             "fallible batch result": r"Option<Result<Vec<PathBuf>, DndDataParseError>>",
             "parse_data": r"pub fn parse_data\([^\n]+Result<Vec<PathBuf>, DndDataParseError>",
-            "invalid UTF-8 is representable internally": r"InvalidUtf8\(Utf8Error\)",
+            "invalid UTF-8 is representable internally": r"InvalidUtf8\([^\n]*Utf8Error\)",
         },
     )
 

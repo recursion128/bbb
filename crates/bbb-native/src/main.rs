@@ -19,6 +19,7 @@ use winit::{
     window::{CursorGrabMode, CursorIcon, Fullscreen, Window},
 };
 
+mod application_lifecycle;
 mod audio_runtime;
 mod banner_scene;
 mod beacon_scene;
@@ -97,6 +98,7 @@ mod win_screen_resources;
 mod window_icon;
 mod window_surface;
 
+use application_lifecycle::{NativeApplication, NativeEventHandler};
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::{
     default_player_skin_cache_dir, font::providers::FontOptions, NativeItemRuntime,
@@ -960,835 +962,850 @@ fn run_client(mut args: startup::Args) -> Result<()> {
     }
 
     let event_loop = create_event_loop()?;
-    let window_config = startup::WindowConfig::from_args(&args);
-    // GLFW creates a macOS fullscreen window with its monitor/video mode
-    // already selected. Match that ordering: winit's post-creation exclusive
-    // transition can switch the CoreGraphics mode before AppKit expands the
-    // old windowed content frame, leaving a half-resolution Metal drawable.
-    #[cfg(target_os = "macos")]
-    let initial_fullscreen = requested_window_fullscreen(
-        args.client_fullscreen,
-        args.client_fullscreen_resolution,
-        event_loop.primary_monitor().as_ref(),
-        true,
-    );
-    #[cfg(not(target_os = "macos"))]
-    let initial_fullscreen = None;
-    let fullscreen_applied_at_creation = initial_fullscreen.is_some();
-    let window = build_window(&event_loop, &window_config, initial_fullscreen)?;
-    let window_backend = window_icon::NativeWindowBackend::detect(&window)?;
-    let window_size = window.inner_size();
-    let window_platform = window_backend.platform_identity(std::env::consts::OS);
-    let monitor_refresh_rate_hz = window
-        .current_monitor()
-        .and_then(|monitor| monitor.refresh_rate_millihertz())
-        .map(window_surface::refresh_rate_hz);
-    tracing::info!(
-        target_os = std::env::consts::OS,
-        target_arch = std::env::consts::ARCH,
-        window_backend = %window_backend.label(),
-        window_platform = window_platform,
-        monitor_refresh_rate_hz = ?monitor_refresh_rate_hz,
-        scale_factor = window.scale_factor(),
-        width = window_size.width,
-        height = window_size.height,
-        "native platform window created"
-    );
-    window_icon::install_startup_window_icon(&window, pack_roots.as_ref(), window_backend);
-    // `TextInputManager` starts life with text input stopped and the IME
-    // revoked (TextInputManager.java:26-47 turns it off on every tick the
-    // window is focused outside text input); the simulation turns it on
-    // through `PlatformEffect::SetTextInputEnabled` exactly while a text field
-    // has focus. Leaving it allowed for the whole session is not a harmless
-    // superset -- an installed input method grabs every letter key it is
-    // offered, so `T` composes a preedit instead of opening chat.
-    window.set_ime_allowed(false);
-    let mut input = ClientInputState::new(window.has_focus());
-    input.set_save_chat_drafts(args.client_save_chat_drafts);
-    input.set_client_text_filtering_enabled(args.client_text_filtering);
-    input.set_hotbar_preset_store_path(hotbar_presets::default_hotbar_preset_store_path());
-    let startup_debug_profile = args.debug_profile.into();
-    if let Some(path) = args.debug_profile_store.clone() {
-        input.set_debug_profile_store_path(path.clone());
-        match DebugScreenEntryList::load_from_debug_profile_file(&path, startup_debug_profile) {
-            Ok(entries) => input.set_debug_screen_entries(entries),
-            Err(err) => {
-                tracing::warn!(
-                    ?err,
-                    path = %path.display(),
-                    "resetting debug profile store to startup profile"
-                );
-                input.load_debug_screen_profile(startup_debug_profile);
-            }
-        }
-    } else {
-        input.load_debug_screen_profile(startup_debug_profile);
-    }
-    input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
-    input.set_debug_pause_on_lost_focus(args.pause_on_lost_focus);
-    input.set_reduced_debug_info_option(args.client_reduced_debug_info);
-    input.set_narrator_status(NarratorStatus::from(args.client_narrator));
-    input.set_narrator_hotkey_enabled(args.client_narrator_hotkey);
-    input.set_narrator_available(narrator_runtime.is_some());
-    input.set_key_bindings(args.client_key_bindings.clone());
-    input.set_toggle_key_options(
-        args.client_toggle_crouch,
-        args.client_toggle_sprint,
-        args.client_toggle_attack,
-        args.client_toggle_use,
-    );
-    input.set_fullscreen(args.client_fullscreen);
-    apply_startup_fullscreen(
-        &window,
-        &mut input,
-        fullscreen_applied_at_creation,
-        args.client_fullscreen_resolution,
-        window_backend.supports_exclusive_fullscreen(),
-    );
-    // `InputConstants.updateRawMouseInput` (InputConstants.java:231-235) is a
-    // GLFW-specific `glfwSetInputMode(RAW_MOUSE_MOTION)` call. winit 0.29 has
-    // no raw-motion toggle: `DeviceEvent::MouseMotion` is always raw and
-    // unfiltered, and `CursorGrabMode` only controls confinement/locking. The
-    // option is still parsed for ledger fidelity, with one bounded startup
-    // warning when it is disabled.
-    if !args.client_raw_mouse_input {
-        tracing::warn!(
-            "rawMouseInput=false has no effect on the winit backend: \
-             DeviceEvent::MouseMotion is always raw and unfiltered"
+    let frame_tick_proxy = event_loop.create_proxy();
+    let simulation_event_proxy = event_loop.create_proxy();
+    let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
+    let application_failures = Rc::clone(&fatal_failures);
+    let mut application = NativeApplication::new(move |target| {
+        let window_config = startup::WindowConfig::from_args(&args);
+        // GLFW creates a macOS fullscreen window with its monitor/video mode
+        // already selected. Match that ordering: winit's post-creation exclusive
+        // transition can switch the CoreGraphics mode before AppKit expands the
+        // old windowed content frame, leaving a half-resolution Metal drawable.
+        #[cfg(target_os = "macos")]
+        let initial_fullscreen = requested_window_fullscreen(
+            args.client_fullscreen,
+            args.client_fullscreen_resolution,
+            target.primary_monitor().as_ref(),
+            true,
         );
-    }
-    input.set_mouse_sensitivity(args.client_mouse_sensitivity);
-    input.set_invert_mouse(args.client_invert_mouse_x, args.client_invert_mouse_y);
-    input.set_mouse_scroll_options(
-        args.client_discrete_mouse_scroll,
-        args.client_mouse_wheel_sensitivity,
-    );
-    input.set_debug_show_local_server_entity_hit_boxes(
-        args.debug_show_local_server_entity_hit_boxes,
-    );
-    input.set_debug_hotkeys_enabled(args.debug_hotkeys);
-    input.set_debug_feature_count_enabled(args.debug_feature_count);
-    input.set_remote_debug_renderers(
-        args.remote_debug_renderers
-            .iter()
-            .copied()
-            .collect::<RemoteDebugRendererSelection>(),
-    );
-    let mut debug_clipboard = NativeDebugClipboard::default();
-    spawn_frame_tick(&event_loop);
-
-    let mut renderer = pollster::block_on(
-        bbb_renderer::Renderer::new_with_vsync_and_terrain_filtering_for_fabulous(
-            &window,
-            args.client_vsync,
-            args.terrain_texture_filtering.into(),
-            args.fabulous_texture_filtering,
-        ),
-    )?;
-    let startup_window_size = window.inner_size();
-    let startup_surface_size = platform_surface_size(
-        std::env::consts::OS,
-        matches!(window.fullscreen(), Some(Fullscreen::Exclusive(_))),
-        args.client_fullscreen_resolution,
-        startup_window_size,
-    );
-    if startup_surface_size != renderer.physical_surface_size() {
-        renderer.resize(startup_surface_size)?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
-
-        let presentation = window.window_handle().ok().and_then(|handle| {
-            let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
-                return None;
-            };
-            bbb_platform_macos::metal_layer_presentation(handle.ns_view).ok()
-        });
-        if let Some(presentation) = presentation {
-            tracing::info!(
-                drawable_width = presentation.drawable_width,
-                drawable_height = presentation.drawable_height,
-                maximum_drawable_count = presentation.maximum_drawable_count,
-                "native Metal layer presentation observed"
-            );
+        #[cfg(not(target_os = "macos"))]
+        let initial_fullscreen = None;
+        let fullscreen_applied_at_creation = initial_fullscreen.is_some();
+        let window = build_window(target, &window_config, initial_fullscreen)?;
+        let window_backend = window_icon::NativeWindowBackend::detect(&window)?;
+        let window_size = window.inner_size();
+        let window_platform = window_backend.platform_identity(std::env::consts::OS);
+        let monitor_refresh_rate_hz = window
+            .current_monitor()
+            .and_then(|monitor| monitor.refresh_rate_millihertz())
+            .map(window_surface::refresh_rate_hz);
+        tracing::info!(
+            target_os = std::env::consts::OS,
+            target_arch = std::env::consts::ARCH,
+            window_backend = %window_backend.label(),
+            window_platform = window_platform,
+            monitor_refresh_rate_hz = ?monitor_refresh_rate_hz,
+            scale_factor = window.scale_factor(),
+            width = window_size.width,
+            height = window_size.height,
+            "native platform window created"
+        );
+        window_icon::install_startup_window_icon(&window, pack_roots.as_ref(), window_backend);
+        // `TextInputManager` starts life with text input stopped and the IME
+        // revoked (TextInputManager.java:26-47 turns it off on every tick the
+        // window is focused outside text input); the simulation turns it on
+        // through `PlatformEffect::SetTextInputEnabled` exactly while a text field
+        // has focus. Leaving it allowed for the whole session is not a harmless
+        // superset -- an installed input method grabs every letter key it is
+        // offered, so `T` composes a preedit instead of opening chat.
+        window.set_ime_allowed(false);
+        let mut input = ClientInputState::new(window.has_focus());
+        input.set_save_chat_drafts(args.client_save_chat_drafts);
+        input.set_client_text_filtering_enabled(args.client_text_filtering);
+        input.set_hotbar_preset_store_path(hotbar_presets::default_hotbar_preset_store_path());
+        let startup_debug_profile = args.debug_profile.into();
+        if let Some(path) = args.debug_profile_store.clone() {
+            input.set_debug_profile_store_path(path.clone());
+            match DebugScreenEntryList::load_from_debug_profile_file(&path, startup_debug_profile) {
+                Ok(entries) => input.set_debug_screen_entries(entries),
+                Err(err) => {
+                    tracing::warn!(
+                        ?err,
+                        path = %path.display(),
+                        "resetting debug profile store to startup profile"
+                    );
+                    input.load_debug_screen_profile(startup_debug_profile);
+                }
+            }
         } else {
-            tracing::warn!("native Metal layer presentation probe unavailable");
+            input.load_debug_screen_profile(startup_debug_profile);
         }
-    }
-    tracing::info!(
-        window_width = startup_window_size.width,
-        window_height = startup_window_size.height,
-        drawable_width = startup_surface_size.width,
-        drawable_height = startup_surface_size.height,
-        "native renderer drawable configured"
-    );
-    renderer.set_lightmap_brightness_factor(args.client_gamma);
-    renderer.set_glint_settings(args.client_glint_speed, args.client_glint_strength as f32);
-    renderer.set_terrain_max_anisotropy_bit(args.client_max_anisotropy_bit);
-    renderer.set_cloud_status(
-        args.render_clouds != startup::RenderCloudsArg::Off,
-        match args.render_clouds {
-            startup::RenderCloudsArg::Fast => bbb_renderer::CloudShape::Flat,
-            _ => bbb_renderer::CloudShape::Fancy,
-        },
-    );
-    renderer.set_menu_background_blurriness(args.menu_background_blurriness);
-    renderer.set_hud_text_background_options(
-        args.text_background_opacity,
-        args.background_for_chat_only,
-    );
-    if let Some(roots) = pack_roots.as_ref() {
-        let shader_resources =
-            prepare_native_shader_resources(roots).map(|resources| resources.renderer_projection());
-        match shader_resources.and_then(|resources| {
-            renderer.transactional_shader_resource_reload(&resources, true, |_| Ok(()))
-        }) {
-            Ok(()) => {}
-            Err(error) => {
-                tracing::warn!(
-                    %error,
-                    "continuing with embedded shader fallback after startup load failure"
-                );
-            }
+        input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
+        input.set_debug_pause_on_lost_focus(args.pause_on_lost_focus);
+        input.set_reduced_debug_info_option(args.client_reduced_debug_info);
+        input.set_narrator_status(NarratorStatus::from(args.client_narrator));
+        input.set_narrator_hotkey_enabled(args.client_narrator_hotkey);
+        input.set_narrator_available(narrator_runtime.is_some());
+        input.set_key_bindings(args.client_key_bindings.clone());
+        input.set_toggle_key_options(
+            args.client_toggle_crouch,
+            args.client_toggle_sprint,
+            args.client_toggle_attack,
+            args.client_toggle_use,
+        );
+        input.set_fullscreen(args.client_fullscreen);
+        apply_startup_fullscreen(
+            &window,
+            &mut input,
+            fullscreen_applied_at_creation,
+            args.client_fullscreen_resolution,
+            window_backend.supports_exclusive_fullscreen(),
+        );
+        // `InputConstants.updateRawMouseInput` (InputConstants.java:231-235) is a
+        // GLFW-specific `glfwSetInputMode(RAW_MOUSE_MOTION)` call. winit 0.30 has
+        // no raw-motion toggle: `DeviceEvent::MouseMotion` is always raw and
+        // unfiltered, and `CursorGrabMode` only controls confinement/locking. The
+        // option is still parsed for ledger fidelity, with one bounded startup
+        // warning when it is disabled.
+        if !args.client_raw_mouse_input {
+            tracing::warn!(
+                "rawMouseInput=false has no effect on the winit backend: \
+             DeviceEvent::MouseMotion is always raw and unfiltered"
+            );
         }
-    }
-    let terrain_atlas_base_padding = startup::terrain_atlas_base_padding_for_filtering(
-        renderer.terrain_texture_filtering(),
-        args.client_max_anisotropy_bit,
-    );
-    let mut terrain_textures = load_terrain_textures(
-        &mut renderer,
-        pack_roots.as_ref(),
-        args.cutout_leaves,
-        args.client_smooth_lighting,
-        args.biome_blend_radius,
-        args.client_mipmap_levels,
-        terrain_atlas_base_padding,
-    );
-    renderer.finish_upload_batch()?;
-    if let Some(particles) = particle_runtime.as_mut() {
-        particles.set_terrain_particle_sprite_ids(&terrain_textures);
-        if let Some(items) = &item_runtime {
-            particles.set_default_item_particle_sprite_ids(items);
-        }
-    }
-    load_hud_textures(
-        &mut renderer,
-        pack_roots.as_ref(),
-        FontOptions {
-            uniform: args.client_force_unicode_font,
-            japanese_variants: args.client_japanese_glyph_variants,
-        },
-    );
-    renderer.finish_upload_batch()?;
-    load_panorama(&mut renderer, pack_roots.as_ref());
-    renderer.set_default_text_right_to_left(
-        item_runtime
-            .as_ref()
-            .is_some_and(NativeItemRuntime::language_bidirectional),
-    );
-    let win_screen_resources = std::sync::Arc::new(
-        pack_roots
-            .as_ref()
-            .map(|roots| {
-                WinScreenResources::load(roots, &args.username, &renderer.hud_text_measurements())
-            })
-            .transpose()?
-            .unwrap_or_default(),
-    );
-    simulation_mailbox.enqueue_or_report(
-        SimulationCommand::TextMeasurements(renderer.hud_text_measurements()),
-        "startup text measurements",
-    );
-    load_entity_model_textures(
-        &mut renderer,
-        pack_roots.as_ref(),
-        item_runtime
-            .as_ref()
-            .map(NativeItemRuntime::equipment_asset_catalog),
-        item_runtime
-            .as_ref()
-            .map_or(0, NativeItemRuntime::resource_generation),
-    );
-    load_sky_textures(&mut renderer, pack_roots.as_ref());
-    if let Some(particles) = &particle_render_runtime {
-        if let Err(err) = particles.upload_particle_atlas(&mut renderer) {
-            tracing::warn!(?err, "continuing without native particle atlas");
-        }
-    }
-    if let Some(items) = &item_runtime {
-        let (atlas_width, atlas_height) = items.atlas_size();
-        if let Err(err) =
-            renderer.upload_hud_item_atlas(atlas_width, atlas_height, items.atlas_rgba())
-        {
-            tracing::warn!(?err, "continuing without native item HUD atlas");
-        }
-        match renderer.upload_item_entity_atlas(atlas_width, atlas_height, items.atlas_rgba()) {
-            Ok(()) => renderer.set_item_particle_sprite_uvs(item_particle_sprite_uvs(items)),
-            Err(err) => {
-                tracing::warn!(?err, "continuing without native item entity atlas");
-            }
-        }
-    }
-    renderer.finish_upload_batch()?;
-    if let Some(roots) = pack_roots.as_ref() {
-        roots
-            .ensure_resource_data_admitted()
-            .context("admit startup resource data generation")?;
-    }
-    net_counters.client_resources = std::sync::Arc::new(client_resource_pack_diagnostics(
-        pack_roots.as_ref(),
-        item_runtime
-            .as_ref()
-            .is_some_and(NativeItemRuntime::language_bidirectional),
-        Some(&client_locale),
-        item_runtime
-            .as_ref()
-            .map(|runtime| runtime.localized_text(SELECTED_LANGUAGE_PROBE_KEY)),
-    ));
-    let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
-    let mut entity_render_extraction = EntityRenderExtractionScratch::default();
-    let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();
-    let mut camera_environment_samples = runtime::CameraEnvironmentSampleCache::default();
-    // `Options.broadcastOptions` resends this after every save, so keep the
-    // configured player information around for the session.
-    let startup_client_information = startup::client_information_from_args(&args)?;
-    let mut screenshot = args.screenshot;
-    let screenshot_after_terrain = args.connect_server;
-    let exit_after_screenshot = args.exit_after_screenshot;
-    let mut terrain_upload = TerrainUploadState::default();
-    let mut item_texture_animation = ItemTextureAnimationState::default();
-    let client_animation_ticks = ClientAnimationTickState::default();
-    let camera_fov_ticks =
-        CameraFovTickState::new(f32::from(args.client_fov), args.client_fov_effect_scale);
-    let camera_eye_height_ticks = CameraEyeHeightTickState::default();
-    let camera_spinning_ticks = runtime::CameraSpinningEffectTickState::default();
-    let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
-    let hud_debug_network_sampler = HudDebugNetworkSampler::default();
-    let hud_debug_tps_sampler = HudDebugTpsSampler::default();
-    let mut debug_collision_cache = DebugCollisionCache::default();
-    let mut debug_supporting_block_cache = DebugSupportingBlockCache::default();
-    let mut debug_sky_light_section_cache = DebugSkyLightSectionCache::default();
-    let mut remote_debug_selection_cache = RemoteDebugSelectionCache::default();
-    let mut debug_profiler = DebugProfiler::with_report_writer(
-        input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
-        args.server.clone(),
-    );
-    let mut frame_phase_diagnostics = FramePhaseDiagnostics::default();
-    let mut last_profiled_simulation_generation = None;
-    let mut latest_simulation_profile_sections = Vec::<runtime::SimulationProfileSection>::new();
-    let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
-        args.client_gamma,
-        args.hide_lightning_flash,
-    );
-    let level_event_sound_random = LevelEventSoundRandomState::with_seed(world.next_sound_seed());
-    let mut cursor_captured = false;
-    let mut frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
-    let mut latest_input_at = Instant::now();
-    let mut next_redraw_at = Instant::now();
-    let mut last_command_suggestion_narration = None;
-    let mut player_list_narration_visible = false;
-    let mut debug_options_screen_narration = ScreenNarrationRuntime::default();
-    let mut stats_screen_narration = ScreenNarrationRuntime::default();
-    let mut recipe_book_narration = ScreenNarrationRuntime::default();
-    let mut social_interactions_narration = ScreenNarrationRuntime::default();
-    let mut player_reporting_narration = ScreenNarrationRuntime::default();
-    let mut death_screen_narration = ScreenNarrationRuntime::default();
-    let mut disconnected_screen_narration = ScreenNarrationRuntime::default();
-    let mut chat_screen_narration = ScreenNarrationRuntime::default();
-    let mut game_event_screen_narration = ScreenNarrationRuntime::default();
-    let mut pending_control_screenshots = std::collections::VecDeque::new();
-    let mut platform_exit_requested = false;
-    let mut render_effect_consumer = RenderEffectConsumer::default();
-    let mut hud_render_runtime = HudRenderRuntime::default();
-    hud_render_runtime.set_panorama_scroll_speed(args.panorama_scroll_speed);
-    if let Some(roots) = pack_roots.as_ref() {
-        match roots
-            .load_periodic_notification_catalog()
-            .and_then(|catalog| {
-                let generation = catalog.generation();
-                HudRenderRuntime::prepare_periodic_notifications(&catalog)
-                    .map(|schedule| (generation, schedule))
-            }) {
-            Ok((generation, schedule)) => hud_render_runtime.install_periodic_notifications(
-                generation,
-                schedule,
-                Instant::now(),
+        input.set_mouse_sensitivity(args.client_mouse_sensitivity);
+        input.set_invert_mouse(args.client_invert_mouse_x, args.client_invert_mouse_y);
+        input.set_mouse_scroll_options(
+            args.client_discrete_mouse_scroll,
+            args.client_mouse_wheel_sensitivity,
+        );
+        input.set_debug_show_local_server_entity_hit_boxes(
+            args.debug_show_local_server_entity_hit_boxes,
+        );
+        input.set_debug_hotkeys_enabled(args.debug_hotkeys);
+        input.set_debug_feature_count_enabled(args.debug_feature_count);
+        input.set_remote_debug_renderers(
+            args.remote_debug_renderers
+                .iter()
+                .copied()
+                .collect::<RemoteDebugRendererSelection>(),
+        );
+        let mut debug_clipboard = NativeDebugClipboard::default();
+        spawn_frame_tick(frame_tick_proxy);
+
+        let mut renderer = pollster::block_on(
+            bbb_renderer::Renderer::new_with_vsync_and_terrain_filtering_for_fabulous(
+                &window,
+                args.client_vsync,
+                args.terrain_texture_filtering.into(),
+                args.fabulous_texture_filtering,
             ),
-            Err(error) => {
-                tracing::warn!(
-                    %error,
-                    "continuing without periodic notifications after startup load failure"
+        )?;
+        let startup_window_size = window.inner_size();
+        let startup_surface_size = platform_surface_size(
+            std::env::consts::OS,
+            matches!(window.fullscreen(), Some(Fullscreen::Exclusive(_))),
+            args.client_fullscreen_resolution,
+            startup_window_size,
+        );
+        if startup_surface_size != renderer.physical_surface_size() {
+            renderer.resize(startup_surface_size)?;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+            let presentation = window.window_handle().ok().and_then(|handle| {
+                let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
+                    return None;
+                };
+                bbb_platform_macos::metal_layer_presentation(handle.ns_view).ok()
+            });
+            if let Some(presentation) = presentation {
+                tracing::info!(
+                    drawable_width = presentation.drawable_width,
+                    drawable_height = presentation.drawable_height,
+                    maximum_drawable_count = presentation.maximum_drawable_count,
+                    "native Metal layer presentation observed"
                 );
+            } else {
+                tracing::warn!("native Metal layer presentation probe unavailable");
             }
         }
-    }
-    let mut simulation_input_runtime = simulation::input_commands::SimulationInputRuntime::new(
-        renderer.physical_surface_size(),
-        false,
-        startup_client_information,
-    );
-    simulation_input_runtime
-        .set_gui_scale_options(args.client_gui_scale, args.client_force_unicode_font);
-    let mut renderer_counters = control_renderer_counters(renderer.counters());
-    project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
-    let publisher = SimulationPublisher::new(
-        SimulationPublicationInput {
-            effect_sequence: 0,
-            world: &world,
-            input: &input,
+        tracing::info!(
+            window_width = startup_window_size.width,
+            window_height = startup_window_size.height,
+            drawable_width = startup_surface_size.width,
+            drawable_height = startup_surface_size.height,
+            "native renderer drawable configured"
+        );
+        renderer.set_lightmap_brightness_factor(args.client_gamma);
+        renderer.set_glint_settings(args.client_glint_speed, args.client_glint_strength as f32);
+        renderer.set_terrain_max_anisotropy_bit(args.client_max_anisotropy_bit);
+        renderer.set_cloud_status(
+            args.render_clouds != startup::RenderCloudsArg::Off,
+            match args.render_clouds {
+                startup::RenderCloudsArg::Fast => bbb_renderer::CloudShape::Flat,
+                _ => bbb_renderer::CloudShape::Fancy,
+            },
+        );
+        renderer.set_menu_background_blurriness(args.menu_background_blurriness);
+        renderer.set_hud_text_background_options(
+            args.text_background_opacity,
+            args.background_for_chat_only,
+        );
+        if let Some(roots) = pack_roots.as_ref() {
+            let shader_resources = prepare_native_shader_resources(roots)
+                .map(|resources| resources.renderer_projection());
+            match shader_resources.and_then(|resources| {
+                renderer.transactional_shader_resource_reload(&resources, true, |_| Ok(()))
+            }) {
+                Ok(()) => {}
+                Err(error) => {
+                    tracing::warn!(
+                        %error,
+                        "continuing with embedded shader fallback after startup load failure"
+                    );
+                }
+            }
+        }
+        let terrain_atlas_base_padding = startup::terrain_atlas_base_padding_for_filtering(
+            renderer.terrain_texture_filtering(),
+            args.client_max_anisotropy_bit,
+        );
+        let mut terrain_textures = load_terrain_textures(
+            &mut renderer,
+            pack_roots.as_ref(),
+            args.cutout_leaves,
+            args.client_smooth_lighting,
+            args.biome_blend_radius,
+            args.client_mipmap_levels,
+            terrain_atlas_base_padding,
+        );
+        renderer.finish_upload_batch()?;
+        if let Some(particles) = particle_runtime.as_mut() {
+            particles.set_terrain_particle_sprite_ids(&terrain_textures);
+            if let Some(items) = &item_runtime {
+                particles.set_default_item_particle_sprite_ids(items);
+            }
+        }
+        load_hud_textures(
+            &mut renderer,
+            pack_roots.as_ref(),
+            FontOptions {
+                uniform: args.client_force_unicode_font,
+                japanese_variants: args.client_japanese_glyph_variants,
+            },
+        );
+        renderer.finish_upload_batch()?;
+        load_panorama(&mut renderer, pack_roots.as_ref());
+        renderer.set_default_text_right_to_left(
+            item_runtime
+                .as_ref()
+                .is_some_and(NativeItemRuntime::language_bidirectional),
+        );
+        let win_screen_resources = std::sync::Arc::new(
+            pack_roots
+                .as_ref()
+                .map(|roots| {
+                    WinScreenResources::load(
+                        roots,
+                        &args.username,
+                        &renderer.hud_text_measurements(),
+                    )
+                })
+                .transpose()?
+                .unwrap_or_default(),
+        );
+        simulation_mailbox.enqueue_or_report(
+            SimulationCommand::TextMeasurements(renderer.hud_text_measurements()),
+            "startup text measurements",
+        );
+        load_entity_model_textures(
+            &mut renderer,
+            pack_roots.as_ref(),
+            item_runtime
+                .as_ref()
+                .map(NativeItemRuntime::equipment_asset_catalog),
+            item_runtime
+                .as_ref()
+                .map_or(0, NativeItemRuntime::resource_generation),
+        );
+        load_sky_textures(&mut renderer, pack_roots.as_ref());
+        if let Some(particles) = &particle_render_runtime {
+            if let Err(err) = particles.upload_particle_atlas(&mut renderer) {
+                tracing::warn!(?err, "continuing without native particle atlas");
+            }
+        }
+        if let Some(items) = &item_runtime {
+            let (atlas_width, atlas_height) = items.atlas_size();
+            if let Err(err) =
+                renderer.upload_hud_item_atlas(atlas_width, atlas_height, items.atlas_rgba())
+            {
+                tracing::warn!(?err, "continuing without native item HUD atlas");
+            }
+            match renderer.upload_item_entity_atlas(atlas_width, atlas_height, items.atlas_rgba()) {
+                Ok(()) => renderer.set_item_particle_sprite_uvs(item_particle_sprite_uvs(items)),
+                Err(err) => {
+                    tracing::warn!(?err, "continuing without native item entity atlas");
+                }
+            }
+        }
+        renderer.finish_upload_batch()?;
+        if let Some(roots) = pack_roots.as_ref() {
+            roots
+                .ensure_resource_data_admitted()
+                .context("admit startup resource data generation")?;
+        }
+        net_counters.client_resources = std::sync::Arc::new(client_resource_pack_diagnostics(
+            pack_roots.as_ref(),
+            item_runtime
+                .as_ref()
+                .is_some_and(NativeItemRuntime::language_bidirectional),
+            Some(&client_locale),
+            item_runtime
+                .as_ref()
+                .map(|runtime| runtime.localized_text(SELECTED_LANGUAGE_PROBE_KEY)),
+        ));
+        let mut entity_variant_textures =
+            NativeEntityVariantTextureRuntime::new(pack_roots.clone());
+        let mut entity_render_extraction = EntityRenderExtractionScratch::default();
+        let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();
+        let mut camera_environment_samples = runtime::CameraEnvironmentSampleCache::default();
+        // `Options.broadcastOptions` resends this after every save, so keep the
+        // configured player information around for the session.
+        let startup_client_information = startup::client_information_from_args(&args)?;
+        let mut screenshot = args.screenshot;
+        let screenshot_after_terrain = args.connect_server;
+        let exit_after_screenshot = args.exit_after_screenshot;
+        let mut terrain_upload = TerrainUploadState::default();
+        let mut item_texture_animation = ItemTextureAnimationState::default();
+        let client_animation_ticks = ClientAnimationTickState::default();
+        let camera_fov_ticks =
+            CameraFovTickState::new(f32::from(args.client_fov), args.client_fov_effect_scale);
+        let camera_eye_height_ticks = CameraEyeHeightTickState::default();
+        let camera_spinning_ticks = runtime::CameraSpinningEffectTickState::default();
+        let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
+        let hud_debug_network_sampler = HudDebugNetworkSampler::default();
+        let hud_debug_tps_sampler = HudDebugTpsSampler::default();
+        let mut debug_collision_cache = DebugCollisionCache::default();
+        let mut debug_supporting_block_cache = DebugSupportingBlockCache::default();
+        let mut debug_sky_light_section_cache = DebugSkyLightSectionCache::default();
+        let mut remote_debug_selection_cache = RemoteDebugSelectionCache::default();
+        let mut debug_profiler = DebugProfiler::with_report_writer(
+            input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
+            args.server.clone(),
+        );
+        let mut frame_phase_diagnostics = FramePhaseDiagnostics::default();
+        let mut last_profiled_simulation_generation = None;
+        let mut latest_simulation_profile_sections =
+            Vec::<runtime::SimulationProfileSection>::new();
+        let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
+            args.client_gamma,
+            args.hide_lightning_flash,
+        );
+        let level_event_sound_random =
+            LevelEventSoundRandomState::with_seed(world.next_sound_seed());
+        let mut cursor_captured = false;
+        let mut frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
+        let mut latest_input_at = Instant::now();
+        let mut next_redraw_at = Instant::now();
+        let mut last_command_suggestion_narration = None;
+        let mut player_list_narration_visible = false;
+        let mut debug_options_screen_narration = ScreenNarrationRuntime::default();
+        let mut stats_screen_narration = ScreenNarrationRuntime::default();
+        let mut recipe_book_narration = ScreenNarrationRuntime::default();
+        let mut social_interactions_narration = ScreenNarrationRuntime::default();
+        let mut player_reporting_narration = ScreenNarrationRuntime::default();
+        let mut death_screen_narration = ScreenNarrationRuntime::default();
+        let mut disconnected_screen_narration = ScreenNarrationRuntime::default();
+        let mut chat_screen_narration = ScreenNarrationRuntime::default();
+        let mut game_event_screen_narration = ScreenNarrationRuntime::default();
+        let mut pending_control_screenshots = std::collections::VecDeque::new();
+        let mut platform_exit_requested = false;
+        let mut render_effect_consumer = RenderEffectConsumer::default();
+        let mut hud_render_runtime = HudRenderRuntime::default();
+        hud_render_runtime.set_panorama_scroll_speed(args.panorama_scroll_speed);
+        if let Some(roots) = pack_roots.as_ref() {
+            match roots
+                .load_periodic_notification_catalog()
+                .and_then(|catalog| {
+                    let generation = catalog.generation();
+                    HudRenderRuntime::prepare_periodic_notifications(&catalog)
+                        .map(|schedule| (generation, schedule))
+                }) {
+                Ok((generation, schedule)) => hud_render_runtime.install_periodic_notifications(
+                    generation,
+                    schedule,
+                    Instant::now(),
+                ),
+                Err(error) => {
+                    tracing::warn!(
+                        %error,
+                        "continuing without periodic notifications after startup load failure"
+                    );
+                }
+            }
+        }
+        let mut simulation_input_runtime = simulation::input_commands::SimulationInputRuntime::new(
+            renderer.physical_surface_size(),
+            false,
+            startup_client_information,
+        );
+        simulation_input_runtime
+            .set_gui_scale_options(args.client_gui_scale, args.client_force_unicode_font);
+        let mut renderer_counters = control_renderer_counters(renderer.counters());
+        project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
+        let publisher = SimulationPublisher::new(
+            SimulationPublicationInput {
+                effect_sequence: 0,
+                world: &world,
+                input: &input,
+                first_person_hand_presentation: Default::default(),
+                win_screen_resources: std::sync::Arc::clone(&win_screen_resources),
+                input_runtime: simulation_input_runtime.publication(),
+                frame: None,
+                client_tick_index: lightmap_ticks.client_tick_count(),
+                tick_interval: world_client_tick_interval(&world),
+                tick_residual: client_animation_ticks.entity_partial_tick(),
+                tick_anchor: Instant::now(),
+                running: true,
+                code_of_conduct_accepted: false,
+                net_counters: &net_counters,
+                renderer_counters: &renderer_counters,
+                audio_counters: &audio_status,
+                camera_fov_ticks,
+                camera_eye_height_ticks,
+                hud_debug_network_sampler: &hud_debug_network_sampler,
+                hud_debug_tps_sampler: &hud_debug_tps_sampler,
+            },
+            snapshot.clone(),
+            published_world.clone(),
+        );
+        let shared_publication = publisher.shared();
+        let simulation_item_runtime = item_runtime
+            .as_ref()
+            .map(NativeItemRuntime::independent_simulation_projection);
+        let simulation = SimulationCore {
+            net_events,
+            net_commands,
+            server_resource_packs: server_resource_pack_runtime,
+            services_block_lists,
+            input,
             first_person_hand_presentation: Default::default(),
-            win_screen_resources: std::sync::Arc::clone(&win_screen_resources),
-            input_runtime: simulation_input_runtime.publication(),
-            frame: None,
-            client_tick_index: lightmap_ticks.client_tick_count(),
-            tick_interval: world_client_tick_interval(&world),
-            tick_residual: client_animation_ticks.entity_partial_tick(),
-            tick_anchor: Instant::now(),
-            running: true,
-            code_of_conduct_accepted: false,
-            net_counters: &net_counters,
-            renderer_counters: &renderer_counters,
-            audio_counters: &audio_status,
+            world,
+            net_counters,
+            client_animation_ticks,
             camera_fov_ticks,
             camera_eye_height_ticks,
-            hud_debug_network_sampler: &hud_debug_network_sampler,
-            hud_debug_tps_sampler: &hud_debug_tps_sampler,
-        },
-        snapshot.clone(),
-        published_world.clone(),
-    );
-    let shared_publication = publisher.shared();
-    let simulation_item_runtime = item_runtime
-        .as_ref()
-        .map(NativeItemRuntime::independent_simulation_projection);
-    let simulation = SimulationCore {
-        net_events,
-        net_commands,
-        server_resource_packs: server_resource_pack_runtime,
-        services_block_lists,
-        input,
-        first_person_hand_presentation: Default::default(),
-        world,
-        net_counters,
-        client_animation_ticks,
-        camera_fov_ticks,
-        camera_eye_height_ticks,
-        camera_spinning_ticks,
-        hud_debug_network_sampler,
-        hud_debug_tps_sampler,
-        lightmap_ticks,
-        level_event_sound_random,
-        environment_audio: environment_audio_runtime::EnvironmentAudioRuntime::default(),
-        environment_animate: environment_animate_runtime::EnvironmentAnimateRuntime::default(),
-        weather_effects: weather_effect_runtime::WeatherEffectRuntime::new_with_radius(
-            client_particle_status,
-            args.client_weather_radius,
-        ),
-        music: MusicRuntime::configured(
-            args.client_music_frequency,
-            args.client_audio_volumes
-                .final_source_volume(&bbb_audio::AudioCategory::Music),
-        ),
-        win_screen_resources,
-        particle_runtime,
-        terrain_textures: terrain_textures.clone(),
-        item_runtime: simulation_item_runtime,
-        code_of_conduct: code_of_conduct_acceptance,
-        server_list,
-        command_mailbox: simulation_mailbox.clone(),
-        input_runtime: simulation_input_runtime,
-        level_load_runtime: LevelLoadRuntime::default(),
-        renderer_counters,
-        audio_counters: audio_status.clone(),
-        publisher,
-        audio_enabled: audio_runtime.is_some(),
-        hide_lightning_flash: args.hide_lightning_flash,
-        next_effect_sequence: 1,
-        pending_input_latency: None,
-    };
-    let simulation_event_proxy = event_loop.create_proxy();
-    let mut simulation_thread = SimulationThread::spawn(simulation, move || {
-        let _ = simulation_event_proxy.send_event(());
-    })?;
-    let mut render_publication = shared_publication.load_full();
-    let mut last_simulation_output_telemetry = None;
-    let mut event_cursor_position = window_surface::CursorPositionCache::default();
-    let mut current_cursor_icon = CursorIcon::Default;
-    let mut current_window_title = None;
-    let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
-    // `Minecraft.fillSystemReport` reports the options the failing run used, so
-    // capture them once here rather than reading a file mid-failure.
-    if let Some(options) = client_options.as_mut() {
-        if let Some(reconciliation) = resource_pack_options_reconciliation.as_ref() {
-            options.apply_resource_pack_reconciliation(reconciliation);
+            camera_spinning_ticks,
+            hud_debug_network_sampler,
+            hud_debug_tps_sampler,
+            lightmap_ticks,
+            level_event_sound_random,
+            environment_audio: environment_audio_runtime::EnvironmentAudioRuntime::default(),
+            environment_animate: environment_animate_runtime::EnvironmentAnimateRuntime::default(),
+            weather_effects: weather_effect_runtime::WeatherEffectRuntime::new_with_radius(
+                client_particle_status,
+                args.client_weather_radius,
+            ),
+            music: MusicRuntime::configured(
+                args.client_music_frequency,
+                args.client_audio_volumes
+                    .final_source_volume(&bbb_audio::AudioCategory::Music),
+            ),
+            win_screen_resources,
+            particle_runtime,
+            terrain_textures: terrain_textures.clone(),
+            item_runtime: simulation_item_runtime,
+            code_of_conduct: code_of_conduct_acceptance,
+            server_list,
+            command_mailbox: simulation_mailbox.clone(),
+            input_runtime: simulation_input_runtime,
+            level_load_runtime: LevelLoadRuntime::default(),
+            renderer_counters,
+            audio_counters: audio_status.clone(),
+            publisher,
+            audio_enabled: audio_runtime.is_some(),
+            hide_lightning_flash: args.hide_lightning_flash,
+            next_effect_sequence: 1,
+            pending_input_latency: None,
+        };
+        let mut simulation_thread = SimulationThread::spawn(simulation, move || {
+            let _ = simulation_event_proxy.send_event(());
+        })?;
+        let mut render_publication = shared_publication.load_full();
+        let mut last_simulation_output_telemetry = None;
+        let mut event_cursor_position = window_surface::CursorPositionCache::default();
+        let mut current_cursor_icon = CursorIcon::Default;
+        let mut current_window_title = None;
+        // `Minecraft.fillSystemReport` reports the options the failing run used, so
+        // capture them once here rather than reading a file mid-failure.
+        if let Some(options) = client_options.as_mut() {
+            if let Some(reconciliation) = resource_pack_options_reconciliation.as_ref() {
+                options.apply_resource_pack_reconciliation(reconciliation);
+            }
+            application_failures
+                .borrow_mut()
+                .attach_client_options(options.options().dump_for_report());
+            let rebound: Vec<_> = client_options::key_bindings::rebound_keys(options.options())
+                .into_iter()
+                .filter(|(name, _)| name.starts_with("key.debug."))
+                .collect();
+            if !rebound.is_empty() {
+                tracing::warn!(
+                    bindings = ?rebound,
+                    "options.txt rebinds debug keys this client still reads at their Vanilla defaults"
+                );
+            }
+            if let Err(error) = options.save_started_cleanly(true) {
+                tracing::warn!(%error, "failed to mark initial client load complete");
+            }
         }
-        fatal_failures
-            .borrow_mut()
-            .attach_client_options(options.options().dump_for_report());
-        let rebound: Vec<_> = client_options::key_bindings::rebound_keys(options.options())
-            .into_iter()
-            .filter(|(name, _)| name.starts_with("key.debug."))
-            .collect();
-        if !rebound.is_empty() {
-            tracing::warn!(
-                bindings = ?rebound,
-                "options.txt rebinds debug keys this client still reads at their Vanilla defaults"
-            );
+        if !network_runtime.activate() {
+            tracing::warn!("network runtime ended before initial-load activation");
         }
-        if let Err(error) = options.save_started_cleanly(true) {
-            tracing::warn!(%error, "failed to mark initial client load complete");
-        }
-    }
-    if !network_runtime.activate() {
-        tracing::warn!("network runtime ended before initial-load activation");
-    }
-    let event_failures = Rc::clone(&fatal_failures);
+        let event_failures = Rc::clone(&application_failures);
 
-    let event_loop_result = event_loop.run(move |event, target| {
-        if matches!(&event, Event::LoopExiting) {
-            set_cursor_capture(&window, &mut cursor_captured, false);
-            if let Err(error) = simulation_thread.shutdown_and_join() {
-                record_runtime_failure(
-                    &event_failures,
-                    error,
-                    Some(render_publication.world.as_ref()),
-                );
-            }
-            if let Err(error) = network_runtime.shutdown_and_join(&runtime) {
-                record_runtime_failure(
-                    &event_failures,
-                    RuntimeFailure::new(
-                        "network shutdown",
-                        "Network backend shutdown failed",
-                        error,
-                    ),
-                    Some(render_publication.world.as_ref()),
-                );
-            }
-            snapshot.rcu(|current| {
-                let mut next = (**current).clone();
-                next.app.running = false;
-                next.net.connected = false;
-                next
-            });
-            return;
-        }
-        #[cfg(feature = "lifecycle-soak")]
-        if let Some(runtime) = lifecycle_soak.as_mut() {
-            runtime.apply_due(Instant::now(), &window, &mut renderer);
-        }
-        if matches!(&event, Event::NewEvents(_)) {
-            if let Some(audio) = audio_runtime.as_mut() {
-                audio.poll_audio_device();
-            }
-        }
-        loop {
-            // A reload is the terminal effect of its simulation batch. Apply
-            // that CPU/GPU/audio transaction and queue its acknowledgement
-            // before consuming the next batch, so a later disconnect or
-            // replacement generation can never overtake the barrier.
-            let resource_reload = loop {
-                let simulation_step = match simulation_thread.try_recv() {
-                    Ok(step) => step,
-                    Err(std::sync::mpsc::TryRecvError::Empty) => break None,
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break None,
-                };
-                let render_effect_result = {
-                    let mut render_effect_sink = NativeRenderEffectSink {
-                        renderer: &mut renderer,
-                        window: &window,
-                        cursor_captured: &mut cursor_captured,
-                        vsync_enabled: args.client_vsync,
-                        preferred_video_mode: args.client_fullscreen_resolution,
-                        exclusive_fullscreen_supported: window_backend
-                            .supports_exclusive_fullscreen(),
-                        mailbox: &simulation_mailbox,
-                        clipboard: &mut debug_clipboard,
-                        terrain_upload: &mut terrain_upload,
-                        client_locale: &mut client_locale,
-                        debug_profiler: &mut debug_profiler,
-                        debug_options_screen_narration: &mut debug_options_screen_narration,
-                        stats_screen_narration: &mut stats_screen_narration,
-                        recipe_book_narration: &mut recipe_book_narration,
-                        social_interactions_narration: &mut social_interactions_narration,
-                        player_reporting_narration: &mut player_reporting_narration,
-                        death_screen_narration: &mut death_screen_narration,
-                        disconnected_screen_narration: &mut disconnected_screen_narration,
-                        chat_screen_narration: &mut chat_screen_narration,
-                        game_event_screen_narration: &mut game_event_screen_narration,
-                        narrator: narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                        control_screenshots: &mut pending_control_screenshots,
-                        game_dir: args.game_dir.as_path(),
-                        client_options: client_options.as_mut(),
-                        exit_requested: &mut platform_exit_requested,
-                    };
-                    simulation_step.consume_render_effects(
-                        &mut render_effect_consumer,
-                        audio_runtime
-                            .as_mut()
-                            .map(|runtime| runtime as &mut dyn AudioEventSink),
-                        &mut render_effect_sink,
-                    )
-                };
-                match render_effect_result {
-                    Ok(Some(reload)) => break Some(reload),
-                    Ok(None) => {}
-                    Err(error) => {
+        Ok(Box::new(
+            move |event: Event<()>, target: &winit::event_loop::ActiveEventLoop| {
+                if matches!(&event, Event::LoopExiting) {
+                    set_cursor_capture(&window, &mut cursor_captured, false);
+                    if let Err(error) = simulation_thread.shutdown_and_join() {
+                        record_runtime_failure(
+                            &event_failures,
+                            error,
+                            Some(render_publication.world.as_ref()),
+                        );
+                    }
+                    if let Err(error) = network_runtime.shutdown_and_join(&runtime) {
                         record_runtime_failure(
                             &event_failures,
                             RuntimeFailure::new(
-                                "render-effect apply",
-                                "Fatal simulation render-effect sequence gap",
+                                "network shutdown",
+                                "Network backend shutdown failed",
                                 error,
                             ),
                             Some(render_publication.world.as_ref()),
                         );
-                        target.exit();
-                        return;
+                    }
+                    snapshot.rcu(|current| {
+                        let mut next = (**current).clone();
+                        next.app.running = false;
+                        next.net.connected = false;
+                        next
+                    });
+                    return;
+                }
+                #[cfg(feature = "lifecycle-soak")]
+                if let Some(runtime) = lifecycle_soak.as_mut() {
+                    runtime.apply_due(Instant::now(), &window, &mut renderer);
+                }
+                if matches!(&event, Event::NewEvents(_)) {
+                    if let Some(audio) = audio_runtime.as_mut() {
+                        audio.poll_audio_device();
                     }
                 }
-            };
-            let Some(resource_reload) = resource_reload else {
-                break;
-            };
-            let ack = apply_server_resource_pack_reload_effect(
-                resource_reload,
-                &base_pack_roots,
-                &mut pack_roots,
-                &mut audio_runtime,
-                &mut audio_status,
-                &mut particle_render_runtime,
-                &mut item_runtime,
-                &mut terrain_textures,
-                &mut entity_variant_textures,
-                &mut terrain_upload,
-                &mut hud_render_runtime,
-                &mut renderer,
-                &client_locale,
-                FontOptions {
-                    uniform: args.client_force_unicode_font,
-                    japanese_variants: args.client_japanese_glyph_variants,
-                },
-                client_particle_status,
-                &player_skin_cache_dir,
-                &args.username,
-            );
-            non_entity_render_extraction.invalidate_resources();
-            simulation_mailbox.enqueue_or_report(
-                SimulationCommand::TextMeasurements(renderer.hud_text_measurements()),
-                "reload text measurements",
-            );
-            simulation_mailbox.enqueue_or_report(
-                SimulationCommand::ResourceReloadAck(Box::new(ack)),
-                "resource reload acknowledgement",
-            );
-        }
-        // Output transport is live even when the compositor suppresses redraws
-        // for an occluded surface. Sample it after the complete drain rather
-        // than tying its terminal gauge to renderer-frame publication.
-        let drained_output_backlog = simulation_thread.output_backlog();
-        if last_simulation_output_telemetry != Some(drained_output_backlog) {
-            simulation_mailbox.update_simulation_output_telemetry(
-                drained_output_backlog.render_wakes_sent as u64,
-                drained_output_backlog.render_wakes_coalesced as u64,
-                drained_output_backlog.pending as u64,
-                drained_output_backlog.peak as u64,
-            );
-            last_simulation_output_telemetry = Some(drained_output_backlog);
-        }
-        let latest_publication = shared_publication.load_full();
-        if latest_publication.effect_sequence <= render_effect_consumer.last_sequence() {
-            render_publication = latest_publication;
-        }
-        // `Minecraft.resizeGui` (Minecraft.java:1433-1442) makes the
-        // GUI-scaled surface observable to HUD layout and hit testing; the
-        // renderer owns it so native event handling and draw extraction share
-        // one logical size while `surface_size()` stays physical.
-        renderer.set_gui_surface_size(PhysicalSize::new(
-            render_publication.input_runtime.gui_scaled_width,
-            render_publication.input_runtime.gui_scaled_height,
-        ));
-        if let Some(result) = simulation_thread.poll_finished() {
-            if let Err(error) = result {
-                record_runtime_failure(
-                    &event_failures,
-                    error,
-                    Some(render_publication.world.as_ref()),
-                );
-            }
-            target.exit();
-            return;
-        }
-        if platform_exit_requested || !render_publication.running {
-            target.exit();
-            return;
-        }
-        update_window_title(
-            &window,
-            render_publication.net_counters.connected,
-            &mut current_window_title,
-        );
-        if let Some(narrator) = narrator_runtime.as_mut() {
-            narrator.tick();
-        }
-        let published_input = render_publication.input.as_state();
-        let published_world = render_publication.world.as_ref();
-        narrate_player_list_visibility_change(
-            hud_player_list_is_visible(published_input, published_world),
-            &mut player_list_narration_visible,
-            narrator_runtime
-                .as_mut()
-                .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-            || hud_player_list_narration_from_world(published_world, item_runtime.as_ref()),
-        );
-        narrate_command_suggestion_change(
-            (!published_input.chat_entry_is_active())
-                .then(|| render_publication.input.command_suggestion_narration())
-                .flatten(),
-            &mut last_command_suggestion_narration,
-            item_runtime.as_ref(),
-            narrator_runtime
-                .as_mut()
-                .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-        );
-        target.set_control_flow(
-            frame_interval
-                .map(|_| ControlFlow::WaitUntil(next_redraw_at))
-                .unwrap_or(ControlFlow::Poll),
-        );
-        // Vanilla `FramerateLimitTracker.onInputReceived`: `KeyboardHandler`
-        // and `MouseHandler` stamp the AFK clock on every key, click, scroll
-        // and cursor move.
-        if matches!(
-            &event,
-            Event::WindowEvent {
-                event: WindowEvent::KeyboardInput { .. }
-                    | WindowEvent::MouseInput { .. }
-                    | WindowEvent::MouseWheel { .. }
-                    | WindowEvent::CursorMoved { .. },
-                ..
-            } | Event::DeviceEvent {
-                event: DeviceEvent::MouseMotion { .. },
-                ..
-            }
-        ) {
-            latest_input_at = Instant::now();
-        }
-        match event {
-            Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
-                // This event arm is also `Window.resetIsResized`'s stand-in:
-                // vanilla latches `isResized` for `runTick` to poll and clear
-                // once per frame, while winit delivers each resize as an event
-                // consumed exactly once right here.
-                WindowEvent::Resized(size) => {
-                    let surface_size = platform_surface_size(
-                        std::env::consts::OS,
-                        matches!(window.fullscreen(), Some(Fullscreen::Exclusive(_))),
-                        args.client_fullscreen_resolution,
-                        size,
+                loop {
+                    // A reload is the terminal effect of its simulation batch. Apply
+                    // that CPU/GPU/audio transaction and queue its acknowledgement
+                    // before consuming the next batch, so a later disconnect or
+                    // replacement generation can never overtake the barrier.
+                    let resource_reload = loop {
+                        let simulation_step = match simulation_thread.try_recv() {
+                            Ok(step) => step,
+                            Err(std::sync::mpsc::TryRecvError::Empty) => break None,
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => break None,
+                        };
+                        let render_effect_result = {
+                            let mut render_effect_sink = NativeRenderEffectSink {
+                                renderer: &mut renderer,
+                                window: &window,
+                                cursor_captured: &mut cursor_captured,
+                                vsync_enabled: args.client_vsync,
+                                preferred_video_mode: args.client_fullscreen_resolution,
+                                exclusive_fullscreen_supported: window_backend
+                                    .supports_exclusive_fullscreen(),
+                                mailbox: &simulation_mailbox,
+                                clipboard: &mut debug_clipboard,
+                                terrain_upload: &mut terrain_upload,
+                                client_locale: &mut client_locale,
+                                debug_profiler: &mut debug_profiler,
+                                debug_options_screen_narration: &mut debug_options_screen_narration,
+                                stats_screen_narration: &mut stats_screen_narration,
+                                recipe_book_narration: &mut recipe_book_narration,
+                                social_interactions_narration: &mut social_interactions_narration,
+                                player_reporting_narration: &mut player_reporting_narration,
+                                death_screen_narration: &mut death_screen_narration,
+                                disconnected_screen_narration: &mut disconnected_screen_narration,
+                                chat_screen_narration: &mut chat_screen_narration,
+                                game_event_screen_narration: &mut game_event_screen_narration,
+                                narrator: narrator_runtime.as_mut().map(|narrator| {
+                                    narrator as &mut dyn narrator_runtime::SystemNarrator
+                                }),
+                                control_screenshots: &mut pending_control_screenshots,
+                                game_dir: args.game_dir.as_path(),
+                                client_options: client_options.as_mut(),
+                                exit_requested: &mut platform_exit_requested,
+                            };
+                            simulation_step.consume_render_effects(
+                                &mut render_effect_consumer,
+                                audio_runtime
+                                    .as_mut()
+                                    .map(|runtime| runtime as &mut dyn AudioEventSink),
+                                &mut render_effect_sink,
+                            )
+                        };
+                        match render_effect_result {
+                            Ok(Some(reload)) => break Some(reload),
+                            Ok(None) => {}
+                            Err(error) => {
+                                record_runtime_failure(
+                                    &event_failures,
+                                    RuntimeFailure::new(
+                                        "render-effect apply",
+                                        "Fatal simulation render-effect sequence gap",
+                                        error,
+                                    ),
+                                    Some(render_publication.world.as_ref()),
+                                );
+                                target.exit();
+                                return;
+                            }
+                        }
+                    };
+                    let Some(resource_reload) = resource_reload else {
+                        break;
+                    };
+                    let ack = apply_server_resource_pack_reload_effect(
+                        resource_reload,
+                        &base_pack_roots,
+                        &mut pack_roots,
+                        &mut audio_runtime,
+                        &mut audio_status,
+                        &mut particle_render_runtime,
+                        &mut item_runtime,
+                        &mut terrain_textures,
+                        &mut entity_variant_textures,
+                        &mut terrain_upload,
+                        &mut hud_render_runtime,
+                        &mut renderer,
+                        &client_locale,
+                        FontOptions {
+                            uniform: args.client_force_unicode_font,
+                            japanese_variants: args.client_japanese_glyph_variants,
+                        },
+                        client_particle_status,
+                        &player_skin_cache_dir,
+                        &args.username,
                     );
-                    let old_size = renderer.physical_surface_size();
-                    if let Err(error) = renderer.resize(surface_size) {
+                    non_entity_render_extraction.invalidate_resources();
+                    simulation_mailbox.enqueue_or_report(
+                        SimulationCommand::TextMeasurements(renderer.hud_text_measurements()),
+                        "reload text measurements",
+                    );
+                    simulation_mailbox.enqueue_or_report(
+                        SimulationCommand::ResourceReloadAck(Box::new(ack)),
+                        "resource reload acknowledgement",
+                    );
+                }
+                // Output transport is live even when the compositor suppresses redraws
+                // for an occluded surface. Sample it after the complete drain rather
+                // than tying its terminal gauge to renderer-frame publication.
+                let drained_output_backlog = simulation_thread.output_backlog();
+                if last_simulation_output_telemetry != Some(drained_output_backlog) {
+                    simulation_mailbox.update_simulation_output_telemetry(
+                        drained_output_backlog.render_wakes_sent as u64,
+                        drained_output_backlog.render_wakes_coalesced as u64,
+                        drained_output_backlog.pending as u64,
+                        drained_output_backlog.peak as u64,
+                    );
+                    last_simulation_output_telemetry = Some(drained_output_backlog);
+                }
+                let latest_publication = shared_publication.load_full();
+                if latest_publication.effect_sequence <= render_effect_consumer.last_sequence() {
+                    render_publication = latest_publication;
+                }
+                // `Minecraft.resizeGui` (Minecraft.java:1433-1442) makes the
+                // GUI-scaled surface observable to HUD layout and hit testing; the
+                // renderer owns it so native event handling and draw extraction share
+                // one logical size while `surface_size()` stays physical.
+                renderer.set_gui_surface_size(PhysicalSize::new(
+                    render_publication.input_runtime.gui_scaled_width,
+                    render_publication.input_runtime.gui_scaled_height,
+                ));
+                if let Some(result) = simulation_thread.poll_finished() {
+                    if let Err(error) = result {
                         record_runtime_failure(
                             &event_failures,
-                            // `Window.onFramebufferResize` failure reporting
-                            // keeps the old/new dimensions in its crash
-                            // category ("Window Dimensions"); carry both here.
-                            RuntimeFailure::new(
-                                "renderer resize",
-                                format!(
+                            error,
+                            Some(render_publication.world.as_ref()),
+                        );
+                    }
+                    target.exit();
+                    return;
+                }
+                if platform_exit_requested || !render_publication.running {
+                    target.exit();
+                    return;
+                }
+                update_window_title(
+                    &window,
+                    render_publication.net_counters.connected,
+                    &mut current_window_title,
+                );
+                if let Some(narrator) = narrator_runtime.as_mut() {
+                    narrator.tick();
+                }
+                let published_input = render_publication.input.as_state();
+                let published_world = render_publication.world.as_ref();
+                narrate_player_list_visibility_change(
+                    hud_player_list_is_visible(published_input, published_world),
+                    &mut player_list_narration_visible,
+                    narrator_runtime
+                        .as_mut()
+                        .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    || hud_player_list_narration_from_world(published_world, item_runtime.as_ref()),
+                );
+                narrate_command_suggestion_change(
+                    (!published_input.chat_entry_is_active())
+                        .then(|| render_publication.input.command_suggestion_narration())
+                        .flatten(),
+                    &mut last_command_suggestion_narration,
+                    item_runtime.as_ref(),
+                    narrator_runtime
+                        .as_mut()
+                        .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                );
+                target.set_control_flow(
+                    frame_interval
+                        .map(|_| ControlFlow::WaitUntil(next_redraw_at))
+                        .unwrap_or(ControlFlow::Poll),
+                );
+                // Vanilla `FramerateLimitTracker.onInputReceived`: `KeyboardHandler`
+                // and `MouseHandler` stamp the AFK clock on every key, click, scroll
+                // and cursor move.
+                if matches!(
+                    &event,
+                    Event::WindowEvent {
+                        event: WindowEvent::KeyboardInput { .. }
+                            | WindowEvent::MouseInput { .. }
+                            | WindowEvent::MouseWheel { .. }
+                            | WindowEvent::CursorMoved { .. },
+                        ..
+                    } | Event::DeviceEvent {
+                        event: DeviceEvent::MouseMotion { .. },
+                        ..
+                    }
+                ) {
+                    latest_input_at = Instant::now();
+                }
+                match event {
+                    Event::WindowEvent { event, window_id } if window_id == window.id() => {
+                        match event {
+                            // This event arm is also `Window.resetIsResized`'s stand-in:
+                            // vanilla latches `isResized` for `runTick` to poll and clear
+                            // once per frame, while winit delivers each resize as an event
+                            // consumed exactly once right here.
+                            WindowEvent::Resized(size) => {
+                                let surface_size = platform_surface_size(
+                                    std::env::consts::OS,
+                                    matches!(window.fullscreen(), Some(Fullscreen::Exclusive(_))),
+                                    args.client_fullscreen_resolution,
+                                    size,
+                                );
+                                let old_size = renderer.physical_surface_size();
+                                if let Err(error) = renderer.resize(surface_size) {
+                                    record_runtime_failure(
+                                        &event_failures,
+                                        // `Window.onFramebufferResize` failure reporting
+                                        // keeps the old/new dimensions in its crash
+                                        // category ("Window Dimensions"); carry both here.
+                                        RuntimeFailure::new(
+                                            "renderer resize",
+                                            format!(
                                     "Failed to resize renderer resources from {}x{} to {}x{}",
                                     old_size.width,
                                     old_size.height,
                                     surface_size.width,
                                     surface_size.height
                                 ),
-                                error,
-                            ),
-                            Some(render_publication.world.as_ref()),
-                        );
-                        target.exit();
-                        return;
-                    }
-                    // `Window.onFramebufferResize` (Window.java:267-297)
-                    // synchronously calls `Minecraft.resizeGui`
-                    // (Minecraft.java:1434-1442) before the resize callback
-                    // returns, so the logical GUI projection is established at
-                    // event time and any later mouse event consumer reads the
-                    // matching ratio. Publish it here before the simulation
-                    // command is queued; a zero-size/minimized callback keeps
-                    // the last usable physical and logical sizes, exactly like
-                    // the simulation's own `SurfaceResized` handling.
-                    if surface_size.width != 0 && surface_size.height != 0 {
-                        renderer.set_gui_surface_size(resize_gui_surface(
-                            surface_size,
-                            args.client_gui_scale,
-                            args.client_force_unicode_font,
-                        ));
-                    }
-                    simulation_mailbox.enqueue_or_report(
-                        SimulationCommand::SurfaceResized(surface_size),
-                        "surface resize",
-                    );
-                }
-                event
-                    if enqueue_simulation_window_event(
-                        &event,
-                        &simulation_mailbox,
-                        &mut debug_clipboard,
-                        &renderer,
-                        &window,
-                        &mut event_cursor_position,
-                        args.client_allow_cursor_changes,
-                        &mut current_cursor_icon,
-                    ) => {}
-                WindowEvent::RedrawRequested => {
-                    let profiler_frame_started_at = Instant::now();
-                    let profiler_enabled = debug_profiler.is_recording()
-                        || render_publication.input.debug_profiler_chart_visible();
-                    if !profiler_enabled {
-                        last_profiled_simulation_generation = None;
-                        latest_simulation_profile_sections.clear();
-                    }
-                    let gpu_timing_enabled = debug_profiler.is_recording()
-                        || render_publication.input.debug_screen_entry_enabled(
-                            DebugScreenEntryId::GpuUtilization,
-                            render_publication
-                                .input
-                                .show_only_reduced_info(&render_publication.world),
-                        );
-                    renderer.set_gpu_timing_enabled(gpu_timing_enabled);
-                    renderer
-                        .set_submission_completion_profiling_enabled(debug_profiler.is_recording());
-                    frame_phase_diagnostics.set_enabled(gpu_timing_enabled);
-                    let dynamic_texture_resource_generation = item_runtime
-                        .as_ref()
-                        .map_or(0, NativeItemRuntime::dynamic_texture_resource_generation);
-                    if let Some(items) = item_runtime.as_ref() {
-                        items.synchronize_dynamic_texture_session(
-                            render_publication.net_counters.connection_generation,
-                            render_publication.net_counters.connected,
-                        );
-                        items.drain_profile_resolution_results();
-                    }
-                    renderer.synchronize_dynamic_entity_texture_generation(
-                        dynamic_texture_resource_generation,
-                        render_publication.net_counters.connection_generation,
-                        render_publication.net_counters.connected,
-                    );
-                    if let Some(items) = item_runtime.as_ref() {
-                        drain_dynamic_player_skin_downloads(items, &mut renderer);
-                    }
-                    let profiler_update_started_at = Instant::now();
-                    if render_publication.frame.is_none() {
-                        window.request_redraw();
-                        return;
-                    }
-                    let native_render_profile = update_renderer_from_publication(
+                                            error,
+                                        ),
+                                        Some(render_publication.world.as_ref()),
+                                    );
+                                    target.exit();
+                                    return;
+                                }
+                                // `Window.onFramebufferResize` (Window.java:267-297)
+                                // synchronously calls `Minecraft.resizeGui`
+                                // (Minecraft.java:1434-1442) before the resize callback
+                                // returns, so the logical GUI projection is established at
+                                // event time and any later mouse event consumer reads the
+                                // matching ratio. Publish it here before the simulation
+                                // command is queued; a zero-size/minimized callback keeps
+                                // the last usable physical and logical sizes, exactly like
+                                // the simulation's own `SurfaceResized` handling.
+                                if surface_size.width != 0 && surface_size.height != 0 {
+                                    renderer.set_gui_surface_size(resize_gui_surface(
+                                        surface_size,
+                                        args.client_gui_scale,
+                                        args.client_force_unicode_font,
+                                    ));
+                                }
+                                simulation_mailbox.enqueue_or_report(
+                                    SimulationCommand::SurfaceResized(surface_size),
+                                    "surface resize",
+                                );
+                            }
+                            event
+                                if enqueue_simulation_window_event(
+                                    &event,
+                                    &simulation_mailbox,
+                                    &mut debug_clipboard,
+                                    &renderer,
+                                    &window,
+                                    &mut event_cursor_position,
+                                    args.client_allow_cursor_changes,
+                                    &mut current_cursor_icon,
+                                ) => {}
+                            WindowEvent::RedrawRequested => {
+                                let profiler_frame_started_at = Instant::now();
+                                let profiler_enabled = debug_profiler.is_recording()
+                                    || render_publication.input.debug_profiler_chart_visible();
+                                if !profiler_enabled {
+                                    last_profiled_simulation_generation = None;
+                                    latest_simulation_profile_sections.clear();
+                                }
+                                let gpu_timing_enabled = debug_profiler.is_recording()
+                                    || render_publication.input.debug_screen_entry_enabled(
+                                        DebugScreenEntryId::GpuUtilization,
+                                        render_publication
+                                            .input
+                                            .show_only_reduced_info(&render_publication.world),
+                                    );
+                                renderer.set_gpu_timing_enabled(gpu_timing_enabled);
+                                renderer.set_submission_completion_profiling_enabled(
+                                    debug_profiler.is_recording(),
+                                );
+                                frame_phase_diagnostics.set_enabled(gpu_timing_enabled);
+                                let dynamic_texture_resource_generation =
+                                    item_runtime.as_ref().map_or(
+                                        0,
+                                        NativeItemRuntime::dynamic_texture_resource_generation,
+                                    );
+                                if let Some(items) = item_runtime.as_ref() {
+                                    items.synchronize_dynamic_texture_session(
+                                        render_publication.net_counters.connection_generation,
+                                        render_publication.net_counters.connected,
+                                    );
+                                    items.drain_profile_resolution_results();
+                                }
+                                renderer.synchronize_dynamic_entity_texture_generation(
+                                    dynamic_texture_resource_generation,
+                                    render_publication.net_counters.connection_generation,
+                                    render_publication.net_counters.connected,
+                                );
+                                if let Some(items) = item_runtime.as_ref() {
+                                    drain_dynamic_player_skin_downloads(items, &mut renderer);
+                                }
+                                let profiler_update_started_at = Instant::now();
+                                if render_publication.frame.is_none() {
+                                    window.request_redraw();
+                                    return;
+                                }
+                                let native_render_profile = update_renderer_from_publication(
                         &render_publication,
                         SimulationRenderContext {
                             audio_events: audio_runtime
@@ -1842,601 +1859,663 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                             hud_debug_profiler_chart: debug_profiler.chart(),
                         },
                     );
-                    let subtitle_now = Instant::now();
-                    if let Some(audio) = audio_runtime.as_mut() {
-                        let events = audio.drain_subtitle_events();
-                        if args.client_show_subtitles {
-                            for event in events {
-                                sound_subtitle_runtime.record(event, subtitle_now);
-                            }
-                        }
-                    }
-                    let sound_subtitles = if args.client_show_subtitles && audio_runtime.is_some() {
-                        sound_subtitle_runtime.project(
-                            runtime::audio_listener_state_from_world(&render_publication.world),
-                            args.notification_display_time,
-                            subtitle_now,
-                            |key| {
-                                item_runtime
-                                    .as_ref()
-                                    .map(|runtime| runtime.localized_text(key))
-                                    .unwrap_or(key)
-                                    .to_string()
-                            },
-                        )
-                    } else {
-                        bbb_renderer::HudSoundSubtitles::default()
-                    };
-                    renderer.set_hud_sound_subtitles(sound_subtitles);
-                    if let Some(items) = item_runtime.as_ref() {
-                        maybe_upload_item_texture_animation(
-                            &mut renderer,
-                            &mut item_texture_animation,
-                            items,
-                        );
-                    }
-                    if let Some(particles) = particle_render_runtime.as_mut() {
-                        particles.maybe_upload_particle_atlas_animation(&mut renderer);
-                    }
-                    debug_options_screen_narration.tick(
-                        render_publication
-                            .input
-                            .debug_options_screen_is_open()
-                            .then(|| hud_render_runtime.debug_options_screen_narration())
-                            .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    social_interactions_narration.tick(
-                        render_publication
-                            .world
-                            .social_interactions_screen()
-                            .is_some()
-                            .then(|| hud_render_runtime.social_interactions_narration())
-                            .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    player_reporting_narration.tick(
-                        render_publication
-                            .world
-                            .player_reporting_screen()
-                            .is_some()
-                            .then(|| hud_render_runtime.player_reporting_narration())
-                            .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    stats_screen_narration.tick(
-                        render_publication
-                            .world
-                            .stats_screen_is_open()
-                            .then(|| hud_render_runtime.stats_screen_narration())
-                            .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    recipe_book_narration.tick(
-                        hud_render_runtime.recipe_book_narration(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    game_event_screen_narration.tick(
-                        (render_publication.world.death_screen().is_none()
-                            && render_publication.world.game_event_screen().is_some())
-                        .then(|| hud_render_runtime.game_event_screen_narration())
-                        .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    disconnected_screen_narration.tick(
-                        render_publication
-                            .input
-                            .disconnected_screen_runtime()
-                            .is_some()
-                            .then(|| hud_render_runtime.disconnected_screen_narration())
-                            .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    chat_screen_narration.tick(
-                        hud_render_runtime.chat_screen_narration(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    death_screen_narration.tick(
-                        render_publication
-                            .world
-                            .death_screen()
-                            .is_some()
-                            .then(|| hud_render_runtime.death_screen_narration())
-                            .flatten(),
-                        Instant::now(),
-                        render_publication.input.last_input_type(),
-                        narrator_runtime
-                            .as_mut()
-                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    );
-                    let dialog_preedit = render_publication.input.dialog_ime_preedit_hud_state();
-                    let sign_preedit_area =
-                        renderer.hud_sign_editor_ime_cursor_area(renderer.gui_surface_size());
-                    let dialog_preedit_area = || {
-                        dialog_ime_cursor_area(
-                            &render_publication.world,
-                            dialog_preedit.as_ref(),
-                            renderer.gui_surface_size(),
-                            &renderer,
-                        )
-                    };
-                    // The IME caret comes from logical GUI layout; the native
-                    // cursor rectangle is physical, so convert back at the
-                    // platform boundary (`Window.guiScaledWidth` ratio).
-                    let logical_ime_area = sign_preedit_area.or_else(dialog_preedit_area);
-                    if let Some((position, size)) = logical_ime_area.and_then(|(position, size)| {
-                        window_surface::gui_rect_to_physical(
-                            position,
-                            size,
-                            renderer.gui_surface_size(),
-                            window.inner_size(),
-                        )
-                    }) {
-                        window.set_ime_cursor_area(position, size);
-                    }
-                    let profiler_update_duration = profiler_update_started_at
-                        .elapsed()
-                        .saturating_sub(native_render_profile.extract)
-                        .saturating_sub(native_render_profile.toasts);
-                    let code_of_conduct_screen =
-                        code_of_conduct_overlay::code_of_conduct_renderer_screen(
-                            &render_publication.world,
-                            render_publication.input_runtime.code_of_conduct_overlay,
-                            render_publication.code_of_conduct_accepted,
-                            PhysicalSize::new(
-                                render_publication.input_runtime.gui_scaled_width,
-                                render_publication.input_runtime.gui_scaled_height,
-                            ),
-                            renderer.hud_text_measurements_ref(),
-                        );
-                    renderer.set_hud_code_of_conduct_screen(code_of_conduct_screen);
-
-                    let terrain_ready_for_screenshot =
-                        !screenshot_after_terrain || terrain_upload.has_uploaded_chunks();
-                    let cli_screenshot_path = screenshot
-                        .as_deref()
-                        .filter(|_| terrain_ready_for_screenshot);
-                    let control_screenshot = if cli_screenshot_path.is_none() {
-                        pending_control_screenshots.pop_front()
-                    } else {
-                        None
-                    };
-                    let render_path = cli_screenshot_path.or(control_screenshot
-                        .as_ref()
-                        .map(|pending| pending.path.as_path()));
-                    let wrote_cli_screenshot = cli_screenshot_path.is_some();
-
-                    let profiler_render_started_at = Instant::now();
-                    if let Err(err) = renderer.render(render_path) {
-                        record_runtime_failure(
-                            &event_failures,
-                            RuntimeFailure::new(
-                                "renderer frame",
-                                "Renderer frame failed",
-                                format_args!("{err:#}"),
-                            ),
-                            Some(render_publication.world.as_ref()),
-                        );
-                        target.exit();
-                        return;
-                    }
-                    let profiler_render_duration = profiler_render_started_at.elapsed();
-                    let renderer_frame_profile = renderer.last_frame_profile();
-                    if let Some(input_latency) = renderer_frame_profile.input_latency {
-                        simulation_mailbox
-                            .acknowledge_presented_input_latency(input_latency.sequence);
-                    }
-                    if let Some(pending) = control_screenshot
-                        .as_ref()
-                        .filter(|pending| pending.announce)
-                    {
-                        simulation_mailbox.enqueue_or_report(
-                            SimulationCommand::ScreenshotSaved {
-                                name: pending
-                                    .path
-                                    .file_name()
-                                    .map(|name| name.to_string_lossy().into_owned())
-                                    .unwrap_or_default(),
-                                error: None,
-                            },
-                            "screenshot saved",
-                        );
-                    }
-
-                    if wrote_cli_screenshot {
-                        screenshot = None;
-                        if exit_after_screenshot {
-                            target.exit();
-                        }
-                    }
-
-                    let profiler_publish_started_at = Instant::now();
-                    let audio_counters = audio_runtime
-                        .as_ref()
-                        .map(NativeAudioRuntime::counters)
-                        .unwrap_or_else(|| audio_status.clone());
-                    let output_backlog = simulation_thread.output_backlog();
-                    let mut renderer_counters = control_renderer_counters(renderer.counters());
-                    let entity_observation = entity_render_extraction.observation();
-                    renderer_counters.entity_render_candidates = entity_observation.candidates;
-                    renderer_counters.entity_render_survivors = entity_observation.survivors;
-                    renderer_counters.entity_render_projected = entity_observation.projected;
-                    renderer_counters.entity_candidate_nanos = entity_observation.candidate_nanos;
-                    renderer_counters.entity_candidate_peak_nanos =
-                        entity_observation.candidate_peak_nanos;
-                    renderer_counters.entity_cull_nanos = entity_observation.cull_nanos;
-                    renderer_counters.entity_cull_peak_nanos = entity_observation.cull_peak_nanos;
-                    renderer_counters.entity_full_projection_nanos =
-                        entity_observation.projection_nanos;
-                    renderer_counters.entity_full_projection_peak_nanos =
-                        entity_observation.projection_peak_nanos;
-                    renderer_counters.entity_model_build_nanos =
-                        entity_observation.model_build_nanos;
-                    renderer_counters.entity_model_build_peak_nanos =
-                        entity_observation.model_build_peak_nanos;
-                    renderer_counters.entity_extraction_capacity_growths =
-                        entity_observation.capacity_growths;
-                    let non_entity_observation = non_entity_render_extraction.observation();
-                    renderer_counters.non_entity_hud_nanos = non_entity_observation.hud_nanos;
-                    renderer_counters.non_entity_hud_peak_nanos =
-                        non_entity_observation.hud_peak_nanos;
-                    renderer_counters.non_entity_item_nanos = non_entity_observation.item_nanos;
-                    renderer_counters.non_entity_item_peak_nanos =
-                        non_entity_observation.item_peak_nanos;
-                    renderer_counters.item_instance_extraction_nanos =
-                        non_entity_observation.item_nanos;
-                    renderer_counters.item_instance_extraction_peak_nanos =
-                        non_entity_observation.item_peak_nanos;
-                    renderer_counters.non_entity_block_entity_nanos =
-                        non_entity_observation.block_entity_nanos;
-                    renderer_counters.non_entity_block_entity_peak_nanos =
-                        non_entity_observation.block_entity_peak_nanos;
-                    renderer_counters.non_entity_world_debug_nanos =
-                        non_entity_observation.world_debug_nanos;
-                    renderer_counters.non_entity_world_debug_peak_nanos =
-                        non_entity_observation.world_debug_peak_nanos;
-                    renderer_counters.non_entity_apply_nanos = non_entity_observation.apply_nanos;
-                    renderer_counters.non_entity_apply_peak_nanos =
-                        non_entity_observation.apply_peak_nanos;
-                    renderer_counters.non_entity_extraction_capacity_growths =
-                        non_entity_observation.capacity_growths;
-                    renderer_counters.item_extraction_scratch_capacity_growths =
-                        non_entity_observation.capacity_growths;
-                    renderer_counters.non_entity_cache_hits = non_entity_observation.cache_hits;
-                    renderer_counters.non_entity_cache_misses = non_entity_observation.cache_misses;
-                    renderer_counters.non_entity_rebuilt_owners =
-                        non_entity_observation.rebuilt_owners;
-                    project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
-                    // Always drain completed queries so opening the profiler after the GPU HUD
-                    // cannot publish durations captured before the recording window.
-                    let completed_gpu_timing = renderer.take_gpu_timing_profile();
-                    let profiler_frame_metrics = profiler_enabled.then(|| {
-                        let gpu_utilization = renderer.gpu_utilization();
-                        DebugProfilerFrameMetrics::from_renderer(
-                            std::time::Duration::ZERO,
-                            &renderer_counters,
-                            args.render_distance_chunks,
-                            gpu_utilization,
-                            completed_gpu_timing,
-                            renderer_frame_profile,
-                        )
-                    });
-                    simulation_mailbox.update_backend_telemetry(renderer_counters, audio_counters);
-                    // Preserve the backlog observed while a frame was in
-                    // flight; the next event-loop drain replaces `current`
-                    // with zero without requiring another redraw.
-                    if last_simulation_output_telemetry != Some(output_backlog) {
-                        simulation_mailbox.update_simulation_output_telemetry(
-                            output_backlog.render_wakes_sent as u64,
-                            output_backlog.render_wakes_coalesced as u64,
-                            output_backlog.pending as u64,
-                            output_backlog.peak as u64,
-                        );
-                        last_simulation_output_telemetry = Some(output_backlog);
-                    }
-                    let profiler_publish_duration = profiler_publish_started_at.elapsed();
-                    let profiler_frame_work_duration = profiler_frame_started_at.elapsed();
-                    frame_phase_diagnostics.record(FramePhaseSample {
-                        frame_interval: renderer_frame_profile.frame_interval,
-                        frame_work: profiler_frame_work_duration,
-                        update: profiler_update_duration,
-                        extract: native_render_profile.extract,
-                        render_call_total: renderer_frame_profile.render_call_total,
-                        cpu_encode_before_wait: renderer_frame_profile.cpu_encode_before_wait,
-                        previous_submission_wait: renderer_frame_profile.previous_submission_wait,
-                        previous_submission_poll: renderer_frame_profile.previous_submission_poll,
-                        previous_submission_blocking_wait: renderer_frame_profile
-                            .previous_submission_blocking_wait,
-                        surface_acquire: renderer_frame_profile.surface_acquire,
-                        presentation_tail_encode: renderer_frame_profile.presentation_tail_encode,
-                        queue_submit: renderer_frame_profile.queue_submit,
-                        swap_buffers_present: renderer_frame_profile.swap_buffers_present,
-                        post_present_fence_submit: renderer_frame_profile.post_present_fence_submit,
-                        gpu_async_poll: renderer_frame_profile.gpu_async_poll,
-                        legacy_render_encode: renderer_frame_profile.render,
-                        publish: profiler_publish_duration,
-                        retired_submission_render_to_callback: renderer_frame_profile
-                            .retired_submission_render_to_callback,
-                        retired_submission_submit_to_callback: renderer_frame_profile
-                            .retired_submission_submit_to_callback,
-                        retired_submission_callback_to_wait_return: renderer_frame_profile
-                            .retired_submission_callback_to_wait_return,
-                    });
-                    let (profiler_frame_duration, profiler_frame_limiter_duration) =
-                        frame_diagnostics::profiler_frame_timing(
-                            renderer_frame_profile.frame_interval,
-                            profiler_frame_work_duration,
-                            frame_interval.is_some(),
-                        );
-                    let newest_publication = shared_publication.load();
-                    let publication_generation_lag = newest_publication
-                        .generation
-                        .saturating_sub(render_publication.generation);
-                    let effect_sequence_lag = newest_publication
-                        .effect_sequence
-                        .saturating_sub(render_effect_consumer.last_sequence());
-                    // Simulation now advances independently; this warning
-                    // localizes render-owner latency and the measured output,
-                    // publication, and ordered-effect backlogs
-                    // without implying that canonical input or ticks stalled.
-                    if profiler_frame_work_duration > std::time::Duration::from_secs(1) {
-                        tracing::warn!(
-                            frame_millis = profiler_frame_work_duration.as_millis() as u64,
-                            update_millis = profiler_update_duration.as_millis() as u64,
-                            render_millis = profiler_render_duration.as_millis() as u64,
-                            publish_millis = profiler_publish_duration.as_millis() as u64,
-                            simulation_output_backlog = output_backlog.pending as u64,
-                            simulation_output_backlog_peak = output_backlog.peak as u64,
-                            simulation_render_wakes_sent = output_backlog.render_wakes_sent as u64,
-                            simulation_render_wakes_coalesced =
-                                output_backlog.render_wakes_coalesced as u64,
-                            publication_generation_lag,
-                            effect_sequence_lag,
-                            "slow frame"
-                        );
-                    }
-                    if let Some(mut profiler_frame_metrics) = profiler_frame_metrics {
-                        profiler_frame_metrics.tick_time_nanos =
-                            profiler_frame_duration.as_nanos() as f64;
-                        let simulation_generation_changed = last_profiled_simulation_generation
-                            != Some(render_publication.generation);
-                        if simulation_generation_changed {
-                            latest_simulation_profile_sections = render_publication
-                                .frame
-                                .as_ref()
-                                .map(|frame| frame.profiling_sections().to_vec())
-                                .unwrap_or_default();
-                            last_profiled_simulation_generation =
-                                Some(render_publication.generation);
-                        }
-                        let mut sections =
-                            Vec::with_capacity(latest_simulation_profile_sections.len() + 16);
-                        sections.extend(latest_simulation_profile_sections.iter().map(|section| {
-                            DebugProfilerSectionSample {
-                                path: section.path,
-                                duration: section.duration,
-                                record_in_report: simulation_generation_changed,
-                            }
-                        }));
-                        sections.extend([
-                            DebugProfilerSectionSample {
-                                path: &["toasts"],
-                                duration: native_render_profile.toasts,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame"],
-                                duration: profiler_frame_duration
-                                    .saturating_sub(native_render_profile.toasts),
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "update"],
-                                duration: profiler_update_duration,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "extract"],
-                                duration: native_render_profile.extract,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "surfaceAcquire"],
-                                duration: renderer_frame_profile.surface_acquire,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "render"],
-                                duration: renderer_frame_profile.render,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "cpuEncodeBeforeWait"],
-                                duration: renderer_frame_profile.cpu_encode_before_wait,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "previousSubmissionWait"],
-                                duration: renderer_frame_profile.previous_submission_wait,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "previousSubmissionPoll"],
-                                duration: renderer_frame_profile.previous_submission_poll,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "previousSubmissionBlockingWait"],
-                                duration: renderer_frame_profile.previous_submission_blocking_wait,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "presentationTailEncode"],
-                                duration: renderer_frame_profile.presentation_tail_encode,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "postPresentFenceSubmit"],
-                                duration: renderer_frame_profile.post_present_fence_submit,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "renderCallTotal"],
-                                duration: renderer_frame_profile.render_call_total,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "present"],
-                                duration: renderer_frame_profile.present,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "swapBuffers"],
-                                duration: renderer_frame_profile.swap_buffers,
-                                record_in_report: true,
-                            },
-                            DebugProfilerSectionSample {
-                                path: &["frame", "fpsUpdate"],
-                                duration: profiler_publish_duration,
-                                record_in_report: true,
-                            },
-                        ]);
-                        if !renderer_frame_profile.gpu_async.is_zero() {
-                            sections.push(DebugProfilerSectionSample {
-                                path: &["frame", "gpuAsync"],
-                                duration: renderer_frame_profile.gpu_async,
-                                record_in_report: true,
-                            });
-                        }
-                        if !profiler_frame_limiter_duration.is_zero() {
-                            sections.push(DebugProfilerSectionSample {
-                                path: &["frame", "frameLimiter"],
-                                duration: profiler_frame_limiter_duration,
-                                record_in_report: true,
-                            });
-                        }
-                        debug_profiler.record_frame(
-                            Instant::now(),
-                            profiler_frame_duration,
-                            &sections,
-                            profiler_frame_metrics,
-                        );
-                    }
-                    for event in debug_profiler.take_events() {
-                        let lifecycle = match event {
-                            DebugProfilerEvent::RecordingStarted => {
-                                tracing::info!("native profiling started");
-                                DebugProfilingLifecycle::Started
-                            }
-                            DebugProfilerEvent::RecordingStopped {
-                                duration,
-                                ticks,
-                                ticks_per_second,
-                            } => {
-                                tracing::info!(
-                                    duration_seconds = duration.as_secs_f64(),
-                                    ticks,
-                                    ticks_per_second,
-                                    "native profiling stopped"
+                                let subtitle_now = Instant::now();
+                                if let Some(audio) = audio_runtime.as_mut() {
+                                    let events = audio.drain_subtitle_events();
+                                    if args.client_show_subtitles {
+                                        for event in events {
+                                            sound_subtitle_runtime.record(event, subtitle_now);
+                                        }
+                                    }
+                                }
+                                let sound_subtitles =
+                                    if args.client_show_subtitles && audio_runtime.is_some() {
+                                        sound_subtitle_runtime.project(
+                                            runtime::audio_listener_state_from_world(
+                                                &render_publication.world,
+                                            ),
+                                            args.notification_display_time,
+                                            subtitle_now,
+                                            |key| {
+                                                item_runtime
+                                                    .as_ref()
+                                                    .map(|runtime| runtime.localized_text(key))
+                                                    .unwrap_or(key)
+                                                    .to_string()
+                                            },
+                                        )
+                                    } else {
+                                        bbb_renderer::HudSoundSubtitles::default()
+                                    };
+                                renderer.set_hud_sound_subtitles(sound_subtitles);
+                                if let Some(items) = item_runtime.as_ref() {
+                                    maybe_upload_item_texture_animation(
+                                        &mut renderer,
+                                        &mut item_texture_animation,
+                                        items,
+                                    );
+                                }
+                                if let Some(particles) = particle_render_runtime.as_mut() {
+                                    particles.maybe_upload_particle_atlas_animation(&mut renderer);
+                                }
+                                debug_options_screen_narration.tick(
+                                    render_publication
+                                        .input
+                                        .debug_options_screen_is_open()
+                                        .then(|| {
+                                            hud_render_runtime.debug_options_screen_narration()
+                                        })
+                                        .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
                                 );
-                                DebugProfilingLifecycle::Stopped {
-                                    duration,
-                                    ticks,
-                                    ticks_per_second,
+                                social_interactions_narration.tick(
+                                    render_publication
+                                        .world
+                                        .social_interactions_screen()
+                                        .is_some()
+                                        .then(|| hud_render_runtime.social_interactions_narration())
+                                        .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                player_reporting_narration.tick(
+                                    render_publication
+                                        .world
+                                        .player_reporting_screen()
+                                        .is_some()
+                                        .then(|| hud_render_runtime.player_reporting_narration())
+                                        .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                stats_screen_narration.tick(
+                                    render_publication
+                                        .world
+                                        .stats_screen_is_open()
+                                        .then(|| hud_render_runtime.stats_screen_narration())
+                                        .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                recipe_book_narration.tick(
+                                    hud_render_runtime.recipe_book_narration(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                game_event_screen_narration.tick(
+                                    (render_publication.world.death_screen().is_none()
+                                        && render_publication.world.game_event_screen().is_some())
+                                    .then(|| hud_render_runtime.game_event_screen_narration())
+                                    .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                disconnected_screen_narration.tick(
+                                    render_publication
+                                        .input
+                                        .disconnected_screen_runtime()
+                                        .is_some()
+                                        .then(|| hud_render_runtime.disconnected_screen_narration())
+                                        .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                chat_screen_narration.tick(
+                                    hud_render_runtime.chat_screen_narration(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                death_screen_narration.tick(
+                                    render_publication
+                                        .world
+                                        .death_screen()
+                                        .is_some()
+                                        .then(|| hud_render_runtime.death_screen_narration())
+                                        .flatten(),
+                                    Instant::now(),
+                                    render_publication.input.last_input_type(),
+                                    narrator_runtime.as_mut().map(|narrator| {
+                                        narrator as &mut dyn narrator_runtime::SystemNarrator
+                                    }),
+                                );
+                                let dialog_preedit =
+                                    render_publication.input.dialog_ime_preedit_hud_state();
+                                let sign_preedit_area = renderer
+                                    .hud_sign_editor_ime_cursor_area(renderer.gui_surface_size());
+                                let dialog_preedit_area = || {
+                                    dialog_ime_cursor_area(
+                                        &render_publication.world,
+                                        dialog_preedit.as_ref(),
+                                        renderer.gui_surface_size(),
+                                        &renderer,
+                                    )
+                                };
+                                // The IME caret comes from logical GUI layout; the native
+                                // cursor rectangle is physical, so convert back at the
+                                // platform boundary (`Window.guiScaledWidth` ratio).
+                                let logical_ime_area =
+                                    sign_preedit_area.or_else(dialog_preedit_area);
+                                if let Some((position, size)) =
+                                    logical_ime_area.and_then(|(position, size)| {
+                                        window_surface::gui_rect_to_physical(
+                                            position,
+                                            size,
+                                            renderer.gui_surface_size(),
+                                            window.inner_size(),
+                                        )
+                                    })
+                                {
+                                    window.set_ime_cursor_area(position, size);
+                                }
+                                let profiler_update_duration = profiler_update_started_at
+                                    .elapsed()
+                                    .saturating_sub(native_render_profile.extract)
+                                    .saturating_sub(native_render_profile.toasts);
+                                let code_of_conduct_screen =
+                                    code_of_conduct_overlay::code_of_conduct_renderer_screen(
+                                        &render_publication.world,
+                                        render_publication.input_runtime.code_of_conduct_overlay,
+                                        render_publication.code_of_conduct_accepted,
+                                        PhysicalSize::new(
+                                            render_publication.input_runtime.gui_scaled_width,
+                                            render_publication.input_runtime.gui_scaled_height,
+                                        ),
+                                        renderer.hud_text_measurements_ref(),
+                                    );
+                                renderer.set_hud_code_of_conduct_screen(code_of_conduct_screen);
+
+                                let terrain_ready_for_screenshot = !screenshot_after_terrain
+                                    || terrain_upload.has_uploaded_chunks();
+                                let cli_screenshot_path = screenshot
+                                    .as_deref()
+                                    .filter(|_| terrain_ready_for_screenshot);
+                                let control_screenshot = if cli_screenshot_path.is_none() {
+                                    pending_control_screenshots.pop_front()
+                                } else {
+                                    None
+                                };
+                                let render_path = cli_screenshot_path.or(control_screenshot
+                                    .as_ref()
+                                    .map(|pending| pending.path.as_path()));
+                                let wrote_cli_screenshot = cli_screenshot_path.is_some();
+
+                                let profiler_render_started_at = Instant::now();
+                                if let Err(err) = renderer.render(render_path) {
+                                    record_runtime_failure(
+                                        &event_failures,
+                                        RuntimeFailure::new(
+                                            "renderer frame",
+                                            "Renderer frame failed",
+                                            format_args!("{err:#}"),
+                                        ),
+                                        Some(render_publication.world.as_ref()),
+                                    );
+                                    target.exit();
+                                    return;
+                                }
+                                let profiler_render_duration = profiler_render_started_at.elapsed();
+                                let renderer_frame_profile = renderer.last_frame_profile();
+                                if let Some(input_latency) = renderer_frame_profile.input_latency {
+                                    simulation_mailbox.acknowledge_presented_input_latency(
+                                        input_latency.sequence,
+                                    );
+                                }
+                                if let Some(pending) = control_screenshot
+                                    .as_ref()
+                                    .filter(|pending| pending.announce)
+                                {
+                                    simulation_mailbox.enqueue_or_report(
+                                        SimulationCommand::ScreenshotSaved {
+                                            name: pending
+                                                .path
+                                                .file_name()
+                                                .map(|name| name.to_string_lossy().into_owned())
+                                                .unwrap_or_default(),
+                                            error: None,
+                                        },
+                                        "screenshot saved",
+                                    );
+                                }
+
+                                if wrote_cli_screenshot {
+                                    screenshot = None;
+                                    if exit_after_screenshot {
+                                        target.exit();
+                                    }
+                                }
+
+                                let profiler_publish_started_at = Instant::now();
+                                let audio_counters = audio_runtime
+                                    .as_ref()
+                                    .map(NativeAudioRuntime::counters)
+                                    .unwrap_or_else(|| audio_status.clone());
+                                let output_backlog = simulation_thread.output_backlog();
+                                let mut renderer_counters =
+                                    control_renderer_counters(renderer.counters());
+                                let entity_observation = entity_render_extraction.observation();
+                                renderer_counters.entity_render_candidates =
+                                    entity_observation.candidates;
+                                renderer_counters.entity_render_survivors =
+                                    entity_observation.survivors;
+                                renderer_counters.entity_render_projected =
+                                    entity_observation.projected;
+                                renderer_counters.entity_candidate_nanos =
+                                    entity_observation.candidate_nanos;
+                                renderer_counters.entity_candidate_peak_nanos =
+                                    entity_observation.candidate_peak_nanos;
+                                renderer_counters.entity_cull_nanos = entity_observation.cull_nanos;
+                                renderer_counters.entity_cull_peak_nanos =
+                                    entity_observation.cull_peak_nanos;
+                                renderer_counters.entity_full_projection_nanos =
+                                    entity_observation.projection_nanos;
+                                renderer_counters.entity_full_projection_peak_nanos =
+                                    entity_observation.projection_peak_nanos;
+                                renderer_counters.entity_model_build_nanos =
+                                    entity_observation.model_build_nanos;
+                                renderer_counters.entity_model_build_peak_nanos =
+                                    entity_observation.model_build_peak_nanos;
+                                renderer_counters.entity_extraction_capacity_growths =
+                                    entity_observation.capacity_growths;
+                                let non_entity_observation =
+                                    non_entity_render_extraction.observation();
+                                renderer_counters.non_entity_hud_nanos =
+                                    non_entity_observation.hud_nanos;
+                                renderer_counters.non_entity_hud_peak_nanos =
+                                    non_entity_observation.hud_peak_nanos;
+                                renderer_counters.non_entity_item_nanos =
+                                    non_entity_observation.item_nanos;
+                                renderer_counters.non_entity_item_peak_nanos =
+                                    non_entity_observation.item_peak_nanos;
+                                renderer_counters.item_instance_extraction_nanos =
+                                    non_entity_observation.item_nanos;
+                                renderer_counters.item_instance_extraction_peak_nanos =
+                                    non_entity_observation.item_peak_nanos;
+                                renderer_counters.non_entity_block_entity_nanos =
+                                    non_entity_observation.block_entity_nanos;
+                                renderer_counters.non_entity_block_entity_peak_nanos =
+                                    non_entity_observation.block_entity_peak_nanos;
+                                renderer_counters.non_entity_world_debug_nanos =
+                                    non_entity_observation.world_debug_nanos;
+                                renderer_counters.non_entity_world_debug_peak_nanos =
+                                    non_entity_observation.world_debug_peak_nanos;
+                                renderer_counters.non_entity_apply_nanos =
+                                    non_entity_observation.apply_nanos;
+                                renderer_counters.non_entity_apply_peak_nanos =
+                                    non_entity_observation.apply_peak_nanos;
+                                renderer_counters.non_entity_extraction_capacity_growths =
+                                    non_entity_observation.capacity_growths;
+                                renderer_counters.item_extraction_scratch_capacity_growths =
+                                    non_entity_observation.capacity_growths;
+                                renderer_counters.non_entity_cache_hits =
+                                    non_entity_observation.cache_hits;
+                                renderer_counters.non_entity_cache_misses =
+                                    non_entity_observation.cache_misses;
+                                renderer_counters.non_entity_rebuilt_owners =
+                                    non_entity_observation.rebuilt_owners;
+                                project_dynamic_texture_counters(
+                                    &mut renderer_counters,
+                                    item_runtime.as_ref(),
+                                );
+                                // Always drain completed queries so opening the profiler after the GPU HUD
+                                // cannot publish durations captured before the recording window.
+                                let completed_gpu_timing = renderer.take_gpu_timing_profile();
+                                let profiler_frame_metrics = profiler_enabled.then(|| {
+                                    let gpu_utilization = renderer.gpu_utilization();
+                                    DebugProfilerFrameMetrics::from_renderer(
+                                        std::time::Duration::ZERO,
+                                        &renderer_counters,
+                                        args.render_distance_chunks,
+                                        gpu_utilization,
+                                        completed_gpu_timing,
+                                        renderer_frame_profile,
+                                    )
+                                });
+                                simulation_mailbox
+                                    .update_backend_telemetry(renderer_counters, audio_counters);
+                                // Preserve the backlog observed while a frame was in
+                                // flight; the next event-loop drain replaces `current`
+                                // with zero without requiring another redraw.
+                                if last_simulation_output_telemetry != Some(output_backlog) {
+                                    simulation_mailbox.update_simulation_output_telemetry(
+                                        output_backlog.render_wakes_sent as u64,
+                                        output_backlog.render_wakes_coalesced as u64,
+                                        output_backlog.pending as u64,
+                                        output_backlog.peak as u64,
+                                    );
+                                    last_simulation_output_telemetry = Some(output_backlog);
+                                }
+                                let profiler_publish_duration =
+                                    profiler_publish_started_at.elapsed();
+                                let profiler_frame_work_duration =
+                                    profiler_frame_started_at.elapsed();
+                                frame_phase_diagnostics.record(FramePhaseSample {
+                                    frame_interval: renderer_frame_profile.frame_interval,
+                                    frame_work: profiler_frame_work_duration,
+                                    update: profiler_update_duration,
+                                    extract: native_render_profile.extract,
+                                    render_call_total: renderer_frame_profile.render_call_total,
+                                    cpu_encode_before_wait: renderer_frame_profile
+                                        .cpu_encode_before_wait,
+                                    previous_submission_wait: renderer_frame_profile
+                                        .previous_submission_wait,
+                                    previous_submission_poll: renderer_frame_profile
+                                        .previous_submission_poll,
+                                    previous_submission_blocking_wait: renderer_frame_profile
+                                        .previous_submission_blocking_wait,
+                                    surface_acquire: renderer_frame_profile.surface_acquire,
+                                    presentation_tail_encode: renderer_frame_profile
+                                        .presentation_tail_encode,
+                                    queue_submit: renderer_frame_profile.queue_submit,
+                                    swap_buffers_present: renderer_frame_profile
+                                        .swap_buffers_present,
+                                    post_present_fence_submit: renderer_frame_profile
+                                        .post_present_fence_submit,
+                                    gpu_async_poll: renderer_frame_profile.gpu_async_poll,
+                                    legacy_render_encode: renderer_frame_profile.render,
+                                    publish: profiler_publish_duration,
+                                    retired_submission_render_to_callback: renderer_frame_profile
+                                        .retired_submission_render_to_callback,
+                                    retired_submission_submit_to_callback: renderer_frame_profile
+                                        .retired_submission_submit_to_callback,
+                                    retired_submission_callback_to_wait_return:
+                                        renderer_frame_profile
+                                            .retired_submission_callback_to_wait_return,
+                                });
+                                let (profiler_frame_duration, profiler_frame_limiter_duration) =
+                                    frame_diagnostics::profiler_frame_timing(
+                                        renderer_frame_profile.frame_interval,
+                                        profiler_frame_work_duration,
+                                        frame_interval.is_some(),
+                                    );
+                                let newest_publication = shared_publication.load();
+                                let publication_generation_lag = newest_publication
+                                    .generation
+                                    .saturating_sub(render_publication.generation);
+                                let effect_sequence_lag = newest_publication
+                                    .effect_sequence
+                                    .saturating_sub(render_effect_consumer.last_sequence());
+                                // Simulation now advances independently; this warning
+                                // localizes render-owner latency and the measured output,
+                                // publication, and ordered-effect backlogs
+                                // without implying that canonical input or ticks stalled.
+                                if profiler_frame_work_duration > std::time::Duration::from_secs(1)
+                                {
+                                    tracing::warn!(
+                                        frame_millis =
+                                            profiler_frame_work_duration.as_millis() as u64,
+                                        update_millis = profiler_update_duration.as_millis() as u64,
+                                        render_millis = profiler_render_duration.as_millis() as u64,
+                                        publish_millis =
+                                            profiler_publish_duration.as_millis() as u64,
+                                        simulation_output_backlog = output_backlog.pending as u64,
+                                        simulation_output_backlog_peak = output_backlog.peak as u64,
+                                        simulation_render_wakes_sent =
+                                            output_backlog.render_wakes_sent as u64,
+                                        simulation_render_wakes_coalesced =
+                                            output_backlog.render_wakes_coalesced as u64,
+                                        publication_generation_lag,
+                                        effect_sequence_lag,
+                                        "slow frame"
+                                    );
+                                }
+                                if let Some(mut profiler_frame_metrics) = profiler_frame_metrics {
+                                    profiler_frame_metrics.tick_time_nanos =
+                                        profiler_frame_duration.as_nanos() as f64;
+                                    let simulation_generation_changed =
+                                        last_profiled_simulation_generation
+                                            != Some(render_publication.generation);
+                                    if simulation_generation_changed {
+                                        latest_simulation_profile_sections = render_publication
+                                            .frame
+                                            .as_ref()
+                                            .map(|frame| frame.profiling_sections().to_vec())
+                                            .unwrap_or_default();
+                                        last_profiled_simulation_generation =
+                                            Some(render_publication.generation);
+                                    }
+                                    let mut sections = Vec::with_capacity(
+                                        latest_simulation_profile_sections.len() + 16,
+                                    );
+                                    sections.extend(latest_simulation_profile_sections.iter().map(
+                                        |section| DebugProfilerSectionSample {
+                                            path: section.path,
+                                            duration: section.duration,
+                                            record_in_report: simulation_generation_changed,
+                                        },
+                                    ));
+                                    sections.extend([
+                                        DebugProfilerSectionSample {
+                                            path: &["toasts"],
+                                            duration: native_render_profile.toasts,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame"],
+                                            duration: profiler_frame_duration
+                                                .saturating_sub(native_render_profile.toasts),
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "update"],
+                                            duration: profiler_update_duration,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "extract"],
+                                            duration: native_render_profile.extract,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "surfaceAcquire"],
+                                            duration: renderer_frame_profile.surface_acquire,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "render"],
+                                            duration: renderer_frame_profile.render,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "cpuEncodeBeforeWait"],
+                                            duration: renderer_frame_profile.cpu_encode_before_wait,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "previousSubmissionWait"],
+                                            duration: renderer_frame_profile
+                                                .previous_submission_wait,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "previousSubmissionPoll"],
+                                            duration: renderer_frame_profile
+                                                .previous_submission_poll,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "previousSubmissionBlockingWait"],
+                                            duration: renderer_frame_profile
+                                                .previous_submission_blocking_wait,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "presentationTailEncode"],
+                                            duration: renderer_frame_profile
+                                                .presentation_tail_encode,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "postPresentFenceSubmit"],
+                                            duration: renderer_frame_profile
+                                                .post_present_fence_submit,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "renderCallTotal"],
+                                            duration: renderer_frame_profile.render_call_total,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "present"],
+                                            duration: renderer_frame_profile.present,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "swapBuffers"],
+                                            duration: renderer_frame_profile.swap_buffers,
+                                            record_in_report: true,
+                                        },
+                                        DebugProfilerSectionSample {
+                                            path: &["frame", "fpsUpdate"],
+                                            duration: profiler_publish_duration,
+                                            record_in_report: true,
+                                        },
+                                    ]);
+                                    if !renderer_frame_profile.gpu_async.is_zero() {
+                                        sections.push(DebugProfilerSectionSample {
+                                            path: &["frame", "gpuAsync"],
+                                            duration: renderer_frame_profile.gpu_async,
+                                            record_in_report: true,
+                                        });
+                                    }
+                                    if !profiler_frame_limiter_duration.is_zero() {
+                                        sections.push(DebugProfilerSectionSample {
+                                            path: &["frame", "frameLimiter"],
+                                            duration: profiler_frame_limiter_duration,
+                                            record_in_report: true,
+                                        });
+                                    }
+                                    debug_profiler.record_frame(
+                                        Instant::now(),
+                                        profiler_frame_duration,
+                                        &sections,
+                                        profiler_frame_metrics,
+                                    );
+                                }
+                                for event in debug_profiler.take_events() {
+                                    let lifecycle = match event {
+                                        DebugProfilerEvent::RecordingStarted => {
+                                            tracing::info!("native profiling started");
+                                            DebugProfilingLifecycle::Started
+                                        }
+                                        DebugProfilerEvent::RecordingStopped {
+                                            duration,
+                                            ticks,
+                                            ticks_per_second,
+                                        } => {
+                                            tracing::info!(
+                                                duration_seconds = duration.as_secs_f64(),
+                                                ticks,
+                                                ticks_per_second,
+                                                "native profiling stopped"
+                                            );
+                                            DebugProfilingLifecycle::Stopped {
+                                                duration,
+                                                ticks,
+                                                ticks_per_second,
+                                            }
+                                        }
+                                        DebugProfilerEvent::ReportSaved { path } => {
+                                            tracing::info!(
+                                                path = %path.display(),
+                                                "native profiling report saved"
+                                            );
+                                            DebugProfilingLifecycle::ReportSaved { path }
+                                        }
+                                        DebugProfilerEvent::ReportFailed { error } => {
+                                            tracing::warn!(error, "native profiling report failed");
+                                            DebugProfilingLifecycle::ReportFailed { error }
+                                        }
+                                    };
+                                    simulation_mailbox.enqueue_or_report(
+                                        SimulationCommand::DebugProfilingLifecycle(lifecycle),
+                                        "debug profiling lifecycle",
+                                    );
+                                }
+                                // Vanilla samples `FramerateLimitTracker.getFramerateLimit`
+                                // every frame, so the cap follows window/AFK/menu state.
+                                frame_interval =
+                                    client_framerate_limit_interval(effective_framerate_limit(
+                                        args.client_framerate_limit,
+                                        args.inactivity_fps_limit,
+                                        window.is_minimized().unwrap_or(false),
+                                        latest_input_at.elapsed().as_millis(),
+                                        render_publication.world.level_info().is_some(),
+                                        input_screen_is_open(
+                                            render_publication.input.as_state(),
+                                            &render_publication.world,
+                                        ),
+                                    ));
+                                if let Some(interval) = frame_interval {
+                                    next_redraw_at = Instant::now() + interval;
                                 }
                             }
-                            DebugProfilerEvent::ReportSaved { path } => {
-                                tracing::info!(
-                                    path = %path.display(),
-                                    "native profiling report saved"
-                                );
-                                DebugProfilingLifecycle::ReportSaved { path }
-                            }
-                            DebugProfilerEvent::ReportFailed { error } => {
-                                tracing::warn!(error, "native profiling report failed");
-                                DebugProfilingLifecycle::ReportFailed { error }
-                            }
-                        };
-                        simulation_mailbox.enqueue_or_report(
-                            SimulationCommand::DebugProfilingLifecycle(lifecycle),
-                            "debug profiling lifecycle",
-                        );
+                            _ => {}
+                        }
                     }
-                    // Vanilla samples `FramerateLimitTracker.getFramerateLimit`
-                    // every frame, so the cap follows window/AFK/menu state.
-                    frame_interval = client_framerate_limit_interval(effective_framerate_limit(
-                        args.client_framerate_limit,
-                        args.inactivity_fps_limit,
-                        window.is_minimized().unwrap_or(false),
-                        latest_input_at.elapsed().as_millis(),
-                        render_publication.world.level_info().is_some(),
-                        input_screen_is_open(
-                            render_publication.input.as_state(),
-                            &render_publication.world,
-                        ),
-                    ));
-                    if let Some(interval) = frame_interval {
-                        next_redraw_at = Instant::now() + interval;
+                    Event::DeviceEvent {
+                        event: DeviceEvent::MouseMotion { delta },
+                        ..
+                    } => {
+                        if cursor_captured {
+                            simulation_mailbox.enqueue_or_report(
+                                SimulationCommand::MouseMotion { delta },
+                                "device mouse motion",
+                            );
+                        }
                     }
+                    Event::UserEvent(()) => {
+                        if frame_interval.is_none() || Instant::now() >= next_redraw_at {
+                            window.request_redraw();
+                        }
+                    }
+                    Event::AboutToWait => {
+                        if frame_interval.is_none() || Instant::now() >= next_redraw_at {
+                            window.request_redraw();
+                        }
+                    }
+                    _ => {}
                 }
-                _ => {}
             },
-            Event::DeviceEvent {
-                event: DeviceEvent::MouseMotion { delta },
-                ..
-            } => {
-                if cursor_captured {
-                    simulation_mailbox.enqueue_or_report(
-                        SimulationCommand::MouseMotion { delta },
-                        "device mouse motion",
-                    );
-                }
-            }
-            Event::UserEvent(()) => {
-                if frame_interval.is_none() || Instant::now() >= next_redraw_at {
-                    window.request_redraw();
-                }
-            }
-            Event::AboutToWait => {
-                if frame_interval.is_none() || Instant::now() >= next_redraw_at {
-                    window.request_redraw();
-                }
-            }
-            _ => {}
-        }
+        ) as NativeEventHandler)
     });
+    let event_loop_result = event_loop.run_app(&mut application);
+    if let Some(error) = application.take_bootstrap_error() {
+        record_runtime_failure(
+            &fatal_failures,
+            RuntimeFailure::new(
+                "platform bootstrap",
+                "Native application bootstrap failed",
+                error,
+            ),
+            None,
+        );
+    }
     if let Err(error) = event_loop_result {
         record_runtime_failure(
             &fatal_failures,
@@ -2520,7 +2599,7 @@ fn apply_window_cursor_icon(
     requested: CursorIcon,
 ) {
     if let Some(next) = window_surface::select_cursor(allow_cursor_changes, requested, *current) {
-        window.set_cursor_icon(next);
+        window.set_cursor(next);
         *current = next;
     }
 }
@@ -2649,7 +2728,7 @@ fn update_window_title(window: &Window, connected: bool, current: &mut Option<St
 /// `KeyboardHandler.setup`/`MouseHandler.setup` GLFW-callback equivalent.
 /// Two vanilla callbacks are deliberately absent. `WindowEvent::DroppedFile`
 /// cannot provide `MouseHandler.onDrop`'s batch-local failed path count: winit
-/// 0.29.15 flattens successes into individual events and exposes no failure or
+/// 0.30.13 flattens successes into individual events and exposes no failure or
 /// batch receipt. The exact failed-file-drop capability receipt is generated at
 /// `docs/evidence/vanilla-26.1/file-drop-capability.json`; on the declared
 /// Linux/Wayland + Java 25 path, official LWJGL decoding makes that failure
@@ -3017,7 +3096,7 @@ mod tests {
             .find("load_pack_roots_with_options(&args)")
             .unwrap();
         let window = production
-            .find("build_window(&event_loop, &window_config, initial_fullscreen)")
+            .find("build_window(target, &window_config, initial_fullscreen)")
             .unwrap();
         let simulation = production
             .find("let mut simulation_thread = SimulationThread::")
@@ -3029,7 +3108,7 @@ mod tests {
             .find("network_runtime.activate()")
             .expect("quick-play activation barrier");
         let event_loop = production
-            .find("event_loop.run(move |event, target|")
+            .find("event_loop.run_app(&mut application)")
             .unwrap();
 
         assert!(dirty < packs && packs < window && window < simulation);
@@ -3048,9 +3127,8 @@ mod tests {
             .expect("redraw arm")
             .1;
         assert!(redraw.contains("renderer.set_gpu_timing_enabled(gpu_timing_enabled)"));
-        assert!(redraw.contains(
-            "renderer\n                        .set_submission_completion_profiling_enabled(debug_profiler.is_recording())"
-        ));
+        assert!(redraw.contains("set_submission_completion_profiling_enabled("));
+        assert!(redraw.contains("debug_profiler.is_recording(),"));
         assert!(!redraw.contains("set_submission_completion_profiling_enabled(gpu_timing_enabled)"));
     }
 
@@ -3130,7 +3208,7 @@ mod tests {
             .expect("cursor gate owner")
             .1;
         assert!(gate.contains("window_surface::select_cursor("));
-        assert!(gate.contains("window.set_cursor_icon(next)"));
+        assert!(gate.contains("window.set_cursor(next)"));
         let moved = production
             .split_once("WindowEvent::CursorMoved { position, .. } =>")
             .expect("cursor move arm")
@@ -3165,7 +3243,7 @@ mod tests {
             .split_once("let initial_fullscreen = requested_window_fullscreen(")
             .expect("macOS creation-time fullscreen selection")
             .1;
-        assert!(creation.contains("event_loop.primary_monitor().as_ref()"));
+        assert!(creation.contains("target.primary_monitor().as_ref()"));
         let startup = production
             .split_once("fn apply_startup_fullscreen(")
             .expect("startup fullscreen owner")
@@ -3239,7 +3317,7 @@ mod tests {
             .map(|offset| second_finish + 1 + offset)
             .expect("remaining startup upload completion");
         let event_loop = startup
-            .find("event_loop.run(")
+            .find("event_loop.run_app(")
             .expect("first presented-frame event loop");
 
         assert!(first_finish < hud);
@@ -3344,7 +3422,7 @@ mod tests {
             .expect("render state update");
         let render = arm.find("renderer.render(").expect("frame render");
         let resample = arm
-            .find("frame_interval = client_framerate_limit_interval(effective_framerate_limit(")
+            .find("client_framerate_limit_interval(effective_framerate_limit(")
             .expect("per-frame framerate resample");
         assert!(
             update < render && render < resample,

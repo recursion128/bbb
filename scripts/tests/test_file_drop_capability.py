@@ -25,7 +25,7 @@ from file_drop_capability import (  # noqa: E402
 class FileDropCapabilityTests(unittest.TestCase):
     def test_winit_metadata_is_filtered_to_the_rust_host(self) -> None:
         host = "aarch64-apple-darwin"
-        manifest = "/tmp/winit-0.29.15/Cargo.toml"
+        manifest = "/tmp/winit-0.30.13/Cargo.toml"
         completed = (
             subprocess.CompletedProcess(
                 ["rustc", "-vV"], 0, stdout=f"rustc fixture\nhost: {host}\n", stderr=""
@@ -38,7 +38,7 @@ class FileDropCapabilityTests(unittest.TestCase):
                         "packages": [
                             {
                                 "name": "winit",
-                                "version": "0.29.15",
+                                "version": "0.30.13",
                                 "manifest_path": manifest,
                             }
                         ]
