@@ -405,11 +405,11 @@
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+      "bbb_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
       "digest_kind": "gate-receipt-line-v1",
       "exists": true,
       "invalid_reasons": [
-        "no clean full-gate receipt for 7544be81b62faaf7ddfc3a01a58606e6bd8441ae"
+        "no clean full-gate receipt for 40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571"
       ],
       "kind": "gate",
       "mechanism_ids": [
@@ -1054,7 +1054,7 @@
       ],
       "path": "crates/bbb-item-model/src/item_runtime/tests.rs",
       "scenario_ids": [],
-      "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f",
+      "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09",
       "valid": true
     },
     {
@@ -9287,24 +9287,17 @@
       "valid": false
     }
   ],
-  "bbb_evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+  "bbb_evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
   "change_impact": {
     "affected_mechanism_ids": [
       "audio-client-level-sound-routing",
       "audio-sound-manager-engine",
-      "coverage-external-client-census",
-      "debug-integrated-server-mirrors",
       "diagnostics-client-level-report",
-      "diagnostics-client-only-inspection-exclusions",
-      "diagnostics-crash-runtime",
-      "docs-chinese-mechanism-wiki",
-      "entities-fixed-type-surface",
       "hud-frame-extract-order",
       "hud-hotbar-selection",
       "hud-overlay-effects",
       "hud-player-vitals",
       "hud-text-and-lists",
-      "identity-profile-key-lifecycle",
       "identity-skin-presentation",
       "input-debug-key-actions",
       "input-key-mapping",
@@ -9321,13 +9314,9 @@
       "interaction-pick-actions",
       "interaction-prediction-sequence",
       "interaction-primary-action-routing",
-      "interaction-server-authority-exclusions",
-      "items-server-owned-effects",
-      "items-versioned-property-surface",
       "lifecycle-client-runtime",
       "lifecycle-client-task-handoff",
       "lifecycle-session-replacement",
-      "movement-remote-type-exceptions",
       "performance-gpu-execution-duration",
       "performance-official-equal-load",
       "persistence-options-apply",
@@ -9341,30 +9330,19 @@
       "platform-window-display-mode",
       "platform-window-lifecycle",
       "platform-window-surface-state",
-      "platform-windows-release",
       "player-local-camera-targeting",
-      "player-local-client-status-options",
-      "player-local-environment-effects",
       "player-local-input-movement",
-      "player-local-inventory-actions",
       "player-local-item-use-state",
       "player-local-movement-reporting",
-      "player-local-permission-chat-state",
       "player-local-session-respawn",
       "player-local-vehicle-control",
-      "player-local-vitals-status",
-      "player-local-world-edit-ui",
       "protocol-client-state-flow",
       "protocol-configuration-handler-decisions",
-      "protocol-framing-no-world-state",
       "protocol-listener-contracts",
       "protocol-login-handler-decisions",
       "protocol-packet-tables",
       "protocol-play-handler-decisions",
       "protocol-serverbound-call-sites",
-      "registries-built-in-catalogs",
-      "registries-synchronized-data",
-      "registries-unsynchronized-fixed-identities",
       "rendering-block-entity-registration",
       "rendering-block-model-pipeline",
       "rendering-camera-fluid-fog",
@@ -9387,47 +9365,19 @@
       "rendering-level-pass",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle",
-      "rendering-nondeterministic-golden-exclusions",
-      "rendering-official-noop-surfaces",
       "rendering-particle-provider-registration",
       "resources-default-pack-stack",
-      "resources-indexed-built-in-packs",
       "resources-indexed-panorama",
-      "resources-indexed-realms",
       "resources-indexed-vanilla-provider",
       "resources-language-manager",
       "resources-offline-asset-trust",
       "resources-reload-listeners",
       "resources-reload-recovery",
-      "resources-runtime-mipmap-update",
       "resources-server-pack-lifecycle",
       "resources-window-icons",
-      "resources-world-list-favicons",
-      "scope-client-level-noop-hooks",
-      "scope-multiplayer-server-list",
-      "scope-options-ui",
-      "scope-realms",
-      "scope-singleplayer-integrated",
-      "scope-support-accessors",
-      "scope-telemetry-upload",
-      "scope-title-screen",
-      "security-secure-chat-reporting",
       "startup-client-bootstrap",
       "startup-session-identity",
-      "ui-accessibility-surface",
-      "ui-bidirectional-shaping",
-      "ui-chat-screen-surface",
-      "ui-clipboard-surface",
-      "ui-container-server-authority-exclusions",
-      "ui-context-entity-type",
-      "ui-death-screen-surface",
-      "ui-disconnected-screen-surface",
-      "ui-font-manager",
-      "ui-font-provider-pipeline",
       "ui-local-time-icu",
-      "ui-menu-screen-registration",
-      "ui-pause-screen-surface",
-      "ui-screen-lifecycle",
       "world-client-ambient-animation",
       "world-client-chunk-light-lifecycle",
       "world-client-clock-weather",
@@ -9438,16 +9388,9 @@
       "world-client-respawn-data",
       "world-client-session-services"
     ],
-    "base_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+    "base_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
     "changed_paths": [
-      "crates/bbb-renderer/src/frame_flight.rs",
-      "crates/bbb-renderer/src/render.rs",
-      "crates/bbb-renderer/src/renderer.rs",
-      "docs/unsupported-features.md",
-      "goal.md",
-      "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
-      "scripts/macos_native_retina.py",
-      "scripts/tests/test_macos_native_retina.py"
+      "crates/bbb-item-model/src/item_runtime/tests.rs"
     ],
     "functional_affected_mechanism_ids": [
       "audio-client-level-sound-routing",
@@ -9458,6 +9401,7 @@
       "hud-overlay-effects",
       "hud-player-vitals",
       "hud-text-and-lists",
+      "identity-skin-presentation",
       "input-debug-key-actions",
       "input-key-mapping",
       "input-keyboard-routing",
@@ -9536,6 +9480,7 @@
       "resources-window-icons",
       "startup-client-bootstrap",
       "startup-session-identity",
+      "ui-local-time-icu",
       "world-client-ambient-animation",
       "world-client-chunk-light-lifecycle",
       "world-client-clock-weather",
@@ -9547,9 +9492,7 @@
       "world-client-session-services"
     ],
     "functional_changed_paths": [
-      "crates/bbb-renderer/src/frame_flight.rs",
-      "crates/bbb-renderer/src/render.rs",
-      "crates/bbb-renderer/src/renderer.rs"
+      "crates/bbb-item-model/src/item_runtime/tests.rs"
     ],
     "path_impacts": [
       {
@@ -9562,353 +9505,6 @@
           "hud-overlay-effects",
           "hud-player-vitals",
           "hud-text-and-lists",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "player-local-camera-targeting",
-          "player-local-input-movement",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-panorama",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "crates/bbb-renderer/src/frame_flight.rs",
-        "reasons": [
-          "central-owner"
-        ],
-        "required_validation_classes": [
-          "draw-evidence",
-          "performance-abba",
-          "release-identity",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "diagnostics-client-level-report",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "player-local-camera-targeting",
-          "player-local-input-movement",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-panorama",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "crates/bbb-renderer/src/render.rs",
-        "reasons": [
-          "central-owner",
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "bbb-owner",
-          "draw-evidence",
-          "focused-evidence",
-          "full-gate",
-          "performance-abba",
-          "release-identity",
-          "resource-platform-receipt",
-          "vanilla-owner",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "diagnostics-client-level-report",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "input-debug-key-actions",
-          "input-key-mapping",
-          "input-keyboard-routing",
-          "input-mouse-routing",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "lifecycle-client-runtime",
-          "lifecycle-client-task-handoff",
-          "lifecycle-session-replacement",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "persistence-options-apply",
-          "persistence-options-derived",
-          "persistence-options-file",
-          "persistence-options-unconsumed",
-          "persistence-server-list",
-          "platform-linux-seat-matrix",
-          "platform-macos-release",
-          "platform-window-chrome",
-          "platform-window-display-mode",
-          "platform-window-lifecycle",
-          "platform-window-surface-state",
-          "player-local-camera-targeting",
-          "player-local-input-movement",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "protocol-client-state-flow",
-          "protocol-configuration-handler-decisions",
-          "protocol-listener-contracts",
-          "protocol-login-handler-decisions",
-          "protocol-packet-tables",
-          "protocol-play-handler-decisions",
-          "protocol-serverbound-call-sites",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-particle-provider-registration",
-          "resources-default-pack-stack",
-          "resources-indexed-panorama",
-          "resources-indexed-vanilla-provider",
-          "resources-language-manager",
-          "resources-offline-asset-trust",
-          "resources-reload-listeners",
-          "resources-reload-recovery",
-          "resources-server-pack-lifecycle",
-          "resources-window-icons",
-          "startup-client-bootstrap",
-          "startup-session-identity",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "crates/bbb-renderer/src/renderer.rs",
-        "reasons": [
-          "central-owner",
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "bbb-owner",
-          "draw-evidence",
-          "focused-evidence",
-          "full-gate",
-          "performance-abba",
-          "protocol-state-receipt",
-          "release-identity",
-          "resource-platform-receipt",
-          "vanilla-owner",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "coverage-external-client-census",
-          "debug-integrated-server-mirrors",
-          "diagnostics-client-level-report",
-          "diagnostics-client-only-inspection-exclusions",
-          "diagnostics-crash-runtime",
-          "docs-chinese-mechanism-wiki",
-          "entities-fixed-type-surface",
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "identity-profile-key-lifecycle",
           "identity-skin-presentation",
           "input-debug-key-actions",
           "input-key-mapping",
@@ -9925,13 +9521,9 @@
           "interaction-pick-actions",
           "interaction-prediction-sequence",
           "interaction-primary-action-routing",
-          "interaction-server-authority-exclusions",
-          "items-server-owned-effects",
-          "items-versioned-property-surface",
           "lifecycle-client-runtime",
           "lifecycle-client-task-handoff",
           "lifecycle-session-replacement",
-          "movement-remote-type-exceptions",
           "performance-gpu-execution-duration",
           "performance-official-equal-load",
           "persistence-options-apply",
@@ -9945,30 +9537,19 @@
           "platform-window-display-mode",
           "platform-window-lifecycle",
           "platform-window-surface-state",
-          "platform-windows-release",
           "player-local-camera-targeting",
-          "player-local-client-status-options",
-          "player-local-environment-effects",
           "player-local-input-movement",
-          "player-local-inventory-actions",
           "player-local-item-use-state",
           "player-local-movement-reporting",
-          "player-local-permission-chat-state",
           "player-local-session-respawn",
           "player-local-vehicle-control",
-          "player-local-vitals-status",
-          "player-local-world-edit-ui",
           "protocol-client-state-flow",
           "protocol-configuration-handler-decisions",
-          "protocol-framing-no-world-state",
           "protocol-listener-contracts",
           "protocol-login-handler-decisions",
           "protocol-packet-tables",
           "protocol-play-handler-decisions",
           "protocol-serverbound-call-sites",
-          "registries-built-in-catalogs",
-          "registries-synchronized-data",
-          "registries-unsynchronized-fixed-identities",
           "rendering-block-entity-registration",
           "rendering-block-model-pipeline",
           "rendering-camera-fluid-fog",
@@ -9991,47 +9572,19 @@
           "rendering-level-pass",
           "rendering-level-scene-projection",
           "rendering-level-section-lifecycle",
-          "rendering-nondeterministic-golden-exclusions",
-          "rendering-official-noop-surfaces",
           "rendering-particle-provider-registration",
           "resources-default-pack-stack",
-          "resources-indexed-built-in-packs",
           "resources-indexed-panorama",
-          "resources-indexed-realms",
           "resources-indexed-vanilla-provider",
           "resources-language-manager",
           "resources-offline-asset-trust",
           "resources-reload-listeners",
           "resources-reload-recovery",
-          "resources-runtime-mipmap-update",
           "resources-server-pack-lifecycle",
           "resources-window-icons",
-          "resources-world-list-favicons",
-          "scope-client-level-noop-hooks",
-          "scope-multiplayer-server-list",
-          "scope-options-ui",
-          "scope-realms",
-          "scope-singleplayer-integrated",
-          "scope-support-accessors",
-          "scope-telemetry-upload",
-          "scope-title-screen",
-          "security-secure-chat-reporting",
           "startup-client-bootstrap",
           "startup-session-identity",
-          "ui-accessibility-surface",
-          "ui-bidirectional-shaping",
-          "ui-chat-screen-surface",
-          "ui-clipboard-surface",
-          "ui-container-server-authority-exclusions",
-          "ui-context-entity-type",
-          "ui-death-screen-surface",
-          "ui-disconnected-screen-surface",
-          "ui-font-manager",
-          "ui-font-provider-pipeline",
           "ui-local-time-icu",
-          "ui-menu-screen-registration",
-          "ui-pause-screen-surface",
-          "ui-screen-lifecycle",
           "world-client-ambient-animation",
           "world-client-chunk-light-lifecycle",
           "world-client-clock-weather",
@@ -10042,176 +9595,24 @@
           "world-client-respawn-data",
           "world-client-session-services"
         ],
-        "path": "docs/unsupported-features.md",
+        "path": "crates/bbb-item-model/src/item_runtime/tests.rs",
         "reasons": [
           "central-owner",
           "direct-dependency"
         ],
         "required_validation_classes": [
-          "acceptance-contract",
-          "bbb-owner",
-          "draw-evidence",
           "focused-evidence",
           "full-gate",
-          "protocol-state-receipt",
-          "release-identity",
-          "resource-platform-receipt",
-          "vanilla-owner",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [],
-        "path": "goal.md",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "hud-frame-extract-order",
-          "hud-hotbar-selection",
-          "hud-overlay-effects",
-          "hud-player-vitals",
-          "hud-text-and-lists",
-          "performance-gpu-execution-duration",
-          "performance-official-equal-load",
-          "rendering-block-entity-registration",
-          "rendering-block-model-pipeline",
-          "rendering-camera-fluid-fog",
-          "rendering-chunk-layer-routing",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-client-particle-routing",
-          "rendering-effects-screenshot",
-          "rendering-entity-layer-registration",
-          "rendering-entity-renderer-registration",
-          "rendering-extract-surface",
-          "rendering-fluid-mesh",
-          "rendering-frame-order",
-          "rendering-level-backend-lifecycle",
-          "rendering-level-diagnostics-gizmos",
-          "rendering-level-effect-lifecycle",
-          "rendering-level-frame-graph",
-          "rendering-level-light-query",
-          "rendering-level-pass",
-          "rendering-level-scene-projection",
-          "rendering-level-section-lifecycle",
-          "rendering-particle-provider-registration"
-        ],
-        "path": "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
-        "reasons": [
-          "central-owner"
-        ],
-        "required_validation_classes": [
-          "draw-evidence",
-          "performance-abba",
-          "visual-workload"
-        ]
-      },
-      {
-        "mechanism_ids": [],
-        "path": "scripts/macos_native_retina.py",
-        "reasons": [
-          "unrelated"
-        ],
-        "required_validation_classes": []
-      },
-      {
-        "mechanism_ids": [
-          "audio-client-level-sound-routing",
-          "audio-sound-manager-engine",
-          "debug-integrated-server-mirrors",
-          "diagnostics-client-level-report",
-          "diagnostics-client-only-inspection-exclusions",
-          "identity-profile-key-lifecycle",
-          "identity-skin-presentation",
-          "interaction-block-breaking",
-          "interaction-carried-slot-sync",
-          "interaction-container-actions",
-          "interaction-creative-actions",
-          "interaction-entity-actions",
-          "interaction-game-mode-guards",
-          "interaction-game-mode-lifecycle",
-          "interaction-item-use",
-          "interaction-pick-actions",
-          "interaction-prediction-sequence",
-          "interaction-primary-action-routing",
-          "interaction-server-authority-exclusions",
-          "items-server-owned-effects",
-          "items-versioned-property-surface",
-          "movement-remote-type-exceptions",
-          "performance-official-equal-load",
-          "platform-windows-release",
-          "player-local-camera-targeting",
-          "player-local-environment-effects",
-          "player-local-input-movement",
-          "player-local-item-use-state",
-          "player-local-movement-reporting",
-          "player-local-permission-chat-state",
-          "player-local-session-respawn",
-          "player-local-vehicle-control",
-          "protocol-framing-no-world-state",
-          "registries-unsynchronized-fixed-identities",
-          "rendering-block-entity-registration",
-          "rendering-client-biome-tint",
-          "rendering-client-block-entity-tracking",
-          "rendering-client-level-dirty-handoff",
-          "rendering-nondeterministic-golden-exclusions",
-          "rendering-official-noop-surfaces",
-          "resources-runtime-mipmap-update",
-          "resources-world-list-favicons",
-          "scope-client-level-noop-hooks",
-          "scope-multiplayer-server-list",
-          "scope-options-ui",
-          "scope-realms",
-          "scope-singleplayer-integrated",
-          "scope-support-accessors",
-          "scope-telemetry-upload",
-          "scope-title-screen",
-          "ui-container-server-authority-exclusions",
-          "ui-death-screen-surface",
-          "ui-screen-lifecycle",
-          "world-client-ambient-animation",
-          "world-client-chunk-light-lifecycle",
-          "world-client-clock-weather",
-          "world-client-entity-lifecycle",
-          "world-client-level-events",
-          "world-client-level-lifecycle",
-          "world-client-map-data",
-          "world-client-respawn-data",
-          "world-client-session-services"
-        ],
-        "path": "scripts/tests/test_macos_native_retina.py",
-        "reasons": [
-          "direct-dependency"
-        ],
-        "required_validation_classes": [
-          "focused-evidence",
-          "full-gate"
+          "release-identity"
         ]
       }
     ],
     "required_validation_classes": [
-      "acceptance-contract",
-      "bbb-owner",
-      "draw-evidence",
       "focused-evidence",
       "full-gate",
-      "performance-abba",
-      "protocol-state-receipt",
-      "release-identity",
-      "resource-platform-receipt",
-      "vanilla-owner",
-      "visual-workload"
+      "release-identity"
     ],
-    "validation_only_changed_paths": [
-      "scripts/fixtures/official-client-benchmark/macos-native-retina-26.1.json",
-      "scripts/macos_native_retina.py",
-      "scripts/tests/test_macos_native_retina.py"
-    ]
+    "validation_only_changed_paths": []
   },
   "commands": {
     "change_plan": "scripts/python python scripts/parity_acceptance.py plan --base-commit <commit>",
@@ -10263,9 +9664,7 @@
         "repo:scripts/tests/test_official_client_benchmark.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/client_options.rs",
@@ -10342,7 +9741,7 @@
           }
         ],
         "dependency_closure_sha256": "98e3a348c01f8467947c231c16b76767640360d4b52cd3ccd50b0bed37a006bf",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
           "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
@@ -10547,9 +9946,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/main.rs",
@@ -10634,7 +10031,7 @@
           }
         ],
         "dependency_closure_sha256": "2b207233d40bedbb3459036c98cdab8221990e03328aac336e04dbfc381c1796",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/main.rs#fn run_client",
           "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
@@ -10850,7 +10247,7 @@
           }
         ],
         "dependency_closure_sha256": "4e233942123316d08a608a956314eff34b622e4448846c9cf83d6b111e11c849",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
           "crates/bbb-native/src/network_runtime.rs#idle_shutdown_is_idempotent",
@@ -11132,7 +10529,7 @@
           }
         ],
         "dependency_closure_sha256": "bd773e7b3a890fcd379c1ce0e56853f38bd99010a81909d15bb5637a1a2228f4",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -11334,7 +10731,7 @@
           }
         ],
         "dependency_closure_sha256": "7b85dcc97ed7c54121e24a67759e895868e04fb70e0e30d51dd65a09772b1bcc",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
@@ -11541,7 +10938,7 @@
           }
         ],
         "dependency_closure_sha256": "4f6a8be8cced97101167382768e09ae833fcc248fef6f3890f0cfb9ec4e1a41b",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs",
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
@@ -11700,9 +11097,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-pack/src/resources.rs",
@@ -11759,7 +11154,7 @@
           }
         ],
         "dependency_closure_sha256": "0c1ebadfdd34cba3031d8bf4779961134d777dcc148e6d1a25a9399f6e238810",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs#fn list_resources",
           "crates/bbb-pack/src/resources.rs#fn resource_file",
@@ -11954,7 +11349,7 @@
           }
         ],
         "dependency_closure_sha256": "f0ae48523325cac963fe5bf00e37f6f85624152e6e16528fa024838959c12b65",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs",
           "crates/bbb-pack/src/resources.rs#metadata_filter_clears_metadata_without_filtering_resource",
@@ -12159,7 +11554,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "docs/unsupported-features.md"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -12184,7 +11579,7 @@
               "focused-test",
               "owner-focused-test"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -12380,15 +11775,15 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "1aef52d9b5af0eaaa29764204d3ea0ce914684ef652921397eadc6f9c33f6939",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "4f19ca4410e946e8f83e8f7aa90aa14a4a370de60b689a44571f64e6c3410c5f",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
-        "focused_test_contract_sha256": "c8671372da44ff25d6b0036d6eb94f4ae09f9957b99c63791f72c18193c5a075",
+        "focused_test_contract_sha256": "cdf61974d2119c0d2c6d4c2a5b24f5224fbff448b239bb6a0e01b2a35142ac20",
         "owner": "pack/native/renderer/audio consumers",
-        "owner_contract_sha256": "abeb777f5fb95d8856c18aad576af1e671e42d1ea4a2cb75ae6a389685c12c83"
+        "owner_contract_sha256": "d72a9ad8a9805b6e71938efe84524b2302266c4cfdec455c3b11e972b4152817"
       },
       "differential_scenarios": [
         {
@@ -12442,7 +11837,7 @@
           "ignored": false,
           "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#world_text_font_direction_tracks_the_selected_language_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+          "source_sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native preload_plan_stamps_catalog_generation_and_receipt_is_machine_readable",
@@ -12723,7 +12118,7 @@
           }
         ],
         "dependency_closure_sha256": "3a333de06f47ae26127f1869547db53758b2573820b4c9389bc4e8427def3cb4",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -12883,10 +12278,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime/textures.rs",
@@ -12919,7 +12311,7 @@
           }
         ],
         "dependency_closure_sha256": "86f9d0f432f0c418cd2be13412e5bfa43f9cbffc5fee34083aa335899b231886",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -13596,9 +12988,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_pack_runtime.rs",
@@ -13741,7 +13131,7 @@
           }
         ],
         "dependency_closure_sha256": "1a647155f2387bcd626c7e12799ff577d5fbc982208911c8c5da3a9e8ce35491",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -14382,7 +13772,7 @@
           }
         ],
         "dependency_closure_sha256": "087c0650ef1cd951ccfc370d38eca0fce215d1f030eaaa1d7d242030bc65ed30",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#recipe_book_language_write_stores_the_bare_language_code",
           "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_excitedze_search_requests_the_en_pt_language_decision",
@@ -14637,7 +14027,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
@@ -14804,7 +14194,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
@@ -14926,10 +14316,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/command.rs",
@@ -15154,7 +14541,7 @@
           }
         ],
         "dependency_closure_sha256": "757f7c88255fd934efd2ff7251d4bece4856c2e9bb295942622cf50b2611199e",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -15526,7 +14913,7 @@
           }
         ],
         "dependency_closure_sha256": "99fa9d2afcfa3f1e00238fd4b574c05bd41da6e4749fc67973c24ed837810951",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
           "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
@@ -15684,9 +15071,7 @@
         "repo:scripts/tests/test_client_mechanism_inventory.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/hud_assets.rs",
@@ -15797,7 +15182,7 @@
           }
         ],
         "dependency_closure_sha256": "b03ee113776a1970ef65fc949ecc854b355a8f05eeaac047d3ef2ae00807deff",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
           "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
@@ -16019,7 +15404,7 @@
           }
         ],
         "dependency_closure_sha256": "b10520dfdc89998b890e77d0b6bb244652b9a255d55c4f480aa81d23718bacd1",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -16097,7 +15482,7 @@
           }
         ],
         "dependency_closure_sha256": "b10520dfdc89998b890e77d0b6bb244652b9a255d55c4f480aa81d23718bacd1",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -16410,7 +15795,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -16432,7 +15817,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -18095,8 +17480,8 @@
             "sha256": "797492c87c9eb4fccfb46cb970599179079821ed52cd961c21adf17821cb9a96"
           }
         ],
-        "dependency_closure_sha256": "bc68fb92975a58865403ba9eb89b0766c6ef8cefc2958ace31c7617f536ecc7a",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "fddd57dcac936dc40bdac9822e4c1f784684170376d6eccd7f5ee60334d222f8",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -18106,7 +17491,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "generated protocol catalog",
-        "owner_contract_sha256": "0ecf6bbabca03e3b9ae48971f1aefada29e0387311e3f2cbc68d9fb5b9ec0aa5"
+        "owner_contract_sha256": "960900b71e4c725d77b412a4086b2cc5d1e35aed2d44d060f17496fa1fc37ff3"
       },
       "differential_scenarios": [
         {
@@ -19171,7 +18556,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -19193,7 +18578,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -20843,8 +20228,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "5ecbcb99f916d90296e66c4bdaa80cae6e4a5456e6de76b5f10320555e4ae411",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "c252c2ded8b0e0068449fd84b088bff7e3a7d469e179423a2f8954e3979ccda3",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -20855,7 +20240,7 @@
         ],
         "focused_test_contract_sha256": "358902fd326252d21be094628a1c6bd5bd3fb8e0f612a215d109b34723553ab2",
         "owner": "protocol/net/world dispatch",
-        "owner_contract_sha256": "6a6ab5e42a8222cb7b7825d0d1b0565da6b40fb8bdefde589352beb23e18ec3d"
+        "owner_contract_sha256": "4b86793d2e3c97137e3613e7bb09edd9c9238ed630519dc4648bbbe3f6f15e47"
       },
       "differential_scenarios": [
         {
@@ -21827,7 +21212,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -21849,7 +21234,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -23498,8 +22883,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "9010a303b2ec144e67012a01432da5f915f4c4429032789426962634aa217080",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "66e5b90bb6ebfdbde1153108c03113775032f2a4d4de81c8d650e7a48e61d60e",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -23507,7 +22892,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "`bbb-net` login state machine",
-        "owner_contract_sha256": "f600a3b3d10cb4acb176806da71bed54cd30389395859ddc6652d485d994b237"
+        "owner_contract_sha256": "ee690241f80942e12619abd015d46a7a88e76fe9daf9634e473b4e0aa6e1e86a"
       },
       "differential_scenarios": [
         {
@@ -24315,7 +23700,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -24337,7 +23722,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -25989,8 +25374,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "a80c4f0c91de69e88bc6065d86b08779c9b8c50237b5e0aff11060763704f483",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "f0a55755f66a5356bf72a09c56ac5f51df29f609e1c9d21e4d8acb2736e97886",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
           "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#valid_configuration_registry_commit_requests_finish_acknowledgement",
@@ -26002,7 +25387,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "net configuration state machine + canonical world registry commit",
-        "owner_contract_sha256": "4cf795ef88758c544b8e61cd3afa4ce68c120537bc44d58d1e6eaecfd0e2bf44"
+        "owner_contract_sha256": "32f1f172508b78fc7f544dabfc7821aea3392587625decdf8acbc2f26cb2fe0a"
       },
       "differential_scenarios": [
         {
@@ -26812,7 +26197,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -26834,7 +26219,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -28490,8 +27875,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "51eca8917ba2b56afc6c256320f46aadc12c758f2354453f08d2ededb5382762",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "3c435a2bf3219528c2ac97225f29e066c99a530a65a31e9f2af2b3f487ed9cca",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -28500,7 +27885,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "`WorldStore::apply_play_packet`、native effects",
-        "owner_contract_sha256": "0bfdb4e27a34ada5a9f804ad58dd6be7b52e24cf05d6639330ef27174ab07bd7"
+        "owner_contract_sha256": "b51f260616498b3b28ac7803ac089b49b4c84129e5dbdafcb541fc7245dbda76"
       },
       "differential_scenarios": [
         {
@@ -29332,7 +28717,7 @@
           }
         ],
         "dependency_closure_sha256": "a28e9bada65c2001a282c20056b09aceb07564565ec4418957623960b18d128d",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -29698,7 +29083,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -29720,7 +29105,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-native/src/audio_runtime.rs",
@@ -31373,8 +30758,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "6edbb8ae249e9323f684dccf1355fde904f3c0742588d01d7d4add5cc5b21493",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "ec42b9814d1d5ed74865b57c3e61ce1e5082bdd2f529d7876dc2d4f8f3eec243",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -31386,7 +30771,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "native input/net command surface",
-        "owner_contract_sha256": "a2f2b8401f238dfccf9c75b98669bad6eba7995582adbbaf344fab1d0e0b9e0c"
+        "owner_contract_sha256": "9351417fc97c8efc7b6d94580022c03c3bb10683628331999cf1446c9db5db6f"
       },
       "differential_scenarios": [
         {
@@ -32024,10 +31409,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -32045,7 +31427,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -32736,7 +32118,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -32926,7 +32308,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -33031,10 +32413,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -33052,7 +32431,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -33716,9 +33095,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/level_load_runtime.rs",
@@ -33809,7 +33186,7 @@
           }
         ],
         "dependency_closure_sha256": "35c91ea84215a6f3915d730fddf4382b88267d223c6dc790fbb10f11424cdb1f",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -34547,9 +33924,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime.rs",
@@ -34606,7 +33981,7 @@
           }
         ],
         "dependency_closure_sha256": "bb716040233bcd9f6492b6cca9cc3d6a5a324c69aa1acec960d1c0a0a69e0d10",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -35368,9 +34743,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime.rs",
@@ -35435,7 +34808,7 @@
           }
         ],
         "dependency_closure_sha256": "f05369908178885138febc66566f251fa4ce4264f9b341db016efcc65eb5097a",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -36175,9 +35548,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-world/src/entities.rs",
@@ -36256,7 +35627,7 @@
           }
         ],
         "dependency_closure_sha256": "1840e599b18eca21771bbceed8047d809cf9e9d17aeb7eda60f9612e59e6dd08",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -37021,9 +36392,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/environment_animate_runtime.rs",
@@ -37095,7 +36464,7 @@
           }
         ],
         "dependency_closure_sha256": "b4733a738f3a44a43a0da65605c9db85ff936f64c420845abe19eae7dd55e6ed",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -37859,9 +37228,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -37967,7 +37334,7 @@
           }
         ],
         "dependency_closure_sha256": "b3c70d59e965379275cd882b159143244bc7c2facac1397fecf33141b4b0d1e2",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -38681,9 +38048,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/item_frames.rs",
@@ -38737,7 +38102,7 @@
           }
         ],
         "dependency_closure_sha256": "61fc594cf5f01e0149e151b72005446c52057a7b45128769cc1cc391f5d8c9e1",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -39449,9 +38814,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/particle_runtime/explosion.rs",
@@ -39519,7 +38882,7 @@
           }
         ],
         "dependency_closure_sha256": "821a12825fe1395ac6670fad501bbe544bf744eec6f63fc2c5ba31ddf9764abb",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -40232,9 +39595,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/runtime/events/client_state/tests.rs",
@@ -40317,7 +39678,7 @@
           }
         ],
         "dependency_closure_sha256": "46d23861db7dd5b0a3c093d2734e41456c42683477c155854d2df745fed363f2",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -41069,9 +40430,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/block_entity_visibility.rs",
@@ -41099,7 +40458,7 @@
           }
         ],
         "dependency_closure_sha256": "6aefd3654b6204a78c5ce7ac29ac9328d9bf34472c0ce4067470c8a0d504e14f",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -41812,9 +41171,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -41875,7 +41232,7 @@
           }
         ],
         "dependency_closure_sha256": "b115f52ce39893b9a21882bc750bdb6f666bd398570a62c0ad564b8a1606c7f8",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -42689,7 +42046,7 @@
           }
         ],
         "dependency_closure_sha256": "79d2fb80eab2b8876a138264d01603a2fd9fe7a51a0bc5cb5f5e78159d54a1b9",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -42829,9 +42186,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/biome_tint.rs",
@@ -42924,7 +42279,7 @@
           }
         ],
         "dependency_closure_sha256": "857a78e88484d4829bf4f161ba5198c1fe7279674e30e2b25d7932fbffb8807c",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -43683,9 +43038,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/runtime.rs",
@@ -43746,7 +43099,7 @@
           }
         ],
         "dependency_closure_sha256": "dfa68c38ff71deab24947ae75c803998b44edb01077c0e4b3d85c81e4b9f685c",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -44480,9 +43833,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/crash_report.rs",
@@ -44528,7 +43879,7 @@
           }
         ],
         "dependency_closure_sha256": "0f2750313a0462bbc8abc5deffe469d6486dae4acb488a674ce93a3fa7da8486",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -45247,9 +44598,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -45323,7 +44672,7 @@
           }
         ],
         "dependency_closure_sha256": "d554ac856f50d33e0088ca6befccdebb5a730674bb8704b5bb68d38352259599",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -46062,7 +45411,7 @@
           }
         ],
         "dependency_closure_sha256": "cd0ab69d03dc58b40f1d5bf4d24a94f2114ef308b36e085ff3bfe7afec0cc51a",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -46162,9 +45511,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -46207,7 +45554,7 @@
           }
         ],
         "dependency_closure_sha256": "16ec18f6521750a3c316ddd6e4fb01ca5825bb964f3b13536e822ca2f46c0cc5",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -46909,9 +46256,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/movement.rs",
@@ -46967,7 +46312,7 @@
           }
         ],
         "dependency_closure_sha256": "94ca620d445fe9799d5ed43304dc061815d37f29f4d7574442ba117f56f8da03",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -47750,9 +47095,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/movement.rs",
@@ -47826,7 +47169,7 @@
           }
         ],
         "dependency_closure_sha256": "6fe45aad6f5312595b18fe14ddd7d2989434df247fc5607954a25b134df9161c",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -48555,9 +47898,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -48626,7 +47967,7 @@
           }
         ],
         "dependency_closure_sha256": "ef3fdc2587b33ac2655d2febf59545110530d27a7e22a3e54c07aa76c8b5603a",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -49352,7 +48693,7 @@
           }
         ],
         "dependency_closure_sha256": "662c5e9f6452bcd5a32028507d02cd073904dae6637e46e8df20120de9b081c1",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -49439,9 +48780,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -49508,7 +48847,7 @@
           }
         ],
         "dependency_closure_sha256": "09e4211939af98d3320dd3d4e1fa833f7c19244d35f347229e7fc4e19e6a4c8b",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -50281,7 +49620,7 @@
           }
         ],
         "dependency_closure_sha256": "0ca814d9df57c7e18446cfe6b27643d20679a04580d8b2075d7dd21da2db3ec0",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -50508,7 +49847,7 @@
           }
         ],
         "dependency_closure_sha256": "63f3683b02b57ddb814ac65105710fa2f16e79ab22bea54622ed85abb9ca25db",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -50667,9 +50006,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/environment_audio_runtime.rs",
@@ -50780,7 +50117,7 @@
           }
         ],
         "dependency_closure_sha256": "86f427767f3fcd80d2822d3c738ef4dd32df25919131174c0ab1693fb47b3606",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -51509,9 +50846,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -51574,7 +50909,7 @@
           }
         ],
         "dependency_closure_sha256": "8d3c986c238731ce8b1fc2264aaa4bef5242afc43525ffb6802c4c73d63017e4",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -52303,9 +51638,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -52372,7 +51705,7 @@
           }
         ],
         "dependency_closure_sha256": "3cce8b404d7b93ed32d1cafa71547f62a2e0e98f9a5c43091e0b909bcfd988d5",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -53092,9 +52425,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -53180,7 +52511,7 @@
           }
         ],
         "dependency_closure_sha256": "e69701589b6625b76769c37ff489f6f219b8b9d125d7a9b8ccf86171e849cee8",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -53887,9 +53218,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/mouse.rs",
@@ -53965,7 +53294,7 @@
           }
         ],
         "dependency_closure_sha256": "6ebf3baf1538504be143497185a9fd134d48b7ac76a1351bfb231dc0c1318dd1",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -54752,9 +54081,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -54826,7 +54153,7 @@
           }
         ],
         "dependency_closure_sha256": "adcfd6c69c485e9fe673f96c3ab0e94ffb4d68aa6127b516733905de67fc31d5",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -55573,9 +54900,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -55616,7 +54941,7 @@
           }
         ],
         "dependency_closure_sha256": "5c7be671742b2f5f5ef2401b0a8624f7aa3816e1abc833b03ccb3b74c6a6fb23",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -56293,9 +55618,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -56338,7 +55661,7 @@
           }
         ],
         "dependency_closure_sha256": "c5cba79add8d8679cfbfae379600e659428ae2f317ab1a89691e0534d8e2862f",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -57033,9 +56356,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -57078,7 +56399,7 @@
           }
         ],
         "dependency_closure_sha256": "220e5734410aeababd90f839f705976be632de4db993b50865982b86dc35ecdf",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -57781,9 +57102,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -57832,7 +57151,7 @@
           }
         ],
         "dependency_closure_sha256": "306b1093e88186c7c13725539eae98e186f4fc80fdef15cf6a2c27d9d4f1a3f6",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -58540,9 +57859,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/inventory/creative.rs",
@@ -58577,7 +57894,7 @@
           }
         ],
         "dependency_closure_sha256": "88e8269b43711f73f9d4b2394d0ca0d8cc8c55b853e4f4d193649a87502018e0",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -59254,9 +58571,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/commands.rs",
@@ -59291,7 +58606,7 @@
           }
         ],
         "dependency_closure_sha256": "bd338358b35f5a5f97d9b76aa781c6a1fcda1982c2d6db3808b66c6220a26045",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -59986,9 +59301,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/mouse.rs",
@@ -60016,7 +59329,7 @@
           }
         ],
         "dependency_closure_sha256": "0bf61899332639f4aad1f2b4d450afabe92024c8a974282683270e3469897e65",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -60975,7 +60288,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -61952,7 +61265,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -62948,7 +62261,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -63862,9 +63175,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/banner_scene.rs",
@@ -64111,7 +63422,7 @@
           }
         ],
         "dependency_closure_sha256": "362b3e80d06ef8965b5b495e7aaf00af6914126178b50a01bbd285ff02b00645",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
@@ -65189,7 +64500,7 @@
           }
         ],
         "dependency_closure_sha256": "20945e2c78546812a2d510c3c2735525d9759978d242c8a0ea5342041e5eb608",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -65491,9 +64802,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/runtime.rs",
@@ -65715,7 +65024,7 @@
           }
         ],
         "dependency_closure_sha256": "824b9fc4327013972c673838a1051be96ee138f7c3882fb6c627a9785f35cd61",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -66400,7 +65709,7 @@
           }
         ],
         "dependency_closure_sha256": "12fd1cf6d51816ee61d8cb609a4a1e1b8b81ddbdbc021b492a80644063cb5742",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -66726,7 +66035,7 @@
           }
         ],
         "dependency_closure_sha256": "2fe2445d49e359d7f6bdd0e9248dba8a5c2423941b4213fac3c3b8d3dfa5a61f",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -66956,7 +66265,7 @@
           }
         ],
         "dependency_closure_sha256": "b3b542b3878c018c12ac61de2176aa1fe2e64b57d2cb30c9987781570f9f0ce0",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -67281,7 +66590,7 @@
           }
         ],
         "dependency_closure_sha256": "24d4128e378a26e8e1d67df6f26179298cf0b1fd333ef1df1c0fd129967154c2",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -67563,10 +66872,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/main.rs",
@@ -67671,7 +66977,7 @@
           }
         ],
         "dependency_closure_sha256": "b7723c3d080454b5de4b31aae40f18e745352bedfd85c1dd009e91a9d6b97de8",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -67981,11 +67287,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs",
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -68112,7 +67414,7 @@
           }
         ],
         "dependency_closure_sha256": "3069589efc54ee8f08e86435e8bd3c42ece86ea9a98df1c6085dcad8abec52ea",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -68414,11 +67716,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs",
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -68545,7 +67843,7 @@
           }
         ],
         "dependency_closure_sha256": "32afc4cc69d71598f5b64078e1bc8e82e219cc1bcf68cf7eff2e3cd561bc888d",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -68887,11 +68185,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs",
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/camera_pose.rs",
@@ -69105,7 +68399,7 @@
           }
         ],
         "dependency_closure_sha256": "14436ce93de1df9c8797fd3e984ad5baf1e686ea3b2ea0e3da0b223de0f8f060",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -69455,9 +68749,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -69518,7 +68810,7 @@
           }
         ],
         "dependency_closure_sha256": "ca63655948b3605eef6826e169a6786c4f851bd56174a08be1d0176262746d14",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -69695,9 +68987,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -69765,7 +69055,7 @@
           }
         ],
         "dependency_closure_sha256": "fad8fe39cc7c3182f8f922b411c4b59cfed2229628a63599e9ec158007c6e4b5",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -69993,10 +69283,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-renderer/src/offscreen.rs",
@@ -70042,7 +69329,7 @@
           }
         ],
         "dependency_closure_sha256": "ebeee2e0a21c38eea0d548295dd85e06663c65aff38c52589c9356d4336bdd16",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -70279,9 +69566,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/block_entity_visibility.rs",
@@ -70375,7 +69660,7 @@
           }
         ],
         "dependency_closure_sha256": "e6fdcc339f306c8675fc1da7833b71b57c28add427916328b09092d7b68fb68f",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -70657,7 +69942,7 @@
           }
         ],
         "dependency_closure_sha256": "a61569e966c631899808ad897e25973187c6f82713b091a7d889f8951dfa7676",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -70818,9 +70103,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/entity_scene.rs",
@@ -70891,7 +70174,7 @@
           }
         ],
         "dependency_closure_sha256": "e4ab716a2ec62ce53320f3f243523a59aec2811cb45566b3cb1f33dd7eb12a17",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -71105,7 +70388,7 @@
           }
         ],
         "dependency_closure_sha256": "e1e9f92b68928a958201d420bd976fe1769e0dbd085b197216e3757dea8f9374",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -71268,7 +70551,7 @@
           }
         ],
         "dependency_closure_sha256": "048fa4aafa5cf0408941ee6d52dcb86855a6e337182fdd1eab0e3b92676a6277",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -71432,9 +70715,7 @@
         "visual-workload"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/terrain_runtime/textures/tests.rs",
@@ -71481,7 +70762,7 @@
           }
         ],
         "dependency_closure_sha256": "13696b1e0fe2f877bc77396dcdca306afdb98c9f1b52f230adc5e35a6085dcba",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
           "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
@@ -71705,7 +70986,7 @@
           }
         ],
         "dependency_closure_sha256": "3a1b670abe258b94b49097de8344ca5dedd8636bdc8f0f79db44eb499bbb46f7",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -71915,7 +71196,7 @@
           }
         ],
         "dependency_closure_sha256": "fc118221d6232392f66bd9a928819979069815215a059cd51abff9ffecc8ae12",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/camera_fov.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -72262,7 +71543,7 @@
           }
         ],
         "dependency_closure_sha256": "302905a39e54d74af692f61818f0b11a6351671dacde22b4a6fa9b270fffbbcf",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
@@ -72435,7 +71716,7 @@
           }
         ],
         "dependency_closure_sha256": "fe74525bab6753e00b0629cbcc5219aaae1d810b4001c42988b759210c90cc78",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -72580,9 +71861,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input/death_screen.rs",
@@ -72638,7 +71917,7 @@
           }
         ],
         "dependency_closure_sha256": "08d2159a592f48f2bcec6096d44b69ecdc8ade4bfb6fc9c9975c1dd4ab6d79c9",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -73394,7 +72673,7 @@
           }
         ],
         "dependency_closure_sha256": "9ab45f9ab7af4dc1507bdb52c7ad91aa4fefeff902bbb670cffdb1fa73755212",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -73543,7 +72822,7 @@
           }
         ],
         "dependency_closure_sha256": "a004d23fb88cf57ac28bb53007d52ba879c8d98b81cec9d87135adfe9af09ba5",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -73666,9 +72945,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -73734,7 +73011,7 @@
           }
         ],
         "dependency_closure_sha256": "690ecd4f925de521cbac668d81ce8fcd227c7d1a83d738a8e8cb4475f5250d28",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -74434,7 +73711,7 @@
           }
         ],
         "dependency_closure_sha256": "fa7f9e3e7ae61f35f3452ee996cfb5801c128eddc7380f44854f448c6701fe0c",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-render-types/src/text_visual_order.rs",
           "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
@@ -74679,7 +73956,7 @@
           }
         ],
         "dependency_closure_sha256": "e1c12968ae36aed7f8d0a275422e481feabb9c7b81ea03a4e5692c9be23e1971",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
@@ -74964,7 +74241,7 @@
           }
         ],
         "dependency_closure_sha256": "71f8c947f48f101c81c2edc8c414204c23f1b9cab46d61966d8e92206eb9ebe6",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
@@ -75081,7 +74358,9 @@
         "repo:scripts/local_time_tables.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [],
+        "changed_dependency_paths": [
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
+        ],
         "dependency_closure": [
           {
             "path": "crates/bbb-item-model/src/item_runtime/local_time.rs",
@@ -75097,7 +74376,7 @@
               "focused-test",
               "matrix-evidence"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "scripts/local_time_tables.py",
@@ -75107,17 +74386,17 @@
             "sha256": "33c92c0fd57c01cfee788b6b4c904922d6598b5063c07a64d927d69a9b50a4e8"
           }
         ],
-        "dependency_closure_sha256": "2fb15cc9515ce275a93106912c68d6d591b30e41d779e8a4253576aeb12004f1",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "a7cfc1a20da96fd9a662bdffcf41b27cc0536cbdd47299e4d099edfbf097df0e",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
           "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_local_time_select_property",
           "scripts/local_time_tables.py"
         ],
-        "focused_test_contract_sha256": "3e8730280e6b42f0a7fe45b682996180e7f900119128ae9d9a6421b25afdc28d",
+        "focused_test_contract_sha256": "d99967a02d6a68c722f46ae672705db405f696c02c598fc3345dbd4740741382",
         "owner": "local-time item property",
-        "owner_contract_sha256": "d9403c51664bedd85a94ff0cf43946dd134d863902ccd3bdce7e9e8af9281352"
+        "owner_contract_sha256": "bd6a3785489429996f763182862e01804dc0fc75056a9e0d907c806b1aecf9dc"
       },
       "differential_scenarios": [
         {
@@ -75152,7 +74431,7 @@
           "ignored": false,
           "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_local_time_select_property",
           "result": "focused-evidence-pending",
-          "source_sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+          "source_sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
         }
       ],
       "matrix": {
@@ -75222,7 +74501,7 @@
           }
         ],
         "dependency_closure_sha256": "7387c0e0741b5bdbd73c6cd2018505a409f8dae7388ff4823c3f742210e374ec",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
           "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
@@ -75391,7 +74670,7 @@
           }
         ],
         "dependency_closure_sha256": "99434f4bb1b54ce48b63c5d1616cb5fcfb5bfa75379fc2961842254890cfa1f2",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -75676,7 +74955,7 @@
           }
         ],
         "dependency_closure_sha256": "ce74f64e9f41197206b7542af246566bb70aac0dc45b9152cb5ece818350a410",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -75984,7 +75263,7 @@
           }
         ],
         "dependency_closure_sha256": "6e1058f4b2d3cb3c42e33fe52f1490d6cd369a0ce101dd626900e79f5e12aae6",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
@@ -76320,7 +75599,7 @@
           }
         ],
         "dependency_closure_sha256": "577cb0708295a95372e4aa6f4a1d6d3a3af9eb868dc395106469368e5a097834",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
@@ -76664,7 +75943,7 @@
           }
         ],
         "dependency_closure_sha256": "442d925800d7220f05a2e089b183c7d5e3fcff00410c26515c0fbee5db887d33",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
@@ -76856,9 +76135,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/client_options/args.rs",
@@ -76929,7 +76206,7 @@
           }
         ],
         "dependency_closure_sha256": "b431bc30288a099af5f67a1ec1f25e0ffc1dc252a3b66e9b615ff9efa9e1e67f",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -77119,9 +76396,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -77200,7 +76475,7 @@
           }
         ],
         "dependency_closure_sha256": "b71977adf789a92409dce908ede5cc74b0623acec5bcb072d8ed8c4702db03a9",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -77497,7 +76772,7 @@
           }
         ],
         "dependency_closure_sha256": "c97370939711e657a55caa1951f94048f566972ac5b995a41601f27867aeb8ea",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
@@ -77692,7 +76967,7 @@
           }
         ],
         "dependency_closure_sha256": "a668258f275bf6857e3ee7b871745759e750a4fed634da3ebe665272979791fa",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
@@ -77888,10 +77163,7 @@
         "repo:crates/bbb-renderer/src/render.rs"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/command.rs",
@@ -77999,7 +77271,7 @@
           }
         ],
         "dependency_closure_sha256": "bdfc95b5141e35ef829275872dd56e77c91d3dd46dd57d803b98dfabf3598580",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
@@ -78206,9 +77478,7 @@
         "repo:crates/bbb-renderer/src/renderer.rs"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "crates/bbb-renderer/src/renderer.rs"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-audio/src/device.rs",
@@ -78442,7 +77712,7 @@
           }
         ],
         "dependency_closure_sha256": "f3069d3fa2fe5699a2c5eeb19b9fccc552bdf5b081e3d1c6673492cef55eec3b",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -78855,7 +78125,7 @@
           }
         ],
         "dependency_closure_sha256": "091704a83ef0363bd7213856912789434eadf116044e4fbedfe687eac3c8ee35",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -79008,7 +78278,7 @@
           }
         ],
         "dependency_closure_sha256": "d5759085251fe280760f5f14f3deb530b1fea81c4df125b29e9feba230709a6b",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
@@ -79141,10 +78411,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -79162,7 +78429,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -79832,7 +79099,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "scripts/tests/test_macos_native_retina.py"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -79841,7 +79108,7 @@
               "focused-test",
               "matrix-evidence"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-item-model/src/skin_runtime.rs",
@@ -79866,8 +79133,8 @@
             "sha256": "08acf9b4f2fa7b927d426f505749bdb07759d3a23ac577926eeda25b0651df77"
           }
         ],
-        "dependency_closure_sha256": "191796447100f68b912cb51f8969107916fe6cc65563ebac779e5eae4b3b8181",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "776b063718ff69abe162c389e51a9cc3e7d8f230c117553076a394a786885f7d",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
@@ -79876,9 +79143,9 @@
           "crates/bbb-item-model/src/skin_runtime.rs#profile_texture_url_and_cache_identity_match_authlib_and_guava",
           "docs/wiki/architecture/client-boundaries.md"
         ],
-        "focused_test_contract_sha256": "2f8b9b83e7e77d89d5dc46e4dd0ee3b3ddf2074dc468b77ceecd0dcd83085ab8",
+        "focused_test_contract_sha256": "82b17ee73820cfd2d80fbd7e79343df97af61b57752812ed516d2286a5523779",
         "owner": "`bbb-item-model::skin_runtime`→native→renderer",
-        "owner_contract_sha256": "cd455e95f502164cb8f5fca2cbfe5d557c1ca1a0e39209a80317622c6ecab1de"
+        "owner_contract_sha256": "e4b4781069b9aa7b299663d2074d99523e9150ccf2635df92b99b1f878475ab1"
       },
       "differential_scenarios": [
         {
@@ -79900,14 +79167,14 @@
           "ignored": false,
           "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "result": "focused-evidence-pending",
-          "source_sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+          "source_sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-item-model profile_presentation_revision_tracks_skin_failure_after_success",
           "ignored": false,
           "reference": "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
           "result": "focused-evidence-pending",
-          "source_sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+          "source_sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-item-model profile_texture_property_trust_matches_services_signature_states",
@@ -80579,9 +79846,7 @@
         "repo:crates/bbb-world/src/client/social.rs"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "crates/bbb-native/src/input.rs",
@@ -80839,7 +80104,7 @@
           }
         ],
         "dependency_closure_sha256": "5142b1bb25a7685b5b5f3d39a8f072b4af5b1e83bec54f7f4af783ecfa99e947",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
@@ -81304,7 +80569,7 @@
           }
         ],
         "dependency_closure_sha256": "d94f6c0e7e8a459b67df72ee17e8c6afd41ca0e6449fb4b6293bd13e50c324c8",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -81847,9 +81112,7 @@
       ],
       "bbb": {
         "changed_dependency_paths": [
-          "crates/bbb-renderer/src/render.rs",
-          "crates/bbb-renderer/src/renderer.rs",
-          "scripts/tests/test_macos_native_retina.py"
+          "crates/bbb-item-model/src/item_runtime/tests.rs"
         ],
         "dependency_closure": [
           {
@@ -81927,7 +81190,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "b9be256f962970b3eaf8353248f29db3e2a57415106e84fff136eb00514dcf7f"
+            "sha256": "1f1ae2a19abcd366976e3c67afce8f7fbe8bab6dd21b26274f039896233fce09"
           },
           {
             "path": "crates/bbb-item-model/src/skin_runtime.rs",
@@ -84513,14 +83776,14 @@
             "sha256": "a6c28286d0255bf25aac05b494fdf07341ead562d7a8f0965d6b8d5dae0bf805"
           }
         ],
-        "dependency_closure_sha256": "bfef80bf1278f7312ecdf2a52e051facfa4eff27a13bcc75d5e6237ab0304da4",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "dependency_closure_sha256": "56cccfccc2ab611bf822911f5ce85dc588225f125a3abc4a8360eda2882781b8",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md"
         ],
         "focused_test_contract_sha256": "adf0a4366890f7f36972f5c92ed6055c1ad79e1d32f755c3ba9ad97841b1713d",
         "owner": "benchmark harness",
-        "owner_contract_sha256": "de83d3c5f1b48fe5223915add5357441773e233e11420932a5ba9190cc2211e6"
+        "owner_contract_sha256": "589f23d94b184bc2214f50a74f8130fdfb0346efdfc2d108fdac7a1280b4986b"
       },
       "differential_scenarios": [
         {
@@ -85442,7 +84705,7 @@
           }
         ],
         "dependency_closure_sha256": "fa879658b2675fce1f541cb70cffc5ed8f209dfa48e36a5088c5b674f34763fe",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/tests/test_gpu_duration_capture.py"
@@ -85714,7 +84977,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -85908,7 +85171,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -86051,10 +85314,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -86072,7 +85332,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -86737,10 +85997,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -86758,7 +86015,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -87441,10 +86698,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -87462,7 +86716,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -88180,10 +87434,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -88201,7 +87452,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -88959,10 +88210,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -88980,7 +88228,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -89665,10 +88913,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -89686,7 +88931,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -90345,10 +89590,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -90366,7 +89608,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -91046,10 +90288,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -91074,7 +90313,7 @@
           }
         ],
         "dependency_closure_sha256": "a9d9b955a5979b90c39c2255156db6d72368a2affc49c5d1204bae85487274f9",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -91993,10 +91232,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -92014,7 +91250,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -92673,10 +91909,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -92694,7 +91927,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -93407,10 +92640,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -93428,7 +92658,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -94117,10 +93347,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -94138,7 +93365,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -94823,10 +94050,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -94844,7 +94068,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -95549,10 +94773,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -95570,7 +94791,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -96223,10 +95444,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -96244,7 +95462,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -96957,10 +96175,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -96978,7 +96193,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -97635,10 +96850,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -97656,7 +96868,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -98313,10 +97525,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -98334,7 +97543,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -98989,10 +98198,7 @@
         "repo:scripts/tests/test_macos_native_retina.py"
       ],
       "bbb": {
-        "changed_dependency_paths": [
-          "docs/unsupported-features.md",
-          "scripts/tests/test_macos_native_retina.py"
-        ],
+        "changed_dependency_paths": [],
         "dependency_closure": [
           {
             "path": "docs/unsupported-features.md",
@@ -99010,7 +98216,7 @@
           }
         ],
         "dependency_closure_sha256": "0aa3bbf73cdc064d1ab60655a10472064a8712009543a6f4bc865942bac31756",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -99766,7 +98972,7 @@
           }
         ],
         "dependency_closure_sha256": "a48817c75bb038a50816e36fb12af56f19b2c175ad8bef3602460f9ed30b5f54",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -100250,7 +99456,7 @@
           }
         ],
         "dependency_closure_sha256": "2e0bf56b3cb1445be86a7a1a206e5bd29a5c83302596d38224dacaa350536435",
-        "evidence_commit": "7544be81b62faaf7ddfc3a01a58606e6bd8441ae",
+        "evidence_commit": "40374bc4dcf3e6ffd6ccbec1ce7af8b675c1f571",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
           "scripts/parity_acceptance.py#mechanism_source_hashes",

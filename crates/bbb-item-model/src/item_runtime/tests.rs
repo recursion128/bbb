@@ -4693,17 +4693,20 @@ fn player_skin_for_profile_resolves_dynamic_owner_before_skin_selection() {
         EntityPlayerSkin::ProfiledDefault(default_player_skin_for_profile(&profile))
     );
 
+    let mut skin_download = None;
     for _ in 0..100 {
+        // Pump profile resolution before polling the texture owner. Observing
+        // the fetcher's call counter alone is racy: it increments before the
+        // resolver publishes its result, and only this projection drains that
+        // result and queues the skin download.
         runtime.player_skin_for_profile(&profile);
-        if id_calls.load(Ordering::Relaxed) == 1 {
+        skin_download = runtime.drain_dynamic_player_skin_download_results().pop();
+        if skin_download.is_some() {
             break;
         }
         thread::sleep(Duration::from_millis(10));
     }
-
-    let skin_download = drain_until_player_skin_download_result(&runtime)
-        .pop()
-        .expect("resolved profile skin download");
+    let skin_download = skin_download.expect("resolved profile skin download");
     let skin_handle = skin_download.skin.as_ref().unwrap().handle;
     runtime.mark_profile_skin_resolved(&skin_download.url, skin_handle);
     for download in drain_until_player_texture_download_results(&runtime, 2) {
