@@ -118,31 +118,46 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         1u,
     );
 
-    try_insert(
-        &stack,
-        textureLoad(translucent_texture, pixel, 0),
-        textureLoad(translucent_depth, pixel, 0),
-    );
-    try_insert(
-        &stack,
-        textureLoad(item_entity_texture, pixel, 0),
-        textureLoad(item_entity_depth, pixel, 0),
-    );
-    try_insert(
-        &stack,
-        textureLoad(particles_texture, pixel, 0),
-        textureLoad(particles_depth, pixel, 0),
-    );
-    try_insert(
-        &stack,
-        textureLoad(weather_texture, pixel, 0),
-        textureLoad(weather_depth, pixel, 0),
-    );
-    try_insert(
-        &stack,
-        textureLoad(clouds_texture, pixel, 0),
-        textureLoad(clouds_depth, pixel, 0),
-    );
+    let translucent_color = textureLoad(translucent_texture, pixel, 0);
+    if (translucent_color.a != 0.0) {
+        try_insert(
+            &stack,
+            translucent_color,
+            textureLoad(translucent_depth, pixel, 0),
+        );
+    }
+    let item_entity_color = textureLoad(item_entity_texture, pixel, 0);
+    if (item_entity_color.a != 0.0) {
+        try_insert(
+            &stack,
+            item_entity_color,
+            textureLoad(item_entity_depth, pixel, 0),
+        );
+    }
+    let particles_color = textureLoad(particles_texture, pixel, 0);
+    if (particles_color.a != 0.0) {
+        try_insert(
+            &stack,
+            particles_color,
+            textureLoad(particles_depth, pixel, 0),
+        );
+    }
+    let weather_color = textureLoad(weather_texture, pixel, 0);
+    if (weather_color.a != 0.0) {
+        try_insert(
+            &stack,
+            weather_color,
+            textureLoad(weather_depth, pixel, 0),
+        );
+    }
+    let clouds_color = textureLoad(clouds_texture, pixel, 0);
+    if (clouds_color.a != 0.0) {
+        try_insert(
+            &stack,
+            clouds_color,
+            textureLoad(clouds_depth, pixel, 0),
+        );
+    }
 
     var texel_accum = stack.colors[0].rgb;
     var ii = 1u;
@@ -926,6 +941,43 @@ mod tests {
                 && particles < weather
                 && weather < clouds,
             "vanilla post/transparency.fsh calls try_insert(Translucent), then ItemEntity, then Particles, then Weather, then Clouds"
+        );
+    }
+
+    #[test]
+    fn transparency_combine_fetches_optional_depth_only_after_nonzero_alpha() {
+        for layer in [
+            "translucent",
+            "item_entity",
+            "particles",
+            "weather",
+            "clouds",
+        ] {
+            let color_load = format!("let {layer}_color = textureLoad({layer}_texture");
+            let alpha_guard = format!("if ({layer}_color.a != 0.0)");
+            let depth_load = format!("textureLoad({layer}_depth");
+            let color_position = TRANSPARENCY_COMBINE_SHADER
+                .find(&color_load)
+                .unwrap_or_else(|| panic!("{layer} color is sampled before the optional insert"));
+            let guard_position = TRANSPARENCY_COMBINE_SHADER
+                .find(&alpha_guard)
+                .unwrap_or_else(|| panic!("{layer} insert is guarded by sampled alpha"));
+            let depth_position = TRANSPARENCY_COMBINE_SHADER
+                .find(&depth_load)
+                .unwrap_or_else(|| panic!("{layer} depth is sampled for an active layer"));
+            assert!(
+                color_position < guard_position && guard_position < depth_position,
+                "{layer} must sample color, reject zero alpha, then fetch depth"
+            );
+            assert_eq!(
+                TRANSPARENCY_COMBINE_SHADER.matches(&depth_load).count(),
+                1,
+                "{layer} depth must have no unconditional duplicate fetch"
+            );
+        }
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER.contains("textureLoad(main_depth, pixel, 0)"),
+            "the always-active main layer keeps its unconditional depth fetch"
         );
     }
 
