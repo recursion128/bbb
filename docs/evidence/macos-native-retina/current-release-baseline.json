@@ -1,0 +1,77 @@
+{
+  "schema": "macos-native-retina-current-release-baseline-v1",
+  "status": "passed",
+  "power_source": "AC Power",
+  "capture_bbb_commit": "64cfaa228e53fad67c376b373bebdf60bbc154ae",
+  "capture_commit_full_gated": true,
+  "bbb_binary_sha256": "cd61da7dead783d842b08c095b8d59f8cd53a691a1cc0b0121eb20212f976715",
+  "report": "docs/evidence/macos-native-retina/current-release-baseline-report.json",
+  "report_sha256": "12e10440ad2bae3f9491d810a1730269f34d9b87e6510af86c40ff8f05bc97cc",
+  "capture_report_sha256": "3d9fe97d150b557fcd4460f4237c6d857976929cc9e7db244421659c55abc4c8",
+  "formal_manifest_sha256": "38140e40dbf5779d1373aec9d7aafecedf8f8990c0ed7d2bce2081c667762301",
+  "fps_noninferiority_margin": 0.008465,
+  "maximum_noise_margin": 0.01,
+  "future_candidates_require_interleaved_pairs": true,
+  "capture_order": [
+    "vanilla",
+    "bbb",
+    "bbb",
+    "vanilla",
+    "vanilla",
+    "bbb",
+    "bbb",
+    "vanilla"
+  ],
+  "drawable_pixels": [2560, 1600],
+  "native_window_pixels": [2560, 1600],
+  "window_frontmost_all_runs": true,
+  "window_mode": "fullscreen",
+  "vsync": false,
+  "framerate_limit": "unlimited",
+  "bbb_surface_contract": {
+    "api": "metal",
+    "device": "Apple M1",
+    "present_mode": "Immediate",
+    "desired_maximum_frame_latency": 2,
+    "actual_metal_drawable_count": 3,
+    "in_flight_submission_budget": 1,
+    "submission_fence_strategy": "render-submission-fence"
+  },
+  "wgpu_components": {
+    "wgpu": "30.0.0",
+    "wgpu-core": "30.0.0",
+    "wgpu-hal": "30.0.0",
+    "wgpu-types": "30.0.0",
+    "naga": "30.0.0"
+  },
+  "combined": {
+    "bbb": {
+      "mean_fps": 151.60606756468326,
+      "application_frame_time_p99_ms": 12.988459,
+      "application_frame_time_one_percent_low_fps": 62.19642136048826,
+      "application_frame_time_hitches_gte_33_333_ms": 0,
+      "gpu_duration_p99_ms": 7.345958,
+      "gpu_duration_hitches_gte_33_333_ms": 0
+    },
+    "official_java_26_1": {
+      "mean_fps": 82.0638636012129,
+      "application_frame_time_p99_ms": 16.511542,
+      "application_frame_time_one_percent_low_fps": 57.74241144898056,
+      "application_frame_time_hitches_gte_33_333_ms": 0,
+      "gpu_duration_p99_ms": 13.333043148733209,
+      "gpu_duration_hitches_gte_33_333_ms": 0
+    }
+  },
+  "scope_validation": {
+    "combined_hard_status": "passed",
+    "scene_round_and_nearest_pair_scope_count": 21,
+    "local_scope_product_diagnostic_count": 4,
+    "local_scope_policy": "diagnostic-against-official-hard-against-future-bbb-candidates",
+    "cv_role": "diagnostic-only"
+  },
+  "input_latency": {
+    "captured": false,
+    "role": "future-candidate-paired-guard",
+    "reason": "the accepted single-flight baseline does not change scheduling; later candidates must capture paired software-boundary input latency"
+  }
+}

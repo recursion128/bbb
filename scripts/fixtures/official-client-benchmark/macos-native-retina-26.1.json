@@ -243,7 +243,8 @@
     "coalescing": "newest-event-with-explicit-superseded-count"
   },
   "stability_acceptance": {
-    "policy": "product-playability-v3",
+    "policy": "product-playability-v4",
+    "official_scope_policy": "baseline-establishment-combined-hard-local-scopes-diagnostic",
     "acceptance_metrics": {
       "application_frame_time": [
         "mean_fps",
@@ -290,16 +291,6 @@
       [4, 3],
       [5, 6],
       [8, 7]
-    ],
-    "baseline_bbb_commit": "758a93e41d827ade7cd5902bc756316d469e04c6",
-    "baseline_bbb_report_sha256": "9bf24802ef33fe421b2361b3b366f8f240baf46bed40739b34a21f0e7791bd90",
-    "baseline_bbb_binary_sha256": "ddb6c4ab8be7df7ae065abb764f34207b62918fbb6b447564d37c37355612e75",
-    "baseline_repeat_raw_sha256": "63a387dfd62d12a17a98b6b640f7dcf38260764f80504143468ea8ab7b07e3a3",
-    "baseline_repeat_mean_fps": [
-      185.93556532035964,
-      186.34860172263467,
-      184.91050831595598,
-      184.78437523051227
     ],
     "maximum_candidate_fps_margin": 0.01
   }

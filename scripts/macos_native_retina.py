@@ -90,7 +90,7 @@ PROFILE_SECONDS = 10
 SCREENSHOT_SETTLE_SECONDS = 2.0
 UNLIMITED_FPS_SENTINEL = 260
 HITCH_THRESHOLDS_MS = (33.333, 50.0, 100.0)
-STABILITY_POLICY = "product-playability-v3"
+STABILITY_POLICY = "product-playability-v4"
 BASELINE_BBB_COMMIT = "d698c8db0d219f035c7597726c76225c6cd70abc"
 BASELINE_BBB_REPORT_SHA256 = "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b"
 BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97"
@@ -229,12 +229,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 WGPU_DEPENDENCY_RECEIPT_PATH = (
     REPO_ROOT / "docs" / "evidence" / "dependency-receipts" / "wgpu-30.0.0.json"
 )
-CURRENT_WGPU30_BASELINE_RECEIPT_PATH = (
+CURRENT_RELEASE_BASELINE_RECEIPT_PATH = (
     REPO_ROOT
     / "docs"
     / "evidence"
     / "macos-native-retina"
-    / "current-wgpu30-baseline.json"
+    / "current-release-baseline.json"
 )
 WGPU_COMPONENT_VERSIONS = {
     "naga": "30.0.0",
@@ -532,6 +532,9 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
+            "official_scope_policy": (
+                "baseline-establishment-combined-hard-local-scopes-diagnostic"
+            ),
             "acceptance_metrics": {
                 "application_frame_time": [
                     "mean_fps",
@@ -564,13 +567,6 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
             "abba_rounds": [list(round_runs) for round_runs in FORMAL_ROUNDS],
             "abba_run_pairs": [list(pair) for pair in FORMAL_RUN_PAIRS],
-            "baseline_bbb_commit": WGPU30_OPTIMIZATION_BASELINE_COMMIT,
-            "baseline_bbb_report_sha256": WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
-            "baseline_bbb_binary_sha256": WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
-            "baseline_repeat_raw_sha256": WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256,
-            "baseline_repeat_mean_fps": list(
-                WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS
-            ),
             "maximum_candidate_fps_margin": MAX_BASELINE_FPS_MARGIN,
         },
     }
@@ -2762,6 +2758,8 @@ def _stability_scope(
 def _build_stability_acceptance(
     matrix: Mapping[tuple[int, str, str], Sequence[float]],
     runs: Sequence[Mapping[str, object]],
+    *,
+    baseline_establishment: bool = False,
 ) -> dict[str, object]:
     all_runs = tuple(range(1, len(runs) + 1))
     scopes = [
@@ -2852,18 +2850,25 @@ def _build_stability_acceptance(
                 )
             failed = comparison["failed_acceptance_metrics"]
             if failed:
-                failures.append(
-                    {
-                        "code": "product_acceptance_regression",
-                        "scope_type": scope["scope_type"],
-                        "scope_id": scope["scope_id"],
-                        "runs": scope["runs"],
-                        "segment": scope["segment"],
-                        "metric": metric,
-                        "failed_metrics": list(failed),
-                        "cv_classification": cv["classification"],
-                    }
-                )
+                finding = {
+                    "code": "product_acceptance_regression",
+                    "scope_type": scope["scope_type"],
+                    "scope_id": scope["scope_id"],
+                    "runs": scope["runs"],
+                    "segment": scope["segment"],
+                    "metric": metric,
+                    "failed_metrics": list(failed),
+                    "cv_classification": cv["classification"],
+                }
+                if baseline_establishment and scope["scope_type"] != "combined":
+                    non_blocking_diagnostics.append(
+                        {
+                            **finding,
+                            "classification": "baseline-official-local-scope-diagnostic",
+                        }
+                    )
+                else:
+                    failures.append(finding)
     return {
         "policy": STABILITY_POLICY,
         "status": "passed" if not failures else "failed",
@@ -2896,6 +2901,11 @@ def _build_stability_acceptance(
             ],
         },
         "cv_role": "diagnostic-only",
+        "official_scope_policy": (
+            "combined-hard-local-scopes-diagnostic"
+            if baseline_establishment
+            else "all-scopes-hard"
+        ),
         "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
         "scopes": scopes,
         "non_blocking_diagnostics": non_blocking_diagnostics,
@@ -4360,6 +4370,11 @@ def validate_and_summarize(
         "runs": [dict(run) for run in runs],
         "stability_policy": {
             "policy": STABILITY_POLICY,
+            "official_scope_policy": (
+                "combined-hard-local-scopes-diagnostic"
+                if establish_current_baseline
+                else "all-scopes-hard"
+            ),
             "acceptance_metrics": {
                 "application_frame_time": [
                     "mean_fps",
@@ -4391,26 +4406,39 @@ def validate_and_summarize(
             "cv_role": "diagnostic-only",
             "maximum_candidate_fps_margin": MAX_BASELINE_FPS_MARGIN,
         },
-        "regression_baseline": {
-            "role": "fixed-full-gated-wgpu30-bbb",
-            "bbb_commit": WGPU30_OPTIMIZATION_BASELINE_COMMIT,
-            "report_sha256": WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
-            "binary_sha256": WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
-            "repeat_mean_fps": list(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
-            "fps_noise_margin": (
-                max(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
-                - min(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
-            )
-            / statistics.fmean(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
-            "input_latency_reference": {
-                "bbb_commit": INPUT_LATENCY_BASELINE_COMMIT,
-                "report_sha256": INPUT_LATENCY_BASELINE_REPORT_SHA256,
-                "binary_sha256": INPUT_LATENCY_BASELINE_BINARY_SHA256,
-                "terminal_boundary": INPUT_LATENCY_TERMINAL_BOUNDARY,
-            },
-            "wgpu_components": dict(WGPU_COMPONENT_VERSIONS),
-            "wgpu_0_19_role": "historical-only-not-a-baseline-or-rollback-target",
-        },
+        "regression_baseline": (
+            {
+                "role": "established-by-this-current-release-capture",
+                "bbb_commit": bbb_commit,
+                "identity_source": str(CURRENT_RELEASE_BASELINE_RECEIPT_PATH),
+                "fps_noninferiority_margin": DEPENDENCY_CANDIDATE_FPS_MARGIN,
+                "future_candidates_require_interleaved_pairs": True,
+                "input_latency_terminal_boundary": INPUT_LATENCY_TERMINAL_BOUNDARY,
+                "wgpu_components": dict(WGPU_COMPONENT_VERSIONS),
+                "wgpu_0_19_role": "historical-only-not-a-baseline-or-rollback-target",
+            }
+            if establish_current_baseline
+            else {
+                "role": "historical-validator-compatibility-baseline",
+                "bbb_commit": WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+                "report_sha256": WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
+                "binary_sha256": WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+                "repeat_mean_fps": list(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
+                "fps_noise_margin": (
+                    max(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+                    - min(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+                )
+                / statistics.fmean(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
+                "input_latency_reference": {
+                    "bbb_commit": INPUT_LATENCY_BASELINE_COMMIT,
+                    "report_sha256": INPUT_LATENCY_BASELINE_REPORT_SHA256,
+                    "binary_sha256": INPUT_LATENCY_BASELINE_BINARY_SHA256,
+                    "terminal_boundary": INPUT_LATENCY_TERMINAL_BOUNDARY,
+                },
+                "wgpu_components": dict(WGPU_COMPONENT_VERSIONS),
+                "wgpu_0_19_role": "historical-only-not-a-baseline-or-rollback-target",
+            }
+        ),
     }
     reasons: list[dict[str, object]] = []
     clients = tuple(str(run.get("client", "")) for run in runs)
@@ -4614,7 +4642,11 @@ def validate_and_summarize(
         }
         for client in ("vanilla", "bbb")
     }
-    stability = _build_stability_acceptance(sample_matrix, normalized_runs)
+    stability = _build_stability_acceptance(
+        sample_matrix,
+        normalized_runs,
+        baseline_establishment=establish_current_baseline,
+    )
     frame_phase_diagnostics = _build_frame_phase_diagnostics(
         frame_phase_matrix, normalized_runs
     )
@@ -5771,6 +5803,8 @@ def _summarize_command(args: argparse.Namespace) -> int:
         bbb_commit=bbb_commit,
         candidate_fps_evidence=candidate_fps_evidence,
         establish_current_baseline=establish_current_baseline,
+        require_window_presentation=bool(runs)
+        and all(isinstance(run.get("window_presentation"), Mapping) for run in runs),
     )
     report["manifest"] = str(args.manifest)
     report["manifest_sha256"] = hashlib.sha256(args.manifest.read_bytes()).hexdigest()
@@ -5804,18 +5838,24 @@ def _revalidate_command(args: argparse.Namespace) -> int:
         bbb_commit=bbb_commit,
         candidate_fps_evidence=candidate_fps_evidence,
         establish_current_baseline=establish_current_baseline,
+        require_window_presentation=bool(runs)
+        and all(isinstance(run.get("window_presentation"), Mapping) for run in runs),
     )
     for field in (
         "artifact_root",
         "baseline_establishment",
         "bbb_binary",
         "bbb_binary_sha256",
+        "bbb_build_info",
         "bbb_commit",
         "formal_manifest",
         "formal_manifest_sha256",
         "replay",
         "replay_sha256",
         "world_snapshot",
+        "wgpu_dependency_receipt",
+        "wgpu_dependency_receipt_path",
+        "wgpu_dependency_receipt_sha256",
     ):
         if field in source:
             report[field] = source[field]

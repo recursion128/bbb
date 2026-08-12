@@ -54,8 +54,8 @@ pixels，最后仍以两侧 F2 截图和 BBB 的 CAMetalLayer runtime receipt �
 不匹配在性能比较前 fail-closed。
 
 当前基线的唯一当前事实入口是
-[`current-wgpu30-baseline.json`](../../evidence/macos-native-retina/current-wgpu30-baseline.json)。
-它绑定正式报告、raw manifest、capture commit、release binary、四次重复噪声和 SHA-256；
+[`current-release-baseline.json`](../../evidence/macos-native-retina/current-release-baseline.json)。
+它绑定正式报告、capture commit、release binary、固定候选 margin 和 SHA-256；
 这些值不得在 Wiki 或 goal 中复制。profile 固定：
 
 - AC Power、fullscreen 2560x1600、VSync off、FPS unlimited；
@@ -69,7 +69,7 @@ validator 先核对 binary/dependency/runtime receipt、drawable、surface、tim
 和 workload identity，再检查 combined、三个 scene、两个 round、全部 nearest pair 与逐
 scene pair。FPS、App/GPU p99、App 1% low、App/GPU hitch 和同仪器 input software latency
 是 candidate 硬门禁；p50/p95/stddev/p99-p50/CV 等字段保留为诊断，不能单独阻止，也不能
-被 combined 隐藏。四次 baseline 重复噪声超过 1% 时必须重采，不能截断后继续比较。
+被 combined 隐藏。候选必须采用 receipt 中预声明且不超过 1% 的 margin。
 
 wgpu 供应链由
 [`wgpu-30.0.0.json`](../../evidence/dependency-receipts/wgpu-30.0.0.json)固定：不得出现

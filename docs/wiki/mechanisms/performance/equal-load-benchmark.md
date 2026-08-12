@@ -94,8 +94,8 @@ scanout、面板或光子延迟。queue-budget/acquire candidate 必须用相同
 ## 当前 macOS Retina 基线
 
 当前唯一 baseline receipt 是
-[`current-wgpu30-baseline.json`](../../../evidence/macos-native-retina/current-wgpu30-baseline.json)，
-正式报告和 raw manifest 由该文件的路径与 SHA-256 绑定。候选工具不得在源码或 Wiki 另写
+[`current-release-baseline.json`](../../../evidence/macos-native-retina/current-release-baseline.json)，
+正式报告由该文件的路径与 SHA-256 绑定。候选工具不得在源码或 Wiki 另写
 commit/hash/FPS 副本；必须读取 receipt，并验证 registry wgpu/core/hal/types/naga 30.0.0、
 binary hash、`PassBoundary`、Immediate/hint 2、实际三个 drawable、单 in-flight、fullscreen
 2560x1600 和 workload/input identity。兼容 schema 只定义 parser 行为，不赋予非当前

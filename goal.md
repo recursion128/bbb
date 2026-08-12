@@ -321,7 +321,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: closed
 - p2-hud: closed
 - p3-resources: closed
-- p4-delivery: active
+- p4-delivery: maintenance
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -384,16 +384,13 @@ built-in pack ZIP 与 Realms 对应 surface 按账本保持 `not-needed`。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。当前唯一 ready 路线是 committed direct-dependency receipt 与依赖现代化，
-从 winit 0.30 开始；每个有界依赖组独立提交并 full gate。`current-release-revalidation`
-保持 active 但 prerequisite-incomplete，必须等全部依赖决策落地后再对最终 release binary
-统一重采，避免正式 receipt 被下一次依赖提交立即作废。平台、生命周期、音频、安全预算与
-有界队列按各自 gate/stamp 和 Wiki 合同维护。
+状态：`maintenance`。平台、生命周期、音频、安全预算、有界队列、依赖与发布验收按各自
+gate/stamp、committed receipt 和 Wiki 合同维护。
 macOS 与 Linux 是声明平台，Windows 是账本附 Vanilla/产品依据的 `not-needed`。
 
 Retina 性能基础设施固定为 crates.io wgpu/core/hal/types/naga 30.0.0；不得恢复 0.19、
 path patch、vendor 或直接 `wgpu-hal` 依赖。当前 baseline 身份、重复采集噪声与 SHA
-只从 `docs/evidence/macos-native-retina/current-wgpu30-baseline.json` 读取；后续 candidate
+只从 `docs/evidence/macos-native-retina/current-release-baseline.json` 读取；后续 candidate
 只与该 full-gated wgpu 30 baseline 比较，噪声 margin 最大不得超过 1%。失败 candidate
 不进入当前文档，追溯只走 Git。
 
@@ -421,9 +418,3 @@ BBB mean FPS 不低于官方、App p99 不高于官方、1% low 不低于官方�
 Retina maintenance 在 drawable/surface/画面/workload/input identity 不一致，或相对当前
 receipt 的 FPS 超其预声明 noise margin、App/GPU p99、App 1% low、App/GPU hitch、input
 latency 任一显著回退时重开。
-依赖现代化每次只处理一个有界依赖组：winit 0.30 后依次审计 pollster、认证/网络、glam、
-hecs、音频/归档/开发工具，并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。
-全部组关闭后，在同一 clean/full-gated final code commit 上依次完成 planner 指定的 lifecycle、
-resource/platform、visual/workload、draw、audio 与 performance validation class，提交 exact-commit
-acceptance seal；只有 ledger 无 active、parity report 无实现 blocker、HEAD 与 last-gated 一致时
-本路线转入 maintenance。

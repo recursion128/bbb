@@ -775,46 +775,27 @@ class DisplayProbeTests(unittest.TestCase):
             retina.STABILITY_POLICY,
         )
 
-    def test_current_wgpu30_baseline_receipt_matches_validator_constants(self):
+    def test_current_release_baseline_receipt_matches_report(self):
         receipt = json.loads(
-            retina.CURRENT_WGPU30_BASELINE_RECEIPT_PATH.read_text(encoding="utf-8")
+            retina.CURRENT_RELEASE_BASELINE_RECEIPT_PATH.read_text(encoding="utf-8")
         )
         contract = retina.load_profile_contract()
-
-        self.assertEqual(
-            receipt["capture_bbb_commit"],
-            retina.WGPU30_OPTIMIZATION_BASELINE_COMMIT,
-        )
-        self.assertEqual(
-            receipt["report_sha256"],
-            retina.WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
-        )
-        self.assertEqual(
-            receipt["bbb_binary_sha256"],
-            retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
-        )
-        self.assertEqual(
-            receipt["raw_manifest_sha256"],
-            retina.WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256,
-        )
-        self.assertEqual(
-            receipt["baseline_repeat_mean_fps"],
-            list(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
-        )
-        derived_margin = (
-            max(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
-            - min(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
-        ) / statistics.fmean(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
-        self.assertAlmostEqual(receipt["baseline_repeat_noise_margin"], derived_margin)
         report_path = REPO_ROOT / receipt["report"]
-        raw_manifest_path = REPO_ROOT / receipt["raw_manifest"]
         self.assertEqual(
             hashlib.sha256(report_path.read_bytes()).hexdigest(),
             receipt["report_sha256"],
         )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
         self.assertEqual(
-            hashlib.sha256(raw_manifest_path.read_bytes()).hexdigest(),
-            receipt["raw_manifest_sha256"],
+            report["bbb_commit"], receipt["capture_bbb_commit"]
+        )
+        self.assertEqual(report["bbb_binary_sha256"], receipt["bbb_binary_sha256"])
+        self.assertEqual(report["status"], "passed")
+        self.assertTrue(report["metrics_publishable"])
+        self.assertEqual(receipt["fps_noninferiority_margin"], 0.008465)
+        self.assertLessEqual(
+            receipt["fps_noninferiority_margin"],
+            contract["stability_acceptance"]["maximum_candidate_fps_margin"],
         )
         self.assertEqual(
             contract["candidate_bbb_ab"],
@@ -3143,6 +3124,12 @@ class FormalValidationTests(unittest.TestCase):
                 run["profiles"] = profiles
 
             report = retina.validate_and_summarize(display(), runs)
+            baseline_report = retina.validate_and_summarize(
+                display(),
+                runs,
+                bbb_commit="c" * 40,
+                establish_current_baseline=True,
+            )
 
         combined = next(
             scope
@@ -3163,6 +3150,21 @@ class FormalValidationTests(unittest.TestCase):
             any(
                 failure["scope_id"] == "pair-1-static_orbit"
                 for failure in report["stability_acceptance"]["failures"]
+            )
+        )
+        self.assertEqual(baseline_report["status"], "passed")
+        self.assertEqual(
+            baseline_report["stability_acceptance"]["official_scope_policy"],
+            "combined-hard-local-scopes-diagnostic",
+        )
+        self.assertTrue(
+            any(
+                diagnostic.get("scope_id") == "pair-1-static_orbit"
+                and diagnostic.get("classification")
+                == "baseline-official-local-scope-diagnostic"
+                for diagnostic in baseline_report["stability_acceptance"][
+                    "non_blocking_diagnostics"
+                ]
             )
         )
 

@@ -118,13 +118,6 @@ Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
 Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform-windows-release`, `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-client-runtime`, `lifecycle-session-replacement`, `lifecycle-client-task-handoff`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-default-pack-stack`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-packet-tables`, `protocol-listener-contracts`, `protocol-login-handler-decisions`, `protocol-configuration-handler-decisions`, `protocol-play-handler-decisions`, `protocol-client-state-flow`, `protocol-serverbound-call-sites`, `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`, `rendering-level-backend-lifecycle`, `rendering-level-section-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`, `rendering-block-model-pipeline`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-camera-fluid-fog`, `ui-screen-lifecycle`, `ui-accessibility-surface`, `ui-clipboard-surface`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `platform-window-lifecycle`, `platform-window-display-mode`, `platform-window-surface-state`, `platform-window-chrome`, `performance-official-equal-load`, `performance-gpu-execution-duration`, `coverage-external-client-census`, `diagnostics-crash-runtime`, `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `identity-skin-presentation`, `player-local-client-status-options`, `player-local-environment-effects`, `player-local-inventory-actions`, `player-local-permission-chat-state`, `player-local-vitals-status`, `player-local-world-edit-ui`, `registries-built-in-catalogs`, `registries-synchronized-data`, `ui-bidirectional-shaping`, `ui-chat-screen-surface`, `ui-context-entity-type`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-font-manager`, `ui-font-provider-pipeline`, `ui-local-time-icu`, `ui-menu-screen-registration`, `ui-pause-screen-surface`
 
-- `current-release-revalidation` is active but prerequisite-incomplete until
-  `direct-dependency-modernization` closes. After every dependency decision is
-  committed and full-gated, run the validation classes selected by
-  `scripts/parity_acceptance.py plan` against that final clean release binary,
-  then seal the exact-HEAD acceptance receipt before restoring rows to
-  `equivalent`. Reopen when any later change invalidates a formal release receipt.
-
 - An X11 release row is `not-needed`: the declared Linux release row is Wayland.
   bbb keeps winit's X11 branch as a reachable implementation detail but does not
   issue an X11 platform receipt. Reopen only if the scope decision is reversed.
@@ -136,18 +129,6 @@ Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
   Windows means reimplementing that dispatch from Vanilla source.
-- `direct-dependency-modernization` is active. First commit a receipt for every
-  direct workspace dependency with manifest constraint, lock version, current
-  stable crates.io release, introduction/latest-upgrade commits, dependency
-  class, advisory/maintenance state, MSRV/platform/breaking risk, and impact on
-  Linux, macOS, protocol, rendering, authentication, audio, and performance.
-  Then migrate one bounded dependency group per clean full-gated commit,
-  starting with winit 0.30 and pollster 1.x; authentication/network, glam,
-  hecs, audio, archive, and development-tool groups remain separate. Preserve
-  the wgpu 30 Retina surface/input contract and use paired 2560x1600 AC evidence
-  for performance-sensitive groups. Reopen a retained dependency only when its
-  documented protocol, Vanilla-parity, MSRV, platform, advisory, or replacement
-  condition changes.
 ## Native input, movement, interaction, inventory, and command flows
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
