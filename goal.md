@@ -498,16 +498,15 @@ candidate 只记录在账本、evidence 和归档，不写入本文件。
 当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。诊断面由
 profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
-十一段有序 `PassBoundary` duration。当前唯一动作是完成 diagnostic-only 的
-`renderer-input-latency-v1` 门禁并采 accepted-baseline probe：正式 replay 输入使用单调 sequence/timestamp，
+十一段有序 `PassBoundary` duration；`renderer-input-latency-v1` 使用单调 sequence/timestamp
 有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
-return，输出每阶段 p50/p95/p99、丢失/乱序与 scene/run 归属。它不得改变 queue budget、
-wait→acquire→submit→present、surface、workload、pacing 或输入语义；未启用诊断时不得明显
-增加热路径成本。present-call return 必须明确标为软件边界，不能冒充实际 display/photon
-latency。focused owner/order/bounds/disabled-cost tests、report fail-closed 与 full gate
-必须先通过；accepted-baseline diagnostic 完成后，只有 acquire 尾部仍为主要来源且软件 input latency 有可执行非劣门禁，才允许一个独立的
-queue-budget/acquire 策略 candidate。未开启详细诊断时保持两个 timestamp query；不得改变
-FIFO/Linux、surface fallback 或可见 geometry。
+return，并固定把终点声明为软件边界而非 display/photon latency。当前唯一动作是审计一个新的、
+有机制依据的 acquire-policy 假设；它必须保持 queue budget 1、三个 drawable、latency hint 2、
+可见 workload 与输入语义，并复用既有 input-latency 非劣门禁。不得重跑账本已经拒绝的策略。
+只有 upstream 生命周期合同与现有 phase evidence 能同时说明该假设可能降低 acquire 绝对尾部，
+才允许将其实现为单一独立 candidate；否则明确报告无 ready candidate 的 blocker，不做无界试错。
+未开启详细诊断时保持两个 timestamp query；不得改变 FIFO/Linux、surface fallback 或可见
+geometry。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝

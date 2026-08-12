@@ -163,6 +163,25 @@ stddev/p99-p50、preloaded-flight/chunk-boundary App 尾部及多个 pair GPU �
 2.6881/6.7633/1.2265 ms；下一步先建立 input→simulation→extract→submit/present-call 软件
 延迟合同，再考虑任何 queue-budget/acquire 策略，且不得把 present-call 返回称为实际显示延迟。
 
+full-gated `renderer-input-latency-v1` accepted-baseline probe 保持 AC Power、fullscreen
+2560x1600、Metal Immediate、latency hint 2、实际三个 drawable 与单 in-flight。未扩展的正式
+replay 先得到 6 个有效 receipt，证明原输入链但不足以可靠估计尾分位；随后 diagnostic-only
+probe 在每个 profiler 窗口向精确 BBB PID 投递 80 个 10 Hz、未绑定且不改变 gameplay/camera
+的 F19 press/release 脉冲，得到三场景各 161、合计 483 个 receipt。全部 sequence 单调，
+`out_of_order_events=0`，10 个被合并/替换输入均由 `superseded_events` 显式计数。
+
+combined input→present-call-return 软件边界的 p50/p95/p99/stddev 为
+9.3613/15.3250/16.7885/3.9862 ms；simulation-apply→renderer-extract 是
+5.0180/7.1411/11.7178/1.4320 ms，renderer-extract→queue-submit 是
+4.1805/7.6977/10.9158/1.3501 ms，而 queue-submit→present-call-return 仅
+0.0099/0.0147/0.0209/0.0030 ms。独立 frame-phase 的 surface-acquire
+p50/p95/p99/stddev 为 0.0135/1.8045/5.6820/1.0139 ms，对下一 application interval 的相关性
+0.7945，仍是 render phase 中最强的调度尾部信号。报告是
+[`input-latency-ac-diagnostic.json`](../../../evidence/macos-native-retina/input-latency-ac-diagnostic.json)
+（SHA-256 `be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24`）。该报告不是候选
+FPS/稳定性验收，终点不含 compositor、scanout、面板或光子；它只为后续独立 acquire-policy
+candidate 提供输入软件路径非劣门禁，且不授权增加 queue depth。
+
 ## 生命周期和 fallback
 
 所有 client/server/compositor/tool 进程进入独立 process group 并有 bounded cleanup。

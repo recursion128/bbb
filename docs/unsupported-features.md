@@ -311,8 +311,17 @@ restoring any row to `equivalent`.
   bounded, monotonic input→simulation→extract→submit/present-call software receipt,
   records coalesced/publication replacement loss explicitly and rejects missing
   launch/schema/archive/raw-sidecar evidence. Present-call return is not actual
-  display or photon latency, and the accepted-baseline 2560x1600 AC diagnostic
-  capture remains the restart condition before any queue-budget/acquire candidate.
+  display or photon latency. The full-gated accepted-baseline 2560x1600 AC
+  diagnostic now has 483 valid receipts across the three scenes, zero out-of-order
+  receipts and 10 explicitly counted superseded inputs. Combined enqueue-to-
+  present-call-return was 9.3613/15.3250/16.7885 ms at p50/p95/p99; simulation
+  apply-to-extract and extract-to-submit own the software path, while submit-to-
+  present-call-return was only 0.0099/0.0147/0.0209 ms. Surface acquire separately
+  remained the strongest render-phase next-interval correlate at 0.7945. Evidence is
+  `docs/evidence/macos-native-retina/input-latency-ac-diagnostic.json` at SHA-256
+  `be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24`.
+  This diagnostic does not authorize a deeper queue or claim candidate performance;
+  any acquire-policy experiment remains an independent full-gated candidate.
   Detailed query/callback paths remain off outside explicit diagnostics. Only a
   v4 all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
