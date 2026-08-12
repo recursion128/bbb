@@ -164,6 +164,84 @@ struct FrameDrawStats {
     pipeline_switches: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FramePresentationSource {
+    Main,
+    TransparencyFinal,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FrameTransparencyCombine {
+    None,
+    BuiltIn,
+    VanillaDirect,
+    GenericGraph,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct FrameDepthCopyPlan {
+    translucent: bool,
+    item_entity: bool,
+    particles: bool,
+}
+
+/// Immutable topology selected before any pass is encoded for a frame.
+///
+/// Individual pass bodies retain their established pipeline/material order;
+/// this plan owns only frame-wide activation, copy consumers, and the final
+/// presentation source so those decisions cannot diverge between steps.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct FramePlan {
+    improved_transparency: bool,
+    update_lightmap: bool,
+    item_entity_depth_work: bool,
+    particle_depth_work: bool,
+    depth_copies: FrameDepthCopyPlan,
+    transparency_combine: FrameTransparencyCombine,
+    presentation_source: FramePresentationSource,
+}
+
+impl FramePlan {
+    fn new(
+        route: crate::LevelFrameRoute,
+        update_lightmap: bool,
+        item_entity_depth_work: bool,
+        particle_depth_work: bool,
+        post_effect_graphs_present: bool,
+        vanilla_transparency_direct: bool,
+    ) -> Self {
+        debug_assert!(!vanilla_transparency_direct || post_effect_graphs_present);
+        let improved_transparency = route.uses_improved_transparency();
+        let transparency_combine = if !improved_transparency {
+            FrameTransparencyCombine::None
+        } else if vanilla_transparency_direct {
+            FrameTransparencyCombine::VanillaDirect
+        } else if post_effect_graphs_present {
+            FrameTransparencyCombine::GenericGraph
+        } else {
+            FrameTransparencyCombine::BuiltIn
+        };
+        let presentation_source = if !improved_transparency || post_effect_graphs_present {
+            FramePresentationSource::Main
+        } else {
+            FramePresentationSource::TransparencyFinal
+        };
+        Self {
+            improved_transparency,
+            update_lightmap,
+            item_entity_depth_work,
+            particle_depth_work,
+            depth_copies: FrameDepthCopyPlan {
+                translucent: improved_transparency,
+                item_entity: improved_transparency && item_entity_depth_work,
+                particles: improved_transparency && particle_depth_work,
+            },
+            transparency_combine,
+            presentation_source,
+        }
+    }
+}
+
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
         let render_started_at = std::time::Instant::now();
@@ -200,13 +278,13 @@ impl Renderer {
             .gpu_timing
             .as_mut()
             .and_then(|timing| timing.begin_frame(&mut encoder));
+        let (frame_plan, particle_vertex_batches) = self.prepare_frame_plan();
         let mut stats = FrameDrawStats::default();
-        let update_lightmap = self.lightmap_dirty;
         let terrain_animation_tick = self.terrain_atlas_animation_pass(&mut encoder, &mut stats);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::TerrainAtlasAnimationEnd);
         }
-        if update_lightmap {
+        if frame_plan.update_lightmap {
             write_lightmap_uniform(
                 &self.queue,
                 &self.lightmap.uniform_buffer,
@@ -218,18 +296,11 @@ impl Renderer {
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::OpaqueWorldEnd);
         }
-        let particle_vertex_batches = self.opaque_particle_main_pass(&mut encoder, &mut stats);
+        self.opaque_particle_main_pass(&mut encoder, &mut stats, &particle_vertex_batches);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::OpaqueParticlesEnd);
         }
-        let item_entity_depth_work = Self::item_entity_target_has_depth_work(self);
-        let particle_depth_work =
-            Self::particle_target_has_depth_work(self, &particle_vertex_batches);
-        self.copy_main_depth_to_feature_targets(
-            &mut encoder,
-            item_entity_depth_work,
-            particle_depth_work,
-        );
+        self.copy_main_depth_to_feature_targets(&mut encoder, &frame_plan);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::FeatureDepthCopiesEnd);
         }
@@ -243,45 +314,45 @@ impl Renderer {
         }
         self.debug_filled_box_pass(&mut encoder, &mut stats);
         self.debug_text_pass(&mut encoder, &mut stats);
-        self.item_entity_target_pass(&mut encoder, &mut stats, item_entity_depth_work);
+        self.item_entity_target_pass(&mut encoder, &mut stats, &frame_plan);
         self.block_destroy_overlay_pass(&mut encoder, &mut stats);
         self.ordered_custom_and_text_feature_pass(&mut encoder, &mut stats);
         self.entity_outline_target_pass(&mut encoder, &mut stats);
-        self.block_selection_before_translucent_pass(&mut encoder, &mut stats);
-        self.translucent_target_pass(&mut encoder, &mut stats);
-        self.item_entity_line_target_pass(&mut encoder, &mut stats);
+        self.block_selection_before_translucent_pass(&mut encoder, &mut stats, &frame_plan);
+        self.translucent_target_pass(&mut encoder, &mut stats, &frame_plan);
+        self.item_entity_line_target_pass(&mut encoder, &mut stats, &frame_plan);
         self.particle_target_pass(
             &mut encoder,
             &mut stats,
             particle_vertex_batches,
-            particle_depth_work,
+            &frame_plan,
         );
         self.entity_outline_post_chain(&mut encoder, &mut stats)?;
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::FeatureTargetsEnd);
         }
-        self.clouds_pass(&mut encoder, &mut stats);
+        self.clouds_pass(&mut encoder, &mut stats, &frame_plan);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::CloudsEnd);
         }
-        self.weather_target_pass(&mut encoder, &mut stats);
+        self.weather_target_pass(&mut encoder, &mut stats, &frame_plan);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::WeatherEnd);
         }
-        self.transparency_combine_pass(&mut encoder, &mut stats)?;
+        self.transparency_combine_pass(&mut encoder, &mut stats, &frame_plan)?;
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::TransparencyCombineEnd);
         }
-        self.debug_always_on_top_text_pass(&mut encoder, &mut stats);
-        self.first_person_item_pass(&mut encoder, &mut stats);
-        self.screen_effect_overlay_pass(&mut encoder, &mut stats);
-        self.camera_post_effect_pass(&mut encoder, &mut stats)?;
+        self.debug_always_on_top_text_pass(&mut encoder, &mut stats, &frame_plan);
+        self.first_person_item_pass(&mut encoder, &mut stats, &frame_plan);
+        self.screen_effect_overlay_pass(&mut encoder, &mut stats, &frame_plan);
+        self.camera_post_effect_pass(&mut encoder, &mut stats, &frame_plan)?;
         self.entity_preview_pip_passes(&mut encoder, &mut stats, glint_elapsed_millis);
-        self.vignette_pass(&mut encoder, &mut stats);
-        self.win_screen_portal_pass(&mut encoder, &mut stats);
-        self.panorama_pass(&mut encoder, &mut stats);
-        self.hud_passes(&mut encoder, &mut stats)?;
-        self.win_screen_vignette_pass(&mut encoder, &mut stats);
+        self.vignette_pass(&mut encoder, &mut stats, &frame_plan);
+        self.win_screen_portal_pass(&mut encoder, &mut stats, &frame_plan);
+        self.panorama_pass(&mut encoder, &mut stats, &frame_plan);
+        self.hud_passes(&mut encoder, &mut stats, &frame_plan)?;
+        self.win_screen_vignette_pass(&mut encoder, &mut stats, &frame_plan);
         let cpu_encode_before_wait = self
             .frame_phase_profiling_enabled
             .then(|| render_encoding_started_at.elapsed())
@@ -336,7 +407,7 @@ impl Renderer {
             }
         };
         let render_encoding_resumed_at = std::time::Instant::now();
-        self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
+        self.transparency_blit_pass(&frame, &mut encoder, &mut stats, &frame_plan);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.mark_stage(&mut encoder, token, GpuFrameStage::PresentationTailEnd);
         }
@@ -360,10 +431,28 @@ impl Renderer {
             presentation_tail_encode,
             render_started_at,
         );
-        if result.is_ok() && update_lightmap {
+        if result.is_ok() && frame_plan.update_lightmap {
             self.lightmap_dirty = false;
         }
         result
+    }
+
+    fn prepare_frame_plan(&self) -> (FramePlan, ParticleVertexBatches) {
+        let particle_vertex_batches = self.collect_particle_vertex_batches();
+        let post_effect_graphs_present = self.post_effect_graphs.is_some();
+        let vanilla_transparency_direct = self
+            .post_effect_graphs
+            .as_ref()
+            .is_some_and(|graphs| graphs.uses_vanilla_transparency_direct_path());
+        let frame_plan = FramePlan::new(
+            self.level_frame_route,
+            self.lightmap_dirty,
+            self.item_entity_target_has_depth_work(),
+            self.particle_target_has_depth_work(&particle_vertex_batches),
+            post_effect_graphs_present,
+            vanilla_transparency_direct,
+        );
+        (frame_plan, particle_vertex_batches)
     }
 
     fn terrain_atlas_animation_pass(
@@ -1060,9 +1149,9 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
-    ) -> ParticleVertexBatches {
+        particle_vertex_batches: &ParticleVertexBatches,
+    ) {
         let main_view = &self.main_target.view;
-        let particle_vertex_batches = self.collect_particle_vertex_batches();
         let has_opaque_particles = self.frame_opaque_particle_vertices.upload(
             &self.device,
             &self.queue,
@@ -1103,7 +1192,6 @@ impl Renderer {
                 stats,
             );
         }
-        particle_vertex_batches
     }
 
     fn item_entity_target_has_depth_work(&self) -> bool {
@@ -1179,33 +1267,31 @@ impl Renderer {
     fn copy_main_depth_to_feature_targets(
         &self,
         encoder: &mut wgpu::CommandEncoder,
-        item_entity_depth_work: bool,
-        particle_depth_work: bool,
+        frame_plan: &FramePlan,
     ) {
-        if !self.level_frame_route.uses_improved_transparency() {
-            return;
+        if frame_plan.depth_copies.translucent {
+            encoder.copy_texture_to_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.depth._texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                },
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.translucent_target.depth._texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                },
+                wgpu::Extent3d {
+                    width: self.config.width.max(1),
+                    height: self.config.height.max(1),
+                    depth_or_array_layers: 1,
+                },
+            );
         }
-        encoder.copy_texture_to_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.translucent_target.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::Extent3d {
-                width: self.config.width.max(1),
-                height: self.config.height.max(1),
-                depth_or_array_layers: 1,
-            },
-        );
 
-        if item_entity_depth_work {
+        if frame_plan.depth_copies.item_entity {
             encoder.copy_texture_to_texture(
                 wgpu::TexelCopyTextureInfo {
                     texture: &self.depth._texture,
@@ -1227,7 +1313,7 @@ impl Renderer {
             );
         }
 
-        if particle_depth_work {
+        if frame_plan.depth_copies.particles {
             encoder.copy_texture_to_texture(
                 wgpu::TexelCopyTextureInfo {
                     texture: &self.depth._texture,
@@ -1558,9 +1644,9 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
-        has_depth_work: bool,
+        frame_plan: &FramePlan,
     ) {
-        let improved = self.level_frame_route.uses_improved_transparency();
+        let improved = frame_plan.improved_transparency;
         let (item_entity_view, item_entity_depth_view) = if improved {
             (
                 &self.item_entity_target.view,
@@ -1611,7 +1697,7 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: has_depth_work.then_some(
+                depth_stencil_attachment: frame_plan.item_entity_depth_work.then_some(
                     wgpu::RenderPassDepthStencilAttachment {
                         view: item_entity_depth_view,
                         depth_ops: Some(wgpu::Operations {
@@ -1986,6 +2072,7 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         let Some(selection) = self
             .block_selection
@@ -1994,7 +2081,7 @@ impl Renderer {
         else {
             return;
         };
-        let improved = self.level_frame_route.uses_improved_transparency();
+        let improved = frame_plan.improved_transparency;
         let (color_view, depth_view) = if improved {
             (
                 &self.item_entity_target.view,
@@ -2044,8 +2131,9 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
-        let improved = self.level_frame_route.uses_improved_transparency();
+        let improved = frame_plan.improved_transparency;
         let (translucent_view, translucent_depth_view) = if improved {
             (
                 &self.translucent_target.view,
@@ -2118,6 +2206,7 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         let fishing_line_width = (self.config.width as f32 / 1920.0 * 2.5).max(2.5);
         let fishing_lines = self.camera_pose.map_or_else(Vec::new, |_| {
@@ -2148,7 +2237,7 @@ impl Renderer {
             &self.queue,
             bytemuck::cast_slice(&debug_line_batches.translucent),
         );
-        let improved = self.level_frame_route.uses_improved_transparency();
+        let improved = frame_plan.improved_transparency;
         let (item_entity_view, item_entity_depth_view) = if improved {
             (
                 &self.item_entity_target.view,
@@ -2278,9 +2367,9 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
         particle_vertex_batches: ParticleVertexBatches,
-        has_depth_work: bool,
+        frame_plan: &FramePlan,
     ) {
-        let improved = self.level_frame_route.uses_improved_transparency();
+        let improved = frame_plan.improved_transparency;
         let (particle_view, particle_depth_view) = if improved {
             (&self.particle_target.view, &self.particle_target.depth.view)
         } else {
@@ -2388,7 +2477,7 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: has_depth_work.then_some(
+                depth_stencil_attachment: frame_plan.particle_depth_work.then_some(
                     wgpu::RenderPassDepthStencilAttachment {
                         view: particle_depth_view,
                         depth_ops: Some(wgpu::Operations {
@@ -2782,13 +2871,18 @@ impl Renderer {
         stats.outline_composite_draw_calls += 1;
     }
 
-    fn clouds_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+    fn clouds_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
+    ) {
         if !self.clouds_enabled {
             return;
         }
         if let Some(clouds) = &self.clouds {
             if self.fog_environment.cloud_end > 0.0 {
-                let improved = self.level_frame_route.uses_improved_transparency();
+                let improved = frame_plan.improved_transparency;
                 let (color_view, depth_view) = if improved {
                     (&self.cloud_target.view, &self.cloud_target.depth.view)
                 } else {
@@ -2850,8 +2944,9 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
-        let improved = self.level_frame_route.uses_improved_transparency();
+        let improved = frame_plan.improved_transparency;
         let (weather_view, weather_depth_view) = if improved {
             (&self.weather_target.view, &self.weather_target.depth.view)
         } else {
@@ -3005,42 +3100,48 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) -> Result<()> {
-        if !self.level_frame_route.uses_improved_transparency() {
-            return Ok(());
-        }
-        if let Some(post_effect_graphs) = &self.post_effect_graphs {
-            if post_effect_graphs.uses_vanilla_transparency_direct_path() {
+        match frame_plan.transparency_combine {
+            FrameTransparencyCombine::None => return Ok(()),
+            FrameTransparencyCombine::VanillaDirect => {
                 self.vanilla_transparency_direct_pass(encoder);
                 stats.transparency_combine_draw_calls += 2;
                 stats.pipeline_switches += 2;
                 return Ok(());
             }
-            let (graph_passes, depth_copy_passes) = post_effect_graphs.execute_transparency(
-                &self.device,
-                &self.queue,
-                encoder,
-                PostEffectTransparencyTargets {
-                    main_color: &self.main_target.view,
-                    main_depth: &self.depth.view,
-                    translucent_color: &self.translucent_target.view,
-                    translucent_depth: &self.translucent_target.depth.view,
-                    item_entity_color: &self.item_entity_target.view,
-                    item_entity_depth: &self.item_entity_target.depth.view,
-                    particles_color: &self.particle_target.view,
-                    particles_depth: &self.particle_target.depth.view,
-                    clouds_color: &self.cloud_target.view,
-                    clouds_depth: &self.cloud_target.depth.view,
-                    weather_color: &self.weather_target.view,
-                    weather_depth: &self.weather_target.depth.view,
-                    size: [self.config.width, self.config.height],
-                },
-                self.post_effect_globals(),
-            )?;
-            stats.transparency_combine_draw_calls += graph_passes;
-            stats.post_effect_depth_copy_draw_calls += depth_copy_passes;
-            stats.pipeline_switches += graph_passes + depth_copy_passes;
-            return Ok(());
+            FrameTransparencyCombine::GenericGraph => {
+                let post_effect_graphs = self
+                    .post_effect_graphs
+                    .as_ref()
+                    .expect("generic transparency plan owns a graph runtime");
+                let (graph_passes, depth_copy_passes) = post_effect_graphs.execute_transparency(
+                    &self.device,
+                    &self.queue,
+                    encoder,
+                    PostEffectTransparencyTargets {
+                        main_color: &self.main_target.view,
+                        main_depth: &self.depth.view,
+                        translucent_color: &self.translucent_target.view,
+                        translucent_depth: &self.translucent_target.depth.view,
+                        item_entity_color: &self.item_entity_target.view,
+                        item_entity_depth: &self.item_entity_target.depth.view,
+                        particles_color: &self.particle_target.view,
+                        particles_depth: &self.particle_target.depth.view,
+                        clouds_color: &self.cloud_target.view,
+                        clouds_depth: &self.cloud_target.depth.view,
+                        weather_color: &self.weather_target.view,
+                        weather_depth: &self.weather_target.depth.view,
+                        size: [self.config.width, self.config.height],
+                    },
+                    self.post_effect_globals(),
+                )?;
+                stats.transparency_combine_draw_calls += graph_passes;
+                stats.post_effect_depth_copy_draw_calls += depth_copy_passes;
+                stats.pipeline_switches += graph_passes + depth_copy_passes;
+                return Ok(());
+            }
+            FrameTransparencyCombine::BuiltIn => {}
         }
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -3121,6 +3222,7 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         let (Some(camera_pose), Some(font_atlas)) = (
             self.camera_pose,
@@ -3162,7 +3264,7 @@ impl Renderer {
             .frame_debug_always_on_top_text_indices
             .buffer()
             .expect("always-on-top debug text indices uploaded");
-        let color_view = self.presentation_color_view();
+        let color_view = self.presentation_color_view(frame_plan.presentation_source);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3200,6 +3302,7 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         if self.hide_gui {
             return;
@@ -3247,7 +3350,7 @@ impl Renderer {
             return;
         }
 
-        let presentation_view = self.presentation_color_view();
+        let presentation_view = self.presentation_color_view(frame_plan.presentation_source);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(FIRST_PERSON_ITEM_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3442,6 +3545,7 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         if self.screen_effect_quads.is_empty() {
             return;
@@ -3463,7 +3567,7 @@ impl Renderer {
                 contents: bytemuck::cast_slice(&vertices),
                 usage: wgpu::BufferUsages::VERTEX,
             });
-        let presentation_view = self.presentation_color_view();
+        let presentation_view = self.presentation_color_view(frame_plan.presentation_source);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(SCREEN_EFFECT_OVERLAY_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3508,6 +3612,7 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) -> Result<()> {
         let effect = self
             .camera_post_effect_active
@@ -3531,7 +3636,8 @@ impl Renderer {
             stats.pipeline_switches += draw_calls;
             return Ok(());
         }
-        let (presentation_texture, presentation_view) = self.presentation_color_target();
+        let (presentation_texture, presentation_view) =
+            self.presentation_color_target(frame_plan.presentation_source);
         let draw_calls = self.camera_post_effect.render(
             effect,
             presentation_texture,
@@ -3599,7 +3705,12 @@ impl Renderer {
         self.hud_entity_preview_pip_targets = targets;
     }
 
-    fn vignette_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+    fn vignette_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
+    ) {
         let (Some(vignette), Some(texture)) =
             (self.hud_vignette, self.hud_vignette_texture.as_ref())
         else {
@@ -3612,7 +3723,7 @@ impl Renderer {
                 color: [vignette.color[0], vignette.color[1], vignette.color[2], 1.0],
             }),
         );
-        let presentation_view = self.presentation_color_view();
+        let presentation_view = self.presentation_color_view(frame_plan.presentation_source);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(VIGNETTE_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3640,6 +3751,7 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         let win_screen = matches!(
             self.hud_game_event_screen.as_ref(),
@@ -3660,7 +3772,7 @@ impl Renderer {
         ) else {
             return;
         };
-        let presentation_view = self.presentation_color_view();
+        let presentation_view = self.presentation_color_view(frame_plan.presentation_source);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(WIN_SCREEN_PORTAL_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3686,7 +3798,12 @@ impl Renderer {
         stats.hud_draw_calls += 1;
     }
 
-    fn panorama_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+    fn panorama_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
+    ) {
         let Some(panorama) = &self.hud_panorama else {
             return;
         };
@@ -3706,7 +3823,7 @@ impl Renderer {
         panorama.draw(
             &self.queue,
             encoder,
-            self.presentation_color_view(),
+            self.presentation_color_view(frame_plan.presentation_source),
             self.surface_size(),
             rotation_degrees,
         );
@@ -3718,6 +3835,7 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) -> Result<()> {
         // `collect_hud_draws` borrows self for the lifetime of its commands, so
         // temporarily move the persistent buffer out to upload alongside them.
@@ -3732,7 +3850,7 @@ impl Renderer {
                 &self.queue,
                 bytemuck::cast_slice(&hud_draws.vertices),
             );
-        let presentation_view = self.presentation_color_view();
+        let presentation_view = self.presentation_color_view(frame_plan.presentation_source);
         self.clear_hud_depth(encoder, HUD_DEPTH_CLEAR_PASS_LABEL);
         if let Some(screen_blur) = hud_draws.screen_blur {
             if has_hud_vertices {
@@ -3768,9 +3886,13 @@ impl Renderer {
             }
 
             self.clear_hud_depth(encoder, HUD_BLUR_DEPTH_CLEAR_PASS_LABEL);
-            if let Err(error) =
-                self.screen_blur_passes(presentation_view, encoder, screen_blur.radius, stats)
-            {
+            if let Err(error) = self.screen_blur_passes(
+                presentation_view,
+                encoder,
+                screen_blur.radius,
+                stats,
+                frame_plan,
+            ) {
                 drop(hud_draws);
                 self.frame_hud_vertices = frame_hud_vertices;
                 return Err(error);
@@ -3848,6 +3970,7 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         if !matches!(
             self.hud_game_event_screen.as_ref(),
@@ -3865,7 +3988,7 @@ impl Renderer {
                 color: [1.0, 1.0, 1.0, 1.0],
             }),
         );
-        let presentation_view = self.presentation_color_view();
+        let presentation_view = self.presentation_color_view(frame_plan.presentation_source);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(WIN_SCREEN_VIGNETTE_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -4026,6 +4149,7 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         radius: f32,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) -> Result<()> {
         if let Some(post_effect_graphs) = &self.post_effect_graphs {
             let draw_calls = post_effect_graphs.execute_color_graph(
@@ -4047,7 +4171,9 @@ impl Renderer {
         }
         write_screen_blur_radius(&self.queue, &self.screen_blur_target, radius);
         encoder.copy_texture_to_texture(
-            self.presentation_color_target().0.as_image_copy(),
+            self.presentation_color_target(frame_plan.presentation_source)
+                .0
+                .as_image_copy(),
             self.screen_blur_target.texture.as_image_copy(),
             wgpu::Extent3d {
                 width: self.config.width,
@@ -4142,20 +4268,21 @@ impl Renderer {
         }
     }
 
-    fn presentation_color_target(&self) -> (&wgpu::Texture, &wgpu::TextureView) {
-        if !self.level_frame_route.uses_improved_transparency() || self.post_effect_graphs.is_some()
-        {
-            (&self.main_target.texture, &self.main_target.view)
-        } else {
-            (
+    fn presentation_color_target(
+        &self,
+        source: FramePresentationSource,
+    ) -> (&wgpu::Texture, &wgpu::TextureView) {
+        match source {
+            FramePresentationSource::Main => (&self.main_target.texture, &self.main_target.view),
+            FramePresentationSource::TransparencyFinal => (
                 &self.transparency_final_target._texture,
                 &self.transparency_final_target.view,
-            )
+            ),
         }
     }
 
-    fn presentation_color_view(&self) -> &wgpu::TextureView {
-        self.presentation_color_target().1
+    fn presentation_color_view(&self, source: FramePresentationSource) -> &wgpu::TextureView {
+        self.presentation_color_target(source).1
     }
 
     fn create_post_effect_blit_bind_group(&self, source: &wgpu::TextureView) -> wgpu::BindGroup {
@@ -4182,13 +4309,13 @@ impl Renderer {
         frame: &FrameTarget,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        frame_plan: &FramePlan,
     ) {
         let surface_view = frame
             .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
-        let selected_bind_group = (!self.level_frame_route.uses_improved_transparency()
-            || self.post_effect_graphs.is_some())
-        .then(|| self.create_post_effect_blit_bind_group(&self.main_target.view));
+        let selected_bind_group = (frame_plan.presentation_source == FramePresentationSource::Main)
+            .then(|| self.create_post_effect_blit_bind_group(&self.main_target.view));
         let bind_group = selected_bind_group
             .as_ref()
             .unwrap_or(&self.transparency_final_target.bind_group);
@@ -6000,7 +6127,8 @@ impl Renderer {
 #[cfg(test)]
 mod tests {
     use super::{
-        physical_scissor_from_gui, Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
+        physical_scissor_from_gui, FramePlan, FramePresentationSource, FrameTransparencyCombine,
+        Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
     };
     use winit::dpi::PhysicalSize;
 
@@ -6045,6 +6173,86 @@ mod tests {
                 light: [1.0, 1.0],
             });
         assert!(renderer.particle_target_has_depth_work(&particle_batches));
+    }
+
+    #[test]
+    fn frame_plan_freezes_route_copy_consumers_combine_and_presentation_source() {
+        let regular = FramePlan::new(
+            crate::LevelFrameRoute::Regular,
+            true,
+            true,
+            true,
+            false,
+            false,
+        );
+        assert!(!regular.improved_transparency);
+        assert!(regular.update_lightmap);
+        assert!(regular.item_entity_depth_work);
+        assert!(regular.particle_depth_work);
+        assert!(!regular.depth_copies.translucent);
+        assert!(!regular.depth_copies.item_entity);
+        assert!(!regular.depth_copies.particles);
+        assert_eq!(regular.transparency_combine, FrameTransparencyCombine::None);
+        assert_eq!(regular.presentation_source, FramePresentationSource::Main);
+
+        let built_in = FramePlan::new(
+            crate::LevelFrameRoute::ImprovedTransparency,
+            false,
+            true,
+            false,
+            false,
+            false,
+        );
+        assert!(built_in.improved_transparency);
+        assert!(!built_in.update_lightmap);
+        assert!(built_in.depth_copies.translucent);
+        assert!(built_in.depth_copies.item_entity);
+        assert!(!built_in.depth_copies.particles);
+        assert_eq!(
+            built_in.transparency_combine,
+            FrameTransparencyCombine::BuiltIn
+        );
+        assert_eq!(
+            built_in.presentation_source,
+            FramePresentationSource::TransparencyFinal
+        );
+
+        let generic_graph = FramePlan::new(
+            crate::LevelFrameRoute::ImprovedTransparency,
+            false,
+            false,
+            true,
+            true,
+            false,
+        );
+        assert_eq!(
+            generic_graph.transparency_combine,
+            FrameTransparencyCombine::GenericGraph
+        );
+        assert_eq!(
+            generic_graph.presentation_source,
+            FramePresentationSource::Main
+        );
+        assert!(generic_graph.depth_copies.translucent);
+        assert!(!generic_graph.depth_copies.item_entity);
+        assert!(generic_graph.depth_copies.particles);
+
+        let vanilla_direct = FramePlan::new(
+            crate::LevelFrameRoute::ImprovedTransparency,
+            false,
+            false,
+            false,
+            true,
+            true,
+        );
+        assert_eq!(
+            vanilla_direct.transparency_combine,
+            FrameTransparencyCombine::VanillaDirect
+        );
+        assert_eq!(
+            vanilla_direct.presentation_source,
+            FramePresentationSource::Main
+        );
     }
 
     #[test]
@@ -6216,6 +6424,7 @@ mod tests {
     /// execution_order` pins each step's definition to the same order, so source
     /// position in this file tracks frame execution order.
     const FRAME_STEPS: &[&str] = &[
+        "prepare_frame_plan",
         "terrain_atlas_animation_pass",
         "lightmap_pass",
         "main_world_pass",
@@ -6579,9 +6788,10 @@ mod tests {
         let pass_body = &source[pass_start..pass_end];
         assert!(pass_body.contains("camera_pose,\n            true,"));
         assert!(
-            pass_body.contains("let color_view = self.presentation_color_view();")
-                && pass_body.contains("view: color_view"),
-            "late debug text must use the frame-route presentation owner"
+            pass_body.contains(
+                "let color_view = self.presentation_color_view(frame_plan.presentation_source);"
+            ) && pass_body.contains("view: color_view"),
+            "late debug text must use the immutable frame-plan presentation owner"
         );
         assert!(pass_body.contains("view: &self.depth.view"));
         assert!(pass_body.contains("load: wgpu::LoadOp::Clear(1.0)"));
@@ -6592,12 +6802,32 @@ mod tests {
     }
 
     #[test]
-    fn level_frame_route_is_the_only_feature_target_and_combine_decision_owner() {
+    fn frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner() {
         let source = include_str!("render.rs");
         let production = source
             .split_once("\n#[cfg(test)]\nmod tests")
             .expect("render production/test boundary")
             .0;
+        assert_eq!(
+            production.matches("self.level_frame_route").count(),
+            1,
+            "only frame-plan preparation may read the mutable route owner"
+        );
+        let prepare = production
+            .find("fn prepare_frame_plan(")
+            .expect("frame-plan owner");
+        let prepare_end = production[prepare..]
+            .find("fn terrain_atlas_animation_pass(")
+            .map(|offset| prepare + offset)
+            .expect("frame-plan owner end");
+        let prepare_body = &production[prepare..prepare_end];
+        assert!(prepare_body.contains("self.level_frame_route"));
+        assert!(prepare_body.contains("self.lightmap_dirty"));
+        assert!(prepare_body.contains("self.item_entity_target_has_depth_work()"));
+        assert!(
+            prepare_body.contains("self.particle_target_has_depth_work(&particle_vertex_batches)")
+        );
+
         for (name, next) in [
             (
                 "copy_main_depth_to_feature_targets",
@@ -6626,8 +6856,12 @@ mod tests {
                 .map(|offset| start + offset)
                 .unwrap_or(production.len());
             assert!(
-                production[start..end].contains("level_frame_route"),
-                "{name} must query the single LevelFrameRoute owner"
+                production[start..end].contains("frame_plan"),
+                "{name} must consume the immutable FramePlan"
+            );
+            assert!(
+                !production[start..end].contains("level_frame_route"),
+                "{name} must not re-read the mutable LevelFrameRoute owner"
             );
         }
 
@@ -6637,12 +6871,16 @@ mod tests {
         let copy_body = &production[copy..production
             .find("fn entity_translucent_feature_pass(")
             .expect("next owner")];
-        assert!(
-            copy_body.find("return;").expect("regular early return")
-                < copy_body
-                    .find("encoder.copy_texture_to_texture")
-                    .expect("improved depth copies")
+        assert_eq!(
+            copy_body.matches("encoder.copy_texture_to_texture").count(),
+            3
         );
+        for consumer in ["translucent", "item_entity", "particles"] {
+            assert!(
+                copy_body.contains(&format!("if frame_plan.depth_copies.{consumer}")),
+                "{consumer} depth copy has an explicit immutable-plan consumer"
+            );
+        }
 
         let combine = production
             .find("fn transparency_combine_pass(")
@@ -6651,15 +6889,25 @@ mod tests {
             ..production
                 .find("fn vanilla_transparency_direct_pass(")
                 .expect("direct fallback owner")];
-        assert!(
-            combine_body
-                .find("return Ok(());")
-                .expect("regular no-combine return")
-                < combine_body
-                    .find("execute_transparency(")
-                    .expect("improved selected graph")
-        );
-        assert!(production.contains("fn presentation_color_target("));
+        assert!(combine_body.contains("match frame_plan.transparency_combine"));
+        for variant in ["None", "BuiltIn", "VanillaDirect", "GenericGraph"] {
+            assert!(
+                combine_body.contains(&format!("FrameTransparencyCombine::{variant}")),
+                "combine plan retains the {variant} route"
+            );
+        }
+        let presentation = production
+            .find("fn presentation_color_target(")
+            .expect("presentation owner");
+        let presentation_end = production[presentation..]
+            .find("fn create_post_effect_blit_bind_group(")
+            .map(|offset| presentation + offset)
+            .expect("presentation owner end");
+        let presentation_body = &production[presentation..presentation_end];
+        assert!(presentation_body.contains("match source"));
+        assert!(presentation_body.contains("FramePresentationSource::Main"));
+        assert!(presentation_body.contains("FramePresentationSource::TransparencyFinal"));
+        assert!(!presentation_body.contains("level_frame_route"));
         assert!(!production.contains("unconditional_improved_transparency"));
     }
 
@@ -6726,11 +6974,11 @@ mod tests {
             "lightmap pass writes the renderer-owned LightTexture"
         );
         assert!(
-            source[..lightmap_write].contains("if update_lightmap"),
+            source[..lightmap_write].contains("if frame_plan.update_lightmap"),
             "Vanilla only updates the lightmap after its tick extractor marks it dirty"
         );
         assert!(
-            source.contains("if result.is_ok() && update_lightmap"),
+            source.contains("if result.is_ok() && frame_plan.update_lightmap"),
             "a failed frame must retain the pending lightmap update"
         );
         assert!(
@@ -6744,19 +6992,19 @@ mod tests {
     fn first_person_item_pass_runs_after_world_composite_and_before_hud() {
         let source = include_str!("render.rs");
         let combine = source
-            .find("self.transparency_combine_pass(&mut encoder, &mut stats)")
+            .find("self.transparency_combine_pass(&mut encoder, &mut stats, &frame_plan)")
             .expect("world transparency combine is scheduled");
         let first_person = source
-            .find("self.first_person_item_pass(&mut encoder, &mut stats);")
+            .find("self.first_person_item_pass(&mut encoder, &mut stats, &frame_plan);")
             .expect("first-person item pass is scheduled");
         let hud = source
-            .find("self.hud_passes(&mut encoder, &mut stats)")
+            .find("self.hud_passes(&mut encoder, &mut stats, &frame_plan)")
             .expect("HUD passes are scheduled");
         let vignette = source
-            .find("self.vignette_pass(&mut encoder, &mut stats);")
+            .find("self.vignette_pass(&mut encoder, &mut stats, &frame_plan);")
             .expect("vignette pass is scheduled");
         let blit = source
-            .find("self.transparency_blit_pass(&frame, &mut encoder, &mut stats);")
+            .find("self.transparency_blit_pass(&frame, &mut encoder, &mut stats, &frame_plan);")
             .expect("final screen blit is scheduled");
         let pass = source
             .find("label: Some(FIRST_PERSON_ITEM_PASS_LABEL)")
@@ -6774,19 +7022,19 @@ mod tests {
     fn camera_post_effect_pass_runs_after_first_person_before_pip_vignette_and_hud() {
         let source = include_str!("render.rs");
         let first_person = source
-            .find("self.first_person_item_pass(&mut encoder, &mut stats);")
+            .find("self.first_person_item_pass(&mut encoder, &mut stats, &frame_plan);")
             .expect("first-person item pass is scheduled");
         let post_effect = source
-            .find("self.camera_post_effect_pass(&mut encoder, &mut stats)")
+            .find("self.camera_post_effect_pass(&mut encoder, &mut stats, &frame_plan)")
             .expect("camera post-effect pass is scheduled");
         let entity_preview = source
             .find("self.entity_preview_pip_passes(&mut encoder, &mut stats, glint_elapsed_millis);")
             .expect("entity preview PIP is scheduled");
         let vignette = source
-            .find("self.vignette_pass(&mut encoder, &mut stats);")
+            .find("self.vignette_pass(&mut encoder, &mut stats, &frame_plan);")
             .expect("vignette pass is scheduled");
         let hud = source
-            .find("self.hud_passes(&mut encoder, &mut stats)")
+            .find("self.hud_passes(&mut encoder, &mut stats, &frame_plan)")
             .expect("HUD pass is scheduled");
 
         assert!(
@@ -6913,10 +7161,10 @@ mod tests {
     fn vignette_pass_loads_the_internal_presentation_target_before_ordinary_hud() {
         let source = include_str!("render.rs");
         let vignette_call = source
-            .find("self.vignette_pass(&mut encoder, &mut stats);")
+            .find("self.vignette_pass(&mut encoder, &mut stats, &frame_plan);")
             .expect("vignette pass is scheduled");
         let hud_call = source
-            .find("self.hud_passes(&mut encoder, &mut stats)")
+            .find("self.hud_passes(&mut encoder, &mut stats, &frame_plan)")
             .expect("HUD passes are scheduled");
         let vignette_pass = source
             .find("label: Some(VIGNETTE_PASS_LABEL)")
@@ -9117,8 +9365,7 @@ mod tests {
         let present = &source[blit_owner..finish_owner];
         assert!(present.contains("view: &surface_view"));
         assert!(
-            present.contains("!self.level_frame_route.uses_improved_transparency()")
-                && present.contains("|| self.post_effect_graphs.is_some()")
+            present.contains("frame_plan.presentation_source == FramePresentationSource::Main")
                 && present
                     .contains("self.create_post_effect_blit_bind_group(&self.main_target.view)")
                 && present.contains(".unwrap_or(&self.transparency_final_target.bind_group)")
