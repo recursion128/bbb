@@ -2255,6 +2255,83 @@ class FormalValidationTests(unittest.TestCase):
             "historical-only-not-a-baseline-or-rollback-target",
         )
 
+    def test_current_full_gated_capture_can_establish_a_new_baseline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "profile.zip"
+            write_profile(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": [10.0, 20.0]}), encoding="utf-8"
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": [5.0, 5.0]}), encoding="utf-8"
+            )
+            runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+            for run in runs:
+                run["profiles"] = [
+                    self.profile_record(
+                        profile,
+                        frame_samples,
+                        gpu_samples,
+                        segment,
+                        [10.0, 20.0],
+                        [5.0, 5.0],
+                    )
+                    for segment in retina.CAPTURE_SEGMENTS
+                ]
+
+            report = retina.validate_and_summarize(
+                display(),
+                runs,
+                bbb_commit="c" * 40,
+                establish_current_baseline=True,
+            )
+
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(
+            report["bbb_baseline_comparison"]["role"],
+            "new-full-gated-wgpu30-regression-baseline",
+        )
+        self.assertEqual(
+            report["bbb_baseline_comparison"]["capture_bbb_commit"],
+            "c" * 40,
+        )
+        self.assertEqual(
+            report["bbb_baseline_comparison"]["failures"],
+            [],
+        )
+
+    def test_baseline_establishment_rejects_candidate_evidence(self):
+        with self.assertRaisesRegex(
+            retina.RetinaAcceptanceError,
+            "cannot also consume candidate A/B evidence",
+        ):
+            retina.validate_and_summarize(
+                display(),
+                [],
+                bbb_commit="c" * 40,
+                candidate_fps_evidence={},
+                establish_current_baseline=True,
+            )
+
+    def test_run_cli_exposes_explicit_baseline_establishment(self):
+        args = retina.parse_args(
+            [
+                "run",
+                "--artifact-root",
+                "/tmp/artifacts",
+                "--vanilla-root",
+                "/tmp/vanilla",
+                "--bbb-binary",
+                "/tmp/bbb-native",
+                "--establish-current-baseline",
+            ]
+        )
+
+        self.assertTrue(args.establish_current_baseline)
+
     def test_current_bbb_capture_rejects_missing_frame_phase_archive(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

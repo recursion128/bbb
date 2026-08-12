@@ -4034,8 +4034,14 @@ def validate_and_summarize(
     *,
     bbb_commit: str = BASELINE_BBB_COMMIT,
     candidate_fps_evidence: Mapping[str, object] | None = None,
+    establish_current_baseline: bool = False,
 ) -> dict[str, object]:
     """Return a formal comparison or a blocker without comparison metrics."""
+
+    if establish_current_baseline and candidate_fps_evidence is not None:
+        raise RetinaAcceptanceError(
+            "baseline establishment cannot also consume candidate A/B evidence"
+        )
 
     base = {
         "schema": SCHEMA,
@@ -4272,7 +4278,16 @@ def validate_and_summarize(
     input_latency_diagnostics = _build_input_latency_diagnostics(
         input_latency_matrix, normalized_runs
     )
-    if bbb_commit == BASELINE_BBB_COMMIT:
+    if establish_current_baseline:
+        baseline_comparison = {
+            "role": "new-full-gated-wgpu30-regression-baseline",
+            "status": "established-by-this-capture",
+            "capture_bbb_commit": bbb_commit,
+            "future_candidates_require_interleaved_pairs": True,
+            "maximum_margin": MAX_BASELINE_FPS_MARGIN,
+            "failures": [],
+        }
+    elif bbb_commit == BASELINE_BBB_COMMIT:
         baseline_comparison = {
             "role": "historical-official-comparison-capture",
             "status": "not-applicable",
@@ -5077,6 +5092,7 @@ def run_formal(
     replay_path: Path,
     timeout: float,
     candidate_fps_evidence_path: Path | None = None,
+    establish_current_baseline: bool = False,
 ) -> dict[str, object]:
     if artifact_root.exists() and any(artifact_root.iterdir()):
         raise RetinaAcceptanceError(f"formal artifact root is not empty: {artifact_root}")
@@ -5084,7 +5100,13 @@ def run_formal(
     dependency_receipt = load_committed_wgpu_dependency_receipt()
     bbb_build_info = load_bbb_build_info(bbb_binary)
     candidate_fps_evidence = None
-    if capture_commit != BASELINE_BBB_COMMIT:
+    if establish_current_baseline:
+        if candidate_fps_evidence_path is not None:
+            raise RetinaAcceptanceError(
+                "--establish-current-baseline cannot be combined with "
+                "--bbb-baseline-ab-report"
+            )
+    elif capture_commit != BASELINE_BBB_COMMIT:
         if candidate_fps_evidence_path is None:
             raise RetinaAcceptanceError(
                 "candidate formal ABBA requires predeclared interleaved BBB baseline/candidate A/B evidence"
@@ -5148,6 +5170,7 @@ def run_formal(
                     "schema": SCHEMA,
                     "profile": PROFILE_ID,
                     "bbb_commit": capture_commit,
+                    "establish_current_baseline": establish_current_baseline,
                     "profile_contract": str(PROFILE_CONTRACT_PATH),
                     "profile_contract_sha256": file_digest(PROFILE_CONTRACT_PATH, "sha256"),
                     "display": asdict(display),
@@ -5172,6 +5195,7 @@ def run_formal(
         runs,
         bbb_commit=capture_commit,
         candidate_fps_evidence=candidate_fps_evidence,
+        establish_current_baseline=establish_current_baseline,
     )
     report.update(
         {
@@ -5188,6 +5212,16 @@ def run_formal(
             "bbb_binary": str(bbb_binary),
             "bbb_binary_sha256": file_digest(bbb_binary, "sha256"),
             "bbb_build_info": bbb_build_info,
+            "baseline_establishment": (
+                {
+                    "status": "captured",
+                    "role": "new-full-gated-wgpu30-regression-baseline",
+                    "capture_bbb_commit": capture_commit,
+                    "future_candidates_require_interleaved_pairs": True,
+                }
+                if establish_current_baseline
+                else None
+            ),
             "wgpu_dependency_receipt": dependency_receipt,
             "wgpu_dependency_receipt_path": str(WGPU_DEPENDENCY_RECEIPT_PATH),
             "wgpu_dependency_receipt_sha256": file_digest(
@@ -5352,6 +5386,7 @@ def _run_command(args: argparse.Namespace) -> int:
         replay_path=args.replay,
         timeout=args.timeout,
         candidate_fps_evidence_path=args.bbb_baseline_ab_report,
+        establish_current_baseline=args.establish_current_baseline,
     )
     return 0 if report["status"] == "passed" else 2
 
@@ -5394,6 +5429,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     run.add_argument("--timeout", type=float, default=180.0)
     run.add_argument("--bbb-baseline-ab-report", type=Path)
+    run.add_argument("--establish-current-baseline", action="store_true")
     return parser.parse_args(argv)
 
 
