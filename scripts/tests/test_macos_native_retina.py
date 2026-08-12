@@ -8,9 +8,12 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import zipfile
+from contextlib import closing
 from pathlib import Path
+from socket import AF_INET, SOCK_STREAM, socket
 from types import SimpleNamespace
 from unittest import mock
 
@@ -562,6 +565,43 @@ def dependency_candidate_evidence() -> dict[str, object]:
         ],
     }
     return evidence
+
+
+class ControlRequestTests(unittest.TestCase):
+    def test_control_request_sends_exactly_one_newline_delimited_request(self):
+        received: dict[str, bytes] = {}
+        with closing(socket(AF_INET, SOCK_STREAM)) as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            port = listener.getsockname()[1]
+
+            def serve() -> None:
+                connection, _ = listener.accept()
+                with closing(connection):
+                    request = bytearray()
+                    while not request.endswith(b"\n"):
+                        request.extend(connection.recv(65_536))
+                    received["request"] = bytes(request)
+                    connection.sendall(
+                        benchmark.canonical_json_bytes(
+                            {"ok": True, "result": {"frame_index": 7}}
+                        )
+                    )
+
+            server = threading.Thread(target=serve)
+            server.start()
+            result = retina._control_request(port, "renderer.counters")
+            server.join(timeout=5.0)
+
+        self.assertFalse(server.is_alive())
+        self.assertEqual(result, {"frame_index": 7})
+        self.assertEqual(
+            received["request"],
+            benchmark.canonical_json_bytes(
+                {"method": "renderer.counters", "params": {}}
+            ),
+        )
+        self.assertEqual(received["request"].count(b"\n"), 1)
 
 
 class ConsolePreflightTests(unittest.TestCase):

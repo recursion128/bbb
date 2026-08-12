@@ -4701,7 +4701,7 @@ def send_profiler_input(backend: MacOsQuartzBackend, pid: int) -> None:
 
 
 def _control_request(port: int, method: str) -> object:
-    request = canonical_json_bytes({"method": method, "params": {}}) + b"\n"
+    request = canonical_json_bytes({"method": method, "params": {}})
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=10.0) as stream:
             stream.settimeout(60.0)
