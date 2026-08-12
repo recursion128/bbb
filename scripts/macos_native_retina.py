@@ -1377,10 +1377,23 @@ def profiler_samples(path: Path) -> dict[str, object]:
         tick_sets = {frozenset(rows) for rows in gpu_stage_rows.values()}
         if len(tick_sets) != 1:
             raise RetinaAcceptanceError("GPU stage columns use different profiler ticks")
-        stage_ticks = next(iter(tick_sets))
+        all_stage_ticks = next(iter(tick_sets))
         if gpu_duration is None:
             raise RetinaAcceptanceError(
                 "GPU stage evidence requires direct gpuDuration samples"
+            )
+        stage_ticks = frozenset(
+            tick
+            for tick in all_stage_ticks
+            if gpu_stage_rows["total_gpu_duration"][tick] > 0.0
+        )
+        if any(
+            gpu_stage_rows[column][tick] != 0.0
+            for tick in all_stage_ticks - stage_ticks
+            for column in GPU_STAGE_COLUMNS
+        ):
+            raise RetinaAcceptanceError(
+                "GPU stage zero-duration placeholder contains non-zero values"
             )
         duration_ticks = frozenset(
             tick for tick, value in gpu_duration.items() if value > 0.0

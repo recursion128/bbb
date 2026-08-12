@@ -76,6 +76,7 @@ def write_bbb_phase_profile(
     include_gpu_stages: bool = False,
     flight_rows: list[list[int]] | None = None,
     gpu_stage_rows: list[list[int]] | None = None,
+    gpu_duration_rows: list[int] | None = None,
 ) -> None:
     columns = list(retina.FRAME_PHASE_COLUMNS)
     rows = [
@@ -126,7 +127,14 @@ def write_bbb_phase_profile(
         )
         archive.writestr(
             "client/metrics/gpu.csv",
-            "@tick,gpuDuration\n1,3000000\n2,4000000\n3,5000000\n",
+            "@tick,gpuDuration\n"
+            + "".join(
+                f"{tick},{value}\n"
+                for tick, value in enumerate(
+                    gpu_duration_rows or [3_000_000, 4_000_000, 5_000_000],
+                    start=1,
+                )
+            ),
         )
         archive.writestr(
             "client/metrics/frame_phases.csv",
@@ -914,6 +922,44 @@ class ProfilerTests(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 retina.RetinaAcceptanceError, "differs from the same profiler"
+            ):
+                retina.parse_profiler_archive(profile)
+
+    def test_bbb_gpu_stages_ignore_only_aligned_all_zero_async_placeholders(self):
+        rows = [
+            [0] * len(retina.GPU_STAGE_COLUMNS),
+            [20_000_000, 4_000_000, *([200_000] * 10), 2_000_000],
+            [30_000_000, 5_000_000, *([300_000] * 10), 2_000_000],
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(
+                profile,
+                gpu_stage_rows=rows,
+                gpu_duration_rows=[0, 4_000_000, 5_000_000],
+            )
+
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(parsed["gpu_stages"]["total_gpu_duration"]["samples"], 2)
+        self.assertEqual(parsed["gpu_stages"]["total_gpu_duration"]["mean_ms"], 4.5)
+
+    def test_bbb_gpu_stages_reject_partial_zero_async_placeholder(self):
+        rows = [
+            [0, 0, 1, *([0] * 10)],
+            [20_000_000, 4_000_000, *([200_000] * 10), 2_000_000],
+            [30_000_000, 5_000_000, *([300_000] * 10), 2_000_000],
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(
+                profile,
+                gpu_stage_rows=rows,
+                gpu_duration_rows=[0, 4_000_000, 5_000_000],
+            )
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "placeholder contains non-zero"
             ):
                 retina.parse_profiler_archive(profile)
 
