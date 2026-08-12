@@ -405,11 +405,11 @@
     },
     {
       "artifact_id": "full-gate",
-      "bbb_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+      "bbb_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
       "digest_kind": "gate-receipt-line-v1",
       "exists": true,
       "invalid_reasons": [
-        "no clean full-gate receipt for 7a3fda76fb2b707f22de2420e29bd13677058a74"
+        "no clean full-gate receipt for 65dcafcfd55731264995b1a29e1a5cb6830e5c9f"
       ],
       "kind": "gate",
       "mechanism_ids": [
@@ -2153,7 +2153,7 @@
       ],
       "path": "crates/bbb-native/src/main.rs",
       "scenario_ids": [],
-      "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959",
+      "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0",
       "valid": true
     },
     {
@@ -3121,7 +3121,7 @@
       ],
       "path": "crates/bbb-native/src/startup.rs",
       "scenario_ids": [],
-      "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123",
+      "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93",
       "valid": true
     },
     {
@@ -3310,7 +3310,7 @@
       ],
       "path": "crates/bbb-native/src/window_surface.rs",
       "scenario_ids": [],
-      "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf",
+      "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce",
       "valid": true
     },
     {
@@ -8020,11 +8020,11 @@
       "generator_inputs": [
         {
           "path": "Cargo.lock",
-          "sha256": "f5f8de14d91c1ee8a5e446121ffea731919cab1426dd7017ef5ca7a42f68c687"
+          "sha256": "edbaa27e7b2a079f26adcded64ea28d779c341e740c3f94474ccdcdc6305e8fd"
         },
         {
           "path": "scripts/file_drop_capability.py",
-          "sha256": "1c87d8cb3ed2f26d6986b4b2fa67049cb55c6cfbff4a91b4fcd770a3f782a8db"
+          "sha256": "96a0e84ccc796b50d67bf9595cc4c5809a5df6ae1c8780580b6f848b1c704aad"
         },
         {
           "path": "scripts/generate-file-drop-capability.py",
@@ -8039,7 +8039,7 @@
       ],
       "path": "docs/evidence/vanilla-26.1/file-drop-capability.json",
       "scenario_ids": [],
-      "sha256": "be95e38691a0be438b65a7f3a3c0721a977d3268010836a315fb778aca029b06",
+      "sha256": "5d6cf805b11f159424d50ff450cef77d92292776807d6d3f17e1d8ea95c537ca",
       "valid": true
     },
     {
@@ -8173,7 +8173,7 @@
       ],
       "path": "docs/wiki/architecture/client-boundaries.md",
       "scenario_ids": [],
-      "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68",
+      "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8",
       "valid": true
     },
     {
@@ -8576,7 +8576,7 @@
       ],
       "path": "scripts/tests/test_file_drop_capability.py",
       "scenario_ids": [],
-      "sha256": "22f83c408f5d6e9fbcd626029944e553e30e4364d30ee61d89958b5e686f4225",
+      "sha256": "b2f22b209c87dfbe2e6f42d3505ac03f08e0c2b9a80f8c4ddcf12b58f42410ab",
       "valid": true
     },
     {
@@ -8704,10 +8704,10 @@
       "valid": false
     }
   ],
-  "bbb_evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+  "bbb_evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
   "change_impact": {
     "affected_mechanism_ids": [],
-    "base_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+    "base_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
     "changed_paths": [],
     "functional_affected_mechanism_ids": [],
     "functional_changed_paths": [],
@@ -8785,7 +8785,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/network_runtime.rs",
@@ -8805,7 +8805,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-net/src/resource_pack.rs",
@@ -8841,8 +8841,8 @@
             "sha256": "76cea162624574bb57082bec10e0de30b627cce146b8f614fc8c946053384b9d"
           }
         ],
-        "dependency_closure_sha256": "2b6a0c4fb141c3ac3af311bac57c6df487fd041dbc97ef20da78f289c7c38b1b",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "cc915883ac86220140c8f82d207c77c4efc3bfc9d3e5ec4a86a62b5ab5697dff",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs#pub(crate) fn clear_startup_fullscreen_resolution",
           "crates/bbb-native/src/client_options.rs#pub(crate) fn save_started_cleanly",
@@ -8854,9 +8854,9 @@
           "crates/bbb-native/src/startup.rs#pub(crate) fn name_current_render_thread",
           "scripts/tests/test_client_mechanism_inventory.py#test_startup_bootstrap_owner_census_is_exact_and_has_per_owner_evidence"
         ],
-        "focused_test_contract_sha256": "1edf3094813085f2f9eda9b86bf76344a7a4e1d0b75c8b8a5f18e919fbcdafef",
+        "focused_test_contract_sha256": "a4059dc9d89fab8721020f5d485454b95f1347746c6af60fdfd59c075674073a",
         "owner": "`bbb-native::startup/main/client_options`",
-        "owner_contract_sha256": "2b30551956dace88b3ae9c7719e7e55b0f75fed2030ddc4e1b7d5736c1af0458"
+        "owner_contract_sha256": "8fad1ffe71ee5120da289301bbf0c8c5be8dd436c528bc57e5703f7a572a7d6b"
       },
       "differential_scenarios": [
         {
@@ -8904,7 +8904,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#startup_cleanliness_brackets_native_bootstrap_and_successful_initial_load",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native external_connection_is_not_polled_until_initial_load_activation",
@@ -8918,42 +8918,42 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_project_vanilla_socks_proxy_without_exposing_password",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native render_thread_name_is_visible_to_linux_profilers",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#render_thread_name_is_visible_to_linux_profilers",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_positive_window_override_beats_main_display_arguments_only_as_a_pair",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#vanilla_bootstrap_arguments_feed_the_single_external_startup_path",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native window_config_clamps_dimensions_to_minimum_nonzero",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net vanilla_proxy_arguments_fall_back_and_require_both_credentials",
@@ -9057,7 +9057,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/services_block_list_runtime.rs",
@@ -9076,7 +9076,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-net/src/chat_session.rs",
@@ -9131,8 +9131,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "c95530502270e8138bdf7f98cc12a54ef13b5d143f71651d55828e20351375df",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "0b72eb788a2ea3ef2531f34e1fb816ad837e31eebce487b2afbc1cb4d100ab8d",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/main.rs#fn run_client",
           "crates/bbb-native/src/startup.rs#fn parse_vanilla_launcher_uuid",
@@ -9141,9 +9141,9 @@
           "crates/bbb-net/src/types/connection.rs#pub struct ClientIdentity",
           "scripts/tests/test_client_mechanism_inventory.py#test_startup_identity_owner_census_is_exact_and_has_per_owner_evidence"
         ],
-        "focused_test_contract_sha256": "28659ebd78565852f5fe889caad8b2ebaadad75c7527129105d943cbf407ad8b",
+        "focused_test_contract_sha256": "80464da6edd98118dc2eff7c9a4af05fedc046668f631013a99ba3d4ff3e58e9",
         "owner": "`bbb-net::ClientIdentity` → net/world/server-pack",
-        "owner_contract_sha256": "6f25eed11563c5a154a78482fa200a256a6161ee3495b955c444fa4908831d7f"
+        "owner_contract_sha256": "2574ca305c42f287e175b946b6be789609c1467691aaee1a47936a1719053158"
       },
       "differential_scenarios": [
         {
@@ -9177,7 +9177,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#one_startup_identity_feeds_network_world_and_server_pack_headers",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native services_block_list_offline_play_and_disconnect_stay_inactive",
@@ -9191,14 +9191,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#invalid_launcher_uuid_falls_back_to_the_username_offline_identity",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native vanilla_launcher_uuid_is_lenient_and_one_identity_feeds_login",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#vanilla_launcher_uuid_is_lenient_and_one_identity_feeds_login",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net outbound_requests_are_unsigned_without_a_session",
@@ -9348,7 +9348,7 @@
           }
         ],
         "dependency_closure_sha256": "4e233942123316d08a608a956314eff34b622e4448846c9cf83d6b111e11c849",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#closed_simulation_receiver_does_not_stall_relay_join",
           "crates/bbb-native/src/network_runtime.rs#idle_shutdown_is_idempotent",
@@ -9630,7 +9630,7 @@
           }
         ],
         "dependency_closure_sha256": "bd773e7b3a890fcd379c1ce0e56853f38bd99010a81909d15bb5637a1a2228f4",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
           "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
@@ -9832,7 +9832,7 @@
           }
         ],
         "dependency_closure_sha256": "7b85dcc97ed7c54121e24a67759e895868e04fb70e0e30d51dd65a09772b1bcc",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
           "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
@@ -10039,7 +10039,7 @@
           }
         ],
         "dependency_closure_sha256": "9c80180a60fea42dd2fde7e86e6660b693804ed25dd064dc5cf0ba26966fbd09",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-pack/src/asset_index.rs",
           "crates/bbb-pack/src/asset_index.rs#discovers_and_verifies_indexed_object",
@@ -10255,7 +10255,7 @@
           }
         ],
         "dependency_closure_sha256": "baf1f9a96888393105d12f92d79a932804c4a5672da5ff743c8d9327be8185b8",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs#fn list_resources",
           "crates/bbb-pack/src/resources.rs#fn resource_file",
@@ -10431,7 +10431,7 @@
           }
         ],
         "dependency_closure_sha256": "951ecd848f069178efa66bc590178cb64a0d56a60671effc2c37640e6990bce9",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-pack/src/resources.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -10802,7 +10802,7 @@
           }
         ],
         "dependency_closure_sha256": "86965e219d28b14c0b93902af546c6ca4edbef0e55408697e67d8c68e442ab9c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
@@ -11144,7 +11144,7 @@
           }
         ],
         "dependency_closure_sha256": "3a333de06f47ae26127f1869547db53758b2573820b4c9389bc4e8427def3cb4",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
           "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
@@ -11329,7 +11329,7 @@
           }
         ],
         "dependency_closure_sha256": "d47d35c06e0f18777242b0d4dcd08796e2b27c3c5e7b5e7566b33b3e391047b3",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/textures.rs#pub(crate) fn with_max_mipmap_levels",
           "crates/bbb-native/src/terrain_runtime/textures/tests.rs#terrain_generation_retains_the_selected_mipmap_limit_for_reload",
@@ -11458,7 +11458,7 @@
               "focused-test",
               "matrix-evidence"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-net/src/event_stream.rs",
@@ -11566,8 +11566,8 @@
             "sha256": "08195bef6c6223adc34ae9e20ae13ba538935e904179b665fd8e583a7b7aec20"
           }
         ],
-        "dependency_closure_sha256": "3f464235c35901971a055a55eb2556ba70f6b66ae10d7c580e6003d5d4aefd9b",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "a1251ab3112b7affca32692abf21404df4016426f670da7b0559bdce3a55a809",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
           "crates/bbb-native/src/resource_pack_runtime.rs#accepted_packs_are_tracked_in_push_order",
@@ -11606,9 +11606,9 @@
           "scripts/playable_gate.py",
           "scripts/tests/test_client_mechanism_inventory.py#test_server_pack_owner_census_has_complete_evidence_and_scope_rulings"
         ],
-        "focused_test_contract_sha256": "ff5585f09653dd78452f3fd1ea2a0f54c7ea1b00e78fcefff6cddc6b6df28e5f",
+        "focused_test_contract_sha256": "5cc71f5030a0d10ec6955164a02e147c6fc1574b3ad1df58c0224369425f2922",
         "owner": "`bbb-net::resource_pack`、native pack runtime、`bbb-pack::server_pack`",
-        "owner_contract_sha256": "272917dfa27ae6a1ad5841eb5bf79a674e3989eb7f09872845f49d2f51b02df0"
+        "owner_contract_sha256": "07e35a8bcd1cb89c1d21d4046dcc6424eff5da0ecc277dde5a19ea149d1cba57"
       },
       "differential_scenarios": [
         {
@@ -11773,7 +11773,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_project_vanilla_socks_proxy_without_exposing_password",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net configuration_resource_pack_push_emits_push_and_response_events",
@@ -12157,7 +12157,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -12204,16 +12204,16 @@
             "sha256": "0c30e5b76d55f0d6caef2b087030f578794389af5a67b5ce351f32f575009575"
           }
         ],
-        "dependency_closure_sha256": "332eb6b9a7776e9d62258c6edd3a338f8d0e2c23764ea9051927b4e9a253b3d4",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "617d63622edcef0404850d4398c87fde71bc89dd433529c2d9958f3c17869ab1",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/simulation/input_commands.rs",
           "crates/bbb-pack/src/language.rs",
           "crates/bbb-pack/src/metadata.rs"
         ],
-        "focused_test_contract_sha256": "f0b9f8cf53a22a3cb994c11af94ba6ec8501d9a50f0f84441437712136ff9cae",
+        "focused_test_contract_sha256": "3a4e144dcd494da3cbab885f79f396f6f97cc64d1e89bab288b8bb3b84de444c",
         "owner": "`bbb-pack::LanguageCatalog` + simulation locale/reload/options/net 顺序 + native/render text consumers",
-        "owner_contract_sha256": "e3c35ca6c2cc27ac999c2663e9648215a7c62bc7bc0d13feeb6d85af2d627295"
+        "owner_contract_sha256": "b16ec95653b6a10c2fda128c26537de544af9e94aef4b167418c8779bf793e2e"
       },
       "differential_scenarios": [
         {
@@ -12268,7 +12268,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native mouse_button_receipts_distinguish_delivery_inventory_routing_and_consumption",
@@ -12454,7 +12454,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs",
           "crates/bbb-item-model/src/font.rs#fallback_prefers_first_provider_page",
@@ -12621,7 +12621,7 @@
           }
         ],
         "dependency_closure_sha256": "e7cf372aa038bbcd5097f29cf90728e3e16b33803e847a2ff6c3497d56dcf58c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-item-model/src/font.rs#unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page",
           "crates/bbb-item-model/src/font/providers.rs#flattens_vanilla_reference_chain_in_provider_order",
@@ -12840,7 +12840,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/music_runtime.rs",
@@ -12905,7 +12905,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-pack/src/openal_native.rs",
@@ -12951,8 +12951,8 @@
             "sha256": "86a885773ad8ca4d0c6da3c431d5f1d8a6130ccdad3523c406ae6fb3aa59b443"
           }
         ],
-        "dependency_closure_sha256": "5dd4286facb1a921b1b3e1b0505a5087cffbecdfbd66eb80332d8163268d0698",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "1dec8158e0332fb9ad0533ee007e894c34604cc67b1469857c859cffb4555177",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-audio/src/device.rs",
           "crates/bbb-audio/src/openal.rs",
@@ -12962,9 +12962,9 @@
           "crates/bbb-pack/src/sounds.rs",
           "scripts/capture-vanilla-audio-receipt.py"
         ],
-        "focused_test_contract_sha256": "63376c65c77a81098c0804fcc3426d0a5e21bf9248f74a3045f99d812404065c",
+        "focused_test_contract_sha256": "0bcd8d481af8c46142527dd54874500253adf4ef78f6a4076a961ad0e5baf5c8",
         "owner": "pack sound catalog/native/audio",
-        "owner_contract_sha256": "23e4449a8c31cda84f4bf7987a2657b03d166699a2b0aa777a0f8e3d9c741274"
+        "owner_contract_sha256": "603d7388b9869b659f330deac7fa0e59e90cad6f13359f58d17794b62d919063"
       },
       "differential_scenarios": [
         {
@@ -13422,21 +13422,21 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_directional_audio_reaches_startup_and_explicit_cli_wins",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_directional_audio_reaches_startup_and_explicit_cli_wins",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_music_options_reach_startup_and_explicit_cli_wins",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-pack verified_workspace_materializes_manifest_owned_openal",
@@ -13798,7 +13798,7 @@
           }
         ],
         "dependency_closure_sha256": "ef5a8fb53103a372b97193148219ebd01a5cb8e76fe726ef0c9dbc99b506bc31",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs#fn apply_x11_icon_property",
           "crates/bbb-native/src/window_icon.rs#pub(crate) fn install_startup_window_icon",
@@ -14067,7 +14067,7 @@
           }
         ],
         "dependency_closure_sha256": "0eb74840a5f395c367c524ef87458dcac89b52b8a5756caf5584806fa5f578aa",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
           "crates/bbb-native/src/resource_reload.rs#fn apply_native_resource_reload",
@@ -14289,7 +14289,7 @@
           }
         ],
         "dependency_closure_sha256": "cbb451f91bf97ea2fcaea4db159d0c88cd7474dc447defc1361edbd028d3ce57",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -14367,7 +14367,7 @@
           }
         ],
         "dependency_closure_sha256": "cbb451f91bf97ea2fcaea4db159d0c88cd7474dc447defc1361edbd028d3ce57",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/wiki/mechanisms/resources/offline-asset-trust.md"
         ],
@@ -15075,7 +15075,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -16339,15 +16339,15 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "5f1defb2749e11b50097722b046e6cc4b53e07b608374b8c93b8c8a27475cc4a",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "b5b013cb22c1462ba2945d4fe5e152b42dd5ba3e4ce967530f59ff95ed3af9a4",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
           "docs/evidence/vanilla-26.1/packet-coverage.json"
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "generated protocol catalog",
-        "owner_contract_sha256": "8692498b88365cd7c73324f1165809f1a0cbc771e905f52a1625d9bc26c97518"
+        "owner_contract_sha256": "b7870b8bfaa39b585f37e880fab8f96d4d786c5fbdc7cbda758f9dc8389fc569"
       },
       "differential_scenarios": [
         {
@@ -17810,7 +17810,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -19082,8 +19082,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "3377cc822396419ad9ecbee27f40f9c269f7c4f5f9fc1865838e5b3aaf5fd668",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "0047596aff940cac84a655691d0e7ed8c61b54ffd2700014c4b8e9ed949d6f15",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
           "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
@@ -19094,7 +19094,7 @@
         ],
         "focused_test_contract_sha256": "358902fd326252d21be094628a1c6bd5bd3fb8e0f612a215d109b34723553ab2",
         "owner": "protocol/net/world dispatch",
-        "owner_contract_sha256": "311514a890088e50a36d6ce647713b16d6de7596743a0347f451e7f198a6eb31"
+        "owner_contract_sha256": "cdd085fe22a54e5c25b699b6f4a9d1db8bb3583af86d890f4bb121d2df081f91"
       },
       "differential_scenarios": [
         {
@@ -20464,7 +20464,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -21735,8 +21735,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "b25b55cb6ef08fdfa3d7a2cb3cb3ceb196002ac5384e3eb10f69a334a4b6be42",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "795d1e04fcc44c387be9157a4075a95f78fa879c48ec33a61aaf02cfa806108c",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "crates/bbb-net/src/event_stream/login.rs",
@@ -21744,7 +21744,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "`bbb-net` login state machine",
-        "owner_contract_sha256": "441439fb4d0fb276bb2d7d02e1adec7196ad792d9f1f6416ea3eb509d9fd7041"
+        "owner_contract_sha256": "f805fe00d5645b58d7230181be919b15b073634d53dea4d87ccce59065cf5bba"
       },
       "differential_scenarios": [
         {
@@ -22949,7 +22949,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -24213,15 +24213,15 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "247f535eed86c75be74411a60e551f07c06aea8fd9237ba3ccfcbdb83e91242e",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "bf3649f443c2aedf5e4f8a17c819f6aa2903f67a72a603497e449768aff60898",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-net/src/event_stream.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json"
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "net configuration state machine + canonical world registry commit",
-        "owner_contract_sha256": "4f8e241bdd51fc0f8afc4e7e268e9323c1f122fc8db6bc93b69f118e542148ef"
+        "owner_contract_sha256": "ed9002ea4c1e9ec72ba60fa9c82dc1d667e17ab63d154dc7b2236923968b42b7"
       },
       "differential_scenarios": [
         {
@@ -25429,7 +25429,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -26707,8 +26707,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "5d4823a10ee5c9c3b820adfc9aea09c24dbb4e799b211e0b26bdc32361c0c763",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "46f3e59c1c7e2d5aa5e0826096fb7f0d99466c486f56ddf28ba74447b0927399",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/play_apply.rs",
           "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -26717,7 +26717,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "`WorldStore::apply_play_packet`、native effects",
-        "owner_contract_sha256": "a23fb836912e01f20f4dcc96a19a12c8d740cb6c6f5160b868c21cf5557a4852"
+        "owner_contract_sha256": "7113720c5ce6f1179713d2824a656a9041d08b8cef3c96c4696c1cb010f91272"
       },
       "differential_scenarios": [
         {
@@ -27549,7 +27549,7 @@
           }
         ],
         "dependency_closure_sha256": "72bc9cd11c1afea216669aef2f698be9e1f2e18d8e7436f451b72dc2448e6325",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/wiki/mechanisms/protocol/client-state-flow.md"
         ],
@@ -28315,7 +28315,7 @@
             "roles": [
               "focused-test-set"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -29588,8 +29588,8 @@
             "sha256": "3a015f94e854926f55d10b032b40aa64c3b380b688868188233cc5ee87dc31af"
           }
         ],
-        "dependency_closure_sha256": "1c4cc92033c728b1b82743bafd1680dc8d889a9647e2b3047a10d9111a09a794",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "c18f31551a8a2cb3f67b1b4af38278db66586ec632fb3c7cc9da1d594c0524f6",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
           "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
@@ -29601,7 +29601,7 @@
         ],
         "focused_test_contract_sha256": "d1053ce944d7e91bcefdcddea6937a49d5e963fdc9a6e1517a55938ab5d62cdb",
         "owner": "native input/net command surface",
-        "owner_contract_sha256": "10ee4ab06c8f9b3b37053abf093cd156026fc6a468574f5b5a01e37a8ff276c1"
+        "owner_contract_sha256": "d8caced581719cd8e1e607b2801807eabc95e53b6ce3a4a3ffcf9dd253ff207a"
       },
       "differential_scenarios": [
         {
@@ -30248,7 +30248,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -30355,7 +30355,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -30545,7 +30545,7 @@
           }
         ],
         "dependency_closure_sha256": "4f9c790dfff1f69749970cd9bd35d90bd3854510b27104bb15d2266a84e3d122",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
         ],
@@ -30659,7 +30659,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -30818,18 +30818,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "f2339d27fdd055c3396a7a6c6832b6f3ff7689aef575fe4cef5c38655972ff45",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "24127fc7ca4a7f8270a17912ca5a6ce96ed9742f29bafceb89b552150b3bfcfc",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "53f0f527a1d1491079b7c2706e295eef92d55ff802de4173466aca8bf449fd19",
         "owner": "`bbb-world::WorldStore`→generation-tagged native consumers",
-        "owner_contract_sha256": "d8746dda0c04be722d96256d52b312a9ccf0c1e75e3a17b65948722467c0ac20"
+        "owner_contract_sha256": "484974935de2e8ee90f4eecafc66fd29be2c8c8778557509ad36c5d647aeb26a"
       },
       "differential_scenarios": [
         {
@@ -31023,18 +31023,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "a6a526a5ea8b606580b33da09ec08d9cb72a081a571696f6e6f568cf03b3a12f",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "962d68c78d6d79d009a776f2570b08574501939abad472de0b41450d0b845ee0",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "eb3607e2f3297825a489c890c8576b4e7f82c6b41a41d45c6dd77ea2936e577e",
         "owner": "`bbb-world` world_time/weather/ticking/sky_flash 唯一 owner→native lightmap/sky/shadow 派生",
-        "owner_contract_sha256": "9016d5c360ba75facf66d53c756b4bea092e2ef4c1873f2b77e5e222565d06d0"
+        "owner_contract_sha256": "554e527b122570f85b2d23216bf802804310bc650de511756a7ab099ab04ae11"
       },
       "differential_scenarios": [
         {
@@ -31260,18 +31260,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "b2bb9f11d833788bc61d98551ceb495cbb9aff13237520378ec714c8c233c773",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "4891fd8f3614a4f5bf73409cb941ce978b3440c6561e2195c5110ace1dee1997",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/chunks/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "eda1d09e1476573cf3ad63b97cc29b8449801bf39784216c2a76d1c2bd9d0611",
         "owner": "`bbb-world` chunk store + light queue→native mesh gate",
-        "owner_contract_sha256": "c361e99e052c6ed9f79c4673dbd2c0fdbaa29ca487e3409916e38bc9a0a30593"
+        "owner_contract_sha256": "c189029d0eea95465a2c2abf10209e3b7b69efd85589521f17dfb62308a963fb"
       },
       "differential_scenarios": [
         {
@@ -31489,18 +31489,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "a5c9a7de0034d1c243d189e42772e1445ba29dcb8511d9905aca5026bfadead0",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "e30bd8c42ed3872671588e63d6d709d528b1a0d4f1ae17eadfe6fcb1d959a35b",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/entities/store.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "a15e6012c0c673a86c2d40c7066fcdfe374d7483dfa0d04d4d696dc01fbf45a1",
         "owner": "`bbb-world::WorldStore` / private `EntityStore`",
-        "owner_contract_sha256": "432419da67f910806851f011900f040452e81ff2db65c887a5a1bad5a86e6b65"
+        "owner_contract_sha256": "d2b723006b474ba7086d57e7fdf3d934eb443d146b06c0249ceea52567863b07"
       },
       "differential_scenarios": [
         {
@@ -31736,18 +31736,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "906797252922a8ac683f29eded2bab04555219bacf9f423ef254d7ef25ce0d94",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2795872bc19441ae614ceb1fdbd5a6e954b7b5f0af1f1b0ebd0cfaf52e7f6275",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/environment_animate_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "8ac67f365159babf17773543346d27c77193d895a283a84675147e88c06cf465",
         "owner": "`bbb-world` 决策输入（marker target/creative 主手）→`bbb-native` animate/particle runtime 唯一 effect 投影",
-        "owner_contract_sha256": "c741ee03f0b1d2c86f6ca54c01e5c6337ed26e140b6807386dcb9280f416fe77"
+        "owner_contract_sha256": "d1cb190c83defab901b1eada6dd02fc84aa2c7bf7e61c68daaa41d41330479c7"
       },
       "differential_scenarios": [
         {
@@ -32016,18 +32016,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "6fa5e93ca5034edb4d27f9c3b7c5e444c36dc7b1b7cd4ada4fde930de893a465",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "9aa3aad988efa737e64b75fe87cae07f4702021d11295a63e6a787d1c07fce62",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/registries.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "123463a1a7887e2d3be1fe5b1e3719a392afc6927971c0429a37932955be8916",
         "owner": "`bbb-world` connection-scoped 服务唯一状态；出站只经 `bbb-net` send path",
-        "owner_contract_sha256": "13dcdb6e51a3bd821cba2fe33d4e35c7af04a263937879dee518e70a41cfe977"
+        "owner_contract_sha256": "f583554bcf38d8ddf1439939e014415d9d8206546aab6e06a7516921fc08396c"
       },
       "differential_scenarios": [
         {
@@ -32194,18 +32194,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "dc9bd32d1bc32b1d601901e12c0a33ba1adb69c9bc35e3c4c15306fba994b192",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2901a9e87011b6b2b78b645fb693bd5a08db155d089f70d24ae35ea7be3fdb50",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/maps.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "cb9c6ab831d58ce0ad5d2e073cd58d2465558d4de206479187b0a7228e475704",
         "owner": "`WorldStore.maps` 唯一 store",
-        "owner_contract_sha256": "de8ae025cbc974bb3903471469455c25addfec3b4e680e8d7c1ac09f91109b3f"
+        "owner_contract_sha256": "478c03e76152c64a119eb7c24863a6859aa99afdcb4e43d45df17d7bf8f1daab"
       },
       "differential_scenarios": [
         {
@@ -32384,11 +32384,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "874b5af9956e1c02fadee1987d8712f38c1ff5ba9d542f1b51abbd142bf706d8",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "34f7cff13d3d96c5675bdbd7b583847d35f1d718552843e782295611d28d31b3",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime/events.rs",
           "crates/bbb-world/src/play_apply.rs",
@@ -32396,7 +32396,7 @@
         ],
         "focused_test_contract_sha256": "d86b5ed09607cf347590a4a696d4c50c64e9a7813cd5aba07d47d0dd7d907f08",
         "owner": "play apply 唯一分派链 → native effects",
-        "owner_contract_sha256": "3be4fc8a2d91e8f9a9b696cca116db28a1c63261728a637db9dafdc19e622cf3"
+        "owner_contract_sha256": "99e42486039ae55b1e757e9ee517496d27f8bc6f71b518d350863eb478ac35e6"
       },
       "differential_scenarios": [
         {
@@ -32590,18 +32590,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "2bbc72dbdb2b6a8180e88341ba68740b53484efe8e49f2de03b2a6f4200e45e6",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "651e2e1669db661ad5bc77e989b61ad3d7d6e47034ea4a6bf35219462034fb32",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/level.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "51c5827b2434780594125e83dcc45343d9217feca951ee228382740c7bce849d",
         "owner": "`bbb-world` difficulty/hardcore/is_flat/default_spawn 唯一 owner→native fog/sky、renderer dark disc 消费",
-        "owner_contract_sha256": "b786844b2e048e6a2e0b3e3e661ed522e1bf2e28326ac919b78b59651de4ebbc"
+        "owner_contract_sha256": "7ababf7f2e5b3830e43a950753a19e317cde007f8d39585f671e5b7ec4adc794"
       },
       "differential_scenarios": [
         {
@@ -32780,18 +32780,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "393236b9b2bf30e75680bb7d0924cb05ea296132961cb5617009c7195651f88c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2b64032bce5bc810524e8ac140174161bd74f61b93880deae3b0c7d7d81f5dab",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "e1f5715afbb1f9cc6a89e3f2ca69e651ebcde80b11ec0d40c8decefd544cbfea",
         "owner": "block-entity visibility 模块唯一政策点",
-        "owner_contract_sha256": "b8ff0682e631d4dc92d5456eec7fe87c083b67794c6d86d8a73025fa35867fc5"
+        "owner_contract_sha256": "f0eb8b85993e4e958a51648c0a9651876d67899fbbf509d64531236dd8e048d1"
       },
       "differential_scenarios": [
         {
@@ -32964,18 +32964,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "423b0bfd9e59a29a8564661c1de9528302be2a65a85b7a5408637e89932d5476",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2823ee3fd9f65e14f20d1f2677589c91165c380feb78457c57c0a75185f68f2f",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "a7fb1a5dc8c443cc6f3fc0277ffc7a9345802e90cd57c2b691061c4fd267b84a",
         "owner": "`bbb-world` mark_terrain_* 唯一 resolver + native occlusion/destroy 派生",
-        "owner_contract_sha256": "e968d4b7394a085ae03e70a740dcab8b16ddbbfe5df3e29f48921987ccbcd9de"
+        "owner_contract_sha256": "131c2b72143c94b47e0fcc4b480c73146f5d76ee9540fb08276075cc38c8468e"
       },
       "differential_scenarios": [
         {
@@ -33200,7 +33200,7 @@
           }
         ],
         "dependency_closure_sha256": "79d2fb80eab2b8876a138264d01603a2fd9fe7a51a0bc5cb5f5e78159d54a1b9",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs"
         ],
@@ -33421,18 +33421,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "e46a992495cc93726d105cd63199676d5ff87faf38b58a3699ba8c997b477b7f",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "f598a60dfde45628b9a8a3c4d47cbbcd7f269941b42bcadd7e781d1102c3f16e",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/biome_tint.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "20d297c09528c5fb36b3fec42d700e8e3293efd3b8c51b05241ee3f55fe23d0a",
         "owner": "world biome 数据→native blend/tint/cardinal 派生链；renderer 零 world 读取",
-        "owner_contract_sha256": "af199ee71987dbf65c80e06ba8a0b99eaea0c119d8ba90465a013a8bdcac448e"
+        "owner_contract_sha256": "f3fa6fa4c5bc5c0c4b05abb4aa873e8cb97eb14794eefb12b31fc7327dedfae4"
       },
       "differential_scenarios": [
         {
@@ -33651,11 +33651,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "b123253f1a3c994ce1bac68a2110c4286b94e31445e50d0fed1a7c3c5a9d9a3c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "54394f5a200bc05ad4798b30908ee2e4e459d9c17c568383c6e8613307581afa",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/environment_audio_runtime.rs",
           "crates/bbb-world/src/client/audio.rs",
@@ -33663,7 +33663,7 @@
         ],
         "focused_test_contract_sha256": "c9be89afa8c135108cb7db10e6e4d838a8612c5a9bde3f59d0515fbded085581",
         "owner": "`bbb-world` canonical audio state+确定性 seed 链→audio crate command 消费",
-        "owner_contract_sha256": "32eafe886460ab22d28ca12f4e30e87114384380e73ebdf6d42ae4703c039771"
+        "owner_contract_sha256": "82e854fd20ad344e3aecde1aeabf3805f5d60f3dba7cf8de7af396650a2da1f9"
       },
       "differential_scenarios": [
         {
@@ -33841,11 +33841,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "48dc462ef19ab4a361b97cc45f61589c83def724231829afb8b194f32d3793f6",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "ba741c7e046ccf1064758fe2ad90000c2fafba9d336907b76f5d789814fe03c9",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs",
           "crates/bbb-world/src/client/level_report.rs",
@@ -33853,7 +33853,7 @@
         ],
         "focused_test_contract_sha256": "7d4c0d574f53f515f7e5e9d02cd530d684a5e17fc165f06b07c704243179cc3b",
         "owner": "`bbb-world` 单一活值装配（HUD 行与 crash report 共用）",
-        "owner_contract_sha256": "be01714c0458558fe6225f86c19e7558c266d8d67cf75beb62c8801ef235cb74"
+        "owner_contract_sha256": "3b67e32f15b4e398466e86e4f5fe0807eca793f3f5fa4089e8f424546457d5e0"
       },
       "differential_scenarios": [
         {
@@ -34044,11 +34044,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "9e8b25bc63bbad354d3b6891a744094639b5ac6d640123fd0b29cf9c16cfc06b",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "0987dcc0be19fa54f0bf8308e187f83c22e6d7109a36b09c3a30dbb5cf295045",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -34056,7 +34056,7 @@
         ],
         "focused_test_contract_sha256": "385acb75b87f54634c9b14190f28696d176543a6af4dfd864568002486a77681",
         "owner": "world player generation + native death input",
-        "owner_contract_sha256": "a5edec84769d3bd8eb03eee26bfdd4dbfb457782cd7392ecc690e7be7e549f87"
+        "owner_contract_sha256": "9fa5b4c343949314f3b071ab84d3ec403454ca6585905bbfd90f12ac922fe136"
       },
       "differential_scenarios": [
         {
@@ -34205,7 +34205,7 @@
           }
         ],
         "dependency_closure_sha256": "cd0ab69d03dc58b40f1d5bf4d24a94f2114ef308b36e085ff3bfe7afec0cc51a",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/client/local_player.rs"
         ],
@@ -34336,18 +34336,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "c8b9f810c2e2a0f3bb93dfc9cf1c0e8c2dbe8f30e8ada8b85abfe30d6ed38877",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2203f25e54616546a6c278c1c6d5bd9bc1ec0dfc1b23b60dbbd0b6217e4c4268",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "9dda577eade645c2f50b9288a7e6d41e5c42e447ee1c076a6c456f84d2bfddfb",
         "owner": "native movement clock → net commands",
-        "owner_contract_sha256": "6be961fa758834e2650dea766bcb154de46a40c4e0c61c22ee8bf753ea92526b"
+        "owner_contract_sha256": "5de75a43d34c12b0426c981cab77fff03e8c0e51ed3f90e48e54c9d68308747a"
       },
       "differential_scenarios": [
         {
@@ -34504,11 +34504,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "2d2f19ccf664e377443b98e1813fdf3bdec2263e4da4801255e880b48dd56ffc",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "90762a1526b8e292fd36ff4d7dc5d9227ea6e0f523de20b5680fb19165093fd9",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_movement.rs",
@@ -34516,7 +34516,7 @@
         ],
         "focused_test_contract_sha256": "8f8808a04e507a6c66272d63e5bd2ef97ba797578269f64e35c31d35819d8343",
         "owner": "唯一 movement tick owner（integrate_local_player_input_pose_with_world_effects）",
-        "owner_contract_sha256": "13419e1ac7ab8b8b230995336bdcbe34a866750e59975f289e7666f0a7dfc22a"
+        "owner_contract_sha256": "94ef8d5cb20b20818f298b9f7577b47b1566afb59ae1130b0859dc3ef3c6e11d"
       },
       "differential_scenarios": [
         {
@@ -34771,11 +34771,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "5a4cf13e50b13ac47e0f1806531729a4424b53a467c628b4b373e17ce1d76a1e",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "c0d404fb73be3659203cdd1ba9c74f49c2f7b04b1e51caa6cc6631bbba136bd9",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/entities/client_movement.rs",
@@ -34783,7 +34783,7 @@
         ],
         "focused_test_contract_sha256": "b96a81d063eb64272af32a178cd3d152ae86831ac00273bdbde825aa05a5e8d7",
         "owner": "world vehicle state + native movement",
-        "owner_contract_sha256": "25a7daef0094dc34a42f9888f255788e026fd0dc70eaffec9327d8361d616332"
+        "owner_contract_sha256": "2d982ad02c98c0409025c659d8c90398769f91d9321bdf5780da04e8bca30732"
       },
       "differential_scenarios": [
         {
@@ -34937,7 +34937,7 @@
               "focused-test",
               "owner-focused-test"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-world/src/client/chat.rs",
@@ -34979,19 +34979,19 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "1adb3a4a6180921c2e7bc46cb7c9ae037faa4385db47e65990675fff9ff5228d",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "b7a704e0f75e1f9a087bd824684d652c002706e62f0d96f99d6906ace6fbb3b2",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-world/src/client/local_player.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
-        "focused_test_contract_sha256": "2e1aa0ece664f5490f067c36b941fa571c339b063dbf6cb5b71274997e6231af",
+        "focused_test_contract_sha256": "a00aafa0def01e067cebde3b1eb42a2d26a8c2f6a1a48b8ab43865bf0e7df851",
         "owner": "world capability state → native chat/UI",
-        "owner_contract_sha256": "fd982926ed999c540766bda98f0ab353d0689dff552c89becff1923ff889507e"
+        "owner_contract_sha256": "b0471344e47c9409ff73d21bc8da9703d334b5c6eb6cf23bb31ab498ff274b00"
       },
       "differential_scenarios": [
         {
@@ -35014,7 +35014,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-world client_system_chat_tracks_local_display_message_without_protocol_counters",
@@ -35127,7 +35127,7 @@
           }
         ],
         "dependency_closure_sha256": "662c5e9f6452bcd5a32028507d02cd073904dae6637e46e8df20120de9b081c1",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-world/src/client/local_player.rs"
@@ -35269,11 +35269,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "806e396f1daa573f2bf511867db46f8e42d5cdd6f8203bd77a0ab2721e9eb611",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "9fc2c7e55d6db0bb0028e846c74224434a35126652d95de4675883a999be05ec",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -35281,7 +35281,7 @@
         ],
         "focused_test_contract_sha256": "a14c98aab6430b2ae0f8f1c45a2c5a7dbee46e7d872d6cbb32d0374c44aa6ed9",
         "owner": "world interaction state → movement/render/audio",
-        "owner_contract_sha256": "35e3d3c1cd71c3b9850ea431034e13fbd238e381dee7e960e3b9626620772bc2"
+        "owner_contract_sha256": "2c8fb12a61b52e808579b83a8108f16fa35327220efe49b359d64f4893fa574a"
       },
       "differential_scenarios": [
         {
@@ -35464,7 +35464,7 @@
           }
         ],
         "dependency_closure_sha256": "0ca814d9df57c7e18446cfe6b27643d20679a04580d8b2075d7dd21da2db3ec0",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs"
@@ -35691,7 +35691,7 @@
           }
         ],
         "dependency_closure_sha256": "63f3683b02b57ddb814ac65105710fa2f16e79ab22bea54622ed85abb9ca25db",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
@@ -35949,11 +35949,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "d83c31db0c058f05eb2dddd57b981661b0c681997918ad05155d04326c79dc0f",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "94626927dd1e50f81bbd6eb42ff064fd53e18295d47a7c13615d5101fb0b3d42",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player_fluid.rs",
@@ -35961,7 +35961,7 @@
         ],
         "focused_test_contract_sha256": "f5d0e1efbd6fa50c7473c51b2eb5d0ecea3874f985654fef5ff33334a4e7dfba",
         "owner": "world transient effects → native/audio/particle/UI",
-        "owner_contract_sha256": "e9a57ebd611888f52354c75500b6f5ca3c70503983095da0d212b27c0a5da562"
+        "owner_contract_sha256": "43ce1a2d238db16810cccec7e7b7abb46648e249d3d1ae636120490ee774f1ea"
       },
       "differential_scenarios": [
         {
@@ -36151,11 +36151,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "e4d91b22390fde8b77fe5b29e6d398945399b48c5200ae6bc35702856e22b714",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "aa34925e8f0435f415488dfd343c76e472d7bf5dafea3596c91a1b8e3e4b3cf7",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/crosshair.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -36163,7 +36163,7 @@
         ],
         "focused_test_contract_sha256": "0f8d9bbd0c71dc8bd4cab23e22fd6f832fb6a6f07192d903a346435e1de74a6e",
         "owner": "world camera/entity bounds → native crosshair",
-        "owner_contract_sha256": "19805cf91e494e793ff383b778141222abc17ee75bf7d78264d572e5bf9e661c"
+        "owner_contract_sha256": "7f866b0e2a646883330e97993848f6ab03f89c7ddd03e2040301fb0ffce26829"
       },
       "differential_scenarios": [
         {
@@ -36357,11 +36357,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "4bee8a0f7f4d05a09c8f44f76222f1b3a51ee195bdd75f60c6d1160d290cae63",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "3aa563bac51f3aa1588d2ade7f6061b28fbf36dcea5c85bc78d2a3f1f4d90f31",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36369,7 +36369,7 @@
         ],
         "focused_test_contract_sha256": "4220e8c833c9bbf7ec48dbbe2b6788538c45ba7675050bb3019ae8bf44fbbff3",
         "owner": "world game type/abilities + native session",
-        "owner_contract_sha256": "6152886d80ec39449e71bac03eda90fc42855dcaebc5ddabad679ecf08299566"
+        "owner_contract_sha256": "a7d40bf9cd24df07e6d5bca8736db6d58a2bc1de1e396d4d95c409e4ea7d98bb"
       },
       "differential_scenarios": [
         {
@@ -36573,11 +36573,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "a94c749edd86ed0c6926645cab9e678e9d12314fa08c850469039096ca59342f",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "e78b8e1e307589df5269a0f6df72721a79dbfa0cac4612699ff801d891611aa0",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player.rs",
@@ -36585,7 +36585,7 @@
         ],
         "focused_test_contract_sha256": "29beb55c950917fc4b28b9d4ea053fa71132d121ddd9c4423fe01330f23eb02d",
         "owner": "canonical game type/vehicle state",
-        "owner_contract_sha256": "4dfd56d9a687ec11b7ba66e5ddba075fc45f780412761cb9cde4b44c8fe2966a"
+        "owner_contract_sha256": "07f9696f9a5ed45286187750d146a67f9b7470afcdc2514fed9fef7bcd682658"
       },
       "differential_scenarios": [
         {
@@ -36766,11 +36766,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "6aad9df727335240d33d474a74d58a0ac7b3df0052c964934b6ad469e25d77d5",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "b99c6a664d01c7f239dbd5d220ef1a316ea0e6eaf54db2bec5d3fae3c1c2b52a",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/local_player_destroy.rs",
@@ -36778,7 +36778,7 @@
         ],
         "focused_test_contract_sha256": "ffa6018db350ad81054e65e257a0e273a00377aa0d216953b6440a7cb7802765",
         "owner": "`LocalPlayerInteractionState` → native mouse/net → effect projection",
-        "owner_contract_sha256": "4231c751dbed4a1a52b581cd851479b8a4a8907b4f87ee26e486f786a951cff8"
+        "owner_contract_sha256": "1545ed1e7fe8c7f42d0fcee9693facd24221a6a3b55919de3c620fd784443ad0"
       },
       "differential_scenarios": [
         {
@@ -37035,11 +37035,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "407ce2c086432fbc7d18ff1db8b76990b5f04e2fdddf33b45aa5cebc9133be67",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "5dfb8fac2a9d13cbcd9190763bd5a42fc5f994204709c58e9f4eaf6f171659a4",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -37049,7 +37049,7 @@
         ],
         "focused_test_contract_sha256": "40830820b184d05479f6ce8a482d473b09d583d70c8db99c45e47429cd5b393b",
         "owner": "level-bound world prediction handler → reserved native/net command",
-        "owner_contract_sha256": "91ed14366270e7653007e0643bf25bebd60cc968dbc363877a8a85b4dfbc7986"
+        "owner_contract_sha256": "d8e764706fbd275b0ab42a91005f5d7d9b19db4310a19876ee195a448948012e"
       },
       "differential_scenarios": [
         {
@@ -37233,11 +37233,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "43318c2daf96658a022a73f449fa8ed9c02c3f5b6d39a8b070829d5d16dcf207",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "950ebd544038948e811de9d10db1ae60109e2566a3ce5c79f507c247ac02a1bc",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -37245,7 +37245,7 @@
         ],
         "focused_test_contract_sha256": "43ebca344d9aad9a4d42296d0fb6544300f7fd3e362be8c8e23f7b4ab83f9790",
         "owner": "world selected slot → net command baseline",
-        "owner_contract_sha256": "78133c522bee0ea07bac9fd34baa9051941f8adf4dbaa079202a90f920d029ff"
+        "owner_contract_sha256": "7a419caa66525dd5352b2b40f23b0d2992f5539789f82178bcc0af306319fdd0"
       },
       "differential_scenarios": [
         {
@@ -37363,11 +37363,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "e20b528cfaacbf72525440252da4de8cc243d1518ecdbc66c8209f0fbe3c33a7",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "df9c616087cfad1d4440bdd567f476972a67031c6ac093ea511d4baef544b638",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/inventory/use_prediction.rs",
@@ -37375,7 +37375,7 @@
         ],
         "focused_test_contract_sha256": "edc936ed5d3aecc10d86db8a750e67cfaadb6c69569df3fa7cd62cf8dfe5895f",
         "owner": "native target/input → world item prediction/net",
-        "owner_contract_sha256": "8686d5c14b700f81bcab52d1e6ec0c19a035b2b9a3e45c8ebbbabc7f642eca2e"
+        "owner_contract_sha256": "7395cbd3a91abe5636574e35890182517fe2dca1f54f063399cf3e4c91b7ee24"
       },
       "differential_scenarios": [
         {
@@ -37511,11 +37511,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "cf260d1f4e426acf6c111b51ab2ce88b800269c868ea45139404978e53efb550",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "42c56ec1b923b7dbec34332a3d4bb22fcb91df8beec86cf6a43cf1f192328741",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "crates/bbb-world/src/client/combat.rs",
@@ -37523,7 +37523,7 @@
         ],
         "focused_test_contract_sha256": "641cea3f02808b2b8e9b25f1cd1819d2011799dc758b58b4c6ce2883de61f510",
         "owner": "native target/input → world combat/net",
-        "owner_contract_sha256": "e6e655ad51bbc8ef9e213a344454255c77170295fbf4efc1786d203aead3a913"
+        "owner_contract_sha256": "d4438688969542096a0392024db8f9387fdf8db472f439143b653655e4d6dfcd"
       },
       "differential_scenarios": [
         {
@@ -37673,11 +37673,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "54ac6239c13975b6cc0c8e27cb2148a0d76af3150770d70e4a4277fab0cef9ec",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "d27d24d689741f0df98060dcf215c02a6066e61bb7f823d6608d5c2519feeb1d",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-world/src/client/inventory.rs",
@@ -37685,7 +37685,7 @@
         ],
         "focused_test_contract_sha256": "19a88a306766ea81a23c78f19e2a11843e6a73ccdae64a022aa75a9aa83408df",
         "owner": "native menu input → world revision/hash/net",
-        "owner_contract_sha256": "98fca1def70ef87ebe23f886a898b5f44dbdb8ad87e18c37db21ee5803073971"
+        "owner_contract_sha256": "00abdc06eb3e7e365e3fdefd7e60aabecd54e5cff182503261200a52b3f5a449"
       },
       "differential_scenarios": [
         {
@@ -37826,11 +37826,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "eba9b50399d685fe55dcb4d2021bd06d282600122830c72875625fd3a5bcb6c2",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "11a269bf666fcca08c1463a0e7df797c89d5e1109e6ede8ce6bfed823c39610e",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory/creative.rs",
           "crates/bbb-world/src/creative_inventory/action.rs",
@@ -37838,7 +37838,7 @@
         ],
         "focused_test_contract_sha256": "e191d3ec033d5cbecc5518382e98b6b4a774e0a0b5b7d94b82bc1cdff2d1f60a",
         "owner": "native creative UI → world plan/net",
-        "owner_contract_sha256": "531da8616f45895a8524c8cddf999a8dfdc9a79f9251607fe95e6174a22bdedf"
+        "owner_contract_sha256": "c433b95256d1b74c8cea7363b12dc54e1861d3fe914b77c1a579d35e21b70da2"
       },
       "differential_scenarios": [
         {
@@ -37948,11 +37948,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "baef7de61e5ed87c0ad2d7145846f484064aceb5a541be502c367b7aa534032c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "9b55298bc55f2f78c55ff8150d04f86cb22c1508e0e6df1371e1de70b4e9df60",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/commands.rs",
           "crates/bbb-native/src/input/mouse.rs",
@@ -37960,7 +37960,7 @@
         ],
         "focused_test_contract_sha256": "251675499ce77c1ed92cb9dd7e99992f771856b1c74f7b4e6c6f62d8d23b818b",
         "owner": "native crosshair/modifier → net",
-        "owner_contract_sha256": "2706dacb2e649d6c6371e0859b9377eb9d7810187c88dab12708f9c34ea5fb49"
+        "owner_contract_sha256": "be63aae4b5d5325eebdc4acd2e531ae7211e5734b85413106291da03e838f9e0"
       },
       "differential_scenarios": [
         {
@@ -38081,18 +38081,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "24a1e73477523d3adfd267517a113a560ca96a3fb46da10f2dd9876d49a2bea2",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "653deb630a0cf993b3c02ee8f006ba6b834d686ed4216998fcd2dd267ffbe82c",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "2cf2902e8ee143b5989c71c117dd2b6780c95f13d50129295661c26e09f171a9",
         "owner": "native mouse/key state → precise action owners",
-        "owner_contract_sha256": "87540e9bf9c28a59467a958432af21600f87a0207dd036800e94c7aeb171fcc4"
+        "owner_contract_sha256": "28068c17d395d46817b174f5c9ded5d652a0433b1b865cb327b36d4b280ffd3a"
       },
       "differential_scenarios": [
         {
@@ -38462,7 +38462,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -39439,7 +39439,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -40435,7 +40435,7 @@
           }
         ],
         "dependency_closure_sha256": "84da1ed4ad1c091b0cdd91f270c21032b6009300f40bc6d1259a1147a0923779",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/evidence/vanilla-26.1/entity-coverage.json"
         ],
@@ -41584,18 +41584,18 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "e58078852d72f8dc3cbbcced7295c31eeb6dde58c7ce6b7fca4a17bf47ef1f2d",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "d5bb54c79c9f4b73f2d19ef839d6002e22e4f9b8c4308854c1a338dbe3487da4",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/block_entity_visibility.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
         "focused_test_contract_sha256": "52b1b9ba50236defaf4cf2ba970147d968c47b57585faa1a16f2b438b806c769",
         "owner": "native/renderer block-entity scenes",
-        "owner_contract_sha256": "d68065a77584d849a59341c993729900891f018c998cee3cfad89f32d14b5813"
+        "owner_contract_sha256": "3aac8033a237f7f094e383a203b01690560c002f0fa1d93ffd8a4adca21ea2d9"
       },
       "differential_scenarios": [
         {
@@ -42084,7 +42084,7 @@
           }
         ],
         "dependency_closure_sha256": "20945e2c78546812a2d510c3c2735525d9759978d242c8a0ea5342041e5eb608",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/particle_runtime.rs",
           "crates/bbb-protocol/src/block_state_types.rs",
@@ -42448,7 +42448,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/music_runtime.rs",
@@ -42507,7 +42507,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-pack/tests/vanilla_gui_music_assets.rs",
@@ -42581,7 +42581,7 @@
               "matrix-evidence",
               "owner-implementation"
             ],
-            "sha256": "be95e38691a0be438b65a7f3a3c0721a977d3268010836a315fb778aca029b06"
+            "sha256": "5d6cf805b11f159424d50ff450cef77d92292776807d6d3f17e1d8ea95c537ca"
           },
           {
             "path": "docs/unsupported-features.md",
@@ -42604,18 +42604,18 @@
               "focused-test",
               "owner-focused-test"
             ],
-            "sha256": "22f83c408f5d6e9fbcd626029944e553e30e4364d30ee61d89958b5e686f4225"
+            "sha256": "b2f22b209c87dfbe2e6f42d3505ac03f08e0c2b9a80f8c4ddcf12b58f42410ab"
           }
         ],
-        "dependency_closure_sha256": "8a7d6ad90f5642b2eee36798710c0c928e9670d0ed2a09b95bd5559e7be73e45",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "20d1aac1cf47a2ef1fc443f2d5d7e19bcbbc93af8e62e657f9f0da32dfd9de34",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
         ],
-        "focused_test_contract_sha256": "1266841167b92e0abf8f4e79a9e154786559df44c6d75cd316a5ab165fe94759",
+        "focused_test_contract_sha256": "4e6eec56b90f7a485b239de97ef0642aef8e364ad32b55f2d418a99ad03f1dcf",
         "owner": "`bbb-native::runtime::render_extract` + shared toast runtime + independent NowPlaying runtime + renderer",
-        "owner_contract_sha256": "0646f0db42c5001dd1bf7bad4f8647cd37f5cf8cbad89f222a750b3d58b9ee59"
+        "owner_contract_sha256": "416d18a36c17ba5ebc6806b0c513af300a64dee8f132ffaa03c6ab00c297df2f"
       },
       "differential_scenarios": [
         {
@@ -42885,14 +42885,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#joined_first_server_is_consumed_at_startup_and_explicit_cli_wins",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_music_options_reach_startup_and_explicit_cli_wins",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-pack vanilla_now_playing_gui_assets_preserve_animation_and_nine_slice_metadata",
@@ -43018,7 +43018,7 @@
           "ignored": false,
           "reference": "scripts/tests/test_file_drop_capability.py#test_checked_receipt_matches_verified_vanilla_and_pinned_winit",
           "result": "focused-evidence-pending",
-          "source_sha256": "22f83c408f5d6e9fbcd626029944e553e30e4364d30ee61d89958b5e686f4225"
+          "source_sha256": "b2f22b209c87dfbe2e6f42d3505ac03f08e0c2b9a80f8c4ddcf12b58f42410ab"
         }
       ],
       "matrix": {
@@ -43293,7 +43293,7 @@
           }
         ],
         "dependency_closure_sha256": "12fd1cf6d51816ee61d8cb609a4a1e1b8b81ddbdbc021b492a80644063cb5742",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-world/src/client/hud_camera_player.rs"
@@ -43619,7 +43619,7 @@
           }
         ],
         "dependency_closure_sha256": "2fe2445d49e359d7f6bdd0e9248dba8a5c2423941b4213fac3c3b8d3dfa5a61f",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
@@ -43849,7 +43849,7 @@
           }
         ],
         "dependency_closure_sha256": "b3b542b3878c018c12ac61de2176aa1fe2e64b57d2cb30c9987781570f9f0ce0",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/vignette.rs"
@@ -44174,7 +44174,7 @@
           }
         ],
         "dependency_closure_sha256": "24d4128e378a26e8e1d67df6f26179298cf0b1fd333ef1df1c0fd129967154c2",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/hud.rs"
@@ -44465,7 +44465,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/network_runtime.rs",
@@ -44513,7 +44513,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-renderer/src/render.rs",
@@ -44560,16 +44560,16 @@
             "sha256": "9c0b99230de27ba2b61c9cf4096eb036da3be0692e6d5a1c9ae7db24f9423951"
           }
         ],
-        "dependency_closure_sha256": "0d13a5c8c878a3ea2e71959bdbf4cd50aaf3abfa1b382872b8e702b65a384f84",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "fb78ec97dafb7ef1873bf84e33b12c57d42d9eaed725934f36122c11fa77ca53",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-renderer/src/render.rs",
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS"
         ],
-        "focused_test_contract_sha256": "405a72a640d11a1aef3fc30580a30854608e60c7d6adca566500506fb93b08dd",
+        "focused_test_contract_sha256": "65cf4ba29aff78cb27b8bc945ff5e1504196b7628b955d8b246af073882e83f2",
         "owner": "native simulation step → publication → renderer frame",
-        "owner_contract_sha256": "bb01e46c1b84102f013eec158bdc9f3ece375cf5c4f4d4956f4d80790bed5e5e"
+        "owner_contract_sha256": "ac26bdd2673441f1bb3086953c1806d92db3890f9202afb91536c6d68e94971b"
       },
       "differential_scenarios": [
         {
@@ -44614,14 +44614,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#redraw_arm_orders_update_render_and_framerate_resample_like_render_frame",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native production_shutdown_has_one_owner_and_frozen_order",
@@ -44698,14 +44698,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#client_framerate_limit_accepts_the_vanilla_codec_range",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native effective_framerate_limit_matches_the_vanilla_tracker",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#effective_framerate_limit_matches_the_vanilla_tracker",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-renderer render_calls_exactly_one_step_per_frame_steps_entry",
@@ -44931,7 +44931,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-renderer/src/entity_models.rs",
@@ -44997,15 +44997,15 @@
             "sha256": "372c46a9a87f0c654a4af3ab8b9f6fa6683b03ad550d0699a940e2d8fe70f21b"
           }
         ],
-        "dependency_closure_sha256": "1e01d202acdb206bd87dd4bfe83a610e568f93d106371dff3b69677647ef2903",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "aa0f20f6eb400a097656c21f1685d2f7c4f3c9a99ea9b7eea7e3f58a82762d26",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime.rs",
           "crates/bbb-native/src/runtime/render_extract.rs"
         ],
-        "focused_test_contract_sha256": "966dfd518fcc84054626342996d7e123ed33a0387b275bb525d4f6bcfa2c79c6",
+        "focused_test_contract_sha256": "90b5490f59d5b543e30be257f12f88ae28dd00d27dcd34241f70e6e913251eff",
         "owner": "native immutable publication extract → RendererFrame",
-        "owner_contract_sha256": "33e0e1ea51eb811dde97057092b51fbcbab3deac8d86cb5c68699d6749b4f4ff"
+        "owner_contract_sha256": "adfae9c2a637c5d5bc4dc7de913a37b64adc883866bdc7e6688804180907cfe2"
       },
       "differential_scenarios": [
         {
@@ -45134,21 +45134,21 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_accept_sharedconstants_debug_flag_startup_options",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native every_binding_names_a_real_argument_and_a_catalogued_key",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#every_binding_names_a_real_argument_and_a_catalogued_key",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_options_fill_arguments_the_user_did_not_type",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_options_fill_arguments_the_user_did_not_type",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-renderer equipment_layer_pass_records_vanilla_model_layer_metadata",
@@ -45427,7 +45427,7 @@
           }
         ],
         "dependency_closure_sha256": "a5e893ff9913490a75ff9566d54d62f2e52ab79a1d217574f0c0e308d2eee722",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/item_models/first_person.rs",
           "crates/bbb-renderer/src/render.rs"
@@ -45983,7 +45983,7 @@
           }
         ],
         "dependency_closure_sha256": "083bb169c410477816dd66f6cad23b02ff81cd620566a21c2ff9852bb10b4c43",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/screen_effects.rs",
           "crates/bbb-renderer/src/camera.rs",
@@ -46394,7 +46394,7 @@
           }
         ],
         "dependency_closure_sha256": "355a4a7a7c748313396250dd8c22c18a596ac9757785bef3d4da13afdd068c78",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/resource_reload.rs",
           "crates/bbb-renderer/src/resource_reload.rs",
@@ -46639,7 +46639,7 @@
           }
         ],
         "dependency_closure_sha256": "3b0da4b57f64d1d5240de7d7762683e092994fd27c8fc730b73af07c5af2b3a0",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime.rs",
           "crates/bbb-renderer/src/terrain.rs",
@@ -46913,7 +46913,7 @@
           }
         ],
         "dependency_closure_sha256": "07f4560e45b7b63ea473e828fc14898682755bb5383300ed3a991fb8273b0890",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
           "docs/wiki/mechanisms/rendering/block-rendering.md"
@@ -47244,7 +47244,7 @@
           }
         ],
         "dependency_closure_sha256": "aa709f2232d8e018ffdd90db12c9a34923d46c10dda2c3b024bc543c593bb0b1",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs",
           "crates/bbb-renderer/src/render.rs",
@@ -47526,7 +47526,7 @@
           }
         ],
         "dependency_closure_sha256": "95813e10793449df6d4f4c61c6bad45d3a7d6486d0bea15aa4474e467398ba70",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
           "crates/bbb-renderer/src/block_destroy.rs",
@@ -47758,7 +47758,7 @@
           }
         ],
         "dependency_closure_sha256": "13e14938f323502e2d31d7755f23366d1efe58b74c6c7325bc79c5771b6034b3",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
           "crates/bbb-renderer/src/debug_filled_boxes.rs",
@@ -47972,7 +47972,7 @@
           }
         ],
         "dependency_closure_sha256": "163b431139dc80be4a9db3407ca95a99779cdaa4c83cc33dceb67135818ee19d",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
           "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
@@ -48135,7 +48135,7 @@
           }
         ],
         "dependency_closure_sha256": "3e1cb0bcc5b86fcac2bff37033e9634bce4cd7c3337124d682ad0d618d7fd0b2",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/block-rendering.md"
         ],
@@ -48346,7 +48346,7 @@
           }
         ],
         "dependency_closure_sha256": "13696b1e0fe2f877bc77396dcdca306afdb98c9f1b52f230adc5e35a6085dcba",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-renderer/src/renderer.rs#TerrainTranslucentSortState",
           "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_rebuilds_vanilla_indices_after_camera_move",
@@ -48570,7 +48570,7 @@
           }
         ],
         "dependency_closure_sha256": "3a1b670abe258b94b49097de8344ca5dedd8636bdc8f0f79db44eb499bbb46f7",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/wiki/mechanisms/rendering/fluid-rendering.md"
         ],
@@ -48780,7 +48780,7 @@
           }
         ],
         "dependency_closure_sha256": "fc118221d6232392f66bd9a928819979069815215a059cd51abff9ffecc8ae12",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/camera_fov.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -49127,7 +49127,7 @@
           }
         ],
         "dependency_closure_sha256": "302905a39e54d74af692f61818f0b11a6351671dacde22b4a6fa9b270fffbbcf",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/inventory.rs",
           "crates/bbb-native/src/input/inventory/menu_screens_26_1.rs#menu_screen_catalog_exactly_covers_generated_menu_registry",
@@ -49300,7 +49300,7 @@
           }
         ],
         "dependency_closure_sha256": "fe74525bab6753e00b0629cbcc5219aaae1d810b4001c42988b759210c90cc78",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/input/tests.rs#chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle",
@@ -49482,7 +49482,7 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           },
           {
             "path": "scripts/playable_gate.py",
@@ -49492,8 +49492,8 @@
             "sha256": "b2b9296037d340e04ee5b6e0dec1a97f5f8beea7de284b7f54218b057abbaf1a"
           }
         ],
-        "dependency_closure_sha256": "5767e51d48213ebfe54fc4bea4a6e7f1580821ac5c9855edc932e5b9794e1cec",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "57809a85049a24e2602df81c01fd45a60fcc11cdeb2f49ebf009cbc0fe3cd50c",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/death_screen.rs",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
@@ -49506,7 +49506,7 @@
         ],
         "focused_test_contract_sha256": "dd4eb1877d2d040212ce262cb7e27dc9d7d0b2ac04a72e6f2ae0c867e620b95d",
         "owner": "world death/report state→native input→immutable renderer/control projection",
-        "owner_contract_sha256": "08126ca4fe3c422bf4cc4fcfba3938161805832b50753878086619656748801c"
+        "owner_contract_sha256": "90c355b4d221f02e698dd1d6fce4e3cdd38a5fae9529734326bbb5a7915c3e92"
       },
       "differential_scenarios": [
         {
@@ -49667,7 +49667,7 @@
           }
         ],
         "dependency_closure_sha256": "9ab45f9ab7af4dc1507bdb52c7ad91aa4fefeff902bbb670cffdb1fa73755212",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/network_runtime.rs",
           "crates/bbb-native/src/runtime.rs",
@@ -49816,7 +49816,7 @@
           }
         ],
         "dependency_closure_sha256": "a004d23fb88cf57ac28bb53007d52ba879c8d98b81cec9d87135adfe9af09ba5",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/pause_screen.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
@@ -49963,7 +49963,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -49993,19 +49993,19 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "845da25495b24bec8d2d409aceb2f6fefe84a4e34915e6ef9a29026d512b790e",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "00f4f50033bae75053716e7bc7ad3dd0fdf6f30c88fb6640ffda86ac94fb32e1",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input.rs",
           "crates/bbb-native/src/runtime/render_extract.rs",
           "docs/wiki/architecture/client-boundaries.md"
         ],
-        "focused_test_contract_sha256": "ada2d14781da2b67ee7b9895f9c6d0d9b6edbc8dea07a5a61b65e2dd7eac656a",
+        "focused_test_contract_sha256": "e824fa719e7655a13c709723c48fc6ef48f6623fdb524204dcf080ed8ef59e21",
         "owner": "native screen/input/render publication",
-        "owner_contract_sha256": "2459093c0b0f6ed04b28f6c5a19a3bb4ca26bcc2b80d450cbf08440c9489eab2"
+        "owner_contract_sha256": "1bd04688855e3355af4dd23e441962c485433ab3795e63ac16658ea7aa2235e8"
       },
       "differential_scenarios": [
         {
@@ -50041,7 +50041,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#runtime_wants_cursor_for_debug_game_mode_switcher",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native renderer_resource_owners_commit_inside_one_reload_barrier",
@@ -50115,7 +50115,7 @@
           }
         ],
         "dependency_closure_sha256": "fa7f9e3e7ae61f35f3452ee996cfb5801c128eddc7380f44854f448c6701fe0c",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-render-types/src/text_visual_order.rs",
           "crates/bbb-render-types/src/text_visual_order.rs#arabic_shaping_matches_icu4j_77_1_fixed_vectors",
@@ -50268,7 +50268,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/narrator_runtime.rs",
@@ -50324,7 +50324,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-world/src/client/chat.rs",
@@ -50359,14 +50359,14 @@
             "sha256": "9c0b99230de27ba2b61c9cf4096eb036da3be0692e6d5a1c9ae7db24f9423951"
           }
         ],
-        "dependency_closure_sha256": "e1c12968ae36aed7f8d0a275422e481feabb9c7b81ea03a4e5692c9be23e1971",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "654ec3cf77f3e94be943a2a82b5a0ccb6aa24942b21c714e330729596bfcb38f",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/narrator_runtime.rs"
         ],
-        "focused_test_contract_sha256": "557ecffa9f35be12fb38a8d269c3744be7560434e656d0dcd9d35835a1b78077",
+        "focused_test_contract_sha256": "fa5742ddaf2f3bd447cc139b930c2103ce65c0736ae1aeb7ef6ec057e4c92bf2",
         "owner": "native narrator/input",
-        "owner_contract_sha256": "118e6a76487f3aa11a7a65f5a7945cb2143d8be6dc19a76f777c5cda015dc60e"
+        "owner_contract_sha256": "81be864c77532f7aeda32b740f32fa8bdb6a5bbc4656effe7e8ec3f318663825"
       },
       "differential_scenarios": [
         {
@@ -50500,14 +50500,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_accept_narrator_status_command_and_repeated_arguments",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_audio_volumes_cover_every_vanilla_source_with_safe_defaults",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-world delayed_player_chat_defers_display_reporting_and_last_seen_until_acceptance",
@@ -50632,7 +50632,7 @@
               "matrix-evidence",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/runtime/dialog_screen.rs",
@@ -50644,15 +50644,15 @@
             "sha256": "db367e17e6b5e0a29927c2d017fc4ee063c9be06adc27f797acca172e4be404a"
           }
         ],
-        "dependency_closure_sha256": "71f8c947f48f101c81c2edc8c414204c23f1b9cab46d61966d8e92206eb9ebe6",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "f36c7ce929819b541a08a43c16446fb946c54c7b552f199f2e472de6b90af855",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/text_edit.rs",
           "crates/bbb-native/src/main.rs"
         ],
         "focused_test_contract_sha256": "bf508e0068752ea51c55be687c39fb34990583093571da2cc03c5e5807d787a1",
         "owner": "native clipboard 桥",
-        "owner_contract_sha256": "8236e7f946de91aa9e2043a1c3a00c5153bf878e036e7316f43dbc808a04cd75"
+        "owner_contract_sha256": "ade34fae2a1c8efb30d8091259bcfb2a303bf9e4efc1faf64c18a58b04973b6c"
       },
       "differential_scenarios": [
         {
@@ -50789,7 +50789,7 @@
           }
         ],
         "dependency_closure_sha256": "a7cfc1a20da96fd9a662bdffcf41b27cc0536cbdd47299e4d099edfbf097df0e",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/local_time.rs#goldens_match_vanilla_icu4j_output",
           "crates/bbb-item-model/src/item_runtime/local_time.rs#local_time_english_week_data_locale_aliases",
@@ -50903,7 +50903,7 @@
           }
         ],
         "dependency_closure_sha256": "7387c0e0741b5bdbd73c6cd2018505a409f8dae7388ff4823c3f742210e374ec",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/item_models/tests.rs#held_generated_item_context_entity_type_select_uses_owner_kind",
           "crates/bbb-native/src/item_models/tests.rs#non_living_item_billboards_use_null_context_entity_type_select",
@@ -51043,7 +51043,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/simulation.rs",
@@ -51071,14 +51071,14 @@
             "sha256": "d2c75280b5789abd589820ec6bfcf30341e7e35c9c883bdcf9605c8605486914"
           }
         ],
-        "dependency_closure_sha256": "99434f4bb1b54ce48b63c5d1616cb5fcfb5bfa75379fc2961842254890cfa1f2",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "7592c44be41a3acad890d255377d2dfb0b6ae0d92e2878f1c5aaf77ee2c21339",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
         "focused_test_contract_sha256": "1cfcfe020a0fbfa8772f2e4880b7552f714618a6581819bb5dd932693273e257",
         "owner": "native input/control/net",
-        "owner_contract_sha256": "1d8c29cd0933449139384d4aa7c4138239bc456515c147e4305c0634389616ae"
+        "owner_contract_sha256": "1c25635fa9d3a29ab1f95e6998df228e5816b2f5634afb93039f313b16919789"
       },
       "differential_scenarios": [
         {
@@ -51346,7 +51346,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-world/src/client/chat.rs",
@@ -51356,14 +51356,14 @@
             "sha256": "4de7f9216c5067c516c75c0af8d9654ce1b792e5a551f18878fd6a297531abad"
           }
         ],
-        "dependency_closure_sha256": "ce74f64e9f41197206b7542af246566bb70aac0dc45b9152cb5ece818350a410",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "d1140fa2d691a3d3b600f10c2a7af1abdf3328f1d9c9f89343d9120db08b71a2",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input.rs"
         ],
         "focused_test_contract_sha256": "e5c0cbf222b6732f72ccec1be56c9417406acbbe810691a2038e10bcc866d876",
         "owner": "native debug 动作",
-        "owner_contract_sha256": "10552283245e9b486feda30e95a62427ca900f60c739a858548bdd0d1dcfbb64"
+        "owner_contract_sha256": "e2b586f7ab0aa7186f3a8b393068e34742260484259af5cde7f8a21af6b7a12e"
       },
       "differential_scenarios": [
         {
@@ -51629,7 +51629,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/runtime/control_requests.rs",
@@ -51661,17 +51661,17 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+            "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
           }
         ],
-        "dependency_closure_sha256": "6e1058f4b2d3cb3c42e33fe52f1490d6cd369a0ce101dd626900e79f5e12aae6",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "27513f00903180e2681d6d0eae182830fdcd0f58eeb4826b8b78346558f2ab58",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/mouse.rs"
         ],
-        "focused_test_contract_sha256": "9c4a1d3c2f27b57727d0442a5df843dff6eb6633b97d296f36e66124c7390457",
+        "focused_test_contract_sha256": "04e67399569510fe220df3c6a623303ec8b2651ab263e502a7c077dcb98ae94b",
         "owner": "native mouse/camera/interaction",
-        "owner_contract_sha256": "d0786f47ff4f16e83babc8844807f08518d0b13db2f8ab9659f0dd45cc82e10e"
+        "owner_contract_sha256": "975d6a8c3241eacfb566bd0596cdff16ecbb8603e5054a317333b15a8e9e1f27"
       },
       "differential_scenarios": [
         {
@@ -51797,28 +51797,28 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native cursor_events_cache_physical_and_reproject_at_the_gui_boundary",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#cursor_events_cache_physical_and_reproject_at_the_gui_boundary",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native resize_gui_surface_projects_1280x720_at_scale_three_to_427x240",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native runtime_wants_cursor_for_advancements_screen",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#runtime_wants_cursor_for_advancements_screen",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native pump_control_input_requests_replays_keys_through_the_real_key_handler",
@@ -51839,14 +51839,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native cursor_projection_uses_the_vanilla_ratio_not_integer_division",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#cursor_projection_uses_the_vanilla_ratio_not_integer_division",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         }
       ],
       "matrix": {
@@ -51989,7 +51989,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/runtime/tests.rs",
@@ -52000,15 +52000,15 @@
             "sha256": "4c54465918384ae82ee319c2127bdbbca1c13daed97129d123fbea9ce3f793ef"
           }
         ],
-        "dependency_closure_sha256": "577cb0708295a95372e4aa6f4a1d6d3a3af9eb868dc395106469368e5a097834",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "d7eefd307d27556edad3670a89a068d7be559b0178333b4e08a125d56263ebdc",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/client_options/key_bindings.rs",
           "crates/bbb-native/src/input.rs"
         ],
         "focused_test_contract_sha256": "7384deea7a07694a2cb84979770427e36821b1e1ac65370dd7e447b1c7227716",
         "owner": "native binding state",
-        "owner_contract_sha256": "23694380304da716c1ec2d54845008a3b52767251269ce38c398748f232cf70f"
+        "owner_contract_sha256": "ab8808e2be1915a96c17692d634bfd5c4b9fd733de4b011374c40f03396cdc22"
       },
       "differential_scenarios": [
         {
@@ -52276,7 +52276,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/network_runtime.rs",
@@ -52316,7 +52316,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/window_icon.rs",
@@ -52334,25 +52334,25 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+            "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
           },
           {
             "path": "docs/evidence/vanilla-26.1/file-drop-capability.json",
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "be95e38691a0be438b65a7f3a3c0721a977d3268010836a315fb778aca029b06"
+            "sha256": "5d6cf805b11f159424d50ff450cef77d92292776807d6d3f17e1d8ea95c537ca"
           }
         ],
-        "dependency_closure_sha256": "442d925800d7220f05a2e089b183c7d5e3fcff00410c26515c0fbee5db887d33",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2269cabdd62f6a5dd536e10334c2ae935dafeea0f07e258889cf3656f5d23a6d",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/platform.rs",
           "docs/evidence/vanilla-26.1/file-drop-capability.json"
         ],
-        "focused_test_contract_sha256": "db9316ccc236d063548fdd2bf7ee84f7df5243f7041398fa893214a115a8c028",
+        "focused_test_contract_sha256": "0dfc469ccd1a0e922627bb72fa89c5e1bf08ec335fbe75d77f598a6286a9a9e2",
         "owner": "native platform/winit",
-        "owner_contract_sha256": "804123df5d9731e370430d571f7415d67ec97bd730d6891111901d9d02f38dfb"
+        "owner_contract_sha256": "c9ede32fcfa476d6c9e63d6271979c2f6fb32f386436a86acca194d0a25b29f2"
       },
       "differential_scenarios": [
         {
@@ -52414,7 +52414,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#window_title_follows_the_published_connection_state_and_diffs_applications",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native production_shutdown_has_one_owner_and_frozen_order",
@@ -52435,7 +52435,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native platform_identity_matches_glfw_platform_names",
@@ -52456,14 +52456,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#allowed_window_min_size_clamps_both_dimensions_to_one",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native fullscreen_choice_selects_exclusive_only_with_exact_mode_and_backend_support",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#fullscreen_choice_selects_exclusive_only_with_exact_mode_and_backend_support",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         }
       ],
       "matrix": {
@@ -52569,7 +52569,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/simulation/input_commands.rs",
@@ -52585,7 +52585,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/window_surface.rs",
@@ -52595,7 +52595,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+            "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
           },
           {
             "path": "crates/bbb-renderer/src/renderer.rs",
@@ -52607,15 +52607,15 @@
             "sha256": "8dab49968721692a69a0b1b3b81f320039bc87cdd49b373e572f8d1360ebde23"
           }
         ],
-        "dependency_closure_sha256": "b431bc30288a099af5f67a1ec1f25e0ffc1dc252a3b66e9b615ff9efa9e1e67f",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "43fb81e2bc3f8257dd8340741a005d22dbe5133280793c17fa7baae67edf41a2",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
         ],
-        "focused_test_contract_sha256": "f4af0c0d62a8207e3bb97a492c94361afb7ef0380d3a9dfbc71f48b819864422",
+        "focused_test_contract_sha256": "d8f7aee867f8d7f51149bb67194aec6d80b7799e5b2b71314dff789ac167cf06",
         "owner": "native platform/winit/wgpu",
-        "owner_contract_sha256": "e5c22bf08be1e96c72c1730f607453c8e4c94d8602c3fd383ec3d7dfd1ef8d05"
+        "owner_contract_sha256": "29f51c074071d64f1935ebd66ca92b6ac3614ce91cddec89f296ba9b60da042c"
       },
       "differential_scenarios": [
         {
@@ -52654,63 +52654,63 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native fullscreen_transitions_share_one_deterministic_mode_policy",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native a_typed_fullscreen_resolution_wins_over_the_stored_line",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#a_typed_fullscreen_resolution_wins_over_the_stored_line",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native an_invalid_stored_fullscreen_resolution_keeps_the_current_value",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#an_invalid_stored_fullscreen_resolution_keeps_the_current_value",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native args_accept_vanilla_default_vsync_toggle",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_accept_vanilla_default_vsync_toggle",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native the_stored_window_family_options_feed_the_window_owner",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#the_stored_window_family_options_feed_the_window_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native fullscreen_choice_selects_exclusive_only_with_exact_mode_and_backend_support",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#fullscreen_choice_selects_exclusive_only_with_exact_mode_and_backend_support",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native refresh_rate_hz_rounds_millihertz_to_glfw_hertz",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#refresh_rate_hz_rounds_millihertz_to_glfw_hertz",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native video_mode_facts_exact_match_includes_refresh_and_total_bits",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#video_mode_facts_exact_match_includes_refresh_and_total_bits",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-renderer set_vsync_enabled_renegotiates_present_mode_without_touching_targets",
@@ -52823,7 +52823,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/runtime.rs",
@@ -52857,7 +52857,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+            "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
           },
           {
             "path": "crates/bbb-renderer/src/counters.rs",
@@ -52876,15 +52876,15 @@
             "sha256": "8dab49968721692a69a0b1b3b81f320039bc87cdd49b373e572f8d1360ebde23"
           }
         ],
-        "dependency_closure_sha256": "b71977adf789a92409dce908ede5cc74b0623acec5bcb072d8ed8c4702db03a9",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "7ceccf9478dbb93003235c1d38562b8deffea74767ddc89aa65fa768b81b62dd",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/main.rs",
           "crates/bbb-native/src/window_surface.rs"
         ],
-        "focused_test_contract_sha256": "7d8ef13d3254411d4e6296e98f170b7124511a1c8181f086b19b4248d0af72cb",
+        "focused_test_contract_sha256": "2ba9f92a52b8d7249a24a834074f13fdebebd1e2ef8b0311e14ee7dd4acbe7f0",
         "owner": "native platform/renderer",
-        "owner_contract_sha256": "bb9b771a4bdbdfa5f48b8a08d0b7ec3ded06df7ccb54513a60244bf45ffc4eb7"
+        "owner_contract_sha256": "ac816dfcfbdecd7fd960ced1b10d7bf0c6e56bb135a4f58556c6c514368fc915"
       },
       "differential_scenarios": [
         {
@@ -52945,21 +52945,21 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native resize_gui_surface_projects_1280x720_at_scale_three_to_427x240",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native block_selection_projection_uses_current_material_catalog_surface_width_and_style",
@@ -53008,35 +53008,35 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#appropriate_line_width_scales_from_1920_and_never_drops_below_2_5",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native calculate_gui_scale_enforce_unicode_rounds_odd_scale_up",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#calculate_gui_scale_enforce_unicode_rounds_odd_scale_up",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native calculate_gui_scale_matches_vanilla_progression",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#calculate_gui_scale_matches_vanilla_progression",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native gui_scaled_size_uses_ceiling_division",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#gui_scaled_size_uses_ceiling_division",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-renderer gui_surface_size_stays_logical_while_surface_size_stays_physical",
@@ -53144,7 +53144,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/startup.rs",
@@ -53153,7 +53153,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/window_icon.rs",
@@ -53170,18 +53170,18 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+            "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
           }
         ],
-        "dependency_closure_sha256": "c97370939711e657a55caa1951f94048f566972ac5b995a41601f27867aeb8ea",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "7d721d45e0e854e5c48be0876d2d29dc37cecdb0a98eaed16df0e9069d56a7cf",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/window_icon.rs",
           "crates/bbb-native/src/window_surface.rs"
         ],
-        "focused_test_contract_sha256": "91c91a7de7d3061b44c554f01bf56f5d82b9ff3ba4b930a910a53d6b7fdb3531",
+        "focused_test_contract_sha256": "94fb4cd10883849cae7ceb4744742dae663219db282cc2fdae4cb2e27efd895e",
         "owner": "native window chrome",
-        "owner_contract_sha256": "89bc33abfcd89abe26851c5323cc36532c464351463bb71d5d9264999784f2f5"
+        "owner_contract_sha256": "be692d39a4eab1e93acd9a1640ef0a607cce25c9dbe364abdad1bd32cbe12f38"
       },
       "differential_scenarios": [
         {
@@ -53211,35 +53211,35 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#cursor_icon_changes_flow_through_select_cursor_gating",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native window_title_follows_the_published_connection_state_and_diffs_applications",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#window_title_follows_the_published_connection_state_and_diffs_applications",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native the_stored_window_family_options_feed_the_window_owner",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#the_stored_window_family_options_feed_the_window_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native create_title_marks_modified_client_and_appends_multiplayer_while_connected",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#create_title_marks_modified_client_and_appends_multiplayer_while_connected",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native select_cursor_forces_default_unless_allowed_and_skips_redundant_changes",
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#select_cursor_forces_default_unless_allowed_and_skips_redundant_changes",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         }
       ],
       "matrix": {
@@ -53334,7 +53334,7 @@
               "focused-test",
               "owner-focused-test"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/simulation/input_commands.rs",
@@ -53368,15 +53368,15 @@
             "sha256": "cdf58988c065e63bc32d3da59d9503b7623ff071e74e73a4203b98d532f89620"
           }
         ],
-        "dependency_closure_sha256": "a668258f275bf6857e3ee7b871745759e750a4fed634da3ebe665272979791fa",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "171e84b13851319414f9253b1fe502809f72a4528af9094f30a5d0f721854c12",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "scripts/generate-client-options-catalog.py"
         ],
-        "focused_test_contract_sha256": "e517b38d3915930e53eb4519273162c2f0072fc1a424f083f98ed0f242484e69",
+        "focused_test_contract_sha256": "0023d8601e51011d6cc8d4de87a2d655078724683eb891fc624aed911e7644dd",
         "owner": "`bbb-native::client_options`",
-        "owner_contract_sha256": "6914f1cac077297055bb392b3e3fa582922407e846826a7067cda016e79cffa4"
+        "owner_contract_sha256": "dd13c127f3b6c5ccdf3a62119219147634699284fd9c3143af70f75a799f73a2"
       },
       "differential_scenarios": [
         {
@@ -53471,7 +53471,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native recipe_book_language_transition_reloads_saves_and_broadcasts_in_order",
@@ -53617,7 +53617,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-renderer/src/gpu.rs",
@@ -53672,14 +53672,14 @@
             "sha256": "140526d8407a57fe2a814fc72f0cb47bc09308f509a0f7fa6d0605c7a49a2e56"
           }
         ],
-        "dependency_closure_sha256": "df3b8876b46787126e18c893239388e763062240e2d7d7e35ff4caf5179eb861",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "ced44dd79e5ea11bb33ae703bde8459ac76980d49a106e49f95ecbdc409afb71",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs"
         ],
-        "focused_test_contract_sha256": "d777b41bb9499c8f6ff956407b8a03cadc939fa1206df04dfd3db6e8acbb4905",
+        "focused_test_contract_sha256": "a5e9001d47e3d6b363db8fd15bdad23faa772964f13ccd5b1ad33ad7c6271df3",
         "owner": "`bbb-native::client_options::derived` 与各消费 owner",
-        "owner_contract_sha256": "c1fd52631557bddd6a0d21d74c5716e99174d20d6b201b8b3a34f5425e10b420"
+        "owner_contract_sha256": "0ff0dfa362a418b4146741700b21852dba5465481887c4c5092d41e35ac47427"
       },
       "differential_scenarios": [
         {
@@ -53747,35 +53747,35 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_accept_vanilla_menu_background_blurriness_range",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native args_build_client_information_from_startup_options",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native args_reject_menu_background_blurriness_outside_vanilla_range",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_reject_menu_background_blurriness_outside_vanilla_range",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native args_reject_text_background_opacity_outside_unit_range",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_reject_text_background_opacity_outside_unit_range",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_render_clouds_reads_legacy_names_and_booleans",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_render_clouds_reads_legacy_names_and_booleans",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-renderer anisotropic_filtering_keeps_the_nearest_shader_and_scales_the_sampler",
@@ -53980,7 +53980,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/resource_reload.rs",
@@ -54033,7 +54033,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-native/src/terrain_runtime.rs",
@@ -54068,7 +54068,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+            "sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
           },
           {
             "path": "crates/bbb-net/src/driver/commands.rs",
@@ -54113,8 +54113,8 @@
             "sha256": "652eb7a646b1a56d2be89959c43643f66d1a96b17241896b2819374645ac8c26"
           }
         ],
-        "dependency_closure_sha256": "f3069d3fa2fe5699a2c5eeb19b9fccc552bdf5b081e3d1c6673492cef55eec3b",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "b0ecc3bdb763de5473e9bb84957c739e7dae0a76d2c8d6f1669b2527079aabb4",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/client_options.rs",
           "crates/bbb-native/src/entity_scene.rs",
@@ -54125,9 +54125,9 @@
           "crates/bbb-pack/src/selected_packs.rs",
           "crates/bbb-renderer/src/renderer.rs"
         ],
-        "focused_test_contract_sha256": "f3ad8d8689ad62d338cae24635f88f5f62a065fec7df86714c04048f0114f31f",
+        "focused_test_contract_sha256": "716ae502b159296be576a3d98e459657f271b8601d3542d2f6ae44e3b67c87fb",
         "owner": "`bbb-native::client_options`、startup/runtime/renderer、`bbb-pack`、`bbb-audio` 与 `bbb-net` 广播",
-        "owner_contract_sha256": "a58ef9195627a2de883d6b7aa2b44e7992e124bf2eb6add6b2d2ebad68d6aabe"
+        "owner_contract_sha256": "f1a7decd10264b81176fdedb2ad48e96bd4133e2b4cf1181a187d0d4e5f75484"
       },
       "differential_scenarios": [
         {
@@ -54251,14 +54251,14 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#client_options_save_completion_follows_missing_or_failed_file_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native fullscreen_transitions_share_one_deterministic_mode_policy",
           "ignored": false,
           "reference": "crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",
           "result": "focused-evidence-pending",
-          "source_sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+          "source_sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native renderer_resource_owners_commit_inside_one_reload_barrier",
@@ -54293,63 +54293,63 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#a_typed_fullscreen_resolution_wins_over_the_stored_line",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native args_build_client_information_from_startup_options",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native startup_music_options_use_vanilla_defaults_and_cli_names",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#startup_music_options_use_vanilla_defaults_and_cli_names",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_graphics_presets_overwrite_every_owned_value_after_load",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_graphics_presets_overwrite_every_owned_value_after_load",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_music_options_reach_startup_and_explicit_cli_wins",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_music_options_reach_startup_and_explicit_cli_wins",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_options_fill_arguments_the_user_did_not_type",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_options_fill_arguments_the_user_did_not_type",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_resource_pack_lists_reconcile_the_game_directory_repository",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_resource_pack_lists_reconcile_the_game_directory_repository",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native stored_sound_device_decodes_codec_string_and_explicit_cli_wins",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#stored_sound_device_decodes_codec_string_and_explicit_cli_wins",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native the_stored_window_family_options_feed_the_window_owner",
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#the_stored_window_family_options_feed_the_window_owner",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-native prioritize_chunk_updates_matches_vanilla_sync_decision",
@@ -54370,7 +54370,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/window_surface.rs#video_mode_facts_exact_match_includes_refresh_and_total_bits",
           "result": "focused-evidence-pending",
-          "source_sha256": "18f3af44d02ca81d2661d7f04c8f73b248a025bd7cbccd7e68885e43f3f37daf"
+          "source_sha256": "781604ab6a71610a1ffa07fef75750b8c63fafc335d4eb81e0c92d36d0a021ce"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net broadcast_client_information_keeps_each_phase_own_packet_id",
@@ -54527,7 +54527,7 @@
           }
         ],
         "dependency_closure_sha256": "091704a83ef0363bd7213856912789434eadf116044e4fbedfe687eac3c8ee35",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/client_options/datafix.rs",
           "crates/bbb-native/src/client_options/datafix_26_1.rs",
@@ -54676,17 +54676,17 @@
               "focused-test",
               "owner-focused-test"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           }
         ],
-        "dependency_closure_sha256": "d5759085251fe280760f5f14f3deb530b1fea81c4df125b29e9feba230709a6b",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "6236229e28937ec6685a9a3d45d28ea4a0bbdd1b9ad65bf4a861b7220394436b",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/server_list.rs"
         ],
-        "focused_test_contract_sha256": "c8e2beee9f4302f3ecdc7789a54111e62e88adc22157dcc140a7a4db29f08a00",
+        "focused_test_contract_sha256": "e3da329a696af6808fa68e6ed5f9f53ad9a7f0b68d1c54216fa0590089b7a9a0",
         "owner": "`bbb-native::server_list`",
-        "owner_contract_sha256": "3b38e561f9b1bac7dbd3df06a799b864518406c7198778d40b5053895b1b306e"
+        "owner_contract_sha256": "09e0a14f5dd310b68f5092781bbce3ec9f9aa8c37ec3bbab309abf14bd9a13f6"
       },
       "differential_scenarios": [
         {
@@ -54751,7 +54751,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#server_list_owner_requires_explicit_store_name_and_live_connection",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         }
       ],
       "matrix": {
@@ -54822,7 +54822,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -54929,11 +54929,11 @@
             "roles": [
               "matrix-evidence"
             ],
-            "sha256": "2b3983db60f16736076c61eccb44637cd37dec13c27902c348ce347874338e68"
+            "sha256": "452510eb36fec1dc7cdbbdabcd3cbd96e8b4a3e0541d399dad51f0b90c5459b8"
           }
         ],
-        "dependency_closure_sha256": "1efe28328f0e65af7f859cc6b449e6a57db8bff6eea9517f2cf3ecb9114ae973",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "aad69e2adc3b1be20ea339f9e1cbc439200ffb62eca9935cac9d00a2c782dbfe",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_queues_dynamic_cape_and_elytra_texture_downloads",
           "crates/bbb-item-model/src/item_runtime/tests.rs#profile_presentation_revision_tracks_skin_failure_after_success",
@@ -54944,7 +54944,7 @@
         ],
         "focused_test_contract_sha256": "63d2d75ff139d906ab7b8340e29d810b42f41ba9294aaa04b571d1db05f36976",
         "owner": "`bbb-item-model::skin_runtime`→native→renderer",
-        "owner_contract_sha256": "2952d5df4d1d96d7b52b381dd1fd6f2aaeda179f12350effda5bc57aaaa3f968"
+        "owner_contract_sha256": "f245fec5cb09ed762530545f83bd64c4acb59a75301efb677cdb64301f8b2435"
       },
       "differential_scenarios": [
         {
@@ -55127,7 +55127,7 @@
             "roles": [
               "owner-implementation"
             ],
-            "sha256": "d0149126a638f02cf5d305740b0c9e5843ab6dbc4049b4bf6d1f85d56d7b4959"
+            "sha256": "570b7fe8f90d2b1e172de9cbbea4df6fa359737106b90b43c86a1baa40b424a0"
           },
           {
             "path": "crates/bbb-native/src/runtime/book_screen.rs",
@@ -55176,7 +55176,7 @@
               "owner-focused-test",
               "owner-implementation"
             ],
-            "sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+            "sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
           },
           {
             "path": "crates/bbb-net/src/chat_session.rs",
@@ -55320,17 +55320,17 @@
             "sha256": "0148ca4d7c5d68394139d19fa1f65254481d976bbde2bc3f193596b5becfc2df"
           }
         ],
-        "dependency_closure_sha256": "d54454f5eee95ffde580d6e45fd6aba4a1ffe166f300ad4a5430117210b9c6d7",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "dependency_closure_sha256": "2b0bab47526be0c650dfbbf45b7bce078258f9da30c715c005ede9183a1ba77e",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/reporting.rs",
           "crates/bbb-net/src/chat_session.rs",
           "crates/bbb-world/src/client/reporting.rs",
           "crates/bbb-world/src/client/social.rs"
         ],
-        "focused_test_contract_sha256": "656bfa767fd984b5d4f5c53a928c124412926556fc98934c50e02814036671ec",
+        "focused_test_contract_sha256": "d030909eb78112e8b5c747d8d54add62ab544d10f7cb71696e09a6ff401f19a5",
         "owner": "`bbb-world` social/reporting state + `bbb-net` chat_session/last-seen + `bbb-native` input/runtime",
-        "owner_contract_sha256": "5ec85da7d68f6d7f19c19dcb033e17d08247587df0be06cd0afb9528e1d2414e"
+        "owner_contract_sha256": "3fe1fe4886d7876088994b7b8a58a1d5a83e6548482bbfee4628bc0228faf482"
       },
       "differential_scenarios": [
         {
@@ -55521,7 +55521,7 @@
           "ignored": false,
           "reference": "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
           "result": "focused-evidence-pending",
-          "source_sha256": "aaa85f5ad1a658d146c330bb3714af84afe3393ba653367a436c274969817123"
+          "source_sha256": "74e4539969c2e2bcec0d7eb0f56556c2b2fd0aa97100af9e5ae820d3e9bf9d93"
         },
         {
           "command": "scripts/cargo-dev.sh test -p bbb-net offline_connection_options_delegate_login_username_validation",
@@ -55786,7 +55786,7 @@
           }
         ],
         "dependency_closure_sha256": "d94f6c0e7e8a459b67df72ee17e8c6afd41ca0e6449fb4b6293bd13e50c324c8",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
           "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
@@ -55986,7 +55986,7 @@
           }
         ],
         "dependency_closure_sha256": "f616918df728d83273b0f54b29542efa93ae7e26ab6f047cf0ff7ef1be446433",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/evidence/macos-native-retina/current-wgpu30-baseline.json",
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
@@ -56171,7 +56171,7 @@
           }
         ],
         "dependency_closure_sha256": "884893614701f8ff0bd2d041d88ca692ef5bc9ed64bf6298e638a97bb06177dc",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/wiki/mechanisms/performance/equal-load-benchmark.md",
           "scripts/gpu_duration_capture.py",
@@ -56444,7 +56444,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -56638,7 +56638,7 @@
           }
         ],
         "dependency_closure_sha256": "00810a525d2972659f3ca08621057bb11c4212457bfcd3940744117efa6fc4f8",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
           "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
@@ -56782,7 +56782,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -56864,7 +56864,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -56972,7 +56972,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57115,7 +57115,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57298,7 +57298,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57408,7 +57408,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57492,7 +57492,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -57604,7 +57604,7 @@
           }
         ],
         "dependency_closure_sha256": "9195e182b6b3f4a17d324f040d1066ab4b3733aa28ceb17de1326a1a36a41432",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md",
           "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
@@ -57948,7 +57948,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58032,7 +58032,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58170,7 +58170,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58284,7 +58284,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58394,7 +58394,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58524,7 +58524,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58602,7 +58602,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58740,7 +58740,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58822,7 +58822,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58904,7 +58904,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -58984,7 +58984,7 @@
           }
         ],
         "dependency_closure_sha256": "4702f023346cbb1ba5d1f12ccfa48e7c4c6445da649205c7ae383c6e189a1383",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "docs/unsupported-features.md"
         ],
@@ -59156,7 +59156,7 @@
           }
         ],
         "dependency_closure_sha256": "0f44ecf79dd8edadb860f4a2c3f6bbfafa6f54df74637af7cb91cbc20b3a4a1b",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "scripts/bbb_tools/executable_identity.py",
           "scripts/client_mechanism_inventory.py",
@@ -59640,7 +59640,7 @@
           }
         ],
         "dependency_closure_sha256": "263fb0f82af33209b65797f566b6537d3eb71f8bdc8eeb264a929b88af7d4f6a",
-        "evidence_commit": "7a3fda76fb2b707f22de2420e29bd13677058a74",
+        "evidence_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
         "evidence_references": [
           "scripts/docs_wiki_lint.py#WikiLint",
           "scripts/parity_acceptance.py#mechanism_source_hashes",
@@ -63926,7 +63926,7 @@
     ],
     "implementation_ready": false,
     "semantic_contract_sha256": "a7d8893573ee17c3729726d02ae067934ce9e78c4d7f647cb09022f650428002",
-    "stage": "implementation",
+    "stage": "checkpoint",
     "stage_order": [
       "implementation",
       "checkpoint",
