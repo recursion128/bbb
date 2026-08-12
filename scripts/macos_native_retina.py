@@ -187,6 +187,7 @@ GPU_STAGE_COLUMNS = (
     "total_gpu_duration",
 ) + GPU_STAGE_DURATION_COLUMNS
 INPUT_LATENCY_SCHEMA = "renderer-input-latency-v1"
+WINDOW_PRESENTATION_SCHEMA = "macos-accessibility-window-v1"
 INPUT_LATENCY_DURATION_COLUMNS = (
     "enqueue_to_simulation_apply",
     "simulation_apply_to_renderer_extract",
@@ -4337,6 +4338,7 @@ def validate_and_summarize(
     bbb_commit: str = BASELINE_BBB_COMMIT,
     candidate_fps_evidence: Mapping[str, object] | None = None,
     establish_current_baseline: bool = False,
+    require_window_presentation: bool = False,
 ) -> dict[str, object]:
     """Return a formal comparison or a blocker without comparison metrics."""
 
@@ -4474,6 +4476,51 @@ def validate_and_summarize(
                     "actual": actual,
                 }
             )
+        if require_window_presentation:
+            window_presentation = run.get("window_presentation")
+            if not isinstance(window_presentation, Mapping):
+                reasons.append(
+                    {
+                        "code": "window_presentation_missing",
+                        "run": index,
+                        "client": run.get("client"),
+                    }
+                )
+            elif (
+                window_presentation.get("schema") != WINDOW_PRESENTATION_SCHEMA
+                or window_presentation.get("frontmost") is not True
+                or window_presentation.get("size_pixels") != list(expected_drawable)
+            ):
+                reasons.append(
+                    {
+                        "code": "window_presentation_mismatch",
+                        "run": index,
+                        "client": run.get("client"),
+                        "expected": {
+                            "schema": WINDOW_PRESENTATION_SCHEMA,
+                            "frontmost": True,
+                            "size_pixels": list(expected_drawable),
+                        },
+                        "actual": window_presentation,
+                    }
+                )
+            if run.get("client") == "bbb":
+                presentation = run.get("surface_presentation")
+                native_window = (
+                    presentation.get("native_window_pixels")
+                    if isinstance(presentation, Mapping)
+                    else None
+                )
+                if native_window != list(expected_drawable):
+                    reasons.append(
+                        {
+                            "code": "native_window_drawable_mismatch",
+                            "run": index,
+                            "client": "bbb",
+                            "expected": list(expected_drawable),
+                            "actual": native_window,
+                        }
+                    )
         screenshots = run.get("screenshots")
         segments = (
             {
@@ -4891,6 +4938,7 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
             "expected_metal_drawable_count": None,
             "actual_metal_drawable_count": None,
             "actual_drawable_pixels": None,
+            "native_window_pixels": None,
             "in_flight_submission_budget": None,
         }
     line = re.search(r"renderer surface presentation selected[^\n]*", text)
@@ -4922,6 +4970,10 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
         r"drawable_height=([0-9.]+)[^\n]*maximum_drawable_count=([0-9]+)",
         text,
     )
+    native_window = re.search(
+        r"native platform window created[^\n]*width=([0-9]+)[^\n]*height=([0-9]+)",
+        text,
+    )
     if has_wgpu30_contract and observed is None:
         raise RetinaAcceptanceError("BBB log lacks actual CAMetalLayer presentation evidence")
     drawable = (
@@ -4940,6 +4992,11 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
         ),
         "actual_metal_drawable_count": int(observed.group(3)) if observed is not None else None,
         "actual_drawable_pixels": drawable,
+        "native_window_pixels": (
+            [int(native_window.group(1)), int(native_window.group(2))]
+            if native_window is not None
+            else None
+        ),
         "in_flight_submission_budget": (
             int(budget_match.group(1)) if budget_match is not None else None
         ),
@@ -4953,6 +5010,40 @@ def _surface_presentation_from_log(client: str, text: str) -> dict[str, object]:
             if observed is not None
             else "legacy configured expectation; not actual evidence"
         ),
+    }
+
+
+def _window_presentation_receipt(
+    presentation: object, expected_pixels: tuple[int, int]
+) -> dict[str, object]:
+    """Materialize and validate a frontmost native-window receipt."""
+
+    frontmost = bool(getattr(presentation, "frontmost", False))
+    position_value = getattr(presentation, "position", ())
+    size_value = getattr(presentation, "size", ())
+    if (
+        not isinstance(position_value, tuple)
+        or len(position_value) != 2
+        or not isinstance(size_value, tuple)
+        or len(size_value) != 2
+    ):
+        raise RetinaAcceptanceError("macOS window presentation receipt is malformed")
+    position = [float(value) for value in position_value]
+    size = [round(float(value)) for value in size_value]
+    if not frontmost:
+        raise RetinaAcceptanceError("macOS benchmark window is not frontmost")
+    if size != list(expected_pixels):
+        raise RetinaAcceptanceError(
+            f"macOS native window {size[0]}x{size[1]} differs from "
+            f"target {expected_pixels[0]}x{expected_pixels[1]}"
+        )
+    return {
+        "schema": WINDOW_PRESENTATION_SCHEMA,
+        "source": "Accessibility AXFrontmost/AXPosition/AXSize",
+        "pid": int(getattr(presentation, "pid")),
+        "frontmost": frontmost,
+        "position": position,
+        "size_pixels": size,
     }
 
 
@@ -5207,6 +5298,7 @@ def _run_client(
         "input_script_sha256": canonical_sha256(input_script),
         "input_script": input_script,
         "screenshots": [],
+        "window_presentation": None,
         "profiles": [],
         "required_frame_phase_schema": (
             required_frame_phase_schema if client == "bbb" else None
@@ -5292,6 +5384,10 @@ def _run_client(
                 timeout=timeout,
             )
             input_backend = MacOsQuartzBackend(client_process.pid)
+            input_backend.focus_pid(client_process.pid)
+            result["window_presentation"] = _window_presentation_receipt(
+                input_backend.window_presentation(), display.target_drawable
+            )
             _warmup_and_start_replay(server_process, replay)
             starts = [
                 marker
@@ -5567,6 +5663,7 @@ def run_formal(
         bbb_commit=capture_commit,
         candidate_fps_evidence=candidate_fps_evidence,
         establish_current_baseline=establish_current_baseline,
+        require_window_presentation=True,
     )
     report.update(
         {

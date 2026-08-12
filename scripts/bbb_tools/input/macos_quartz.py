@@ -8,6 +8,7 @@ import sys
 import time
 from ctypes import c_bool, c_double, c_uint16, c_uint32, c_void_p
 from ctypes.util import find_library
+from dataclasses import dataclass
 
 from .contract import InputBackend, InputError
 
@@ -48,6 +49,16 @@ KEY_CODES = {
 }
 BUTTONS = {"left": 0, "right": 1, "middle": 2}
 AX_ERROR_ATTRIBUTE_UNSUPPORTED = -25205
+
+
+@dataclass(frozen=True)
+class MacOsWindowPresentation:
+    """Accessibility receipt for the exact native window targeted by a run."""
+
+    pid: int
+    frontmost: bool
+    position: tuple[float, float]
+    size: tuple[float, float]
 
 
 def _require_accessibility_status(
@@ -224,6 +235,75 @@ class MacOsQuartzBackend(InputBackend):
             )
         finally:
             for value in (size_value, position_value, windows):
+                if value.value:
+                    self._cf.CFRelease(value)
+            if application:
+                self._cf.CFRelease(application)
+            for value in attributes.values():
+                if value:
+                    self._cf.CFRelease(value)
+
+    def window_presentation(self) -> MacOsWindowPresentation:
+        """Read the frontmost state and geometry of this PID's first window.
+
+        The formal Retina runner uses this after ``focus_pid``. A drawable-sized
+        F2 image proves render-target pixels, while this separate receipt proves
+        that those pixels belong to the frontmost native window rather than an
+        occluded, half-sized, or otherwise non-presented surface.
+        """
+
+        if self._pid is None or self._pid <= 0:
+            raise InputError("reading a macOS window requires a positive pid")
+        attributes = {
+            name: self._cf.CFStringCreateWithCString(
+                None, name.encode("ascii"), 0x08000100
+            )
+            for name in ("AXFrontmost", "AXWindows", "AXPosition", "AXSize")
+        }
+        application = self._api.AXUIElementCreateApplication(self._pid)
+        windows = c_void_p()
+        frontmost_value = c_void_p()
+        position_value = c_void_p()
+        size_value = c_void_p()
+        try:
+            if not all(attributes.values()) or not application:
+                raise InputError("macOS could not open the window presentation bridge")
+            status = self._api.AXUIElementCopyAttributeValue(
+                application, attributes["AXFrontmost"], ctypes.byref(frontmost_value)
+            )
+            if status != 0 or not frontmost_value.value:
+                raise InputError(
+                    f"macOS could not read process {self._pid}'s frontmost state ({status})"
+                )
+            frontmost = bool(self._cf.CFBooleanGetValue(frontmost_value))
+            status = self._api.AXUIElementCopyAttributeValue(
+                application, attributes["AXWindows"], ctypes.byref(windows)
+            )
+            if status != 0 or not windows.value or self._cf.CFArrayGetCount(windows) < 1:
+                raise InputError(f"macOS could not read process {self._pid}'s window")
+            window = self._cf.CFArrayGetValueAtIndex(windows, 0)
+            for name, output in (("AXPosition", position_value), ("AXSize", size_value)):
+                status = self._api.AXUIElementCopyAttributeValue(
+                    window, attributes[name], ctypes.byref(output)
+                )
+                if status != 0 or not output.value:
+                    raise InputError(
+                        f"macOS could not read process {self._pid}'s {name} ({status})"
+                    )
+            position = CGPoint()
+            size = CGSize()
+            if not self._api.AXValueGetValue(position_value, 1, ctypes.byref(position)):
+                raise InputError("macOS window position had the wrong Accessibility type")
+            if not self._api.AXValueGetValue(size_value, 2, ctypes.byref(size)):
+                raise InputError("macOS window size had the wrong Accessibility type")
+            return MacOsWindowPresentation(
+                pid=self._pid,
+                frontmost=frontmost,
+                position=(position.x, position.y),
+                size=(size.width, size.height),
+            )
+        finally:
+            for value in (size_value, position_value, frontmost_value, windows):
                 if value.value:
                     self._cf.CFRelease(value)
             if application:

@@ -13,8 +13,8 @@ import unittest
 import zipfile
 from contextlib import closing
 from pathlib import Path
-from socket import AF_INET, SOCK_STREAM, socket
 from types import SimpleNamespace
+from socket import AF_INET, SOCK_STREAM, socket
 from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1579,6 +1579,14 @@ class FormalValidationTests(unittest.TestCase):
             "requested_window_mode": "fullscreen",
             "effective_window_mode": "fullscreen",
             "drawable_pixels": list(drawable),
+            "window_presentation": {
+                "schema": retina.WINDOW_PRESENTATION_SCHEMA,
+                "source": "Accessibility AXFrontmost/AXPosition/AXSize",
+                "pid": 42,
+                "frontmost": True,
+                "position": [0.0, 0.0],
+                "size_pixels": list(drawable),
+            },
             "vsync": False,
             "framerate_limit": "unlimited",
             "warmup_seconds": 30,
@@ -2482,6 +2490,54 @@ class FormalValidationTests(unittest.TestCase):
 
         self.assertFalse(report["metrics_publishable"])
         self.assertIn("window_mode_mismatch", {item["code"] for item in report["blockers"]})
+
+    def test_frontmost_native_window_receipt_uses_physical_pixels(self):
+        receipt = retina._window_presentation_receipt(
+            SimpleNamespace(
+                pid=42,
+                frontmost=True,
+                position=(0.0, 0.0),
+                size=(2560.0, 1600.0),
+            ),
+            (2560, 1600),
+        )
+
+        self.assertEqual(receipt["size_pixels"], [2560, 1600])
+        self.assertTrue(receipt["frontmost"])
+
+    def test_half_sized_native_window_blocks_before_metrics(self):
+        runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+        for run in runs:
+            if run["client"] == "bbb":
+                run["surface_presentation"] = {
+                    "native_window_pixels": [2560, 1600]
+                }
+        runs[1]["surface_presentation"]["native_window_pixels"] = [1440, 900]
+
+        report = retina.validate_and_summarize(
+            display(), runs, require_window_presentation=True
+        )
+
+        self.assertFalse(report["metrics_publishable"])
+        self.assertIsNone(report["comparison"])
+        self.assertIn(
+            "native_window_drawable_mismatch",
+            {item["code"] for item in report["blockers"]},
+        )
+
+    def test_non_frontmost_window_blocks_before_metrics(self):
+        runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
+        runs[0]["window_presentation"]["frontmost"] = False
+
+        report = retina.validate_and_summarize(
+            display(), runs, require_window_presentation=True
+        )
+
+        self.assertFalse(report["metrics_publishable"])
+        self.assertIn(
+            "window_presentation_mismatch",
+            {item["code"] for item in report["blockers"]},
+        )
 
     def test_workload_mismatch_blocks_before_any_performance_comparison(self):
         runs = [self.run_record(client) for client in retina.FORMAL_ORDER]

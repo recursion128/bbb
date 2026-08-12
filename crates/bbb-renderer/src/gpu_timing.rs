@@ -13,7 +13,11 @@ const QUERIES_PER_FRAME: u32 = 12;
 const TOTAL_ONLY_QUERIES_PER_FRAME: u32 = 2;
 const RESOLVE_SLOT_BYTES: u64 = wgpu::QUERY_RESOLVE_BUFFER_ALIGNMENT;
 const STAGE_COUNT: usize = QUERIES_PER_FRAME as usize - 1;
-const STAGE_LOG_SAMPLE_COUNT: u64 = 600;
+// Detailed stage samples are archived per frame by the profiler. This bounded
+// buffer only feeds the human-readable tracing summary, so sorting it while a
+// profile is recording would perturb the very tail being measured. Flush it
+// when GPU timing is disabled instead.
+const STAGE_LOG_SAMPLE_CAPACITY: u64 = 4_096;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SlotState {
@@ -232,13 +236,16 @@ impl GpuFrameTiming {
                 stage_sample_count: 0,
                 stage_nanos_sum: [0; STAGE_COUNT],
                 stage_nanos_samples: std::array::from_fn(|_| {
-                    Vec::with_capacity(STAGE_LOG_SAMPLE_COUNT as usize)
+                    Vec::with_capacity(STAGE_LOG_SAMPLE_CAPACITY as usize)
                 }),
             }
         })
     }
 
     pub(super) fn set_enabled(&mut self, enabled: bool) {
+        if self.enabled && !enabled {
+            self.log_stage_summary();
+        }
         self.enabled = enabled;
         if !enabled {
             self.latest_utilization = None;
@@ -507,6 +514,9 @@ impl GpuFrameTiming {
     }
 
     fn record_stage_sample(&mut self, stage_nanos: [u64; STAGE_COUNT]) {
+        if self.stage_sample_count == STAGE_LOG_SAMPLE_CAPACITY {
+            return;
+        }
         self.stage_sample_count = self.stage_sample_count.saturating_add(1);
         for ((sum, samples), nanos) in self
             .stage_nanos_sum
@@ -517,7 +527,10 @@ impl GpuFrameTiming {
             *sum = sum.saturating_add(u128::from(nanos));
             samples.push(nanos);
         }
-        if self.stage_sample_count < STAGE_LOG_SAMPLE_COUNT {
+    }
+
+    fn log_stage_summary(&mut self) {
+        if self.stage_sample_count == 0 {
             return;
         }
         let averages = self
@@ -563,11 +576,6 @@ impl GpuFrameTiming {
             encoder_tail_p99_us = p99[10] as f64 / 1_000.0,
             "averaged renderer GPU stage timings"
         );
-        self.stage_sample_count = 0;
-        self.stage_nanos_sum = [0; STAGE_COUNT];
-        for samples in &mut self.stage_nanos_samples {
-            samples.clear();
-        }
     }
 }
 

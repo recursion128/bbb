@@ -7,7 +7,13 @@
 
 use std::time::Duration;
 
-const SAMPLE_COUNT: usize = 600;
+// Keep the profiling hot path append-only. The previous 600-frame window
+// cloned and sorted every phase vector synchronously while the formal sample
+// window was still open, so the diagnostic logger could manufacture the tail
+// it was intended to measure. Formal archives already retain every raw frame;
+// this bounded buffer exists only for the human-readable tracing summary and
+// is flushed after profiling is disabled.
+const SAMPLE_CAPACITY: usize = 4_096;
 const PHASE_COUNT: usize = 20;
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -90,7 +96,7 @@ impl Default for FramePhaseDiagnostics {
     fn default() -> Self {
         Self {
             enabled: false,
-            samples: std::array::from_fn(|_| Vec::with_capacity(SAMPLE_COUNT)),
+            samples: std::array::from_fn(|_| Vec::with_capacity(SAMPLE_CAPACITY)),
         }
     }
 }
@@ -100,6 +106,9 @@ impl FramePhaseDiagnostics {
         if self.enabled == enabled {
             return;
         }
+        if self.enabled {
+            self.report();
+        }
         self.enabled = enabled;
         self.clear();
     }
@@ -108,16 +117,23 @@ impl FramePhaseDiagnostics {
         if !self.enabled {
             return;
         }
+        if self.samples[0].len() == SAMPLE_CAPACITY {
+            return;
+        }
         for (samples, nanos) in self.samples.iter_mut().zip(sample.nanos()) {
             samples.push(nanos);
         }
-        if self.samples[0].len() < SAMPLE_COUNT {
+    }
+
+    fn report(&self) {
+        let sample_count = self.samples[0].len();
+        if sample_count == 0 {
             return;
         }
         let summaries: [PhaseSummary; PHASE_COUNT] =
             std::array::from_fn(|index| phase_summary(&self.samples[index], &self.samples[0]));
         tracing::debug!(
-            samples = SAMPLE_COUNT,
+            samples = sample_count,
             frame_interval_p50_us = micros(summaries[0].p50),
             frame_interval_p95_us = micros(summaries[0].p95),
             frame_interval_p99_us = micros(summaries[0].p99),
@@ -223,7 +239,6 @@ impl FramePhaseDiagnostics {
                 summaries[19].next_interval_correlation,
             "renderer CPU phase tail diagnostics"
         );
-        self.clear();
     }
 
     fn clear(&mut self) {
@@ -328,7 +343,7 @@ fn nanos_to_micros(nanos: f64) -> f64 {
 mod tests {
     use super::{
         nearest_rank_percentile, pearson_correlation, phase_summary, profiler_frame_timing,
-        FramePhaseDiagnostics, FramePhaseSample, SAMPLE_COUNT,
+        FramePhaseDiagnostics, FramePhaseSample, SAMPLE_CAPACITY,
     };
     use std::time::Duration;
 
@@ -363,16 +378,34 @@ mod tests {
     }
 
     #[test]
-    fn fixed_window_clears_after_reporting() {
+    fn profiling_window_is_append_only_until_disable_then_clears() {
         let mut diagnostics = FramePhaseDiagnostics::default();
         diagnostics.set_enabled(true);
-        for millis in 1..=SAMPLE_COUNT {
+        for millis in 1..=600 {
             diagnostics.record(FramePhaseSample {
                 frame_interval: Duration::from_millis(millis as u64),
                 ..FramePhaseSample::default()
             });
         }
+        assert!(diagnostics
+            .samples
+            .iter()
+            .all(|samples| samples.len() == 600));
+        diagnostics.set_enabled(false);
         assert!(diagnostics.samples.iter().all(Vec::is_empty));
+    }
+
+    #[test]
+    fn profiling_window_is_bounded_without_in_window_summary_work() {
+        let mut diagnostics = FramePhaseDiagnostics::default();
+        diagnostics.set_enabled(true);
+        for _ in 0..SAMPLE_CAPACITY + 1 {
+            diagnostics.record(FramePhaseSample::default());
+        }
+        assert!(diagnostics
+            .samples
+            .iter()
+            .all(|samples| samples.len() == SAMPLE_CAPACITY));
     }
 
     #[test]
