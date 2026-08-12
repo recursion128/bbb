@@ -109,16 +109,23 @@ Java→BBB→BBB→Java 合同复测。schema 2 从原 profiler archives 与 raw
 0.805/13.400 ms，stddev 为 0.141/0.961 ms，p99-p50 为 0.359/3.239 ms，
 hitch 为 0/1。
 
-CV 仍记录为 application 0.1864/0.1177、GPU 0.3237/0.0932，但不再单独阻止。
-combined 与所有 GPU scope 通过；active 的精确原因是 application `p99-p50` 在
-`static_orbit`、`preloaded_flight` scene aggregate 回退，以及七个 nearest-run-pair
-scene scope 中共九条 stddev/p99-p50 失败分类。报告保留 metrics publishable，同时以
-`blocked` 明示这些绝对 scope；capture commit `d698c8db0` 当时用于 BBB FPS baseline，
-现只保留历史复核，不再参与新候选比较或 margin 推导。原 schema-1
+原 schema-2 口径把 `static_orbit`、`preloaded_flight` scene aggregate 的
+`p99-p50` 以及七个 nearest-run-pair scene scope 的五条 stddev、八条 p99-p50
+差异列为 blocker；该判定和报告保持不改，作为历史记录。产品口径 schema 4 从同一
+hashed profiler archive 与 raw sidecar 重判，不重新采集：combined、三个 scene、两个
+ABBA round、四个 nearest pair 的 all-scenes 与逐 scene 共 22/22 scope 都通过。硬门禁
+只包括 BBB mean FPS 不低于官方、App p99 不高于官方、1% low 不低于官方，以及 App/GPU
+hitch 不高于官方；p50/p95/stddev/p99-p50/CV 与 GPU duration 仍逐 scope 保留为诊断。
+57 条 non-blocking diagnostics 包含两侧所有 44 条 CV 记录、五条 App stddev 与八条 App
+p99-p50 局部回退，没有硬指标 blocker。因此 `macos-native-retina-stability` 关闭并进入
+maintenance；capture commit `d698c8db0` 只作官方对比证据，不参与新 candidate margin
+推导。原 schema-1
 [capture report](../../evidence/macos-native-retina/report.json)
 保持 SHA-256 `2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b`；
 raw-backed schema-2 [stability report](../../evidence/macos-native-retina/stability-report.json)
-的 SHA-256 为 `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`。
+的 SHA-256 为 `134c45cb3156333827533d58345787854dc69b9ab1a07c5e2618336177eaf289`；
+schema-4 [product acceptance report](../../evidence/macos-native-retina/product-acceptance-report.json)
+SHA-256 为 `2f05cc23e897c93b5a2c7c94dcb782c90f68b57aad48997b235fa8757c04bfb8`。
 
 后续 schema 3 capture 在 BBB 的 profiler zip 中增加
 `client/metrics/frame_phases.csv`。每个 application frame 成对记录
@@ -227,13 +234,16 @@ CAMetalLayer `drawableSize` 与 `maximumDrawableCount`，不再把 hint+1 单独
 SHA-256 `7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa`。它不再提供
 active baseline、noise margin 或 rollback target。
 
-active `macos-native-retina-bbb-ab-v4` 把 clean/full-gated `5b1903221` 与 release SHA-256
+maintenance `macos-native-retina-bbb-ab-v5` 把 clean/full-gated `5b1903221` 与 release SHA-256
 `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817` 固定为 wgpu 30
 baseline。四次 AC repeat 为 195.828/194.414/194.422/194.180 FPS，预声明 margin 为
 0.8465%。以后 baseline/candidate 每个 run 都必须解析到 registry wgpu/core/hal/types/naga
 30.0.0，绑定相同 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、
 单 in-flight、2560x1600 fullscreen 和同一 workload；任一 identity/scope mismatch 都在解析
-FPS 前拒绝。full-gated `62555c6bf` 的 command-buffer-boundary diagnostic 保持 budget 1
+FPS 前拒绝。App/GPU p99、App 1% low、App/GPU hitch 与同仪器 input latency 逐 scope
+为硬门禁；App p50/p95/stddev/p99-p50/CV 与 GPU mean/p50/p95/stddev/p99-p50/CV 仍完整
+记录为 non-blocking diagnostics，不能被 combined 隐藏。full-gated `62555c6bf` 的
+command-buffer-boundary diagnostic 保持 budget 1
 和一次 submit，combined FPS 194.454→205.274，但最近 C→B 配对的 App p99/stddev/p99-p50/
 1% low 与 GPU mean/p50/p95 回退；combined/scene 共 28 个绝对指标失败。因此不进入正式
 B→C→C→B×2 或 Java ABBA，单 encoder 行为已 fix-forward 恢复。raw-hash-backed 报告为

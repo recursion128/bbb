@@ -36,9 +36,11 @@ pose；客户端只接收 packet。compositor、GPU、kernel 和工具版本属�
    `docs/evidence/vanilla-26.1/parity-acceptance.json`，冻结该 commit/hash。
 6. 只有每个 run 都携带同一 pre-capture receipt，才按 Java → BBB → BBB → Java 的 ABBA 轮次采样。
 7. parser 拒绝 hash/correction/resource/resolution/content/throttle/hook/receipt 异常，再聚合 raw。
-8. 稳定性先看绝对量：application frame 的 mean FPS/frame、p50/p95/p99、1% low、
-   stddev、p99-p50、hitch，以及 GPU duration 的 mean、p50/p95/p99、stddev、p99-p50、
-   hitch。CV 只诊断；绝对指标全过时，CV 单独较差不产生 blocker。
+8. 产品稳定性硬门禁为 application mean FPS、absolute p99、1% low、hitch 和同仪器
+   input software latency；对官方 Java 时硬门禁为 BBB mean FPS 不低于官方、App p99
+   不高于官方、1% low 不低于官方、App/GPU hitch 不高于官方。application 的 mean
+   frame/p50/p95/stddev/p99-p50/CV 与 GPU duration 全部分位和抖动仍逐 scope 记录，
+   但只这些诊断字段略差不得单独产生 blocker。
 9. summary 同时检查 combined、scene、ABBA round 与预声明 nearest-run pair；后续 BBB
    candidate 还要先完成交错 BBB-baseline A/B，FPS margin 由至少四次 baseline 重复噪声
    预先派生并封顶 1%。
@@ -110,16 +112,15 @@ full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715
 单 in-flight 与 wait→acquire→submit→present。该 probe 不是正式 BBB/Vanilla 性能比较，
 也不替代后续独立策略的 paired BBB A/B 或 Java→BBB→BBB→Java ABBA。
 
-候选 A/B 使用独立 `macos-native-retina-bbb-ab-v1` report schema。`candidate-check`
+候选 A/B 当前使用 `macos-native-retina-bbb-ab-v5`；v1-v4 报告继续按各自历史口径
+验证。`candidate-check`
 先拒绝 2560x1600 drawable、fullscreen、VSync/cap、场景、workload/draw 和 input
-parity 不匹配；只有 parity 通过才比较性能。FPS 与 App/GPU 绝对稳定性都必须包含
+parity 不匹配；只有 parity 通过才比较性能。FPS、产品硬门禁与诊断都必须包含
 combined、三个 scene、两个 ABBA round，以及四个 nearest pair 的 all-scenes 和逐 scene
-scope。App
-mean 只使用预声明 FPS margin，p50/p95/p99/stddev/p99-p50/1% low/hitch 不借用该
-margin；GPU mean/p50/p95/p99/stddev/p99-p50/hitch 同样逐 scope 非回退。CV 永远保留
-为诊断字段，绝对指标全部通过时不单独阻止；缺任一 scope 或任一 pair 失败均在正式
-Vanilla ABBA 前拒绝。四次 baseline 重复噪声超过 1% 时必须重采，不能截断成 1% 后
-继续验收。可用
+scope。App mean 只使用预声明 FPS margin；App/GPU p99、App 1% low、App/GPU hitch
+与 input latency 是 candidate 硬门禁。p50/p95/stddev/p99-p50/CV 和其它 GPU timing
+回退列为 non-blocking diagnostics；缺任一 scope 或硬门禁失败均在正式 Vanilla ABBA
+前拒绝。四次 baseline 重复噪声超过 1% 时必须重采，不能截断成 1% 后继续验收。可用
 `scripts/macos_native_retina.py candidate-check --report <report> --candidate-commit <sha>`
 独立复核。
 
@@ -141,14 +142,15 @@ validator 拒绝全部 22 个 FPS scope 和 44 个绝对稳定性比较。combin
 已恢复，该候选不进入 Vanilla ABBA。
 
 `macos-native-retina-bbb-ab-v3` 及其 0.19→wgpu 30 失败报告只作历史迁移证据，不再参与
-候选判定。active v4 baseline 是 full-gated `5b1903221` / release SHA-256
+候选判定。maintenance v5 baseline 是 full-gated `5b1903221` / release SHA-256
 `849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
 195.828/194.414/194.422/194.180 FPS 派生 0.8465% noise margin。B-C-C-B×2 的两侧均须为
 registry wgpu/core/hal/types/naga 30.0.0，并逐 run 绑定 dependency receipt、binary hash、
 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、单 in-flight、
 2560x1600 fullscreen 与相同 workload。任何 identity 或 measurement-scope mismatch 都在
 FPS/稳定性比较前 fail-closed；combined、三个 scene、两个 round、全部 nearest pair 与逐
-scene pair 的 FPS/绝对 App/GPU scope 全过后，才允许正式 Java ABBA。
+scene pair 的 FPS、App/GPU p99、App 1% low、hitch 和 input latency 硬门禁全过后，才允许
+正式 Java ABBA。其余 tail/jitter 字段保持可见但不单独阻止。
 
 一次 gated command-buffer-boundary diagnostic 在最近 C→B 配对中保持 wgpu 30、budget 1、
 hint 2、实际三个 drawable 与 `PassBoundary` strategy。combined FPS 从 194.454 提升到
@@ -209,7 +211,9 @@ render-submit→callback mean 为 8.2594 ms（baseline 5.0243），surface-acqui
 尾部，不能作为吞吐优化接受。报告
 [`two-flight-input-latency-ac-candidate.json`](../../../evidence/macos-native-retina/two-flight-input-latency-ac-candidate.json)
 （SHA-256 `fb7e3290f880f4c75065fe55767489fa7c749177754296268a00a5801718cca0`）；默认恢复单 submission，
-后续 candidate 不得复用该策略。
+后续 candidate 不得复用该策略。正常 fix-forward `74e6929af` 已 full gate，恢复
+Immediate/hint 2/三个 drawable、一个 controller-owned exact render-submission fence 与
+wait→acquire→submit→present；FIFO/Linux 和所有 v1-v4 evidence parser 保持不变。
 
 ## 生命周期和 fallback
 

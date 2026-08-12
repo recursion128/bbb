@@ -1187,6 +1187,7 @@ mod tests {
                 [
                     "README.md",
                     "crates/example/src/lib.rs",
+                    "scripts/client_mechanism_inventory.py",
                     "scripts/parity_acceptance.py",
                 ],
                 self.commit,
@@ -1211,7 +1212,10 @@ mod tests {
             )
             self.assertEqual(
                 plan["validation_only_changed_paths"],
-                ["scripts/parity_acceptance.py"],
+                [
+                    "scripts/client_mechanism_inventory.py",
+                    "scripts/parity_acceptance.py",
+                ],
             )
 
             visual_records = copy.deepcopy(report["mechanisms"])

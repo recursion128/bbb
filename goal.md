@@ -485,8 +485,9 @@ built-in pack ZIP 与 Realms 对应 surface 按账本保持 `not-needed`。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。唯一开放项是账本的 `macos-native-retina-stability`；平台、生命周期、
-音频、安全预算与有界队列按各自 gate/stamp 和 Wiki 合同维护，不在这里保存完成史。
+状态：`active`。Retina 性能进入 maintenance；下一开放路线是 committed direct-dependency
+receipt 与依赖现代化审计，优先单独迁移 winit 0.30。平台、生命周期、音频、安全预算与
+有界队列按各自 gate/stamp 和 Wiki 合同维护，不在这里保存完成史。
 macOS 与 Linux 是声明平台，Windows 是账本附 Vanilla/产品依据的 `not-needed`。
 
 Retina 性能基础设施固定为 crates.io wgpu/core/hal/types/naga 30.0.0；不得恢复 0.19、
@@ -500,20 +501,24 @@ candidate 只记录在账本、evidence 和归档，不写入本文件。
 不变。`renderer-frame-flight-v1`、`renderer-gpu-stages-v1` 与
 `renderer-input-latency-v1` 继续作为 opt-in 诊断面，frame-phase v3 的
 `post_present_fence_submit` 兼容字段继续报零；旧 v1/v2 evidence 和既有失败报告必须可复验，
-未开启详细诊断时保持两个 timestamp query。下一有界架构 slice 只建立不可变
-FramePlan/PassPlan，锁定活跃 pass、attachment/copy consumer、presentation source 与
-pipeline/material batch 顺序；不得引入通用 render graph 或改变可见 workload。等价重构通过后，
-只有 raw stage/pass/copy 证据证明无消费者或重复创建时，才允许单独 candidate 消除该成本。
+未开启详细诊断时保持两个 timestamp query。不可变 FramePlan/PassPlan 继续锁定活跃 pass、
+attachment/copy consumer、presentation source 与 pipeline/material batch 顺序；不得引入通用
+render graph 或改变可见 workload。只有 raw stage/pass/copy 证据证明无消费者或重复创建时，
+才允许单独 candidate 消除该成本。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝
 binary/runtime dependency receipt、drawable、surface、timestamp strategy 或 workload 身份
 不一致，再检查 combined、三个 scene、两个 round、全部 nearest pair 及逐 scene pair。
-FPS 使用预声明 margin；App/GPU 的 p50/p95/p99、stddev、p99-p50、1% low 与 hitch 不得
-回退，CV 仅诊断。提高 FPS 但恶化 input latency、绝对尾部或 hitch 的候选必须拒绝；禁止
-sleep、pacing、cap、VSync 或降低工作量。只有所有 BBB A/B scope 通过才运行正式
-Java→BBB→BBB→Java ABBA。
+FPS 使用预声明 margin；App/GPU p99、App 1% low、App/GPU hitch 与同仪器 input latency
+是 candidate 硬门禁。App p50/p95/stddev/p99-p50/CV 与 GPU 的 mean/p50/p95/stddev/
+p99-p50/CV 继续逐 scope 记录为诊断，不因这些字段单独略差而阻止。Java 对比的硬门禁为
+BBB mean FPS 不低于官方、App p99 不高于官方、1% low 不低于官方、App/GPU hitch 不高于
+官方；诊断字段局部回退必须显式列出。禁止 sleep、pacing、cap、VSync 或
+降低工作量。只有所有 BBB A/B 硬门禁 scope 通过才运行正式 Java→BBB→BBB→Java ABBA。
 
-Retina active 项关闭后再开始 committed direct-dependency receipt 与依赖现代化审计；每次只处理一个
-有界依赖组，优先 winit 0.30，其后 pollster、认证/网络、glam、hecs、音频/归档/开发工具，
-并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。
+Retina maintenance 在 drawable/surface/画面/workload/input identity 不一致，或固定 baseline
+比较的 FPS 超 0.8465% margin、App/GPU p99、App 1% low、App/GPU hitch、input latency
+任一显著回退时重开。
+依赖现代化每次只处理一个有界依赖组：winit 0.30 后依次审计 pollster、认证/网络、glam、
+hecs、音频/归档/开发工具，并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。

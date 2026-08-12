@@ -477,6 +477,29 @@ def wgpu30_two_flight_evidence() -> dict[str, object]:
     return evidence
 
 
+def wgpu30_product_evidence() -> dict[str, object]:
+    evidence = wgpu30_two_flight_evidence()
+    evidence["schema"] = retina.WGPU30_PRODUCT_AB_SCHEMA
+    evidence["absolute_stability"]["policy"] = (
+        retina.PRODUCT_CANDIDATE_STABILITY_POLICY
+    )
+    evidence["scheduling_contract"].update(
+        {
+            "candidate_in_flight_submission_budget": 1,
+            "candidate_submission_fence_strategy": "render-submission-fence",
+            "queue_depth_increased": False,
+            "input_latency_policy": "paired-software-boundary-product-gate",
+        }
+    )
+    for run in evidence["runs"]:
+        if run["variant"] == "candidate":
+            run["surface_presentation"]["in_flight_submission_budget"] = 1
+            run["surface_presentation"]["submission_fence_strategy"] = (
+                "render-submission-fence"
+            )
+    return evidence
+
+
 class ConsolePreflightTests(unittest.TestCase):
     def test_ioreg_console_lock_parser_accepts_explicit_boolean_states(self):
         self.assertTrue(
@@ -584,15 +607,19 @@ class DisplayProbeTests(unittest.TestCase):
         contract = retina.load_profile_contract()
         self.assertEqual(contract["formal_order"], list(retina.FORMAL_ORDER))
         self.assertEqual(contract["drawable_mismatch_policy"], "block-without-comparison")
-        self.assertEqual(contract["stability_acceptance"]["policy"], "absolute-tail-v2")
+        self.assertEqual(
+            contract["stability_acceptance"]["policy"],
+            retina.STABILITY_POLICY,
+        )
         self.assertEqual(
             contract["candidate_bbb_ab"],
             {
-                "schema": retina.WGPU30_OPTIMIZATION_AB_SCHEMA,
+                "schema": retina.WGPU30_PRODUCT_AB_SCHEMA,
                 "legacy_schemas": [
                     retina.LEGACY_CANDIDATE_AB_SCHEMA,
                     retina.CANDIDATE_AB_SCHEMA,
                     retina.WGPU30_CANDIDATE_AB_SCHEMA,
+                    retina.WGPU30_OPTIMIZATION_AB_SCHEMA,
                 ],
                 "surface_policy": "macos-immediate-wgpu30-both-sides",
                 "baseline_wgpu_version": "30.0.0",
@@ -611,7 +638,44 @@ class DisplayProbeTests(unittest.TestCase):
                 "candidate_submission_fence_strategy": "render-submission-fence",
                 "queue_depth_increased": False,
                 "wait_acquire_submit_present_order_unchanged": True,
-                "input_latency_policy": "unchanged-single-in-flight",
+                "input_latency_policy": "paired-software-boundary-product-gate",
+                "acceptance_metrics": {
+                    "application_frame_time": [
+                        "mean_fps",
+                        "p99_ms",
+                        "one_percent_low_fps",
+                        "hitch_counts",
+                    ],
+                    "gpu_duration": ["p99_ms", "hitch_counts"],
+                    "input_latency": [
+                        "mean_ms",
+                        "p50_ms",
+                        "p95_ms",
+                        "p99_ms",
+                        "hitch_counts",
+                        "sample_count",
+                        "superseded_events",
+                        "out_of_order_events",
+                    ],
+                },
+                "diagnostic_metrics": {
+                    "application_frame_time": [
+                        "p50_ms",
+                        "p95_ms",
+                        "stddev_ms",
+                        "p99_minus_p50_ms",
+                        "coefficient_of_variation",
+                    ],
+                    "gpu_duration": [
+                        "mean_ms",
+                        "p50_ms",
+                        "p95_ms",
+                        "stddev_ms",
+                        "p99_minus_p50_ms",
+                        "coefficient_of_variation",
+                    ],
+                    "input_latency": ["stddev_ms", "p99_minus_p50_ms"],
+                },
             },
         )
         self.assertEqual(
@@ -1340,10 +1404,10 @@ class FormalValidationTests(unittest.TestCase):
         self.assertTrue(comparison["coefficient_of_variation"]["bbb_is_worse"])
         self.assertEqual(
             comparison["coefficient_of_variation"]["classification"],
-            "diagnostic-only-absolute-metrics-pass",
+            "diagnostic-only-product-metrics-pass",
         )
 
-    def test_cv_with_absolute_tail_regression_is_rejected(self):
+    def test_stddev_spread_and_cv_regressions_are_non_blocking_when_product_metrics_pass(self):
         bbb = retina.summarize_durations_ms([0.1, 3.9])
         official = retina.summarize_durations_ms([9.0, 11.0])
 
@@ -1351,12 +1415,52 @@ class FormalValidationTests(unittest.TestCase):
             bbb, official, "application_frame_time"
         )
 
-        self.assertEqual(comparison["status"], "failed")
-        self.assertIn("stddev_ms", comparison["failed_absolute_metrics"])
-        self.assertIn("p99_minus_p50_ms", comparison["failed_absolute_metrics"])
+        self.assertEqual(comparison["status"], "passed")
+        self.assertEqual(comparison["failed_acceptance_metrics"], [])
+        self.assertIn("stddev_ms", comparison["non_blocking_diagnostics"])
+        self.assertIn("p99_minus_p50_ms", comparison["non_blocking_diagnostics"])
         self.assertEqual(
             comparison["coefficient_of_variation"]["classification"],
-            "diagnostic-coincident-with-absolute-regression",
+            "diagnostic-only-product-metrics-pass",
+        )
+
+    def test_official_comparison_rejects_application_p99_regression(self):
+        bbb = retina.summarize_durations_ms([9.0, 11.0])
+        official = retina.summarize_durations_ms([0.8, 1.2])
+        bbb["mean_fps"] = official["mean_fps"] + 1.0
+        bbb["one_percent_low_fps"] = official["one_percent_low_fps"] + 1.0
+
+        comparison = retina._metric_stability_comparison(
+            bbb, official, "application_frame_time"
+        )
+
+        self.assertEqual(comparison["status"], "failed")
+        self.assertIn("p99_ms", comparison["failed_acceptance_metrics"])
+
+    def test_official_comparison_rejects_one_percent_low_regression(self):
+        bbb = retina.summarize_durations_ms([0.8, 1.2])
+        official = retina.summarize_durations_ms([9.0, 11.0])
+        bbb["one_percent_low_fps"] = official["one_percent_low_fps"] - 1.0
+
+        comparison = retina._metric_stability_comparison(
+            bbb, official, "application_frame_time"
+        )
+
+        self.assertEqual(comparison["status"], "failed")
+        self.assertIn("one_percent_low_fps", comparison["failed_acceptance_metrics"])
+
+    def test_official_comparison_rejects_hitch_increase(self):
+        bbb = retina.summarize_durations_ms([0.8, 1.2])
+        official = retina.summarize_durations_ms([9.0, 11.0])
+        bbb["hitch_counts"][">=33.333ms"] = 1
+
+        comparison = retina._metric_stability_comparison(
+            bbb, official, "application_frame_time"
+        )
+
+        self.assertEqual(comparison["status"], "failed")
+        self.assertIn(
+            "hitch_counts.>=33.333ms", comparison["failed_acceptance_metrics"]
         )
 
     def test_candidate_fps_regression_is_rejected_against_fixed_bbb_baseline(self):
@@ -1534,6 +1638,207 @@ class FormalValidationTests(unittest.TestCase):
         self.assertEqual(
             result["baseline_bbb_binary_sha256"],
             retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+        )
+
+    def test_product_policy_records_jitter_diagnostics_without_blocking(self):
+        evidence = wgpu30_product_evidence()
+        combined = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        diagnostic_candidate = retina.summarize_durations_ms([0.1, 8.0])
+        for metric in ("application_frame_time", "gpu_duration"):
+            combined["metrics"][metric]["candidate"] = dict(
+                diagnostic_candidate
+            )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+        result_scope = next(
+            scope
+            for scope in result["stability"]["results"]
+            if scope["scope_type"] == "combined"
+        )
+        app = result_scope["metrics"]["application_frame_time"]
+        self.assertIn("stddev_ms", app["non_blocking_diagnostics"])
+        self.assertIn("p99_minus_p50_ms", app["non_blocking_diagnostics"])
+        self.assertEqual(app["failed_acceptance_metrics"], [])
+        self.assertTrue(app["coefficient_of_variation"]["candidate_is_worse"])
+        self.assertFalse(app["coefficient_of_variation"]["blocking_by_itself"])
+
+    def test_product_policy_rejects_p99_regression(self):
+        evidence = wgpu30_product_evidence()
+        combined = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        app = combined["metrics"]["application_frame_time"]
+        app["candidate"]["p99_ms"] = app["baseline"]["p99_ms"] + 1.0
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_product_regression"
+        )
+        self.assertIn("p99_ms", failure["failed_metrics"])
+
+    def test_product_policy_rejects_gpu_p99_regression(self):
+        evidence = wgpu30_product_evidence()
+        combined = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        gpu = combined["metrics"]["gpu_duration"]
+        gpu["candidate"]["p99_ms"] = gpu["baseline"]["p99_ms"] + 1.0
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_product_regression"
+            and item["metric"] == "gpu_duration"
+        )
+        self.assertIn("p99_ms", failure["failed_metrics"])
+
+    def test_product_policy_input_jitter_diagnostics_do_not_block(self):
+        evidence = wgpu30_product_evidence()
+        for scope in evidence["input_latency_guard"]["scopes"]:
+            baseline = scope["baseline"]["stages"][
+                "enqueue_to_present_call_return"
+            ]
+            candidate = scope["candidate"]["stages"][
+                "enqueue_to_present_call_return"
+            ]
+            candidate["stddev_ms"] = baseline["stddev_ms"] + 1.0
+            candidate["p99_minus_p50_ms"] = (
+                baseline["p99_minus_p50_ms"] + 1.0
+            )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+
+    def test_product_policy_rejects_malformed_input_jitter_diagnostic(self):
+        evidence = wgpu30_product_evidence()
+        scope = evidence["input_latency_guard"]["scopes"][0]
+        candidate = scope["candidate"]["stages"][
+            "enqueue_to_present_call_return"
+        ]
+        candidate["stddev_ms"] = float("nan")
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_input_latency_scope_malformed"
+        )
+        self.assertIn("stddev_ms", failure["error"])
+
+    def test_product_policy_rejects_one_percent_low_regression(self):
+        evidence = wgpu30_product_evidence()
+        combined = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        app = combined["metrics"]["application_frame_time"]
+        app["candidate"]["one_percent_low_fps"] = (
+            app["baseline"]["one_percent_low_fps"] - 1.0
+        )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_product_regression"
+        )
+        self.assertIn("one_percent_low_fps", failure["failed_metrics"])
+
+    def test_product_policy_rejects_hitch_increase(self):
+        evidence = wgpu30_product_evidence()
+        combined = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_type"] == "combined"
+        )
+        combined["metrics"]["application_frame_time"]["candidate"][
+            "hitch_counts"
+        ][">=33.333ms"] = 1
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        failure = next(
+            item
+            for item in result["failures"]
+            if item["code"] == "bbb_candidate_product_regression"
+        )
+        self.assertIn("hitch_counts.>=33.333ms", failure["failed_metrics"])
+
+    def test_product_policy_rejects_input_latency_regression(self):
+        evidence = wgpu30_product_evidence()
+        scope = evidence["input_latency_guard"]["scopes"][0]
+        stage = scope["candidate"]["stages"]["enqueue_to_present_call_return"]
+        stage["p99_ms"] = (
+            scope["baseline"]["stages"]["enqueue_to_present_call_return"][
+                "p99_ms"
+            ]
+            + 1.0
+        )
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertIn(
+            "bbb_candidate_input_latency_regression",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_product_policy_rejects_fps_beyond_fixed_margin(self):
+        evidence = wgpu30_product_evidence()
+        combined = next(
+            item for item in evidence["comparisons"] if item["scope_type"] == "combined"
+        )
+        margin = evidence["baseline_repeat_noise_margin"]
+        combined["candidate_mean_fps"] = combined["baseline_mean_fps"] * (
+            1.0 - margin - 0.001
+        )
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertIn(
+            "bbb_candidate_fps_regression",
+            {item["code"] for item in result["failures"]},
+        )
+
+    def test_product_policy_failed_pair_cannot_be_hidden_by_combined(self):
+        evidence = wgpu30_product_evidence()
+        failed_scope = next(
+            scope
+            for scope in evidence["absolute_stability"]["scopes"]
+            if scope["scope_id"] == "pair-1-static_orbit"
+        )
+        values = failed_scope["metrics"]["application_frame_time"]
+        values["candidate"]["p99_ms"] = values["baseline"]["p99_ms"] + 1.0
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertTrue(
+            any(
+                item.get("scope") == ["run_pair", "pair-1-static_orbit"]
+                and item.get("code") == "bbb_candidate_product_regression"
+                for item in result["failures"]
+            )
         )
 
     def test_wgpu30_two_flight_candidate_requires_and_passes_input_latency_guard(self):
@@ -1937,6 +2242,18 @@ class FormalValidationTests(unittest.TestCase):
             24,
         )
         self.assertEqual(report["comparison"]["bbb"]["gpu_duration"]["p95_ms"], 5.0)
+        self.assertEqual(
+            report["bbb_baseline_comparison"]["role"],
+            "historical-official-comparison-capture",
+        )
+        self.assertEqual(
+            report["regression_baseline"]["bbb_commit"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+        )
+        self.assertEqual(
+            report["regression_baseline"]["wgpu_0_19_role"],
+            "historical-only-not-a-baseline-or-rollback-target",
+        )
 
     def test_current_bbb_capture_rejects_missing_frame_phase_archive(self):
         with tempfile.TemporaryDirectory() as directory:

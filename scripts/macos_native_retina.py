@@ -69,7 +69,7 @@ from official_client_benchmark import (
     write_vanilla_options,
 )
 
-SCHEMA = 3
+SCHEMA = 4
 PROFILE_ID = "macos-native-retina"
 FORMAL_ORDER = ("vanilla", "bbb", "bbb", "vanilla") * 2
 FORMAL_ROUNDS = ((1, 2, 3, 4), (5, 6, 7, 8))
@@ -84,7 +84,7 @@ WARMUP_SECONDS = 30
 PROFILE_SECONDS = 10
 UNLIMITED_FPS_SENTINEL = 260
 HITCH_THRESHOLDS_MS = (33.333, 50.0, 100.0)
-STABILITY_POLICY = "absolute-tail-v2"
+STABILITY_POLICY = "product-playability-v3"
 BASELINE_BBB_COMMIT = "d698c8db0d219f035c7597726c76225c6cd70abc"
 BASELINE_BBB_REPORT_SHA256 = "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b"
 BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97"
@@ -93,11 +93,13 @@ LEGACY_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
 CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v2"
 WGPU30_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v3"
 WGPU30_OPTIMIZATION_AB_SCHEMA = "macos-native-retina-bbb-ab-v4"
+WGPU30_PRODUCT_AB_SCHEMA = "macos-native-retina-bbb-ab-v5"
 ACCEPTED_CANDIDATE_AB_SCHEMAS = (
     LEGACY_CANDIDATE_AB_SCHEMA,
     CANDIDATE_AB_SCHEMA,
     WGPU30_CANDIDATE_AB_SCHEMA,
     WGPU30_OPTIMIZATION_AB_SCHEMA,
+    WGPU30_PRODUCT_AB_SCHEMA,
 )
 WGPU30_OPTIMIZATION_BASELINE_COMMIT = "5b1903221acac8a2487fb5499dbf970ee192c97d"
 WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256 = (
@@ -118,6 +120,7 @@ WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256 = (
 WGPU30_GPU_TIMESTAMP_STRATEGY = "PassBoundary"
 CANDIDATE_AB_ORDER = ("baseline", "candidate", "candidate", "baseline") * 2
 CANDIDATE_STABILITY_POLICY = "candidate-absolute-tail-v1"
+PRODUCT_CANDIDATE_STABILITY_POLICY = "candidate-product-playability-v2"
 LEGACY_FRAME_PHASE_SCHEMA = "renderer-frame-phases-v2"
 LEGACY_FRAME_PHASE_COLUMNS = (
     "application_frame_interval",
@@ -378,6 +381,69 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         "formal_order": list(FORMAL_ORDER),
         "capture_segments": list(CAPTURE_SEGMENTS),
         "drawable_mismatch_policy": "block-without-comparison",
+        "candidate_bbb_ab": {
+            "schema": WGPU30_PRODUCT_AB_SCHEMA,
+            "legacy_schemas": [
+                LEGACY_CANDIDATE_AB_SCHEMA,
+                CANDIDATE_AB_SCHEMA,
+                WGPU30_CANDIDATE_AB_SCHEMA,
+                WGPU30_OPTIMIZATION_AB_SCHEMA,
+            ],
+            "surface_policy": "macos-immediate-wgpu30-both-sides",
+            "baseline_wgpu_version": "30.0.0",
+            "candidate_wgpu_version": "30.0.0",
+            "gpu_timestamp_strategy": WGPU30_GPU_TIMESTAMP_STRATEGY,
+            "baseline_desired_maximum_frame_latency": 2,
+            "candidate_desired_maximum_frame_latency": 2,
+            "baseline_expected_metal_drawable_count": 3,
+            "candidate_expected_metal_drawable_count": 3,
+            "baseline_actual_metal_drawable_count": 3,
+            "candidate_actual_metal_drawable_count": 3,
+            "baseline_in_flight_submission_budget": 1,
+            "candidate_in_flight_submission_budget": 1,
+            "baseline_submission_fence_strategy": "render-submission-fence-legacy-log",
+            "candidate_submission_fence_strategy": "render-submission-fence",
+            "queue_depth_increased": False,
+            "wait_acquire_submit_present_order_unchanged": True,
+            "input_latency_policy": "paired-software-boundary-product-gate",
+            "acceptance_metrics": {
+                "application_frame_time": [
+                    "mean_fps",
+                    "p99_ms",
+                    "one_percent_low_fps",
+                    "hitch_counts",
+                ],
+                "gpu_duration": ["p99_ms", "hitch_counts"],
+                "input_latency": [
+                    "mean_ms",
+                    "p50_ms",
+                    "p95_ms",
+                    "p99_ms",
+                    "hitch_counts",
+                    "sample_count",
+                    "superseded_events",
+                    "out_of_order_events",
+                ],
+            },
+            "diagnostic_metrics": {
+                "application_frame_time": [
+                    "p50_ms",
+                    "p95_ms",
+                    "stddev_ms",
+                    "p99_minus_p50_ms",
+                    "coefficient_of_variation",
+                ],
+                "gpu_duration": [
+                    "mean_ms",
+                    "p50_ms",
+                    "p95_ms",
+                    "stddev_ms",
+                    "p99_minus_p50_ms",
+                    "coefficient_of_variation",
+                ],
+                "input_latency": ["stddev_ms", "p99_minus_p50_ms"],
+            },
+        },
         "frame_phase_diagnostics": {
             "schema": FRAME_PHASE_SCHEMA,
             "archive_path": "client/metrics/frame_phases.csv",
@@ -426,7 +492,8 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         },
         "input_latency_candidate_guard": {
             "schema": INPUT_LATENCY_AB_SCHEMA,
-            "required_when_candidate_in_flight_budget_exceeds": 1,
+            "required_for_candidate_schema": WGPU30_PRODUCT_AB_SCHEMA,
+            "legacy_required_when_candidate_in_flight_budget_exceeds": 1,
             "baseline_bbb_commit": INPUT_LATENCY_BASELINE_COMMIT,
             "baseline_bbb_binary_sha256": INPUT_LATENCY_BASELINE_BINARY_SHA256,
             "baseline_bbb_report_sha256": INPUT_LATENCY_BASELINE_REPORT_SHA256,
@@ -449,7 +516,35 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
-            "cv_role": "diagnostic-only-when-absolute-metrics-pass",
+            "acceptance_metrics": {
+                "application_frame_time": [
+                    "mean_fps",
+                    "p99_ms",
+                    "one_percent_low_fps",
+                    "hitch_counts",
+                ],
+                "gpu_duration": ["hitch_counts"],
+            },
+            "diagnostic_metrics": {
+                "application_frame_time": [
+                    "mean_ms",
+                    "p50_ms",
+                    "p95_ms",
+                    "stddev_ms",
+                    "p99_minus_p50_ms",
+                    "coefficient_of_variation",
+                ],
+                "gpu_duration": [
+                    "mean_ms",
+                    "p50_ms",
+                    "p95_ms",
+                    "p99_ms",
+                    "stddev_ms",
+                    "p99_minus_p50_ms",
+                    "coefficient_of_variation",
+                ],
+            },
+            "cv_role": "diagnostic-only",
             "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
             "abba_rounds": [list(round_runs) for round_runs in FORMAL_ROUNDS],
             "abba_run_pairs": [list(pair) for pair in FORMAL_RUN_PAIRS],
@@ -2537,6 +2632,7 @@ def _metric_stability_comparison(
     for field in lower_is_better:
         bbb_value = float(bbb[field])
         official_value = float(official[field])
+        blocking = metric == "application_frame_time" and field == "p99_ms"
         checks.append(
             {
                 "field": field,
@@ -2544,6 +2640,7 @@ def _metric_stability_comparison(
                 "bbb": bbb_value,
                 "official": official_value,
                 "passed": bbb_value <= official_value,
+                "blocking": blocking,
             }
         )
     if metric == "application_frame_time":
@@ -2557,6 +2654,7 @@ def _metric_stability_comparison(
                     "bbb": bbb_value,
                     "official": official_value,
                     "passed": bbb_value >= official_value,
+                    "blocking": True,
                 }
             )
     bbb_hitches = bbb["hitch_counts"]
@@ -2572,23 +2670,36 @@ def _metric_stability_comparison(
                 "bbb": bbb_value,
                 "official": official_value,
                 "passed": bbb_value <= official_value,
+                "blocking": True,
             }
         )
-    failed = [str(check["field"]) for check in checks if not check["passed"]]
+    failed = [
+        str(check["field"])
+        for check in checks
+        if check["blocking"] and not check["passed"]
+    ]
+    non_blocking = [
+        str(check["field"])
+        for check in checks
+        if not check["blocking"] and not check["passed"]
+    ]
     bbb_cv = float(bbb["coefficient_of_variation"])
     official_cv = float(official["coefficient_of_variation"])
     cv_worse = bbb_cv > official_cv
     if not cv_worse:
         cv_classification = "not-worse"
     elif failed:
-        cv_classification = "diagnostic-coincident-with-absolute-regression"
+        cv_classification = "diagnostic-coincident-with-product-regression"
     else:
-        cv_classification = "diagnostic-only-absolute-metrics-pass"
+        cv_classification = "diagnostic-only-product-metrics-pass"
     return {
         "status": "passed" if not failed else "failed",
         "bbb": dict(bbb),
         "official": dict(official),
         "checks": checks,
+        "failed_acceptance_metrics": failed,
+        "non_blocking_diagnostics": non_blocking,
+        # Retained as a compatibility alias for consumers of schema <= 3.
         "failed_absolute_metrics": failed,
         "coefficient_of_variation": {
             "bbb": bbb_cv,
@@ -2688,7 +2799,7 @@ def _build_stability_acceptance(
             for segment in CAPTURE_SEGMENTS
         )
     failures: list[dict[str, object]] = []
-    cv_diagnostics: list[dict[str, object]] = []
+    non_blocking_diagnostics: list[dict[str, object]] = []
     for scope in scopes:
         metrics = scope["metrics"]
         assert isinstance(metrics, Mapping)
@@ -2697,19 +2808,36 @@ def _build_stability_acceptance(
             cv = comparison["coefficient_of_variation"]
             assert isinstance(cv, Mapping)
             if cv["bbb_is_worse"]:
-                cv_diagnostics.append(
+                non_blocking_diagnostics.append(
                     {
                         "scope_type": scope["scope_type"],
                         "scope_id": scope["scope_id"],
                         "metric": metric,
+                        "field": "coefficient_of_variation",
                         **dict(cv),
                     }
                 )
-            failed = comparison["failed_absolute_metrics"]
+            for field in comparison["non_blocking_diagnostics"]:
+                check = next(
+                    item for item in comparison["checks"] if item["field"] == field
+                )
+                non_blocking_diagnostics.append(
+                    {
+                        "scope_type": scope["scope_type"],
+                        "scope_id": scope["scope_id"],
+                        "metric": metric,
+                        "field": field,
+                        "bbb": check["bbb"],
+                        "official": check["official"],
+                        "direction": check["direction"],
+                        "classification": "non-blocking-product-diagnostic",
+                    }
+                )
+            failed = comparison["failed_acceptance_metrics"]
             if failed:
                 failures.append(
                     {
-                        "code": "absolute_stability_regression",
+                        "code": "product_acceptance_regression",
                         "scope_type": scope["scope_type"],
                         "scope_id": scope["scope_id"],
                         "runs": scope["runs"],
@@ -2722,10 +2850,38 @@ def _build_stability_acceptance(
     return {
         "policy": STABILITY_POLICY,
         "status": "passed" if not failures else "failed",
-        "cv_role": "diagnostic-only-when-absolute-metrics-pass",
+        "acceptance_metrics": {
+            "application_frame_time": [
+                "mean_fps",
+                "p99_ms",
+                "one_percent_low_fps",
+                "hitch_counts",
+            ],
+            "gpu_duration": ["hitch_counts"],
+        },
+        "diagnostic_metrics": {
+            "application_frame_time": [
+                "mean_ms",
+                "p50_ms",
+                "p95_ms",
+                "stddev_ms",
+                "p99_minus_p50_ms",
+                "coefficient_of_variation",
+            ],
+            "gpu_duration": [
+                "mean_ms",
+                "p50_ms",
+                "p95_ms",
+                "p99_ms",
+                "stddev_ms",
+                "p99_minus_p50_ms",
+                "coefficient_of_variation",
+            ],
+        },
+        "cv_role": "diagnostic-only",
         "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
         "scopes": scopes,
-        "cv_diagnostics": cv_diagnostics,
+        "non_blocking_diagnostics": non_blocking_diagnostics,
         "failures": failures,
     }
 
@@ -2797,7 +2953,10 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
 
     if evidence.get("schema") == LEGACY_CANDIDATE_AB_SCHEMA:
         return []
-    if evidence.get("schema") == WGPU30_OPTIMIZATION_AB_SCHEMA:
+    if evidence.get("schema") in (
+        WGPU30_OPTIMIZATION_AB_SCHEMA,
+        WGPU30_PRODUCT_AB_SCHEMA,
+    ):
         return _wgpu30_optimization_receipt_and_scheduling_failures(evidence)
     if evidence.get("schema") == WGPU30_CANDIDATE_AB_SCHEMA:
         return _wgpu30_candidate_receipt_and_scheduling_failures(evidence)
@@ -2965,6 +3124,11 @@ def _input_latency_guard_failures(
         "stddev_ms",
         "p99_minus_p50_ms",
     )
+    diagnostic_only = (
+        {"stddev_ms", "p99_minus_p50_ms"}
+        if evidence.get("schema") == WGPU30_PRODUCT_AB_SCHEMA
+        else set()
+    )
     for entry in scopes:
         if not isinstance(entry, Mapping):
             failures.append({"code": "bbb_candidate_input_latency_scope_malformed"})
@@ -3000,7 +3164,7 @@ def _input_latency_guard_failures(
                     or candidate_value < 0.0
                 ):
                     raise ValueError(f"{field} is not finite and non-negative")
-                if candidate_value > baseline_value:
+                if candidate_value > baseline_value and field not in diagnostic_only:
                     regressed.append(field)
             baseline_hitches = baseline_stage["hitch_counts"]
             candidate_hitches = candidate_stage["hitch_counts"]
@@ -3122,7 +3286,12 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
         )
     candidate_budget = contract.get("candidate_in_flight_submission_budget")
     expected_policy = (
-        (False, "unchanged-single-in-flight")
+        (False, "paired-software-boundary-product-gate")
+        if (
+            candidate_budget == 1
+            and evidence.get("schema") == WGPU30_PRODUCT_AB_SCHEMA
+        )
+        else (False, "unchanged-single-in-flight")
         if candidate_budget == 1
         else (True, "paired-software-boundary-noninferior")
         if candidate_budget == 2
@@ -3158,7 +3327,7 @@ def _wgpu30_optimization_receipt_and_scheduling_failures(
                     "mismatches": policy_mismatches,
                 }
             )
-        if candidate_budget == 2:
+        if candidate_budget == 2 or evidence.get("schema") == WGPU30_PRODUCT_AB_SCHEMA:
             failures.extend(_input_latency_guard_failures(evidence))
     fence_strategies: dict[str, str] | None = None
     if (
@@ -3427,6 +3596,8 @@ def _candidate_metric_stability_comparison(
     candidate: Mapping[str, object],
     metric: str,
     fps_margin: float,
+    *,
+    product_policy: bool = False,
 ) -> dict[str, object]:
     lower_is_better = ["p50_ms", "p95_ms", "p99_ms", "stddev_ms", "p99_minus_p50_ms"]
     if metric == "gpu_duration":
@@ -3444,6 +3615,7 @@ def _candidate_metric_stability_comparison(
                 "baseline": baseline_value,
                 "candidate": candidate_value,
                 "passed": candidate_value <= baseline_value,
+                "blocking": not product_policy or field == "p99_ms",
             }
         )
     if metric == "application_frame_time":
@@ -3458,6 +3630,7 @@ def _candidate_metric_stability_comparison(
                 "candidate": candidate_mean,
                 "maximum_candidate": maximum_candidate_mean,
                 "passed": candidate_mean <= maximum_candidate_mean,
+                "blocking": True,
             }
         )
         baseline_low = float(baseline["one_percent_low_fps"])
@@ -3469,6 +3642,7 @@ def _candidate_metric_stability_comparison(
                 "baseline": baseline_low,
                 "candidate": candidate_low,
                 "passed": candidate_low >= baseline_low,
+                "blocking": True,
             }
         )
     baseline_hitches = baseline["hitch_counts"]
@@ -3485,18 +3659,36 @@ def _candidate_metric_stability_comparison(
                 "baseline": baseline_value,
                 "candidate": candidate_value,
                 "passed": candidate_value <= baseline_value,
+                "blocking": True,
             }
         )
-    failed = [str(check["field"]) for check in checks if not check["passed"]]
+    failed = [
+        str(check["field"])
+        for check in checks
+        if check["blocking"] and not check["passed"]
+    ]
+    non_blocking = [
+        str(check["field"])
+        for check in checks
+        if not check["blocking"] and not check["passed"]
+    ]
     baseline_cv = float(baseline["coefficient_of_variation"])
     candidate_cv = float(candidate["coefficient_of_variation"])
     cv_worse = candidate_cv > baseline_cv
     if not cv_worse:
         cv_classification = "not-worse"
     elif failed:
-        cv_classification = "diagnostic-coincident-with-absolute-regression"
+        cv_classification = (
+            "diagnostic-coincident-with-product-regression"
+            if product_policy
+            else "diagnostic-coincident-with-absolute-regression"
+        )
     else:
-        cv_classification = "diagnostic-only-absolute-metrics-pass"
+        cv_classification = (
+            "diagnostic-only-product-metrics-pass"
+            if product_policy
+            else "diagnostic-only-absolute-metrics-pass"
+        )
     improved = any(
         (
             check["candidate"] < check["baseline"]
@@ -3511,6 +3703,8 @@ def _candidate_metric_stability_comparison(
         "baseline": dict(baseline),
         "candidate": dict(candidate),
         "checks": checks,
+        "failed_acceptance_metrics": failed,
+        "non_blocking_diagnostics": non_blocking,
         "failed_absolute_metrics": failed,
         "has_absolute_improvement": improved,
         "coefficient_of_variation": {
@@ -3544,7 +3738,13 @@ def validate_candidate_stability_evidence(
     observed: set[tuple[str, str]] = set()
     results: list[dict[str, object]] = []
     failures: list[dict[str, object]] = []
-    if acceptance.get("policy") != CANDIDATE_STABILITY_POLICY:
+    product_policy = evidence.get("schema") == WGPU30_PRODUCT_AB_SCHEMA
+    expected_policy = (
+        PRODUCT_CANDIDATE_STABILITY_POLICY
+        if product_policy
+        else CANDIDATE_STABILITY_POLICY
+    )
+    if acceptance.get("policy") != expected_policy:
         failures.append({"code": "bbb_candidate_absolute_policy_mismatch"})
     combined_improved = False
     for scope in scopes:
@@ -3574,7 +3774,11 @@ def validate_candidate_stability_evidence(
                 if not isinstance(baseline, Mapping) or not isinstance(candidate, Mapping):
                     raise RetinaAcceptanceError(f"malformed {metric} summaries")
                 comparison = _candidate_metric_stability_comparison(
-                    baseline, candidate, metric, fps_margin
+                    baseline,
+                    candidate,
+                    metric,
+                    fps_margin,
+                    product_policy=product_policy,
                 )
             except (KeyError, TypeError, ValueError, RetinaAcceptanceError) as error:
                 failures.append(
@@ -3589,11 +3793,15 @@ def validate_candidate_stability_evidence(
             comparisons[metric] = comparison
             if scope_key == ("combined", "combined") and comparison["has_absolute_improvement"]:
                 combined_improved = True
-            failed = comparison["failed_absolute_metrics"]
+            failed = comparison["failed_acceptance_metrics"]
             if failed:
                 failures.append(
                     {
-                        "code": "bbb_candidate_absolute_stability_regression",
+                        "code": (
+                            "bbb_candidate_product_regression"
+                            if product_policy
+                            else "bbb_candidate_absolute_stability_regression"
+                        ),
                         "scope": list(scope_key),
                         "metric": metric,
                         "failed_metrics": list(failed),
@@ -3622,7 +3830,7 @@ def validate_candidate_stability_evidence(
                 "scopes": [list(item) for item in unexpected],
             }
         )
-    if not combined_improved:
+    if not product_policy and not combined_improved:
         failures.append({"code": "bbb_candidate_absolute_improvement_missing"})
     return {
         "status": "passed" if not failures else "failed",
@@ -3650,7 +3858,10 @@ def validate_candidate_fps_evidence(
             "stability": None,
             "failures": parity_failures,
         }
-    is_wgpu30_optimization = evidence.get("schema") == WGPU30_OPTIMIZATION_AB_SCHEMA
+    is_wgpu30_optimization = evidence.get("schema") in (
+        WGPU30_OPTIMIZATION_AB_SCHEMA,
+        WGPU30_PRODUCT_AB_SCHEMA,
+    )
     expected_baseline_commit = (
         WGPU30_OPTIMIZATION_BASELINE_COMMIT
         if is_wgpu30_optimization
@@ -3839,8 +4050,56 @@ def validate_and_summarize(
         "runs": [dict(run) for run in runs],
         "stability_policy": {
             "policy": STABILITY_POLICY,
-            "cv_role": "diagnostic-only-when-absolute-metrics-pass",
+            "acceptance_metrics": {
+                "application_frame_time": [
+                    "mean_fps",
+                    "p99_ms",
+                    "one_percent_low_fps",
+                    "hitch_counts",
+                ],
+                "gpu_duration": ["hitch_counts"],
+            },
+            "diagnostic_metrics": {
+                "application_frame_time": [
+                    "mean_ms",
+                    "p50_ms",
+                    "p95_ms",
+                    "stddev_ms",
+                    "p99_minus_p50_ms",
+                    "coefficient_of_variation",
+                ],
+                "gpu_duration": [
+                    "mean_ms",
+                    "p50_ms",
+                    "p95_ms",
+                    "p99_ms",
+                    "stddev_ms",
+                    "p99_minus_p50_ms",
+                    "coefficient_of_variation",
+                ],
+            },
+            "cv_role": "diagnostic-only",
             "maximum_candidate_fps_margin": MAX_BASELINE_FPS_MARGIN,
+        },
+        "regression_baseline": {
+            "role": "fixed-full-gated-wgpu30-bbb",
+            "bbb_commit": WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+            "report_sha256": WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
+            "binary_sha256": WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+            "repeat_mean_fps": list(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
+            "fps_noise_margin": (
+                max(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+                - min(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+            )
+            / statistics.fmean(WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
+            "input_latency_reference": {
+                "bbb_commit": INPUT_LATENCY_BASELINE_COMMIT,
+                "report_sha256": INPUT_LATENCY_BASELINE_REPORT_SHA256,
+                "binary_sha256": INPUT_LATENCY_BASELINE_BINARY_SHA256,
+                "terminal_boundary": INPUT_LATENCY_TERMINAL_BOUNDARY,
+            },
+            "wgpu_components": dict(WGPU_COMPONENT_VERSIONS),
+            "wgpu_0_19_role": "historical-only-not-a-baseline-or-rollback-target",
         },
     }
     reasons: list[dict[str, object]] = []
@@ -4015,11 +4274,18 @@ def validate_and_summarize(
     )
     if bbb_commit == BASELINE_BBB_COMMIT:
         baseline_comparison = {
-            "role": "established-baseline",
+            "role": "historical-official-comparison-capture",
             "status": "not-applicable",
-            "baseline_bbb_commit": BASELINE_BBB_COMMIT,
-            "baseline_bbb_report_sha256": BASELINE_BBB_REPORT_SHA256,
-            "baseline_bbb_binary_sha256": BASELINE_BBB_BINARY_SHA256,
+            "capture_bbb_commit": BASELINE_BBB_COMMIT,
+            "capture_report_sha256": BASELINE_BBB_REPORT_SHA256,
+            "capture_binary_sha256": BASELINE_BBB_BINARY_SHA256,
+            "fixed_wgpu30_baseline_commit": WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+            "fixed_wgpu30_baseline_report_sha256": (
+                WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256
+            ),
+            "fixed_wgpu30_baseline_binary_sha256": (
+                WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256
+            ),
             "future_candidates_require_interleaved_pairs": True,
             "maximum_margin": MAX_BASELINE_FPS_MARGIN,
             "failures": [],

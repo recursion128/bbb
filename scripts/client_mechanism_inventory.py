@@ -1437,7 +1437,7 @@ LEVEL_RENDERER_FRAME_OWNER_EVIDENCE = _owner_evidence(
                 "crates/bbb-renderer/src/render.rs#particle_target_pass",
             ),
             (
-                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
                 "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths",
             ),
         ),
@@ -1496,7 +1496,7 @@ LEVEL_RENDERER_FRAME_OWNER_EVIDENCE = _owner_evidence(
             ("crates/bbb-renderer/src/render.rs#item_entity_target_pass",),
             (
                 "crates/bbb-renderer/src/render.rs#item_entity_target_copies_main_depth_and_splits_item_features_from_line_draws",
-                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
             ),
         ),
         ("getItemEntityTarget",),
@@ -1506,7 +1506,7 @@ LEVEL_RENDERER_FRAME_OWNER_EVIDENCE = _owner_evidence(
             ("crates/bbb-renderer/src/render.rs#particle_target_pass",),
             (
                 "crates/bbb-renderer/src/render.rs#particle_target_copies_main_depth_and_clears_before_combine",
-                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
             ),
         ),
         ("getParticlesTarget",),
@@ -1516,7 +1516,7 @@ LEVEL_RENDERER_FRAME_OWNER_EVIDENCE = _owner_evidence(
             ("crates/bbb-renderer/src/render.rs#translucent_target_pass",),
             (
                 "crates/bbb-renderer/src/render.rs#translucent_target_copies_main_depth_and_clears_color_before_draws",
-                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
             ),
         ),
         ("getTranslucentTarget",),
@@ -6802,11 +6802,11 @@ RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE = _owner_evidence(
         OwnerEvidence(
             (
                 "crates/bbb-renderer/src/renderer.rs#pub fn for_options",
-                "crates/bbb-renderer/src/render.rs#self.level_frame_route.uses_improved_transparency()",
+                "crates/bbb-renderer/src/render.rs#FramePlan::new",
             ),
             (
                 "crates/bbb-renderer/src/renderer.rs#level_frame_route_matches_vanilla_option_and_panoramic_suppression",
-                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
                 "crates/bbb-native/src/runtime/tests.rs#startup_transparency_option_has_one_native_to_renderer_projection",
             ),
         ),

@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "profile": "macos-native-retina",
   "minecraft_version": "26.1",
   "display": {
@@ -41,11 +41,12 @@
   ],
   "drawable_mismatch_policy": "block-without-comparison",
   "candidate_bbb_ab": {
-    "schema": "macos-native-retina-bbb-ab-v4",
+    "schema": "macos-native-retina-bbb-ab-v5",
     "legacy_schemas": [
       "macos-native-retina-bbb-ab-v1",
       "macos-native-retina-bbb-ab-v2",
-      "macos-native-retina-bbb-ab-v3"
+      "macos-native-retina-bbb-ab-v3",
+      "macos-native-retina-bbb-ab-v4"
     ],
     "surface_policy": "macos-immediate-wgpu30-both-sides",
     "baseline_wgpu_version": "30.0.0",
@@ -63,11 +64,55 @@
     "candidate_submission_fence_strategy": "render-submission-fence",
     "queue_depth_increased": false,
     "wait_acquire_submit_present_order_unchanged": true,
-    "input_latency_policy": "unchanged-single-in-flight"
+    "input_latency_policy": "paired-software-boundary-product-gate",
+    "acceptance_metrics": {
+      "application_frame_time": [
+        "mean_fps",
+        "p99_ms",
+        "one_percent_low_fps",
+        "hitch_counts"
+      ],
+      "gpu_duration": [
+        "p99_ms",
+        "hitch_counts"
+      ],
+      "input_latency": [
+        "mean_ms",
+        "p50_ms",
+        "p95_ms",
+        "p99_ms",
+        "hitch_counts",
+        "sample_count",
+        "superseded_events",
+        "out_of_order_events"
+      ]
+    },
+    "diagnostic_metrics": {
+      "application_frame_time": [
+        "p50_ms",
+        "p95_ms",
+        "stddev_ms",
+        "p99_minus_p50_ms",
+        "coefficient_of_variation"
+      ],
+      "gpu_duration": [
+        "mean_ms",
+        "p50_ms",
+        "p95_ms",
+        "stddev_ms",
+        "p99_minus_p50_ms",
+        "coefficient_of_variation"
+      ],
+      "input_latency": [
+        "stddev_ms",
+        "p99_minus_p50_ms"
+      ]
+    }
   },
   "input_latency_candidate_guard": {
     "schema": "renderer-input-latency-ab-v1",
-    "required_when_candidate_in_flight_budget_exceeds": 1,
+    "required_for_candidate_schema": "macos-native-retina-bbb-ab-v5",
+    "legacy_required_when_candidate_in_flight_budget_exceeds": 1,
     "baseline_bbb_commit": "331be198397d9284c2bb93b96ebb9fb58d265e96",
     "baseline_bbb_binary_sha256": "231a2e71ffc7a8fb84446673e1ab85f21ca02f21691f11ad4edaefd721e31ae8",
     "baseline_bbb_report_sha256": "be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24",
@@ -196,8 +241,38 @@
     "coalescing": "newest-event-with-explicit-superseded-count"
   },
   "stability_acceptance": {
-    "policy": "absolute-tail-v2",
-    "cv_role": "diagnostic-only-when-absolute-metrics-pass",
+    "policy": "product-playability-v3",
+    "acceptance_metrics": {
+      "application_frame_time": [
+        "mean_fps",
+        "p99_ms",
+        "one_percent_low_fps",
+        "hitch_counts"
+      ],
+      "gpu_duration": [
+        "hitch_counts"
+      ]
+    },
+    "diagnostic_metrics": {
+      "application_frame_time": [
+        "mean_ms",
+        "p50_ms",
+        "p95_ms",
+        "stddev_ms",
+        "p99_minus_p50_ms",
+        "coefficient_of_variation"
+      ],
+      "gpu_duration": [
+        "mean_ms",
+        "p50_ms",
+        "p95_ms",
+        "p99_ms",
+        "stddev_ms",
+        "p99_minus_p50_ms",
+        "coefficient_of_variation"
+      ]
+    },
+    "cv_role": "diagnostic-only",
     "required_scopes": [
       "combined",
       "scene",

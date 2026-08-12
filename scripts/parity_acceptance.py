@@ -72,6 +72,7 @@ FORMAL_BINARY_IDENTITY_KINDS = frozenset(
 CLOSURE_METADATA_PREFIXES = ("docs/", "goal.md")
 VALIDATION_ONLY_PATHS = frozenset(
     {
+        "scripts/client_mechanism_inventory.py",
         "scripts/parity_acceptance.py",
         "scripts/macos_native_retina.py",
         "scripts/tests/test_macos_native_retina.py",

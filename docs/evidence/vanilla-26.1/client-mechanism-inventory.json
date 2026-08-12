@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "70650996c46ee2714299903259df08f12e9637ce74ab6b79cf69f3eb7a1e05df"
+      "sha256": "04a973428f719a25edf89d81ca9521459a49333467caf1b6b59619a97ea61101"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -14667,11 +14667,11 @@
       "bbb_evidence": {
         "implementation": [
           "crates/bbb-renderer/src/renderer.rs#pub fn for_options",
-          "crates/bbb-renderer/src/render.rs#self.level_frame_route.uses_improved_transparency()"
+          "crates/bbb-renderer/src/render.rs#FramePlan::new"
         ],
         "tests": [
           "crates/bbb-renderer/src/renderer.rs#level_frame_route_matches_vanilla_option_and_panoramic_suppression",
-          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+          "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
           "crates/bbb-native/src/runtime/tests.rs#startup_transparency_option_has_one_native_to_renderer_projection"
         ]
       },
@@ -37018,7 +37018,7 @@
           "crates/bbb-renderer/src/render.rs#particle_target_pass"
         ],
         "tests": [
-          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+          "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner",
           "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths"
         ]
       },
@@ -37667,7 +37667,7 @@
         ],
         "tests": [
           "crates/bbb-renderer/src/render.rs#item_entity_target_copies_main_depth_and_splits_item_features_from_line_draws",
-          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner"
+          "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner"
         ]
       },
       "category": "render-step",
@@ -37766,7 +37766,7 @@
         ],
         "tests": [
           "crates/bbb-renderer/src/render.rs#particle_target_copies_main_depth_and_clears_before_combine",
-          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner"
+          "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner"
         ]
       },
       "category": "render-step",
@@ -37877,7 +37877,7 @@
         ],
         "tests": [
           "crates/bbb-renderer/src/render.rs#translucent_target_copies_main_depth_and_clears_color_before_draws",
-          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner"
+          "crates/bbb-renderer/src/render.rs#frame_plan_is_the_only_feature_target_copy_combine_and_presentation_owner"
         ]
       },
       "category": "render-step",
