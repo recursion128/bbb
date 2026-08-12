@@ -529,7 +529,7 @@
         "source": "https://crates.io/api/v1/crates/criterion"
       },
       "first_introduced_commit": "4fa2ea8f3986c6098a97b715cc8c386da8a1d7b4",
-      "latest_constraint_commit": "4fa2ea8f3986c6098a97b715cc8c386da8a1d7b4",
+      "latest_constraint_commit": "47c86589b3ae9ab226aab3253709d7d05d540793",
       "dependency_classes": [
         "dev"
       ],
@@ -674,7 +674,7 @@
         "source": "https://crates.io/api/v1/crates/hecs"
       },
       "first_introduced_commit": "970cfe102bab062f8e19a0c4873227d9fcba81d6",
-      "latest_constraint_commit": "970cfe102bab062f8e19a0c4873227d9fcba81d6",
+      "latest_constraint_commit": "47c86589b3ae9ab226aab3253709d7d05d540793",
       "dependency_classes": [
         "runtime"
       ],
@@ -1465,7 +1465,7 @@
         "source": "https://crates.io/api/v1/crates/rand"
       },
       "first_introduced_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
-      "latest_constraint_commit": "c9cbf09ff3f6aad0b282e56e0b9788104a79834a",
+      "latest_constraint_commit": "47c86589b3ae9ab226aab3253709d7d05d540793",
       "dependency_classes": [
         "dev"
       ],
@@ -1970,7 +1970,7 @@
         "source": "https://crates.io/api/v1/crates/symphonia"
       },
       "first_introduced_commit": "2dc288a45d84237a2db1bf8bf071e9858ffebd1d",
-      "latest_constraint_commit": "2dc288a45d84237a2db1bf8bf071e9858ffebd1d",
+      "latest_constraint_commit": "47c86589b3ae9ab226aab3253709d7d05d540793",
       "dependency_classes": [
         "optional",
         "runtime"
@@ -2703,7 +2703,7 @@
         "source": "https://crates.io/api/v1/crates/zip"
       },
       "first_introduced_commit": "9b60a8883381ef39c1b28bad950fb48f9dfa3a29",
-      "latest_constraint_commit": "9b60a8883381ef39c1b28bad950fb48f9dfa3a29",
+      "latest_constraint_commit": "47c86589b3ae9ab226aab3253709d7d05d540793",
       "dependency_classes": [
         "runtime"
       ],
