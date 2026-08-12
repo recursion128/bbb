@@ -101,21 +101,21 @@ ACCEPTED_CANDIDATE_AB_SCHEMAS = (
     WGPU30_OPTIMIZATION_AB_SCHEMA,
     WGPU30_PRODUCT_AB_SCHEMA,
 )
-WGPU30_OPTIMIZATION_BASELINE_COMMIT = "5b1903221acac8a2487fb5499dbf970ee192c97d"
+WGPU30_OPTIMIZATION_BASELINE_COMMIT = "758a93e41d827ade7cd5902bc756316d469e04c6"
 WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256 = (
-    "7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa"
+    "9bf24802ef33fe421b2361b3b366f8f240baf46bed40739b34a21f0e7791bd90"
 )
 WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256 = (
-    "849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817"
+    "ddb6c4ab8be7df7ae065abb764f34207b62918fbb6b447564d37c37355612e75"
 )
 WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS = (
-    195.82836970695612,
-    194.41391459437463,
-    194.42203984309396,
-    194.18012527990288,
+    185.93556532035964,
+    186.34860172263467,
+    184.91050831595598,
+    184.78437523051227,
 )
 WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256 = (
-    "6860b4a74d3edf14d6a043eb71f1ef4d0a3e4c2b746cdbaae112ce4b8308acec"
+    "63a387dfd62d12a17a98b6b640f7dcf38260764f80504143468ea8ab7b07e3a3"
 )
 WGPU30_GPU_TIMESTAMP_STRATEGY = "PassBoundary"
 CANDIDATE_AB_ORDER = ("baseline", "candidate", "candidate", "baseline") * 2
@@ -221,6 +221,13 @@ PROFILE_CONTRACT_PATH = (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WGPU_DEPENDENCY_RECEIPT_PATH = (
     REPO_ROOT / "docs" / "evidence" / "dependency-receipts" / "wgpu-30.0.0.json"
+)
+CURRENT_WGPU30_BASELINE_RECEIPT_PATH = (
+    REPO_ROOT
+    / "docs"
+    / "evidence"
+    / "macos-native-retina"
+    / "current-wgpu30-baseline.json"
 )
 WGPU_COMPONENT_VERSIONS = {
     "naga": "30.0.0",
@@ -5296,11 +5303,13 @@ def _summarize_command(args: argparse.Namespace) -> int:
         if args.bbb_baseline_ab_report is not None
         else None
     )
+    establish_current_baseline = manifest.get("establish_current_baseline") is True
     report = validate_and_summarize(
         display,
         runs,
         bbb_commit=bbb_commit,
         candidate_fps_evidence=candidate_fps_evidence,
+        establish_current_baseline=establish_current_baseline,
     )
     report["manifest"] = str(args.manifest)
     report["manifest_sha256"] = hashlib.sha256(args.manifest.read_bytes()).hexdigest()
@@ -5322,14 +5331,22 @@ def _revalidate_command(args: argparse.Namespace) -> int:
         if args.bbb_baseline_ab_report is not None
         else None
     )
+    baseline_establishment = source.get("baseline_establishment")
+    establish_current_baseline = (
+        isinstance(baseline_establishment, Mapping)
+        and baseline_establishment.get("status") == "captured"
+        and baseline_establishment.get("capture_bbb_commit") == bbb_commit
+    )
     report = validate_and_summarize(
         DisplayProbe(**display_value),
         runs,
         bbb_commit=bbb_commit,
         candidate_fps_evidence=candidate_fps_evidence,
+        establish_current_baseline=establish_current_baseline,
     )
     for field in (
         "artifact_root",
+        "baseline_establishment",
         "bbb_binary",
         "bbb_binary_sha256",
         "bbb_commit",

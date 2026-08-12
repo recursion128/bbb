@@ -492,7 +492,7 @@ macOS 与 Linux 是声明平台，Windows 是账本附 Vanilla/产品依据的 `
 
 Retina 性能基础设施固定为 crates.io wgpu/core/hal/types/naga 30.0.0；不得恢复 0.19、
 path patch、vendor 或直接 `wgpu-hal` 依赖。后续 candidate 只与账本/evidence 锁定的
-full-gated wgpu 30 BBB baseline 比较，固定 FPS noise margin 为 0.8465%，任何新
+full-gated wgpu 30 BBB baseline 比较，固定 FPS noise margin 为 0.8433%，任何新
 margin 最大不得超过 1%。baseline commit、binary hash、重复采集数据与失败
 candidate 只记录在账本、evidence 和归档，不写入本文件。
 
@@ -518,7 +518,7 @@ BBB mean FPS 不低于官方、App p99 不高于官方、1% low 不低于官方�
 降低工作量。只有所有 BBB A/B 硬门禁 scope 通过才运行正式 Java→BBB→BBB→Java ABBA。
 
 Retina maintenance 在 drawable/surface/画面/workload/input identity 不一致，或固定 baseline
-比较的 FPS 超 0.8465% margin、App/GPU p99、App 1% low、App/GPU hitch、input latency
+比较的 FPS 超 0.8433% margin、App/GPU p99、App 1% low、App/GPU hitch、input latency
 任一显著回退时重开。
 依赖现代化每次只处理一个有界依赖组：winit 0.30 后依次审计 pollster、认证/网络、glam、
 hecs、音频/归档/开发工具，并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。

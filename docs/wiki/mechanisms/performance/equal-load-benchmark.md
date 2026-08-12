@@ -100,7 +100,8 @@ parser 按 archive 的精确列集合识别 v2/v3；新 BBB capture 显式要求
 `9a1546506` 上完成 8/8 个有效 AC fullscreen 2560x1600 B-C-C-B run；报告
 `post-present-fence-ac-candidate.json`（SHA-256
 `fa3c2e39f8c61261c547c461000f50c8056445fa5685da17d30dfb9db4c461d3`）记录六个 FPS 与
-四十三个绝对稳定性 failure。combined FPS 194.058→192.703 虽在 0.8465% margin 内，
+四十三个绝对稳定性 failure。combined FPS 194.058→192.703 虽在当时的历史 0.8465%
+margin 内（不是当前 baseline margin），
 static-orbit、round-2 与四个 nearest-pair scope 未通过；combined App 和 GPU 绝对尾部也回退。
 marker submit mean 仅 0.0035 ms，但 surface-acquire p95/p99/stddev 仍由
 1.5048/6.0911/1.0337 ms 变为 1.7065/6.1295/1.0567 ms，故 drawable tail 假设不成立，
@@ -142,9 +143,11 @@ validator 拒绝全部 22 个 FPS scope 和 44 个绝对稳定性比较。combin
 已恢复，该候选不进入 Vanilla ABBA。
 
 `macos-native-retina-bbb-ab-v3` 及其 0.19→wgpu 30 失败报告只作历史迁移证据，不再参与
-候选判定。maintenance v5 baseline 是 full-gated `5b1903221` / release SHA-256
-`849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817`；四次 AC repeat
-195.828/194.414/194.422/194.180 FPS 派生 0.8465% noise margin。B-C-C-B×2 的两侧均须为
+候选判定。maintenance v5 baseline 是 full-gated `758a93e41` / release SHA-256
+`ddb6c4ab8be7df7ae065abb764f34207b62918fbb6b447564d37c37355612e75`；四次 AC repeat
+185.936/186.349/184.911/184.784 FPS 派生 0.8433% noise margin。正式 Java ABBA 报告为
+[`current-wgpu30-baseline-report.json`](../../../evidence/macos-native-retina/current-wgpu30-baseline-report.json)，
+SHA-256 `9bf24802ef33fe421b2361b3b366f8f240baf46bed40739b34a21f0e7791bd90`。B-C-C-B×2 的两侧均须为
 registry wgpu/core/hal/types/naga 30.0.0，并逐 run 绑定 dependency receipt、binary hash、
 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、单 in-flight、
 2560x1600 fullscreen 与相同 workload。任何 identity 或 measurement-scope mismatch 都在

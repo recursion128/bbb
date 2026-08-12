@@ -611,6 +611,48 @@ class DisplayProbeTests(unittest.TestCase):
             contract["stability_acceptance"]["policy"],
             retina.STABILITY_POLICY,
         )
+
+    def test_current_wgpu30_baseline_receipt_matches_validator_constants(self):
+        receipt = json.loads(
+            retina.CURRENT_WGPU30_BASELINE_RECEIPT_PATH.read_text(encoding="utf-8")
+        )
+        contract = retina.load_profile_contract()
+
+        self.assertEqual(
+            receipt["capture_bbb_commit"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+        )
+        self.assertEqual(
+            receipt["report_sha256"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256,
+        )
+        self.assertEqual(
+            receipt["bbb_binary_sha256"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+        )
+        self.assertEqual(
+            receipt["raw_manifest_sha256"],
+            retina.WGPU30_OPTIMIZATION_BASELINE_RAW_SHA256,
+        )
+        self.assertEqual(
+            receipt["baseline_repeat_mean_fps"],
+            list(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS),
+        )
+        derived_margin = (
+            max(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+            - min(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+        ) / statistics.fmean(retina.WGPU30_OPTIMIZATION_BASELINE_REPEAT_FPS)
+        self.assertAlmostEqual(receipt["baseline_repeat_noise_margin"], derived_margin)
+        report_path = REPO_ROOT / receipt["report"]
+        raw_manifest_path = REPO_ROOT / receipt["raw_manifest"]
+        self.assertEqual(
+            hashlib.sha256(report_path.read_bytes()).hexdigest(),
+            receipt["report_sha256"],
+        )
+        self.assertEqual(
+            hashlib.sha256(raw_manifest_path.read_bytes()).hexdigest(),
+            receipt["raw_manifest_sha256"],
+        )
         self.assertEqual(
             contract["candidate_bbb_ab"],
             {
@@ -2331,6 +2373,66 @@ class FormalValidationTests(unittest.TestCase):
         )
 
         self.assertTrue(args.establish_current_baseline)
+
+    def test_revalidate_preserves_exact_baseline_establishment_marker(self):
+        marker = {
+            "status": "captured",
+            "capture_bbb_commit": "c" * 40,
+        }
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(retina, "_load_object") as load,
+            mock.patch.object(retina, "validate_and_summarize") as validate,
+        ):
+            root = Path(directory)
+            source = root / "source.json"
+            output = root / "output.json"
+            source.write_text("{}", encoding="utf-8")
+            load.return_value = {
+                "display": retina.asdict(display()),
+                "runs": [],
+                "bbb_commit": "c" * 40,
+                "baseline_establishment": marker,
+            }
+            validate.return_value = {"status": "passed"}
+
+            status = retina._revalidate_command(
+                SimpleNamespace(
+                    report=source,
+                    output=output,
+                    bbb_baseline_ab_report=None,
+                )
+            )
+
+        self.assertEqual(status, 0)
+        self.assertTrue(validate.call_args.kwargs["establish_current_baseline"])
+
+    def test_revalidate_does_not_infer_baseline_from_commit_alone(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(retina, "_load_object") as load,
+            mock.patch.object(retina, "validate_and_summarize") as validate,
+        ):
+            root = Path(directory)
+            source = root / "source.json"
+            output = root / "output.json"
+            source.write_text("{}", encoding="utf-8")
+            load.return_value = {
+                "display": retina.asdict(display()),
+                "runs": [],
+                "bbb_commit": retina.WGPU30_OPTIMIZATION_BASELINE_COMMIT,
+            }
+            validate.return_value = {"status": "passed"}
+
+            retina._revalidate_command(
+                SimpleNamespace(
+                    report=source,
+                    output=output,
+                    bbb_baseline_ab_report=None,
+                )
+            )
+
+        self.assertFalse(validate.call_args.kwargs["establish_current_baseline"])
 
     def test_current_bbb_capture_rejects_missing_frame_phase_archive(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -92,7 +92,8 @@ Accessibility 权限；像素不匹配只产生 blocker，不产生性能比较�
 2880x1800，硬件 panel-native 及两端每段 F2 截图实测 drawable 均为 2560x1600。
 两端均为 fullscreen、VSync 关闭、帧率上限解除；BBB 使用 Metal / Apple M1，官方
 Java 26.1 使用 OpenGL / Apple M1。八轮的 world/replay/settings/resource-pack/input
-哈希完全相同。合并三段、四轮后的 application frame-time 汇总为：BBB 120.738 FPS、
+哈希完全相同。这组已经被当前 wgpu 30 baseline 取代、只作历史记录的数据中，合并三段、
+四轮后的 application frame-time 汇总为：BBB 120.738 FPS、
 8.282 ms、1% low 43.240 FPS、p95/p99 17.945/21.520 ms、CV 0.5822；官方为
 80.646 FPS、12.400 ms、1% low 55.267 FPS、p95/p99 15.248/16.806 ms、CV 0.1201。
 进程 CPU/frame 均值分别为 2.902/5.184 ms；GPU duration 均值分别为
@@ -234,10 +235,12 @@ CAMetalLayer `drawableSize` 与 `maximumDrawableCount`，不再把 hint+1 单独
 SHA-256 `7a5fc89662d9da50cb6f9556c1af68f9ce46c777f8778e3f30b6d651c90bfcfa`。它不再提供
 active baseline、noise margin 或 rollback target。
 
-maintenance `macos-native-retina-bbb-ab-v5` 把 clean/full-gated `5b1903221` 与 release SHA-256
-`849a9300ed1b1325137506f7519782b57c264eb31347d36725c96686afa20817` 固定为 wgpu 30
-baseline。四次 AC repeat 为 195.828/194.414/194.422/194.180 FPS，预声明 margin 为
-0.8465%。以后 baseline/candidate 每个 run 都必须解析到 registry wgpu/core/hal/types/naga
+maintenance `macos-native-retina-bbb-ab-v5` 把 clean/full-gated `758a93e41` 与 release SHA-256
+`ddb6c4ab8be7df7ae065abb764f34207b62918fbb6b447564d37c37355612e75` 固定为 wgpu 30
+baseline。四次 AC repeat 为 185.936/186.349/184.911/184.784 FPS，预声明 margin 为
+0.8433%。正式 Java ABBA 报告 SHA-256 为
+`9bf24802ef33fe421b2361b3b366f8f240baf46bed40739b34a21f0e7791bd90`。以后
+baseline/candidate 每个 run 都必须解析到 registry wgpu/core/hal/types/naga
 30.0.0，绑定相同 `PassBoundary` timestamp strategy、Immediate/hint 2、实际三个 drawable、
 单 in-flight、2560x1600 fullscreen 和同一 workload；任一 identity/scope mismatch 都在解析
 FPS 前拒绝。App/GPU p99、App 1% low、App/GPU hitch 与同仪器 input latency 逐 scope
