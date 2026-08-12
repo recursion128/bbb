@@ -12,7 +12,7 @@ Windows 平台支持。X11 代码保持可编译，但声明 Linux 发布行只�
 
 ## 外部工具
 
-仓库不安装系统依赖。`cargo`/`rustup`、`git`、`rg`、Java 25 与锁定版本的 `uv`
+仓库不安装系统依赖。`cargo`/`rustup`、`git`、`rg`、`java` 25 与锁定版本的 `uv`
 必须由主机提供。`scripts/bootstrap` 准备 uv-managed Python、Rust 依赖和 repo-managed
 Vanilla workspace；日常 Python 入口统一经过 `scripts/python`，不依赖系统 Python。
 
