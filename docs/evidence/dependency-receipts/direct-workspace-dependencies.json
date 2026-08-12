@@ -1439,7 +1439,7 @@
         "source": "https://crates.io/api/v1/crates/pollster"
       },
       "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
-      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "32811b22f90085be1aae1398d436ea4621d89c70",
       "dependency_classes": [
         "runtime"
       ],
