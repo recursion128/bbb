@@ -316,13 +316,12 @@ reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene/effect/diagnostics/light lifecycle 均已通过；
-新 block state、pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
-宣称等价。
+当前差异只取 parity matrix 与 ledger。新 block state、pack model、section
+generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差宣称等价。
 
 ## 账本/goal 路由
 
-当前无本机制 active gap。
+本机制的 active/partial 状态只由 parity matrix 与 ledger 路由。
 
 ## 精确重开条件
 

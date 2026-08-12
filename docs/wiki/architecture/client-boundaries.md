@@ -586,9 +586,9 @@ item runtime、terrain model 或 pack stack。
 
 普通 block quad 只形成存在几何的 solid→translucent layers，并继续使用 blocks atlas；generated
 与 special/composite child 使用各自 items/entity owner，保持 child order、foil phase、full-bright、
-scissor 与 submit order。顶层 compatibility `identity/quads/gui_display`、empty-layer sentinel 和
-第二条 HUD submit helper 已删除；source guard 固定 projection 只有 layers/lighting/foil，且 renderer
-生产消费只遍历一次 `model.layers`。
+scissor 与 submit order。source guard 固定 projection 只有 layers/lighting/foil，renderer
+生产消费只遍历一次 `model.layers`，并拒绝兼容 identity、empty-layer sentinel 或平行 HUD submit
+helper 回流。
 
 CPU projection 随 resource/world/input snapshot 重建，但 static geometry 仍由 renderer residency
 按 asset identity 复用。frame commit 只消费不可变 projection；stale resource generation 被拒绝，

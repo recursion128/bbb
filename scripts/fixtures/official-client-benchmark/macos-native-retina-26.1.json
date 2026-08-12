@@ -113,9 +113,9 @@
     "schema": "renderer-input-latency-ab-v1",
     "required_for_candidate_schema": "macos-native-retina-bbb-ab-v5",
     "legacy_required_when_candidate_in_flight_budget_exceeds": 1,
-    "baseline_bbb_commit": "331be198397d9284c2bb93b96ebb9fb58d265e96",
-    "baseline_bbb_binary_sha256": "231a2e71ffc7a8fb84446673e1ab85f21ca02f21691f11ad4edaefd721e31ae8",
-    "baseline_bbb_report_sha256": "be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24",
+    "baseline_bbb_commit": "758a93e41d827ade7cd5902bc756316d469e04c6",
+    "baseline_bbb_binary_sha256": "ddb6c4ab8be7df7ae065abb764f34207b62918fbb6b447564d37c37355612e75",
+    "baseline_bbb_report_sha256": "9bf24802ef33fe421b2361b3b366f8f240baf46bed40739b34a21f0e7791bd90",
     "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
     "formal_order": [
       "baseline",

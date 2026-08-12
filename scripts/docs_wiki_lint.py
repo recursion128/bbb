@@ -1161,7 +1161,6 @@ class WikiLint:
     def check_document_layout(self, files: list[Path]) -> None:
         allowed_top_level = {
             Path("docs/README.md"),
-            Path("docs/goal-archive.md"),
             Path("docs/unsupported-features.md"),
         }
         for path in files:

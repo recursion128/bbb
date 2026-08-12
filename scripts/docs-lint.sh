@@ -3,49 +3,53 @@ set -eu
 
 repo_root=${BBB_DOCS_LINT_REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
 goal="$repo_root/goal.md"
-archive="$repo_root/docs/goal-archive.md"
 feature_ledger="$repo_root/docs/unsupported-features.md"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-# workflow-v5 (2026-07-21) rewrote goal.md down to 513 lines: completed
-# foundations moved to the goal-archive milestone index and workflow prose was
-# deduplicated with AGENTS.md. The cap is 560 (~9% headroom). When the cap is
-# reached, archive completed history (as index lines, not prose) before
-# changing the limit; do not raise it to accommodate coverage prose.
+# Keep enough headroom for current contracts without allowing completion prose
+# or per-slice snapshots to regrow in goal.md.
 max_goal_lines=560
-
-# workflow-v10 (2026-08-02): historical contracts moved to Git-only retention
-# and the goal archive became a compact routing index. Keep enough headroom for
-# new engineering milestones without allowing completion prose to regrow.
-max_archive_lines=100
 
 failed=0
 
 line_count=$(wc -l <"$goal")
 if [ "$line_count" -gt "$max_goal_lines" ]; then
   echo "goal.md lint: $line_count lines exceeds the $max_goal_lines-line limit" >&2
-  echo "goal.md lint fix: drop completed prose (atomic slices need no archive entry; milestones get 1-3 index lines in docs/goal-archive.md) before raising the limit" >&2
-  failed=1
-fi
-
-archive_line_count=$(wc -l <"$archive")
-if [ "$archive_line_count" -gt "$max_archive_lines" ]; then
-  echo "goal-archive lint: $archive_line_count lines exceeds the $max_archive_lines-line limit; roll the oldest months up into one-line-per-month summaries instead of raising the cap" >&2
+  echo "goal.md lint fix: drop completed prose and snapshots; completed history belongs only in Git" >&2
   failed=1
 fi
 
 cd "$repo_root"
+if historical_docs=$(find docs -type f \( -path 'docs/archive/*' -o -name 'goal-archive.md' \) -print); then
+  if [ -n "$historical_docs" ]; then
+    echo "docs lint: completed-history archive files are not allowed; use Git history:" >&2
+    echo "$historical_docs" >&2
+    failed=1
+  fi
+fi
+
 if completed_history=$(rg -n --no-heading --color never \
   '已闭合|已审计|五格 complete|全行闭合' goal.md); then
   echo "goal.md lint: completed coverage prose is not allowed:" >&2
   echo "$completed_history" >&2
-  echo "goal.md lint fix: move evidence into coverage overrides or the goal-archive milestone index" >&2
+  echo "goal.md lint fix: keep current contracts only; use Git to inspect completed work" >&2
   failed=1
 fi
 
-# workflow-v8 (2026-07-29): deferred gaps stay under their owning Todo domain
-# with an explicit restart condition. A top-level Deferred section made the
-# hardest-ready panel silently report zero active work.
+# Wiki pages describe current mechanisms and their reopen contracts. One-off
+# capture/gated identities and absolute report paths are completion history and
+# belong in machine evidence or Git, not in the maintained narrative.
+if historical_snapshots=$(rg -n --no-heading --color never \
+  'capture `[0-9a-f]{7,40}`|gated (commit|evidence) `[0-9a-f]{7,40}`|最后 gated commit|/var/tmp/bbb-[^` )]+|/tmp/bbb-[^` )]+/(report|evidence)' \
+  goal.md "$feature_ledger" docs/README.md docs/wiki --glob '*.md'); then
+  echo "docs lint: historical receipt snapshots are not allowed in Wiki pages:" >&2
+  echo "$historical_snapshots" >&2
+  echo "docs lint fix: keep current contracts and evidence links; use Git for completed runs" >&2
+  failed=1
+fi
+
+# Deferred gaps stay under their owning Todo domain with an explicit restart
+# condition. A top-level Deferred section would hide them from selection.
 if legacy_deferred=$(rg -n --no-heading --color never \
   '^# Deferred$' "$feature_ledger"); then
   echo "feature ledger lint: top-level Deferred sections are not allowed:" >&2
@@ -54,10 +58,9 @@ if legacy_deferred=$(rg -n --no-heading --color never \
   failed=1
 fi
 
-# workflow-v9 (2026-07-30): every deferred decision is owned by Todo, every
-# deferred decision has one mechanical restart condition, and every Not-needed
-# decision keeps an auditable Vanilla/source anchor. Audit complete Markdown
-# items rather than only their first line.
+# Every deferred decision is owned by Todo and has one mechanical restart
+# condition; every Not-needed decision keeps an auditable Vanilla/source anchor.
+# Audit complete Markdown items rather than only their first line.
 feature_item_issues=$(
   awk '
     function has_deferred_marker(text) {
@@ -330,4 +333,4 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
-echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, route/ledger states consistent, owned deferred/not-needed decisions, Wiki-only docs layout, no completed coverage prose"
+echo "docs lint: goal.md $line_count/$max_goal_lines lines, route/ledger states consistent, owned deferred/not-needed decisions, Git-only completed history, Wiki-only docs layout"

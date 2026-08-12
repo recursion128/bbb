@@ -118,8 +118,8 @@ disconnected screen 终止当前外部 session。pack task 的 UUID+push-sequenc
 
 ### Reload listener 逐 owner 投影
 
-下表顺序直接对应 `Minecraft` 的注册顺序。18 个 current-surface owner 已完成同 generation
-prepare/apply/rollback 验收；另外两个 owner 保留精确的 `not-needed` reopen condition。
+下表顺序直接对应 `Minecraft` 的注册顺序。current-surface owner 共用同一 generation
+prepare/apply/rollback 合同；无当前 consumer 的 owner 保留精确 `not-needed` 重开条件。
 
 <!-- reload-listener-projections:start -->
 | 序 | Inventory owner | Vanilla listener / 查询 | BBB projection | apply / rollback owner | 状态 | Evidence / reopen |
@@ -215,13 +215,13 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
-| version/index metadata 校验 | launcher/index metadata | `VanillaAssetIndex::discover` | focused covered；formal receipt pending | metadata/id/hash/size fixtures |
-| composite vanilla 顺序 | external indexed→jar/default | `PackResourceStack` vanilla entry | focused covered；formal receipt pending | source collision/source fallback/list union tests |
-| pack/filter/metadata 顺序 | fallback resource manager | selected stack/generation | focused covered；formal receipt pending | single/stack/filter/mcmeta tests |
-| namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | focused covered；formal receipt pending | list/root/path-safety tests |
-| lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | focused covered；formal receipt pending | missing/size/SHA/lazy/accounting tests |
-| locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | focused covered；formal receipt pending | zh_cn/CJK/OGG diagnostic acceptance |
-| window icon consumer | `IconSet` 4 owner + `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | focused covered；formal receipt pending | root path/order/budget、X11 five-size ARGB/platform/source-owner tests；旧 index 30 receipt 仅作诊断证据 |
+| version/index metadata 校验 | launcher/index metadata | `VanillaAssetIndex::discover` | `partial` | metadata/id/hash/size fixtures；正式状态来自 parity acceptance |
+| composite vanilla 顺序 | external indexed→jar/default | `PackResourceStack` vanilla entry | `partial` | source collision/source fallback/list union tests；正式状态来自 parity acceptance |
+| pack/filter/metadata 顺序 | fallback resource manager | selected stack/generation | `partial` | single/stack/filter/mcmeta tests；正式状态来自 parity acceptance |
+| namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | `partial` | list/root/path-safety tests；正式状态来自 parity acceptance |
+| lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | `partial` | missing/size/SHA/lazy/accounting tests；正式状态来自 parity acceptance |
+| locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | `partial` | zh_cn/CJK/OGG acceptance；正式状态来自 parity acceptance |
+| window icon consumer | `IconSet` 4 owner + `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | `partial` | root path/order/budget、X11 five-size ARGB/platform/source-owner tests；正式状态来自 parity acceptance |
 
 ## 结构性不变量
 
@@ -237,13 +237,10 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 
 focused tests 覆盖 metadata/index、非法 key/path、missing/size/SHA、namespace/list、root、
 single/stack、source/index/selected/server priority、filter、`.mcmeta`、lazy unrelated object、
-预算与 generation rollback。真实 index 30 acceptance 在清除旧 assets 环境变量后读取
-`zh_cn` 的“多人游戏”，解析 1902 个 sound event 并 bounded-open
-`random/click_stereo.ogg`，以及生成 8192×4729、114432 glyph 的默认 atlas，验证
-`中`、`日`、`한`、U+20000 metrics/UV。window-icon acceptance 从 index 30 按需读取两组
-五张 PNG 与两份 ICNS，核对 exact dimensions、ICNS header/length、对象完整性及预算；
-X11 focused owner 将五张图片按 Vanilla 顺序编码为同一个 `_NET_WM_ICON` ARGB CARDINAL
-property；Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=0` diagnostics。
+预算与 generation rollback。正式 resource/platform evidence 必须从干净的 repo-managed asset
+环境读取 `zh_cn` translation，bounded-open sound object，核对 CJK/补充平面 glyph metrics/UV，
+校验 window-icon PNG dimensions 与 ICNS integrity，并覆盖 X11/Wayland 平台行为。artifact
+identity、计数和状态只由当前 parity acceptance report 提供。
 
 ## 当前差异
 

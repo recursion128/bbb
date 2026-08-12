@@ -91,7 +91,7 @@ display/IME 控制，因此不把“检测到 libei”误当作 release receipt�
 repo-owned `linux-release` backend；macOS release 使用 repo-owned `macos-quartz` backend，
 且不声称替代 Linux 的 compositor/display/IME 验收。
 
-## 验证、迁移结果与回滚点
+## 验证与变更合同
 
 核心验证命令：
 
@@ -105,9 +105,7 @@ scripts/playable-gate.sh fixture
 scripts/platform-acceptance-gate.sh       # 声明的 Linux x86_64 或 macOS aarch64 host
 ```
 
-迁移已按可回滚 checkpoint 完成：先建立新 resolver，随后导入 prepare/verify；在 Linux
-实际生成并校验，在 macOS 合同/能力测试中验证平台路径；再用
-`verify --compare-root <旧根>` 对旧、新 `sources/26.1` 做内容树 hash 比对，结果相同后批量
-迁移消费者和文档。每个阶段的回滚点都是“旧消费者尚未删除、旧 repo 未修改”的提交边界。
-当前代码不再读取旧路径或旧环境变量；独立旧 repo 未被删除、未改写历史，可由用户在确认
-双平台实机与适用 live/platform gate 后自行清理，不属于 bbb 工具的 destructive action。
+所有消费者只通过本页所述 resolver 与 `scripts/vanilla` 访问 workspace；禁止恢复个人绝对
+路径、旧环境变量或仓外源码猜测。resolver/prepare/verify 变化必须在 Linux 实际生成校验，
+并在 macOS 运行合同/能力测试；需要比较迁移输入时使用
+`verify --compare-root <reference-root>` 做内容树 hash 比对。

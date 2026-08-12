@@ -3,8 +3,8 @@
 What is still missing between `bbb` and Minecraft Java 26.1. Nothing else.
 
 This file holds no completion history. When a slice lands, delete the todo it
-closed — never rewrite it into a "done" note. Completed work is recorded by the
-code, its tests, `docs/goal-archive.md`, and `git log`.
+closed — never rewrite it into a "done" note. Completed work is recoverable only
+from Git history; current code and tests describe present behavior.
 
 ## Update Rules
 
@@ -91,14 +91,8 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `audio-sound-manager-engine`
 
 - **Online mode (authenticated Services and encrypted transport) is
-  `not-needed`.** User scope decision 2026-08-05: this client is offline-only.
-  The formerly implemented online surface — RSA/AES-CFB8 encrypted login with
-  the sessionserver join, the `player/certificates` profile-key fetch, the
-  local signed-message chain with `ChatSessionUpdate`, the bearer-token
-  Services block-list/abuse-report REST client, and the
-  `--profile-id`/`--access-token` startup credentials — was removed rather
-  than left as permanently unverifiable dead code. A server that opens the
-  vanilla encryption handshake now fails the connection with an attributable
+  `not-needed`.** The declared client scope is offline-only. A server that opens
+  the vanilla encryption handshake fails the connection with an attributable
   "online-mode servers are unsupported" error before any cipher could be
   negotiated. Remote players' signed chat and announced sessions are still
   decoded and validated with the public Services key set, and signable command
@@ -124,35 +118,19 @@ Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
 Matrix routes: `platform-linux-seat-matrix`, `platform-macos-release`, `platform-windows-release`, `startup-client-bootstrap`, `startup-session-identity`, `lifecycle-client-runtime`, `lifecycle-session-replacement`, `lifecycle-client-task-handoff`, `resources-offline-asset-trust`, `resources-indexed-vanilla-provider`, `resources-default-pack-stack`, `resources-reload-listeners`, `resources-reload-recovery`, `resources-server-pack-lifecycle`, `resources-language-manager`, `resources-window-icons`, `resources-indexed-panorama`, `protocol-packet-tables`, `protocol-listener-contracts`, `protocol-login-handler-decisions`, `protocol-configuration-handler-decisions`, `protocol-play-handler-decisions`, `protocol-client-state-flow`, `protocol-serverbound-call-sites`, `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`, `player-local-session-respawn`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-item-use-state`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`, `rendering-level-backend-lifecycle`, `rendering-level-section-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`, `rendering-block-model-pipeline`, `rendering-chunk-layer-routing`, `rendering-fluid-mesh`, `rendering-camera-fluid-fog`, `ui-screen-lifecycle`, `ui-accessibility-surface`, `ui-clipboard-surface`, `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `platform-window-lifecycle`, `platform-window-display-mode`, `platform-window-surface-state`, `platform-window-chrome`, `performance-official-equal-load`, `performance-gpu-execution-duration`, `coverage-external-client-census`, `diagnostics-crash-runtime`, `docs-chinese-mechanism-wiki`, `entities-fixed-type-surface`, `identity-skin-presentation`, `player-local-client-status-options`, `player-local-environment-effects`, `player-local-inventory-actions`, `player-local-permission-chat-state`, `player-local-vitals-status`, `player-local-world-edit-ui`, `registries-built-in-catalogs`, `registries-synchronized-data`, `ui-bidirectional-shaping`, `ui-chat-screen-surface`, `ui-context-entity-type`, `ui-death-screen-surface`, `ui-disconnected-screen-surface`, `ui-font-manager`, `ui-font-provider-pipeline`, `ui-local-time-icu`, `ui-menu-screen-registration`, `ui-pause-screen-surface`
 
-These rows remain implemented; they are temporarily `partial` because the
-renderer/native release image changed. Refresh the validation classes derived
-by `scripts/parity_acceptance.py plan` against the new full-gated binary before
-restoring any row to `equivalent`.
+- `current-release-revalidation` is active. The matrix rows routed by this domain
+  are `partial` because the renderer/native release image changed. Run the
+  validation classes selected by `scripts/parity_acceptance.py plan` against one
+  clean full-gated commit, then seal the exact-HEAD acceptance receipt before
+  restoring those rows to `equivalent`.
 
-- An X11 release row is `not-needed`: the user declared X11 a non-goal on
-  2026-08-06 in favour of the declared Wayland row. bbb keeps its winit X11
-  branches, and a measured X11 run does open an `x11` window on hardware Vulkan
-  and reach `Play`. That run's live look steering did not converge, but that is
-  not an X11 defect and must not be cited as one: the same symptom then
-  reproduced on Wayland against a seat-backed compositor, where it was traced to
-  the client pausing itself after entering Play unfocused — a display server
-  that publishes a real seat sends `Focused(false)` until something activates
-  the window, which overrides the control-plane focus stand-in. The row rests on
-  the scope decision alone; reopen only if that decision is reversed.
-- Windows is `not-needed`: the user declared it a non-goal on 2026-08-06 and
-  then ruled that bbb supports macOS and Linux only, so the Windows surface was
-  removed rather than left as permanently unverifiable code — the same
-  treatment online mode got. Gone: `PlatformTarget::Windows` and with it the
-  `rundll32 url.dll,FileProtocolHandler` URI opener, the `explorer` path
-  opener and the `%APPDATA%` client-store root; `WindowIconTarget::Windows`
-  and the `WindowExtWindows` taskbar-icon call; `Window.getPlatform`'s `win32`
-  identity, which now has no target that could report it. `bbb-native` refuses
-  a Windows build outright (`compile_error!` in `main.rs`), so the decision is
-  enforced by the compiler rather than by this paragraph, and
-  `test_dev_chain_portability.py` rejects a returning `cfg(windows)` arm or
-  Windows-only API — necessary because nothing here compiles that target, so a
-  regrown arm would otherwise be invisible. One derivation stays because it is
-  a Vanilla options fact rather than platform support: `syncChunkWrites`
+- An X11 release row is `not-needed`: the declared Linux release row is Wayland.
+  bbb keeps winit's X11 branch as a reachable implementation detail but does not
+  issue an X11 platform receipt. Reopen only if the scope decision is reversed.
+- Windows is `not-needed`: bbb supports macOS and Linux only. `bbb-native`
+  refuses a Windows build (`compile_error!` in `main.rs`), and
+  `test_dev_chain_portability.py` rejects `cfg(windows)` or Windows-only APIs.
+  One derivation remains a Vanilla options fact rather than platform support: `syncChunkWrites`
   defaults to `Util.getPlatform() == Util.OS.WINDOWS` (Options.java), and the
   generated catalog keeps reading it from `platform::HOST_IS_WINDOWS`, false by
   construction. Reopen only if the scope decision is reversed; restoring
@@ -169,20 +147,6 @@ restoring any row to `equivalent`.
   for performance-sensitive groups. Reopen a retained dependency only when its
   documented protocol, Vanilla-parity, MSRV, platform, advisory, or replacement
   condition changes.
-Nothing else on that row is deferred. Compositor-originated focus, keyboard,
-pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
-fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and
-`scripts/platform-acceptance-gate.sh` requires its receipts, which retires the
-former `physical-seat-input` entry. The gate
-refuses receipts from a run that also wrote synthetic `input.*`, so they cannot
-be manufactured by the control plane. What the seat proves: the compositor
-grants focus, a seat Escape reopens the world a client paused itself into after
-losing focus, a seat hotbar key moves the canonical selected slot with server
-confirmation, a seat pointer button reaches the canonical swing, relative
-pointer motion turns the canonical view, and text placed on the seat's
-selection reaches the canonical chat draft through the paste chord.
-
-
 ## Native input, movement, interaction, inventory, and command flows
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`

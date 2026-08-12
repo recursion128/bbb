@@ -120,7 +120,8 @@ GUI scale 只由 framebuffer 尺寸算出，而 winit 每次 scale 变化后都�
 
 Linux 行的 limitation 集合为空。macOS 行同样以空 limitation 为通过条件，但它不执行
 Wayland display transition/fcitx5 IME，而是要求 Cocoa/Metal、Quartz 与 CoreAudio 的
-host-native receipts。X11 行按 2026-08-06 用户裁决为非目标；Windows 整体为非目标。
+host-native receipts。X11 不属于声明 Linux release receipt；Windows 整体为产品非目标，
+两者只在 ledger 的 scope 条件变化时重开。
 
 ## 文档测试
 

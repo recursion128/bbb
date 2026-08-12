@@ -28,7 +28,7 @@ configuration UI.
 - Current priorities, hard constraints, structural invariants, slice shapes,
   ready contracts, hardest-ready-first selection, and the checkpoint/full-gate
   policy: `goal.md`. The feature gap ledger: `docs/unsupported-features.md`.
-  Completed history: the milestone index in `docs/goal-archive.md` plus git log.
+  Completed history exists only in Git; use `git log`, `git show`, and path history.
 - For packet ids and wire formats, prefer vanilla `GameProtocols.java` and the
   relevant `Clientbound*Packet` / `Serverbound*Packet` class.
 - For client behavior, inspect `ClientPacketListener`, `ClientLevel`,

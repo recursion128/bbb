@@ -37,7 +37,6 @@
 - [文档工作流](development/documentation-workflow.md)
 - [受维护 Markdown inventory](development/document-inventory.md)
 - [决策索引](decisions/README.md)
-- [历史资料说明](archive/README.md)
 
 ## 阅读和维护规则
 

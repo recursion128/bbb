@@ -21,10 +21,9 @@ non-goals 不因进入维护态而自动转成 TODO。
 ## 本文件维护规则
 
 - 本文件只保留：工作流、硬性约束与结构不变量、未完成项、优先级、完成标准。
-- 完成史不入本文件：原子 slice 的完成记录就是 commit message 加账本/矩阵
-  delta，不再写归档散文；工程 slice、foundation/milestone 关闭或工作流变更
-  在 `docs/goal-archive.md` 索引追加 1～3 行。更早完成史见 git 历史；跨会话
-  方法论与长期状态进 memory。
+- 完成史不入当前文档：完成记录只存在于 Git commit、diff 与 path history；不得
+  另建 milestone/archive 索引、完成清单或取证散文。长期仍成立的机制与不变量写入
+  canonical Wiki，机器验收输入与当前回归基线写入 `docs/evidence/`。
 - 剩余工作必须正面列举（要做什么）；禁止“X（不含 …）”排除式定义——排除
   清单随完成度无限增长。逐项追踪型 checklist 放 `docs/unsupported-features.md`
   对应条目，本文件只指向它。
@@ -36,7 +35,7 @@ non-goals 不因进入维护态而自动转成 TODO。
   新增 ledger 域时在同一 slice 更新路由状态。
 - 本文件与开发流程本身是持续优化对象：流程摩擦在日常 slice 中随手记录，
   改进按工作流第 9 步以专门 slice 落地，不在功能 slice 中顺手改流程。
-- 行数上限与完成史散文由 `scripts/docs-lint.sh` 机械 enforce。
+- 行数上限与历史文档布局由 `scripts/docs-lint.sh` 机械 enforce。
 
 ## 硬性约束
 
@@ -61,15 +60,14 @@ non-goals 不因进入维护态而自动转成 TODO。
   `world_counters!`；新增同类数据先建派生/断言机制，再落数据。
 - 禁止同一语义多处重复实现（多 source of truth）：同一 packet 处理、行为、
   分发或投影逻辑只允许一个权威实现，其它调用路径必须委托、投影或派生，
-  不得各写一份平行 arm/分支/表任其分叉（历史病灶：包分发三路重复、实体
-  常量三处副本、实体模型双路径）。需要新消费点时接到权威实现上；发现
+  不得各写一份平行 arm/分支/表任其分叉。需要新消费点时接到权威实现上；发现
   既有多路实现时按 refactor slice 立项收敛，不得再添第 N 份副本。
 - 从 vanilla Java 源码生成 catalog 时统一复用 Tree-sitter Java source
   frontend；禁止各 generator 另写易漂移的正则、tokenizer 或括号扫描器。通用
   frontend 只拥有 CST、source span 与声明/调用 IR，领域 extractor 只拥有领域
   识别/结构校验。尚未迁移的旧 generator 按独立语义 slice 逐项迁移。
 
-## 结构不变量（新 slice 不得回退；出处见 goal-archive 索引与 memory）
+## 结构不变量（新 slice 不得回退；出处见代码、测试与 canonical Wiki）
 
 - 新增 clientbound play packet 的处理只进 `bbb-world::apply_play_packet`；
   运行时副作用走 `PlayApplyEffects` trait。probe/dispatcher 不得再各写 arm。
@@ -205,13 +203,11 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
    难度相当时依次看：解锁更多后续目标、更接近可玩交付闭环、下节路线 owner。
    进度更新只需简记最终选择与一句难度依据、被排除的最强候选及其真实 blocker。
 6. **实现循环**（原子 slice 或工程阶段）：
-   1. 先 grep 当前实现，确认缺口真实存在（历史上多次“账本以为缺失但代码
-      已实现”）；
+   1. 先 grep 当前实现，确认缺口真实存在且账本没有落后于代码；
    2. 定位 vanilla 26.1 源码依据（常量/公式/顺序）；已批量提取过的先查
       memory `vanilla-feature-quickref`；
    3. 实现 + focused test；随机行为用确定性 seed 或固定样本；
-   4. 更新账本/矩阵条目；仅工程或 milestone 关闭时在 `docs/goal-archive.md`
-      索引追加 1～3 行，原子 slice 不写归档；
+   4. 更新账本/矩阵条目；完成项从当前状态文档删除，追溯只走 Git；
    5. 运行提交前检查，审查 diff 后正常提交（英文祈使句单行 message）；阶段
       提交必须可构建、可审查，失败一律 fix-forward，不重写历史。
    工程 slice 的进度更新报告当前阶段、已完成提交、focused test 结果和下一
@@ -250,7 +246,7 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
      脚本）与 AGENTS.md 指针，删除被取代的条文，不留第二份表述。
    - 验收判据可测：门禁耗时（以 `.git/bbb/gate-log.tsv` 为准）、goal.md 行数、
      每 slice 固定步骤数只许下降或持平；新增或收紧规则须附真实事故依据。
-     每次流程变更按 vN 版本号记入 `docs/goal-archive.md` 索引与 memory。
+     流程变更与 enforcement 同 commit 落地，不另写版本史或归档索引。
 
 ## P0 重新打开条件与 audit 分类
 
@@ -296,119 +292,22 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 
 ### P0 合同：官方 26.1 同载渲染与性能闭环
 
-同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla
-26.1 渲染机制与可见 workload 等价”，再在相同实际画面负载下使 bbb 的稳定帧性能
-不劣于官方客户端。
-这里的等价不是截图“大致相似”：任何可见几何、材质、光照、透明面或
-resident/visible workload 不一致，都会使对应性能 run 作废。渲染一致性门禁是正式
-性能比较的强制前置，不能作为与性能并行推进的第二个 feature；重开工程 active 时
-不能启动其它完整 feature。
+同载门禁的唯一长期定义见[等负载机制页](docs/wiki/mechanisms/performance/equal-load-benchmark.md)，
+当前 Retina baseline 身份只取其 committed receipt。重开时作为一个高风险工程 slice：先
+校验 Vanilla 源码事实、画面、replay、world/resource/settings/input、drawable 与
+visible/resident/draw workload，再做性能比较；任何 identity/workload 不一致都先于指标
+比较拒绝。
 
-非目标：不 patch/mod 官方 jar，不改协议/服务器玩法，不通过 view distance、resident
-cap、实体/粒子/HUD/透明层删减或较低图形设置换取性能，不把 MangoHud interval 称为
-CPU/GPU duration，不把重开工程扩成无界通用 renderer 重写或 GPU-only ftrace 工程。
+禁止 patch/mod 官方 jar，或以较低 view distance、resident cap、实体/粒子/HUD/透明层、
+分辨率、VSync、FPS cap、sleep 或 pacing 换取结果。正式采样保留三场景、每客户端至少
+四次 capture、两轮 ABBA 及 combined/scene/round/nearest-pair scope；candidate 先以当前
+BBB baseline 做交错 A/B。FPS margin 由至少四次重复噪声预声明且不得超过 1%；App/GPU
+p99、App 1% low、App/GPU hitch 与同仪器 input software latency 是硬门禁，stddev、
+p99-p50 与 CV 只作诊断。
 
-边界：benchmark/replay/capture parser 归 `scripts/official_client_benchmark.py`；
-权威 block-state 渲染事实归 `bbb-protocol`，canonical chunk/world projection 归
-`bbb-world`，chunk snapshot/mesh/readiness 归 `bbb-native::terrain_runtime`，GPU
-texture/target/submit 归 `bbb-renderer`。外部客户端、assets、world、capture 与工具
-产物只留外部目录，不提交仓库。
-
-#### P0 渲染机制权威原则
-
-所有关键渲染行为必须逐项重新对照本地
-`scripts/vanilla path 26.1` 返回的已校验源码，复刻 Vanilla 的决策输入、查询坐标、判断顺序与
-fallback；不能从最终截图反向调常量。最低权威矩阵包括 `BlockModelLighter`、
-`BlockBehaviour` / `BlockState`、`Block.shouldRenderFace`、`ModelBlockRenderer`、
-`TextureAtlas` / `TextureAtlasSprite`、terrain shader 与 RGSS、chunk render-layer
-routing、fluid renderer、translucent sorting 与 blend state；共同 replay 还须对照
-`ClientboundPlayerPositionPacket` 与 teleport 路径，颜色链须对照 `MainTarget`、
-`RenderTarget`、`TextureFormat`、`GlConst`、`Lightmap`、`LevelRenderer`、
-`SkyRenderer` 与 `FogRenderer`。
-
-禁止默认用 `Opaque` / `Cutout` / `Translucent`、渲染形状或方块名称有损推导彼此
-独立的 `canOcclude`、`isSolidRender`、`isViewBlocking`、`getLightDampening`、
-`getShadeBrightness`、collision/occlusion shape、`skipRendering` 与 fluid overlay
-关系。这些事实必须由 protocol/world 的权威 block-state projection 携带到 renderer；
-只有对 Vanilla 26.1 全状态空间做过机械验证的等价推导才允许替代。缺少事实时必须
-补 projection 和 focused tests，不能在 renderer 以材质类别或 block-name 特判兜底。
-
-#### 冻结串行阶段
-
-1. **Phase A — 几何与面剔除等价**：锁定 collision/occlusion shape、
-   `canOcclude`、`skipRendering`、跨 chunk 邻接和内/背面；运行 protocol facts、world
-   projection 与 terrain mesh focused tests。
-2. **Phase B — AO 与方块光照等价**：锁定 `BlockModelLighter` 的查询坐标、
-   `isViewBlocking`、light dampening、shade brightness、light sampling、AO 与
-   cardinal shade；运行 block-state facts、world projection 与 mesh-lighting tests。
-3. **Phase C — texture sampling 与 render-layer 等价**：锁定 atlas 尺寸、sprite UV、
-   mipmap、RGSS、cutout 与 translucent routing；运行 pack/native texture、shader 与
-   offscreen pipeline tests。
-4. **Phase D — 关键透明交界**：逐项关闭水/普通玻璃/染色玻璃/叶子交界、fluid
-   overlay、depth/blend 与 translucent sorting 差异；运行 fluid/terrain tests 和局部
-   ROI 锚点复验。
-5. **Phase E — 共同 workload 证据**：建立同 tick replay 锚点、全 loaded-resident
-   readiness、visible/resident chunk/section、实体与透明面结构证据，以及共同
-   draw/frame evidence；运行 benchmark parser tests 与两边 workload smoke。
-6. **Phase F — 性能采样、定位与优化**：只在 A～E 全部通过后，以 phase counters、
-   marker-window `perf record -g`、共同 frame capture 和相同 `perf stat` 定位 dominant
-   owner；每轮只改证据指向的 owner，并重跑关键视觉锚点与 workload gate。
-7. **Phase G — 正式交付**：按 Java → bbb → bbb → Java 完成两轮 ABBA 正式
-   capture，生成完整机器可解析报告，更新账本，运行 per-commit checks 与 full gate。
-
-各阶段严格串行；失败必须 fix-forward 并重复本阶段验证，不得跳过失败阶段发布性能
-结论。每次重开前先关闭基线 full gate；A～E 的每个跨核心 owner/真实性里程碑、累计
-四个提交、准备正式 capture、停止或交付时均 full gate，最终 `HEAD` 必须
-full-gated。安全停止点只允许位于干净提交、文档仍明确 active 的 checkpoint，或有
-可复现且经过验证的精确外部 blocker。
-
-#### 渲染一致性门禁与 focused acceptance matrix
-
-每个 replay 场景必须保存同 tick 的 Vanilla/BBB 静止锚点，并机械验证：replay、
-world 与 resource-pack hash 一致；玩家 position/yaw/pitch 和相机状态一致；分辨率、
-FOV、graphics、mipmap、粒子、云与 HUD 一致；loaded、resident、visible
-chunk/section 数量符合冻结 workload 合同；实体、block entity、粒子与透明面场景
-一致；没有缺块、缺面、额外内部面或错误边界；保存共同 draw/frame evidence。
-
-截图 hash 不同本身不能直接判失败，因为 OpenGL/Vulkan 允许细微光栅差异；全图
-平均误差也不能掩盖局部错误。每个锚点必须同时保存并审查：几何/可见面断言、
-material-specific ROI、像素差分图、在 run manifest 中预先冻结的机器可解析阈值，
-以及人工完整 diff review。结构错误容忍度为零；像素阈值须先由同客户端重复 capture
-噪声标定后冻结，看到跨客户端结果后不得放宽。关键 ROI 中出现缺失方块、错误面、
-错误透明交界或明显亮度级差时，无论全图指标如何都失败。
-
-P0 focused acceptance matrix 至少覆盖 `static_orbit`、`preloaded_flight` 与
-`chunk_boundary_crossing` 的静止锚点，并逐项验证：
-
-- 叶子：cutout、mipmap、biome tint 与 AO；不得明显比 Vanilla 发黑；
-- 普通/染色玻璃：不得丢失外表面或显示错误内部面；
-- 玻璃与水：不得出现 Vanilla 不存在的交界线；
-- 水：顶面、侧面、overlay、tint、depth 与透明 blend 正确；
-- 石材及其他完整方块：AO 与 cardinal shade 对齐；
-- 发光石：texture mip 与发光/邻接光照正确；
-- armor stand 及装备：位置、材质、光照与 overlay 一致；
-- chunk 边界：没有缺面、接缝或错误透明排序。
-
-#### 性能结论与完成条件
-
-渲染一致性门禁通过前，不得发布 Vanilla/BBB 正式性能倍数；已有数据一律标记
-`diagnostic/invalid-for-comparison`。不得通过降低 bbb view distance、resident cap、
-实体数、透明面或粒子量取得优势，也不得把更少 draw workload 称作 renderer 优化。
-一致后每个性能修复都必须重跑关键视觉锚点和 workload gate，破坏画面合同的优化
-立即作废并 fix-forward。
-
-正式三场景、每客户端至少四次 capture，保持两轮 ABBA；application frame 校验 mean FPS/frame、p50/p95/p99、1% low、stddev、p99-p50/hitch，GPU duration 校验 mean、p50/p95/p99、stddev、p99-p50/hitch。
-CV 仅诊断：绝对指标全过时不得单独阻止，伴随绝对回退时随该回退报告。validator 先拒绝 drawable、world/replay/settings/resource/input、visible workload/draw 不一致，再查 combined、scene、ABBA round 与 nearest-run pair；失败 run 列 scope/metric/field，不得被 combined 掩盖。
-禁止 sleep、固定 pacing、cap、VSync 或减载压 CV。candidate 还须交错 BBB-baseline A/B，FPS margin 从至少四次 baseline 重复噪声预先派生并封顶 1%，快于官方不豁免自身回退。
-`perf stat` 只报告每 presented frame 的进程均值；最终 summary 保留各 run、无效原因、截图/marker/residency、MangoHud/perf、共同 draw/frame evidence 及工具版本/校验。
-
-按本合同重开的 P0 slice 只有同时满足以下条件才能关闭：Vanilla 机制证据已记录；focused
-unit/integration tests 通过；三个场景关键锚点通过；可见 workload 与共同 draw
-evidence 通过；每客户端至少四次有效正式 capture 且上述两轮 ABBA 完成；完整 diff
-review、docs lint、fmt、diff check 与 per-commit checks 通过；最终 `HEAD` 通过 full
-gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-features.md`
-反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
-停止点。
+关闭重开项需要 focused/integration tests、完整同载 evidence、适用 playable/platform
+receipt、提交前检查和 full-gated clean HEAD 全部通过。失败必须 fix-forward；截图看起来
+接近、combined 掩盖失败 scope 或缺失外部证据都不是关闭依据。
 
 ## 客户端差异优先级
 
@@ -432,8 +331,8 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
-重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
+状态：`maintenance`。新候选只有在机械审计登记真实重复 owner/path、删除目标、evidence
+与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
 ### P1：可玩 Session 端到端门禁
 
@@ -485,23 +384,23 @@ built-in pack ZIP 与 Realms 对应 surface 按账本保持 `not-needed`。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。Retina 性能进入 maintenance；下一开放路线是 committed direct-dependency
-receipt 与依赖现代化审计，优先单独迁移 winit 0.30。平台、生命周期、音频、安全预算与
-有界队列按各自 gate/stamp 和 Wiki 合同维护，不在这里保存完成史。
+状态：`active`。当前 ready 路线取自账本的 release revalidation 与 committed
+direct-dependency receipt/依赖现代化审计；依赖迁移从 winit 0.30 开始。平台、生命周期、
+音频、安全预算与有界队列按各自 gate/stamp 和 Wiki 合同维护。
 macOS 与 Linux 是声明平台，Windows 是账本附 Vanilla/产品依据的 `not-needed`。
 
 Retina 性能基础设施固定为 crates.io wgpu/core/hal/types/naga 30.0.0；不得恢复 0.19、
-path patch、vendor 或直接 `wgpu-hal` 依赖。后续 candidate 只与账本/evidence 锁定的
-full-gated wgpu 30 BBB baseline 比较，固定 FPS noise margin 为 0.8433%，任何新
-margin 最大不得超过 1%。baseline commit、binary hash、重复采集数据与失败
-candidate 只记录在账本、evidence 和归档，不写入本文件。
+path patch、vendor 或直接 `wgpu-hal` 依赖。当前 baseline 身份、重复采集噪声与 SHA
+只从 `docs/evidence/macos-native-retina/current-wgpu30-baseline.json` 读取；后续 candidate
+只与该 full-gated wgpu 30 baseline 比较，噪声 margin 最大不得超过 1%。失败 candidate
+不进入当前文档，追溯只走 Git。
 
 当前接受的 macOS Immediate 策略保持一个 controller-owned render submission、latency hint 2、
 三个 drawable 与 wait→acquire→submit→present；FIFO、Linux、surface fallback 和可见 workload
 不变。`renderer-frame-flight-v1`、`renderer-gpu-stages-v1` 与
 `renderer-input-latency-v1` 继续作为 opt-in 诊断面，frame-phase v3 的
-`post_present_fence_submit` 兼容字段继续报零；旧 v1/v2 evidence 和既有失败报告必须可复验，
-未开启详细诊断时保持两个 timestamp query。不可变 FramePlan/PassPlan 继续锁定活跃 pass、
+`post_present_fence_submit` 字段继续报零；未开启详细诊断时保持两个 timestamp query。
+不可变 FramePlan/PassPlan 继续锁定活跃 pass、
 attachment/copy consumer、presentation source 与 pipeline/material batch 顺序；不得引入通用
 render graph 或改变可见 workload。只有 raw stage/pass/copy 证据证明无消费者或重复创建时，
 才允许单独 candidate 消除该成本。
@@ -517,8 +416,8 @@ BBB mean FPS 不低于官方、App p99 不高于官方、1% low 不低于官方�
 官方；诊断字段局部回退必须显式列出。禁止 sleep、pacing、cap、VSync 或
 降低工作量。只有所有 BBB A/B 硬门禁 scope 通过才运行正式 Java→BBB→BBB→Java ABBA。
 
-Retina maintenance 在 drawable/surface/画面/workload/input identity 不一致，或固定 baseline
-比较的 FPS 超 0.8433% margin、App/GPU p99、App 1% low、App/GPU hitch、input latency
-任一显著回退时重开。
+Retina maintenance 在 drawable/surface/画面/workload/input identity 不一致，或相对当前
+receipt 的 FPS 超其预声明 noise margin、App/GPU p99、App 1% low、App/GPU hitch、input
+latency 任一显著回退时重开。
 依赖现代化每次只处理一个有界依赖组：winit 0.30 后依次审计 pollster、认证/网络、glam、
 hecs、音频/归档/开发工具，并按 runtime、协议、平台与性能风险决定升级、保留或 deferred。

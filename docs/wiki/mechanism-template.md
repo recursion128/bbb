@@ -46,7 +46,8 @@
 
 ## 账本/goal 路由
 
-链接 `goal.md` 或 `docs/unsupported-features.md` 的权威条目。已关闭项说明无需路由。
+链接 `goal.md` 或 `docs/unsupported-features.md` 的权威条目；没有开放项时写明状态只取
+parity matrix/ledger，不补写完成记录。
 
 ## 精确重开条件
 

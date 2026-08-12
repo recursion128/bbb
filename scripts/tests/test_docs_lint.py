@@ -94,9 +94,6 @@ class DocsLintTests(unittest.TestCase):
             "# Goal\n\n" + ROADMAP_STATUSES,
             encoding="utf-8",
         )
-        (repo / "docs" / "goal-archive.md").write_text(
-            "# Goal archive\n", encoding="utf-8"
-        )
         (repo / "docs" / "unsupported-features.md").write_text(
             """\
 # Feature Gap TODO List
@@ -217,6 +214,22 @@ Matrix routes: `fixture-not-needed`
             (evidence / name).write_text("{}\n", encoding="utf-8")
         self.sync_inventory(repo)
         return repo
+
+    def test_historical_receipt_snapshot_in_wiki_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            repo = self.make_repo(Path(root))
+            page = repo / "docs" / "wiki" / "glossary.md"
+            page.write_text(
+                page.read_text(encoding="utf-8")
+                + "\n旧验收 capture `abcdef1` → gated evidence `1234567`。\n",
+                encoding="utf-8",
+            )
+            self.sync_inventory(repo)
+
+            result = self.run_lint(repo)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("historical receipt snapshots", result.stdout)
 
     def add_architecture_candidate(self, repo: Path) -> None:
         owner = repo / "crates" / "fixture" / "src" / "owner.rs"
@@ -556,20 +569,33 @@ Matrix route: `fixture-valid`
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("hardcodes generated census counts", result.stdout)
 
-    def test_historical_markdown_outside_wiki_fails(self) -> None:
-        for relative in ("docs/archive/old-design.md", "docs/legacy-note.md"):
+    def test_noncanonical_markdown_outside_wiki_fails(self) -> None:
+        for relative in ("docs/archive/old-design.md", "docs/unowned-note.md"):
             with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
                 repo = self.make_repo(Path(directory))
-                legacy = repo / relative
-                legacy.parent.mkdir(parents=True, exist_ok=True)
-                legacy.write_text("# Old design\n\nHistorical prose.\n", encoding="utf-8")
+                note = repo / relative
+                note.parent.mkdir(parents=True, exist_ok=True)
+                note.write_text("# Unowned note\n\nNoncanonical prose.\n", encoding="utf-8")
                 self.sync_inventory(repo)
                 result = self.run_lint(repo)
 
             self.assertNotEqual(result.returncode, 0, result.stdout)
-            self.assertIn(
-                "historical Markdown outside the Wiki/flow allowlist", result.stdout
+            expected = (
+                "completed-history archive files are not allowed"
+                if relative.startswith("docs/archive/")
+                else "historical Markdown outside the Wiki/flow allowlist"
             )
+            self.assertIn(expected, result.stdout)
+
+    def test_completed_history_archive_is_rejected_before_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            archive = repo / "docs" / "goal-archive.md"
+            archive.write_text("# Goal archive\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("completed-history archive files are not allowed", result.stdout)
 
     def test_vanilla_evidence_missing_member_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

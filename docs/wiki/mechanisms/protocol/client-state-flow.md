@@ -51,14 +51,14 @@ resource apply。phase 决策只属于 simulation；audio backend 不缓存 conn
 
 ## Offline-only 签名边界
 
-Online 模式是明确的非目标（2026-08-05 用户裁决）：客户端不持有 profile key pair、不做
+Online 模式是明确的产品非目标：客户端不持有 profile key pair、不做
 encrypted login/session join、不发 `ChatSessionUpdate`。Vanilla 的
-`AccountProfileKeyPairManager`/play-local 签名链对应面按 scope 决策移除，出站聊天与
+`AccountProfileKeyPairManager`/play-local 签名链没有当前 owner，出站聊天与
 signable command 参数保持 vanilla「无 key pair」语义（`ChatMessage.signature` 恒 None、
 `ArgumentSignatures` 恒空），last-seen ack 管线照常。入站方向不变：远端玩家的
 `InitializeChat` session 仍用 Services 公钥集验证（`services_profile_keys` 为无凭据 GET）。
 服务端发起 encryption 握手时连接以可归因错误失败（`login.rs#reject_encryption_request`）。
-恢复条件与当时被移除的实现清单由唯一 gap ledger 维护。
+重开条件只由唯一 gap ledger 维护。
 
 ## BBB 实现映射
 
@@ -106,14 +106,13 @@ native focused tests 分别验证 codec、apply 和 publication。本机制的�
   验证 input-only publication 不会制造第二份 canonical world，真实 world 变化才生成新 snapshot。
 
 这些都是执行状态迁移或数据结果的行为测试，不使用 source-string guard 代替语义
-断言。共同 replay 的 camera log 在 domain evidence sweep 中进一步证明
-player-position 序列到两个客户端一致；本轮不将该待采集的 formal receipt 冒充为 focused
-evidence。
+断言。正式 replay/camera 状态只取 parity acceptance 的当前 receipt，不能由 focused tests
+推断。
 
 ## 当前差异
 
-全部 clientbound packet 已关闭，本机制无未关闭差异。新增 packet 若尚未逐机制取证，
-矩阵行应先记为 `unverified` 并链接 ledger，不由本页推断已完成。
+当前差异只取 parity matrix 与 ledger。新增 packet 若尚未逐机制取证，矩阵行应先记为
+`unverified` 并链接 ledger，不由本页推断关闭状态。
 
 ## 账本/goal 路由
 

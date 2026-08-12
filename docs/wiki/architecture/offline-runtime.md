@@ -66,10 +66,10 @@ server-authoritative replay 由 datapack tick function 每 tick 执行绝对 `tp
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
-| 离线 UUID | `Main.hasValidUuid` / `UndashedUuid.fromStringLenient` → invalid 时 `UUIDUtil.createOfflinePlayerUUID` | `bbb-net::ClientIdentity` + `bbb-native::startup` 单一投影；`--uuid` 与 username fallback 均已消费 | `partial` | parser、login/world/server-pack 同 identity focused tests；正式 identity receipt 待 code freeze |
-| 离线服务 | `Minecraft` offline branches | official benchmark launcher contract | `partial` | 既有 real-launch smoke 仅为中间证据，不能关闭最终机制 |
-| asset object store | `AssetIndex`/resource loading | `bbb-pack` default vanilla indexed provider | `partial` | real-load focused tests 已有，正式 resource/platform receipt 待 code freeze |
-| 共同位置序列 | server teleport → player-position packet | replay generator + play apply | `partial` | camera-log 是中间证据，最终须绑定 exact-HEAD domain sweep |
+| 离线 UUID | `Main.hasValidUuid` / `UndashedUuid.fromStringLenient` → invalid 时 `UUIDUtil.createOfflinePlayerUUID` | `bbb-net::ClientIdentity` + `bbb-native::startup` 单一投影；`--uuid` 与 username fallback 共用该 owner | `partial` | parser、login/world/server-pack 同 identity focused tests；formal 状态取 parity acceptance |
+| 离线服务 | `Minecraft` offline branches | official benchmark launcher contract | `partial` | real-launch smoke 只作 focused evidence；formal 状态取 parity acceptance |
+| asset object store | `AssetIndex`/resource loading | `bbb-pack` default vanilla indexed provider | `partial` | real-load focused tests；formal 状态取 parity acceptance |
+| 共同位置序列 | server teleport → player-position packet | replay generator + play apply | `partial` | camera-log 只作 focused evidence；formal 状态取 exact-HEAD parity acceptance |
 | 认证服务器 | `authenticateServer` online path | offline-only scope 下无 token/session service 或 encryption surface | `not-needed` | [ledger](../../unsupported-features.md) 的用户 scope 裁决与 reopen condition；不得把诊断 token 当作正式 receipt |
 
 更多采样和 invalid-run 规则见[等负载比较](../mechanisms/performance/equal-load-benchmark.md)。
