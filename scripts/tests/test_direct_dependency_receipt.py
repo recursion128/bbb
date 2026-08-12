@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+import tomllib
 import unittest
 
 
@@ -59,6 +60,7 @@ class DirectDependencyReceiptTests(unittest.TestCase):
                 "rand",
                 "reqwest",
                 "rsa",
+                "rustls",
                 "sha1",
                 "sha2",
                 "symphonia",
@@ -84,6 +86,37 @@ class DirectDependencyReceiptTests(unittest.TestCase):
                 "crates.io-yanked",
             }.issubset(advisory_ids)
         )
+
+    def test_authentication_network_decisions_preserve_the_rsa_digest_contract(self) -> None:
+        dependencies = {
+            entry["name"]: entry for entry in build_receipt(REPO_ROOT)["dependencies"]
+        }
+        for name, version in {
+            "md5": "0.8.1",
+            "num-bigint": "0.5.1",
+            "reqwest": "0.13.4",
+            "rustls": "0.23.41",
+        }.items():
+            self.assertEqual(dependencies[name]["locked"]["version"], version)
+            self.assertEqual(dependencies[name]["modernization"]["decision"], "upgraded")
+
+        for name in ("sha1", "sha2"):
+            decision = dependencies[name]["modernization"]
+            self.assertEqual(decision["decision"], "retain-intentional")
+            self.assertIn("rsa 0.9.10", decision["rationale"])
+            self.assertIn("digest 0.11", decision["rationale"])
+
+    def test_reqwest_uses_the_explicit_portable_rustls_provider(self) -> None:
+        manifest = tomllib.loads((REPO_ROOT / "Cargo.toml").read_text(encoding="utf-8"))
+        reqwest = manifest["workspace"]["dependencies"]["reqwest"]
+        rustls = manifest["workspace"]["dependencies"]["rustls"]
+        self.assertIn("rustls-no-provider", reqwest["features"])
+        self.assertNotIn("rustls", reqwest["features"])
+        self.assertEqual(rustls["features"], ["ring", "std", "tls12"])
+
+        lock = (REPO_ROOT / "Cargo.lock").read_text(encoding="utf-8")
+        self.assertNotIn('name = "aws-lc-rs"', lock)
+        self.assertNotIn('name = "aws-lc-sys"', lock)
 
 
 if __name__ == "__main__":

@@ -2,15 +2,15 @@
   "schema": 1,
   "audit_as_of": "2026-08-12",
   "inputs": {
-    "Cargo.toml_sha256": "7a54f6aa431d14ec10e479e42f38fdeb0b22f7fa4e36e2f89a7bbbfc72feea0b",
-    "Cargo.lock_sha256": "6e1966ac3233c3cf4ea096bec2f60215cb30ef74dce5f9251e1a62c66dbdabbf",
+    "Cargo.toml_sha256": "f2a67d6943dea99bd4c6532ae3d6beba868f583f618fc2beba9d7de551e5ed86",
+    "Cargo.lock_sha256": "7eb4310ab4bd7c7fb5248003183a605231324b58759945228e3a996d2104bb8f",
     "cargo_metadata": "cargo metadata --format-version 1 --locked",
     "latest_release_rule": "crates.io max_stable_version; prerelease and yanked excluded",
     "rustsec_database_commit": "d0861df1eab469d3c58d6b836ce48b5766e5f217",
     "rustsec_command": "cargo audit 0.22.2 audit --json"
   },
   "workspace_msrv": "1.97",
-  "direct_registry_dependency_count": 55,
+  "direct_registry_dependency_count": 56,
   "dependencies": [
     {
       "name": "al-sys",
@@ -1208,11 +1208,11 @@
     {
       "name": "md5",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.7",
+      "manifest_constraint": "0.8.1",
       "locked": {
-        "version": "0.7.0",
+        "version": "0.8.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+        "checksum": "7ebb8d8732c6a6df3d8f032a82911cfc747e00efb95cc46e8d0acd5b5b88570c"
       },
       "latest_stable": {
         "version": "0.8.1",
@@ -1220,7 +1220,7 @@
         "source": "https://crates.io/api/v1/crates/md5"
       },
       "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
-      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "25e13b441fc9c1fccea020683badf2e2d8e4606a",
       "dependency_classes": [
         "runtime"
       ],
@@ -1240,24 +1240,24 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": null
       },
       "modernization": {
         "group": "authentication-network",
-        "decision": "upgrade-planned",
-        "rationale": "bounded authentication-network migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded authentication-network migration is resolved at latest stable"
       }
     },
     {
       "name": "num-bigint",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.4",
+      "manifest_constraint": "0.5.1",
       "locked": {
-        "version": "0.4.8",
+        "version": "0.5.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "c89e69e7e0f03bea5ef08013795c25018e101932225a656383bd384495ecc367"
+        "checksum": "93e7820bc0a80a0238e650327316f929ba18d5be054b647490a3a6a339f3e7c0"
       },
       "latest_stable": {
         "version": "0.5.1",
@@ -1265,7 +1265,7 @@
         "source": "https://crates.io/api/v1/crates/num-bigint"
       },
       "first_introduced_commit": "731e00d5e2f22f8024877463fc0db88c000c9c2f",
-      "latest_constraint_commit": "731e00d5e2f22f8024877463fc0db88c000c9c2f",
+      "latest_constraint_commit": "25e13b441fc9c1fccea020683badf2e2d8e4606a",
       "dependency_classes": [
         "runtime"
       ],
@@ -1285,14 +1285,14 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.60"
       },
       "modernization": {
         "group": "authentication-network",
-        "decision": "upgrade-planned",
-        "rationale": "bounded authentication-network migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded authentication-network migration is resolved at latest stable"
       }
     },
     {
@@ -1573,11 +1573,11 @@
     {
       "name": "reqwest",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.12",
+      "manifest_constraint": "0.13.4",
       "locked": {
-        "version": "0.12.28",
+        "version": "0.13.4",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
+        "checksum": "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
       },
       "latest_stable": {
         "version": "0.13.4",
@@ -1585,13 +1585,12 @@
         "source": "https://crates.io/api/v1/crates/reqwest"
       },
       "first_introduced_commit": "d2de52191dae9bab1d54d26b295e2327297a4fa3",
-      "latest_constraint_commit": "a4e42b9c6f8a263499bdf5e2b9c7d9af4c69a17e",
+      "latest_constraint_commit": "25e13b441fc9c1fccea020683badf2e2d8e4606a",
       "dependency_classes": [
         "runtime"
       ],
       "workspace_members": [
         "bbb-item-model",
-        "bbb-native",
         "bbb-net"
       ],
       "platform_impact": [
@@ -1599,10 +1598,7 @@
         "macos"
       ],
       "domain_impact": [
-        "audio",
         "authentication",
-        "performance",
-        "platform",
         "protocol",
         "rendering"
       ],
@@ -1611,14 +1607,14 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.85.0"
       },
       "modernization": {
         "group": "authentication-network",
-        "decision": "upgrade-planned",
-        "rationale": "bounded authentication-network migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "reqwest 0.13 uses rustls-no-provider with BBB-installed ring; this keeps system certificate verification without the aws-lc C cross-toolchain dependency"
       }
     },
     {
@@ -1682,6 +1678,53 @@
         "group": "authentication-network",
         "decision": "retain-intentional",
         "rationale": "0.9.10 is the latest stable release; the unpatched timing advisory does not cover BBB's production public-key verification path"
+      }
+    },
+    {
+      "name": "rustls",
+      "manifest": "Cargo.toml",
+      "manifest_constraint": "0.23.41",
+      "locked": {
+        "version": "0.23.41",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "6b92b125634d9b795e7beca796cc790df15a7fb38323bf3196fda83292d06b1f"
+      },
+      "latest_stable": {
+        "version": "0.23.41",
+        "rust_version": "1.71",
+        "source": "https://crates.io/api/v1/crates/rustls"
+      },
+      "first_introduced_commit": "25e13b441fc9c1fccea020683badf2e2d8e4606a",
+      "latest_constraint_commit": "25e13b441fc9c1fccea020683badf2e2d8e4606a",
+      "dependency_classes": [
+        "runtime"
+      ],
+      "workspace_members": [
+        "bbb-item-model",
+        "bbb-net"
+      ],
+      "platform_impact": [
+        "linux",
+        "macos"
+      ],
+      "domain_impact": [
+        "authentication",
+        "protocol",
+        "rendering"
+      ],
+      "maintenance": {
+        "state": "active-or-no-advisory"
+      },
+      "advisories": [],
+      "migration_risk": {
+        "breaking_api": "none",
+        "workspace_msrv": "1.97",
+        "latest_release_msrv": "1.71"
+      },
+      "modernization": {
+        "group": "authentication-network",
+        "decision": "upgraded",
+        "rationale": "reqwest 0.13 uses rustls-no-provider with BBB-installed ring; this keeps system certificate verification without the aws-lc C cross-toolchain dependency"
       }
     },
     {
@@ -1888,8 +1931,8 @@
       },
       "modernization": {
         "group": "authentication-network",
-        "decision": "upgrade-planned",
-        "rationale": "bounded authentication-network migration with focused parity tests"
+        "decision": "retain-intentional",
+        "rationale": "0.11 uses digest 0.11 while the latest stable rsa 0.9.10 requires digest 0.10; reopen when a stable rsa release supports digest 0.11"
       }
     },
     {
@@ -1937,8 +1980,8 @@
       },
       "modernization": {
         "group": "authentication-network",
-        "decision": "upgrade-planned",
-        "rationale": "bounded authentication-network migration with focused parity tests"
+        "decision": "retain-intentional",
+        "rationale": "0.11 uses digest 0.11 while the latest stable rsa 0.9.10 requires digest 0.10; reopen when a stable rsa release supports digest 0.11"
       }
     },
     {

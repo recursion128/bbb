@@ -53,6 +53,7 @@ LATEST = {
     "regex": ("1.13.1", "1.65"),
     "reqwest": ("0.13.4", "1.85.0"),
     "rsa": ("0.9.10", "1.65"),
+    "rustls": ("0.23.41", "1.71"),
     "ryu": ("1.0.23", "1.71"),
     "serde": ("1.0.229", "1.56"),
     "serde_json": ("1.0.151", "1.71"),
@@ -93,6 +94,7 @@ GROUPS = {
     "num-bigint": "authentication-network",
     "md5": "authentication-network",
     "rsa": "authentication-network",
+    "rustls": "authentication-network",
     "glam": "performance-glam",
     "hecs": "performance-hecs",
     "symphonia": "audio-decoder",
@@ -101,7 +103,7 @@ GROUPS = {
     "rand": "development-random",
 }
 
-PLANNED = frozenset(GROUPS) - {"rsa"}
+PLANNED = frozenset(GROUPS) - {"rsa", "sha1", "sha2"}
 
 ADVISORIES = {
     "al-sys": [
@@ -360,6 +362,18 @@ def _decision(name: str, locked: str, latest: str, constraint: str) -> tuple[str
             "retain-intentional",
             "0.9.10 is the latest stable release; the unpatched timing advisory does not cover "
             "BBB's production public-key verification path",
+        )
+    if name in {"sha1", "sha2"}:
+        return (
+            "retain-intentional",
+            "0.11 uses digest 0.11 while the latest stable rsa 0.9.10 requires digest 0.10; "
+            "reopen when a stable rsa release supports digest 0.11",
+        )
+    if name in {"reqwest", "rustls"} and locked == latest:
+        return (
+            "upgraded",
+            "reqwest 0.13 uses rustls-no-provider with BBB-installed ring; this keeps system "
+            "certificate verification without the aws-lc C cross-toolchain dependency",
         )
     if name in PLANNED:
         if locked == latest:

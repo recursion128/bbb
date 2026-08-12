@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "workspace_dependency": "wgpu = 30.0.0",
-  "cargo_toml_sha256": "7a54f6aa431d14ec10e479e42f38fdeb0b22f7fa4e36e2f89a7bbbfc72feea0b",
-  "cargo_lock_sha256": "6e1966ac3233c3cf4ea096bec2f60215cb30ef74dce5f9251e1a62c66dbdabbf",
+  "cargo_toml_sha256": "f2a67d6943dea99bd4c6532ae3d6beba868f583f618fc2beba9d7de551e5ed86",
+  "cargo_lock_sha256": "7eb4310ab4bd7c7fb5248003183a605231324b58759945228e3a996d2104bb8f",
   "registry_source": "registry+https://github.com/rust-lang/crates.io-index",
   "packages": {
     "naga": {
