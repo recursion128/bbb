@@ -5,14 +5,14 @@
 //! fixture. These cases isolate immutable CPU input, historical 1/8/32 full
 //! chunk work, and production-equivalent section-dirty workloads.
 
-use std::time::Duration;
+use std::{hint::black_box, time::Duration};
 
 use bbb_renderer::terrain::{
     build_terrain_chunk_section_mesh_layers_with_atlas_and_camera,
     build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera, TerrainCell,
     TerrainChunkSnapshot, TerrainMaterialClass, TerrainTextureAtlas, TerrainTransparency,
 };
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 const CHANGED_OWNER_COUNTS: [usize; 3] = [1, 8, 32];
 const SNAPSHOT_HEIGHT: usize = 64;

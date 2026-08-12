@@ -16,13 +16,16 @@ use kira::{
     Frame,
 };
 use symphonia::core::{
-    audio::{AudioBuffer, AudioBufferRef, Signal},
-    codecs::Decoder as SymphoniaDecoder,
-    conv::{FromSample, IntoSample},
-    formats::{FormatReader, SeekMode, SeekTo},
+    audio::{
+        conv::{FromSample, IntoSample},
+        sample::Sample,
+        Audio, AudioBuffer, GenericAudioBufferRef,
+    },
+    codecs::audio::AudioDecoder as SymphoniaDecoder,
+    formats::{probe::Hint, FormatReader, SeekMode, SeekTo, TrackType},
     io::{MediaSource, MediaSourceStream},
-    probe::Hint,
-    sample::Sample,
+    packet::Packet,
+    units::Timestamp,
 };
 use thiserror::Error;
 
@@ -424,40 +427,39 @@ impl BoundedAudioDecoder {
         let media_source = MediaSourceStream::new(Box::new(file), Default::default());
         let mut hint = Hint::new();
         hint.with_extension("ogg");
-        let format_reader = symphonia::default::get_probe()
-            .format(
-                &hint,
-                media_source,
-                &Default::default(),
-                &Default::default(),
-            )?
-            .format;
+        let format_reader = symphonia::default::get_probe().probe(
+            &hint,
+            media_source,
+            Default::default(),
+            Default::default(),
+        )?;
         let track = format_reader
-            .default_track()
+            .default_track(TrackType::Audio)
             .ok_or_else(|| AudioDecodeError::Limit("audio has no default track".to_string()))?;
-        let sample_rate = track
+        let codec_params = track
             .codec_params
+            .as_ref()
+            .and_then(|params| params.audio())
+            .ok_or_else(|| AudioDecodeError::Limit("audio track has no codec parameters".into()))?;
+        let sample_rate = codec_params
             .sample_rate
             .ok_or_else(|| AudioDecodeError::Limit("audio sample rate is unknown".to_string()))?;
-        let channels = track.codec_params.channels.ok_or_else(|| {
+        let channels = codec_params.channels.as_ref().ok_or_else(|| {
             AudioDecodeError::Limit("audio channel configuration is unknown".to_string())
         })?;
-        let admitted_frames_u64 = admit_audio_metadata(
-            sample_rate,
-            channels.count(),
-            track.codec_params.n_frames,
-            static_sound,
-        )?;
+        let channel_count = channels.count();
+        let admitted_frames_u64 =
+            admit_audio_metadata(sample_rate, channel_count, track.num_frames, static_sound)?;
         let admitted_frames = usize::try_from(admitted_frames_u64)
             .map_err(|_| AudioDecodeError::Limit("audio frame count does not fit usize".into()))?;
-        let decoder =
-            symphonia::default::get_codecs().make(&track.codec_params, &Default::default())?;
         let track_id = track.id;
+        let decoder = symphonia::default::get_codecs()
+            .make_audio_decoder(codec_params, &Default::default())?;
         Ok(Self {
             format_reader,
             decoder,
             sample_rate,
-            channels: u16::try_from(channels.count())
+            channels: u16::try_from(channel_count)
                 .expect("admitted mono/stereo channel count fits u16"),
             admitted_frames,
             emitted_frames: 0,
@@ -521,10 +523,14 @@ impl BoundedAudioDecoder {
         )))
     }
 
-    fn next_track_packet(&mut self) -> Result<symphonia::core::formats::Packet, AudioDecodeError> {
+    fn next_track_packet(&mut self) -> Result<Packet, AudioDecodeError> {
         loop {
-            let packet = self.format_reader.next_packet()?;
-            if packet.track_id() == self.track_id {
+            let packet = self.format_reader.next_packet()?.ok_or_else(|| {
+                AudioDecodeError::Symphonia(symphonia::core::errors::Error::IoError(
+                    io::Error::new(io::ErrorKind::UnexpectedEof, "audio stream ended"),
+                ))
+            })?;
+            if packet.track_id == self.track_id {
                 return Ok(packet);
             }
         }
@@ -621,13 +627,15 @@ impl KiraStreamingDecoder for BoundedAudioDecoder {
         }
         let seeked = self.format_reader.seek(
             SeekMode::Accurate,
-            SeekTo::TimeStamp {
-                ts: u64::try_from(index)
-                    .map_err(|_| AudioDecodeError::Limit("audio seek overflow".into()))?,
+            SeekTo::Timestamp {
+                ts: Timestamp::new(
+                    i64::try_from(index)
+                        .map_err(|_| AudioDecodeError::Limit("audio seek overflow".into()))?,
+                ),
                 track_id: self.track_id,
             },
         )?;
-        let actual = usize::try_from(seeked.actual_ts)
+        let actual = usize::try_from(seeked.actual_ts.get())
             .map_err(|_| AudioDecodeError::Limit("audio seek result overflow".into()))?;
         if actual > self.admitted_frames {
             return Err(AudioDecodeError::Limit(
@@ -679,20 +687,20 @@ fn admit_audio_metadata(
 }
 
 fn frames_from_buffer(
-    buffer: &AudioBufferRef<'_>,
+    buffer: &GenericAudioBufferRef<'_>,
     remaining: usize,
 ) -> Result<Vec<Frame>, AudioDecodeError> {
     match buffer {
-        AudioBufferRef::U8(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::U16(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::U24(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::U32(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::S8(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::S16(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::S24(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::S32(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::F32(buffer) => frames_from_typed_buffer(buffer, remaining),
-        AudioBufferRef::F64(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::U8(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::U16(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::U24(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::U32(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::S8(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::S16(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::S24(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::S32(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::F32(buffer) => frames_from_typed_buffer(buffer, remaining),
+        GenericAudioBufferRef::F64(buffer) => frames_from_typed_buffer(buffer, remaining),
     }
 }
 
@@ -704,16 +712,23 @@ where
     f32: FromSample<S>,
 {
     admit_decoded_chunk(buffer.frames(), remaining)?;
-    match buffer.spec().channels.count() {
+    match buffer.spec().channels().count() {
         1 => Ok(buffer
-            .chan(0)
+            .plane(0)
+            .expect("mono buffer has its canonical plane")
             .iter()
             .map(|sample| Frame::from_mono((*sample).into_sample()))
             .collect()),
         2 => Ok(buffer
-            .chan(0)
+            .plane(0)
+            .expect("stereo buffer has its left canonical plane")
             .iter()
-            .zip(buffer.chan(1).iter())
+            .zip(
+                buffer
+                    .plane(1)
+                    .expect("stereo buffer has its right canonical plane")
+                    .iter(),
+            )
             .map(|(left, right)| Frame::new((*left).into_sample(), (*right).into_sample()))
             .collect()),
         channels => Err(AudioDecodeError::Limit(format!(

@@ -2,8 +2,8 @@
   "schema": 1,
   "audit_as_of": "2026-08-12",
   "inputs": {
-    "Cargo.toml_sha256": "320744e2f7971e6afd296c307be887f2b4925162d1ddd54648e2c77be361e1f4",
-    "Cargo.lock_sha256": "132c9b9bdcbc1983d5dca13744fb6dd90a69aac05310bcc092ccfe3316fc5ae2",
+    "Cargo.toml_sha256": "d7437f67e086371d6dfaf47e55478d70b465c5bb735811374438d1efff4d4444",
+    "Cargo.lock_sha256": "c7c6afc85ecd40cec0eba446a28f6af93c72448e7f10468dacf38d143b0da543",
     "cargo_metadata": "cargo metadata --format-version 1 --locked",
     "latest_release_rule": "crates.io max_stable_version; prerelease and yanked excluded",
     "rustsec_database_commit": "d0861df1eab469d3c58d6b836ce48b5766e5f217",
@@ -71,9 +71,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.0.102",
+        "version": "1.0.104",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+        "checksum": "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
       },
       "latest_stable": {
         "version": "1.0.104",
@@ -111,15 +111,7 @@
       "maintenance": {
         "state": "active-or-no-advisory"
       },
-      "advisories": [
-        {
-          "id": "RUSTSEC-2026-0190",
-          "kind": "direct-unsound",
-          "package": "anyhow 1.0.102",
-          "patched": ">=1.0.103",
-          "reachability": "affected downcast_mut API is not used, but lock refresh is required"
-        }
-      ],
+      "advisories": [],
       "migration_risk": {
         "breaking_api": "low-compatible-line",
         "workspace_msrv": "1.97",
@@ -127,8 +119,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -286,9 +278,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.25.0",
+        "version": "1.25.2",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "c8efb64bd706a16a1bdde310ae86b351e4d21550d98d056f22f8a7f7a2183fec"
+        "checksum": "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
       },
       "latest_stable": {
         "version": "1.25.2",
@@ -323,8 +315,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -332,9 +324,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.11.1",
+        "version": "1.12.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
+        "checksum": "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
       },
       "latest_stable": {
         "version": "1.12.1",
@@ -369,8 +361,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -479,9 +471,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "4",
       "locked": {
-        "version": "4.6.1",
+        "version": "4.6.6",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "1ddb117e43bbf7dacf0a4190fef4d345b9bad68dfc649cb349e7d17d28428e51"
+        "checksum": "473c7e07f409a8d772161724aa8db6a765a2532a70f9667eeb7b49d3d02fbdca"
       },
       "latest_stable": {
         "version": "4.6.6",
@@ -518,18 +510,18 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
       "name": "criterion",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.5",
+      "manifest_constraint": "0.8.2",
       "locked": {
-        "version": "0.5.1",
+        "version": "0.8.2",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
+        "checksum": "950046b2aa2492f9a536f5f4f9a3de7b9e2476e575e05bd6c333371add4d98f3"
       },
       "latest_stable": {
         "version": "0.8.2",
@@ -559,24 +551,16 @@
       "maintenance": {
         "state": "active-or-no-advisory"
       },
-      "advisories": [
-        {
-          "id": "RUSTSEC-2026-0204",
-          "kind": "transitive-vulnerability",
-          "package": "crossbeam-epoch 0.9.18",
-          "patched": ">=0.9.20",
-          "reachability": "development benchmarks only"
-        }
-      ],
+      "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.86"
       },
       "modernization": {
         "group": "development-benchmark",
-        "decision": "upgrade-planned",
-        "rationale": "bounded development-benchmark migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded development-benchmark migration is resolved at latest stable"
       }
     },
     {
@@ -678,11 +662,11 @@
     {
       "name": "hecs",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.10",
+      "manifest_constraint": "0.11.1",
       "locked": {
-        "version": "0.10.5",
+        "version": "0.11.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "e1cbc675ee8d97b4d206a985137f8ad59666538f56f906474f554467a63c776d"
+        "checksum": "d5d61999272074fd54f3eda7afbfa3f781b0d62ddb89be28fdf56bce30e23576"
       },
       "latest_stable": {
         "version": "0.11.1",
@@ -710,23 +694,16 @@
       "maintenance": {
         "state": "active-or-no-advisory"
       },
-      "advisories": [
-        {
-          "id": "crates.io-yanked",
-          "kind": "transitive-yanked",
-          "package": "spin 0.9.8",
-          "reachability": "runtime ECS dependency"
-        }
-      ],
+      "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.81"
       },
       "modernization": {
         "group": "performance-hecs",
-        "decision": "upgrade-planned",
-        "rationale": "bounded performance-hecs migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded performance-hecs migration is resolved at latest stable"
       }
     },
     {
@@ -1116,9 +1093,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "0.12.1",
       "locked": {
-        "version": "0.12.1",
+        "version": "0.12.3",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "065632c16b39f4c00bc5514de0698474d1b6c36120743a154c78ca27ffc1ffe1"
+        "checksum": "153de98083c9db32772ea9110826344c9c498c150add69d0f14c59dc5e78efa9"
       },
       "latest_stable": {
         "version": "0.12.3",
@@ -1153,8 +1130,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -1162,9 +1139,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "0.2",
       "locked": {
-        "version": "0.2.186",
+        "version": "0.2.189",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+        "checksum": "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
       },
       "latest_stable": {
         "version": "0.2.189",
@@ -1201,8 +1178,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -1476,11 +1453,11 @@
     {
       "name": "rand",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.8",
+      "manifest_constraint": "0.10.2",
       "locked": {
-        "version": "0.8.7",
+        "version": "0.10.2",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "22f6172bdec972074665ed81ed53b71da00bfc44b65a753cfde883ec4c702a1a"
+        "checksum": "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
       },
       "latest_stable": {
         "version": "0.10.2",
@@ -1511,14 +1488,14 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.85"
       },
       "modernization": {
         "group": "development-random",
-        "decision": "upgrade-planned",
-        "rationale": "bounded development-random migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded development-random migration is resolved at latest stable"
       }
     },
     {
@@ -1526,9 +1503,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.12.3",
+        "version": "1.13.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "e10754a14b9137dd7b1e3e5b0493cc9171fdd105e0ab477f51b72e7f3ac0e276"
+        "checksum": "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
       },
       "latest_stable": {
         "version": "1.13.1",
@@ -1566,8 +1543,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -1661,12 +1638,6 @@
           "package": "rsa 0.9.10",
           "patched": null,
           "reachability": "production uses public-key verification; private-key operations are test fixtures"
-        },
-        {
-          "id": "crates.io-yanked",
-          "kind": "transitive-yanked",
-          "package": "spin 0.9.8 via num-bigint-dig",
-          "reachability": "runtime public-key parsing and verification"
         }
       ],
       "migration_risk": {
@@ -1685,12 +1656,12 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "0.23.41",
       "locked": {
-        "version": "0.23.41",
+        "version": "0.23.43",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "6b92b125634d9b795e7beca796cc790df15a7fb38323bf3196fda83292d06b1f"
+        "checksum": "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
       },
       "latest_stable": {
-        "version": "0.23.41",
+        "version": "0.23.43",
         "rust_version": "1.71",
         "source": "https://crates.io/api/v1/crates/rustls"
       },
@@ -1717,7 +1688,7 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "none",
+        "breaking_api": "low-compatible-line",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.71"
       },
@@ -1777,9 +1748,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.0.228",
+        "version": "1.0.229",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
+        "checksum": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
       },
       "latest_stable": {
         "version": "1.0.229",
@@ -1826,8 +1797,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -1835,9 +1806,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.0.149",
+        "version": "1.0.151",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
+        "checksum": "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
       },
       "latest_stable": {
         "version": "1.0.151",
@@ -1881,8 +1852,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -1987,11 +1958,11 @@
     {
       "name": "symphonia",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.5.5",
+      "manifest_constraint": "0.6.0",
       "locked": {
-        "version": "0.5.5",
+        "version": "0.6.0",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "5773a4c030a19d9bfaa090f49746ff35c75dfddfa700df7a5939d5e076a57039"
+        "checksum": "1758d6c853020a7244de03cc3e0185eaea3f58715122422dd3cc7452e6d4c16a"
       },
       "latest_stable": {
         "version": "0.6.0",
@@ -2018,23 +1989,16 @@
       "maintenance": {
         "state": "active-or-no-advisory"
       },
-      "advisories": [
-        {
-          "id": "crates.io-yanked",
-          "kind": "transitive-yanked",
-          "package": "spin 0.9.8",
-          "reachability": "runtime Ogg/Vorbis decoding"
-        }
-      ],
+      "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.85"
       },
       "modernization": {
         "group": "audio-decoder",
-        "decision": "upgrade-planned",
-        "rationale": "bounded audio-decoder migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded audio-decoder migration is resolved at latest stable"
       }
     },
     {
@@ -2090,9 +2054,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "2",
       "locked": {
-        "version": "2.0.18",
+        "version": "2.0.20",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
+        "checksum": "ec86235f5fcc2a73650310756d2ac5b138a5780bbbdfae3eeccec992c435ba4f"
       },
       "latest_stable": {
         "version": "2.0.20",
@@ -2133,8 +2097,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -2142,9 +2106,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.52.2",
+        "version": "1.53.1",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "110a78583f19d5cdb2c5ccf321d1290344e71313c6c37d43520d386027d18386"
+        "checksum": "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
       },
       "latest_stable": {
         "version": "1.53.1",
@@ -2184,8 +2148,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -2479,9 +2443,9 @@
       "manifest": "Cargo.toml",
       "manifest_constraint": "1",
       "locked": {
-        "version": "1.23.1",
+        "version": "1.24.0",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "ddd74a9687298c6858e9b88ec8935ec45d22e8fd5e6394fa1bd4e99a87789c76"
+        "checksum": "bf3923a6f5c4c6382e0b653c4117f48d631ea17f38ed86e2a828e6f7412f5239"
       },
       "latest_stable": {
         "version": "1.24.0",
@@ -2524,8 +2488,8 @@
       },
       "modernization": {
         "group": "compatible-or-retained",
-        "decision": "compatible-lock-refresh",
-        "rationale": "manifest accepts the release; refresh in the lock-only slice"
+        "decision": "current",
+        "rationale": "lockfile already resolves the audited latest stable release"
       }
     },
     {
@@ -2612,27 +2576,6 @@
         "state": "active-or-no-advisory"
       },
       "advisories": [
-        {
-          "id": "RUSTSEC-2026-0194",
-          "kind": "linux-transitive-vulnerability",
-          "package": "quick-xml 0.39.3",
-          "patched": ">=0.41.0",
-          "reachability": "Linux Wayland build chain"
-        },
-        {
-          "id": "RUSTSEC-2026-0195",
-          "kind": "linux-transitive-vulnerability",
-          "package": "quick-xml 0.39.3",
-          "patched": ">=0.41.0",
-          "reachability": "Linux Wayland build chain"
-        },
-        {
-          "id": "RUSTSEC-2026-0186",
-          "kind": "linux-transitive-unsound",
-          "package": "memmap2 0.9.10",
-          "patched": ">=0.9.11",
-          "reachability": "Linux window backend"
-        },
         {
           "id": "RUSTSEC-2026-0192",
           "kind": "linux-transitive-unmaintained",
@@ -2748,11 +2691,11 @@
     {
       "name": "zip",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "2.4.2",
+      "manifest_constraint": "8.6.0",
       "locked": {
-        "version": "2.4.2",
+        "version": "8.6.0",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+        "checksum": "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
       },
       "latest_stable": {
         "version": "8.6.0",
@@ -2786,14 +2729,14 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.88"
       },
       "modernization": {
         "group": "archive",
-        "decision": "upgrade-planned",
-        "rationale": "bounded archive migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded archive migration is resolved at latest stable"
       }
     }
   ]

@@ -297,7 +297,6 @@ mod tests {
         AddEntity as ProtocolAddEntity, PlayerInfoEntry as ProtocolPlayerInfoEntry,
         Transfer as ProtocolTransfer, Vec3d as ProtocolVec3d,
     };
-    use rand::SeedableRng;
     use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey};
 
     #[test]
@@ -638,7 +637,7 @@ mod tests {
     fn signed_player_info_chat_session(
         profile_id: Uuid,
     ) -> (Vec<u8>, ProtocolPlayerInfoChatSession) {
-        let mut random = rand::rngs::StdRng::seed_from_u64(0x5e7a_1ce5);
+        let mut random = crate::RsaTestRng::seeded(0x5e7a_1ce5);
         let services_private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
         let player_private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
         let player_public_key = RsaPublicKey::from(&player_private_key)

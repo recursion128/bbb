@@ -1934,7 +1934,6 @@ mod tests {
         PackedMessageSignature, PlayLogin, PlayerInfoAction, PlayerInfoEntry, PlayerInfoRemove,
         PlayerInfoUpdate, RegistryData, RegistryDataEntry, SignedMessageBody,
     };
-    use rand::{rngs::StdRng, SeedableRng};
     use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey, RsaPublicKey};
 
     #[test]
@@ -3225,7 +3224,7 @@ mod tests {
     fn fixture_private_key() -> RsaPrivateKey {
         static KEY: OnceLock<RsaPrivateKey> = OnceLock::new();
         KEY.get_or_init(|| {
-            let mut random = StdRng::seed_from_u64(401);
+            let mut random = crate::RsaTestRng::seeded(401);
             RsaPrivateKey::new(&mut random, 2_048).unwrap()
         })
         .clone()

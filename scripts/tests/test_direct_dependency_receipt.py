@@ -77,13 +77,7 @@ class DirectDependencyReceiptTests(unittest.TestCase):
             {
                 "RUSTSEC-2021-0134",
                 "RUSTSEC-2023-0071",
-                "RUSTSEC-2026-0186",
-                "RUSTSEC-2026-0190",
                 "RUSTSEC-2026-0192",
-                "RUSTSEC-2026-0194",
-                "RUSTSEC-2026-0195",
-                "RUSTSEC-2026-0204",
-                "crates.io-yanked",
             }.issubset(advisory_ids)
         )
 
@@ -95,7 +89,7 @@ class DirectDependencyReceiptTests(unittest.TestCase):
             "md5": "0.8.1",
             "num-bigint": "0.5.1",
             "reqwest": "0.13.4",
-            "rustls": "0.23.41",
+            "rustls": "0.23.43",
         }.items():
             self.assertEqual(dependencies[name]["locked"]["version"], version)
             self.assertEqual(dependencies[name]["modernization"]["decision"], "upgraded")
@@ -117,6 +111,16 @@ class DirectDependencyReceiptTests(unittest.TestCase):
         lock = (REPO_ROOT / "Cargo.lock").read_text(encoding="utf-8")
         self.assertNotIn('name = "aws-lc-rs"', lock)
         self.assertNotIn('name = "aws-lc-sys"', lock)
+
+    def test_every_modernization_decision_is_closed(self) -> None:
+        pending = {
+            entry["name"]: entry["modernization"]["decision"]
+            for entry in build_receipt(REPO_ROOT)["dependencies"]
+            if entry["modernization"]["decision"]
+            in {"upgrade-planned", "compatible-lock-refresh"}
+        }
+
+        self.assertEqual(pending, {})
 
 
 if __name__ == "__main__":

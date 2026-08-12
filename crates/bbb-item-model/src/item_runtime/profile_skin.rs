@@ -159,13 +159,12 @@ mod tests {
     #[test]
     fn profile_texture_set_can_upgrade_trust_after_an_insecure_consumer_lookup() {
         use base64::{engine::general_purpose::STANDARD, Engine as _};
-        use rand::{rngs::StdRng, SeedableRng};
         use rsa::{pkcs8::EncodePublicKey, Pkcs1v15Sign, RsaPrivateKey};
         use sha1::{Digest, Sha1};
 
         let skin_url = "https://textures.minecraft.net/texture/trust-upgrade";
         let mut profile = remote_profile(skin_url, None, None, PlayerModelTypeSummary::Slim);
-        let mut random = StdRng::seed_from_u64(0x5a17_26_2);
+        let mut random = crate::RsaTestRng::seeded(0x5a17_26_2);
         let private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
         let public_der = private_key.to_public_key().to_public_key_der().unwrap();
         profile.properties[0].signature = Some(

@@ -64,3 +64,40 @@ pub use creative_inventory::*;
 pub use exports::*;
 pub(crate) use internal::*;
 pub(crate) use publication_snapshot::PublicationShared;
+
+#[cfg(test)]
+pub(crate) struct RsaTestRng(rand::rngs::StdRng);
+
+#[cfg(test)]
+impl RsaTestRng {
+    pub(crate) fn seeded(seed: u64) -> Self {
+        use rand::SeedableRng;
+        Self(rand::rngs::StdRng::seed_from_u64(seed))
+    }
+}
+
+#[cfg(test)]
+impl rsa::rand_core::RngCore for RsaTestRng {
+    fn next_u32(&mut self) -> u32 {
+        rand::Rng::next_u32(&mut self.0)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        rand::Rng::next_u64(&mut self.0)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        rand::Rng::fill_bytes(&mut self.0, dest);
+    }
+
+    fn try_fill_bytes(
+        &mut self,
+        dest: &mut [u8],
+    ) -> std::result::Result<(), rsa::rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+impl rsa::rand_core::CryptoRng for RsaTestRng {}

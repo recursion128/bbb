@@ -15,7 +15,7 @@
 //! ingest path. Positions and the type mix are fully deterministic (index
 //! derived, no randomness) so runs are comparable.
 
-use std::time::Duration;
+use std::{hint::black_box, time::Duration};
 
 use bbb_protocol::{
     entity_types::{
@@ -30,7 +30,7 @@ use bbb_protocol::{
     },
 };
 use bbb_world::WorldStore;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 const ENTITY_COUNTS: [usize; 3] = [100, 500, 2000];
 const VISIBLE_PERCENTAGES: [usize; 4] = [0, 10, 50, 100];

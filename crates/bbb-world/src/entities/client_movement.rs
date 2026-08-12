@@ -686,7 +686,7 @@ impl EntityStore {
         let mut experience_orb_player_targets = None;
         let fishing_hook_needs_targets = {
             let mut hooks = self.ecs.query::<&EntityFishingHookMovement>();
-            hooks.iter().any(|(_, movement)| {
+            hooks.iter().any(|movement| {
                 movement.owner_uuid.is_some_and(|owner_uuid| {
                     self.protocol_id_by_uuid
                         .get(&owner_uuid)
@@ -713,17 +713,14 @@ impl EntityStore {
         )>();
         for (
             _,
-            (
-                _,
-                identity,
-                metadata,
-                transform,
-                supporting_block,
-                attributes,
-                animations,
-                orb_movement,
-                fishing_hook_movement,
-            ),
+            identity,
+            metadata,
+            transform,
+            supporting_block,
+            attributes,
+            animations,
+            orb_movement,
+            fishing_hook_movement,
         ) in facts_query.iter()
         {
             let entity_type_id = identity.entity_type_id;
@@ -945,7 +942,7 @@ impl EntityStore {
             &EntityClientAnimations,
             &EntityTransform,
         )>();
-        for (_, (_, identity, metadata, attributes, animations, transform)) in query.iter() {
+        for (_, identity, metadata, attributes, animations, transform) in query.iter() {
             debug_assert_eq!(identity.entity_type_id, VANILLA_ENTITY_TYPE_PLAYER_ID);
             if spectator_player_uuids.contains(&identity.uuid) {
                 continue;
@@ -1009,7 +1006,7 @@ impl EntityStore {
             &EntityAttributes,
             &EntityClientAnimations,
         )>();
-        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+        for (identity, transform, metadata, attributes, animations) in query.iter() {
             let Some(bounds) = vanilla_bounds_for_entity_data(
                 identity.entity_type_id,
                 identity.data,
@@ -1137,7 +1134,7 @@ impl EntityStore {
             &EntityProjectileLifecycle,
             &EntityAbstractArrowRuntime,
         )>();
-        for (_, (identity, transform, metadata, attributes, animations, lifecycle, runtime)) in
+        for (identity, transform, metadata, attributes, animations, lifecycle, runtime) in
             query.iter()
         {
             let Some(accessors) = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
@@ -1370,17 +1367,14 @@ impl EntityStore {
     ) -> Option<(EntityVec3, f64)> {
         let id = self.protocol_id_by_uuid.get(&uuid).copied()?;
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let mut query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityTransform,
-                &EntityMetadata,
-                &EntityAttributes,
-                &EntityClientAnimations,
-            )>(entity)
-            .ok()?;
-        let (identity, transform, metadata, attributes, animations) = query.get()?;
+        let mut query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>(entity);
+        let (identity, transform, metadata, attributes, animations) = query.get().ok()?;
         if identity.incarnation != incarnation {
             return None;
         }
@@ -1896,13 +1890,10 @@ impl EntityStore {
         &self,
         trident: Entity,
     ) -> Option<EntityClientMovementTridentReturnTarget> {
-        let Ok(mut trident_query) = self
+        let mut trident_query = self
             .ecs
-            .query_one::<(&EntityMetadata, &EntityProjectileLifecycle)>(trident)
-        else {
-            return None;
-        };
-        let (trident_metadata, projectile) = trident_query.get()?;
+            .query_one::<(&EntityMetadata, &EntityProjectileLifecycle)>(trident);
+        let (trident_metadata, projectile) = trident_query.get().ok()?;
         let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
             VANILLA_ENTITY_TYPE_TRIDENT_ID,
         )?;
@@ -1927,16 +1918,14 @@ impl EntityStore {
         drop(trident_query);
         let owner_id = self.protocol_id_by_uuid.get(&owner_uuid).copied()?;
         let owner = self.by_protocol_id.get(&owner_id).copied()?;
-        let Ok(mut query) = self.ecs.query_one::<(
+        let mut query = self.ecs.query_one::<(
             &EntityIdentity,
             &EntityMetadata,
             &EntityAttributes,
             &EntityClientAnimations,
             &EntityTransform,
-        )>(owner) else {
-            return None;
-        };
-        let (identity, metadata, attributes, animations, transform) = query.get()?;
+        )>(owner);
+        let (identity, metadata, attributes, animations, transform) = query.get().ok()?;
         if !vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
             return None;
         }

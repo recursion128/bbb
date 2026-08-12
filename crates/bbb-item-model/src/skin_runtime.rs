@@ -1529,7 +1529,6 @@ fn write_player_skin_cache(path: &Path, bytes: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{rngs::StdRng, SeedableRng};
     use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey};
     use std::{
         io::{Cursor, Read, Write},
@@ -1546,7 +1545,7 @@ mod tests {
 
     #[test]
     fn profile_texture_property_trust_matches_services_signature_states() {
-        let mut random = StdRng::seed_from_u64(0x5a17_cafe);
+        let mut random = crate::RsaTestRng::seeded(0x5a17_cafe);
         let private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
         let public_key = private_key.to_public_key();
         let public_der = public_key.to_public_key_der().unwrap();

@@ -19,7 +19,6 @@ use bbb_protocol::tropical_fish_patterns::{
 use bbb_protocol::{ComponentStyle, StyledTextRun};
 use bbb_world::{BannerPatternPresentation, TrimMaterialPresentation, TrimPatternPresentation};
 use chrono::TimeZone;
-use rand::{rngs::StdRng, SeedableRng};
 use rsa::{pkcs8::EncodePublicKey, Pkcs1v15Sign, RsaPrivateKey};
 use sha1::{Digest, Sha1};
 use std::{
@@ -4756,7 +4755,7 @@ fn signed_remote_profile_reaches_three_http_pngs_as_one_texture_set() {
         profile_id.simple()
     );
     let packed_value = STANDARD.encode(packed_json.as_bytes());
-    let mut random = StdRng::seed_from_u64(0x5a17_26_1);
+    let mut random = crate::RsaTestRng::seeded(0x5a17_26_1);
     let private_key = RsaPrivateKey::new(&mut random, 2048).unwrap();
     let public_der = private_key.to_public_key().to_public_key_der().unwrap();
     let signature = private_key

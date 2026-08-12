@@ -53,7 +53,7 @@ LATEST = {
     "regex": ("1.13.1", "1.65"),
     "reqwest": ("0.13.4", "1.85.0"),
     "rsa": ("0.9.10", "1.65"),
-    "rustls": ("0.23.41", "1.71"),
+    "rustls": ("0.23.43", "1.71"),
     "ryu": ("1.0.23", "1.71"),
     "serde": ("1.0.229", "1.56"),
     "serde_json": ("1.0.151", "1.71"),
@@ -114,32 +114,6 @@ ADVISORIES = {
             "reachability": "optional device audio backend",
         }
     ],
-    "anyhow": [
-        {
-            "id": "RUSTSEC-2026-0190",
-            "kind": "direct-unsound",
-            "package": "anyhow 1.0.102",
-            "patched": ">=1.0.103",
-            "reachability": "affected downcast_mut API is not used, but lock refresh is required",
-        }
-    ],
-    "criterion": [
-        {
-            "id": "RUSTSEC-2026-0204",
-            "kind": "transitive-vulnerability",
-            "package": "crossbeam-epoch 0.9.18",
-            "patched": ">=0.9.20",
-            "reachability": "development benchmarks only",
-        }
-    ],
-    "hecs": [
-        {
-            "id": "crates.io-yanked",
-            "kind": "transitive-yanked",
-            "package": "spin 0.9.8",
-            "reachability": "runtime ECS dependency",
-        }
-    ],
     "rsa": [
         {
             "id": "RUSTSEC-2023-0071",
@@ -147,44 +121,9 @@ ADVISORIES = {
             "package": "rsa 0.9.10",
             "patched": None,
             "reachability": "production uses public-key verification; private-key operations are test fixtures",
-        },
-        {
-            "id": "crates.io-yanked",
-            "kind": "transitive-yanked",
-            "package": "spin 0.9.8 via num-bigint-dig",
-            "reachability": "runtime public-key parsing and verification",
-        },
-    ],
-    "symphonia": [
-        {
-            "id": "crates.io-yanked",
-            "kind": "transitive-yanked",
-            "package": "spin 0.9.8",
-            "reachability": "runtime Ogg/Vorbis decoding",
         }
     ],
     "winit": [
-        {
-            "id": "RUSTSEC-2026-0194",
-            "kind": "linux-transitive-vulnerability",
-            "package": "quick-xml 0.39.3",
-            "patched": ">=0.41.0",
-            "reachability": "Linux Wayland build chain",
-        },
-        {
-            "id": "RUSTSEC-2026-0195",
-            "kind": "linux-transitive-vulnerability",
-            "package": "quick-xml 0.39.3",
-            "patched": ">=0.41.0",
-            "reachability": "Linux Wayland build chain",
-        },
-        {
-            "id": "RUSTSEC-2026-0186",
-            "kind": "linux-transitive-unsound",
-            "package": "memmap2 0.9.10",
-            "patched": ">=0.9.11",
-            "reachability": "Linux window backend",
-        },
         {
             "id": "RUSTSEC-2026-0192",
             "kind": "linux-transitive-unmaintained",

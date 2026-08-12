@@ -4,7 +4,7 @@
 //! resident cases stop after payload-independent identity and instance
 //! extraction. Offscreen tests separately assert exact static/instance uploads.
 
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, hint::black_box, sync::Arc, time::Duration};
 
 use bbb_renderer::{
     bake_item_frame_map_surface, bake_item_model_meshes_with_light_and_overlay_and_foil_mode,
@@ -13,7 +13,7 @@ use bbb_renderer::{
     ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMeshSet,
     ItemModelQuad, ItemModelResidencyFrame, ITEM_MODEL_NO_OVERLAY,
 };
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use glam::{Mat4, Vec3};
 
 const MAP_SIDE: usize = 128;

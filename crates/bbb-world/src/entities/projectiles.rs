@@ -192,7 +192,7 @@ impl EntityStore {
         let outside_owner_by_id =
             self.projectile_outside_owner_collision_by_id(spectator_player_uuids);
         let trident_counts_in_ground_by_id = self.trident_counts_in_ground_by_id();
-        for (_, (identity, projectile)) in self
+        for (identity, projectile) in self
             .ecs
             .query_mut::<(&EntityIdentity, &mut EntityProjectileLifecycle)>()
         {

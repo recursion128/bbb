@@ -2900,13 +2900,10 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
             };
-            let Ok(mut query) = self
+            let mut query = self
                 .ecs
-                .query_one::<(&EntityIdentity, &EntityTransform)>(entity)
-            else {
-                continue;
-            };
-            let Some((identity, transform)) = query.get() else {
+                .query_one::<(&EntityIdentity, &EntityTransform)>(entity);
+            let Ok((identity, transform)) = query.get() else {
                 continue;
             };
             let Some(accessors) = vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
@@ -3126,14 +3123,12 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
             };
-            let Ok(mut query) = self.ecs.query_one::<(
+            let mut query = self.ecs.query_one::<(
                 &EntityIdentity,
                 &EntityTransform,
                 Option<&EntityClientAnimations>,
-            )>(entity) else {
-                continue;
-            };
-            let Some((identity, transform, client_animations)) = query.get() else {
+            )>(entity);
+            let Ok((identity, transform, client_animations)) = query.get() else {
                 continue;
             };
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
@@ -3170,14 +3165,12 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
             };
-            let Ok(mut query) = self.ecs.query_one::<(
+            let mut query = self.ecs.query_one::<(
                 &EntityIdentity,
                 &EntityTransform,
                 Option<&EntityClientAnimations>,
-            )>(entity) else {
-                continue;
-            };
-            let Some((identity, transform, client_animations)) = query.get() else {
+            )>(entity);
+            let Ok((identity, transform, client_animations)) = query.get() else {
                 continue;
             };
             if let Some(accessors) = entity_accessors {
@@ -3434,7 +3427,7 @@ impl EntityStore {
             Option<&EntityMount>,
             Option<&EntityLeash>,
         )>();
-        for (_, (identity, transform, metadata, equipment, attributes, animations, mount, leash)) in
+        for (identity, transform, metadata, equipment, attributes, animations, mount, leash) in
             query.iter()
         {
             let is_invisible =
@@ -3673,16 +3666,13 @@ impl EntityStore {
         old_position: super::EntityVec3,
     ) -> Option<bool> {
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let mut query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityMount,
-                &mut EntityTransform,
-                &mut EntityClientAnimations,
-            )>(entity)
-            .ok()?;
-        let (identity, mount, transform, animations) = query.get()?;
+        let mut query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityMount,
+            &mut EntityTransform,
+            &mut EntityClientAnimations,
+        )>(entity);
+        let (identity, mount, transform, animations) = query.get().ok()?;
         if identity.entity_type_id != VANILLA_ENTITY_TYPE_SHULKER_ID {
             return Some(false);
         }
@@ -3804,15 +3794,12 @@ impl EntityStore {
         minecart_improvements_enabled: bool,
     ) -> Option<(super::EntityVec3, f32)> {
         let entity = self.by_protocol_id.get(&id).copied()?;
-        let mut query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityTransform,
-                Option<&EntityMinecartLerp>,
-            )>(entity)
-            .ok()?;
-        let (identity, transform, minecart_lerp) = query.get()?;
+        let mut query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityTransform,
+            Option<&EntityMinecartLerp>,
+        )>(entity);
+        let (identity, transform, minecart_lerp) = query.get().ok()?;
         if minecart_improvements_enabled && is_vanilla_minecart_type(identity.entity_type_id) {
             if let Some(render_step) =
                 minecart_lerp.and_then(|lerp| lerp.render_step(partial_ticks))
@@ -3842,30 +3829,26 @@ impl EntityStore {
         let passenger_entity = self.by_protocol_id.get(&passenger_id).copied()?;
         let mut passenger_query = self
             .ecs
-            .query_one::<(&EntityIdentity, &EntityTransform, &EntityMetadata)>(passenger_entity)
-            .ok()?;
+            .query_one::<(&EntityIdentity, &EntityTransform, &EntityMetadata)>(passenger_entity);
         let (passenger_identity, passenger_transform, passenger_metadata) =
-            passenger_query.get()?;
+            passenger_query.get().ok()?;
 
         let vehicle_bounds = self.pick_bounds(vehicle_id)?;
         let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
-        let mut vehicle_query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityMount,
-                &EntityMetadata,
-                &EntityAttributes,
-                Option<&EntityClientAnimations>,
-            )>(vehicle_entity)
-            .ok()?;
+        let mut vehicle_query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityMount,
+            &EntityMetadata,
+            &EntityAttributes,
+            Option<&EntityClientAnimations>,
+        )>(vehicle_entity);
         let (
             vehicle_identity,
             vehicle_mount,
             vehicle_metadata,
             vehicle_attributes,
             vehicle_client_animations,
-        ) = vehicle_query.get()?;
+        ) = vehicle_query.get().ok()?;
         vanilla_passenger_position_for_entity_data(
             vehicle_identity.entity_type_id,
             vehicle_position,
@@ -3984,9 +3967,8 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let mut query = self
             .ecs
-            .query_one::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>(entity)
-            .ok()?;
-        let (identity, transform, animations) = query.get()?;
+            .query_one::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>(entity);
+        let (identity, transform, animations) = query.get().ok()?;
         if !vanilla_living_entity_type(identity.entity_type_id) {
             return None;
         }
@@ -4010,24 +3992,20 @@ impl EntityStore {
         let passenger_entity = self.by_protocol_id.get(&passenger_id).copied()?;
         let mut passenger_query = self
             .ecs
-            .query_one::<(&EntityIdentity, &EntityTransform, &EntityMetadata)>(passenger_entity)
-            .ok()?;
+            .query_one::<(&EntityIdentity, &EntityTransform, &EntityMetadata)>(passenger_entity);
         let (passenger_identity, passenger_transform, passenger_metadata) =
-            passenger_query.get()?;
+            passenger_query.get().ok()?;
 
         let vehicle_bounds = self.pick_bounds(vehicle_id)?;
         let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
-        let mut vehicle_query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityTransform,
-                &EntityMount,
-                &EntityMetadata,
-                &EntityAttributes,
-                Option<&EntityClientAnimations>,
-            )>(vehicle_entity)
-            .ok()?;
+        let mut vehicle_query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMount,
+            &EntityMetadata,
+            &EntityAttributes,
+            Option<&EntityClientAnimations>,
+        )>(vehicle_entity);
         let (
             vehicle_identity,
             vehicle_transform,
@@ -4035,7 +4013,7 @@ impl EntityStore {
             vehicle_metadata,
             vehicle_attributes,
             vehicle_client_animations,
-        ) = vehicle_query.get()?;
+        ) = vehicle_query.get().ok()?;
 
         vanilla_passenger_position_for_entity_data(
             vehicle_identity.entity_type_id,
@@ -4064,17 +4042,14 @@ impl EntityStore {
     ) -> Option<super::EntityVec3> {
         let vehicle_bounds = self.pick_bounds(vehicle_id)?;
         let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
-        let mut vehicle_query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityTransform,
-                &EntityMount,
-                &EntityMetadata,
-                &EntityAttributes,
-                Option<&EntityClientAnimations>,
-            )>(vehicle_entity)
-            .ok()?;
+        let mut vehicle_query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMount,
+            &EntityMetadata,
+            &EntityAttributes,
+            Option<&EntityClientAnimations>,
+        )>(vehicle_entity);
         let (
             vehicle_identity,
             vehicle_transform,
@@ -4082,7 +4057,7 @@ impl EntityStore {
             vehicle_metadata,
             vehicle_attributes,
             vehicle_client_animations,
-        ) = vehicle_query.get()?;
+        ) = vehicle_query.get().ok()?;
         vanilla_local_player_passenger_position_for_entity_data(
             vehicle_identity.entity_type_id,
             vehicle_transform.position,
@@ -4119,19 +4094,16 @@ impl EntityStore {
         // Vanilla `HumanoidArmorLayer` worn armor: resolve the item worn in each armor slot to its
         // generation-local equipment asset id. The `EntityEquipment` component holds the synced
         // `SetEquipment` items; a bare entity or an item without an effective asset resolves to None.
-        let mut query = self
-            .ecs
-            .query_one::<(
-                &EntityIdentity,
-                &EntityTransform,
-                &EntityMetadata,
-                &EntityAttributes,
-                &EntityClientAnimations,
-                Option<&EntityEquipment>,
-                Option<&EntityMount>,
-                Option<&EntityMinecartLerp>,
-            )>(entity)
-            .ok()?;
+        let mut query = self.ecs.query_one::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+            Option<&EntityEquipment>,
+            Option<&EntityMount>,
+            Option<&EntityMinecartLerp>,
+        )>(entity);
         let (
             identity,
             transform,
@@ -4141,7 +4113,7 @@ impl EntityStore {
             equipment,
             mount,
             minecart_lerp,
-        ) = query.get()?;
+        ) = query.get().ok()?;
         let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
         let armor_item = |slot: ProtocolEquipmentSlot| -> Option<&ItemStackSummary> {
             equipment_slot_item(equipment, slot)
@@ -5565,7 +5537,7 @@ impl EntityStore {
         let mut query = self
             .ecs
             .query::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>();
-        for (_, (identity, transform, client_animations)) in query.iter() {
+        for (identity, transform, client_animations) in query.iter() {
             if identity.entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
                 continue;
             }
@@ -5717,7 +5689,7 @@ impl EntityStore {
             &EntityMetadata,
             &EntityAttributes,
         )>();
-        for (_, (identity, transform, metadata, attributes)) in query.iter() {
+        for (identity, transform, metadata, attributes) in query.iter() {
             if identity.entity_type_id != VANILLA_ENTITY_TYPE_WITHER_ID {
                 continue;
             }
@@ -5814,17 +5786,15 @@ impl EntityStore {
         let vehicle_id = passenger_mount.vehicle_id?;
         let vehicle_bounds = self.pick_bounds(vehicle_id)?;
         let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
-        let Ok(mut query) = self.ecs.query_one::<(
+        let mut query = self.ecs.query_one::<(
             &EntityIdentity,
             &EntityTransform,
             &EntityMount,
             &EntityMetadata,
             &EntityAttributes,
             Option<&EntityClientAnimations>,
-        )>(vehicle_entity) else {
-            return None;
-        };
-        let Some((
+        )>(vehicle_entity);
+        let Ok((
             vehicle_identity,
             vehicle_transform,
             vehicle_mount,
@@ -6091,15 +6061,10 @@ impl EntityStore {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
             };
-            let Ok(mut query) =
-                self.ecs
-                    .query_one::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>(
-                        entity,
-                    )
-            else {
-                continue;
-            };
-            let Some((identity, transform, animations)) = query.get() else {
+            let mut query = self
+                .ecs
+                .query_one::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>(entity);
+            let Ok((identity, transform, animations)) = query.get() else {
                 continue;
             };
             if identity.entity_type_id != VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
@@ -7403,7 +7368,7 @@ impl EntityStore {
             &EntityAttributes,
             &EntityClientAnimations,
         )>();
-        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+        for (identity, transform, metadata, attributes, animations) in query.iter() {
             let Some(interpolation) = transform.interpolation else {
                 continue;
             };
@@ -7540,7 +7505,7 @@ impl EntityStore {
             &EntityAttributes,
             &EntityClientAnimations,
         )>();
-        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+        for (identity, transform, metadata, attributes, animations) in query.iter() {
             if !entity_animation_uses_in_water(identity.entity_type_id)
                 && !super::client_movement::client_movement_uses_in_water(identity.entity_type_id)
                 && identity.entity_type_id != VANILLA_ENTITY_TYPE_STRIDER_ID
@@ -7648,7 +7613,7 @@ impl EntityStore {
             &EntityAttributes,
             &EntityClientAnimations,
         )>();
-        for (_, (_, identity, transform, metadata, attributes, animations)) in query.iter() {
+        for (_, identity, transform, metadata, attributes, animations) in query.iter() {
             debug_assert!(super::client_movement::client_movement_uses_fluid_contact(
                 identity.entity_type_id
             ));
@@ -7732,7 +7697,7 @@ impl EntityStore {
             &EntityAttributes,
             &EntityClientAnimations,
         )>();
-        for (_, (identity, transform, metadata, attributes, animations)) in query.iter() {
+        for (identity, transform, metadata, attributes, animations) in query.iter() {
             let never_collidable = matches!(
                 vanilla_entity_metadata_type_collidability_kind(identity.entity_type_id),
                 None | Some(VanillaEntityCollidabilityKind::Never)
@@ -8284,7 +8249,7 @@ impl EntityStore {
             self.advance_projectile_lifecycles(1, spectator_player_uuids, scheduled);
             work.projectile_duration += projectile_started_at.elapsed();
             let interpolation_started_at = Instant::now();
-            for (_, (identity, transform)) in self
+            for (identity, transform) in self
                 .ecs
                 .query_mut::<(&EntityIdentity, &mut EntityTransform)>()
             {
@@ -9147,7 +9112,7 @@ impl EntityStore {
         // Every entity spawns with an `EntityMount`, so iterating the ecs directly visits the same
         // set as `self.order` without cloning it. All callers apply an order-independent per-entity
         // mutation, so the archetype iteration order is not observable.
-        for (_, (identity, mount)) in self.ecs.query_mut::<(&EntityIdentity, &mut EntityMount)>() {
+        for (identity, mount) in self.ecs.query_mut::<(&EntityIdentity, &mut EntityMount)>() {
             update(identity.id, mount);
         }
     }
@@ -9475,7 +9440,7 @@ impl EntityStore {
                 Some(((id, identity.uuid), identity.incarnation))
             })
             .collect::<HashMap<_, _>>();
-        for (_, runtime) in self.ecs.query_mut::<&mut EntityAbstractArrowRuntime>() {
+        for runtime in self.ecs.query_mut::<&mut EntityAbstractArrowRuntime>() {
             let Some(reference) = runtime.pending_last_deflected_by else {
                 continue;
             };

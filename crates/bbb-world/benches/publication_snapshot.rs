@@ -7,7 +7,7 @@
 //! mutating and publishing the next generation so COW work cannot disappear
 //! from the measured end-to-end path.
 
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, hint::black_box, sync::Arc, time::Duration};
 
 use bbb_protocol::packets::{
     AddEntity, AttributeSnapshot, BlockPos, BlockUpdate, CommonPlayerSpawnInfo,
@@ -43,7 +43,7 @@ use bbb_world::{
     HeightmapData, ItemEquipmentSlot, LightData, LocalPlayerInputState, PaletteDomain, PaletteKind,
     PalettedContainerData, WorldStore,
 };
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
 const CHUNK_COUNTS: [usize; 3] = [81, 289, 625];
 const ENTITY_COUNTS: [usize; 3] = [100, 500, 2_000];

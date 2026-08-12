@@ -4,10 +4,10 @@
 //! materialization handed to `RendererFrame`. Runtime counters and offscreen
 //! renderer tests separately attribute apply, merge, atlas, and upload work.
 
-use std::time::Duration;
+use std::{hint::black_box, time::Duration};
 
 use bbb_renderer::{ItemModelMesh, ItemModelQuad};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use glam::Mat4;
 
 const ITEM_MODEL_BUCKETS: usize = 19;
