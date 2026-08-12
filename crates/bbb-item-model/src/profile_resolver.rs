@@ -253,6 +253,7 @@ impl HttpGameProfileFetcher {
     }
 
     fn with_base_urls(api_base_url: &str, session_base_url: &str) -> Result<Self> {
+        crate::install_http_crypto_provider();
         Ok(Self {
             client: reqwest::blocking::Client::builder()
                 .timeout(Duration::from_secs(15))

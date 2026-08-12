@@ -431,6 +431,7 @@ fn download_server_pack_blocking(
     // Vanilla uses `Proxy.NO_PROXY` unless `Main --proxyHost` created an
     // explicit SOCKS proxy. Disable reqwest's environment proxy discovery so
     // ambient HTTP_PROXY/HTTPS_PROXY cannot silently change that contract.
+    crate::install_http_crypto_provider();
     let mut client_builder = Client::builder().no_proxy();
     if let Some(timeout) = request.timeout {
         client_builder = client_builder.timeout(timeout);

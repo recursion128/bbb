@@ -47,6 +47,7 @@ async fn fetch_services_public_keys_at(
     timeout: Duration,
     endpoint: &str,
 ) -> Result<ServicesPublicKeys> {
+    crate::install_http_crypto_provider();
     let client = reqwest::Client::builder()
         .timeout(timeout)
         .build()

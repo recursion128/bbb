@@ -610,6 +610,7 @@ pub(crate) struct HttpSkinPngFetcher {
 
 impl HttpSkinPngFetcher {
     pub(crate) fn new() -> Result<Self> {
+        crate::install_http_crypto_provider();
         Ok(Self {
             client: reqwest::blocking::Client::builder()
                 .timeout(Duration::from_secs(15))
