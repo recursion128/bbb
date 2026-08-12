@@ -219,6 +219,8 @@ pub(super) struct FrameFlightSubmission {
     pub(super) queue_submit: Duration,
     pub(super) swap_buffers_present: Duration,
     pub(super) in_flight_depth_at_submit: u32,
+    pub(super) queue_submitted_at: Instant,
+    pub(super) present_call_returned_at: Instant,
 }
 
 #[derive(Default)]
@@ -496,14 +498,19 @@ impl FrameFlightController {
             let _ = (submission, profile_completion, render_started_at);
             in_flight_depth_after_submit(FrameFlightPlatform::CURRENT, present_mode)
         };
-        let queue_submit = submit_started_at.elapsed();
+        let queue_submitted_at = Instant::now();
+        let queue_submit = queue_submitted_at.saturating_duration_since(submit_started_at);
 
         let present_started_at = Instant::now();
         frame.present(queue);
+        let present_call_returned_at = Instant::now();
         FrameFlightSubmission {
             queue_submit,
-            swap_buffers_present: present_started_at.elapsed(),
+            swap_buffers_present: present_call_returned_at
+                .saturating_duration_since(present_started_at),
             in_flight_depth_at_submit,
+            queue_submitted_at,
+            present_call_returned_at,
         }
     }
 }

@@ -235,7 +235,8 @@ pub use crate::player_skin::{
 #[cfg(feature = "lifecycle-soak")]
 pub use crate::renderer::LifecycleSoakSurfaceError;
 pub use crate::renderer::{
-    LevelFrameRoute, Renderer, RendererCameraFrame, RendererFrameProfile, TerrainChunkMeshOwner,
+    LevelFrameRoute, Renderer, RendererCameraFrame, RendererFrameProfile,
+    RendererInputLatencyProfile, RendererInputLatencyStamp, TerrainChunkMeshOwner,
     TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTextureFiltering, NAGA_VERSION,
     WGPU_CORE_VERSION, WGPU_HAL_VERSION, WGPU_METAL_FENCE_STRATEGY,
     WGPU_METAL_FENCE_UPSTREAM_COMMIT, WGPU_TYPES_VERSION, WGPU_VERSION,

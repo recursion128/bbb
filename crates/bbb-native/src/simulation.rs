@@ -91,6 +91,25 @@ pub(crate) struct SimulationCore {
     pub(crate) audio_enabled: bool,
     pub(crate) hide_lightning_flash: bool,
     pub(crate) next_effect_sequence: u64,
+    pub(crate) pending_input_latency: Option<input_commands::AppliedInputLatency>,
+}
+
+fn merge_pending_input_latency(
+    pending: Option<input_commands::AppliedInputLatency>,
+    incoming: Option<input_commands::AppliedInputLatency>,
+    acknowledged_sequence: u64,
+) -> Option<input_commands::AppliedInputLatency> {
+    let pending = pending.filter(|stamp| stamp.sequence > acknowledged_sequence);
+    let Some(mut incoming) = incoming else {
+        return pending;
+    };
+    if let Some(previous) = pending {
+        incoming.superseded_events = incoming
+            .superseded_events
+            .saturating_add(previous.superseded_events)
+            .saturating_add(1);
+    }
+    Some(incoming)
 }
 
 /// Render-owner borrows used only after the simulation step has sealed its
@@ -188,7 +207,7 @@ impl SimulationCore {
         let mut audio_effects = effects.audio();
         let mut particle_batches = effects.particles();
         let mut platform_effects = effects.platform();
-        let frame = advance_simulation(
+        let mut frame = advance_simulation(
             &mut self.net_events,
             &self.net_commands,
             &mut self.server_resource_packs,
@@ -225,6 +244,12 @@ impl SimulationCore {
             self.hide_lightning_flash,
             now,
         );
+        self.pending_input_latency = merge_pending_input_latency(
+            self.pending_input_latency,
+            frame.input_latency(),
+            self.command_mailbox.presented_input_latency_sequence(),
+        );
+        frame.set_input_latency(self.pending_input_latency);
         self.environment_audio
             .project_diagnostics(&mut self.audio_counters);
         // Duration rounding can let the timer convert a tick at the edge of a
@@ -355,7 +380,38 @@ impl SimulationStepResult {
 
 #[cfg(test)]
 mod tests {
-    use super::{SimulationCore, SimulationStepResult};
+    use super::{merge_pending_input_latency, SimulationCore, SimulationStepResult};
+    use crate::simulation::input_commands::AppliedInputLatency;
+    use std::time::{Duration, Instant};
+
+    fn latency(sequence: u64, superseded_events: u64) -> AppliedInputLatency {
+        let enqueued_at = Instant::now();
+        AppliedInputLatency {
+            sequence,
+            enqueued_at,
+            simulation_applied_at: enqueued_at + Duration::from_millis(1),
+            superseded_events,
+        }
+    }
+
+    #[test]
+    fn input_latency_publication_retains_unacknowledged_and_counts_real_replacement() {
+        let first = latency(4, 1);
+        assert_eq!(
+            merge_pending_input_latency(Some(first), None, 3),
+            Some(first)
+        );
+
+        let replaced = merge_pending_input_latency(Some(first), Some(latency(6, 2)), 3)
+            .expect("new input replaces an unacknowledged publication");
+        assert_eq!(replaced.sequence, 6);
+        assert_eq!(replaced.superseded_events, 4);
+
+        let acknowledged = merge_pending_input_latency(Some(first), Some(latency(6, 2)), 4)
+            .expect("new input follows an acknowledged publication");
+        assert_eq!(acknowledged.superseded_events, 2);
+        assert!(merge_pending_input_latency(Some(first), None, 4).is_none());
+    }
 
     #[test]
     fn core_and_step_output_cross_the_thread_boundary_without_shared_mutation() {
@@ -414,7 +470,7 @@ mod tests {
             .expect("step end")
             .0;
         let advance = step
-            .find("let frame = advance_simulation(")
+            .find("advance_simulation(")
             .expect("simulation advance");
         let diagnostics = step
             .find("self.environment_audio")

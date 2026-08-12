@@ -2510,6 +2510,7 @@ pub(crate) struct SimulationFrameState {
     particle_entity_target_contexts: Vec<ParticleEntityTargetContext>,
     particle_sound_camera_position: Option<[f64; 3]>,
     terrain_textures_changed: bool,
+    input_latency: Option<crate::simulation::input_commands::AppliedInputLatency>,
     profiling_sections: Vec<SimulationProfileSection>,
 }
 
@@ -2524,6 +2525,19 @@ impl SimulationFrameState {
 
     pub(crate) fn profiling_sections(&self) -> &[SimulationProfileSection] {
         &self.profiling_sections
+    }
+
+    pub(crate) fn input_latency(
+        &self,
+    ) -> Option<crate::simulation::input_commands::AppliedInputLatency> {
+        self.input_latency
+    }
+
+    pub(crate) fn set_input_latency(
+        &mut self,
+        input_latency: Option<crate::simulation::input_commands::AppliedInputLatency>,
+    ) {
+        self.input_latency = input_latency;
     }
 }
 
@@ -3222,6 +3236,7 @@ pub(crate) fn advance_simulation(
         particle_entity_target_contexts,
         particle_sound_camera_position,
         terrain_textures_changed,
+        input_latency: input_profile.input_latency,
         profiling_sections,
     }
 }
@@ -4908,6 +4923,14 @@ pub(crate) fn update_renderer_from_publication(
     let recycled_debug_buffers = apply_renderer_frame(
         renderer,
         RendererFrame {
+            input_latency: state
+                .input_latency()
+                .map(|input_latency| RendererInputLatencyFrame {
+                    sequence: input_latency.sequence,
+                    enqueued_at: input_latency.enqueued_at,
+                    simulation_applied_at: input_latency.simulation_applied_at,
+                    superseded_events: input_latency.superseded_events,
+                }),
             lightmap_environment,
             clear_color,
             fog_environment,

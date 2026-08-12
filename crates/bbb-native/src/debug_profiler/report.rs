@@ -282,6 +282,39 @@ impl DebugProfilerFrameMetrics {
                 insert_metric(&mut categories, "frame flight", name, value);
             }
         }
+        if let Some(latency) = &self.input_latency {
+            for (name, value) in [
+                ("sequence", latency.sequence),
+                (
+                    "enqueue_to_simulation_apply",
+                    latency.enqueue_to_simulation_apply,
+                ),
+                (
+                    "simulation_apply_to_renderer_extract",
+                    latency.simulation_apply_to_renderer_extract,
+                ),
+                (
+                    "renderer_extract_to_queue_submit",
+                    latency.renderer_extract_to_queue_submit,
+                ),
+                (
+                    "queue_submit_to_present_call_return",
+                    latency.queue_submit_to_present_call_return,
+                ),
+                (
+                    "enqueue_to_present_call_return",
+                    latency.enqueue_to_present_call_return,
+                ),
+                ("superseded_events", latency.superseded_events),
+                ("out_of_order_events", latency.out_of_order_events),
+                (
+                    "present_call_return_software_boundary",
+                    latency.present_call_return_software_boundary,
+                ),
+            ] {
+                insert_metric(&mut categories, "input latency", name, value);
+            }
+        }
         categories
     }
 }
@@ -571,6 +604,17 @@ mod tests {
                         completion_observation_missing: 0.0,
                         completion_observations_dropped: 0.0,
                     }),
+                    input_latency: Some(crate::debug_profiler::DebugProfilerInputLatency {
+                        sequence: 17.0,
+                        enqueue_to_simulation_apply: 12.0,
+                        simulation_apply_to_renderer_extract: 13.0,
+                        renderer_extract_to_queue_submit: 14.0,
+                        queue_submit_to_present_call_return: 15.0,
+                        enqueue_to_present_call_return: 54.0,
+                        superseded_events: 2.0,
+                        out_of_order_events: 0.0,
+                        present_call_return_software_boundary: 1.0,
+                    }),
                     gpu_stages: Some(DebugProfilerGpuStages {
                         application_frame_interval: 100.0,
                         total_gpu_duration: 66.0,
@@ -652,6 +696,9 @@ mod tests {
         assert!(files["gpu stages"].contains(
             "@tick,application_frame_interval,clouds,encoder_tail,entity_translucent_features,feature_depth_copies,opaque_particles,opaque_world,presentation_tail,remaining_feature_targets,terrain_atlas_animation,total_gpu_duration,transparency_combine,weather\n1,100,7,11,5,4,3,2,10,6,1,66,9,8\n"
         ));
+        assert!(files["input latency"].contains(
+            "@tick,enqueue_to_present_call_return,enqueue_to_simulation_apply,out_of_order_events,present_call_return_software_boundary,queue_submit_to_present_call_return,renderer_extract_to_queue_submit,sequence,simulation_apply_to_renderer_extract,superseded_events\n1,54,12,0,1,15,14,17,13,2\n"
+        ));
     }
 
     #[test]
@@ -676,6 +723,7 @@ mod tests {
             "client/metrics/frame_phases.csv",
             "client/metrics/frame_flight.csv",
             "client/metrics/gpu_stages.csv",
+            "client/metrics/input_latency.csv",
             "client/deviations/ticktime/2@000000.txt",
         ] {
             assert!(archive.by_name(name).is_ok(), "missing {name}");

@@ -159,6 +159,15 @@ pub(crate) struct SimulationInputPublication {
 pub(crate) struct SimulationInputProfile {
     pub(crate) keyboard: Duration,
     pub(crate) mouse: Duration,
+    pub(crate) input_latency: Option<AppliedInputLatency>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AppliedInputLatency {
+    pub(crate) sequence: u64,
+    pub(crate) enqueued_at: Instant,
+    pub(crate) simulation_applied_at: Instant,
+    pub(crate) superseded_events: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -330,9 +339,23 @@ impl SimulationInputRuntime {
             }
             debug_assert!(command.sequence > self.last_applied_sequence);
             self.last_applied_sequence = command.sequence;
+            let input_latency = command.input_latency;
             let profile_kind = simulation_command_profile_kind(&command.command);
             let profile_started_at = profiling_enabled.then(Instant::now);
             self.apply_command(command.command, context);
+            if let Some(input_latency) = input_latency {
+                let previously_superseded = profile
+                    .input_latency
+                    .map_or(0, |previous| previous.superseded_events.saturating_add(1));
+                profile.input_latency = Some(AppliedInputLatency {
+                    sequence: input_latency.sequence,
+                    enqueued_at: input_latency.enqueued_at,
+                    simulation_applied_at: Instant::now(),
+                    superseded_events: input_latency
+                        .coalesced_events
+                        .saturating_add(previously_superseded),
+                });
+            }
             let Some(profile_started_at) = profile_started_at else {
                 continue;
             };
@@ -3613,7 +3636,8 @@ mod tests {
         // The production `apply_commands` path, not a direct helper call: a
         // sequenced `FocusChanged(true)` must run before the post-step
         // `pauseIfInactive` evaluation observes the focus state.
-        let mailbox = crate::simulation::commands::SimulationMailbox::default();
+        let mailbox =
+            crate::simulation::commands::SimulationMailbox::with_input_latency_diagnostics();
         mailbox
             .enqueue(SimulationCommand::FocusChanged(true))
             .expect("focus command queues into an empty mailbox");
@@ -3678,7 +3702,7 @@ mod tests {
             audio_events: &mut audio_events,
             platform: &mut platform,
         };
-        runtime.apply_commands(commands, &mut context, false);
+        let profile = runtime.apply_commands(commands, &mut context, false);
 
         // The focus-regained command applied first, so the post-step pause
         // evaluation observes the updated focus and must not open a pause
@@ -3686,6 +3710,10 @@ mod tests {
         // sequence also proves the command itself was applied rather than
         // dropped.
         assert_eq!(runtime.last_applied_sequence, 1);
+        let latency = profile.input_latency.expect("input latency receipt");
+        assert_eq!(latency.sequence, 1);
+        assert_eq!(latency.superseded_events, 0);
+        assert!(latency.simulation_applied_at >= latency.enqueued_at);
         assert!(!input.debug_pause_screen_is_open());
     }
 

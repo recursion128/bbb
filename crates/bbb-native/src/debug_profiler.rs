@@ -50,6 +50,20 @@ pub(crate) struct DebugProfilerFrameMetrics {
     pub(crate) gpu_stages: Option<DebugProfilerGpuStages>,
     pub(crate) frame_phases: Option<DebugProfilerFramePhases>,
     pub(crate) frame_flight: Option<DebugProfilerFrameFlight>,
+    pub(crate) input_latency: Option<DebugProfilerInputLatency>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct DebugProfilerInputLatency {
+    pub(crate) sequence: f64,
+    pub(crate) enqueue_to_simulation_apply: f64,
+    pub(crate) simulation_apply_to_renderer_extract: f64,
+    pub(crate) renderer_extract_to_queue_submit: f64,
+    pub(crate) queue_submit_to_present_call_return: f64,
+    pub(crate) enqueue_to_present_call_return: f64,
+    pub(crate) superseded_events: f64,
+    pub(crate) out_of_order_events: f64,
+    pub(crate) present_call_return_software_boundary: f64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -168,6 +182,28 @@ impl DebugProfilerFrameMetrics {
         frame_profile: RendererFrameProfile,
     ) -> Self {
         let gpu_stages = gpu_timing.and_then(DebugProfilerGpuStages::from_profile);
+        let input_latency = frame_profile
+            .input_latency
+            .map(|latency| DebugProfilerInputLatency {
+                sequence: latency.sequence as f64,
+                enqueue_to_simulation_apply: duration_nanos(latency.enqueue_to_simulation_apply)
+                    as f64,
+                simulation_apply_to_renderer_extract: duration_nanos(
+                    latency.simulation_apply_to_renderer_extract,
+                ) as f64,
+                renderer_extract_to_queue_submit: duration_nanos(
+                    latency.renderer_extract_to_queue_submit,
+                ) as f64,
+                queue_submit_to_present_call_return: duration_nanos(
+                    latency.queue_submit_to_present_call_return,
+                ) as f64,
+                enqueue_to_present_call_return: duration_nanos(
+                    latency.enqueue_to_present_call_return,
+                ) as f64,
+                superseded_events: latency.superseded_events as f64,
+                out_of_order_events: latency.out_of_order_events as f64,
+                present_call_return_software_boundary: 1.0,
+            });
         Self {
             tick_time_nanos: duration_nanos(tick_time) as f64,
             process_memory_mib: process_resident_memory_mib(),
@@ -180,6 +216,7 @@ impl DebugProfilerFrameMetrics {
             gpu_stages,
             frame_phases: Some(frame_profile.into()),
             frame_flight: Some(frame_profile.into()),
+            input_latency,
             ..Self::default()
         }
     }

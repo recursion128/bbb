@@ -578,6 +578,10 @@ pub(crate) struct Args {
     pub(crate) debug_profile: DebugScreenProfileArg,
     #[arg(long = "debug-profile-store", value_name = "PATH")]
     pub(crate) debug_profile_store: Option<PathBuf>,
+    /// Enables the profiler-only enqueue-to-present-call software latency
+    /// receipt used by the fixed Retina diagnostic workflow.
+    #[arg(long = "renderer-input-latency-diagnostics")]
+    pub(crate) renderer_input_latency_diagnostics: bool,
     #[arg(long = "debug-show-local-server-entity-hit-boxes")]
     pub(crate) debug_show_local_server_entity_hit_boxes: bool,
     #[arg(long = "debug-hotkeys")]
@@ -3451,6 +3455,20 @@ mod tests {
         assert_eq!(
             args.debug_profile_store,
             Some(PathBuf::from("/tmp/debug-profile.json"))
+        );
+    }
+
+    #[test]
+    fn renderer_input_latency_diagnostics_are_explicitly_opt_in() {
+        assert!(
+            !Args::try_parse_from(["bbb-native"])
+                .unwrap()
+                .renderer_input_latency_diagnostics
+        );
+        assert!(
+            Args::try_parse_from(["bbb-native", "--renderer-input-latency-diagnostics"])
+                .unwrap()
+                .renderer_input_latency_diagnostics
         );
     }
 

@@ -498,14 +498,14 @@ candidate 只记录在账本、evidence 和归档，不写入本文件。
 当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。诊断面由
 profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
-十一段有序 `PassBoundary` duration。当前唯一动作是建立 diagnostic-only 的
-`renderer-input-latency-v1` 软件流水线合同：为正式 replay 输入分配单调 sequence/timestamp，
+十一段有序 `PassBoundary` duration。当前唯一动作是完成 diagnostic-only 的
+`renderer-input-latency-v1` 门禁并采 accepted-baseline probe：正式 replay 输入使用单调 sequence/timestamp，
 有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
 return，输出每阶段 p50/p95/p99、丢失/乱序与 scene/run 归属。它不得改变 queue budget、
 wait→acquire→submit→present、surface、workload、pacing 或输入语义；未启用诊断时不得明显
 增加热路径成本。present-call return 必须明确标为软件边界，不能冒充实际 display/photon
-latency。完成 focused owner/order/bounds/disabled-cost tests 与 accepted-baseline diagnostic
-后，只有 acquire 尾部仍为主要来源且软件 input latency 有可执行非劣门禁，才允许一个独立的
+latency。focused owner/order/bounds/disabled-cost tests、report fail-closed 与 full gate
+必须先通过；accepted-baseline diagnostic 完成后，只有 acquire 尾部仍为主要来源且软件 input latency 有可执行非劣门禁，才允许一个独立的
 queue-budget/acquire 策略 candidate。未开启详细诊断时保持两个 timestamp query；不得改变
 FIFO/Linux、surface fallback 或可见 geometry。
 

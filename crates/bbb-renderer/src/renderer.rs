@@ -264,6 +264,79 @@ pub struct RendererFrameProfile {
     pub completion_observation_missing: bool,
     /// Completion observations rejected because the bounded channel was full.
     pub completion_observations_dropped: u64,
+    /// One profiler-only local-input receipt completed by this successful
+    /// present call. This is a software boundary, not display/photon latency.
+    pub input_latency: Option<RendererInputLatencyProfile>,
+}
+
+/// Input receipt after simulation application and RendererFrame extraction,
+/// waiting for association with one successful submit/present operation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RendererInputLatencyStamp {
+    pub sequence: u64,
+    pub enqueued_at: Instant,
+    pub simulation_applied_at: Instant,
+    pub renderer_extracted_at: Instant,
+    pub superseded_events: u64,
+}
+
+/// Profiler-only software input latency stages for one represented input.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RendererInputLatencyProfile {
+    pub sequence: u64,
+    pub enqueue_to_simulation_apply: Duration,
+    pub simulation_apply_to_renderer_extract: Duration,
+    pub renderer_extract_to_queue_submit: Duration,
+    pub queue_submit_to_present_call_return: Duration,
+    pub enqueue_to_present_call_return: Duration,
+    pub superseded_events: u64,
+    pub out_of_order_events: u64,
+}
+
+#[derive(Debug, Default)]
+pub(super) struct RendererInputLatencyState {
+    pending: Option<RendererInputLatencyStamp>,
+    last_sequence_seen: u64,
+    out_of_order_events: u64,
+}
+
+impl RendererInputLatencyState {
+    fn push(&mut self, stamp: RendererInputLatencyStamp) {
+        if stamp.sequence == self.last_sequence_seen {
+            return;
+        }
+        if stamp.sequence < self.last_sequence_seen {
+            self.out_of_order_events = self.out_of_order_events.saturating_add(1);
+            return;
+        }
+        self.last_sequence_seen = stamp.sequence;
+        self.pending = Some(stamp);
+    }
+
+    pub(super) fn complete(
+        &mut self,
+        queue_submitted_at: Instant,
+        present_call_returned_at: Instant,
+    ) -> Option<RendererInputLatencyProfile> {
+        let stamp = self.pending.take()?;
+        Some(RendererInputLatencyProfile {
+            sequence: stamp.sequence,
+            enqueue_to_simulation_apply: stamp
+                .simulation_applied_at
+                .saturating_duration_since(stamp.enqueued_at),
+            simulation_apply_to_renderer_extract: stamp
+                .renderer_extracted_at
+                .saturating_duration_since(stamp.simulation_applied_at),
+            renderer_extract_to_queue_submit: queue_submitted_at
+                .saturating_duration_since(stamp.renderer_extracted_at),
+            queue_submit_to_present_call_return: present_call_returned_at
+                .saturating_duration_since(queue_submitted_at),
+            enqueue_to_present_call_return: present_call_returned_at
+                .saturating_duration_since(stamp.enqueued_at),
+            superseded_events: stamp.superseded_events,
+            out_of_order_events: std::mem::take(&mut self.out_of_order_events),
+        })
+    }
 }
 
 /// Complete camera-uniform inputs extracted for one presented frame.
@@ -495,6 +568,7 @@ pub struct Renderer {
     pub(super) submission_completion_profiling_enabled: bool,
     pub(super) frame_flight: FrameFlightController,
     pub(super) last_frame_profile: RendererFrameProfile,
+    pub(super) input_latency: RendererInputLatencyState,
     pub(super) last_frame_started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
     /// Vanilla `optionsRenderState.glintSpeed` (`Options.glintSpeed`).
@@ -2406,6 +2480,7 @@ impl Renderer {
             submission_completion_profiling_enabled: false,
             frame_flight: FrameFlightController::new(),
             last_frame_profile: RendererFrameProfile::default(),
+            input_latency: RendererInputLatencyState::default(),
             last_frame_started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
             glint_speed: VANILLA_DEFAULT_GLINT_SPEED,
@@ -3335,6 +3410,14 @@ impl Renderer {
     /// GPU HUD timing alone deliberately does not enable this callback path.
     pub fn set_submission_completion_profiling_enabled(&mut self, enabled: bool) {
         self.submission_completion_profiling_enabled = enabled;
+    }
+
+    /// Associates the newest extracted platform input with the next
+    /// successful surface submission. Repeated immutable publications are
+    /// ignored; the simulation publication owner has already counted any
+    /// unpresented receipt superseded by a newer publication.
+    pub fn set_input_latency_stamp(&mut self, stamp: RendererInputLatencyStamp) {
+        self.input_latency.push(stamp);
     }
 
     pub fn set_level_frame_route(&mut self, route: LevelFrameRoute) {
@@ -5075,17 +5158,74 @@ mod tests {
         choose_format, choose_present_mode, resolve_fabulous_terrain_texture_filtering,
         translucency_point_of_view, translucent_section_draw_order,
         translucent_section_draw_order_from_visible, translucent_section_is_nearby,
-        LevelFrameRoute, Renderer, RendererCameraFrame, RendererResizePrepareStage,
-        TerrainChunkMeshOwner, TerrainSectionMeshOwner, TerrainSectionRenderState,
-        TerrainTextureFiltering, TerrainTranslucentSortState,
-        MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE,
+        LevelFrameRoute, Renderer, RendererCameraFrame, RendererInputLatencyStamp,
+        RendererInputLatencyState, RendererResizePrepareStage, TerrainChunkMeshOwner,
+        TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTextureFiltering,
+        TerrainTranslucentSortState, MAX_TRANSLUCENT_RESORTS_PER_CAMERA_UPDATE,
     };
     use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
     use crate::terrain::{
         TerrainMesh, TerrainSectionMesh, TerrainSectionMeshLayers, TerrainVertex,
     };
     use glam::Vec3;
+    use std::time::{Duration, Instant};
     use winit::dpi::PhysicalSize;
+
+    #[test]
+    fn input_latency_state_is_monotonic_bounded_and_reports_software_stages() {
+        let start = Instant::now();
+        let stamp = |sequence, superseded_events| RendererInputLatencyStamp {
+            sequence,
+            enqueued_at: start,
+            simulation_applied_at: start + Duration::from_millis(2),
+            renderer_extracted_at: start + Duration::from_millis(3),
+            superseded_events,
+        };
+        let mut state = RendererInputLatencyState::default();
+        state.push(stamp(10, 1));
+        state.push(stamp(10, 99));
+        state.push(stamp(9, 0));
+        state.push(stamp(12, 2));
+
+        let profile = state
+            .complete(
+                start + Duration::from_millis(5),
+                start + Duration::from_millis(6),
+            )
+            .expect("newest input completes once");
+        assert_eq!(profile.sequence, 12);
+        // The simulation publication owner already accounts for any input
+        // receipt replaced before present; renderer association must not
+        // double-count that loss.
+        assert_eq!(profile.superseded_events, 2);
+        assert_eq!(profile.out_of_order_events, 1);
+        assert_eq!(
+            profile.enqueue_to_simulation_apply,
+            Duration::from_millis(2)
+        );
+        assert_eq!(
+            profile.simulation_apply_to_renderer_extract,
+            Duration::from_millis(1)
+        );
+        assert_eq!(
+            profile.renderer_extract_to_queue_submit,
+            Duration::from_millis(2)
+        );
+        assert_eq!(
+            profile.queue_submit_to_present_call_return,
+            Duration::from_millis(1)
+        );
+        assert_eq!(
+            profile.enqueue_to_present_call_return,
+            Duration::from_millis(6)
+        );
+        assert!(state
+            .complete(
+                start + Duration::from_millis(7),
+                start + Duration::from_millis(8),
+            )
+            .is_none());
+    }
 
     fn resize_target_sizes(renderer: &Renderer) -> Vec<wgpu::Extent3d> {
         vec![

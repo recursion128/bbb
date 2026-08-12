@@ -163,6 +163,21 @@ GPU_STAGE_COLUMNS = (
     "application_frame_interval",
     "total_gpu_duration",
 ) + GPU_STAGE_DURATION_COLUMNS
+INPUT_LATENCY_SCHEMA = "renderer-input-latency-v1"
+INPUT_LATENCY_DURATION_COLUMNS = (
+    "enqueue_to_simulation_apply",
+    "simulation_apply_to_renderer_extract",
+    "renderer_extract_to_queue_submit",
+    "queue_submit_to_present_call_return",
+    "enqueue_to_present_call_return",
+)
+INPUT_LATENCY_COUNT_COLUMNS = (
+    "sequence",
+    "superseded_events",
+    "out_of_order_events",
+    "present_call_return_software_boundary",
+)
+INPUT_LATENCY_COLUMNS = INPUT_LATENCY_DURATION_COLUMNS + INPUT_LATENCY_COUNT_COLUMNS
 BBB_RUNTIME_LOG_FILTERS = (
     "bbb_native=info",
     "bbb_renderer=info",
@@ -375,6 +390,18 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "correlation_target": "same-submission-application-frame-interval",
             "total_duration_check": "ordered-stage-sum-within-rounding-tolerance",
             "timestamp_strategy": WGPU30_GPU_TIMESTAMP_STRATEGY,
+        },
+        "input_latency_diagnostics": {
+            "schema": INPUT_LATENCY_SCHEMA,
+            "archive_path": "client/metrics/input_latency.csv",
+            "duration_units": "nanoseconds",
+            "count_units": "count",
+            "duration_columns": list(INPUT_LATENCY_DURATION_COLUMNS),
+            "count_columns": list(INPUT_LATENCY_COUNT_COLUMNS),
+            "required_client": "bbb-when-run-declares-required-schema",
+            "activation": "--renderer-input-latency-diagnostics",
+            "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
+            "coalescing": "newest-event-with-explicit-superseded-count",
         },
         "stability_acceptance": {
             "policy": STABILITY_POLICY,
@@ -1175,6 +1202,46 @@ def summarize_gpu_stages(
     }
 
 
+def summarize_input_latency(samples: Mapping[str, Sequence[float]]) -> dict[str, object]:
+    if set(samples) != set(INPUT_LATENCY_COLUMNS):
+        raise RetinaAcceptanceError("input latency columns differ from the declared schema")
+    lengths = {len(values) for values in samples.values()}
+    if len(lengths) != 1 or not lengths or next(iter(lengths)) == 0:
+        raise RetinaAcceptanceError("input latency columns are empty or unaligned")
+    sequences = samples["sequence"]
+    if any(
+        not math.isfinite(value) or value <= 0.0 or not value.is_integer()
+        for value in sequences
+    ):
+        raise RetinaAcceptanceError("input latency sequences must be positive integers")
+    if any(current <= previous for previous, current in zip(sequences, sequences[1:])):
+        raise RetinaAcceptanceError("input latency sequences are not strictly increasing")
+    for column in ("superseded_events", "out_of_order_events"):
+        if any(
+            not math.isfinite(value) or value < 0.0 or not value.is_integer()
+            for value in samples[column]
+        ):
+            raise RetinaAcceptanceError(
+                f"input latency {column} must contain non-negative integers"
+            )
+    if any(value != 1.0 for value in samples["present_call_return_software_boundary"]):
+        raise RetinaAcceptanceError(
+            "input latency terminal boundary is not marked as software present-call return"
+        )
+    return {
+        "sample_count": len(sequences),
+        "first_sequence": int(sequences[0]),
+        "last_sequence": int(sequences[-1]),
+        "superseded_events": int(sum(samples["superseded_events"])),
+        "out_of_order_events": int(sum(samples["out_of_order_events"])),
+        "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
+        "stages": {
+            column: summarize_durations_ms(samples[column])
+            for column in INPUT_LATENCY_DURATION_COLUMNS
+        },
+    }
+
+
 def profiler_samples(path: Path) -> dict[str, object]:
     try:
         archive = zipfile.ZipFile(path)
@@ -1184,6 +1251,7 @@ def profiler_samples(path: Path) -> dict[str, object]:
     frame_phase_rows: dict[str, dict[int, float]] | None = None
     frame_flight_rows: dict[str, dict[int, float]] | None = None
     gpu_stage_rows: dict[str, dict[int, float]] | None = None
+    input_latency_rows: dict[str, dict[int, float]] | None = None
     with archive:
         ticking = _read_metric_csv(archive, "/metrics/ticking.csv", "ticktime")
         try:
@@ -1238,6 +1306,22 @@ def profiler_samples(path: Path) -> dict[str, object]:
                     archive, "/metrics/gpu_stages.csv", column
                 )
                 for column in GPU_STAGE_COLUMNS
+            }
+        input_latency_names = [
+            name
+            for name in archive.namelist()
+            if name.endswith("/metrics/input_latency.csv")
+        ]
+        if input_latency_names:
+            if len(input_latency_names) != 1:
+                raise RetinaAcceptanceError(
+                    "profiling archive must contain at most one input_latency.csv"
+                )
+            input_latency_rows = {
+                column: _read_metric_csv(
+                    archive, "/metrics/input_latency.csv", column
+                )
+                for column in INPUT_LATENCY_COLUMNS
             }
     if gpu_duration is not None:
         frame_ms = [ticking[tick] / 1_000_000.0 for tick in sorted(ticking)]
@@ -1412,6 +1496,47 @@ def profiler_samples(path: Path) -> dict[str, object]:
         }
         summarize_gpu_stages(gpu_stages)
         result["gpu_stages"] = gpu_stages
+    if input_latency_rows is not None:
+        tick_sets = {frozenset(rows) for rows in input_latency_rows.values()}
+        if len(tick_sets) != 1 or next(iter(tick_sets)) != frozenset(ticking):
+            raise RetinaAcceptanceError(
+                "input latency columns must align with profiler application frames"
+            )
+        sample_ticks = [
+            tick
+            for tick in sorted(ticking)
+            if input_latency_rows["sequence"][tick] > 0.0
+        ]
+        placeholder_ticks = set(ticking) - set(sample_ticks)
+        if any(
+            input_latency_rows[column][tick] != 0.0
+            for tick in placeholder_ticks
+            for column in INPUT_LATENCY_COLUMNS
+        ):
+            raise RetinaAcceptanceError(
+                "input latency zero-sequence placeholder contains non-zero values"
+            )
+        input_latency = {
+            column: [
+                input_latency_rows[column][tick] / 1_000_000.0
+                if column in INPUT_LATENCY_DURATION_COLUMNS
+                else input_latency_rows[column][tick]
+                for tick in sample_ticks
+            ]
+            for column in INPUT_LATENCY_COLUMNS
+        }
+        for index in range(len(sample_ticks)):
+            stage_sum = sum(
+                input_latency[column][index]
+                for column in INPUT_LATENCY_DURATION_COLUMNS[:-1]
+            )
+            total = input_latency["enqueue_to_present_call_return"][index]
+            if abs(stage_sum - total) > 0.000001:
+                raise RetinaAcceptanceError(
+                    "input latency stage sum differs from end-to-end software duration"
+                )
+        summarize_input_latency(input_latency)
+        result["input_latency"] = input_latency
     return result
 
 
@@ -1448,6 +1573,10 @@ def parse_profiler_archive(path: Path) -> dict[str, object]:
     if isinstance(gpu_stages, Mapping):
         parsed["gpu_stage_schema"] = GPU_STAGE_SCHEMA
         parsed["gpu_stages"] = summarize_gpu_stages(gpu_stages)
+    input_latency = samples.get("input_latency")
+    if isinstance(input_latency, Mapping):
+        parsed["input_latency_schema"] = INPUT_LATENCY_SCHEMA
+        parsed["input_latency"] = summarize_input_latency(input_latency)
     return parsed
 
 
@@ -1592,6 +1721,7 @@ def _materialize_formal_samples(
     dict[tuple[int, str, str], list[float]],
     dict[tuple[int, str, str], list[float]],
     dict[tuple[int, str, str], list[float]],
+    dict[tuple[int, str, str], list[float]],
 ]:
     """Reparse and normalize every archive exactly once.
 
@@ -1606,6 +1736,7 @@ def _materialize_formal_samples(
     phase_matrix: dict[tuple[int, str, str], list[float]] = {}
     flight_matrix: dict[tuple[int, str, str], list[float]] = {}
     gpu_stage_matrix: dict[tuple[int, str, str], list[float]] = {}
+    input_latency_matrix: dict[tuple[int, str, str], list[float]] = {}
     for run_number, run in enumerate(runs, start=1):
         profiles = run.get("profiles")
         if not isinstance(profiles, list):
@@ -1834,13 +1965,82 @@ def _materialize_formal_samples(
                     ]
                 normalized_profile["gpu_stage_schema"] = GPU_STAGE_SCHEMA
                 normalized_profile["gpu_stages"] = stage_summary
+            archive_input_latency = archive_samples.get("input_latency")
+            required_input_latency_schema = run.get("required_input_latency_schema")
+            if (
+                required_input_latency_schema is not None
+                and required_input_latency_schema != INPUT_LATENCY_SCHEMA
+            ):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} declares unknown input latency schema"
+                )
+            if required_input_latency_schema == INPUT_LATENCY_SCHEMA:
+                launch_argv = run.get("launch_argv")
+                if not isinstance(launch_argv, list) or (
+                    "--renderer-input-latency-diagnostics" not in launch_argv
+                ):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} requires input latency evidence without its launch flag"
+                    )
+            if required_input_latency_schema == INPUT_LATENCY_SCHEMA and not isinstance(
+                archive_input_latency, Mapping
+            ):
+                raise RetinaAcceptanceError(
+                    f"run {run_number} {segment} lacks required {INPUT_LATENCY_SCHEMA} evidence"
+                )
+            if isinstance(archive_input_latency, Mapping):
+                if profile.get("input_latency_schema") != INPUT_LATENCY_SCHEMA:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} input latency schema differs"
+                    )
+                sidecar_value = profile.get("input_latency_samples")
+                if not isinstance(sidecar_value, str):
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} lacks input latency raw samples"
+                    )
+                raw = _load_object(Path(sidecar_value), "input latency raw samples")
+                raw_latency = raw.get("values")
+                if not isinstance(raw_latency, Mapping):
+                    raise RetinaAcceptanceError("input latency raw samples are malformed")
+                materialized_latency = {
+                    str(column): [float(value) for value in values]
+                    for column, values in raw_latency.items()
+                    if isinstance(values, list)
+                }
+                expected_latency = {
+                    str(column): [float(value) for value in values]
+                    for column, values in archive_input_latency.items()
+                }
+                if materialized_latency != expected_latency:
+                    raise RetinaAcceptanceError(
+                        f"run {run_number} {segment} input latency sidecar differs from archive"
+                    )
+                latency_summary = summarize_input_latency(materialized_latency)
+                _validate_stored_summary(
+                    profile.get("input_latency"),
+                    latency_summary,
+                    label=f"run {run_number} {segment} input latency",
+                )
+                for column in INPUT_LATENCY_COLUMNS:
+                    input_latency_matrix[(run_number, segment, column)] = (
+                        materialized_latency[column]
+                    )
+                normalized_profile["input_latency_schema"] = INPUT_LATENCY_SCHEMA
+                normalized_profile["input_latency"] = latency_summary
             normalized_profiles.append(normalized_profile)
         normalized_run = dict(run)
         normalized_run["capture_schema"] = run.get("capture_schema", run.get("schema", 0))
         normalized_run["schema"] = SCHEMA
         normalized_run["profiles"] = normalized_profiles
         normalized_runs.append(normalized_run)
-    return normalized_runs, matrix, phase_matrix, flight_matrix, gpu_stage_matrix
+    return (
+        normalized_runs,
+        matrix,
+        phase_matrix,
+        flight_matrix,
+        gpu_stage_matrix,
+        input_latency_matrix,
+    )
 
 
 def _frame_phase_scope_summary(
@@ -2103,6 +2303,76 @@ def _build_gpu_stage_diagnostics(
         "timestamp_strategy": WGPU30_GPU_TIMESTAMP_STRATEGY,
         "correlation_target": "same-submission-application-frame-interval",
         "total_duration_check": "ordered-stage-sum-within-rounding-tolerance",
+        "scopes": scopes,
+    }
+
+
+def _input_latency_scope_summary(
+    matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+    run_numbers: Sequence[int],
+    segment: str | None,
+) -> dict[str, object]:
+    selected = [
+        (run_number, profile_segment)
+        for run_number in run_numbers
+        if runs[run_number - 1].get("client") == "bbb"
+        for profile_segment in CAPTURE_SEGMENTS
+        if segment is None or profile_segment == segment
+        if (run_number, profile_segment, "sequence") in matrix
+    ]
+    if not selected:
+        return {}
+    samples = {
+        column: [
+            value
+            for run_number, profile_segment in selected
+            for value in matrix[(run_number, profile_segment, column)]
+        ]
+        for column in INPUT_LATENCY_COLUMNS
+    }
+    return {
+        "sample_count": len(samples["sequence"]),
+        "minimum_sequence": int(min(samples["sequence"])),
+        "maximum_sequence": int(max(samples["sequence"])),
+        "superseded_events": int(sum(samples["superseded_events"])),
+        "out_of_order_events": int(sum(samples["out_of_order_events"])),
+        "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
+        "stages": {
+            column: summarize_durations_ms(samples[column])
+            for column in INPUT_LATENCY_DURATION_COLUMNS
+        },
+    }
+
+
+def _build_input_latency_diagnostics(
+    matrix: Mapping[tuple[int, str, str], Sequence[float]],
+    runs: Sequence[Mapping[str, object]],
+) -> dict[str, object] | None:
+    all_runs = tuple(range(1, len(runs) + 1))
+    combined = _input_latency_scope_summary(matrix, runs, all_runs, None)
+    if not combined:
+        return None
+    scopes = [
+        {"scope_type": "combined", "scope_id": "combined", "summary": combined}
+    ]
+    for segment in CAPTURE_SEGMENTS:
+        summary = _input_latency_scope_summary(matrix, runs, all_runs, segment)
+        if summary:
+            scopes.append(
+                {"scope_type": "scene", "scope_id": segment, "summary": summary}
+            )
+    for run_number, run in enumerate(runs, start=1):
+        if run.get("client") != "bbb":
+            continue
+        summary = _input_latency_scope_summary(matrix, runs, (run_number,), None)
+        if summary:
+            scopes.append(
+                {"scope_type": "run", "scope_id": str(run_number), "summary": summary}
+            )
+    return {
+        "schema": INPUT_LATENCY_SCHEMA,
+        "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
         "scopes": scopes,
     }
 
@@ -3303,6 +3573,7 @@ def validate_and_summarize(
             "frame_phase_diagnostics": None,
             "frame_flight_diagnostics": None,
             "gpu_stage_diagnostics": None,
+            "input_latency_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     try:
@@ -3312,6 +3583,7 @@ def validate_and_summarize(
             frame_phase_matrix,
             frame_flight_matrix,
             gpu_stage_matrix,
+            input_latency_matrix,
         ) = _materialize_formal_samples(runs)
     except RetinaAcceptanceError as error:
         blocker = {"code": "raw_evidence_integrity_failure", "error": str(error)}
@@ -3326,6 +3598,7 @@ def validate_and_summarize(
             "frame_phase_diagnostics": None,
             "frame_flight_diagnostics": None,
             "gpu_stage_diagnostics": None,
+            "input_latency_diagnostics": None,
             "bbb_baseline_comparison": None,
         }
     all_runs = tuple(range(1, len(normalized_runs) + 1))
@@ -3354,6 +3627,9 @@ def validate_and_summarize(
     )
     gpu_stage_diagnostics = _build_gpu_stage_diagnostics(
         gpu_stage_matrix, normalized_runs
+    )
+    input_latency_diagnostics = _build_input_latency_diagnostics(
+        input_latency_matrix, normalized_runs
     )
     if bbb_commit == BASELINE_BBB_COMMIT:
         baseline_comparison = {
@@ -3385,6 +3661,7 @@ def validate_and_summarize(
         "frame_phase_diagnostics": frame_phase_diagnostics,
         "frame_flight_diagnostics": frame_flight_diagnostics,
         "gpu_stage_diagnostics": gpu_stage_diagnostics,
+        "input_latency_diagnostics": input_latency_diagnostics,
         "bbb_baseline_comparison": baseline_comparison,
     }
 
@@ -3563,6 +3840,7 @@ def build_macos_bbb_argv(
     server_port: int,
     control_port: int,
     display: DisplayProbe,
+    input_latency_diagnostics: bool = False,
 ) -> tuple[str, ...]:
     argv = build_bbb_launch_argv(
         binary=binary,
@@ -3577,7 +3855,7 @@ def build_macos_bbb_argv(
         ("--client-framerate-limit", str(UNLIMITED_FPS_SENTINEL)),
     ):
         argv = _replace_option(argv, option, value)
-    return (
+    result = (
         *argv,
         "--game-dir",
         str(game_dir),
@@ -3586,6 +3864,9 @@ def build_macos_bbb_argv(
         "--client-fullscreen-resolution",
         fullscreen_video_mode(display),
     )
+    if input_latency_diagnostics:
+        result = (*result, "--renderer-input-latency-diagnostics")
+    return result
 
 
 def _adapter_from_log(client: str, text: str, fallback: str) -> dict[str, str]:
@@ -3752,6 +4033,7 @@ def _write_profile_samples(
     *,
     require_frame_flight: bool,
     require_gpu_stages: bool,
+    require_input_latency: bool,
 ) -> dict[str, object]:
     samples = profiler_samples(profile_path)
     entry = parse_profiler_archive(profile_path)
@@ -3784,6 +4066,15 @@ def _write_profile_samples(
         raise RetinaAcceptanceError(
             f"BBB profiler archive lacks required {GPU_STAGE_SCHEMA} evidence"
         )
+    input_latency = samples.get("input_latency")
+    if isinstance(input_latency, Mapping):
+        output = path / f"{segment}-input-latency-samples.json"
+        output.write_bytes(canonical_json_bytes({"values": input_latency}))
+        entry["input_latency_samples"] = str(output)
+    elif require_input_latency:
+        raise RetinaAcceptanceError(
+            f"BBB profiler archive lacks required {INPUT_LATENCY_SCHEMA} evidence"
+        )
     frame_count = len(samples["application_frame_time"])
     entry["process_cpu_time_ms"] = cpu_nanos / 1_000_000.0
     entry["process_cpu_frame_time"] = {
@@ -3812,6 +4103,7 @@ def _run_client(
     timeout: float,
     require_frame_flight: bool = False,
     require_gpu_stages: bool = False,
+    require_input_latency: bool = False,
 ) -> dict[str, object]:
     if client not in {"vanilla", "bbb"}:
         raise RetinaAcceptanceError(f"unsupported formal client {client!r}")
@@ -3856,6 +4148,7 @@ def _run_client(
             server_port=server_port,
             control_port=control_port,
             display=display,
+            input_latency_diagnostics=require_input_latency,
         )
         profile_root = artifact_dir / "debug" / "profiling"
     screenshot_root = game_dir / "screenshots"
@@ -3894,6 +4187,9 @@ def _run_client(
         ),
         "required_gpu_stage_schema": (
             GPU_STAGE_SCHEMA if client == "bbb" and require_gpu_stages else None
+        ),
+        "required_input_latency_schema": (
+            INPUT_LATENCY_SCHEMA if client == "bbb" and require_input_latency else None
         ),
         "server_port": server_port,
         "control_port": control_port if client == "bbb" else None,
@@ -4027,6 +4323,7 @@ def _run_client(
                         cpu_after - cpu_before,
                         require_frame_flight=require_frame_flight,
                         require_gpu_stages=require_gpu_stages,
+                        require_input_latency=require_input_latency,
                     )
                 )
             final_marker = replay_capture_markers(replay)[-1]

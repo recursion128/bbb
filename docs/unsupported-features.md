@@ -307,11 +307,14 @@ restoring any row to `equivalent`.
   at SHA-256
   `5d06bd0c672eb0128efeedb82e9a29e043f16ba5dd3aa396cb20e095548f90b7`.
   The fast path is rejected before official Java ABBA and restored to the accepted
-  shader. Before any queue-budget or acquire policy candidate, establish a
-  diagnostic-only, bounded input→simulation→extract→submit/present-call latency
-  contract; present-call return is not actual display or photon latency. Detailed
-  query/callback paths remain off outside explicit diagnostics. Only a v4
-  all-scope pass can authorize official Java ABBA.
+  shader. The opt-in `renderer-input-latency-v1` implementation now carries one
+  bounded, monotonic input→simulation→extract→submit/present-call software receipt,
+  records coalesced/publication replacement loss explicitly and rejects missing
+  launch/schema/archive/raw-sidecar evidence. Present-call return is not actual
+  display or photon latency, and the accepted-baseline 2560x1600 AC diagnostic
+  capture remains the restart condition before any queue-budget/acquire candidate.
+  Detailed query/callback paths remain off outside explicit diagnostics. Only a
+  v4 all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

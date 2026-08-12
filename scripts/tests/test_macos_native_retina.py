@@ -77,6 +77,8 @@ def write_bbb_phase_profile(
     flight_rows: list[list[int]] | None = None,
     gpu_stage_rows: list[list[int]] | None = None,
     gpu_duration_rows: list[int] | None = None,
+    include_input_latency: bool = False,
+    input_latency_rows: list[list[int]] | None = None,
 ) -> None:
     columns = list(retina.FRAME_PHASE_COLUMNS)
     rows = [
@@ -167,6 +169,20 @@ def write_bbb_phase_profile(
             archive.writestr(
                 "client/metrics/gpu_stages.csv",
                 "@tick," + ",".join(retina.GPU_STAGE_COLUMNS) + "\n"
+                + "".join(
+                    f"{tick}," + ",".join(str(value) for value in values) + "\n"
+                    for tick, values in enumerate(values_by_tick, start=1)
+                ),
+            )
+        if include_input_latency or input_latency_rows is not None:
+            values_by_tick = input_latency_rows or [
+                [0] * len(retina.INPUT_LATENCY_COLUMNS),
+                [2_000_000, 1_000_000, 2_000_000, 1_000_000, 6_000_000, 10, 1, 0, 1],
+                [1_000_000, 2_000_000, 1_000_000, 1_000_000, 5_000_000, 12, 0, 0, 1],
+            ]
+            archive.writestr(
+                "client/metrics/input_latency.csv",
+                "@tick," + ",".join(retina.INPUT_LATENCY_COLUMNS) + "\n"
                 + "".join(
                     f"{tick}," + ",".join(str(value) for value in values) + "\n"
                     for tick, values in enumerate(values_by_tick, start=1)
@@ -679,6 +695,22 @@ class LaunchContractTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--fullscreenWidth") + 1], "2560")
         self.assertEqual(argv[argv.index("--fullscreenHeight") + 1], "1600")
 
+    def test_bbb_input_latency_diagnostic_flag_is_explicitly_propagated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / "bbb-native"
+            binary.write_bytes(b"fixture")
+            binary.chmod(0o755)
+            argv = retina.build_macos_bbb_argv(
+                binary=binary,
+                vanilla_root=Path("/tmp/vanilla"),
+                game_dir=Path("/tmp/game"),
+                server_port=25565,
+                control_port=24454,
+                display=display(),
+                input_latency_diagnostics=True,
+            )
+        self.assertIn("--renderer-input-latency-diagnostics", argv)
+
     def test_macos_arm64_distribution_selects_only_arm64_native_classifier(self):
         self.assertTrue(
             retina._macos_native_classifier_matches("org.lwjgl:lwjgl:3.4.1:natives-macos-arm64")
@@ -876,6 +908,42 @@ class ProfilerTests(unittest.TestCase):
             flight["counts"]["completion_observation_missing"]["total"], 0.0
         )
 
+    def test_bbb_input_latency_filters_placeholders_and_marks_software_boundary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, include_input_latency=True)
+
+            parsed = retina.parse_profiler_archive(profile)
+
+        self.assertEqual(parsed["input_latency_schema"], retina.INPUT_LATENCY_SCHEMA)
+        latency = parsed["input_latency"]
+        self.assertEqual(latency["sample_count"], 2)
+        self.assertEqual(latency["first_sequence"], 10)
+        self.assertEqual(latency["last_sequence"], 12)
+        self.assertEqual(latency["superseded_events"], 1)
+        self.assertEqual(latency["out_of_order_events"], 0)
+        self.assertEqual(
+            latency["terminal_boundary"],
+            "present-call-return-software-boundary-not-display-or-photon",
+        )
+        self.assertEqual(
+            latency["stages"]["enqueue_to_present_call_return"]["p50_ms"],
+            5.0,
+        )
+
+    def test_bbb_input_latency_rejects_non_monotonic_sequence(self):
+        rows = [
+            [0] * len(retina.INPUT_LATENCY_COLUMNS),
+            [2_000_000, 1_000_000, 2_000_000, 1_000_000, 6_000_000, 10, 0, 0, 1],
+            [1_000_000, 2_000_000, 1_000_000, 1_000_000, 5_000_000, 9, 0, 0, 1],
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "profile.zip"
+            write_bbb_phase_profile(profile, input_latency_rows=rows)
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError, "not strictly increasing"
+            ):
+                retina.parse_profiler_archive(profile)
     def test_bbb_gpu_stages_preserve_ordered_tail_stats_and_same_submission_correlation(self):
         with tempfile.TemporaryDirectory() as directory:
             profile = Path(directory) / "profile.zip"
@@ -1716,12 +1784,64 @@ class FormalValidationTests(unittest.TestCase):
             ):
                 retina._materialize_formal_samples([run])
 
+    def test_declared_input_latency_capture_rejects_missing_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / "profile.zip"
+            write_bbb_phase_profile(profile)
+            samples = retina.profiler_samples(profile)
+            frame_samples = root / "frame.json"
+            gpu_samples = root / "gpu.json"
+            phase_samples = root / "phases.json"
+            frame_samples.write_text(
+                json.dumps({"milliseconds": samples["application_frame_time"]}),
+                encoding="utf-8",
+            )
+            gpu_samples.write_text(
+                json.dumps({"milliseconds": samples["gpu_duration"]}),
+                encoding="utf-8",
+            )
+            phase_samples.write_text(
+                json.dumps({"milliseconds": samples["frame_phases"]}),
+                encoding="utf-8",
+            )
+            run = self.run_record("bbb")
+            run["schema"] = retina.SCHEMA
+            run["required_input_latency_schema"] = retina.INPUT_LATENCY_SCHEMA
+            run["profiles"] = []
+            for segment in retina.CAPTURE_SEGMENTS:
+                record = retina.parse_profiler_archive(profile)
+                record.update(
+                    {
+                        "segment": segment,
+                        "application_frame_time_samples": str(frame_samples),
+                        "gpu_duration_samples": str(gpu_samples),
+                        "frame_phase_samples": str(phase_samples),
+                    }
+                )
+                run["profiles"].append(record)
+
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError,
+                "requires input latency evidence without its launch flag",
+            ):
+                retina._materialize_formal_samples([run])
+            run["launch_argv"] = ["bbb-native", "--renderer-input-latency-diagnostics"]
+            with self.assertRaisesRegex(
+                retina.RetinaAcceptanceError,
+                "lacks required renderer-input-latency-v1 evidence",
+            ):
+                retina._materialize_formal_samples([run])
+
     def test_current_frame_phase_and_flight_sidecars_are_rederived_into_report_scopes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             profile = root / "profile.zip"
             write_bbb_phase_profile(
-                profile, include_flight=True, include_gpu_stages=True
+                profile,
+                include_flight=True,
+                include_gpu_stages=True,
+                include_input_latency=True,
             )
             samples = retina.profiler_samples(profile)
             frame_samples = root / "frame.json"
@@ -1729,6 +1849,7 @@ class FormalValidationTests(unittest.TestCase):
             phase_samples = root / "phases.json"
             flight_samples = root / "flight.json"
             gpu_stage_samples = root / "gpu-stages.json"
+            input_latency_samples = root / "input-latency.json"
             frame_samples.write_text(
                 json.dumps({"milliseconds": samples["application_frame_time"]}),
                 encoding="utf-8",
@@ -1749,11 +1870,20 @@ class FormalValidationTests(unittest.TestCase):
                 json.dumps({"milliseconds": samples["gpu_stages"]}),
                 encoding="utf-8",
             )
+            input_latency_samples.write_text(
+                json.dumps({"values": samples["input_latency"]}),
+                encoding="utf-8",
+            )
             runs = [self.run_record(client) for client in retina.FORMAL_ORDER]
             for run in runs:
                 run["schema"] = retina.SCHEMA
                 if run["client"] == "bbb":
                     run["required_gpu_stage_schema"] = retina.GPU_STAGE_SCHEMA
+                    run["required_input_latency_schema"] = retina.INPUT_LATENCY_SCHEMA
+                    run["launch_argv"] = [
+                        "bbb-native",
+                        "--renderer-input-latency-diagnostics",
+                    ]
                 profiles = []
                 for segment in retina.CAPTURE_SEGMENTS:
                     record = retina.parse_profiler_archive(profile)
@@ -1765,6 +1895,7 @@ class FormalValidationTests(unittest.TestCase):
                             "frame_phase_samples": str(phase_samples),
                             "frame_flight_samples": str(flight_samples),
                             "gpu_stage_samples": str(gpu_stage_samples),
+                            "input_latency_samples": str(input_latency_samples),
                             "process_cpu_time_ms": 12.0,
                             "process_cpu_frame_time": {"frames": 3, "mean_ms": 4.0},
                         }
@@ -1781,6 +1912,18 @@ class FormalValidationTests(unittest.TestCase):
         self.assertAlmostEqual(
             combined["queue_submit"]["next_application_frame_interval_correlation"],
             1.0,
+        )
+        input_latency = report["input_latency_diagnostics"]
+        self.assertEqual(input_latency["schema"], retina.INPUT_LATENCY_SCHEMA)
+        self.assertEqual(
+            input_latency["terminal_boundary"],
+            "present-call-return-software-boundary-not-display-or-photon",
+        )
+        latency_combined = input_latency["scopes"][0]["summary"]
+        self.assertEqual(latency_combined["out_of_order_events"], 0)
+        self.assertEqual(
+            latency_combined["stages"]["enqueue_to_present_call_return"]["p99_ms"],
+            6.0,
         )
         flight = report["frame_flight_diagnostics"]
         self.assertEqual(flight["schema"], retina.FRAME_FLIGHT_SCHEMA)

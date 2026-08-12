@@ -5,7 +5,7 @@
 //! colors, cloud frames, weather and lightning render state. No side
 //! effects; everything GPU-facing stays in bbb-renderer.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use bbb_renderer::{
     BlockDestroyOverlay, BlockSelectionRenderState, DebugFilledBox, DebugFilledRect, DebugLine,
@@ -2876,7 +2876,15 @@ pub(crate) enum RendererFrameUpdate<T> {
     Replace(T),
 }
 
+pub(crate) struct RendererInputLatencyFrame {
+    pub(crate) sequence: u64,
+    pub(crate) enqueued_at: Instant,
+    pub(crate) simulation_applied_at: Instant,
+    pub(crate) superseded_events: u64,
+}
+
 pub(crate) struct RendererFrame<'a> {
+    pub(crate) input_latency: Option<RendererInputLatencyFrame>,
     pub(crate) lightmap_environment: LightmapEnvironment,
     pub(crate) clear_color: ClearColor,
     pub(crate) fog_environment: FogEnvironment,
@@ -3548,6 +3556,15 @@ pub(crate) fn apply_renderer_frame(
     }
     if let RendererFrameUpdate::Replace(overlays) = frame.block_destroy_overlays {
         renderer.set_block_destroy_overlays(overlays);
+    }
+    if let Some(input_latency) = frame.input_latency {
+        renderer.set_input_latency_stamp(bbb_renderer::RendererInputLatencyStamp {
+            sequence: input_latency.sequence,
+            enqueued_at: input_latency.enqueued_at,
+            simulation_applied_at: input_latency.simulation_applied_at,
+            renderer_extracted_at: Instant::now(),
+            superseded_events: input_latency.superseded_events,
+        });
     }
     DebugRenderExtractionBuffers {
         filled_boxes,

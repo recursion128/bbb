@@ -132,6 +132,29 @@
     "total_duration_check": "ordered-stage-sum-within-rounding-tolerance",
     "timestamp_strategy": "PassBoundary"
   },
+  "input_latency_diagnostics": {
+    "schema": "renderer-input-latency-v1",
+    "archive_path": "client/metrics/input_latency.csv",
+    "duration_units": "nanoseconds",
+    "count_units": "count",
+    "duration_columns": [
+      "enqueue_to_simulation_apply",
+      "simulation_apply_to_renderer_extract",
+      "renderer_extract_to_queue_submit",
+      "queue_submit_to_present_call_return",
+      "enqueue_to_present_call_return"
+    ],
+    "count_columns": [
+      "sequence",
+      "superseded_events",
+      "out_of_order_events",
+      "present_call_return_software_boundary"
+    ],
+    "required_client": "bbb-when-run-declares-required-schema",
+    "activation": "--renderer-input-latency-diagnostics",
+    "terminal_boundary": "present-call-return-software-boundary-not-display-or-photon",
+    "coalescing": "newest-event-with-explicit-superseded-count"
+  },
   "stability_acceptance": {
     "policy": "absolute-tail-v2",
     "cv_role": "diagnostic-only-when-absolute-metrics-pass",

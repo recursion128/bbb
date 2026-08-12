@@ -704,7 +704,11 @@ fn run_client(mut args: startup::Args) -> Result<()> {
     let resource_pack_options_reconciliation = loaded_pack_roots.options_reconciliation;
     let base_pack_roots = pack_roots.clone();
     let known_packs_manager = load_known_packs_manager(pack_roots.as_ref());
-    let simulation_mailbox = SimulationMailbox::default();
+    let simulation_mailbox = if args.renderer_input_latency_diagnostics {
+        SimulationMailbox::with_input_latency_diagnostics()
+    } else {
+        SimulationMailbox::default()
+    };
     let control = ControlState::new(
         format!(
             "bbb-native {} / protocol {}",
@@ -1402,6 +1406,7 @@ fn run_client(mut args: startup::Args) -> Result<()> {
         audio_enabled: audio_runtime.is_some(),
         hide_lightning_flash: args.hide_lightning_flash,
         next_effect_sequence: 1,
+        pending_input_latency: None,
     };
     let simulation_event_proxy = event_loop.create_proxy();
     let mut simulation_thread = SimulationThread::spawn(simulation, move || {
@@ -2049,6 +2054,10 @@ fn run_client(mut args: startup::Args) -> Result<()> {
                     }
                     let profiler_render_duration = profiler_render_started_at.elapsed();
                     let renderer_frame_profile = renderer.last_frame_profile();
+                    if let Some(input_latency) = renderer_frame_profile.input_latency {
+                        simulation_mailbox
+                            .acknowledge_presented_input_latency(input_latency.sequence);
+                    }
                     if let Some(pending) = control_screenshot
                         .as_ref()
                         .filter(|pending| pending.announce)

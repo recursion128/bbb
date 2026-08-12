@@ -4,6 +4,7 @@ use std::{
     collections::VecDeque,
     fmt,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     sync::{Arc, Condvar, Mutex, PoisonError},
     time::{Duration, Instant},
 };
@@ -304,8 +305,20 @@ impl SimulationCommand {
 pub(crate) struct SequencedSimulationCommand {
     pub(crate) sequence: u64,
     pub(crate) command: SimulationCommand,
+    pub(crate) input_latency: Option<EnqueuedInputLatency>,
     producer_class: SimulationCommandProducerClass,
     retained_bytes: usize,
+}
+
+/// Profiler-only receipt for one platform input entering the simulation
+/// mailbox. Adjacent high-rate events retain the newest event timestamp and
+/// report how many older inputs they represent rather than fabricating
+/// individual samples.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EnqueuedInputLatency {
+    pub(crate) sequence: u64,
+    pub(crate) enqueued_at: Instant,
+    pub(crate) coalesced_events: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -414,6 +427,8 @@ struct SimulationMailboxShared {
     state: Mutex<SimulationMailboxState>,
     wake: Condvar,
     space: Condvar,
+    input_latency_diagnostics_enabled: bool,
+    presented_input_latency_sequence: AtomicU64,
 }
 
 /// Multi-producer, single-consumer command mailbox.
@@ -428,11 +443,38 @@ pub(crate) struct SimulationMailbox {
 }
 
 impl SimulationMailbox {
+    pub(crate) fn with_input_latency_diagnostics() -> Self {
+        Self {
+            shared: Arc::new(SimulationMailboxShared {
+                input_latency_diagnostics_enabled: true,
+                ..SimulationMailboxShared::default()
+            }),
+        }
+    }
+
     #[cfg(test)]
     fn with_coalescing_threshold(coalescing_threshold: usize) -> Self {
         let mut limits = SimulationMailboxLimits::DEFAULT;
         limits.coalescing_threshold = coalescing_threshold;
         Self::with_limits(limits)
+    }
+
+    #[cfg(test)]
+    fn with_coalescing_threshold_and_input_latency(coalescing_threshold: usize) -> Self {
+        let mut limits = SimulationMailboxLimits::DEFAULT;
+        limits.coalescing_threshold = coalescing_threshold;
+        Self {
+            shared: Arc::new(SimulationMailboxShared {
+                state: Mutex::new(SimulationMailboxState {
+                    limits,
+                    ..SimulationMailboxState::default()
+                }),
+                wake: Condvar::new(),
+                space: Condvar::new(),
+                input_latency_diagnostics_enabled: true,
+                presented_input_latency_sequence: AtomicU64::new(0),
+            }),
+        }
     }
 
     #[cfg(test)]
@@ -445,8 +487,22 @@ impl SimulationMailbox {
                 }),
                 wake: Condvar::new(),
                 space: Condvar::new(),
+                input_latency_diagnostics_enabled: false,
+                presented_input_latency_sequence: AtomicU64::new(0),
             }),
         }
+    }
+
+    pub(crate) fn acknowledge_presented_input_latency(&self, sequence: u64) {
+        self.shared
+            .presented_input_latency_sequence
+            .fetch_max(sequence, Ordering::Release);
+    }
+
+    pub(crate) fn presented_input_latency_sequence(&self) -> u64 {
+        self.shared
+            .presented_input_latency_sequence
+            .load(Ordering::Acquire)
     }
 
     /// Enqueues one command, applying backpressure until its producer
@@ -456,6 +512,9 @@ impl SimulationMailbox {
         command: SimulationCommand,
     ) -> Result<SimulationMailboxSubmit, SimulationMailboxSubmitError> {
         let producer_class = command.producer_class();
+        let input_latency_enqueued_at = (self.shared.input_latency_diagnostics_enabled
+            && producer_class == SimulationCommandProducerClass::PlatformInput)
+            .then(Instant::now);
         let class_index = producer_class.index();
         let retained_bytes = command.retained_logical_bytes();
         let mut state = self
@@ -481,8 +540,13 @@ impl SimulationMailbox {
             }
 
             let sequence = state.next_sequence;
+            let input_latency = input_latency_enqueued_at.map(|enqueued_at| EnqueuedInputLatency {
+                sequence,
+                enqueued_at,
+                coalesced_events: 0,
+            });
             if state.pending >= state.limits.coalescing_threshold
-                && try_coalesce_tail(&mut state.commands, sequence, &command)
+                && try_coalesce_tail(&mut state.commands, sequence, &command, input_latency)
             {
                 state.next_sequence = next_sequence(sequence);
                 state.wake_generation = state.wake_generation.saturating_add(1);
@@ -519,6 +583,7 @@ impl SimulationMailbox {
                 state.commands.push_back(SequencedSimulationCommand {
                     sequence,
                     command,
+                    input_latency,
                     producer_class,
                     retained_bytes,
                 });
@@ -802,6 +867,7 @@ fn try_coalesce_tail(
     commands: &mut VecDeque<SequencedSimulationCommand>,
     sequence: u64,
     incoming: &SimulationCommand,
+    incoming_input_latency: Option<EnqueuedInputLatency>,
 ) -> bool {
     let Some(tail) = commands.back_mut() else {
         return false;
@@ -893,6 +959,12 @@ fn try_coalesce_tail(
     };
     if coalesced {
         tail.sequence = sequence;
+        tail.input_latency = incoming_input_latency.map(|mut incoming| {
+            incoming.coalesced_events = tail
+                .input_latency
+                .map_or(0, |previous| previous.coalesced_events.saturating_add(1));
+            incoming
+        });
     }
     coalesced
 }
@@ -1266,6 +1338,53 @@ mod tests {
             drained[1].command,
             SimulationCommand::Control(ControlWriteRequest::Net(NetControlRequest::RequestStats))
         ));
+    }
+
+    #[test]
+    fn input_latency_receipts_are_opt_in_and_platform_input_only() {
+        let disabled = SimulationMailbox::default();
+        enqueue(&disabled, SimulationCommand::FocusChanged(true));
+        assert!(disabled.drain_through_barrier()[0].input_latency.is_none());
+
+        let enabled = SimulationMailbox::with_input_latency_diagnostics();
+        enqueue(&enabled, SimulationCommand::FocusChanged(true));
+        enqueue(
+            &enabled,
+            SimulationCommand::Control(ControlWriteRequest::Net(NetControlRequest::RequestStats)),
+        );
+        let commands = enabled.drain_through_barrier();
+        assert_eq!(commands[0].input_latency.unwrap().sequence, 1);
+        assert!(commands[1].input_latency.is_none());
+    }
+
+    #[test]
+    fn presented_input_latency_ack_is_monotonic_across_mailbox_clones() {
+        let mailbox = SimulationMailbox::with_input_latency_diagnostics();
+        let renderer_owner = mailbox.clone();
+        renderer_owner.acknowledge_presented_input_latency(9);
+        renderer_owner.acknowledge_presented_input_latency(7);
+        assert_eq!(mailbox.presented_input_latency_sequence(), 9);
+        renderer_owner.acknowledge_presented_input_latency(12);
+        assert_eq!(mailbox.presented_input_latency_sequence(), 12);
+    }
+
+    #[test]
+    fn coalesced_input_latency_keeps_newest_sequence_and_counts_superseded_events() {
+        let mailbox = SimulationMailbox::with_coalescing_threshold_and_input_latency(1);
+        for delta in [1.0, 2.0, 3.0] {
+            enqueue(
+                &mailbox,
+                SimulationCommand::MouseMotion {
+                    delta: (delta, delta),
+                },
+            );
+        }
+        let commands = mailbox.drain_through_barrier();
+        assert_eq!(commands.len(), 1);
+        let latency = commands[0].input_latency.unwrap();
+        assert_eq!(latency.sequence, 3);
+        assert_eq!(latency.coalesced_events, 2);
+        assert_eq!(commands[0].sequence, 3);
     }
 
     #[test]

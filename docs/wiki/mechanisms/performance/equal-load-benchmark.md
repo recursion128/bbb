@@ -67,6 +67,18 @@ stage sum 互证，再输出 combined/scene/run 的 p50/p95/p99/stddev、p99-p50
 以及对同一 submission 总 GPU duration/application interval 的相关性。普通 profiler 与
 未启用 profiler 的运行仍使用两个 timestamp query；该诊断不改变 pass、draw order、material
 route、submission 或 present 顺序，也不单独构成候选验收结论。
+`renderer-input-latency-v1` 只在显式
+`--renderer-input-latency-diagnostics` 启动时启用。平台输入在进入全局有序
+`SimulationMailbox` 时取得 sequence/enqueue timestamp；simulation apply、完整
+`RendererFrame` extract、`Queue::submit` 返回和 `SurfaceTexture::present` 调用返回依次完成
+同一 receipt。相邻 mouse motion/wheel/cursor 合并保留最新 sequence/timestamp，并将被覆盖输入
+计入 `superseded_events`；simulation publication 在 render 确认前有界保留最新 receipt，确认与
+乱序都按单调 sequence fail-closed。profiler 的 `input_latency.csv` 将无 receipt 的 frame 写零，
+validator 过滤这些 placeholder 后要求 sequence 严格递增、阶段和等于 end-to-end、archive 与 raw
+sidecar 一致，并输出 combined/scene/run 的 p50/p95/p99/stddev、superseded 与 out-of-order。
+终点固定表述为 `present-call-return-software-boundary-not-display-or-photon`：它不包含 compositor、
+scanout、面板或光子延迟。未启用时 enqueue 不读取时钟，详细 receipt 不进入热路径；该诊断不改变
+输入应用、workload、queue budget 或 wait→acquire→submit→present 顺序。
 当前 frame-phase schema v2 进一步把 macOS Immediate 上一 submission 的 non-blocking
 completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；逐 tick
 `poll + blocking <= total previous-submission synchronization`，否则 archive 在聚合前拒绝。

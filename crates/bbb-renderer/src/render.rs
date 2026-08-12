@@ -4266,6 +4266,10 @@ impl Renderer {
         self.last_frame_profile.queue_submit = present_duration;
         self.last_frame_profile.swap_buffers_present = swap_buffers_duration;
         self.last_frame_profile.in_flight_depth_at_submit = submission.in_flight_depth_at_submit;
+        self.last_frame_profile.input_latency = self.input_latency.complete(
+            submission.queue_submitted_at,
+            submission.present_call_returned_at,
+        );
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.after_submit(token, frame_interval);
         }
