@@ -812,7 +812,6 @@ pub(crate) fn maybe_upload_decoded_terrain(
             upload.section_residency.clear();
             upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
             upload.occlusion_rebuild_key = None;
-            upload.pending_occlusion_rebuild_key = None;
             clear_terrain_occlusion_inputs(upload);
             upload.renderer_sections = TerrainSectionFrameProjection::default();
             upload.cache_ready = false;
@@ -933,7 +932,6 @@ fn synchronize_terrain_level_generation(
     upload.section_residency.clear();
     upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
     upload.occlusion_rebuild_key = None;
-    upload.pending_occlusion_rebuild_key = None;
     clear_terrain_occlusion_inputs(upload);
     upload.renderer_sections = TerrainSectionFrameProjection::default();
     upload.cache_ready = false;
@@ -953,7 +951,6 @@ fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revis
     upload.section_residency.clear();
     upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
     upload.occlusion_rebuild_key = None;
-    upload.pending_occlusion_rebuild_key = None;
     clear_terrain_occlusion_inputs(upload);
     upload.renderer_sections = TerrainSectionFrameProjection::default();
     upload.cache_ready = false;
@@ -1772,9 +1769,7 @@ fn refresh_terrain_visibility(
     let Some(camera_pose) = context.camera_pose else {
         upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
         upload.occlusion_rebuild_key = None;
-        upload.pending_occlusion_rebuild_key = None;
         upload.occlusion_graph_input_key = None;
-        upload.pending_occlusion_input_key = None;
         publish_terrain_frustum_visibility(upload, context);
         return true;
     };
@@ -1787,9 +1782,7 @@ fn refresh_terrain_visibility(
     else {
         upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
         upload.occlusion_rebuild_key = None;
-        upload.pending_occlusion_rebuild_key = None;
         upload.occlusion_graph_input_key = None;
-        upload.pending_occlusion_input_key = None;
         publish_terrain_frustum_visibility(upload, context);
         return true;
     };
@@ -1804,16 +1797,19 @@ fn refresh_terrain_visibility(
             .expect("pending terrain occlusion rebuild has a worker");
         while let Some(result) = worker.try_recv() {
             if pending_key == Some(result.key) {
-                accepted_result = Some(result);
+                upload.pending_occlusion_rebuild_key = None;
+                let pending_input_key = upload.pending_occlusion_input_key.take();
+                if result.key == rebuild_key && pending_input_key.is_some() {
+                    accepted_result = Some((result, pending_input_key));
+                }
             }
         }
     }
     let graph_changed = accepted_result.is_some();
-    if let Some(result) = accepted_result {
+    if let Some((result, pending_input_key)) = accepted_result {
         upload.occlusion_graph = result.graph;
         upload.occlusion_rebuild_key = Some(result.key);
-        upload.occlusion_graph_input_key = upload.pending_occlusion_input_key.take();
-        upload.pending_occlusion_rebuild_key = None;
+        upload.occlusion_graph_input_key = pending_input_key;
     }
     let partial_changed = upload.occlusion_graph.is_valid()
         && upload.occlusion_graph_input_key != Some(current_input_key);
@@ -1885,6 +1881,12 @@ fn refresh_terrain_visibility(
 fn clear_terrain_occlusion_inputs(upload: &mut TerrainUploadState) {
     upload.occlusion_input_key = None;
     upload.occlusion_graph_input_key = None;
+    // The pending rebuild key owns the worker's exact in-flight job. A level,
+    // empty-world, or resource-reload transition cannot cancel a job already
+    // executing or queued in the bounded worker, so keep that ownership until
+    // `refresh_terrain_visibility` drains its result. Clear the input key to mark
+    // the result invalid even when its rebuild key (for example, a resource reload
+    // in the same camera cell) would otherwise still match.
     upload.pending_occlusion_input_key = None;
     upload.occlusion_section_updates.clear();
     upload.occlusion_sections = Arc::default();
@@ -2544,6 +2546,105 @@ mod tests {
         assert!(upload.pending_occlusion_rebuild_key.is_some());
         assert!(Arc::ptr_eq(&sections, &upload.occlusion_sections));
         assert!(Arc::ptr_eq(&loaded_chunks, &upload.occlusion_loaded_chunks));
+    }
+
+    #[test]
+    fn level_replacement_drains_stale_occlusion_job_before_submitting_replacement() {
+        let mut world = WorldStore::new();
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [4.0, 64.0, 4.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 1.62,
+            }),
+            [1280, 720],
+            70.0,
+            12,
+            true,
+        );
+        let mut upload = TerrainUploadState::default();
+
+        assert!(refresh_terrain_visibility(&world, &mut upload, context));
+        let stale_key = upload
+            .pending_occlusion_rebuild_key
+            .expect("initial occlusion job must be in flight");
+        assert_eq!(stale_key.level_generation, 0);
+
+        world.clear_client_level();
+        synchronize_terrain_level_generation(&mut upload, world.client_level_generation());
+        assert_eq!(
+            upload.observed_level_generation,
+            world.client_level_generation()
+        );
+        assert_eq!(
+            upload.pending_occlusion_rebuild_key,
+            Some(stale_key),
+            "level replacement must retain ownership of the actual worker job"
+        );
+        assert_eq!(upload.pending_occlusion_input_key, None);
+
+        while upload.pending_occlusion_rebuild_key == Some(stale_key) {
+            refresh_terrain_visibility(&world, &mut upload, context);
+            std::thread::yield_now();
+        }
+        let replacement_key = upload
+            .pending_occlusion_rebuild_key
+            .expect("draining the stale result must submit the replacement job");
+        assert_eq!(
+            replacement_key.level_generation,
+            world.client_level_generation()
+        );
+        assert_eq!(upload.occlusion_rebuild_key, None);
+
+        while upload.pending_occlusion_rebuild_key.is_some() {
+            refresh_terrain_visibility(&world, &mut upload, context);
+            std::thread::yield_now();
+        }
+        assert_eq!(upload.occlusion_rebuild_key, Some(replacement_key));
+    }
+
+    #[test]
+    fn same_key_reload_discards_invalidated_occlusion_result() {
+        let world = WorldStore::new();
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [4.0, 64.0, 4.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 1.62,
+            }),
+            [1280, 720],
+            70.0,
+            12,
+            true,
+        );
+        let mut upload = TerrainUploadState::default();
+
+        assert!(refresh_terrain_visibility(&world, &mut upload, context));
+        let invalidated_key = upload
+            .pending_occlusion_rebuild_key
+            .expect("initial occlusion job must be in flight");
+        clear_terrain_occlusion_inputs(&mut upload);
+        assert_eq!(upload.pending_occlusion_rebuild_key, Some(invalidated_key));
+        assert_eq!(upload.pending_occlusion_input_key, None);
+
+        while upload.pending_occlusion_input_key.is_none() {
+            refresh_terrain_visibility(&world, &mut upload, context);
+            std::thread::yield_now();
+        }
+        assert_eq!(
+            upload.pending_occlusion_rebuild_key,
+            Some(invalidated_key),
+            "same-key invalidation must replace, rather than publish, the stale job"
+        );
+        assert_eq!(upload.occlusion_rebuild_key, None);
+
+        while upload.pending_occlusion_rebuild_key.is_some() {
+            refresh_terrain_visibility(&world, &mut upload, context);
+            std::thread::yield_now();
+        }
+        assert_eq!(upload.occlusion_rebuild_key, Some(invalidated_key));
     }
 
     #[test]
