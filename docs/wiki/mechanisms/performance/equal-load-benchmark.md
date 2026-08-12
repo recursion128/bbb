@@ -91,7 +91,16 @@ completion poll 与 poll 后仍 busy 才发生的 blocking fence wait 分列；�
 fence；该列只量化 marker submit 的 CPU 调用时长，不把 present-call return 误称为实际显示完成。
 parser 按 archive 的精确列集合识别 v2/v3；新 BBB capture 显式要求 v3，历史 v2 archive 继续
 按原列复验。混合 wgpu30 baseline/candidate 报告只在双方共同 phase 上做 combined 聚合，逐 run
-仍保留 candidate 的 marker phase，禁止以缺列补零伪造历史样本。
+仍保留 candidate 的 marker phase，禁止以缺列补零伪造历史样本。该策略在 full-gated
+`9a1546506` 上完成 8/8 个有效 AC fullscreen 2560x1600 B-C-C-B run；报告
+`post-present-fence-ac-candidate.json`（SHA-256
+`fa3c2e39f8c61261c547c461000f50c8056445fa5685da17d30dfb9db4c461d3`）记录六个 FPS 与
+四十三个绝对稳定性 failure。combined FPS 194.058→192.703 虽在 0.8465% margin 内，
+static-orbit、round-2 与四个 nearest-pair scope 未通过；combined App 和 GPU 绝对尾部也回退。
+marker submit mean 仅 0.0035 ms，但 surface-acquire p95/p99/stddev 仍由
+1.5048/6.0911/1.0337 ms 变为 1.7065/6.1295/1.0567 ms，故 drawable tail 假设不成立，
+官方 Java ABBA 未启动。运行时恢复 render-submission fence；v3 字段保留并报零，以继续复验
+这份失败 evidence 和读取旧 v1/v2 archive。
 当前 repo evidence `docs/evidence/macos-native-retina/frame-phase-diagnostic.json` 来自
 full-gated `f0cc03ad7` 的 BBB-only 三场景 probe，并由 full-gated `c7aa715af` 按 lag-1
 口径复算；它触发的等价 flight-controller 重构已在 full-gated `9802b1ef5` 完成，仍保持

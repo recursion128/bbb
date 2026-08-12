@@ -329,8 +329,22 @@ restoring any row to `equivalent`.
   latency hint two, three drawables, input/workload, FIFO and Linux remain fixed.
   New captures require v3; the validator recognizes historical v2 archives from
   their exact column set and never fabricates the new phase for old evidence.
-  Detailed query/callback paths remain off outside explicit diagnostics. Only a
-  v4 all-scope pass can authorize official Java ABBA.
+  The full-gated `9a1546506` candidate completed all eight valid AC fullscreen
+  2560x1600 B-C-C-B runs with identical surface and workload receipts. Combined
+  FPS remained inside the fixed margin (194.058→192.703), but static-orbit,
+  round-2 and four nearest-pair scopes produced six FPS failures. Forty-three
+  absolute-stability comparisons also failed: combined App p50/p95/p99/stddev/
+  p99-p50/1%-low and GPU mean/p95/p99/stddev/p99-p50 regressed. The marker submit
+  itself averaged 0.0035 ms, while surface-acquire p95/p99/stddev moved
+  1.5048→1.7065/6.0911→6.1295/1.0337→1.0567 ms, so fencing after present did
+  not remove the drawable-availability tail. Evidence is
+  `docs/evidence/macos-native-retina/post-present-fence-ac-candidate.json` at
+  SHA-256
+  `fa3c2e39f8c61261c547c461000f50c8056445fa5685da17d30dfb9db4c461d3`.
+  It is rejected before official Java ABBA; the accepted render-submission fence
+  must be restored while v3 remains readable. Detailed query/callback paths remain
+  off outside explicit diagnostics. Only a distinct v4 all-scope pass can
+  authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and
