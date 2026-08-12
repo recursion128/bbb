@@ -1712,5 +1712,5 @@ pub(super) fn first_person_camera_view_matrix(pose: CameraPose) -> Mat4 {
         } else {
             Vec3::Z
         };
-    Mat4::look_at_rh(eye, target, Vec3::Y)
+    glam::camera::rh::view::look_at_mat4(eye, target, Vec3::Y)
 }

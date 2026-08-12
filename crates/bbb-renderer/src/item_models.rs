@@ -2480,7 +2480,8 @@ fn fs_main() -> @location(0) vec4<f32> {
         // `camera_world = first_person_camera_world_transform(pose) = view.inverse()`. Reproduce the same
         // view so the item sits a fixed offset in front of the camera.
         let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
-        let camera_world = Mat4::look_at_rh(eye, eye + Vec3::Z, Vec3::Y).inverse();
+        let camera_world =
+            glam::camera::rh::view::look_at_mat4(eye, eye + Vec3::Z, Vec3::Y).inverse();
 
         // A 1x1 opaque-red atlas: every UV samples red, so the baked item quad is unambiguously visible.
         let atlas =

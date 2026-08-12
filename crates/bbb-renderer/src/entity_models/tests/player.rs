@@ -1218,7 +1218,7 @@ fn first_person_player_arm_renders_visible_pixels() {
     let camera_uniform = CameraUniform::from_pose(pose, aspect);
     let view_proj = camera_uniform.view_proj();
     let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
-    let camera_world = Mat4::look_at_rh(eye, eye + Vec3::Z, Vec3::Y).inverse();
+    let camera_world = glam::camera::rh::view::look_at_mat4(eye, eye + Vec3::Z, Vec3::Y).inverse();
 
     // Entity texture atlas filled with opaque green in the WideSteve skin slot, so the arm's textured
     // faces sample an unambiguous, non-background colour (the shipped `steve` test images are a

@@ -1,4 +1,10 @@
-use glam::{EulerRot, Mat4, Vec3, Vec4};
+use glam::{
+    camera::rh::{
+        proj::directx::{orthographic as rh_orthographic, perspective as rh_perspective},
+        view::look_at_mat4 as rh_look_at,
+    },
+    EulerRot, Mat4, Vec3, Vec4,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::terrain;
@@ -366,9 +372,8 @@ impl CameraFrustum {
                 Vec3::Z
             };
         let fov_degrees = sanitize_perspective_fov_degrees(fov_degrees);
-        let projection =
-            Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
-        let view = Mat4::look_at_rh(eye, target, Vec3::Y);
+        let projection = rh_perspective(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
+        let view = rh_look_at(eye, target, Vec3::Y);
         Self {
             view_projection: projection * view,
         }
@@ -504,7 +509,7 @@ impl CameraUniform {
     /// projects into the slot. `width`/`height` are the surface size in pixels.
     pub(crate) fn gui_ortho(width: f32, height: f32) -> Self {
         let projection =
-            Mat4::orthographic_rh(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
+            rh_orthographic(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
         Self {
             view_proj: projection.to_cols_array_2d(),
             projection: projection.to_cols_array_2d(),
@@ -562,7 +567,7 @@ impl CameraUniform {
     ) -> Self {
         let width = width.max(1.0);
         let height = height.max(1.0);
-        let projection = Mat4::orthographic_rh(0.0, width, height, 0.0, -1000.0, 1000.0);
+        let projection = rh_orthographic(0.0, width, height, 0.0, -1000.0, 1000.0);
         let rotation = glam::Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]);
         let rotation = if rotation.length_squared() > f32::EPSILON {
             rotation.normalize()
@@ -592,13 +597,13 @@ impl CameraUniform {
         let extent = bounds.extent();
         let radius = extent.length().max(48.0);
         let eye = center + Vec3::new(radius * 0.55, radius * 0.42, radius * 0.78);
-        let view = Mat4::look_at_rh(eye, center, Vec3::Y);
+        let view = rh_look_at(eye, center, Vec3::Y);
 
         let half_height = (extent.y * 0.65 + extent.x.max(extent.z) * 0.45).max(40.0);
         let half_width = half_height * aspect.max(0.1);
         let far = radius * 5.0 + 512.0;
         let projection =
-            Mat4::orthographic_rh(-half_width, half_width, -half_height, half_height, 0.1, far);
+            rh_orthographic(-half_width, half_width, -half_height, half_height, 0.1, far);
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
@@ -707,8 +712,7 @@ impl CameraUniform {
                 Vec3::Z
             };
         let fov_degrees = sanitize_perspective_fov_degrees(fov_degrees);
-        let projection =
-            Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, z_far);
+        let projection = rh_perspective(fov_degrees.to_radians(), aspect.max(0.1), 0.05, z_far);
         // Vanilla `GameRenderer.renderLevel`: `projectionMatrix.mul(bobStack.last().pose())`.
         // `bobHurt` is therefore camera-space presentation state on the projection side of
         // the view matrix, not part of `CameraRenderState.viewRotationMatrix`.
@@ -716,7 +720,7 @@ impl CameraUniform {
             * camera_hurt_transform(hurt)
             * camera_view_bob_transform(view_bob)
             * camera_spinning_transform(spinning);
-        let view = Mat4::look_at_rh(eye, target, Vec3::Y);
+        let view = rh_look_at(eye, target, Vec3::Y);
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
@@ -1397,7 +1401,7 @@ mod tests {
             rotation.to_array(),
         );
 
-        let projection = Mat4::orthographic_rh(0.0, 40.0, 60.0, 0.0, -1000.0, 1000.0);
+        let projection = rh_orthographic(0.0, 40.0, 60.0, 0.0, -1000.0, 1000.0);
         let model = Mat4::from_translation(Vec3::new(20.0, 30.0, 0.0))
             * Mat4::from_scale(Vec3::new(25.0, 25.0, -25.0))
             * Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0))
@@ -1726,8 +1730,8 @@ mod tests {
             x_rot: 0.0,
             eye_height: 0.0,
         };
-        let projection = Mat4::perspective_rh(70.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
-        let view = Mat4::look_at_rh(
+        let projection = rh_perspective(70.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        let view = rh_look_at(
             Vec3::new(0.0, 64.0, 0.0),
             Vec3::new(0.0, 64.0, 1.0),
             Vec3::Y,
@@ -1752,7 +1756,7 @@ mod tests {
             x_rot: 0.0,
         };
         let uniform = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 35.0);
-        let expected = Mat4::perspective_rh(35.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        let expected = rh_perspective(35.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
         assert_mat4_close(uniform.projection(), expected);
     }
 
@@ -1765,15 +1769,15 @@ mod tests {
             x_rot: 0.0,
         };
         let world = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 165.0);
-        let expected_world = Mat4::perspective_rh(165.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        let expected_world = rh_perspective(165.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
         assert_mat4_close(world.projection(), expected_world);
         let eye = Vec3::new(0.0, 1.62, 0.0);
-        let expected_view = Mat4::look_at_rh(eye, eye + Vec3::Z, Vec3::Y);
+        let expected_view = rh_look_at(eye, eye + Vec3::Z, Vec3::Y);
         let frustum = CameraFrustum::from_pose(pose, 16.0 / 9.0, 165.0);
         assert_mat4_close(frustum.view_projection, expected_world * expected_view);
 
         let hud = CameraUniform::from_hud_pose(pose, 16.0 / 9.0, 60.0, None);
-        let expected_hud = Mat4::perspective_rh(60.0_f32.to_radians(), 16.0 / 9.0, 0.05, 100.0);
+        let expected_hud = rh_perspective(60.0_f32.to_radians(), 16.0 / 9.0, 0.05, 100.0);
         assert_mat4_close(hud.projection(), expected_hud);
     }
 
@@ -1785,8 +1789,8 @@ mod tests {
             x_rot: 0.0,
             eye_height: 0.0,
         };
-        let projection = Mat4::perspective_rh(70.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
-        let view = Mat4::look_at_rh(
+        let projection = rh_perspective(70.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        let view = rh_look_at(
             Vec3::new(0.0, 64.0, 0.0),
             Vec3::new(0.0, 64.0, 1.0),
             Vec3::Y,
@@ -1804,7 +1808,7 @@ mod tests {
 
     #[test]
     fn camera_uniform_stores_orthographic_view_offset_z_layering() {
-        let projection = Mat4::orthographic_rh(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
+        let projection = rh_orthographic(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
         let expected = projection
             * Mat4::from_translation(Vec3::new(
                 0.0,
@@ -1821,7 +1825,7 @@ mod tests {
 
     #[test]
     fn camera_uniform_stores_orthographic_view_offset_z_forward_layering() {
-        let projection = Mat4::orthographic_rh(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
+        let projection = rh_orthographic(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
         let expected = projection
             * Mat4::from_translation(Vec3::new(
                 0.0,

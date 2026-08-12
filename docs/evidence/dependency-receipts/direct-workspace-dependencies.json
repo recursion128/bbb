@@ -2,8 +2,8 @@
   "schema": 1,
   "audit_as_of": "2026-08-12",
   "inputs": {
-    "Cargo.toml_sha256": "f2a67d6943dea99bd4c6532ae3d6beba868f583f618fc2beba9d7de551e5ed86",
-    "Cargo.lock_sha256": "7eb4310ab4bd7c7fb5248003183a605231324b58759945228e3a996d2104bb8f",
+    "Cargo.toml_sha256": "320744e2f7971e6afd296c307be887f2b4925162d1ddd54648e2c77be361e1f4",
+    "Cargo.lock_sha256": "132c9b9bdcbc1983d5dca13744fb6dd90a69aac05310bcc092ccfe3316fc5ae2",
     "cargo_metadata": "cargo metadata --format-version 1 --locked",
     "latest_release_rule": "crates.io max_stable_version; prerelease and yanked excluded",
     "rustsec_database_commit": "d0861df1eab469d3c58d6b836ce48b5766e5f217",
@@ -627,11 +627,11 @@
     {
       "name": "glam",
       "manifest": "Cargo.toml",
-      "manifest_constraint": "0.29",
+      "manifest_constraint": "0.33.3",
       "locked": {
-        "version": "0.29.3",
+        "version": "0.33.3",
         "source": "registry+https://github.com/rust-lang/crates.io-index",
-        "checksum": "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
+        "checksum": "7360bd2cd76e0cd9032d42cf2922155cecea2685b0cfa4630c3246df030bcfd6"
       },
       "latest_stable": {
         "version": "0.33.3",
@@ -665,14 +665,14 @@
       },
       "advisories": [],
       "migration_risk": {
-        "breaking_api": "high-major-or-pre-1.0-minor",
+        "breaking_api": "none",
         "workspace_msrv": "1.97",
         "latest_release_msrv": "1.68.2"
       },
       "modernization": {
         "group": "performance-glam",
-        "decision": "upgrade-planned",
-        "rationale": "bounded performance-glam migration with focused parity tests"
+        "decision": "upgraded",
+        "rationale": "bounded performance-glam migration is resolved at latest stable"
       }
     },
     {

@@ -8,7 +8,7 @@
 //! plain `GUI_TEXTURED_SNIPPET` builds: translucent blend, no depth state.
 
 use anyhow::{anyhow, bail, Result};
-use glam::{Mat4, Vec4};
+use glam::{camera::rh::proj::directx::perspective as rh_perspective, Vec4};
 
 use crate::pipeline_builder::RenderPipelineBuilder;
 use crate::texture_sampling::standalone_sampler_descriptor;
@@ -163,7 +163,7 @@ pub(crate) fn screen_effect_draw_data(
     hud_fov_degrees: f32,
     aspect: f32,
 ) -> (Vec<f32>, Vec<ScreenEffectDrawBatch>) {
-    let projection = Mat4::perspective_rh(
+    let projection = rh_perspective(
         hud_fov_degrees.clamp(0.1, 179.0).to_radians(),
         aspect.max(0.1),
         SCREEN_EFFECT_Z_NEAR,
