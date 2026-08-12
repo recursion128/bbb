@@ -2546,7 +2546,7 @@
         "source": "https://crates.io/api/v1/crates/winit"
       },
       "first_introduced_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
-      "latest_constraint_commit": "43cb047d1e94e2e27a638f56f63b3f940a279d55",
+      "latest_constraint_commit": "65dcafcfd55731264995b1a29e1a5cb6830e5c9f",
       "dependency_classes": [
         "runtime"
       ],
