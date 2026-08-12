@@ -495,19 +495,15 @@ full-gated wgpu 30 BBB baseline 比较，固定 FPS noise margin 为 0.8465%，�
 margin 最大不得超过 1%。baseline commit、binary hash、重复采集数据与失败
 candidate 只记录在账本、evidence 和归档，不写入本文件。
 
-当前有界 Slice B candidate 只在 macOS Immediate 将 controller-owned render-submission
-预算从一提高到二：达到容量才等待最老 exact fence，仍保持单 encoder、latency hint 2、三个
-drawable 与 wait→acquire→submit→present；FIFO、Linux、surface fallback 和可见 workload 不变。
-不得增加后台 acquire、额外 marker submit 或第三帧。诊断面由
-profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
-观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
-十一段有序 `PassBoundary` duration；`renderer-input-latency-v1` 使用单调 sequence/timestamp
-有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
-return，并固定把终点声明为软件边界而非 display/photon latency。两帧 candidate 必须先与账本
-锁定的同仪器单帧 baseline 做完整 B→C→C→B×2 输入软件延迟非劣验证；combined、三场景、两轮与
-全部 nearest pair 的 mean/p50/p95/p99/stddev/p99-p50、hitch、样本丢失/替换均不得回退。
-frame-phase v3 的 `post_present_fence_submit` 兼容字段继续报零，旧 v1/v2 evidence 和既有失败报告
-继续可复验；未开启详细诊断时保持两个 timestamp query，不得改变 surface fallback 或可见 geometry。
+当前接受的 macOS Immediate 策略保持一个 controller-owned render submission、latency hint 2、
+三个 drawable 与 wait→acquire→submit→present；FIFO、Linux、surface fallback 和可见 workload
+不变。`renderer-frame-flight-v1`、`renderer-gpu-stages-v1` 与
+`renderer-input-latency-v1` 继续作为 opt-in 诊断面，frame-phase v3 的
+`post_present_fence_submit` 兼容字段继续报零；旧 v1/v2 evidence 和既有失败报告必须可复验，
+未开启详细诊断时保持两个 timestamp query。下一有界架构 slice 只建立不可变
+FramePlan/PassPlan，锁定活跃 pass、attachment/copy consumer、presentation source 与
+pipeline/material batch 顺序；不得引入通用 render graph 或改变可见 workload。等价重构通过后，
+只有 raw stage/pass/copy 证据证明无消费者或重复创建时，才允许单独 candidate 消除该成本。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝

@@ -16,10 +16,9 @@ use crate::counters::RendererCounters;
 #[cfg(target_os = "macos")]
 const COMPLETION_OBSERVATION_CAPACITY: usize = MACOS_IMMEDIATE_IN_FLIGHT_BUDGET;
 
-/// The bounded scheduling candidate permits the CPU to prepare one frame while
-/// the prior render submission completes. Only uncapped CAMetalLayer
-/// presentation uses it; FIFO already supplies presentation backpressure.
-const MACOS_IMMEDIATE_IN_FLIGHT_BUDGET: usize = 2;
+/// The accepted uncapped CAMetalLayer policy keeps one exact render submission
+/// in flight; FIFO already supplies presentation backpressure.
+const MACOS_IMMEDIATE_IN_FLIGHT_BUDGET: usize = 1;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum FrameFlightPlatform {
@@ -280,8 +279,8 @@ struct PendingSubmission {
 }
 
 /// Owns the backend frame-flight lifecycle without owning visible frame work.
-/// macOS Immediate retains at most two in-flight submissions and waits on the
-/// oldest exact render-submission fence only when it reaches that capacity.
+/// macOS Immediate retains one in-flight submission and waits on its exact
+/// render-submission fence before acquiring the next drawable.
 pub(super) struct FrameFlightController {
     #[cfg(target_os = "macos")]
     pending_submissions: VecDeque<PendingSubmission>,
@@ -579,11 +578,11 @@ mod tests {
     };
 
     #[test]
-    fn only_macos_immediate_has_the_bounded_two_submission_budget() {
-        assert_eq!(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET, 2);
+    fn only_macos_immediate_has_the_accepted_single_submission_budget() {
+        assert_eq!(MACOS_IMMEDIATE_IN_FLIGHT_BUDGET, 1);
         assert_eq!(
             in_flight_budget(FrameFlightPlatform::MacOs, wgpu::PresentMode::Immediate),
-            Some(2)
+            Some(1)
         );
         assert_eq!(
             in_flight_budget(FrameFlightPlatform::Other, wgpu::PresentMode::Immediate),
@@ -599,14 +598,6 @@ mod tests {
         );
         assert_eq!(
             in_flight_depth_after_submit(
-                FrameFlightPlatform::MacOs,
-                wgpu::PresentMode::Immediate,
-                1,
-            ),
-            2
-        );
-        assert_eq!(
-            in_flight_depth_after_submit(
                 FrameFlightPlatform::Other,
                 wgpu::PresentMode::Immediate,
                 0,
@@ -618,14 +609,6 @@ mod tests {
                 FrameFlightPlatform::MacOs,
                 wgpu::PresentMode::Immediate,
                 1,
-            ),
-            0
-        );
-        assert_eq!(
-            submissions_to_retire_before_acquire(
-                FrameFlightPlatform::MacOs,
-                wgpu::PresentMode::Immediate,
-                2,
             ),
             1
         );
@@ -781,6 +764,7 @@ mod tests {
 
         use super::{
             send_completion_observation, FrameFlightController, SubmissionCompletionObservation,
+            COMPLETION_OBSERVATION_CAPACITY,
         };
 
         let mut controller = FrameFlightController::new();
@@ -793,6 +777,7 @@ mod tests {
                 callback_at: Instant::now(),
             })
             .unwrap();
+        assert!(controller.take_completion_observation(Some(1)).is_none());
         controller
             .completion_sender
             .try_send(SubmissionCompletionObservation {
@@ -840,7 +825,7 @@ mod tests {
             controller
                 .completion_observations_dropped
                 .load(Ordering::Relaxed),
-            1
+            u64::try_from(3 - COMPLETION_OBSERVATION_CAPACITY).unwrap()
         );
     }
 }

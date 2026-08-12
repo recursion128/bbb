@@ -1725,11 +1725,11 @@ impl Renderer {
             in_flight_submission_budget = if cfg!(target_os = "macos")
                 && present_mode == wgpu::PresentMode::Immediate
             {
-                2
+                1
             } else {
                 0
             },
-            submission_fence_strategy = "oldest-render-submission-fence-budget-2",
+            submission_fence_strategy = "render-submission-fence",
             "renderer surface presentation selected"
         );
         let alpha_mode = caps

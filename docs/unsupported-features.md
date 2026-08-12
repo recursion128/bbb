@@ -345,15 +345,25 @@ restoring any row to `equivalent`.
   is restored while v3 remains readable. Detailed query/callback paths remain
   off outside explicit diagnostics. Only a distinct v4 all-scope pass can
   authorize official Java ABBA.
-  The current bounded Slice B candidate raises only the macOS Immediate
-  controller-owned render-submission budget from one to two. It waits for the
-  oldest exact fence only at capacity while retaining latency hint two, three
-  Metal drawables, wait/acquire/submit/present order, FIFO/Linux behavior and
-  visible workload. Before its fixed-baseline performance comparison can be
-  accepted, an independent same-instrument B-C-C-B x2 input-latency guard must
-  pass combined, scene, round and every nearest-pair scope; missing evidence,
-  any end-to-end absolute-latency/hitch/loss regression, or a declared/runtime/
-  profiler depth mismatch rejects the candidate before FPS metrics.
+  The full-gated `b640ed038` two-flight candidate then completed all eight
+  same-instrument AC Power B-C-C-B x2 runs at fullscreen 2560x1600 with exact
+  workload identity, latency hint two, three Metal drawables and observed
+  in-flight depths one/two for baseline/candidate. It failed the input-latency
+  guard in all 22 required scopes and was therefore rejected before the fixed
+  wgpu 30 FPS comparison and Java ABBA. Combined input-to-present-call-return
+  mean/p50 improved from 10.7894/9.5892 to 8.7999/7.6664 ms, but p95/p99 and
+  p99-p50 regressed from 16.2773/17.3237/7.7345 to
+  16.9343/20.4515/12.7850 ms. Render-submit-to-callback mean rose
+  5.0243->8.2594 ms and surface-acquire p95/p99 rose
+  3.4189/6.1518->7.4438/11.5921 ms, identifying extra queue residency rather
+  than a removed tail. The accepted one-submission runtime policy is restored;
+  this two-flight strategy may not be reused. Evidence:
+  `docs/evidence/macos-native-retina/two-flight-input-latency-ac-candidate.json`
+  at SHA-256
+  `fb7e3290f880f4c75065fe55767489fa7c749177754296268a00a5801718cca0`.
+  The next architecture candidate keeps budget one and may only establish the
+  bounded immutable FramePlan/PassPlan contract described by the route; it may
+  not revive a rejected scheduling policy.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

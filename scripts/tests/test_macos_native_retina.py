@@ -605,14 +605,13 @@ class DisplayProbeTests(unittest.TestCase):
                 "baseline_actual_metal_drawable_count": 3,
                 "candidate_actual_metal_drawable_count": 3,
                 "baseline_in_flight_submission_budget": 1,
-                "candidate_in_flight_submission_budget": 2,
+                "candidate_in_flight_submission_budget": 1,
                 "baseline_submission_fence_strategy":
                     "render-submission-fence-legacy-log",
-                "candidate_submission_fence_strategy":
-                    "oldest-render-submission-fence-budget-2",
-                "queue_depth_increased": True,
+                "candidate_submission_fence_strategy": "render-submission-fence",
+                "queue_depth_increased": False,
                 "wait_acquire_submit_present_order_unchanged": True,
-                "input_latency_policy": "paired-software-boundary-noninferior",
+                "input_latency_policy": "unchanged-single-in-flight",
             },
         )
         self.assertEqual(

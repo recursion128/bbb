@@ -198,11 +198,18 @@ p50/p95/p99/stddev 为 0.0135/1.8045/5.6820/1.0139 ms，对下一 application in
 [`input-latency-ac-diagnostic.json`](../../../evidence/macos-native-retina/input-latency-ac-diagnostic.json)
 （SHA-256 `be70708d38cb4cdb83a64785965ed9e65a4c812f1b59a788696ac8b0c43c2e24`）。该报告不是候选
 FPS/稳定性验收，终点不含 compositor、scanout、面板或光子；它只为后续独立 acquire-policy
-candidate 提供输入软件路径非劣门禁。当前有界 Slice B candidate 只把 macOS Immediate 的
-controller-owned render-submission budget 从一提高到二：达到容量才等待最老 exact fence；
-latency hint 2、三个 drawable、wait→acquire→submit→present、FIFO/Linux 与 workload 均保持。
-正式性能比较前必须先通过上述同仪器输入延迟门禁；缺失 guard、任一 scope 回退或逐 run 实际
-budget/depth 不符都会在解析 FPS 前拒绝。
+candidate 提供输入软件路径非劣门禁。full-gated `b640ed038` 两帧 candidate 随后完成同仪器
+B→C→C→B×2：八轮均为 AC Power、fullscreen 2560x1600、latency hint 2、实际三个 drawable，
+baseline/candidate 逐帧 depth 分别严格为一/二，workload 与 input identity 一致。validator 在 FPS
+比较前拒绝全部 22 个 input-latency scope。combined input→present-call-return 的 mean/p50 从
+10.7894/9.5892 改善到 8.7999/7.6664 ms，但 p95/p99/p99-p50 从
+16.2773/17.3237/7.7345 回退到 16.9343/20.4515/12.7850 ms；candidate 的
+render-submit→callback mean 为 8.2594 ms（baseline 5.0243），surface-acquire p95/p99 为
+7.4438/11.5921 ms（baseline 3.4189/6.1518）。这证明额外 flight 增加 queue residency 与 drawable
+尾部，不能作为吞吐优化接受。报告
+[`two-flight-input-latency-ac-candidate.json`](../../../evidence/macos-native-retina/two-flight-input-latency-ac-candidate.json)
+（SHA-256 `fb7e3290f880f4c75065fe55767489fa7c749177754296268a00a5801718cca0`）；默认恢复单 submission，
+后续 candidate 不得复用该策略。
 
 ## 生命周期和 fallback
 
