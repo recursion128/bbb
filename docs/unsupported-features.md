@@ -292,11 +292,26 @@ restoring any row to `equivalent`.
   at SHA-256
   `d0332b5d61285b8feeda1103fe561e9bd5c86ce5ed37ce463de77355b8ed0c80`.
   The per-layer branch is restored to the accepted unconditional-depth path and
-  may not be reused. The next bounded candidate may test one coherent all-five-
-  layers-empty fast path while leaving the active path, all six textures, layer
-  order, depth sort, premultiplied blend, pass order and draw/workload unchanged.
-  Detailed query/callback paths remain off outside explicit diagnostics. Only a
-  v4 all-scope pass can authorize official Java ABBA.
+  may not be reused. The coherent all-five-layers-empty fast path then completed
+  8/8 valid AC runs with exact surface/workload parity and passed every FPS scope:
+  combined FPS improved 191.833→207.861. Combined GPU mean/p50/p95/p99/stddev
+  all improved, but the candidate still produced 26 absolute-stability failures
+  (18 App, 8 GPU). Combined App stddev and p99-p50 regressed
+  1.4837→1.5618/7.1643→7.5634 ms; preloaded-flight App p95/p99/stddev/p99-p50
+  and 1% low regressed, and chunk-boundary App p99/stddev/p99-p50 regressed.
+  The faster GPU path exposed a stronger drawable-acquire tail: combined acquire
+  p95/p99/stddev rose 2.3260→2.6881/6.1298→6.7633/1.1002→1.2265 ms, with
+  next-interval correlation 0.791→0.829. CV remained diagnostic and was never
+  the sole blocker. Evidence is
+  `docs/evidence/macos-native-retina/transparency-empty-fast-path-ac-candidate.json`
+  at SHA-256
+  `5d06bd0c672eb0128efeedb82e9a29e043f16ba5dd3aa396cb20e095548f90b7`.
+  The fast path is rejected before official Java ABBA and restored to the accepted
+  shader. Before any queue-budget or acquire policy candidate, establish a
+  diagnostic-only, bounded input→simulation→extract→submit/present-call latency
+  contract; present-call return is not actual display or photon latency. Detailed
+  query/callback paths remain off outside explicit diagnostics. Only a v4
+  all-scope pass can authorize official Java ABBA.
 Nothing else on that row is deferred. Compositor-originated focus, keyboard,
 pointer buttons, relative pointer motion, the clipboard, live DPI transitions,
 fullscreen and IME composition are all attested: the release run is driven from a real `wl_seat` and

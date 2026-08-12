@@ -141,8 +141,15 @@ candidate 在 8/8 个同分辨率/同 workload run 中 combined FPS 小幅改善
 validator failure，因此不进入 Java ABBA。报告
 [`transparency-depth-fetch-ac-candidate.json`](../../../evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json)（SHA-256
 `d0332b5d61285b8feeda1103fe561e9bd5c86ce5ed37ce463de77355b8ed0c80`）。逐层分支已 fix-forward 恢复；
-下一有界方向只测试单一“五层 alpha 全零”快速路径，不改 submission budget、活跃路径、
-pass/draw/workload，也不把 callback、submit 或 present 返回时间称为实际显示延迟。
+随后单一“五层 alpha 全零”快速路径完成 8/8 个有效 run，全部 22 个 FPS scope 通过且
+combined FPS 191.833→207.861，combined GPU 绝对指标全面改善；但 combined App
+stddev/p99-p50、preloaded-flight/chunk-boundary App 尾部及多个 pair GPU 尾部产生 26 条
+绝对稳定性 failure。报告
+[`transparency-empty-fast-path-ac-candidate.json`](../../../evidence/macos-native-retina/transparency-empty-fast-path-ac-candidate.json)（SHA-256
+`5d06bd0c672eb0128efeedb82e9a29e043f16ba5dd3aa396cb20e095548f90b7`）。候选在 Java ABBA
+前拒绝并恢复。其 combined surface-acquire p95/p99/stddev 从 2.3260/6.1298/1.1002 升至
+2.6881/6.7633/1.2265 ms；下一步先建立 input→simulation→extract→submit/present-call 软件
+延迟合同，再考虑任何 queue-budget/acquire 策略，且不得把 present-call 返回称为实际显示延迟。
 
 ## 生命周期和 fallback
 

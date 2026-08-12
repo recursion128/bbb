@@ -261,8 +261,16 @@ FPS 192.488→192.681，App p95/p99/stddev 改善，但 App p50 从 4.8438 升�
 诊断，不是单独 blocker。报告
 [`transparency-depth-fetch-ac-candidate.json`](../../evidence/macos-native-retina/transparency-depth-fetch-ac-candidate.json)，
 SHA-256 `d0332b5d61285b8feeda1103fe561e9bd5c86ce5ed37ce463de77355b8ed0c80`。逐层分支已恢复为
-原无条件 depth fetch，不得复用。下一个有界 candidate 只可测试一个“五层 alpha 全零”整像素
-快速路径；活跃路径、六张纹理、排序/混合、pass/draw/workload 保持不变。
+原无条件 depth fetch，不得复用。随后单一“五层 alpha 全零”整像素快速路径完成 8/8 个有效
+AC run，22 个 FPS scope 全过，combined FPS 191.833→207.861，combined GPU 各项绝对指标
+改善；但仍有 26 条绝对稳定性 failure（18 App、8 GPU）。combined App stddev/p99-p50 从
+1.4837/7.1643 升至 1.5618/7.5634 ms，preloaded-flight 与 chunk-boundary App 尾部回退；
+surface acquire 的 combined p95/p99/stddev 也从 2.3260/6.1298/1.1002 升至
+2.6881/6.7633/1.2265 ms。CV 仍只作诊断。报告
+[`transparency-empty-fast-path-ac-candidate.json`](../../evidence/macos-native-retina/transparency-empty-fast-path-ac-candidate.json)，
+SHA-256 `5d06bd0c672eb0128efeedb82e9a29e043f16ba5dd3aa396cb20e095548f90b7`。候选已在 Java
+ABBA 前拒绝并恢复。任何 queue-budget/acquire 策略前，先建立有界的
+input→simulation→extract→submit/present-call 软件延迟合同；present-call 返回不得冒充实际显示延迟。
 
 ## 第二平台 cross-check
 

@@ -498,13 +498,16 @@ candidate 只记录在账本、evidence 和归档，不写入本文件。
 当前阶段保持 baseline 的单 encoder、单 in-flight 与 wait→acquire→submit→present。诊断面由
 profiler-only `renderer-frame-flight-v1` 与 `renderer-gpu-stages-v1` 组成：前者记录 callback
 观察年龄/丢失/在途深度，后者记录同一 submission 的总 GPU duration、application interval 与
-十一段有序 `PassBoundary` duration。当前唯一动作是评估 transparency-combine 的单一
-“五个可选层 alpha 全零”快速路径：只允许一个整像素分支，活跃路径保持原始无条件
-depth fetch 和插入排序，不得再用逐层分支。先用 focused shader/pixel tests 证明零层与
-活跃层输出等价，再作为独立 candidate 测量。未开启详细诊断时保持两个
-timestamp query，未开启 profiler 时不得增加热路径 query/callback；不得改变 FIFO/Linux、
-surface fallback、可见 geometry 或输入生命周期。任何 queue-budget 候选还必须先建立可执行的
-input-to-render/present latency 合同；不能把 callback、submit 或 present 返回时间冒充实际显示。
+十一段有序 `PassBoundary` duration。当前唯一动作是建立 diagnostic-only 的
+`renderer-input-latency-v1` 软件流水线合同：为正式 replay 输入分配单调 sequence/timestamp，
+有界关联 input enqueue、simulation apply、RendererFrame extract、queue submit 与 present-call
+return，输出每阶段 p50/p95/p99、丢失/乱序与 scene/run 归属。它不得改变 queue budget、
+wait→acquire→submit→present、surface、workload、pacing 或输入语义；未启用诊断时不得明显
+增加热路径成本。present-call return 必须明确标为软件边界，不能冒充实际 display/photon
+latency。完成 focused owner/order/bounds/disabled-cost tests 与 accepted-baseline diagnostic
+后，只有 acquire 尾部仍为主要来源且软件 input latency 有可执行非劣门禁，才允许一个独立的
+queue-budget/acquire 策略 candidate。未开启详细诊断时保持两个 timestamp query；不得改变
+FIFO/Linux、surface fallback 或可见 geometry。
 
 候选在 clean full-gated commit 上按 AC Power、fullscreen 2560x1600、VSync off、FPS
 unlimited、相同 world/replay/settings/resource/input 运行 B→C→C→B×2。validator 先拒绝
