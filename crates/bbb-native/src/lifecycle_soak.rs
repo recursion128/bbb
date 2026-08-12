@@ -49,6 +49,7 @@ pub(crate) struct LifecycleSoakRuntime {
     force_no_audio_device: bool,
     actions: Vec<FaultAction>,
     next_action: usize,
+    restore_in_progress: bool,
     started_at: Option<Instant>,
 }
 
@@ -73,6 +74,7 @@ impl LifecycleSoakRuntime {
             force_no_audio_device: manifest.fault_plan.force_no_audio_device,
             actions: manifest.fault_plan.actions,
             next_action: 0,
+            restore_in_progress: false,
             started_at: None,
         })
     }
@@ -101,8 +103,22 @@ impl LifecycleSoakRuntime {
                     window.set_minimized(true);
                 }
                 FaultActionKind::Restore => {
-                    renderer.record_lifecycle_soak_window_restore_request();
+                    if !self.restore_in_progress {
+                        renderer.record_lifecycle_soak_window_restore_request();
+                        self.restore_in_progress = true;
+                    }
                     window.set_minimized(false);
+                    window.request_redraw();
+                    if window.is_minimized() == Some(true) {
+                        // AppKit's miniaturize/deminiaturize transitions are
+                        // asynchronous. A restore requested while the minimize
+                        // animation is still active can leave CAMetalLayer
+                        // occluded indefinitely unless the validation driver
+                        // retries after AppKit observes the minimized state.
+                        break;
+                    }
+                    self.restore_in_progress = false;
+                    window.focus_window();
                 }
                 FaultActionKind::SurfaceLost => {
                     renderer.inject_lifecycle_soak_surface_error(LifecycleSoakSurfaceError::Lost)
@@ -167,6 +183,7 @@ mod tests {
             force_no_audio_device: manifest.fault_plan.force_no_audio_device,
             actions: manifest.fault_plan.actions,
             next_action: 0,
+            restore_in_progress: false,
             started_at: None,
         })
     }
@@ -178,6 +195,7 @@ mod tests {
         assert!(runtime.force_no_audio_device());
         assert_eq!(runtime.actions.len(), 7);
         assert_eq!(runtime.actions[0].action, FaultActionKind::Resize);
+        assert!(!runtime.restore_in_progress);
         assert_eq!(
             runtime.actions[runtime.actions.len() - 1].action,
             FaultActionKind::Resize
