@@ -21,6 +21,7 @@ import platform
 import plistlib
 import re
 import shutil
+import socket
 import statistics
 import struct
 import subprocess
@@ -89,17 +90,21 @@ BASELINE_BBB_COMMIT = "d698c8db0d219f035c7597726c76225c6cd70abc"
 BASELINE_BBB_REPORT_SHA256 = "2864ea8d003cf53cc98ce782ecfe9d89112b5092d6786b9c221af1e634e42b9b"
 BASELINE_BBB_BINARY_SHA256 = "29cfa6e4fb5d55b73a53c8ebed111f988dcb58e646be281458af9b465f68fd97"
 MAX_BASELINE_FPS_MARGIN = 0.01
+DEPENDENCY_CANDIDATE_FPS_MARGIN = 0.008465
+DEPENDENCY_CANDIDATE_MEMORY_MARGIN = 0.01
 LEGACY_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v1"
 CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v2"
 WGPU30_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v3"
 WGPU30_OPTIMIZATION_AB_SCHEMA = "macos-native-retina-bbb-ab-v4"
 WGPU30_PRODUCT_AB_SCHEMA = "macos-native-retina-bbb-ab-v5"
+DEPENDENCY_CANDIDATE_AB_SCHEMA = "macos-native-retina-bbb-ab-v6"
 ACCEPTED_CANDIDATE_AB_SCHEMAS = (
     LEGACY_CANDIDATE_AB_SCHEMA,
     CANDIDATE_AB_SCHEMA,
     WGPU30_CANDIDATE_AB_SCHEMA,
     WGPU30_OPTIMIZATION_AB_SCHEMA,
     WGPU30_PRODUCT_AB_SCHEMA,
+    DEPENDENCY_CANDIDATE_AB_SCHEMA,
 )
 WGPU30_OPTIMIZATION_BASELINE_COMMIT = "758a93e41d827ade7cd5902bc756316d469e04c6"
 WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256 = (
@@ -385,12 +390,13 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         "capture_segments": list(CAPTURE_SEGMENTS),
         "drawable_mismatch_policy": "block-without-comparison",
         "candidate_bbb_ab": {
-            "schema": WGPU30_PRODUCT_AB_SCHEMA,
+            "schema": DEPENDENCY_CANDIDATE_AB_SCHEMA,
             "legacy_schemas": [
                 LEGACY_CANDIDATE_AB_SCHEMA,
                 CANDIDATE_AB_SCHEMA,
                 WGPU30_CANDIDATE_AB_SCHEMA,
                 WGPU30_OPTIMIZATION_AB_SCHEMA,
+                WGPU30_PRODUCT_AB_SCHEMA,
             ],
             "surface_policy": "macos-immediate-wgpu30-both-sides",
             "baseline_wgpu_version": "30.0.0",
@@ -404,11 +410,13 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
             "candidate_actual_metal_drawable_count": 3,
             "baseline_in_flight_submission_budget": 1,
             "candidate_in_flight_submission_budget": 1,
-            "baseline_submission_fence_strategy": "render-submission-fence-legacy-log",
+            "baseline_submission_fence_strategy": "render-submission-fence",
             "candidate_submission_fence_strategy": "render-submission-fence",
             "queue_depth_increased": False,
             "wait_acquire_submit_present_order_unchanged": True,
             "input_latency_policy": "paired-software-boundary-product-gate",
+            "baseline_identity_policy": "exact-full-gated-predecessor-receipt",
+            "fps_noninferiority_margin": DEPENDENCY_CANDIDATE_FPS_MARGIN,
             "acceptance_metrics": {
                 "application_frame_time": [
                     "mean_fps",
@@ -495,11 +503,9 @@ def load_profile_contract(path: Path = PROFILE_CONTRACT_PATH) -> dict[str, objec
         },
         "input_latency_candidate_guard": {
             "schema": INPUT_LATENCY_AB_SCHEMA,
-            "required_for_candidate_schema": WGPU30_PRODUCT_AB_SCHEMA,
+            "required_for_candidate_schema": DEPENDENCY_CANDIDATE_AB_SCHEMA,
             "legacy_required_when_candidate_in_flight_budget_exceeds": 1,
-            "baseline_bbb_commit": INPUT_LATENCY_BASELINE_COMMIT,
-            "baseline_bbb_binary_sha256": INPUT_LATENCY_BASELINE_BINARY_SHA256,
-            "baseline_bbb_report_sha256": INPUT_LATENCY_BASELINE_REPORT_SHA256,
+            "baseline_identity_source": "exact-full-gated-predecessor-receipt",
             "terminal_boundary": INPUT_LATENCY_TERMINAL_BOUNDARY,
             "formal_order": list(CANDIDATE_AB_ORDER),
             "required_scopes": ["combined", "scene", "abba_round", "run_pair"],
@@ -2961,6 +2967,8 @@ def _candidate_scheduling_failures(evidence: Mapping[str, object]) -> list[dict[
         WGPU30_PRODUCT_AB_SCHEMA,
     ):
         return _wgpu30_optimization_receipt_and_scheduling_failures(evidence)
+    if evidence.get("schema") == DEPENDENCY_CANDIDATE_AB_SCHEMA:
+        return _dependency_candidate_receipt_and_scheduling_failures(evidence)
     if evidence.get("schema") == WGPU30_CANDIDATE_AB_SCHEMA:
         return _wgpu30_candidate_receipt_and_scheduling_failures(evidence)
     contract = evidence.get("scheduling_contract")
@@ -3061,15 +3069,31 @@ def _input_latency_guard_failures(
     if not isinstance(guard, Mapping):
         return [{"code": "bbb_candidate_input_latency_guard_missing"}]
     failures: list[dict[str, object]] = []
+    dependency_candidate = evidence.get("schema") == DEPENDENCY_CANDIDATE_AB_SCHEMA
+    expected_baseline_commit = (
+        evidence.get("baseline_bbb_commit")
+        if dependency_candidate
+        else INPUT_LATENCY_BASELINE_COMMIT
+    )
+    expected_baseline_binary = (
+        evidence.get("baseline_bbb_binary_sha256")
+        if dependency_candidate
+        else INPUT_LATENCY_BASELINE_BINARY_SHA256
+    )
+    expected_baseline_report = (
+        evidence.get("baseline_capture_receipt_sha256")
+        if dependency_candidate
+        else INPUT_LATENCY_BASELINE_REPORT_SHA256
+    )
     expected: tuple[tuple[str, object], ...] = (
         ("schema", INPUT_LATENCY_AB_SCHEMA),
         ("status", "passed"),
         ("terminal_boundary", INPUT_LATENCY_TERMINAL_BOUNDARY),
         ("pairing", "interleaved-baseline-candidate"),
         ("formal_order", list(CANDIDATE_AB_ORDER)),
-        ("baseline_bbb_commit", INPUT_LATENCY_BASELINE_COMMIT),
-        ("baseline_bbb_binary_sha256", INPUT_LATENCY_BASELINE_BINARY_SHA256),
-        ("baseline_bbb_report_sha256", INPUT_LATENCY_BASELINE_REPORT_SHA256),
+        ("baseline_bbb_commit", expected_baseline_commit),
+        ("baseline_bbb_binary_sha256", expected_baseline_binary),
+        ("baseline_bbb_report_sha256", expected_baseline_report),
         ("candidate_bbb_commit", evidence.get("candidate_bbb_commit")),
         ("candidate_bbb_binary_sha256", evidence.get("candidate_bbb_binary_sha256")),
     )
@@ -3129,7 +3153,10 @@ def _input_latency_guard_failures(
     )
     diagnostic_only = (
         {"stddev_ms", "p99_minus_p50_ms"}
-        if evidence.get("schema") == WGPU30_PRODUCT_AB_SCHEMA
+        if evidence.get("schema") in (
+            WGPU30_PRODUCT_AB_SCHEMA,
+            DEPENDENCY_CANDIDATE_AB_SCHEMA,
+        )
         else set()
     )
     for entry in scopes:
@@ -3234,6 +3261,247 @@ def _input_latency_guard_failures(
         failures.append(
             {
                 "code": "bbb_candidate_input_latency_scopes_unexpected",
+                "scopes": [list(scope) for scope in unexpected],
+            }
+        )
+    return failures
+
+
+def _dependency_candidate_receipt_and_scheduling_failures(
+    evidence: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """Validate an exact-commit dependency migration pair on registry wgpu 30."""
+
+    failures: list[dict[str, object]] = []
+    baseline_commit = evidence.get("baseline_bbb_commit")
+    candidate_commit = evidence.get("candidate_bbb_commit")
+    baseline_binary = evidence.get("baseline_bbb_binary_sha256")
+    candidate_binary = evidence.get("candidate_bbb_binary_sha256")
+    for field, value, pattern in (
+        ("baseline_bbb_commit", baseline_commit, r"[0-9a-f]{40}"),
+        ("candidate_bbb_commit", candidate_commit, r"[0-9a-f]{40}"),
+        ("baseline_bbb_binary_sha256", baseline_binary, r"[0-9a-f]{64}"),
+        ("candidate_bbb_binary_sha256", candidate_binary, r"[0-9a-f]{64}"),
+    ):
+        if not isinstance(value, str) or re.fullmatch(pattern, value) is None:
+            failures.append({"code": "bbb_dependency_candidate_identity_malformed", "field": field})
+
+    receipt = evidence.get("baseline_capture_receipt")
+    if not isinstance(receipt, Mapping):
+        failures.append({"code": "bbb_dependency_baseline_receipt_missing"})
+    else:
+        expected_receipt: tuple[tuple[str, object], ...] = (
+            ("schema", 1),
+            ("capture_commit", baseline_commit),
+            ("full_gated_commit", baseline_commit),
+            ("bbb_binary_sha256", baseline_binary),
+        )
+        mismatches = [
+            {"field": field, "expected": expected, "actual": receipt.get(field)}
+            for field, expected in expected_receipt
+            if receipt.get(field) != expected
+        ]
+        declared_receipt_hash = evidence.get("baseline_capture_receipt_sha256")
+        actual_receipt_hash = canonical_sha256(receipt)
+        if declared_receipt_hash != actual_receipt_hash:
+            mismatches.append(
+                {
+                    "field": "baseline_capture_receipt_sha256",
+                    "expected": actual_receipt_hash,
+                    "actual": declared_receipt_hash,
+                }
+            )
+        if mismatches:
+            failures.append(
+                {"code": "bbb_dependency_baseline_receipt_mismatch", "mismatches": mismatches}
+            )
+
+    try:
+        committed_wgpu = load_committed_wgpu_dependency_receipt()
+    except RetinaAcceptanceError as error:
+        failures.append(
+            {"code": "bbb_candidate_dependency_receipt_invalid", "error": str(error)}
+        )
+        committed_wgpu = None
+    if committed_wgpu is not None:
+        if evidence.get("candidate_dependency_receipt") != committed_wgpu:
+            failures.append({"code": "bbb_candidate_dependency_receipt_mismatch"})
+        expected_hash = file_digest(WGPU_DEPENDENCY_RECEIPT_PATH, "sha256")
+        if evidence.get("candidate_dependency_receipt_sha256") != expected_hash:
+            failures.append({"code": "bbb_candidate_dependency_receipt_hash_mismatch"})
+
+    contract = evidence.get("scheduling_contract")
+    if not isinstance(contract, Mapping):
+        failures.append({"code": "bbb_candidate_scheduling_contract_missing"})
+        return failures
+    expected_contract: tuple[tuple[str, object], ...] = (
+        ("status", "passed"),
+        ("platform", "macos"),
+        ("present_mode", "Immediate"),
+        ("baseline_desired_maximum_frame_latency", 2),
+        ("candidate_desired_maximum_frame_latency", 2),
+        ("baseline_expected_metal_drawable_count", 3),
+        ("candidate_expected_metal_drawable_count", 3),
+        ("baseline_actual_metal_drawable_count", 3),
+        ("candidate_actual_metal_drawable_count", 3),
+        ("baseline_in_flight_submission_budget", 1),
+        ("candidate_in_flight_submission_budget", 1),
+        ("baseline_submission_fence_strategy", "render-submission-fence"),
+        ("candidate_submission_fence_strategy", "render-submission-fence"),
+        ("queue_depth_increased", False),
+        ("wait_acquire_submit_present_order_unchanged", True),
+        ("input_latency_policy", "paired-software-boundary-product-gate"),
+    )
+    mismatches = [
+        {"field": field, "expected": expected, "actual": contract.get(field)}
+        for field, expected in expected_contract
+        if contract.get(field) != expected
+    ]
+    if mismatches:
+        failures.append(
+            {"code": "bbb_candidate_scheduling_contract_mismatch", "mismatches": mismatches}
+        )
+
+    expected_runtime = {
+        **WGPU_COMPONENT_VERSIONS,
+        "upstream_metal_fence_commit": WGPU_METAL_FENCE_COMMIT,
+        "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+    }
+    runs = evidence.get("runs")
+    if not isinstance(runs, list) or len(runs) != len(CANDIDATE_AB_ORDER):
+        failures.append(
+            {
+                "code": "bbb_candidate_surface_runs_missing",
+                "expected_count": len(CANDIDATE_AB_ORDER),
+                "actual_count": len(runs) if isinstance(runs, list) else None,
+            }
+        )
+        return failures
+    for sequence, (run, variant) in enumerate(
+        zip(runs, CANDIDATE_AB_ORDER, strict=True), start=1
+    ):
+        if not isinstance(run, Mapping):
+            failures.append({"code": "bbb_candidate_surface_run_malformed", "run": sequence})
+            continue
+        expected_binary = baseline_binary if variant == "baseline" else candidate_binary
+        presentation = run.get("surface_presentation")
+        run_mismatches = [
+            {"field": field, "expected": expected, "actual": run.get(field)}
+            for field, expected in (
+                ("sequence", sequence),
+                ("variant", variant),
+                ("status", "passed"),
+                ("binary_sha256", expected_binary),
+                ("runtime_dependency_receipt", expected_runtime),
+                ("gpu_timestamp_strategy", WGPU30_GPU_TIMESTAMP_STRATEGY),
+            )
+            if run.get(field) != expected
+        ]
+        if not isinstance(presentation, Mapping):
+            run_mismatches.append(
+                {"field": "surface_presentation", "expected": "mapping", "actual": presentation}
+            )
+        else:
+            run_mismatches.extend(
+                {
+                    "field": f"surface_presentation.{field}",
+                    "expected": expected,
+                    "actual": presentation.get(field),
+                }
+                for field, expected in (
+                    ("api", "metal"),
+                    ("present_mode", "Immediate"),
+                    ("desired_maximum_frame_latency", 2),
+                    ("expected_metal_drawable_count", 3),
+                    ("actual_metal_drawable_count", 3),
+                    ("actual_drawable_pixels", [2560, 1600]),
+                    ("in_flight_submission_budget", 1),
+                    ("submission_fence_strategy", "render-submission-fence"),
+                )
+                if presentation.get(field) != expected
+            )
+        if run_mismatches:
+            failures.append(
+                {
+                    "code": "bbb_candidate_surface_run_mismatch",
+                    "run": sequence,
+                    "mismatches": run_mismatches,
+                }
+            )
+    failures.extend(_input_latency_guard_failures(evidence))
+    failures.extend(_dependency_candidate_memory_failures(evidence))
+    return failures
+
+
+def _dependency_candidate_memory_failures(
+    evidence: Mapping[str, object],
+) -> list[dict[str, object]]:
+    acceptance = evidence.get("memory_noninferiority")
+    if not isinstance(acceptance, Mapping):
+        return [{"code": "bbb_dependency_candidate_memory_missing"}]
+    failures: list[dict[str, object]] = []
+    if acceptance.get("margin") != DEPENDENCY_CANDIDATE_MEMORY_MARGIN:
+        failures.append({"code": "bbb_dependency_candidate_memory_margin_mismatch"})
+    scopes = acceptance.get("scopes")
+    if not isinstance(scopes, list):
+        return [*failures, {"code": "bbb_dependency_candidate_memory_scopes_missing"}]
+    required = _candidate_required_scopes()
+    observed: set[tuple[str, str]] = set()
+    for entry in scopes:
+        if not isinstance(entry, Mapping):
+            failures.append({"code": "bbb_dependency_candidate_memory_scope_malformed"})
+            continue
+        scope = (str(entry.get("scope_type")), str(entry.get("scope_id")))
+        if scope in observed:
+            failures.append(
+                {"code": "bbb_dependency_candidate_memory_scope_duplicate", "scope": list(scope)}
+            )
+        observed.add(scope)
+        regressed: list[str] = []
+        for field in ("resident_bytes", "physical_footprint_bytes"):
+            try:
+                baseline = int(entry["baseline"][field])
+                candidate = int(entry["candidate"][field])
+            except (KeyError, TypeError, ValueError):
+                failures.append(
+                    {
+                        "code": "bbb_dependency_candidate_memory_scope_malformed",
+                        "scope": list(scope),
+                        "field": field,
+                    }
+                )
+                continue
+            if baseline <= 0 or candidate <= 0:
+                failures.append(
+                    {
+                        "code": "bbb_dependency_candidate_memory_scope_malformed",
+                        "scope": list(scope),
+                        "field": field,
+                    }
+                )
+            elif candidate > baseline * (1.0 + DEPENDENCY_CANDIDATE_MEMORY_MARGIN):
+                regressed.append(field)
+        if regressed:
+            failures.append(
+                {
+                    "code": "bbb_dependency_candidate_memory_regression",
+                    "scope": list(scope),
+                    "failed_metrics": regressed,
+                }
+            )
+    missing = sorted(required - observed)
+    if missing:
+        failures.append(
+            {
+                "code": "bbb_dependency_candidate_memory_required_scopes_missing",
+                "scopes": [list(scope) for scope in missing],
+            }
+        )
+    unexpected = sorted(observed - required)
+    if unexpected:
+        failures.append(
+            {
+                "code": "bbb_dependency_candidate_memory_scopes_unexpected",
                 "scopes": [list(scope) for scope in unexpected],
             }
         )
@@ -3741,7 +4009,10 @@ def validate_candidate_stability_evidence(
     observed: set[tuple[str, str]] = set()
     results: list[dict[str, object]] = []
     failures: list[dict[str, object]] = []
-    product_policy = evidence.get("schema") == WGPU30_PRODUCT_AB_SCHEMA
+    product_policy = evidence.get("schema") in (
+        WGPU30_PRODUCT_AB_SCHEMA,
+        DEPENDENCY_CANDIDATE_AB_SCHEMA,
+    )
     expected_policy = (
         PRODUCT_CANDIDATE_STABILITY_POLICY
         if product_policy
@@ -3865,17 +4136,27 @@ def validate_candidate_fps_evidence(
         WGPU30_OPTIMIZATION_AB_SCHEMA,
         WGPU30_PRODUCT_AB_SCHEMA,
     )
+    is_dependency_candidate = evidence.get("schema") == DEPENDENCY_CANDIDATE_AB_SCHEMA
     expected_baseline_commit = (
+        evidence.get("baseline_bbb_commit")
+        if is_dependency_candidate
+        else
         WGPU30_OPTIMIZATION_BASELINE_COMMIT
         if is_wgpu30_optimization
         else BASELINE_BBB_COMMIT
     )
     expected_baseline_report_sha256 = (
+        evidence.get("baseline_capture_receipt_sha256")
+        if is_dependency_candidate
+        else
         WGPU30_OPTIMIZATION_BASELINE_REPORT_SHA256
         if is_wgpu30_optimization
         else BASELINE_BBB_REPORT_SHA256
     )
     expected_baseline_binary_sha256 = (
+        evidence.get("baseline_bbb_binary_sha256")
+        if is_dependency_candidate
+        else
         WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256
         if is_wgpu30_optimization
         else BASELINE_BBB_BINARY_SHA256
@@ -3893,7 +4174,7 @@ def validate_candidate_fps_evidence(
         failures.append({"code": "bbb_baseline_binary_mismatch"})
     if evidence.get("candidate_bbb_commit") != candidate_commit:
         failures.append({"code": "bbb_candidate_commit_mismatch"})
-    if is_wgpu30_optimization and failures:
+    if (is_wgpu30_optimization or is_dependency_candidate) and failures:
         return {
             "status": "failed",
             "baseline_bbb_commit": expected_baseline_commit,
@@ -3924,6 +4205,16 @@ def validate_candidate_fps_evidence(
     margin_is_valid = math.isfinite(margin) and 0.0 <= margin <= MAX_BASELINE_FPS_MARGIN
     if not margin_is_valid:
         failures.append({"code": "bbb_candidate_margin_out_of_range"})
+    elif is_dependency_candidate and not math.isclose(
+        margin, DEPENDENCY_CANDIDATE_FPS_MARGIN, rel_tol=0.0, abs_tol=1e-12
+    ):
+        failures.append(
+            {
+                "code": "bbb_dependency_candidate_margin_mismatch",
+                "expected": DEPENDENCY_CANDIDATE_FPS_MARGIN,
+                "actual": margin,
+            }
+        )
     comparison_margin = margin if margin_is_valid else 0.0
     repeat_values = evidence.get("baseline_repeat_mean_fps")
     if not isinstance(repeat_values, list) or len(repeat_values) < 4:
@@ -3938,8 +4229,7 @@ def validate_candidate_fps_evidence(
             if not all(math.isfinite(value) and value > 0.0 for value in repeats):
                 raise ValueError("non-positive baseline repeat")
             measured_noise = (max(repeats) - min(repeats)) / statistics.fmean(repeats)
-            derived_margin = measured_noise
-            if measured_noise > MAX_BASELINE_FPS_MARGIN:
+            if not is_dependency_candidate and measured_noise > MAX_BASELINE_FPS_MARGIN:
                 failures.append(
                     {
                         "code": "bbb_baseline_noise_exceeds_maximum",
@@ -3947,17 +4237,19 @@ def validate_candidate_fps_evidence(
                         "maximum": MAX_BASELINE_FPS_MARGIN,
                     }
                 )
-            if not math.isclose(margin, derived_margin, rel_tol=1e-12, abs_tol=1e-12):
+            if not is_dependency_candidate and not math.isclose(
+                margin, measured_noise, rel_tol=1e-12, abs_tol=1e-12
+            ):
                 failures.append(
                     {
                         "code": "bbb_candidate_margin_not_derived_from_baseline_noise",
                         "declared": margin,
-                        "derived": derived_margin,
+                        "derived": measured_noise,
                     }
                 )
         except (TypeError, ValueError):
             failures.append({"code": "bbb_baseline_noise_repeats_malformed"})
-    if is_wgpu30_optimization and failures:
+    if (is_wgpu30_optimization or is_dependency_candidate) and failures:
         return {
             "status": "failed",
             "baseline_bbb_commit": expected_baseline_commit,
@@ -4361,8 +4653,21 @@ class MachTimebaseInfo(ctypes.Structure):
 
 
 def process_cpu_time_nanos(pid: int) -> int:
+    usage = process_rusage(pid)
+    system = ctypes.CDLL("/usr/lib/libSystem.B.dylib")
+    system.mach_timebase_info.argtypes = [ctypes.POINTER(MachTimebaseInfo)]
+    system.mach_timebase_info.restype = ctypes.c_int
+    timebase = MachTimebaseInfo()
+    status = system.mach_timebase_info(ctypes.byref(timebase))
+    if status != 0 or timebase.denom == 0:
+        raise RetinaAcceptanceError(f"mach_timebase_info failed ({status})")
+    absolute = int(usage.ri_user_time + usage.ri_system_time)
+    return absolute * int(timebase.numer) // int(timebase.denom)
+
+
+def process_rusage(pid: int) -> RUsageInfoV2:
     if sys.platform != "darwin" or pid <= 0:
-        raise RetinaAcceptanceError("process CPU sampling requires a positive macOS pid")
+        raise RetinaAcceptanceError("process rusage sampling requires a positive macOS pid")
     api = ctypes.CDLL("/usr/lib/libproc.dylib")
     api.proc_pid_rusage.argtypes = [
         ctypes.c_int,
@@ -4374,15 +4679,7 @@ def process_cpu_time_nanos(pid: int) -> int:
     status = api.proc_pid_rusage(pid, 2, ctypes.byref(usage))
     if status != 0:
         raise RetinaAcceptanceError(f"proc_pid_rusage could not sample process {pid} ({status})")
-    system = ctypes.CDLL("/usr/lib/libSystem.B.dylib")
-    system.mach_timebase_info.argtypes = [ctypes.POINTER(MachTimebaseInfo)]
-    system.mach_timebase_info.restype = ctypes.c_int
-    timebase = MachTimebaseInfo()
-    status = system.mach_timebase_info(ctypes.byref(timebase))
-    if status != 0 or timebase.denom == 0:
-        raise RetinaAcceptanceError(f"mach_timebase_info failed ({status})")
-    absolute = int(usage.ri_user_time + usage.ri_system_time)
-    return absolute * int(timebase.numer) // int(timebase.denom)
+    return usage
 
 
 def _post_key_code(backend: MacOsQuartzBackend, key_code: int, pressed: bool) -> None:
@@ -4401,6 +4698,32 @@ def send_profiler_input(backend: MacOsQuartzBackend, pid: int) -> None:
     time.sleep(0.05)
     _post_key_code(backend, L_KEY_CODE, False)
     _post_key_code(backend, F3_KEY_CODE, False)
+
+
+def _control_request(port: int, method: str) -> object:
+    request = canonical_json_bytes({"method": method, "params": {}}) + b"\n"
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=10.0) as stream:
+            stream.settimeout(60.0)
+            stream.sendall(request)
+            response = bytearray()
+            while not response.endswith(b"\n"):
+                chunk = stream.recv(65_536)
+                if not chunk:
+                    break
+                response.extend(chunk)
+    except OSError as error:
+        raise RetinaAcceptanceError(f"control method {method} failed: {error}") from error
+    if not response:
+        raise RetinaAcceptanceError(f"control method {method} returned no response")
+    try:
+        decoded = json.loads(response)
+    except json.JSONDecodeError as error:
+        raise RetinaAcceptanceError(f"control method {method} returned invalid JSON") from error
+    if not isinstance(decoded, Mapping) or decoded.get("ok") is not True:
+        error = decoded.get("error") if isinstance(decoded, Mapping) else decoded
+        raise RetinaAcceptanceError(f"control method {method} failed: {error}")
+    return decoded.get("result")
 
 
 def _wait_for_new_file(
@@ -4658,7 +4981,12 @@ def _gpu_timestamp_strategy_from_log(text: str) -> str | None:
     return strategy.group(1)
 
 
-def load_bbb_build_info(binary: Path) -> dict[str, object]:
+def load_bbb_build_info(
+    binary: Path,
+    *,
+    expected_commit: str | None = None,
+    require_clean_source: bool = False,
+) -> dict[str, object]:
     completed = subprocess.run(
         (str(binary), "--build-info"),
         check=False,
@@ -4689,6 +5017,17 @@ def load_bbb_build_info(binary: Path) -> dict[str, object]:
     }
     if mismatches:
         raise RetinaAcceptanceError(f"BBB --build-info dependency mismatch: {mismatches}")
+    if (expected_commit is not None or require_clean_source) and value.get("schema") != 2:
+        raise RetinaAcceptanceError(
+            "BBB --build-info schema 2 is required for exact source provenance"
+        )
+    if expected_commit is not None and value.get("source_commit") != expected_commit:
+        raise RetinaAcceptanceError(
+            "BBB --build-info source commit differs: "
+            f"expected {expected_commit}, got {value.get('source_commit')!r}"
+        )
+    if require_clean_source and value.get("source_dirty") is not False:
+        raise RetinaAcceptanceError("BBB --build-info reports a dirty source tree")
     return value
 
 
@@ -4984,6 +5323,11 @@ def _run_client(
                         f"{client} drawable {dimensions[0]}x{dimensions[1]} differs from "
                         f"target {target_width}x{target_height}"
                     )
+                counters_before = (
+                    _control_request(control_port, "renderer.counters")
+                    if client == "bbb"
+                    else None
+                )
                 cpu_before = process_cpu_time_nanos(client_process.pid)
                 send_profiler_input(input_backend, client_process.pid)
                 profile = _wait_for_new_file(
@@ -4995,17 +5339,27 @@ def _run_client(
                     complete=zipfile.is_zipfile,
                 )
                 cpu_after = process_cpu_time_nanos(client_process.pid)
-                result["profiles"].append(
-                    _write_profile_samples(
-                        artifact_dir,
-                        profile,
-                        segment,
-                        cpu_after - cpu_before,
-                        require_frame_flight=require_frame_flight,
-                        require_gpu_stages=require_gpu_stages,
-                        require_input_latency=require_input_latency,
-                    )
+                rusage = process_rusage(client_process.pid)
+                profile_entry = _write_profile_samples(
+                    artifact_dir,
+                    profile,
+                    segment,
+                    cpu_after - cpu_before,
+                    require_frame_flight=require_frame_flight,
+                    require_gpu_stages=require_gpu_stages,
+                    require_input_latency=require_input_latency,
                 )
+                profile_entry["process_memory"] = {
+                    "resident_bytes": int(rusage.ri_resident_size),
+                    "physical_footprint_bytes": int(rusage.ri_phys_footprint),
+                    "scope": "proc_pid_rusage snapshot immediately after the profiling window",
+                }
+                if client == "bbb":
+                    profile_entry["renderer_counters_before"] = counters_before
+                    profile_entry["renderer_counters"] = _control_request(
+                        control_port, "renderer.counters"
+                    )
+                result["profiles"].append(profile_entry)
             final_marker = replay_capture_markers(replay)[-1]
             _wait_for_log(
                 server_log_path,

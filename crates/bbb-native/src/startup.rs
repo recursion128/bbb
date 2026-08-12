@@ -1695,6 +1695,8 @@ pub(crate) struct BuildInfo {
     schema: u32,
     client: &'static str,
     client_version: &'static str,
+    source_commit: &'static str,
+    source_dirty: bool,
     minecraft_version: &'static str,
     protocol_version: i32,
     resource_pack_format: String,
@@ -1713,9 +1715,11 @@ pub(crate) struct BuildInfo {
 impl BuildInfo {
     fn current() -> Self {
         Self {
-            schema: 1,
+            schema: 2,
             client: "bbb-native",
             client_version: env!("CARGO_PKG_VERSION"),
+            source_commit: env!("BBB_SOURCE_COMMIT"),
+            source_dirty: env!("BBB_SOURCE_DIRTY") == "true",
             minecraft_version: bbb_protocol::MC_VERSION,
             protocol_version: bbb_protocol::PROTOCOL_VERSION,
             resource_pack_format: bbb_protocol::MC_RESOURCE_PACK_FORMAT.to_vanilla_string(),
@@ -2471,9 +2475,11 @@ mod tests {
         assert!(args.build_info);
 
         let value = serde_json::to_value(BuildInfo::current()).unwrap();
-        assert_eq!(value["schema"], 1);
+        assert_eq!(value["schema"], 2);
         assert_eq!(value["client"], "bbb-native");
         assert_eq!(value["client_version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(value["source_commit"], env!("BBB_SOURCE_COMMIT"));
+        assert_eq!(value["source_dirty"], env!("BBB_SOURCE_DIRTY") == "true");
         assert_eq!(value["minecraft_version"], bbb_protocol::MC_VERSION);
         assert_eq!(value["protocol_version"], bbb_protocol::PROTOCOL_VERSION);
         assert_eq!(

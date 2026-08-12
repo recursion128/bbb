@@ -135,8 +135,10 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
 def validate_build_info(
     info: dict[str, Any], row: dict[str, str] = EXPECTED_ROW
 ) -> None:
+    schema = info.get("schema")
+    if schema not in (1, 2):
+        raise PlatformFailure(f"build_info.schema must be 1 or 2, got {schema!r}")
     expected = {
-        "schema": 1,
         "client": "bbb-native",
         "minecraft_version": "26.1",
         "protocol_version": 775,
@@ -153,6 +155,12 @@ def validate_build_info(
     version = info.get("client_version")
     if not isinstance(version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise PlatformFailure(f"build_info.client_version is invalid: {version!r}")
+    if schema == 2:
+        source_commit = info.get("source_commit")
+        if not isinstance(source_commit, str) or re.fullmatch(r"[0-9a-f]{40}", source_commit) is None:
+            raise PlatformFailure(f"build_info.source_commit is invalid: {source_commit!r}")
+        if not isinstance(info.get("source_dirty"), bool):
+            raise PlatformFailure("build_info.source_dirty must be boolean")
 
 
 def validate_seat_receipts(evidence: dict[str, Any]) -> dict[str, Any]:
@@ -566,6 +574,13 @@ def assemble_report(args: argparse.Namespace) -> dict[str, Any]:
     validate_manifest(manifest)
     build_info = load_json(args.build_info)
     validate_build_info(build_info, manifest["row"])
+    if build_info.get("schema") == 2:
+        if build_info.get("source_commit") != args.head:
+            raise PlatformFailure(
+                "release build_info.source_commit must equal the reported HEAD"
+            )
+        if build_info.get("source_dirty") is not False:
+            raise PlatformFailure("release build_info.source_dirty must be false")
     playable = validate_playable_artifacts(args.playable_artifact_dir, manifest["row"])
     lifecycle = validate_lifecycle_report(
         load_json(args.lifecycle_report),

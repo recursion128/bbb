@@ -500,6 +500,70 @@ def wgpu30_product_evidence() -> dict[str, object]:
     return evidence
 
 
+def dependency_candidate_evidence() -> dict[str, object]:
+    evidence = wgpu30_product_evidence()
+    evidence["schema"] = retina.DEPENDENCY_CANDIDATE_AB_SCHEMA
+    baseline_commit = "b" * 40
+    baseline_binary = "a" * 64
+    baseline_receipt = {
+        "schema": 1,
+        "capture_commit": baseline_commit,
+        "full_gated_commit": baseline_commit,
+        "bbb_binary_sha256": baseline_binary,
+    }
+    baseline_receipt_sha256 = retina.canonical_sha256(baseline_receipt)
+    evidence["baseline_bbb_commit"] = baseline_commit
+    evidence["baseline_bbb_report_sha256"] = baseline_receipt_sha256
+    evidence["baseline_bbb_binary_sha256"] = baseline_binary
+    evidence["baseline_capture_receipt"] = baseline_receipt
+    evidence["baseline_capture_receipt_sha256"] = baseline_receipt_sha256
+    evidence["baseline_repeat_noise_margin"] = (
+        retina.DEPENDENCY_CANDIDATE_FPS_MARGIN
+    )
+    evidence["baseline_repeat_mean_fps"] = [100.0, 100.1, 99.9, 100.0]
+    evidence["scheduling_contract"].update(
+        {
+            "baseline_submission_fence_strategy": "render-submission-fence",
+            "candidate_submission_fence_strategy": "render-submission-fence",
+        }
+    )
+    for run in evidence["runs"]:
+        run["binary_sha256"] = (
+            baseline_binary
+            if run["variant"] == "baseline"
+            else evidence["candidate_bbb_binary_sha256"]
+        )
+        run["surface_presentation"]["submission_fence_strategy"] = (
+            "render-submission-fence"
+        )
+    evidence["input_latency_guard"].update(
+        {
+            "baseline_bbb_commit": baseline_commit,
+            "baseline_bbb_binary_sha256": baseline_binary,
+            "baseline_bbb_report_sha256": baseline_receipt_sha256,
+        }
+    )
+    evidence["memory_noninferiority"] = {
+        "margin": retina.DEPENDENCY_CANDIDATE_MEMORY_MARGIN,
+        "scopes": [
+            {
+                "scope_type": scope_type,
+                "scope_id": scope_id,
+                "baseline": {
+                    "resident_bytes": 100_000_000,
+                    "physical_footprint_bytes": 100_000_000,
+                },
+                "candidate": {
+                    "resident_bytes": 100_000_000,
+                    "physical_footprint_bytes": 100_000_000,
+                },
+            }
+            for scope_type, scope_id in sorted(retina._candidate_required_scopes())
+        ],
+    }
+    return evidence
+
+
 class ConsolePreflightTests(unittest.TestCase):
     def test_ioreg_console_lock_parser_accepts_explicit_boolean_states(self):
         self.assertTrue(
@@ -562,6 +626,61 @@ class ConsolePreflightTests(unittest.TestCase):
             ),
         ):
             retina.require_unlocked_macos_console()
+
+
+class BuildInfoTests(unittest.TestCase):
+    def build_info(self, *, commit: str = "a" * 40, dirty: bool = False):
+        return {
+            "schema": 2,
+            "source_commit": commit,
+            "source_dirty": dirty,
+            "naga_version": retina.WGPU_COMPONENT_VERSIONS["naga"],
+            "wgpu_version": retina.WGPU_COMPONENT_VERSIONS["wgpu"],
+            "wgpu_core_version": retina.WGPU_COMPONENT_VERSIONS["wgpu-core"],
+            "wgpu_hal_version": retina.WGPU_COMPONENT_VERSIONS["wgpu-hal"],
+            "wgpu_types_version": retina.WGPU_COMPONENT_VERSIONS["wgpu-types"],
+            "upstream_metal_fence_commit": retina.WGPU_METAL_FENCE_COMMIT,
+            "upstream_metal_fence_strategy": "completion-handler-condition-variable",
+        }
+
+    def load(self, value, *, expected_commit: str, require_clean_source: bool = True):
+        completed = subprocess.CompletedProcess(
+            args=("bbb-native", "--build-info"),
+            returncode=0,
+            stdout=json.dumps(value),
+            stderr="",
+        )
+        with mock.patch.object(retina.subprocess, "run", return_value=completed):
+            return retina.load_bbb_build_info(
+                Path("bbb-native"),
+                expected_commit=expected_commit,
+                require_clean_source=require_clean_source,
+            )
+
+    def test_exact_commit_clean_build_info_passes(self):
+        info = self.build_info()
+
+        self.assertEqual(self.load(info, expected_commit="a" * 40), info)
+
+    def test_mismatched_commit_is_rejected(self):
+        with self.assertRaisesRegex(
+            retina.RetinaAcceptanceError, "source commit differs"
+        ):
+            self.load(self.build_info(), expected_commit="b" * 40)
+
+    def test_dirty_source_is_rejected(self):
+        with self.assertRaisesRegex(retina.RetinaAcceptanceError, "dirty source"):
+            self.load(
+                self.build_info(dirty=True),
+                expected_commit="a" * 40,
+            )
+
+    def test_legacy_schema_cannot_claim_exact_source_provenance(self):
+        info = self.build_info()
+        info["schema"] = 1
+
+        with self.assertRaisesRegex(retina.RetinaAcceptanceError, "schema 2"):
+            self.load(info, expected_commit="a" * 40)
 
 
 class DisplayProbeTests(unittest.TestCase):
@@ -656,12 +775,13 @@ class DisplayProbeTests(unittest.TestCase):
         self.assertEqual(
             contract["candidate_bbb_ab"],
             {
-                "schema": retina.WGPU30_PRODUCT_AB_SCHEMA,
+                "schema": retina.DEPENDENCY_CANDIDATE_AB_SCHEMA,
                 "legacy_schemas": [
                     retina.LEGACY_CANDIDATE_AB_SCHEMA,
                     retina.CANDIDATE_AB_SCHEMA,
                     retina.WGPU30_CANDIDATE_AB_SCHEMA,
                     retina.WGPU30_OPTIMIZATION_AB_SCHEMA,
+                    retina.WGPU30_PRODUCT_AB_SCHEMA,
                 ],
                 "surface_policy": "macos-immediate-wgpu30-both-sides",
                 "baseline_wgpu_version": "30.0.0",
@@ -675,12 +795,15 @@ class DisplayProbeTests(unittest.TestCase):
                 "candidate_actual_metal_drawable_count": 3,
                 "baseline_in_flight_submission_budget": 1,
                 "candidate_in_flight_submission_budget": 1,
-                "baseline_submission_fence_strategy":
-                    "render-submission-fence-legacy-log",
+                "baseline_submission_fence_strategy": "render-submission-fence",
                 "candidate_submission_fence_strategy": "render-submission-fence",
                 "queue_depth_increased": False,
                 "wait_acquire_submit_present_order_unchanged": True,
                 "input_latency_policy": "paired-software-boundary-product-gate",
+                "baseline_identity_policy": "exact-full-gated-predecessor-receipt",
+                "fps_noninferiority_margin": (
+                    retina.DEPENDENCY_CANDIDATE_FPS_MARGIN
+                ),
                 "acceptance_metrics": {
                     "application_frame_time": [
                         "mean_fps",
@@ -1680,6 +1803,66 @@ class FormalValidationTests(unittest.TestCase):
         self.assertEqual(
             result["baseline_bbb_binary_sha256"],
             retina.WGPU30_OPTIMIZATION_BASELINE_BINARY_SHA256,
+        )
+
+    def test_dependency_candidate_accepts_exact_full_gated_predecessor(self):
+        evidence = dependency_candidate_evidence()
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["baseline_bbb_commit"], "b" * 40)
+        self.assertEqual(result["baseline_bbb_binary_sha256"], "a" * 64)
+
+    def test_dependency_candidate_rejects_baseline_receipt_mismatch_before_metrics(self):
+        evidence = dependency_candidate_evidence()
+        evidence["baseline_capture_receipt"]["full_gated_commit"] = "d" * 40
+        evidence["comparisons"] = "must not be parsed"
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertEqual(result["results"], [])
+        self.assertIsNone(result["stability"])
+        self.assertIn(
+            "bbb_dependency_baseline_receipt_mismatch",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_dependency_candidate_rejects_non_predeclared_fps_margin(self):
+        evidence = dependency_candidate_evidence()
+        evidence["baseline_repeat_noise_margin"] = 0.009
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertIn(
+            "bbb_dependency_candidate_margin_mismatch",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_dependency_candidate_rejects_input_latency_regression(self):
+        evidence = dependency_candidate_evidence()
+        scope = evidence["input_latency_guard"]["scopes"][0]
+        baseline = scope["baseline"]["stages"]["enqueue_to_present_call_return"]
+        candidate = scope["candidate"]["stages"]["enqueue_to_present_call_return"]
+        candidate["p99_ms"] = baseline["p99_ms"] + 1.0
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertIn(
+            "bbb_candidate_input_latency_regression",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_dependency_candidate_rejects_memory_regression(self):
+        evidence = dependency_candidate_evidence()
+        scope = evidence["memory_noninferiority"]["scopes"][0]
+        scope["candidate"]["physical_footprint_bytes"] = 102_000_000
+
+        result = retina.validate_candidate_fps_evidence(evidence, "c" * 40)
+
+        self.assertIn(
+            "bbb_dependency_candidate_memory_regression",
+            {failure["code"] for failure in result["failures"]},
         )
 
     def test_product_policy_records_jitter_diagnostics_without_blocking(self):

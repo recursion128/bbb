@@ -68,7 +68,7 @@ class PlatformAcceptanceManifestTests(unittest.TestCase):
 class PlatformAcceptanceEvidenceTests(unittest.TestCase):
     def build_info(self):
         return {
-            "schema": 1,
+            "schema": 2,
             "client": "bbb-native",
             "client_version": "0.1.0",
             "minecraft_version": "26.1",
@@ -77,6 +77,8 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             "data_pack_format": "101.1",
             "target_os": "linux",
             "target_arch": "x86_64",
+            "source_commit": "a" * 40,
+            "source_dirty": False,
         }
 
     def test_build_info_pins_protocol_and_pack_formats(self):
@@ -87,6 +89,14 @@ class PlatformAcceptanceEvidenceTests(unittest.TestCase):
             platform_acceptance.PlatformFailure, "protocol_version"
         ):
             platform_acceptance.validate_build_info(info)
+
+    def test_legacy_build_info_schema_remains_revalidatable(self):
+        info = self.build_info()
+        info["schema"] = 1
+        del info["source_commit"]
+        del info["source_dirty"]
+
+        platform_acceptance.validate_build_info(info)
 
     def test_macos_build_info_pins_the_native_target(self):
         info = self.build_info()
