@@ -1,0 +1,99 @@
+{
+  "artifact_kind": "vanilla-noise-overworld-light-component",
+  "center": [
+    0,
+    0
+  ],
+  "input": {
+    "base_columns": "all-air",
+    "controlled_emitter": {
+      "block": "minecraft:glowstone",
+      "position": [
+        8,
+        200,
+        8
+      ]
+    },
+    "dependencies": 9,
+    "dependency_order": "x-major-z-minor",
+    "stage": "initialize_light",
+    "structure_topology": "disabled"
+  },
+  "invariance": {
+    "init_orders": [
+      "forward",
+      "reverse"
+    ],
+    "projection_sha256": "1b499345d361c95bdc34201a48511d4443a10af617209e08af798379db068ed3"
+  },
+  "probe": {
+    "path": "scripts/vanilla-runtime/NoiseOverworldFeaturesWindowReport.java",
+    "sha256": "723b8e60fc572c77062df07eaef219e471f400989e570203d6808bd35f08eb5a"
+  },
+  "projection": {
+    "block_mask": "00000000000000001110000000",
+    "block_updates": [
+      {
+        "bytes": 2048,
+        "section_index": 16,
+        "section_y": 11,
+        "sha256": "a4c2c3827f164479e03acc49de9976d16a60c501c70d91825f497648c204dd1c"
+      },
+      {
+        "bytes": 2048,
+        "section_index": 17,
+        "section_y": 12,
+        "sha256": "5fe4d795731a5594afcd08ba3df4115114f159f8849b3ddfa8e3688765c86219"
+      },
+      {
+        "bytes": 2048,
+        "section_index": 18,
+        "section_y": 13,
+        "sha256": "36e3e2aac07d376fdca5d8dc9c62c469cfbd578197713370ce10d89b047ccaaf"
+      }
+    ],
+    "empty_block_mask": "00000000000000000000000000",
+    "empty_sky_mask": "00000000000000000000000000",
+    "sha256": "1b499345d361c95bdc34201a48511d4443a10af617209e08af798379db068ed3",
+    "sky_mask": "00000000000000001110000000",
+    "sky_updates": [
+      {
+        "bytes": 2048,
+        "section_index": 16,
+        "section_y": 11,
+        "sha256": "02f69a386a3149da52e103cf8f2675aae4414c8805835dc532673e360540880c"
+      },
+      {
+        "bytes": 2048,
+        "section_index": 17,
+        "section_y": 12,
+        "sha256": "f6e839efa55eeb015da24298b116a35d8f920c58e6b17ef77eb5193fab148bc4"
+      },
+      {
+        "bytes": 2048,
+        "section_index": 18,
+        "section_y": 13,
+        "sha256": "d0ff1b294b5288d1ae1421eadf5b2d38a8752b76d472ff30bed9028e25b1c5b8"
+      }
+    ]
+  },
+  "schema_version": 1,
+  "scope": {
+    "certifies": "controlled-center-block-then-sky-arrays",
+    "does_not_certify": [
+      "natural-features-input",
+      "threaded-scheduling",
+      "region-save-resume",
+      "live-relight",
+      "changed-section-filters",
+      "transport"
+    ],
+    "light_sections": 26,
+    "min_light_section": -5,
+    "projection": "clientbound-light-update",
+    "status_claim": "component-only"
+  },
+  "seed": 0,
+  "source_settings": "controlled:all-air-init",
+  "vanilla_version": "26.1"
+}

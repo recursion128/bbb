@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""Generate exact Vanilla 26.1 horizontal block-state rotations."""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import json
+import os
+import struct
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+from bbb_tools.vanilla.arguments import add_vanilla_runtime, resolve_runtime_inputs
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_OUTPUT = (
+    REPO_ROOT / "crates/bbb-facts/src/block_state_types/rotations_26_1.rs"
+)
+DEFAULT_BIN_OUTPUT = REPO_ROOT / "crates/bbb-facts/data/block_state_rotations_26_1.bin"
+BLOCK_STATES = REPO_ROOT / "crates/bbb-facts/data/block_states_26_1.json"
+PROBE_SOURCE = REPO_ROOT / "scripts/vanilla-runtime/BlockStateRotationReport.java"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    add_vanilla_runtime(parser)
+    parser.add_argument("--facts-input", type=Path)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--bin-output", type=Path)
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    resolve_runtime_inputs(args)
+    return args
+
+
+def expected_state_count() -> int:
+    report = json.loads(BLOCK_STATES.read_text())
+    if report.get("version") != "26.1":
+        raise ValueError("embedded block-state report is not for Vanilla 26.1")
+    states = report.get("states")
+    if not isinstance(states, list):
+        raise ValueError("embedded block-state report lacks states")
+    for expected_id, state in enumerate(states):
+        if state.get("id") != expected_id:
+            raise ValueError("embedded block-state report is not contiguous")
+    return len(states)
+
+
+def runtime_facts(args: argparse.Namespace) -> str:
+    jars = [args.client_jar, *sorted(args.libraries_root.rglob("*.jar"))]
+    missing = [path for path in (args.javac, args.java, *jars[:1]) if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            "missing Vanilla runtime probe input: "
+            + ", ".join(str(path) for path in missing)
+        )
+    classpath = os.pathsep.join(str(path) for path in jars)
+    with tempfile.TemporaryDirectory(prefix="bbb-block-state-rotation-") as directory:
+        classes = Path(directory)
+        subprocess.run(
+            [
+                str(args.javac),
+                "-cp",
+                classpath,
+                "-d",
+                str(classes),
+                str(PROBE_SOURCE),
+            ],
+            check=True,
+        )
+        result = subprocess.run(
+            [
+                str(args.java),
+                "-cp",
+                os.pathsep.join((str(classes), classpath)),
+                "BlockStateRotationReport",
+            ],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Vanilla block-state rotation probe failed:\n" + result.stderr.strip()
+            )
+    return result.stdout
+
+
+def parse_facts(source: str, expected_count: int) -> tuple[tuple[int, int, int], ...]:
+    lines = source.splitlines()
+    expected_header = f"version=26.1 count={expected_count}"
+    if not lines or lines[0] != expected_header:
+        raise ValueError(
+            f"expected runtime report header {expected_header!r}, got "
+            f"{lines[0] if lines else '<empty>'!r}"
+        )
+    if len(lines) != expected_count + 1:
+        raise ValueError(
+            f"expected {expected_count} runtime rotation facts, got {len(lines) - 1}"
+        )
+    rows: list[tuple[int, int, int]] = []
+    for expected_id, line in enumerate(lines[1:]):
+        fields = line.split("\t")
+        if len(fields) != 4 or fields[0] != str(expected_id):
+            raise ValueError(f"invalid runtime rotation fact at id {expected_id}: {line!r}")
+        try:
+            targets = tuple(int(value) for value in fields[1:])
+        except ValueError as error:
+            raise ValueError(
+                f"invalid runtime rotation target at id {expected_id}: {line!r}"
+            ) from error
+        if any(target < 0 or target >= expected_count for target in targets):
+            raise ValueError(
+                f"out-of-range runtime rotation target at id {expected_id}: {line!r}"
+            )
+        rows.append(targets)
+    return tuple(rows)
+
+
+def pack_binary(rows: tuple[tuple[int, int, int], ...]) -> bytes:
+    out = bytearray()
+    for clockwise_90, clockwise_180, counterclockwise_90 in rows:
+        out.extend(
+            struct.pack("<HHH", clockwise_90, clockwise_180, counterclockwise_90)
+        )
+    return bytes(out)
+
+
+def render_rust(
+    rows: tuple[tuple[int, int, int], ...],
+    bin_rel_path: str = "../../data/block_state_rotations_26_1.bin",
+) -> str:
+    lines = [
+        "// @generated by scripts/generate-block-state-rotations.py; do not edit manually.",
+        "// Source: Vanilla 26.1 BlockState.rotate(Rotation), evaluated for every",
+        "// registered state by the checked-in runtime probe.",
+        "// Columns: CLOCKWISE_90, CLOCKWISE_180, COUNTERCLOCKWISE_90.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-block-state-rotations.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-block-state-rotations.py --check",
+        "",
+        f'const BYTES: &[u8] = include_bytes!("{bin_rel_path}");',
+        f"pub(super) const STATE_COUNT: usize = {len(rows)};",
+        "",
+        "#[inline]",
+        "pub(super) fn rotation_target(state_id: usize, turn_index: usize) -> Option<u16> {",
+        "    if state_id >= STATE_COUNT || turn_index >= 3 {",
+        "        return None;",
+        "    }",
+        "    let offset = state_id * 6 + turn_index * 2;",
+        "    Some(u16::from_le_bytes([BYTES[offset], BYTES[offset + 1]]))",
+        "}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def _resolve_bin_output(output: Path, bin_output: Path | None) -> tuple[Path, str]:
+    if bin_output is None:
+        bin_output = (
+            DEFAULT_BIN_OUTPUT
+            if output == DEFAULT_OUTPUT
+            else output.with_suffix(".bin")
+        )
+    rel = os.path.relpath(bin_output, output.parent).replace("\\", "/")
+    return bin_output, rel
+
+
+def check_output(path: Path, generated: str) -> bool:
+    current = path.read_text() if path.exists() else ""
+    if current == generated:
+        return True
+    sys.stderr.writelines(
+        difflib.unified_diff(
+            current.splitlines(keepends=True),
+            generated.splitlines(keepends=True),
+            fromfile=str(path),
+            tofile="generated",
+        )
+    )
+    return False
+
+
+def check_bytes_output(path: Path, generated: bytes) -> bool:
+    current = path.read_bytes() if path.exists() else b""
+    if current == generated:
+        return True
+    sys.stderr.write(
+        f"binary output differs at {path} (actual {len(current)} B vs expected {len(generated)} B)\n"
+    )
+    return False
+
+
+def main() -> int:
+    args = parse_args()
+    count = expected_state_count()
+    facts = args.facts_input.read_text() if args.facts_input else runtime_facts(args)
+    rows = parse_facts(facts, count)
+    bin_output, bin_rel = _resolve_bin_output(args.output, args.bin_output)
+    generated = render_rust(rows, bin_rel)
+    blob = pack_binary(rows)
+    if args.check:
+        rust_ok = check_output(args.output, generated)
+        bin_ok = check_bytes_output(bin_output, blob)
+        return 0 if rust_ok and bin_ok else 1
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    bin_output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(generated)
+    bin_output.write_bytes(blob)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

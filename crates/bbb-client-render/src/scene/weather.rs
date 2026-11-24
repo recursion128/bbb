@@ -1,0 +1,1052 @@
+use bbb_registry_codec::legacy_random::LegacyRandomSource;
+use std::{mem, ops::Range};
+
+use anyhow::Result;
+
+use crate::gpu::DEPTH_FORMAT;
+use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
+use crate::texture_sampling::{create_camera_texture_bind_group, create_standalone_rgba_texture};
+use crate::StandaloneTextureSampling;
+
+pub const WEATHER_RAIN_TEXTURE_PATH: &str = "textures/environment/rain.png";
+pub const WEATHER_SNOW_TEXTURE_PATH: &str = "textures/environment/snow.png";
+
+const WEATHER_TABLE_SIZE: usize = 32;
+const WEATHER_TABLE_HALF: i32 = 16;
+const RAIN_MAX_ALPHA: f32 = 1.0;
+const SNOW_MAX_ALPHA: f32 = 0.8;
+const LIGHTNING_COLOR: [f32; 4] = [0.45, 0.45, 0.5, 0.3];
+
+pub(crate) struct WeatherTextureGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) bind_group: wgpu::BindGroup,
+}
+
+impl WeatherTextureGpu {
+    pub(crate) fn into_texture(self) -> wgpu::Texture {
+        self._texture
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WeatherTextureKind {
+    Rain,
+    Snow,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WeatherTextureImage {
+    pub kind: WeatherTextureKind,
+    pub width: u32,
+    pub height: u32,
+    pub sampling: StandaloneTextureSampling,
+    pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeatherFrame {
+    pub camera_position: [f32; 3],
+    pub radius: u32,
+    pub intensity: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeatherColumn {
+    pub x: i32,
+    pub z: i32,
+    pub bottom_y: i32,
+    pub top_y: i32,
+    pub u_offset: f32,
+    pub v_offset: f32,
+    pub light: [f32; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LightningBoltRenderState {
+    pub position: [f32; 3],
+    pub seed: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct WeatherRenderState {
+    pub frame: WeatherFrame,
+    pub rain_columns: Vec<WeatherColumn>,
+    pub snow_columns: Vec<WeatherColumn>,
+    pub lightning_bolts: Vec<LightningBoltRenderState>,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct WeatherVertex {
+    pub(crate) position: [f32; 3],
+    pub(crate) uv: [f32; 2],
+    pub(crate) color: [f32; 4],
+    pub(crate) light: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct LightningVertex {
+    pub(crate) position: [f32; 3],
+    pub(crate) color: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct WeatherMesh {
+    pub(crate) vertices: Vec<WeatherVertex>,
+    pub(crate) indices: Vec<u32>,
+    pub(crate) rain_indices: Range<u32>,
+    pub(crate) snow_indices: Range<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct LightningMesh {
+    pub(crate) vertices: Vec<LightningVertex>,
+    pub(crate) indices: Vec<u32>,
+}
+
+const WEATHER_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
+const LIGHTNING_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
+const WEATHER_PIPELINE_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const WEATHER_PIPELINE_CULL_MODE: Option<wgpu::Face> = None;
+// Vanilla `WeatherEffectRenderer.java:126` & `RenderPipelines.java:592-599`:
+// `WEATHER_NO_DEPTH_WRITE` for Regular mode, `WEATHER_DEPTH_WRITE` for shader transparency.
+pub(crate) const WEATHER_PIPELINE_NO_DEPTH_WRITE: bool = false;
+pub(crate) const WEATHER_PIPELINE_DEPTH_WRITE: bool = true;
+const WEATHER_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const LIGHTNING_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
+const LIGHTNING_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const LIGHTNING_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+
+pub(crate) const WEATHER_SHADER: &str = concat!(
+    crate::wgsl::camera_full!(),
+    crate::wgsl::linear_fog_value!(),
+    crate::wgsl::apply_fog!(),
+    crate::wgsl::sample_lightmap!(),
+    r#"
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var weather_texture: texture_2d<f32>;
+
+@group(0) @binding(2)
+var weather_sampler: sampler;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) light: vec2<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) light: vec2<f32>,
+    @location(3) spherical_distance: f32,
+    @location(4) cylindrical_distance: f32,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.projection * (camera.sky_model_view * vec4<f32>(input.position, 1.0));
+    out.uv = input.uv;
+    out.color = input.color;
+    out.light = input.light;
+    let fog_pos = input.position;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(weather_texture, weather_sampler, input.uv) * input.color;
+    if (texel.a < 0.1) {
+        discard;
+    }
+    let light_color = sample_lightmap(input.light);
+    return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+}
+"#,
+);
+
+pub(crate) const LIGHTNING_SHADER: &str = concat!(
+    crate::wgsl::camera!(),
+    crate::wgsl::linear_fog_value!(),
+    r#"
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) spherical_distance: f32,
+    @location(2) cylindrical_distance: f32,
+};
+
+fn total_fog_value(spherical_distance: f32, cylindrical_distance: f32) -> f32 {
+    return max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    ) * camera.fog_color.a;
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    out.color = input.color;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return input.color * (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance));
+}
+"#,
+);
+
+impl Default for WeatherFrame {
+    fn default() -> Self {
+        Self {
+            camera_position: [0.0, 0.0, 0.0],
+            radius: 0,
+            intensity: 0.0,
+        }
+    }
+}
+
+impl WeatherFrame {
+    pub fn at_camera_position(camera_position: [f32; 3], radius: u32, intensity: f32) -> Self {
+        Self {
+            camera_position: [
+                sanitize_position(camera_position[0]),
+                sanitize_position(camera_position[1]),
+                sanitize_position(camera_position[2]),
+            ],
+            radius,
+            intensity: sanitize_unit(intensity),
+        }
+    }
+}
+
+impl WeatherColumn {
+    pub fn new(
+        x: i32,
+        z: i32,
+        bottom_y: i32,
+        top_y: i32,
+        u_offset: f32,
+        v_offset: f32,
+        light: [f32; 2],
+    ) -> Self {
+        Self {
+            x,
+            z,
+            bottom_y,
+            top_y,
+            u_offset: sanitize_offset(u_offset),
+            v_offset: sanitize_offset(v_offset),
+            light: [sanitize_unit(light[0]), sanitize_unit(light[1])],
+        }
+    }
+}
+
+impl WeatherRenderState {
+    pub fn new(
+        frame: WeatherFrame,
+        rain_columns: Vec<WeatherColumn>,
+        snow_columns: Vec<WeatherColumn>,
+    ) -> Self {
+        Self::with_lightning(frame, rain_columns, snow_columns, Vec::new())
+    }
+
+    pub fn with_lightning(
+        frame: WeatherFrame,
+        rain_columns: Vec<WeatherColumn>,
+        snow_columns: Vec<WeatherColumn>,
+        lightning_bolts: Vec<LightningBoltRenderState>,
+    ) -> Self {
+        Self {
+            frame,
+            rain_columns,
+            snow_columns,
+            lightning_bolts,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lightning_bolts.is_empty()
+            && (self.frame.intensity <= 0.0
+                || self.frame.radius == 0
+                || (self.rain_columns.is_empty() && self.snow_columns.is_empty()))
+    }
+
+    pub fn rain_column_count(&self) -> usize {
+        self.rain_columns.len()
+    }
+
+    pub fn snow_column_count(&self) -> usize {
+        self.snow_columns.len()
+    }
+
+    pub fn lightning_bolt_count(&self) -> usize {
+        self.lightning_bolts.len()
+    }
+}
+
+pub(crate) fn create_weather_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    depth_write: bool,
+) -> wgpu::RenderPipeline {
+    let label = if depth_write {
+        "bbb-weather-depth-write-pipeline"
+    } else {
+        "bbb-weather-no-depth-write-pipeline"
+    };
+    RenderPipelineBuilder::new(device, label)
+        .shader("bbb-weather-shader", WEATHER_SHADER)
+        .layout(
+            "bbb-weather-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[weather_vertex_layout()])
+        .color_target(format, Some(WEATHER_PIPELINE_BLEND))
+        .cull_mode(WEATHER_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            depth_write,
+            WEATHER_PIPELINE_DEPTH_COMPARE,
+        ))
+        .build()
+}
+
+pub(crate) fn create_weather_core_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedParticleShaders>,
+    depth_write: bool,
+) -> Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_weather_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            depth_write,
+        ));
+    };
+    let label = if depth_write {
+        "bbb-selected-weather-depth-write"
+    } else {
+        "bbb-selected-weather-no-depth-write"
+    };
+    crate::particles::create_selected_particle_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        label,
+        &shaders.weather_vertex,
+        &shaders.fragment,
+        weather_vertex_layout(),
+        Some(WEATHER_PIPELINE_BLEND),
+        WEATHER_PIPELINE_CULL_MODE,
+        depth_write,
+    )
+}
+
+pub(crate) fn create_lightning_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedLightningShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_position_color_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            "bbb-selected-lightning",
+            &shaders.vertex,
+            &shaders.fragment,
+            lightning_vertex_layout(),
+            Some(LIGHTNING_BLEND),
+            LIGHTNING_PIPELINE_CULL_MODE,
+            LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED,
+            LIGHTNING_PIPELINE_DEPTH_COMPARE,
+        );
+    }
+    Ok(RenderPipelineBuilder::new(device, "bbb-lightning-pipeline")
+        .shader("bbb-lightning-shader", LIGHTNING_SHADER)
+        .layout("bbb-lightning-pipeline-layout", &[camera_bind_group_layout])
+        .vertex_buffers(&[lightning_vertex_layout()])
+        .color_target(format, Some(LIGHTNING_BLEND))
+        .cull_mode(LIGHTNING_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED,
+            LIGHTNING_PIPELINE_DEPTH_COMPARE,
+        ))
+        .build())
+}
+
+pub(crate) fn create_weather_texture_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::BufferBinding<'_>,
+    image: &WeatherTextureImage,
+) -> Result<WeatherTextureGpu> {
+    let (texture, view, sampler) = create_standalone_rgba_texture(
+        device,
+        queue,
+        match image.kind {
+            WeatherTextureKind::Rain => "bbb-weather-rain-texture",
+            WeatherTextureKind::Snow => "bbb-weather-snow-texture",
+        },
+        image.width,
+        image.height,
+        &image.rgba,
+        image.sampling,
+    )?;
+    let bind_group = create_camera_texture_bind_group(
+        device,
+        layout,
+        match image.kind {
+            WeatherTextureKind::Rain => "bbb-weather-rain-bind-group",
+            WeatherTextureKind::Snow => "bbb-weather-snow-bind-group",
+        },
+        camera_buffer,
+        &view,
+        &sampler,
+    );
+
+    Ok(WeatherTextureGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+    })
+}
+
+pub(crate) fn build_weather_mesh(state: &WeatherRenderState) -> Option<WeatherMesh> {
+    if state.frame.intensity <= 0.0
+        || state.frame.radius == 0
+        || (state.rain_columns.is_empty() && state.snow_columns.is_empty())
+    {
+        return None;
+    }
+
+    let mut vertices =
+        Vec::with_capacity((state.rain_columns.len() + state.snow_columns.len()) * 4);
+    let mut indices = Vec::with_capacity((state.rain_columns.len() + state.snow_columns.len()) * 6);
+    let table = weather_column_size_table();
+
+    append_columns(
+        &mut vertices,
+        &mut indices,
+        &table,
+        &state.rain_columns,
+        state.frame,
+        RAIN_MAX_ALPHA,
+    );
+    let rain_index_count = indices.len() as u32;
+    append_columns(
+        &mut vertices,
+        &mut indices,
+        &table,
+        &state.snow_columns,
+        state.frame,
+        SNOW_MAX_ALPHA,
+    );
+    let total_index_count = indices.len() as u32;
+
+    (!indices.is_empty()).then_some(WeatherMesh {
+        vertices,
+        indices,
+        rain_indices: 0..rain_index_count,
+        snow_indices: rain_index_count..total_index_count,
+    })
+}
+
+pub(crate) fn build_lightning_mesh(state: &WeatherRenderState) -> Option<LightningMesh> {
+    if state.lightning_bolts.is_empty() {
+        return None;
+    }
+
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for bolt in &state.lightning_bolts {
+        append_lightning_bolt(&mut vertices, &mut indices, *bolt);
+    }
+
+    (!indices.is_empty()).then_some(LightningMesh { vertices, indices })
+}
+
+fn append_columns(
+    vertices: &mut Vec<WeatherVertex>,
+    indices: &mut Vec<u32>,
+    table: &[[f32; 2]; WEATHER_TABLE_SIZE * WEATHER_TABLE_SIZE],
+    columns: &[WeatherColumn],
+    frame: WeatherFrame,
+    max_alpha: f32,
+) {
+    let radius_sq = frame.radius as f32 * frame.radius as f32;
+    if radius_sq <= 0.0 {
+        return;
+    }
+
+    let cam_x = f64::from(frame.camera_position[0]);
+    let cam_y = f64::from(frame.camera_position[1]);
+    let cam_z = f64::from(frame.camera_position[2]);
+
+    for column in columns {
+        if column.top_y == column.bottom_y {
+            continue;
+        }
+        let Some([half_size_x, half_size_z]) = weather_column_half_size(table, column, frame)
+        else {
+            continue;
+        };
+        let rel_center_x = f64::from(column.x) + 0.5 - cam_x;
+        let rel_center_z = f64::from(column.z) + 0.5 - cam_z;
+        let relative_x = rel_center_x as f32;
+        let relative_z = rel_center_z as f32;
+        let distance_sq = relative_x * relative_x + relative_z * relative_z;
+        let alpha =
+            (max_alpha + (distance_sq / radius_sq).min(1.0) * (0.5 - max_alpha)) * frame.intensity;
+        let color = [1.0, 1.0, 1.0, alpha.clamp(0.0, 1.0)];
+        let x0 = (rel_center_x - f64::from(half_size_x)) as f32;
+        let x1 = (rel_center_x + f64::from(half_size_x)) as f32;
+        let z0 = (rel_center_z - f64::from(half_size_z)) as f32;
+        let z1 = (rel_center_z + f64::from(half_size_z)) as f32;
+        let y0 = (f64::from(column.bottom_y) - cam_y) as f32;
+        let y1 = (f64::from(column.top_y) - cam_y) as f32;
+        let u0 = column.u_offset;
+        let u1 = column.u_offset + 1.0;
+        let v0 = column.bottom_y as f32 * 0.25 + column.v_offset;
+        let v1 = column.top_y as f32 * 0.25 + column.v_offset;
+        let base = vertices.len() as u32;
+
+        vertices.extend_from_slice(&[
+            weather_vertex([x0, y1, z0], [u0, v0], color, column.light),
+            weather_vertex([x1, y1, z1], [u1, v0], color, column.light),
+            weather_vertex([x1, y0, z1], [u1, v1], color, column.light),
+            weather_vertex([x0, y0, z0], [u0, v1], color, column.light),
+        ]);
+        indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+}
+
+fn append_lightning_bolt(
+    vertices: &mut Vec<LightningVertex>,
+    indices: &mut Vec<u32>,
+    bolt: LightningBoltRenderState,
+) {
+    let mut x_offsets = [0.0_f32; 8];
+    let mut z_offsets = [0.0_f32; 8];
+    let mut x_offset = 0.0_f32;
+    let mut z_offset = 0.0_f32;
+    let mut random = LegacyRandomSource::with_seed(bolt.seed);
+
+    for h in (0..8).rev() {
+        x_offsets[h] = x_offset;
+        z_offsets[h] = z_offset;
+        x_offset += (random.next_int(11) - 5) as f32;
+        z_offset += (random.next_int(11) - 5) as f32;
+    }
+
+    let final_x_offset = x_offset;
+    let final_z_offset = z_offset;
+    for r in 0..4 {
+        let mut branch_random = LegacyRandomSource::with_seed(bolt.seed);
+        for p in 0..3 {
+            let mut start_h = 7_i32;
+            let mut end_h = 0_i32;
+            if p > 0 {
+                start_h = 7 - p;
+                end_h = start_h - 2;
+            }
+
+            let mut x0 = x_offsets[start_h as usize] - final_x_offset;
+            let mut z0 = z_offsets[start_h as usize] - final_z_offset;
+            for h in (end_h..=start_h).rev() {
+                let x1 = x0;
+                let z1 = z0;
+                if p == 0 {
+                    x0 += (branch_random.next_int(11) - 5) as f32;
+                    z0 += (branch_random.next_int(11) - 5) as f32;
+                } else {
+                    x0 += (branch_random.next_int(31) - 15) as f32;
+                    z0 += (branch_random.next_int(31) - 15) as f32;
+                }
+
+                let mut radius_top = 0.1 + r as f32 * 0.2;
+                if p == 0 {
+                    radius_top *= h as f32 * 0.1 + 1.0;
+                }
+                let mut radius_bottom = 0.1 + r as f32 * 0.2;
+                if p == 0 {
+                    radius_bottom *= (h as f32 - 1.0) * 0.1 + 1.0;
+                }
+
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [false, false, true, false],
+                );
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [true, false, true, true],
+                );
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [true, true, false, true],
+                );
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [false, true, false, false],
+                );
+            }
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_lightning_quad(
+    vertices: &mut Vec<LightningVertex>,
+    indices: &mut Vec<u32>,
+    origin: [f32; 3],
+    x0: f32,
+    z0: f32,
+    h: i32,
+    x1: f32,
+    z1: f32,
+    radius_top: f32,
+    radius_bottom: f32,
+    flags: [bool; 4],
+) {
+    let [px1, pz1, px2, pz2] = flags;
+    let y0 = h as f32 * 16.0;
+    let y1 = (h + 1) as f32 * 16.0;
+    let base = vertices.len() as u32;
+    vertices.extend_from_slice(&[
+        lightning_vertex(
+            origin,
+            x0 + if px1 { radius_bottom } else { -radius_bottom },
+            y0,
+            z0 + if pz1 { radius_bottom } else { -radius_bottom },
+        ),
+        lightning_vertex(
+            origin,
+            x1 + if px1 { radius_top } else { -radius_top },
+            y1,
+            z1 + if pz1 { radius_top } else { -radius_top },
+        ),
+        lightning_vertex(
+            origin,
+            x1 + if px2 { radius_top } else { -radius_top },
+            y1,
+            z1 + if pz2 { radius_top } else { -radius_top },
+        ),
+        lightning_vertex(
+            origin,
+            x0 + if px2 { radius_bottom } else { -radius_bottom },
+            y0,
+            z0 + if pz2 { radius_bottom } else { -radius_bottom },
+        ),
+    ]);
+    indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+}
+
+fn lightning_vertex(origin: [f32; 3], x: f32, y: f32, z: f32) -> LightningVertex {
+    LightningVertex {
+        position: [origin[0] + x, origin[1] + y, origin[2] + z],
+        color: LIGHTNING_COLOR,
+    }
+}
+
+fn weather_vertex(
+    position: [f32; 3],
+    uv: [f32; 2],
+    color: [f32; 4],
+    light: [f32; 2],
+) -> WeatherVertex {
+    WeatherVertex {
+        position,
+        uv,
+        color,
+        light,
+    }
+}
+
+fn weather_column_size_table() -> [[f32; 2]; WEATHER_TABLE_SIZE * WEATHER_TABLE_SIZE] {
+    let mut table = [[0.0; 2]; WEATHER_TABLE_SIZE * WEATHER_TABLE_SIZE];
+    for z in 0..WEATHER_TABLE_SIZE {
+        for x in 0..WEATHER_TABLE_SIZE {
+            let delta_x = x as f32 - WEATHER_TABLE_HALF as f32;
+            let delta_z = z as f32 - WEATHER_TABLE_HALF as f32;
+            let distance = (delta_x * delta_x + delta_z * delta_z).sqrt();
+            table[z * WEATHER_TABLE_SIZE + x] = if distance > 0.0 {
+                [-delta_z / distance, delta_x / distance]
+            } else {
+                [0.0, 0.0]
+            };
+        }
+    }
+    table
+}
+
+fn weather_column_half_size(
+    table: &[[f32; 2]; WEATHER_TABLE_SIZE * WEATHER_TABLE_SIZE],
+    column: &WeatherColumn,
+    frame: WeatherFrame,
+) -> Option<[f32; 2]> {
+    let camera_x = frame.camera_position[0].floor() as i32;
+    let camera_z = frame.camera_position[2].floor() as i32;
+    let table_x = column.x - camera_x + WEATHER_TABLE_HALF;
+    let table_z = column.z - camera_z + WEATHER_TABLE_HALF;
+    if !(0..WEATHER_TABLE_SIZE as i32).contains(&table_x)
+        || !(0..WEATHER_TABLE_SIZE as i32).contains(&table_z)
+    {
+        return None;
+    }
+    let [size_x, size_z] = table[table_z as usize * WEATHER_TABLE_SIZE + table_x as usize];
+    Some([size_x * 0.5, size_z * 0.5])
+}
+
+fn weather_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: mem::size_of::<WeatherVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &WEATHER_VERTEX_ATTRIBUTES,
+    }
+}
+
+fn lightning_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: mem::size_of::<LightningVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &LIGHTNING_VERTEX_ATTRIBUTES,
+    }
+}
+
+fn sanitize_unit(value: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
+fn sanitize_position(value: f32) -> f32 {
+    if value.is_finite() {
+        value
+    } else {
+        0.0
+    }
+}
+
+fn sanitize_offset(value: f32) -> f32 {
+    if value.is_finite() {
+        value
+    } else {
+        0.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_close(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 0.000_01,
+            "expected {actual} to be close to {expected}"
+        );
+    }
+
+    #[test]
+    fn weather_texture_paths_match_vanilla_environment_textures() {
+        assert_eq!(WEATHER_RAIN_TEXTURE_PATH, "textures/environment/rain.png");
+        assert_eq!(WEATHER_SNOW_TEXTURE_PATH, "textures/environment/snow.png");
+    }
+
+    #[test]
+    fn weather_pipeline_state_matches_vanilla_regular_and_fabulous_depth_write() {
+        assert_eq!(WEATHER_PIPELINE_CULL_MODE, None);
+        const {
+            assert!(!WEATHER_PIPELINE_NO_DEPTH_WRITE);
+            assert!(WEATHER_PIPELINE_DEPTH_WRITE);
+        }
+        assert_eq!(
+            WEATHER_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.color.operation,
+            wgpu::BlendOperation::Add
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.alpha.operation,
+            wgpu::BlendOperation::Add
+        );
+    }
+
+    #[test]
+    fn weather_vertex_layout_matches_vanilla_particle_fields() {
+        assert_eq!(WEATHER_VERTEX_ATTRIBUTES.len(), 4);
+        assert_eq!(
+            WEATHER_VERTEX_ATTRIBUTES[0].format,
+            wgpu::VertexFormat::Float32x3
+        );
+        assert_eq!(
+            WEATHER_VERTEX_ATTRIBUTES[1].format,
+            wgpu::VertexFormat::Float32x2
+        );
+        assert_eq!(
+            WEATHER_VERTEX_ATTRIBUTES[2].format,
+            wgpu::VertexFormat::Float32x4
+        );
+        assert_eq!(
+            WEATHER_VERTEX_ATTRIBUTES[3].format,
+            wgpu::VertexFormat::Float32x2
+        );
+        assert!(WEATHER_SHADER.contains("@group(0) @binding(1)"));
+        assert!(WEATHER_SHADER.contains("var weather_texture: texture_2d<f32>"));
+        assert!(WEATHER_SHADER.contains("@group(1) @binding(0)"));
+        assert!(WEATHER_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
+        assert!(WEATHER_SHADER.contains("@group(1) @binding(1)"));
+        assert!(WEATHER_SHADER.contains("var lightmap_sampler: sampler"));
+        assert!(WEATHER_SHADER.contains("light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0)"));
+        assert!(WEATHER_SHADER.contains("if (texel.a < 0.1)"));
+        assert!(WEATHER_SHADER.contains("texel.rgb * light_color"));
+    }
+
+    #[test]
+    fn lightning_pipeline_matches_vanilla_position_color_weather_target_state() {
+        assert_eq!(LIGHTNING_VERTEX_ATTRIBUTES.len(), 2);
+        assert_eq!(
+            LIGHTNING_VERTEX_ATTRIBUTES[0].format,
+            wgpu::VertexFormat::Float32x3
+        );
+        assert_eq!(
+            LIGHTNING_VERTEX_ATTRIBUTES[1].format,
+            wgpu::VertexFormat::Float32x4
+        );
+        assert_eq!(LIGHTNING_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+        const {
+            assert!(LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED);
+        }
+        assert_eq!(
+            LIGHTNING_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            LIGHTNING_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(LIGHTNING_BLEND.color.dst_factor, wgpu::BlendFactor::One);
+        assert_eq!(
+            LIGHTNING_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(LIGHTNING_BLEND.alpha.dst_factor, wgpu::BlendFactor::One);
+        assert!(LIGHTNING_SHADER.contains("var<uniform> camera: Camera"));
+        assert!(LIGHTNING_SHADER.contains("input.color * (1.0 - total_fog_value"));
+    }
+
+    #[test]
+    fn weather_mesh_emits_rain_then_snow_with_vanilla_column_math() {
+        let frame = WeatherFrame::at_camera_position([0.25, 64.5, 0.25], 10, 0.5);
+        let rain = WeatherColumn::new(2, 0, 60, 70, 0.0, 1.25, [0.2, 0.8]);
+        let snow = WeatherColumn::new(0, 2, 61, 69, 0.5, -0.25, [0.6, 1.0]);
+        let mesh = build_weather_mesh(&WeatherRenderState::new(frame, vec![rain], vec![snow]))
+            .expect("weather mesh should contain rain and snow columns");
+
+        assert_eq!(mesh.vertices.len(), 8);
+        assert_eq!(mesh.indices, vec![0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+        assert_eq!(mesh.rain_indices, 0..6);
+        assert_eq!(mesh.snow_indices, 6..12);
+
+        let rain_vertices = &mesh.vertices[..4];
+        assert_eq!(rain_vertices[0].position, [2.25, 5.5, -0.25]);
+        assert_eq!(rain_vertices[1].position, [2.25, 5.5, 0.75]);
+        assert_eq!(rain_vertices[2].position, [2.25, -4.5, 0.75]);
+        assert_eq!(rain_vertices[3].position, [2.25, -4.5, -0.25]);
+        assert_eq!(rain_vertices[0].uv, [0.0, 16.25]);
+        assert_eq!(rain_vertices[1].uv, [1.0, 16.25]);
+        assert_eq!(rain_vertices[2].uv, [1.0, 18.75]);
+        assert_eq!(rain_vertices[3].uv, [0.0, 18.75]);
+        assert_eq!(rain_vertices[0].light, [0.2, 0.8]);
+        assert_close(rain_vertices[0].color[3], 0.487_187_5);
+
+        let snow_vertices = &mesh.vertices[4..];
+        assert_eq!(snow_vertices[0].position, [0.75, 4.5, 2.25]);
+        assert_eq!(snow_vertices[1].position, [-0.25, 4.5, 2.25]);
+        assert_eq!(snow_vertices[2].position, [-0.25, -3.5, 2.25]);
+        assert_eq!(snow_vertices[3].position, [0.75, -3.5, 2.25]);
+        assert_close(snow_vertices[0].color[3], 0.392_312_5);
+        assert_eq!(snow_vertices[0].light, [0.6, 1.0]);
+    }
+
+    #[test]
+    fn weather_mesh_preserves_quad_width_at_large_world_coordinates() {
+        let base_x = 29_999_984;
+        let frame = WeatherFrame::at_camera_position([base_x as f32, 64.0, 0.0], 10, 1.0);
+        let rain = WeatherColumn::new(base_x, 2, 60, 70, 0.0, 0.0, [0.0, 1.0]);
+        let mesh = build_weather_mesh(&WeatherRenderState::new(frame, vec![rain], Vec::new()))
+            .expect("rain column at world border should remain valid");
+        let width_x = (mesh.vertices[1].position[0] - mesh.vertices[0].position[0]).abs();
+        assert!(
+            (width_x - 1.0).abs() < 1e-5,
+            "rain quad should stay 1 block wide instead of collapsing at x={base_x}: {width_x}"
+        );
+        assert!(WEATHER_SHADER.contains("camera.projection * (camera.sky_model_view"));
+    }
+
+    #[test]
+    fn lightning_mesh_uses_vanilla_seeded_quad_pattern() {
+        let state = WeatherRenderState::with_lightning(
+            WeatherFrame::default(),
+            Vec::new(),
+            Vec::new(),
+            vec![LightningBoltRenderState {
+                position: [1.0, 2.0, 3.0],
+                seed: 0,
+            }],
+        );
+        let mesh = build_lightning_mesh(&state).expect("lightning mesh should be present");
+
+        assert_eq!(mesh.vertices.len(), 896);
+        assert_eq!(mesh.indices.len(), 1344);
+        assert_eq!(&mesh.indices[..6], &[0, 1, 2, 0, 2, 3]);
+        assert_eq!(mesh.vertices[0].position, [11.84, 114.0, 16.84]);
+        assert_eq!(mesh.vertices[1].position, [16.83, 130.0, 15.83]);
+        assert_eq!(mesh.vertices[2].position, [17.17, 130.0, 15.83]);
+        assert_eq!(mesh.vertices[0].color, [0.45, 0.45, 0.5, 0.3]);
+        assert_close(
+            mesh.vertices
+                .iter()
+                .map(|vertex| vertex.position[1])
+                .fold(f32::INFINITY, f32::min),
+            2.0,
+        );
+        assert_close(
+            mesh.vertices
+                .iter()
+                .map(|vertex| vertex.position[1])
+                .fold(f32::NEG_INFINITY, f32::max),
+            130.0,
+        );
+    }
+
+    #[test]
+    fn lightning_keeps_weather_render_state_non_empty_without_precipitation() {
+        let state = WeatherRenderState::with_lightning(
+            WeatherFrame::default(),
+            Vec::new(),
+            Vec::new(),
+            vec![LightningBoltRenderState {
+                position: [0.0, 64.0, 0.0],
+                seed: 1,
+            }],
+        );
+
+        assert!(!state.is_empty());
+        assert_eq!(state.lightning_bolt_count(), 1);
+        assert!(build_weather_mesh(&state).is_none());
+        assert!(build_lightning_mesh(&state).is_some());
+    }
+}

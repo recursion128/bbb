@@ -1,0 +1,32 @@
+//! Block-entity and special-block client state, animations, and render sources.
+
+pub(crate) mod banner_blocks;
+pub(crate) mod beacon_blocks;
+pub(crate) mod bed_blocks;
+pub(crate) mod bell_blocks;
+pub(crate) mod block_entity_client_effects;
+pub(crate) mod block_entity_item_displays;
+pub(crate) mod block_events;
+pub(crate) mod bounding_box_blocks;
+pub(crate) mod chest_blocks;
+pub(crate) mod chest_lids;
+pub(crate) mod command_blocks;
+pub(crate) mod comparator_blocks;
+pub(crate) mod conduit_blocks;
+pub(crate) mod copper_golem_statue_blocks;
+pub(crate) mod decorated_pot_blocks;
+pub(crate) mod enchanting_table_books;
+pub(crate) mod end_portal_blocks;
+pub(crate) mod jigsaw_blocks;
+pub(crate) mod lectern_books;
+pub(crate) mod minecart_command_blocks;
+pub(crate) mod note_blocks;
+pub(crate) mod piston_blocks;
+pub(crate) mod shulker_box_blocks;
+pub(crate) mod sign_blocks;
+pub(crate) mod skull_blocks;
+pub(crate) mod spawner_blocks;
+pub(crate) mod structure_blocks;
+pub(crate) mod test_blocks;
+pub(crate) mod test_instance_blocks;
+pub(crate) mod trial_spawner_blocks;

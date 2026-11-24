@@ -1,0 +1,1447 @@
+use std::collections::BTreeMap;
+
+use bbb_protocol::{
+    block_state_types::vanilla_block_state_identity, registry_data_types::VanillaFluidIdentity,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{particles::ParticleKind, BlockPos, ChunkPos, PaletteKind};
+
+mod generated_26_1;
+
+use generated_26_1::{
+    VANILLA_AIR_BLOCKS, VANILLA_AMETHYST_CLUSTER_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS,
+    VANILLA_BED_BLOCKS, VANILLA_BLOCK_ANIMATE_TICK_BLOCKS, VANILLA_BRUSHABLE_BLOCKS,
+    VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS,
+    VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS,
+    VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
+    VANILLA_CROP_BLOCKS, VANILLA_DEAD_BUSH_AMBIENT_BLOCKS, VANILLA_DOOR_BLOCKS,
+    VANILLA_DRY_GRASS_AMBIENT_BLOCKS, VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS,
+    VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS, VANILLA_FALLING_BLOCKS,
+    VANILLA_FALL_DAMAGE_RESETTING_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
+    VANILLA_FIRE_BLOCKS, VANILLA_FIRE_FLAMMABLE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS,
+    VANILLA_FLOOR_SKULL_BLOCKS, VANILLA_FLOOR_TORCH_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
+    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
+    VANILLA_IMPERMEABLE_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES,
+    VANILLA_LEAVES_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS,
+    VANILLA_NO_COLLISION_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS,
+    VANILLA_PALE_OAK_LOG_BLOCKS, VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS,
+    VANILLA_RAIL_BLOCKS, VANILLA_SAPLING_BLOCKS, VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS,
+    VANILLA_SLAB_BLOCKS, VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS,
+    VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TERRACOTTA_BLOCKS,
+    VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS,
+    VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS,
+    VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS, VANILLA_WALL_BLOCKS,
+    VANILLA_WALL_SIGN_BLOCKS, VANILLA_WALL_SKULL_BLOCKS, VANILLA_WALL_TORCH_BLOCKS,
+    VANILLA_WOOL_CARPET_BLOCKS,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockProbe {
+    pub pos: BlockPos,
+    pub chunk: ChunkPos,
+    pub local_x: u8,
+    pub local_y: u8,
+    pub local_z: u8,
+    pub section_y: i32,
+    pub section_index: usize,
+    pub block_state_id: i32,
+    pub block_name: Option<String>,
+    pub block_properties: BTreeMap<String, String>,
+    pub material: TerrainMaterialClass,
+    pub fluid: Option<TerrainFluidState>,
+    pub block_palette_kind: PaletteKind,
+    pub block_palette_index: Option<usize>,
+    pub biome_id: Option<i32>,
+    pub biome_palette_kind: PaletteKind,
+}
+
+impl BlockProbe {
+    pub fn view(&self) -> BlockView {
+        BlockView::of_state(self.pos, self.block_state_id)
+    }
+}
+
+static NO_BLOCK_PROPERTIES: BTreeMap<String, String> = BTreeMap::new();
+
+/// Allocation-free view of one block state at a position. Name and
+/// properties borrow the process-wide state table. Material, fluid and
+/// block animation membership are precomputed per state.
+#[derive(Debug, Clone, Copy)]
+pub struct BlockView {
+    pub pos: BlockPos,
+    pub block_state_id: i32,
+    pub block_name: Option<&'static str>,
+    pub block_properties: &'static BTreeMap<String, String>,
+    pub material: TerrainMaterialClass,
+    pub fluid: Option<TerrainFluidState>,
+    pub has_animate_tick: bool,
+}
+
+impl BlockView {
+    pub fn of_state(pos: BlockPos, block_state_id: i32) -> Self {
+        let info = vanilla_block_state_identity(block_state_id);
+        let facts =
+            crate::registries::block_states::vanilla_block_state_terrain_facts(block_state_id);
+        Self {
+            pos,
+            block_state_id,
+            block_name: info.map(|info| info.name.as_str()),
+            block_properties: info.map_or(&NO_BLOCK_PROPERTIES, |info| &info.properties),
+            material: facts.map_or(TerrainMaterialClass::Opaque, |facts| facts.material),
+            fluid: facts.and_then(|facts| facts.fluid),
+            has_animate_tick: facts.is_some_and(|facts| facts.has_animate_tick),
+        }
+    }
+
+    pub fn property(&self, name: &str) -> Option<&'static str> {
+        self.block_properties.get(name).map(String::as_str)
+    }
+}
+
+#[cfg(test)]
+use bbb_render_types::terrain_skip_rendering_from_vanilla_facts;
+pub use bbb_render_types::{
+    TerrainBlockRenderContext, TerrainBlockRenderState, TerrainChunkSource, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, TerrainSectionLightRef,
+    TerrainSectionView, TerrainSkipRendering,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LeafParticleTint {
+    None,
+    FixedArgb(u32),
+    /// Vanilla `ClientLevel.getClientLeafTintColor`, including the fixed
+    /// spruce/birch sources and biome-blended foliage sources.
+    ClientLeaf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LeafAnimateParticleProfile {
+    pub block_resource_id: &'static str,
+    leaf_particle_chance_bits: u32,
+    pub particle: ParticleKind,
+    pub tint: LeafParticleTint,
+}
+
+impl LeafAnimateParticleProfile {
+    pub const fn new(
+        block_resource_id: &'static str,
+        leaf_particle_chance_bits: u32,
+        particle: ParticleKind,
+        tint: LeafParticleTint,
+    ) -> Self {
+        Self {
+            block_resource_id,
+            leaf_particle_chance_bits,
+            particle,
+            tint,
+        }
+    }
+
+    pub const fn leaf_particle_chance(self) -> f32 {
+        f32::from_bits(self.leaf_particle_chance_bits)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TorchAnimateParticleProfile {
+    pub block_resource_id: &'static str,
+    pub particle: ParticleKind,
+    pub wall: bool,
+}
+
+impl TorchAnimateParticleProfile {
+    pub const fn new(block_resource_id: &'static str, particle: ParticleKind, wall: bool) -> Self {
+        Self {
+            block_resource_id,
+            particle,
+            wall,
+        }
+    }
+}
+
+/// Projects the canonical client terrain fluid state to Vanilla's fixed
+/// built-in fluid registry identity. This terrain projection represents a
+/// source as amount 8 without the falling flag; every other represented
+/// water/lava state uses its flowing holder.
+pub(crate) fn vanilla_fluid_identity(fluid: Option<TerrainFluidState>) -> VanillaFluidIdentity {
+    let Some(fluid) = fluid else {
+        return VanillaFluidIdentity::Empty;
+    };
+    let source = fluid.amount == 8 && !fluid.falling;
+    match (fluid.kind, source) {
+        (TerrainFluidKind::Water, true) => VanillaFluidIdentity::Water,
+        (TerrainFluidKind::Water, false) => VanillaFluidIdentity::FlowingWater,
+        (TerrainFluidKind::Lava, true) => VanillaFluidIdentity::Lava,
+        (TerrainFluidKind::Lava, false) => VanillaFluidIdentity::FlowingLava,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainBlockCell {
+    pub block_state_id: i32,
+    pub block_name: Option<String>,
+    pub block_properties: BTreeMap<String, String>,
+    pub biome_id: Option<i32>,
+    pub material: TerrainMaterialClass,
+    /// Exact Vanilla 26.1 `BlockState.isSolidRender()` fact consumed by the
+    /// client section visibility flood fill.
+    #[serde(default)]
+    pub solid_render: bool,
+    /// Exact Vanilla 26.1 `BlockState.canOcclude()` fact. Render-shape geometry
+    /// alone cannot distinguish a full cube from `noOcclusion` glass/leaves.
+    #[serde(default)]
+    pub can_occlude: bool,
+    /// Exact Vanilla 26.1 `BlockState.isViewBlocking()` fact used by smooth
+    /// block-model lighting's diagonal-corner selection.
+    #[serde(default)]
+    pub view_blocking: bool,
+    /// Exact Vanilla 26.1 `BlockState.getLightDampening()` fact paired with
+    /// `view_blocking` by `BlockModelLighter`.
+    #[serde(default)]
+    pub light_dampening: u8,
+    /// Exact Vanilla `getShadeBrightness()` encoded on 0..=255.
+    #[serde(default = "full_shade_brightness")]
+    pub shade_brightness: u8,
+    #[serde(default)]
+    pub skip_rendering: TerrainSkipRendering,
+    /// Exact Vanilla `getFaceOcclusionShape` palette indices in
+    /// Down/Up/North/South/West/East order.
+    #[serde(default)]
+    pub face_occlusion_shape_indices: [u8; 6],
+    /// Exact `HalfTransparentBlock || LeavesBlock` class relation consumed by
+    /// `FluidRenderer`'s water-overlay side material selection.
+    #[serde(default)]
+    pub fluid_overlay_neighbor: bool,
+    /// Exact state input to `LevelRenderer.getLightCoords`; distinct from a
+    /// resource model element's optional light emission.
+    #[serde(default)]
+    pub state_light_emission: u8,
+    /// Exact state result of `BlockState.emissiveRendering(level, pos)`.
+    #[serde(default)]
+    pub emissive_rendering: bool,
+    pub fluid: Option<TerrainFluidState>,
+    pub light: TerrainLight,
+}
+
+const fn full_shade_brightness() -> u8 {
+    255
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainChunkSnapshot {
+    pub pos: ChunkPos,
+    pub min_y: i32,
+    pub height: usize,
+    pub cells: Vec<TerrainBlockCell>,
+}
+
+pub(crate) fn terrain_base_state_facts(
+    block_state_id: i32,
+) -> Option<(TerrainMaterialClass, Option<TerrainFluidState>)> {
+    crate::registries::block_states::vanilla_block_state_terrain_facts(block_state_id)
+        .map(|facts| (facts.material, facts.fluid))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TerrainSectionMeshRevision {
+    pub section_y: i32,
+    pub revision: u64,
+    /// Latest dirty revision carrying Vanilla's player-changed flag
+    /// (`Block.UPDATE_IMMEDIATE`, bit 8). The renderer compares this with its
+    /// compiled revision because later non-player invalidations preserve an
+    /// already-dirty section's `dirtyFromPlayer` bit until compilation.
+    pub player_changed_revision: u64,
+}
+
+/// Small publication-shared render invalidation owner for one chunk column.
+///
+/// Full-height events advance `full_mesh_revision` and clear the per-section
+/// overrides. Local block/light changes then copy and update only this small
+/// owner while older publication generations retain their exact values.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct TerrainChunkRenderRevisions {
+    snapshot_context_revision: u64,
+    full_mesh_revision: u64,
+    mesh_revision: u64,
+    section_mesh_revisions: Vec<u64>,
+    player_changed_revisions: Vec<u64>,
+}
+
+impl TerrainChunkRenderRevisions {
+    pub(crate) fn snapshot_context_revision(&self) -> u64 {
+        self.snapshot_context_revision
+    }
+
+    pub(crate) fn mark_snapshot_context(&mut self, revision: u64) {
+        self.snapshot_context_revision = revision;
+    }
+
+    pub(crate) fn mark_all_sections(&mut self, revision: u64) {
+        self.full_mesh_revision = revision;
+        self.mesh_revision = revision;
+        self.section_mesh_revisions.clear();
+    }
+
+    pub(crate) fn mark_section(
+        &mut self,
+        min_section_y: i32,
+        section_count: usize,
+        section_y: i32,
+        revision: u64,
+    ) {
+        let Some(section_offset) = section_y.checked_sub(min_section_y) else {
+            return;
+        };
+        let Ok(section_index) = usize::try_from(section_offset) else {
+            return;
+        };
+        if section_index >= section_count {
+            return;
+        }
+        self.mark_section_index(section_index, section_count, revision);
+    }
+
+    pub(crate) fn mark_section_index(
+        &mut self,
+        section_index: usize,
+        section_count: usize,
+        revision: u64,
+    ) {
+        if self.section_mesh_revisions.len() < section_count {
+            self.section_mesh_revisions.resize(section_count, 0);
+        }
+        self.section_mesh_revisions[section_index] = revision;
+        // All invalidations use the global monotonic terrain revision.
+        self.mesh_revision = revision;
+    }
+
+    pub(crate) fn mark_section_from_player(
+        &mut self,
+        min_section_y: i32,
+        section_count: usize,
+        section_y: i32,
+        revision: u64,
+    ) {
+        self.mark_section(min_section_y, section_count, section_y, revision);
+        let Some(section_offset) = section_y.checked_sub(min_section_y) else {
+            return;
+        };
+        let Ok(section_index) = usize::try_from(section_offset) else {
+            return;
+        };
+        if section_index >= section_count {
+            return;
+        }
+        if self.player_changed_revisions.len() < section_count {
+            self.player_changed_revisions.resize(section_count, 0);
+        }
+        self.player_changed_revisions[section_index] = revision;
+    }
+
+    pub(crate) fn mesh_revision(&self) -> u64 {
+        self.mesh_revision
+    }
+
+    pub(crate) fn section_revision(&self, section_index: usize) -> u64 {
+        self.section_mesh_revisions
+            .get(section_index)
+            .copied()
+            .unwrap_or(0)
+            .max(self.full_mesh_revision)
+    }
+
+    pub(crate) fn section_player_changed_revision(&self, section_index: usize) -> u64 {
+        self.player_changed_revisions
+            .get(section_index)
+            .copied()
+            .unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainChunkSummary {
+    pub pos: Option<ChunkPos>,
+    pub height: usize,
+    pub total_blocks: usize,
+    pub empty_blocks: usize,
+    pub invisible_blocks: usize,
+    pub opaque_blocks: usize,
+    pub cutout_blocks: usize,
+    pub fluid_blocks: usize,
+    pub fluid_state_blocks: usize,
+    pub translucent_blocks: usize,
+}
+
+impl TerrainChunkSnapshot {
+    pub fn summary(&self) -> TerrainChunkSummary {
+        let mut summary = TerrainChunkSummary {
+            pos: Some(self.pos),
+            height: self.height,
+            total_blocks: self.cells.len(),
+            ..TerrainChunkSummary::default()
+        };
+        for cell in &self.cells {
+            match cell.material {
+                TerrainMaterialClass::Empty => summary.empty_blocks += 1,
+                TerrainMaterialClass::Invisible => summary.invisible_blocks += 1,
+                TerrainMaterialClass::Opaque => summary.opaque_blocks += 1,
+                TerrainMaterialClass::Cutout => summary.cutout_blocks += 1,
+                TerrainMaterialClass::Fluid => summary.fluid_blocks += 1,
+                TerrainMaterialClass::Translucent => summary.translucent_blocks += 1,
+            }
+            if cell.fluid.is_some() {
+                summary.fluid_state_blocks += 1;
+            }
+        }
+        summary
+    }
+}
+
+pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMaterialClass {
+    let Some(name) = block_name else {
+        return TerrainMaterialClass::Opaque;
+    };
+    match name {
+        name if block_name_is_air(name) => TerrainMaterialClass::Empty,
+        "minecraft:water" | "minecraft:lava" => TerrainMaterialClass::Fluid,
+        name if block_name_has_invisible_render_shape(name) => TerrainMaterialClass::Invisible,
+        _ => TerrainMaterialClass::Opaque,
+    }
+}
+
+#[cfg(test)]
+fn classify_terrain_skip_rendering(
+    block_name: Option<&str>,
+    properties: &BTreeMap<String, String>,
+) -> TerrainSkipRendering {
+    let Some(block_name) = block_name else {
+        return TerrainSkipRendering::NONE;
+    };
+    bbb_protocol::block_state_types::vanilla_block_first_state_id_matching_properties(
+        block_name, properties,
+    )
+    .and_then(bbb_protocol::block_state_types::vanilla_block_state_render_facts)
+    .map(|facts| terrain_skip_rendering_from_vanilla_facts(facts, false))
+    .unwrap_or_default()
+}
+
+pub fn block_name_is_air(name: &str) -> bool {
+    VANILLA_AIR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_has_falling_dust_animate_tick(name: &str) -> bool {
+    VANILLA_FALLING_BLOCKS.contains(&name) || VANILLA_BRUSHABLE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_dry_grass_ambient(name: &str) -> bool {
+    VANILLA_DRY_GRASS_AMBIENT_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_dead_bush_ambient(name: &str) -> bool {
+    VANILLA_DEAD_BUSH_AMBIENT_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_fire(name: &str) -> bool {
+    VANILLA_FIRE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_terracotta(name: &str) -> bool {
+    VANILLA_TERRACOTTA_BLOCKS.contains(&name)
+}
+
+pub fn block_name_triggers_ambient_desert_sand_block_sounds(name: &str) -> bool {
+    VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS.contains(&name)
+}
+
+pub fn block_name_triggers_ambient_desert_dry_vegetation_block_sounds(name: &str) -> bool {
+    VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS.contains(&name)
+}
+
+pub(crate) fn block_name_is_impermeable(name: &str) -> bool {
+    VANILLA_IMPERMEABLE_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_triggers_dried_ghast_ambient_sound(name: &str) -> bool {
+    VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS.contains(&name)
+}
+
+pub(crate) fn block_name_is_enchantment_power_provider(name: &str) -> bool {
+    VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_is_enchantment_power_transmitter(name: &str) -> bool {
+    VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_is_fire_flammable(name: &str) -> bool {
+    VANILLA_FIRE_FLAMMABLE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_resets_fall_damage(name: &str) -> bool {
+    VANILLA_FALL_DAMAGE_RESETTING_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_is_soul_fire_base(name: &str) -> bool {
+    VANILLA_SOUL_FIRE_BASE_BLOCKS.contains(&name)
+}
+
+/// Vanilla `BlockBehaviour.Properties.friction`: `0.6F` unless the generated
+/// `Blocks.java` registration declares an exact override.
+pub(crate) fn vanilla_block_friction(block_name: Option<&str>) -> f32 {
+    bbb_protocol::block_speed_factors::vanilla_block_friction(block_name)
+}
+
+/// Vanilla `BlockBehaviour.Properties.speedFactor`: `1.0F` unless the
+/// generated `Blocks.java` registration declares an exact override.
+pub(crate) fn vanilla_block_speed_factor(block_name: Option<&str>) -> f32 {
+    bbb_protocol::block_speed_factors::vanilla_block_speed_factor(block_name)
+}
+
+/// Vanilla `BlockBehaviour.Properties.jumpFactor`: `1.0F` except for the
+/// Honey Block registration's exact `0.5F` override in `Blocks.java`.
+pub(crate) fn vanilla_block_jump_factor(block_name: Option<&str>) -> f32 {
+    match block_name {
+        Some("minecraft:honey_block") => 0.5,
+        _ => 1.0,
+    }
+}
+
+pub fn block_name_should_spawn_terrain_particles(name: &str) -> bool {
+    !VANILLA_NO_TERRAIN_PARTICLE_BLOCKS.contains(&name)
+}
+
+pub(crate) fn terrain_fluid_state(
+    block_name: Option<&str>,
+    properties: &BTreeMap<String, String>,
+) -> Option<TerrainFluidState> {
+    let kind = match block_name? {
+        "minecraft:water" => TerrainFluidKind::Water,
+        "minecraft:lava" => TerrainFluidKind::Lava,
+        name if is_fixed_source_water_block_name(name) => {
+            return Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+        }
+        name if is_waterlogged(properties) => {
+            return Some(TerrainFluidState::new(
+                TerrainFluidKind::Water,
+                8,
+                block_name_is_copper_grate(name),
+            ));
+        }
+        _ => return None,
+    };
+    let level = properties
+        .get("level")
+        .and_then(|value| value.parse::<u8>().ok())
+        .unwrap_or(0);
+    let (amount, falling) = match level {
+        0 => (8, false),
+        1..=7 => (8 - level, false),
+        _ => (8, true),
+    };
+    Some(TerrainFluidState::new(kind, amount, falling))
+}
+
+fn is_waterlogged(properties: &BTreeMap<String, String>) -> bool {
+    properties
+        .get("waterlogged")
+        .is_some_and(|value| value == "true")
+}
+
+fn is_fixed_source_water_block_name(name: &str) -> bool {
+    VANILLA_FIXED_SOURCE_WATER_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_is_copper_grate(name: &str) -> bool {
+    VANILLA_COPPER_GRATE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_has_invisible_render_shape(name: &str) -> bool {
+    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_half_transparent(name: &str) -> bool {
+    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_leaves(name: &str) -> bool {
+    VANILLA_LEAVES_BLOCKS.contains(&name)
+}
+
+pub fn leaf_animate_particle_profile(name: &str) -> Option<LeafAnimateParticleProfile> {
+    VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES
+        .iter()
+        .copied()
+        .find(|profile| profile.block_resource_id == name)
+}
+
+pub fn torch_animate_particle_profile(name: &str) -> Option<TorchAnimateParticleProfile> {
+    VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES
+        .iter()
+        .copied()
+        .find(|profile| profile.block_resource_id == name)
+}
+
+pub fn block_name_has_animate_tick(name: &str) -> bool {
+    VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.contains(&name)
+}
+
+pub fn vanilla_block_animate_tick_names() -> &'static [&'static str] {
+    VANILLA_BLOCK_ANIMATE_TICK_BLOCKS
+}
+
+pub fn block_name_is_door(name: &str) -> bool {
+    VANILLA_DOOR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_trapdoor(name: &str) -> bool {
+    VANILLA_TRAPDOOR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_rail(name: &str) -> bool {
+    VANILLA_RAIL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_button(name: &str) -> bool {
+    VANILLA_BUTTON_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_pressure_plate(name: &str) -> bool {
+    VANILLA_PRESSURE_PLATE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_standing_sign(name: &str) -> bool {
+    VANILLA_STANDING_SIGN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall_sign(name: &str) -> bool {
+    VANILLA_WALL_SIGN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_slab(name: &str) -> bool {
+    VANILLA_SLAB_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_stair(name: &str) -> bool {
+    VANILLA_STAIR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall(name: &str) -> bool {
+    VANILLA_WALL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_fence(name: &str) -> bool {
+    VANILLA_FENCE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_fence_gate(name: &str) -> bool {
+    VANILLA_FENCE_GATE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wool_carpet(name: &str) -> bool {
+    VANILLA_WOOL_CARPET_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_flower_pot(name: &str) -> bool {
+    VANILLA_FLOWER_POT_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_sapling(name: &str) -> bool {
+    VANILLA_SAPLING_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_bars_or_pane(name: &str) -> bool {
+    VANILLA_BARS_BLOCKS.contains(&name) || VANILLA_IRON_BARS_CLASS_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_bed(name: &str) -> bool {
+    VANILLA_BED_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_candle(name: &str) -> bool {
+    VANILLA_CANDLE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_candle_cake(name: &str) -> bool {
+    VANILLA_CANDLE_CAKE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_chain(name: &str) -> bool {
+    VANILLA_CHAIN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_copper_golem_statue(name: &str) -> bool {
+    VANILLA_COPPER_GOLEM_STATUE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_hanging_sign(name: &str) -> bool {
+    VANILLA_HANGING_SIGN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_lantern(name: &str) -> bool {
+    VANILLA_LANTERN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_rod(name: &str) -> bool {
+    name == "minecraft:end_rod" || VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_lightning_rod(name: &str) -> bool {
+    VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_shelf(name: &str) -> bool {
+    VANILLA_SHELF_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_brushable(name: &str) -> bool {
+    VANILLA_BRUSHABLE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_shulker_box(name: &str) -> bool {
+    VANILLA_SHULKER_BOX_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_crop(name: &str) -> bool {
+    VANILLA_CROP_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_anvil(name: &str) -> bool {
+    VANILLA_ANVIL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_campfire(name: &str) -> bool {
+    VANILLA_CAMPFIRE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_cauldron(name: &str) -> bool {
+    VANILLA_CAULDRON_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_chest(name: &str) -> bool {
+    VANILLA_CHEST_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_amethyst_cluster(name: &str) -> bool {
+    VANILLA_AMETHYST_CLUSTER_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_floor_skull(name: &str) -> bool {
+    VANILLA_FLOOR_SKULL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall_skull(name: &str) -> bool {
+    VANILLA_WALL_SKULL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_floor_torch(name: &str) -> bool {
+    VANILLA_FLOOR_TORCH_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall_torch(name: &str) -> bool {
+    VANILLA_WALL_TORCH_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_log(name: &str) -> bool {
+    VANILLA_LOG_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_pale_oak_log(name: &str) -> bool {
+    VANILLA_PALE_OAK_LOG_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_planks(name: &str) -> bool {
+    VANILLA_PLANK_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_ore(name: &str) -> bool {
+    name == "minecraft:nether_quartz_ore" || VANILLA_ORE_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
+    // Scaffolding overrides the default no-collision behavior with a
+    // CollisionContext-dependent shape and is handled before this fallback.
+    name != "minecraft:scaffolding" && VANILLA_NO_COLLISION_BLOCKS.contains(&name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sampled_block_states_preserve_vanilla_animate_tick_membership() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        for state in bbb_protocol::block_state_types::vanilla_block_state_identities() {
+            assert_eq!(
+                BlockView::of_state(pos, state.id).has_animate_tick,
+                VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.contains(&state.name.as_str()),
+                "{} ({})",
+                state.name,
+                state.id
+            );
+        }
+    }
+
+    #[test]
+    fn base_terrain_material_does_not_guess_texture_render_layer() {
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:air")),
+            TerrainMaterialClass::Empty
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:water")),
+            TerrainMaterialClass::Fluid
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:barrier")),
+            TerrainMaterialClass::Invisible
+        );
+        for name in [
+            "minecraft:stone",
+            "minecraft:short_grass",
+            "minecraft:oak_leaves",
+            "minecraft:glass",
+            "minecraft:nether_portal",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Opaque,
+                "{name} must defer its render layer to baked texture transparency"
+            );
+        }
+    }
+    #[test]
+    fn identifies_vanilla_invisible_render_shape_block_names() {
+        for &name in VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS {
+            assert!(block_name_has_invisible_render_shape(name), "{name}");
+        }
+
+        for name in [
+            "minecraft:stone",
+            "minecraft:short_grass",
+            "minecraft:glass",
+            "minecraft:nether_portal",
+        ] {
+            assert!(!block_name_has_invisible_render_shape(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn block_friction_uses_generated_overrides_and_vanilla_default() {
+        assert_eq!(vanilla_block_friction(Some("minecraft:stone")), 0.6);
+        assert_eq!(vanilla_block_friction(Some("minecraft:ice")), 0.98);
+        assert_eq!(vanilla_block_friction(Some("minecraft:slime_block")), 0.8);
+        assert_eq!(vanilla_block_friction(Some("minecraft:blue_ice")), 0.989);
+        assert_eq!(vanilla_block_friction(None), 0.6);
+    }
+
+    #[test]
+    fn block_speed_factor_uses_generated_overrides_and_vanilla_default() {
+        assert_eq!(vanilla_block_speed_factor(Some("minecraft:stone")), 1.0);
+        assert_eq!(vanilla_block_speed_factor(Some("minecraft:soul_sand")), 0.4);
+        assert_eq!(
+            vanilla_block_speed_factor(Some("minecraft:honey_block")),
+            0.4
+        );
+        assert_eq!(vanilla_block_speed_factor(None), 1.0);
+    }
+
+    #[test]
+    fn block_jump_factor_matches_vanilla_honey_override_and_default() {
+        assert_eq!(
+            vanilla_block_jump_factor(Some("minecraft:honey_block")),
+            0.5
+        );
+        assert_eq!(vanilla_block_jump_factor(Some("minecraft:stone")), 1.0);
+        assert_eq!(vanilla_block_jump_factor(None), 1.0);
+    }
+
+    #[test]
+    fn identifies_vanilla_terrain_particle_spawn_block_names() {
+        for name in ["minecraft:barrier", "minecraft:structure_void"] {
+            assert!(!block_name_should_spawn_terrain_particles(name), "{name}");
+        }
+
+        for name in [
+            "minecraft:stone",
+            "minecraft:air",
+            "minecraft:water",
+            "minecraft:moving_piston",
+        ] {
+            assert!(block_name_should_spawn_terrain_particles(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn identifies_generated_fire_flammability_without_name_guessing() {
+        for name in [
+            "minecraft:oak_planks",
+            "minecraft:tnt",
+            "minecraft:short_grass",
+        ] {
+            assert!(block_name_is_fire_flammable(name), "{name}");
+        }
+        for name in [
+            "minecraft:stone",
+            "minecraft:crimson_planks",
+            "minecraft:custom_planks",
+        ] {
+            assert!(!block_name_is_fire_flammable(name), "{name}");
+        }
+        assert!(block_name_is_soul_fire_base("minecraft:soul_sand"));
+        assert!(block_name_is_soul_fire_base("minecraft:soul_soil"));
+        assert!(!block_name_is_soul_fire_base("minecraft:sand"));
+    }
+
+    #[test]
+    fn identifies_generated_fall_damage_resetting_membership() {
+        for name in [
+            "minecraft:ladder",
+            "minecraft:cave_vines_plant",
+            "minecraft:sweet_berry_bush",
+            "minecraft:cobweb",
+        ] {
+            assert!(block_name_resets_fall_damage(name), "{name}");
+        }
+        for name in [
+            "minecraft:stone",
+            "minecraft:water",
+            "minecraft:custom_ladder",
+        ] {
+            assert!(!block_name_resets_fall_damage(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn identifies_generated_object_shape_memberships_without_suffix_guessing() {
+        for (member, lookalike, classifier) in [
+            (
+                "minecraft:white_bed",
+                "minecraft:custom_bed",
+                block_name_is_bed as fn(&str) -> bool,
+            ),
+            (
+                "minecraft:white_candle",
+                "minecraft:custom_candle",
+                block_name_is_candle,
+            ),
+            (
+                "minecraft:white_candle_cake",
+                "minecraft:custom_candle_cake",
+                block_name_is_candle_cake,
+            ),
+            (
+                "minecraft:copper_chain",
+                "minecraft:custom_chain",
+                block_name_is_chain,
+            ),
+            (
+                "minecraft:waxed_copper_golem_statue",
+                "minecraft:custom_copper_golem_statue",
+                block_name_is_copper_golem_statue,
+            ),
+            (
+                "minecraft:copper_lantern",
+                "minecraft:custom_copper_lantern",
+                block_name_is_lantern,
+            ),
+            (
+                "minecraft:waxed_lightning_rod",
+                "minecraft:custom_lightning_rod",
+                block_name_is_rod,
+            ),
+            (
+                "minecraft:oak_hanging_sign",
+                "minecraft:custom_hanging_sign",
+                block_name_is_hanging_sign,
+            ),
+            (
+                "minecraft:white_shulker_box",
+                "minecraft:custom_shulker_box",
+                block_name_is_shulker_box,
+            ),
+            (
+                "minecraft:oak_shelf",
+                "minecraft:custom_shelf",
+                block_name_is_shelf,
+            ),
+        ] {
+            assert!(classifier(member), "{member}");
+            assert!(!classifier(lookalike), "{lookalike}");
+        }
+        assert!(block_name_is_rod("minecraft:end_rod"));
+        assert!(!block_name_is_bed("example:white_bed"));
+        for block_name in [
+            "minecraft:wheat",
+            "minecraft:melon_stem",
+            "minecraft:pumpkin_stem",
+            "minecraft:pitcher_crop",
+        ] {
+            assert!(block_name_is_crop(block_name), "{block_name}");
+        }
+        assert!(!block_name_is_crop("minecraft:nether_wart"));
+        assert!(!block_name_is_crop("minecraft:custom_crop"));
+        for block_name in [
+            "minecraft:anvil",
+            "minecraft:soul_campfire",
+            "minecraft:powder_snow_cauldron",
+            "minecraft:chest",
+            "minecraft:trapped_chest",
+            "minecraft:copper_chest",
+            "minecraft:waxed_oxidized_copper_chest",
+        ] {
+            assert!(
+                block_name_is_anvil(block_name)
+                    || block_name_is_campfire(block_name)
+                    || block_name_is_cauldron(block_name)
+                    || block_name_is_chest(block_name),
+                "{block_name}"
+            );
+        }
+        assert!(!block_name_is_chest("minecraft:ender_chest"));
+        assert!(!block_name_is_chest("minecraft:custom_chest"));
+        assert!(block_name_is_amethyst_cluster(
+            "minecraft:small_amethyst_bud"
+        ));
+        assert!(!block_name_is_amethyst_cluster(
+            "minecraft:custom_amethyst_bud"
+        ));
+        assert!(block_name_is_floor_skull("minecraft:player_head"));
+        assert!(!block_name_is_floor_skull("minecraft:player_wall_head"));
+        assert!(block_name_is_wall_skull("minecraft:player_wall_head"));
+        assert!(!block_name_is_wall_skull("minecraft:player_head"));
+        assert!(block_name_is_floor_torch("minecraft:copper_torch"));
+        assert!(!block_name_is_floor_torch("minecraft:copper_wall_torch"));
+        assert!(block_name_is_wall_torch("minecraft:copper_wall_torch"));
+        assert!(!block_name_is_wall_torch("minecraft:copper_torch"));
+        for block_name in [
+            "minecraft:oak_log",
+            "minecraft:stripped_oak_wood",
+            "minecraft:crimson_stem",
+            "minecraft:warped_hyphae",
+        ] {
+            assert!(block_name_is_log(block_name), "{block_name}");
+        }
+        for block_name in [
+            "minecraft:pale_oak_log",
+            "minecraft:pale_oak_wood",
+            "minecraft:stripped_pale_oak_log",
+            "minecraft:stripped_pale_oak_wood",
+        ] {
+            assert!(block_name_is_pale_oak_log(block_name), "{block_name}");
+        }
+        assert!(!block_name_is_pale_oak_log("minecraft:oak_log"));
+        assert!(block_name_is_planks("minecraft:bamboo_planks"));
+        assert!(!block_name_is_log("minecraft:custom_log"));
+        assert!(!block_name_is_planks("minecraft:custom_planks"));
+        for block_name in [
+            "minecraft:coal_ore",
+            "minecraft:deepslate_diamond_ore",
+            "minecraft:nether_gold_ore",
+            "minecraft:nether_quartz_ore",
+        ] {
+            assert!(block_name_is_ore(block_name), "{block_name}");
+        }
+        for block_name in [
+            "minecraft:custom_ore",
+            "minecraft:deepslate_custom_ore",
+            "example:diamond_ore",
+        ] {
+            assert!(!block_name_is_ore(block_name), "{block_name}");
+        }
+    }
+
+    #[test]
+    fn classifies_vanilla_skip_rendering_blocks() {
+        let glass = classify_terrain_skip_rendering(Some("minecraft:glass"), &BTreeMap::new());
+        assert_ne!(glass.same_block_key, 0);
+        assert!(glass.same_block_culls_all_faces);
+        assert!(!glass.iron_bars_block);
+        assert!(!glass.bars_tag);
+        assert_eq!(
+            glass.same_block_key,
+            classify_terrain_skip_rendering(Some("minecraft:glass"), &BTreeMap::new())
+                .same_block_key
+        );
+        assert_ne!(
+            glass.same_block_key,
+            classify_terrain_skip_rendering(
+                Some("minecraft:white_stained_glass"),
+                &BTreeMap::new()
+            )
+            .same_block_key
+        );
+        for &name in VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS {
+            let skip = classify_terrain_skip_rendering(Some(name), &BTreeMap::new());
+            assert!(skip.same_block_culls_all_faces, "{name}");
+            assert_ne!(skip.same_block_key, 0, "{name}");
+        }
+        for &name in VANILLA_LEAVES_BLOCKS {
+            assert!(block_name_is_leaves(name), "{name}");
+            assert!(!block_name_is_half_transparent(name), "{name}");
+            assert!(
+                classify_terrain_skip_rendering(Some(name), &BTreeMap::new()).leaves_block,
+                "{name}"
+            );
+        }
+        assert!(block_name_is_door("minecraft:oak_door"));
+        assert!(block_name_is_door("minecraft:iron_door"));
+        assert!(!block_name_is_door("minecraft:custom_door"));
+        assert!(block_name_is_trapdoor("minecraft:oak_trapdoor"));
+        assert!(block_name_is_trapdoor("minecraft:iron_trapdoor"));
+        assert!(!block_name_is_trapdoor("minecraft:custom_trapdoor"));
+        assert!(block_name_is_rail("minecraft:powered_rail"));
+        assert!(!block_name_is_rail("minecraft:custom_rail"));
+        assert!(block_name_is_button("minecraft:stone_button"));
+        assert!(!block_name_is_button("minecraft:custom_button"));
+        assert!(block_name_is_pressure_plate("minecraft:oak_pressure_plate"));
+        assert!(!block_name_is_pressure_plate(
+            "minecraft:custom_pressure_plate"
+        ));
+        assert!(block_name_is_standing_sign("minecraft:oak_sign"));
+        assert!(!block_name_is_standing_sign("minecraft:oak_wall_sign"));
+        assert!(block_name_is_wall_sign("minecraft:oak_wall_sign"));
+        assert!(!block_name_is_wall_sign("minecraft:oak_hanging_sign"));
+        for (member, lookalike) in [
+            ("minecraft:oak_slab", "minecraft:custom_slab"),
+            ("minecraft:oak_stairs", "minecraft:custom_stairs"),
+            ("minecraft:cobblestone_wall", "minecraft:custom_wall"),
+            ("minecraft:oak_fence", "minecraft:custom_fence"),
+            ("minecraft:oak_fence_gate", "minecraft:custom_fence_gate"),
+            ("minecraft:white_carpet", "minecraft:custom_carpet"),
+            ("minecraft:flower_pot", "minecraft:potted_custom"),
+        ] {
+            assert!(
+                block_name_is_slab(member)
+                    || block_name_is_stair(member)
+                    || block_name_is_wall(member)
+                    || block_name_is_fence(member)
+                    || block_name_is_fence_gate(member)
+                    || block_name_is_wool_carpet(member)
+                    || block_name_is_flower_pot(member),
+                "{member}"
+            );
+            assert!(!block_name_is_slab(lookalike));
+            assert!(!block_name_is_stair(lookalike));
+            assert!(!block_name_is_wall(lookalike));
+            assert!(!block_name_is_fence(lookalike));
+            assert!(!block_name_is_fence_gate(lookalike));
+            assert!(!block_name_is_wool_carpet(lookalike));
+            assert!(!block_name_is_flower_pot(lookalike));
+        }
+        assert!(block_name_is_sapling("minecraft:oak_sapling"));
+        assert!(block_name_is_sapling("minecraft:mangrove_propagule"));
+        assert!(!block_name_is_sapling("minecraft:bamboo_sapling"));
+        assert!(!block_name_is_sapling("minecraft:custom_sapling"));
+        assert!(block_name_has_empty_collision_shape(
+            "minecraft:oak_sapling"
+        ));
+        assert!(block_name_has_empty_collision_shape(
+            "minecraft:mangrove_propagule"
+        ));
+        assert!(block_name_has_empty_collision_shape(
+            "minecraft:bamboo_sapling"
+        ));
+        for block_name in [
+            "minecraft:air",
+            "minecraft:stone_button",
+            "minecraft:leaf_litter",
+            "minecraft:pink_petals",
+            "minecraft:attached_pumpkin_stem",
+            "minecraft:copper_wall_torch",
+            "minecraft:tube_coral_wall_fan",
+        ] {
+            assert!(
+                block_name_has_empty_collision_shape(block_name),
+                "{block_name}"
+            );
+        }
+        assert!(!block_name_has_empty_collision_shape(
+            "minecraft:custom_sapling"
+        ));
+        assert!(!block_name_has_empty_collision_shape("example:oak_sapling"));
+        assert!(!block_name_has_empty_collision_shape(
+            "minecraft:scaffolding"
+        ));
+        assert!(!block_name_has_empty_collision_shape("minecraft:grass"));
+        assert!(block_name_is_bars_or_pane("minecraft:copper_bars"));
+        assert!(block_name_is_bars_or_pane(
+            "minecraft:white_stained_glass_pane"
+        ));
+        assert!(!block_name_is_bars_or_pane("minecraft:custom_bars"));
+        assert!(!block_name_is_bars_or_pane("minecraft:custom_glass_pane"));
+        assert!(
+            classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())
+                .same_block_culls_all_faces
+        );
+        assert!(
+            classify_terrain_skip_rendering(Some("minecraft:powder_snow"), &BTreeMap::new())
+                .same_block_culls_all_faces
+        );
+        let mangrove_roots =
+            classify_terrain_skip_rendering(Some("minecraft:mangrove_roots"), &BTreeMap::new());
+        assert!(mangrove_roots.same_block_culls_vertical_faces);
+        assert!(!mangrove_roots.same_block_culls_all_faces);
+        let muddy_mangrove_roots = classify_terrain_skip_rendering(
+            Some("minecraft:muddy_mangrove_roots"),
+            &BTreeMap::new(),
+        );
+        assert_ne!(muddy_mangrove_roots.same_block_key, 0);
+        assert_eq!(
+            muddy_mangrove_roots,
+            TerrainSkipRendering {
+                same_block_key: muddy_mangrove_roots.same_block_key,
+                ..TerrainSkipRendering::NONE
+            }
+        );
+
+        let pane = classify_terrain_skip_rendering(
+            Some("minecraft:white_stained_glass_pane"),
+            &properties([
+                ("north", "true"),
+                ("south", "false"),
+                ("west", "false"),
+                ("east", "true"),
+            ]),
+        );
+        assert_ne!(pane.same_block_key, 0);
+        assert!(!pane.same_block_culls_all_faces);
+        assert!(pane.iron_bars_block);
+        assert!(!pane.bars_tag);
+        assert!(pane.north);
+        assert!(!pane.south);
+        assert!(!pane.west);
+        assert!(pane.east);
+
+        for &name in VANILLA_IRON_BARS_CLASS_BLOCKS {
+            assert!(classify_terrain_skip_rendering(Some(name), &BTreeMap::new()).iron_bars_block);
+        }
+
+        let bars = classify_terrain_skip_rendering(
+            Some("minecraft:copper_bars"),
+            &properties([
+                ("north", "false"),
+                ("south", "true"),
+                ("west", "true"),
+                ("east", "false"),
+            ]),
+        );
+        assert!(bars.iron_bars_block);
+        // Tag membership is session-owned and is injected by chunk extraction,
+        // not frozen into the built-in state classifier.
+        assert!(!bars.bars_tag);
+        assert!(!bars.north);
+        assert!(bars.south);
+        assert!(bars.west);
+        assert!(!bars.east);
+
+        let stone = classify_terrain_skip_rendering(Some("minecraft:stone"), &BTreeMap::new());
+        assert_ne!(stone.same_block_key, 0);
+        assert_eq!(
+            stone,
+            TerrainSkipRendering {
+                same_block_key: stone.same_block_key,
+                ..TerrainSkipRendering::NONE
+            }
+        );
+        assert_eq!(
+            classify_terrain_skip_rendering(None, &BTreeMap::new()),
+            TerrainSkipRendering::NONE
+        );
+    }
+
+    #[test]
+    fn falling_and_desert_memberships_follow_generated_vanilla_owners_and_tags() {
+        for block_name in [
+            "minecraft:sand",
+            "minecraft:red_sand",
+            "minecraft:gravel",
+            "minecraft:dragon_egg",
+            "minecraft:anvil",
+            "minecraft:white_concrete_powder",
+            "minecraft:suspicious_sand",
+            "minecraft:suspicious_gravel",
+        ] {
+            assert!(block_name_has_falling_dust_animate_tick(block_name));
+        }
+        assert!(!block_name_has_falling_dust_animate_tick(
+            "minecraft:white_concrete"
+        ));
+
+        assert!(block_name_is_dry_grass_ambient("minecraft:short_dry_grass"));
+        assert!(block_name_is_dry_grass_ambient("minecraft:tall_dry_grass"));
+        assert!(block_name_is_dead_bush_ambient("minecraft:dead_bush"));
+        assert!(!block_name_is_dead_bush_ambient(
+            "minecraft:potted_dead_bush"
+        ));
+
+        assert!(block_name_is_fire("minecraft:fire"));
+        assert!(block_name_is_fire("minecraft:soul_fire"));
+        assert!(!block_name_is_fire("minecraft:campfire"));
+        assert!(block_name_is_terracotta("minecraft:terracotta"));
+        assert!(block_name_is_terracotta("minecraft:red_terracotta"));
+        assert!(!block_name_is_terracotta("minecraft:red_sand"));
+
+        for block_name in ["minecraft:sand", "minecraft:red_sand"] {
+            assert!(block_name_triggers_ambient_desert_sand_block_sounds(
+                block_name
+            ));
+            assert!(block_name_triggers_ambient_desert_dry_vegetation_block_sounds(block_name));
+        }
+        assert!(
+            block_name_triggers_ambient_desert_dry_vegetation_block_sounds(
+                "minecraft:blue_terracotta"
+            )
+        );
+        assert!(!block_name_triggers_ambient_desert_sand_block_sounds(
+            "minecraft:sandstone"
+        ));
+    }
+
+    #[test]
+    fn maps_fluid_state_from_liquids_and_waterlogged_blocks() {
+        assert_eq!(
+            terrain_fluid_state(Some("minecraft:water"), &properties([("level", "3")])),
+            Some(TerrainFluidState::new(TerrainFluidKind::Water, 5, false))
+        );
+        assert_eq!(
+            terrain_fluid_state(Some("minecraft:lava"), &properties([("level", "8")])),
+            Some(TerrainFluidState::new(TerrainFluidKind::Lava, 8, true))
+        );
+        assert_eq!(
+            terrain_fluid_state(
+                Some("minecraft:oak_slab"),
+                &properties([("waterlogged", "true")])
+            ),
+            Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
+        );
+        for &name in VANILLA_COPPER_GRATE_BLOCKS {
+            assert_eq!(
+                terrain_fluid_state(Some(name), &properties([("waterlogged", "true")])),
+                Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, true))
+            );
+        }
+        assert_eq!(
+            terrain_fluid_state(
+                Some("minecraft:oak_slab"),
+                &properties([("waterlogged", "false")])
+            ),
+            None
+        );
+        for &name in VANILLA_FIXED_SOURCE_WATER_BLOCKS {
+            assert_eq!(
+                terrain_fluid_state(Some(name), &BTreeMap::new()),
+                Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
+            );
+        }
+    }
+
+    #[test]
+    fn fluid_state_projects_one_generated_registry_identity() {
+        assert_eq!(vanilla_fluid_identity(None), VanillaFluidIdentity::Empty);
+        for (state, expected) in [
+            (
+                TerrainFluidState::new(TerrainFluidKind::Water, 8, false),
+                VanillaFluidIdentity::Water,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Water, 7, false),
+                VanillaFluidIdentity::FlowingWater,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Water, 8, true),
+                VanillaFluidIdentity::FlowingWater,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Lava, 8, false),
+                VanillaFluidIdentity::Lava,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Lava, 1, false),
+                VanillaFluidIdentity::FlowingLava,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Lava, 8, true),
+                VanillaFluidIdentity::FlowingLava,
+            ),
+        ] {
+            assert_eq!(vanilla_fluid_identity(Some(state)), expected);
+        }
+    }
+
+    #[test]
+    fn fluid_state_own_height_uses_vanilla_amount_over_nine() {
+        assert_eq!(
+            TerrainFluidState::new(TerrainFluidKind::Water, 8, false).own_height(),
+            8.0 / 9.0
+        );
+        assert_eq!(
+            TerrainFluidState::new(TerrainFluidKind::Water, 5, false).own_height(),
+            5.0 / 9.0
+        );
+        assert_eq!(
+            TerrainFluidState::new(TerrainFluidKind::Lava, 1, false).own_height(),
+            1.0 / 9.0
+        );
+    }
+
+    #[test]
+    fn summary_counts_invisible_blocks_separately() {
+        let snapshot = TerrainChunkSnapshot {
+            pos: ChunkPos { x: 0, z: 0 },
+            min_y: 0,
+            height: 1,
+            cells: vec![
+                terrain_cell(TerrainMaterialClass::Invisible, None),
+                terrain_cell(TerrainMaterialClass::Empty, None),
+                terrain_cell(
+                    TerrainMaterialClass::Opaque,
+                    Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false)),
+                ),
+            ],
+        };
+
+        let summary = snapshot.summary();
+
+        assert_eq!(summary.total_blocks, 3);
+        assert_eq!(summary.invisible_blocks, 1);
+        assert_eq!(summary.empty_blocks, 1);
+        assert_eq!(summary.opaque_blocks, 1);
+        assert_eq!(summary.fluid_state_blocks, 1);
+    }
+
+    fn terrain_cell(
+        material: TerrainMaterialClass,
+        fluid: Option<TerrainFluidState>,
+    ) -> TerrainBlockCell {
+        TerrainBlockCell {
+            block_state_id: 0,
+            block_name: None,
+            block_properties: BTreeMap::new(),
+            biome_id: None,
+            material,
+            solid_render: false,
+            can_occlude: false,
+            view_blocking: false,
+            light_dampening: 0,
+            shade_brightness: 255,
+            skip_rendering: TerrainSkipRendering::NONE,
+            face_occlusion_shape_indices: [0; 6],
+            fluid_overlay_neighbor: false,
+            state_light_emission: 0,
+            emissive_rendering: false,
+            fluid,
+            light: TerrainLight::FULL_BRIGHT,
+        }
+    }
+
+    fn properties<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, String> {
+        entries
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect()
+    }
+}

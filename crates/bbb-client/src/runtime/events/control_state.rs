@@ -1,0 +1,95 @@
+use crate::control::NetCounters;
+use bbb_client_net::{DisconnectReason, NetEvent};
+
+pub(super) fn apply_control_projection_event(event: &NetEvent, counters: &mut NetCounters) {
+    match event {
+        NetEvent::Connected => {
+            counters.connected = true;
+            counters.connection_generation = counters.connection_generation.saturating_add(1);
+            counters.last_error = None;
+        }
+        NetEvent::Disconnected { reason } => {
+            counters.connected = false;
+            counters.last_error = reason.as_ref().map(DisconnectReason::summary);
+        }
+        NetEvent::StateChanged { state } => {
+            counters.state = Some(format!("{state:?}"));
+        }
+        NetEvent::CompressionSet { threshold } => {
+            counters.compression_threshold = Some(*threshold);
+        }
+        NetEvent::UnsupportedPacket {
+            state,
+            packet_id,
+            len,
+        } => {
+            counters.unsupported_packets += 1;
+            counters.last_unsupported_packet_state = Some(format!("{state:?}"));
+            counters.last_unsupported_packet_id = Some(*packet_id);
+            counters.last_unsupported_packet_len = Some(*len);
+        }
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn control_projection_updates_runtime_status_without_consuming_events() {
+        let mut counters = NetCounters::default();
+
+        apply_control_projection_event(&NetEvent::Connected, &mut counters);
+        assert!(counters.connected);
+        assert_eq!(counters.connection_generation, 1);
+        assert!(counters.last_error.is_none());
+
+        let state_changed = NetEvent::StateChanged {
+            state: bbb_client_net::ConnectionState::Play,
+        };
+        apply_control_projection_event(&state_changed, &mut counters);
+        assert!(matches!(
+            state_changed,
+            NetEvent::StateChanged {
+                state: bbb_client_net::ConnectionState::Play,
+            }
+        ));
+        assert_eq!(counters.state.as_deref(), Some("Play"));
+
+        apply_control_projection_event(&NetEvent::CompressionSet { threshold: 256 }, &mut counters);
+        assert_eq!(counters.compression_threshold, Some(256));
+
+        apply_control_projection_event(
+            &NetEvent::UnsupportedPacket {
+                state: bbb_client_net::ConnectionState::Play,
+                packet_id: 0x7f,
+                len: 12,
+            },
+            &mut counters,
+        );
+        assert_eq!(counters.unsupported_packets, 1);
+        assert_eq!(
+            counters.last_unsupported_packet_state.as_deref(),
+            Some("Play")
+        );
+        assert_eq!(counters.last_unsupported_packet_id, Some(0x7f));
+        assert_eq!(counters.last_unsupported_packet_len, Some(12));
+
+        apply_control_projection_event(
+            &NetEvent::Disconnected {
+                reason: Some(DisconnectReason::from_plain("done")),
+            },
+            &mut counters,
+        );
+        assert!(!counters.connected);
+        assert_eq!(counters.connection_generation, 1);
+        assert_eq!(counters.last_error.as_deref(), Some("done"));
+
+        apply_control_projection_event(&NetEvent::Connected, &mut counters);
+        assert_eq!(counters.connection_generation, 2);
+
+        apply_control_projection_event(&NetEvent::ResetChat, &mut counters);
+        assert_eq!(counters.packets_seen, 0);
+    }
+}

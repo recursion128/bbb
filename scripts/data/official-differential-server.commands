@@ -1,0 +1,3 @@
+# PlayerSpawnFinder.java:40-63 samples a thread-local random offset inside
+# GameRules.java:76's default respawn radius of 10.
+gamerule minecraft:respawn_radius 0

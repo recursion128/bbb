@@ -1,0 +1,394 @@
+use std::collections::BTreeSet;
+
+use bbb_client_assets::BlockModelDisplayContext;
+use bbb_client_render::{
+    ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
+};
+use bbb_client_world::{
+    vanilla_entity_renderer_thrown_item_scales, EntityRenderCandidateState,
+    FireworkRocketItemState, ItemEntityStackState, TerrainLight, WorldStore,
+};
+
+use bbb_client_render::item_model::{
+    ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, ItemModelContext, NativeItemRuntime,
+};
+
+use crate::item_models::ItemRegistryKeySet;
+
+/// Vanilla `ItemEntityRenderer` lifts the dropped item sprite to sit above the entity's ground
+/// position; the thrown-item projectiles (`ThrownItemRenderer`) render centered on the entity, so they
+/// use no offset.
+const DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET: f32 = 0.25;
+const THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET: f32 = 0.0;
+const FIREWORK_ROCKET_BILLBOARD_Y_OFFSET: f32 = 0.0;
+
+pub(crate) fn item_entity_billboards_from_world(
+    world: &WorldStore,
+    candidates: &[EntityRenderCandidateState],
+    dropped_items: &[ItemEntityStackState<'_>],
+    item_runtime: Option<&NativeItemRuntime>,
+    rendered_as_models: &BTreeSet<i32>,
+    registry_keys: &ItemRegistryKeySet,
+) -> Vec<ItemEntityBillboard> {
+    let Some(item_runtime) = item_runtime else {
+        return Vec::new();
+    };
+    let icon_context = ItemModelContext {
+        registry_access: Some((world.registry_access_revision(), world.registries())),
+        item_profiles: Some(world.item_profiles().component_defaults_view()),
+        registry_keys: registry_keys.model_keys(),
+        context_dimension: world.level_info().map(|level| level.dimension.as_str()),
+        ..ItemModelContext::new(BlockModelDisplayContext::Ground)
+    };
+
+    // Dropped items: the unit-scale sprite lifted above the ground position. Items already drawn as 3D
+    // block-item models (see `item_models`) are skipped so they are not double-rendered.
+    let mut billboards: Vec<ItemEntityBillboard> = dropped_items
+        .iter()
+        .filter(|state| !rendered_as_models.contains(&state.entity_id))
+        .filter_map(|state| {
+            let icon = item_icon_for_world_stack(
+                &icon_context,
+                world,
+                item_runtime,
+                state.stack,
+                state.entity_id,
+            )?;
+            Some(item_entity_billboard_from_icon(
+                state,
+                icon,
+                DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
+                1.0,
+                ItemEntityBillboardOrientation::CameraFacing,
+            ))
+        })
+        .collect();
+
+    // Thrown-item projectiles (snowball, egg, ender pearl, potions, fireballs, …) render the same item
+    // sprite via vanilla `ThrownItemRenderer`, centered on the entity at that renderer's sprite scale.
+    for (type_id, scale) in vanilla_entity_renderer_thrown_item_scales() {
+        for state in candidates
+            .iter()
+            .filter(|candidate| candidate.entity_type_id == type_id)
+            .filter_map(|candidate| world.entity_item_stack(candidate.entity_id))
+        {
+            if let Some(icon) = item_icon_for_world_stack(
+                &icon_context,
+                world,
+                item_runtime,
+                state.stack,
+                state.entity_id,
+            ) {
+                billboards.push(item_entity_billboard_from_icon(
+                    &state,
+                    icon,
+                    THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+                    scale,
+                    ItemEntityBillboardOrientation::CameraFacing,
+                ));
+            }
+        }
+    }
+
+    // Firework rockets use vanilla `FireworkEntityRenderer`: a camera-facing `ItemStackRenderState`
+    // with an extra post-camera rotation when `FireworkRocketRenderState.isShotAtAngle` is true.
+    for state in candidates
+        .iter()
+        .filter(|candidate| {
+            candidate.entity_type_id
+                == bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID
+        })
+        .filter_map(|candidate| world.firework_rocket_item_state(candidate.entity_id))
+    {
+        if let Some(icon) = item_icon_for_world_stack(
+            &icon_context,
+            world,
+            item_runtime,
+            state.stack,
+            state.entity_id,
+        ) {
+            billboards.push(firework_rocket_billboard_from_icon(&state, icon));
+        }
+    }
+
+    billboards
+}
+
+fn item_icon_for_world_stack(
+    base: &ItemModelContext<'_>,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    stack: &bbb_protocol::packets::ItemStackSummary,
+    item_model_seed: i32,
+) -> Option<ItemAtlasIcon> {
+    let effective_stack = world.effective_item_stack(stack);
+    // `ItemModelResolver.updateForNonLiving` retains the entity as an
+    // `ItemOwner`, but `SelectItemModel.update` passes only
+    // `owner.asLivingEntity()` to select properties. These billboard
+    // families are all non-living, so `context_entity_type` is null.
+    let context = ItemModelContext {
+        seed: item_model_seed,
+        ..*base
+    };
+    item_runtime
+        .resolve_item_model(effective_stack.as_ref(), &context)?
+        .flat_icon()
+}
+
+fn item_entity_billboard_from_icon(
+    state: &ItemEntityStackState<'_>,
+    icon: ItemAtlasIcon,
+    y_offset: f32,
+    scale: f32,
+    orientation: ItemEntityBillboardOrientation,
+) -> ItemEntityBillboard {
+    ItemEntityBillboard {
+        position: [
+            state.position.x as f32,
+            state.position.y as f32 + y_offset,
+            state.position.z as f32,
+        ],
+        scale,
+        orientation,
+        light: shader_light(state.light),
+        layers: icon
+            .layers
+            .into_iter()
+            .map(item_entity_billboard_layer)
+            .collect(),
+    }
+}
+
+fn firework_rocket_billboard_from_icon(
+    state: &FireworkRocketItemState<'_>,
+    icon: ItemAtlasIcon,
+) -> ItemEntityBillboard {
+    ItemEntityBillboard {
+        position: [
+            state.position.x as f32,
+            state.position.y as f32 + FIREWORK_ROCKET_BILLBOARD_Y_OFFSET,
+            state.position.z as f32,
+        ],
+        scale: 1.0,
+        orientation: if state.shot_at_angle {
+            ItemEntityBillboardOrientation::FireworkShotAtAngle
+        } else {
+            ItemEntityBillboardOrientation::CameraFacing
+        },
+        light: shader_light(state.light),
+        layers: icon
+            .layers
+            .into_iter()
+            .map(item_entity_billboard_layer)
+            .collect(),
+    }
+}
+
+fn shader_light(light: TerrainLight) -> [f32; 2] {
+    [
+        light.block.min(15) as f32 / 15.0,
+        light.sky.min(15) as f32 / 15.0,
+    ]
+}
+
+fn item_entity_billboard_layer(layer: ItemAtlasIconLayer) -> ItemEntityBillboardLayer {
+    ItemEntityBillboardLayer::new(item_entity_uv_rect(layer.uv), layer.tint)
+}
+
+fn item_entity_uv_rect(uv: ItemAtlasUvRect) -> ItemEntityUvRect {
+    ItemEntityUvRect {
+        min: uv.min,
+        max: uv.max,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_client_world::EntityVec3;
+    use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
+
+    #[test]
+    fn item_entity_billboards_from_world_without_runtime_is_empty() {
+        assert_eq!(
+            item_entity_billboards_from_world(
+                &WorldStore::new(),
+                &[],
+                &[],
+                None,
+                &BTreeSet::new(),
+                &ItemRegistryKeySet::default()
+            ),
+            Vec::new()
+        );
+    }
+
+    #[test]
+    fn item_entity_billboard_from_icon_projects_position_and_layers() {
+        let state = ItemEntityStackState {
+            entity_id: 7,
+            position: EntityVec3 {
+                x: 1.5,
+                y: 64.0,
+                z: -2.25,
+            },
+            light: TerrainLight { sky: 12, block: 5 },
+            bob_offset: 0.0,
+            stack: &ItemStackSummary {
+                item_id: Some(42),
+                count: 3,
+                component_patch: DataComponentPatchSummary::default().into(),
+            },
+        };
+        let icon = ItemAtlasIcon {
+            layers: vec![
+                ItemAtlasIconLayer {
+                    texture_index: 0,
+                    uv: ItemAtlasUvRect {
+                        min: [0.25, 0.125],
+                        max: [0.5, 0.375],
+                    },
+                    tint: [0.25, 0.5, 0.75, 1.0],
+                    translucent: false,
+                },
+                ItemAtlasIconLayer {
+                    texture_index: 1,
+                    uv: ItemAtlasUvRect {
+                        min: [0.5, 0.5],
+                        max: [0.75, 0.75],
+                    },
+                    tint: [1.0, 1.0, 1.0, 0.5],
+                    translucent: false,
+                },
+            ],
+        };
+
+        let billboard = item_entity_billboard_from_icon(
+            &state,
+            icon,
+            DROPPED_ITEM_ENTITY_BILLBOARD_Y_OFFSET,
+            1.0,
+            ItemEntityBillboardOrientation::CameraFacing,
+        );
+
+        // The dropped item is lifted 0.25 above its ground position.
+        assert_eq!(billboard.position, [1.5, 64.25, -2.25]);
+        assert_eq!(billboard.scale, 1.0);
+        assert_eq!(
+            billboard.orientation,
+            ItemEntityBillboardOrientation::CameraFacing
+        );
+        assert_eq!(billboard.light, [5.0 / 15.0, 12.0 / 15.0]);
+        assert_eq!(billboard.layers.len(), 2);
+        assert_eq!(
+            billboard.layers[0],
+            ItemEntityBillboardLayer::new(
+                ItemEntityUvRect {
+                    min: [0.25, 0.125],
+                    max: [0.5, 0.375],
+                },
+                [0.25, 0.5, 0.75, 1.0],
+            )
+        );
+        assert_eq!(
+            billboard.layers[1],
+            ItemEntityBillboardLayer::new(
+                ItemEntityUvRect {
+                    min: [0.5, 0.5],
+                    max: [0.75, 0.75],
+                },
+                [1.0, 1.0, 1.0, 0.5],
+            )
+        );
+    }
+
+    #[test]
+    fn thrown_item_projectile_billboard_is_centered_on_the_entity() {
+        // Unlike the dropped item, a thrown-item projectile (`ThrownItemRenderer`) renders centered on
+        // the entity position, with no lift offset.
+        let state = ItemEntityStackState {
+            entity_id: 9,
+            position: EntityVec3 {
+                x: 2.0,
+                y: 70.5,
+                z: -4.0,
+            },
+            light: TerrainLight { sky: 7, block: 15 },
+            bob_offset: 0.0,
+            stack: &ItemStackSummary {
+                item_id: Some(11),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default().into(),
+            },
+        };
+        let icon = ItemAtlasIcon {
+            layers: vec![ItemAtlasIconLayer {
+                texture_index: 0,
+                uv: ItemAtlasUvRect {
+                    min: [0.0, 0.0],
+                    max: [0.25, 0.25],
+                },
+                tint: [1.0, 1.0, 1.0, 1.0],
+                translucent: false,
+            }],
+        };
+
+        let billboard = item_entity_billboard_from_icon(
+            &state,
+            icon,
+            THROWN_ITEM_PROJECTILE_BILLBOARD_Y_OFFSET,
+            3.0,
+            ItemEntityBillboardOrientation::CameraFacing,
+        );
+
+        assert_eq!(billboard.position, [2.0, 70.5, -4.0]);
+        assert_eq!(billboard.scale, 3.0);
+        assert_eq!(
+            billboard.orientation,
+            ItemEntityBillboardOrientation::CameraFacing
+        );
+        assert_eq!(billboard.light, [1.0, 7.0 / 15.0]);
+        assert_eq!(billboard.layers.len(), 1);
+    }
+
+    #[test]
+    fn firework_rocket_billboard_projects_shot_at_angle_orientation() {
+        let state = FireworkRocketItemState {
+            entity_id: 12,
+            position: EntityVec3 {
+                x: -1.0,
+                y: 68.25,
+                z: 3.5,
+            },
+            light: TerrainLight { sky: 9, block: 4 },
+            stack: &ItemStackSummary {
+                item_id: Some(42),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default().into(),
+            },
+            shot_at_angle: true,
+        };
+        let icon = ItemAtlasIcon {
+            layers: vec![ItemAtlasIconLayer {
+                texture_index: 0,
+                uv: ItemAtlasUvRect {
+                    min: [0.25, 0.0],
+                    max: [0.5, 0.25],
+                },
+                tint: [0.8, 0.7, 0.6, 1.0],
+                translucent: false,
+            }],
+        };
+
+        let billboard = firework_rocket_billboard_from_icon(&state, icon);
+
+        assert_eq!(billboard.position, [-1.0, 68.25, 3.5]);
+        assert_eq!(billboard.scale, 1.0);
+        assert_eq!(
+            billboard.orientation,
+            ItemEntityBillboardOrientation::FireworkShotAtAngle
+        );
+        assert_eq!(billboard.light, [4.0 / 15.0, 9.0 / 15.0]);
+        assert_eq!(billboard.layers.len(), 1);
+    }
+}

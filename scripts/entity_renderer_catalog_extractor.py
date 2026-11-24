@@ -1,0 +1,1175 @@
+"""Tree-sitter-backed extraction for vanilla entity renderer registrations."""
+
+from __future__ import annotations
+
+import json
+import math
+import struct
+from dataclasses import dataclass
+
+from vanilla_java_source import (
+    JavaExpression,
+    JavaMethod,
+    JavaSource,
+    JavaType,
+    descendants,
+    resolve_class_hierarchy,
+    resolve_type_reference,
+)
+
+RENDERER_PACKAGE = "net.minecraft.client.renderer.entity"
+ENTITY_RENDERERS_CLASS = RENDERER_PACKAGE + ".EntityRenderers"
+AVATAR_RENDERER_CLASS = RENDERER_PACKAGE + ".player.AvatarRenderer"
+LIVING_ENTITY_RENDERER_CLASS = RENDERER_PACKAGE + ".LivingEntityRenderer"
+THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
+ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
+MOB_RENDERER_CLASS = RENDERER_PACKAGE + ".MobRenderer"
+ITEM_IN_HAND_LAYER_CLASS = RENDERER_PACKAGE + ".layers.ItemInHandLayer"
+ITEM_FRAME_RENDERER_CLASS = RENDERER_PACKAGE + ".ItemFrameRenderer"
+WOLF_RENDERER_CLASS = RENDERER_PACKAGE + ".WolfRenderer"
+PARROT_RENDERER_CLASS = RENDERER_PACKAGE + ".ParrotRenderer"
+UNDEAD_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".UndeadHorseRenderer"
+HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".HorseRenderer"
+DONKEY_RENDERER_CLASS = RENDERER_PACKAGE + ".DonkeyRenderer"
+LLAMA_RENDERER_CLASS = RENDERER_PACKAGE + ".LlamaRenderer"
+BOAT_RENDERER_CLASS = RENDERER_PACKAGE + ".BoatRenderer"
+RAFT_RENDERER_CLASS = RENDERER_PACKAGE + ".RaftRenderer"
+PIGLIN_RENDERER_CLASS = RENDERER_PACKAGE + ".PiglinRenderer"
+ZOMBIFIED_PIGLIN_RENDERER_CLASS = RENDERER_PACKAGE + ".ZombifiedPiglinRenderer"
+ABSTRACT_FELINE_MODEL_CLASS = (
+    "net.minecraft.client.model.animal.feline.AbstractFelineModel"
+)
+SPECIAL_AVATAR_ENTITY_TYPES = frozenset({"MANNEQUIN", "PLAYER"})
+BOAT_PROVIDER_KINDS = {
+    (BOAT_RENDERER_CLASS, "ModelLayers.ACACIA_BOAT"): ("Acacia", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.ACACIA_CHEST_BOAT"): ("Acacia", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.BIRCH_BOAT"): ("Birch", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.BIRCH_CHEST_BOAT"): ("Birch", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.CHERRY_BOAT"): ("Cherry", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.CHERRY_CHEST_BOAT"): ("Cherry", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.DARK_OAK_BOAT"): ("DarkOak", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.DARK_OAK_CHEST_BOAT"): ("DarkOak", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.JUNGLE_BOAT"): ("Jungle", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.JUNGLE_CHEST_BOAT"): ("Jungle", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.MANGROVE_BOAT"): ("Mangrove", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.MANGROVE_CHEST_BOAT"): ("Mangrove", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.OAK_BOAT"): ("Oak", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.OAK_CHEST_BOAT"): ("Oak", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.PALE_OAK_BOAT"): ("PaleOak", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.PALE_OAK_CHEST_BOAT"): ("PaleOak", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.SPRUCE_BOAT"): ("Spruce", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.SPRUCE_CHEST_BOAT"): ("Spruce", True),
+    (RAFT_RENDERER_CLASS, "ModelLayers.BAMBOO_RAFT"): ("Bamboo", False),
+    (RAFT_RENDERER_CLASS, "ModelLayers.BAMBOO_CHEST_RAFT"): ("Bamboo", True),
+}
+
+
+class EntityRendererCatalogExtractionError(ValueError):
+    """Explicit unsupported or inconsistent renderer source."""
+
+
+@dataclass(frozen=True)
+class EntityRendererRegistration:
+    entity_type_id: int
+    constant_name: str
+    renderer_class: str
+    static_full_block_light: bool
+    minimum_block_light: int | None
+    thrown_item_scale_bits: int | None
+    shadow_radius_bits: int
+    shadow_strength_bits: int
+    uses_abstract_feline_model: bool
+    uses_abstract_horse_renderer: bool
+    uses_mob_item_in_hand_layer: bool
+    extracts_mob_aggressive: bool
+    extracts_unhappy_counter: bool
+    extracts_casting_spell: bool
+    extracts_sheep_head_eat: bool
+    extracts_zombie_underwater_converting: bool
+    extracts_wolf_sitting: bool
+    extracts_parrot_pose: bool
+    undead_horse_kind: str | None
+    horse_kind: str | None
+    llama_kind: str | None
+    boat_kind: tuple[str, bool] | None
+    piglin_kind: str | None
+
+
+def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
+    span = expression.span
+    raise EntityRendererCatalogExtractionError(
+        f"{source.relative_path}:{span.start_point[0] + 1}:"
+        f"{span.start_point[1] + 1}: {message}"
+    )
+
+
+def _entity_type_constant(source: JavaSource, expression: JavaExpression) -> str:
+    node = expression.node
+    if node.type != "field_access":
+        _fail(source, expression, "renderer registration type is not EntityType.CONSTANT")
+    object_node = node.child_by_field_name("object")
+    field_node = node.child_by_field_name("field")
+    if (
+        object_node is None
+        or field_node is None
+        or source.expression(object_node).canonical != "EntityType"
+    ):
+        _fail(source, expression, "renderer registration type is not EntityType.CONSTANT")
+    return source.text(field_node)
+
+
+def _provider_constructor(
+    source: JavaSource, expression: JavaExpression
+) -> tuple[str, tuple[JavaExpression, ...]]:
+    node = expression.node
+    if node.type == "method_reference":
+        targets = node.named_children
+        if len(targets) != 1:
+            _fail(source, expression, "renderer constructor method reference is unsupported")
+        return source.expression(targets[0]).canonical, ()
+    if node.type != "lambda_expression":
+        _fail(source, expression, "renderer provider is not a constructor reference or lambda")
+    body = node.child_by_field_name("body")
+    if body is None:
+        _fail(source, expression, "renderer provider lambda lacks a body")
+    if body.type != "object_creation_expression":
+        _fail(source, expression, "renderer provider lambda is not one constructor call")
+    creation = body
+    type_node = creation.child_by_field_name("type")
+    arguments_node = creation.child_by_field_name("arguments")
+    if type_node is None or arguments_node is None:
+        _fail(source, expression, "renderer provider constructor is incomplete")
+    spelling = source.expression(type_node).canonical.split("<", 1)[0].strip()
+    arguments = tuple(
+        source.expression(argument) for argument in arguments_node.named_children
+    )
+    return spelling, arguments
+
+
+def _method_return_expression(
+    source: JavaSource, method: JavaMethod
+) -> JavaExpression | None:
+    body = method.node.child_by_field_name("body")
+    if body is None or len(body.named_children) != 1:
+        return None
+    statement = body.named_children[0]
+    if statement.type != "return_statement" or len(statement.named_children) != 1:
+        return None
+    return source.expression(statement.named_children[0])
+
+
+def _returns_constant_full_block_light(source: JavaSource, method: JavaMethod) -> bool:
+    expression = _method_return_expression(source, method)
+    return (
+        expression is not None
+        and expression.node.type == "decimal_integer_literal"
+        and expression.canonical == "15"
+    )
+
+
+def extract_living_entity_upside_down_names(source: JavaSource) -> tuple[str, ...]:
+    """Extract the exact case-sensitive names accepted by ``isUpsideDownName``."""
+    owners = [
+        java_type
+        for java_type in source.types
+        if java_type.fqcn == LIVING_ENTITY_RENDERER_CLASS
+    ]
+    if len(owners) != 1:
+        raise EntityRendererCatalogExtractionError(
+            f"{source.relative_path}: expected one LivingEntityRenderer class"
+        )
+    methods = [
+        method
+        for method in source.methods_for(owners[0])
+        if method.name == "isUpsideDownName" and len(method.parameters) == 1
+    ]
+    if len(methods) != 1:
+        raise EntityRendererCatalogExtractionError(
+            f"{source.relative_path}: expected one isUpsideDownName/1 method"
+        )
+    method = methods[0]
+    if [parameter.canonical for parameter in method.parameters] != [
+        "final String name"
+    ]:
+        raise EntityRendererCatalogExtractionError(
+            f"{source.relative_path}: unsupported isUpsideDownName parameter"
+        )
+    expression = _method_return_expression(source, method)
+    if expression is None:
+        _fail(
+            source,
+            source.expression(method.node),
+            "isUpsideDownName is not one return expression",
+        )
+
+    def collect(node) -> list[str]:
+        if node.type == "binary_expression":
+            operator = node.child_by_field_name("operator")
+            left = node.child_by_field_name("left")
+            right = node.child_by_field_name("right")
+            if (
+                operator is None
+                or source.text(operator) != "||"
+                or left is None
+                or right is None
+            ):
+                _fail(
+                    source,
+                    source.expression(node),
+                    "isUpsideDownName only supports logical-or membership",
+                )
+            return [*collect(left), *collect(right)]
+
+        if node.type != "method_invocation":
+            _fail(
+                source,
+                source.expression(node),
+                "isUpsideDownName member is not literal.equals(name)",
+            )
+        object_node = node.child_by_field_name("object")
+        name_node = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if (
+            object_node is None
+            or object_node.type != "string_literal"
+            or name_node is None
+            or source.text(name_node) != "equals"
+            or arguments is None
+            or len(arguments.named_children) != 1
+            or arguments.named_children[0].type != "identifier"
+            or source.text(arguments.named_children[0]) != "name"
+        ):
+            _fail(
+                source,
+                source.expression(node),
+                "isUpsideDownName member is not literal.equals(name)",
+            )
+        try:
+            value = json.loads(source.text(object_node))
+        except (json.JSONDecodeError, TypeError) as error:
+            _fail(
+                source,
+                source.expression(object_node),
+                f"invalid upside-down name literal: {error}",
+            )
+        if not isinstance(value, str) or not value:
+            _fail(
+                source,
+                source.expression(object_node),
+                "upside-down name is empty or non-string",
+            )
+        return [value]
+
+    names = tuple(collect(expression.node))
+    if len(names) != len(set(names)):
+        _fail(source, expression, "duplicate isUpsideDownName member")
+    return names
+
+
+def _float_literal_bits(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_floating_point_literal":
+        _fail(source, expression, "ThrownItemRenderer scale is not a float literal")
+    spelling = expression.canonical.replace("_", "").removesuffix("F").removesuffix("f")
+    try:
+        value = float(spelling)
+        return struct.unpack("!I", struct.pack("!f", value))[0]
+    except (OverflowError, ValueError, struct.error):
+        _fail(source, expression, "invalid ThrownItemRenderer scale literal")
+
+
+def _float_bits(value: float) -> int:
+    if not math.isfinite(value):
+        raise EntityRendererCatalogExtractionError(
+            f"renderer shadow value is not a finite f32: {value}"
+        )
+    try:
+        return struct.unpack("!I", struct.pack("!f", value))[0]
+    except (OverflowError, struct.error) as error:
+        raise EntityRendererCatalogExtractionError(
+            f"renderer shadow value is not a finite f32: {value}: {error}"
+        ) from error
+
+
+def _parameter_name(source: JavaSource, parameter: JavaExpression) -> str:
+    name = parameter.node.child_by_field_name("name")
+    if name is None:
+        _fail(source, parameter, "renderer constructor parameter lacks a name")
+    return source.text(name)
+
+
+def _numeric_expression(
+    source: JavaSource,
+    expression: JavaExpression,
+    environment: dict[str, float | None],
+) -> float | None:
+    node = expression.node
+    if node.type in {"decimal_floating_point_literal", "decimal_integer_literal"}:
+        spelling = expression.canonical.replace("_", "")
+        spelling = spelling.removesuffix("F").removesuffix("f")
+        spelling = spelling.removesuffix("D").removesuffix("d")
+        try:
+            return float(spelling)
+        except ValueError:
+            _fail(source, expression, "invalid renderer constructor number")
+    if node.type == "identifier":
+        return environment.get(expression.canonical)
+    if node.type == "parenthesized_expression" and len(node.named_children) == 1:
+        return _numeric_expression(
+            source, source.expression(node.named_children[0]), environment
+        )
+    if node.type == "unary_expression" and len(node.named_children) == 1:
+        value = _numeric_expression(
+            source, source.expression(node.named_children[0]), environment
+        )
+        if value is None:
+            return None
+        operator = node.child_by_field_name("operator")
+        spelling = source.text(operator) if operator is not None else expression.canonical[0]
+        if spelling == "+":
+            return value
+        if spelling == "-":
+            return -value
+        return None
+    if node.type == "binary_expression":
+        left = node.child_by_field_name("left")
+        right = node.child_by_field_name("right")
+        operator = node.child_by_field_name("operator")
+        if left is None or right is None or operator is None:
+            return None
+        left_value = _numeric_expression(source, source.expression(left), environment)
+        right_value = _numeric_expression(source, source.expression(right), environment)
+        if left_value is None or right_value is None:
+            return None
+        return {
+            "+": lambda: left_value + right_value,
+            "-": lambda: left_value - right_value,
+            "*": lambda: left_value * right_value,
+            "/": lambda: left_value / right_value,
+        }.get(source.text(operator), lambda: None)()
+    return None
+
+
+def _renderer_shadow_values(
+    renderer_class: str,
+    constructor_arguments: tuple[JavaExpression, ...],
+    provider_source: JavaSource,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+    method_reference_argument_count: int = 1,
+) -> tuple[float, float]:
+    """Evaluate the constructor path that initializes EntityRenderer shadow fields."""
+
+    def invoke(
+        renderer_type: JavaType,
+        argument_values: tuple[float | None, ...],
+        stack: tuple[tuple[str, int], ...],
+        forced_constructor_order: int | None = None,
+    ) -> tuple[float, float]:
+        source = source_by_type[renderer_type.fqcn]
+        declared_constructors = [
+            method
+            for method in source.methods_for(renderer_type)
+            if method.is_constructor
+        ]
+        constructors = [
+            constructor
+            for constructor in declared_constructors
+            if len(constructor.parameters) == len(argument_values)
+        ]
+        if not declared_constructors:
+            if renderer_type.superclass in type_by_name:
+                return invoke(type_by_name[renderer_type.superclass], (), stack)
+            return 0.0, 1.0
+        if not constructors:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: no {renderer_type.fqcn}/"
+                f"{len(argument_values)} renderer constructor"
+            )
+        constructors = [
+            constructor
+            for constructor in constructors
+            if (renderer_type.fqcn, constructor.declaration_order) not in stack
+        ]
+        if not constructors:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: cyclic renderer constructor invocation"
+            )
+        if forced_constructor_order is not None:
+            constructors = [
+                constructor
+                for constructor in constructors
+                if constructor.declaration_order == forced_constructor_order
+            ]
+        if len(constructors) > 1:
+            results = {
+                invoke(
+                    renderer_type,
+                    argument_values,
+                    stack,
+                    constructor.declaration_order,
+                )
+                for constructor in constructors
+            }
+            if len(results) == 1:
+                return results.pop()
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: ambiguous {renderer_type.fqcn}/"
+                f"{len(argument_values)} renderer constructor"
+            )
+        if not constructors:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: missing forced renderer constructor"
+            )
+        constructor = constructors[0]
+        key = (renderer_type.fqcn, constructor.declaration_order)
+        if key in stack:
+            raise EntityRendererCatalogExtractionError(
+                f"{source.relative_path}: cyclic renderer constructor invocation"
+            )
+        environment = {
+            _parameter_name(source, parameter): value
+            for parameter, value in zip(constructor.parameters, argument_values)
+        }
+        body = constructor.node.child_by_field_name("body")
+        statements = body.named_children if body is not None else []
+        invocation = next(
+            (
+                statement
+                for statement in statements
+                if statement.type == "explicit_constructor_invocation"
+            ),
+            None,
+        )
+        if invocation is not None:
+            target = invocation.named_children[0]
+            arguments = invocation.named_children[-1]
+            values = tuple(
+                _numeric_expression(source, source.expression(argument), environment)
+                for argument in arguments.named_children
+            )
+            if target.type == "this":
+                shadow_radius, shadow_strength = invoke(
+                    renderer_type, values, (*stack, key)
+                )
+            elif target.type == "super" and renderer_type.superclass in type_by_name:
+                shadow_radius, shadow_strength = invoke(
+                    type_by_name[renderer_type.superclass], values, (*stack, key)
+                )
+            else:
+                shadow_radius, shadow_strength = 0.0, 1.0
+        elif renderer_type.superclass in type_by_name:
+            shadow_radius, shadow_strength = invoke(
+                type_by_name[renderer_type.superclass], (), (*stack, key)
+            )
+        else:
+            shadow_radius, shadow_strength = 0.0, 1.0
+
+        for node in descendants(constructor.node):
+            if node.type != "assignment_expression":
+                continue
+            left = node.child_by_field_name("left")
+            right = node.child_by_field_name("right")
+            if left is None or right is None:
+                continue
+            field = source.expression(left).canonical
+            if field not in {"this.shadowRadius", "this.shadowStrength"}:
+                continue
+            value = _numeric_expression(source, source.expression(right), environment)
+            if value is None:
+                _fail(source, source.expression(right), f"unresolved {field} assignment")
+            if field == "this.shadowRadius":
+                shadow_radius = value
+            else:
+                shadow_strength = value
+        return shadow_radius, shadow_strength
+
+    renderer_type = type_by_name.get(renderer_class)
+    if renderer_type is None:
+        raise EntityRendererCatalogExtractionError(
+            f"missing renderer class {renderer_class}"
+        )
+    if constructor_arguments:
+        argument_values = tuple(
+            _numeric_expression(provider_source, argument, {})
+            for argument in constructor_arguments
+        )
+    else:
+        argument_values = (None,) * method_reference_argument_count
+    return invoke(renderer_type, argument_values, ())
+
+
+def extract_avatar_renderer_shadow(
+    renderer_sources: list[JavaSource],
+) -> tuple[int, int]:
+    """Extract AvatarRenderer's fixed base shadow radius/strength."""
+    all_types = [java_type for source in renderer_sources for java_type in source.types]
+    resolve_class_hierarchy(all_types)
+    type_by_name = {java_type.fqcn: java_type for java_type in all_types}
+    source_by_type = {
+        java_type.fqcn: source
+        for source in renderer_sources
+        for java_type in source.types
+    }
+    avatar_type = type_by_name.get(AVATAR_RENDERER_CLASS)
+    if avatar_type is None:
+        raise EntityRendererCatalogExtractionError("missing AvatarRenderer class")
+    radius, strength = _renderer_shadow_values(
+        AVATAR_RENDERER_CLASS,
+        (),
+        source_by_type[AVATAR_RENDERER_CLASS],
+        source_by_type,
+        type_by_name,
+        method_reference_argument_count=2,
+    )
+    return _float_bits(radius), _float_bits(strength)
+
+
+def _validate_thrown_item_constructor_contract(
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> None:
+    renderer_type = type_by_name.get(THROWN_ITEM_RENDERER_CLASS)
+    if renderer_type is None:
+        raise EntityRendererCatalogExtractionError("missing ThrownItemRenderer class")
+    source = source_by_type[renderer_type.fqcn]
+    overrides = [
+        method
+        for method in source.methods_for(renderer_type)
+        if method.name == "getBlockLightLevel" and len(method.parameters) == 2
+    ]
+    if len(overrides) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "ThrownItemRenderer must define one getBlockLightLevel override"
+        )
+    expression = _method_return_expression(source, overrides[0])
+    if expression is None or expression.node.type != "ternary_expression":
+        _fail(
+            source,
+            source.expression(overrides[0].node),
+            "ThrownItemRenderer block-light override is not one conditional return",
+        )
+    condition = expression.node.child_by_field_name("condition")
+    consequence = expression.node.child_by_field_name("consequence")
+    alternative = expression.node.child_by_field_name("alternative")
+    if (
+        condition is None
+        or consequence is None
+        or alternative is None
+        or source.expression(condition).canonical != "this.fullBright"
+        or source.expression(consequence).canonical != "15"
+        or source.expression(alternative).canonical
+        != "super.getBlockLightLevel (entity, blockPos)"
+    ):
+        _fail(
+            source,
+            expression,
+            "unsupported ThrownItemRenderer full-bright expression",
+        )
+    constructors = [
+        method
+        for method in source.methods_for(renderer_type)
+        if method.is_constructor and len(method.parameters) == 3
+    ]
+    if len(constructors) != 1 or [
+        parameter.canonical for parameter in constructors[0].parameters
+    ] != [
+        "final EntityRendererProvider.Context context",
+        "final float scale",
+        "final boolean fullBright",
+    ]:
+        raise EntityRendererCatalogExtractionError(
+            "unsupported ThrownItemRenderer full-bright constructor signature"
+        )
+    assignments = [
+        source.expression(node).canonical
+        for node in descendants(constructors[0].node)
+        if node.type == "assignment_expression"
+    ]
+    if "this.scale = scale" not in assignments:
+        raise EntityRendererCatalogExtractionError(
+            "ThrownItemRenderer constructor does not retain scale"
+        )
+    if "this.fullBright = fullBright" not in assignments:
+        raise EntityRendererCatalogExtractionError(
+            "ThrownItemRenderer constructor does not retain fullBright"
+        )
+    default_constructors = [
+        method
+        for method in source.methods_for(renderer_type)
+        if method.is_constructor and len(method.parameters) == 1
+    ]
+    if len(default_constructors) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "ThrownItemRenderer must define one default constructor"
+        )
+    invocations = [
+        source.expression(node).canonical
+        for node in descendants(default_constructors[0].node)
+        if node.type == "explicit_constructor_invocation"
+    ]
+    if invocations != ["this (context, 1.0F, false);"]:
+        raise EntityRendererCatalogExtractionError(
+            "unsupported ThrownItemRenderer default constructor"
+        )
+
+
+def _extract_item_frame_minimum_block_light(
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> tuple[str, int]:
+    renderer_type = type_by_name.get(ITEM_FRAME_RENDERER_CLASS)
+    if renderer_type is None:
+        raise EntityRendererCatalogExtractionError("missing ItemFrameRenderer class")
+    source = source_by_type[renderer_type.fqcn]
+    overrides = [
+        method
+        for method in source.methods_for(renderer_type)
+        if method.name == "getBlockLightLevel" and len(method.parameters) == 2
+    ]
+    if len(overrides) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "ItemFrameRenderer must define one getBlockLightLevel override"
+        )
+    expression = _method_return_expression(source, overrides[0])
+    if expression is None or expression.node.type != "ternary_expression":
+        _fail(
+            source,
+            source.expression(overrides[0].node),
+            "ItemFrameRenderer block-light override is not one conditional return",
+        )
+    condition = expression.node.child_by_field_name("condition")
+    consequence = expression.node.child_by_field_name("consequence")
+    alternative = expression.node.child_by_field_name("alternative")
+    if condition is None or consequence is None or alternative is None:
+        _fail(source, expression, "incomplete ItemFrameRenderer block-light ternary")
+
+    condition_object = condition.child_by_field_name("object")
+    condition_name = condition.child_by_field_name("name")
+    condition_arguments = condition.child_by_field_name("arguments")
+    if (
+        condition.type != "method_invocation"
+        or condition_object is None
+        or source.expression(condition_object).canonical != "entity"
+        or condition_name is None
+        or source.text(condition_name) != "is"
+        or condition_arguments is None
+        or len(condition_arguments.named_children) != 1
+    ):
+        _fail(source, source.expression(condition), "unsupported item-frame type condition")
+    constant_name = _entity_type_constant(
+        source, source.expression(condition_arguments.named_children[0])
+    )
+
+    consequence_object = consequence.child_by_field_name("object")
+    consequence_name = consequence.child_by_field_name("name")
+    consequence_arguments = consequence.child_by_field_name("arguments")
+    if (
+        consequence.type != "method_invocation"
+        or consequence_object is None
+        or source.expression(consequence_object).canonical != "Math"
+        or consequence_name is None
+        or source.text(consequence_name) != "max"
+        or consequence_arguments is None
+        or len(consequence_arguments.named_children) != 2
+    ):
+        _fail(source, source.expression(consequence), "unsupported item-frame light clamp")
+    minimum_node, fallback_node = consequence_arguments.named_children
+    if minimum_node.type != "decimal_integer_literal":
+        _fail(source, source.expression(minimum_node), "item-frame light clamp is not an integer")
+    minimum = int(source.text(minimum_node))
+    fallback = "super.getBlockLightLevel (entity, blockPos)"
+    if (
+        not 0 <= minimum <= 15
+        or source.expression(fallback_node).canonical != fallback
+        or source.expression(alternative).canonical != fallback
+    ):
+        _fail(source, expression, "unsupported item-frame block-light fallback")
+
+    expected_assignment = (
+        f"state.isGlowFrame = entity.is (EntityType.{constant_name})"
+    )
+    if not _renderer_hierarchy_contains_extract_assignment(
+        ITEM_FRAME_RENDERER_CLASS,
+        expected_assignment,
+        source_by_type,
+        type_by_name,
+    ):
+        raise EntityRendererCatalogExtractionError(
+            "ItemFrameRenderer does not project the block-light type condition"
+        )
+    return constant_name, minimum
+
+
+def _renderer_hierarchy_references_superclass_type(
+    renderer_class: str,
+    target_class: str,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    target_simple_name = target_class.rsplit(".", 1)[-1]
+    current = type_by_name[renderer_class]
+    while True:
+        source = source_by_type[current.fqcn]
+        superclass = current.node.child_by_field_name("superclass")
+        if (
+            superclass is not None
+            and source.imports.get(target_simple_name) == target_class
+            and any(
+                source.text(node) == target_simple_name
+                for node in (superclass, *descendants(superclass))
+            )
+        ):
+            return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
+def _renderer_inherits(
+    renderer_class: str,
+    target_class: str,
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    current = type_by_name[renderer_class]
+    while True:
+        if current.fqcn == target_class:
+            return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
+def _renderer_hierarchy_constructs_type(
+    renderer_class: str,
+    target_class: str,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    current = type_by_name[renderer_class]
+    while True:
+        source = source_by_type[current.fqcn]
+        for method in source.methods_for(current):
+            if not method.is_constructor:
+                continue
+            for node in descendants(method.node):
+                if node.type != "object_creation_expression":
+                    continue
+                type_node = node.child_by_field_name("type")
+                if type_node is None:
+                    continue
+                spelling = source.expression(type_node).canonical.split("<", 1)[0].strip()
+                if resolve_type_reference(spelling, current, type_by_name) == target_class:
+                    return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
+def _renderer_hierarchy_contains_extract_assignment(
+    renderer_class: str,
+    expected: str,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    current = type_by_name[renderer_class]
+    while True:
+        source = source_by_type[current.fqcn]
+        for method in source.methods_for(current):
+            if method.name != "extractRenderState" or len(method.parameters) != 3:
+                continue
+            if any(
+                node.type == "assignment_expression"
+                and source.expression(node).canonical == expected
+                for node in descendants(method.node)
+            ):
+                return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
+def extract_entity_renderer_registrations(
+    entity_renderers_source: JavaSource,
+    renderer_sources: list[JavaSource],
+    registry_constants: list[str],
+) -> list[EntityRendererRegistration]:
+    """Extract explicit provider registrations and static full-block-light behavior."""
+
+    all_sources = [entity_renderers_source, *renderer_sources]
+    all_types = [java_type for source in all_sources for java_type in source.types]
+    resolve_class_hierarchy(all_types)
+    type_by_name = {java_type.fqcn: java_type for java_type in all_types}
+    source_by_type = {
+        java_type.fqcn: source
+        for source in all_sources
+        for java_type in source.types
+    }
+    owners = [
+        java_type
+        for java_type in entity_renderers_source.types
+        if java_type.fqcn == ENTITY_RENDERERS_CLASS
+    ]
+    if len(owners) != 1:
+        raise EntityRendererCatalogExtractionError(
+            f"{entity_renderers_source.relative_path}: expected one EntityRenderers class"
+        )
+    owner = owners[0]
+    known = type_by_name
+    registrations = []
+    seen_constants: set[str] = set()
+    registry_ids = {name: type_id for type_id, name in enumerate(registry_constants)}
+    if len(registry_ids) != len(registry_constants):
+        raise EntityRendererCatalogExtractionError(
+            "entity type registry contains duplicate constants"
+        )
+
+    _validate_thrown_item_constructor_contract(source_by_type, type_by_name)
+    item_frame_light_constant, item_frame_minimum_block_light = (
+        _extract_item_frame_minimum_block_light(source_by_type, type_by_name)
+    )
+
+    calls = [
+        call
+        for call in entity_renderers_source.calls_for(owner)
+        if call.name == "register"
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    for call in calls:
+        if len(call.arguments) != 2:
+            _fail(
+                entity_renderers_source,
+                entity_renderers_source.expression(call.node),
+                "renderer register call must have two arguments",
+            )
+        constant_name = _entity_type_constant(
+            entity_renderers_source, call.arguments[0]
+        )
+        if constant_name not in registry_ids:
+            _fail(
+                entity_renderers_source,
+                call.arguments[0],
+                f"renderer registration references unknown entity type {constant_name}",
+            )
+        if constant_name in seen_constants:
+            _fail(
+                entity_renderers_source,
+                call.arguments[0],
+                f"duplicate renderer registration for {constant_name}",
+            )
+        seen_constants.add(constant_name)
+        entity_type_id = registry_ids[constant_name]
+
+        renderer_spelling, constructor_arguments = _provider_constructor(
+            entity_renderers_source, call.arguments[1]
+        )
+        renderer_class = resolve_type_reference(renderer_spelling, owner, known)
+        if renderer_class is None:
+            _fail(
+                entity_renderers_source,
+                call.arguments[1],
+                f"unresolved renderer class {renderer_spelling}",
+            )
+        current = type_by_name[renderer_class]
+        static_full_block_light = False
+        while True:
+            source = source_by_type[current.fqcn]
+            overrides = [
+                method
+                for method in source.methods_for(current)
+                if method.name == "getBlockLightLevel" and len(method.parameters) == 2
+            ]
+            if len(overrides) > 1:
+                raise EntityRendererCatalogExtractionError(
+                    f"{current.source_path}: multiple getBlockLightLevel overrides"
+                )
+            if overrides:
+                static_full_block_light = _returns_constant_full_block_light(
+                    source, overrides[0]
+                )
+                break
+            if current.superclass is None or current.superclass not in type_by_name:
+                break
+            current = type_by_name[current.superclass]
+
+        thrown_item_scale_bits = None
+        if renderer_class == THROWN_ITEM_RENDERER_CLASS:
+            if not constructor_arguments:
+                static_full_block_light = False
+                thrown_item_scale_bits = 0x3F800000
+            elif (
+                len(constructor_arguments) == 3
+                and constructor_arguments[2].node.type in {"true", "false"}
+            ):
+                thrown_item_scale_bits = _float_literal_bits(
+                    entity_renderers_source, constructor_arguments[1]
+                )
+                static_full_block_light = constructor_arguments[2].node.type == "true"
+            else:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported ThrownItemRenderer constructor arguments",
+                )
+
+        undead_horse_kind = None
+        if renderer_class == UNDEAD_HORSE_RENDERER_CLASS:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            undead_horse_kind = {
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.SKELETON_HORSE_SADDLE",
+                    "ModelLayers.SKELETON_HORSE_SADDLE",
+                    "UndeadHorseRenderer.Type.SKELETON",
+                    "UndeadHorseRenderer.Type.SKELETON_BABY",
+                ): "Skeleton",
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.ZOMBIE_HORSE_SADDLE",
+                    "ModelLayers.ZOMBIE_HORSE_SADDLE",
+                    "UndeadHorseRenderer.Type.ZOMBIE",
+                    "UndeadHorseRenderer.Type.ZOMBIE_BABY",
+                ): "Zombie",
+            }.get(arguments)
+            if undead_horse_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported UndeadHorseRenderer constructor arguments",
+                )
+
+        horse_kind = None
+        if renderer_class == HORSE_RENDERER_CLASS:
+            if constructor_arguments:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported HorseRenderer constructor arguments",
+                )
+            horse_kind = "Horse"
+        elif renderer_class == DONKEY_RENDERER_CLASS:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            horse_kind = {
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.DONKEY_SADDLE",
+                    "ModelLayers.DONKEY_SADDLE",
+                    "DonkeyRenderer.Type.DONKEY",
+                    "DonkeyRenderer.Type.DONKEY_BABY",
+                ): "Donkey",
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.MULE_SADDLE",
+                    "ModelLayers.MULE_SADDLE",
+                    "DonkeyRenderer.Type.MULE",
+                    "DonkeyRenderer.Type.MULE_BABY",
+                ): "Mule",
+            }.get(arguments)
+            if horse_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported DonkeyRenderer constructor arguments",
+                )
+
+        llama_kind = None
+        if renderer_class == LLAMA_RENDERER_CLASS:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            llama_kind = {
+                (
+                    "context",
+                    "ModelLayers.LLAMA",
+                    "ModelLayers.LLAMA_BABY",
+                ): "Llama",
+                (
+                    "context",
+                    "ModelLayers.TRADER_LLAMA",
+                    "ModelLayers.TRADER_LLAMA_BABY",
+                ): "TraderLlama",
+            }.get(arguments)
+            if llama_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported LlamaRenderer constructor arguments",
+                )
+
+        boat_kind = None
+        if renderer_class in {BOAT_RENDERER_CLASS, RAFT_RENDERER_CLASS}:
+            if (
+                len(constructor_arguments) != 2
+                or constructor_arguments[0].canonical != "context"
+            ):
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported boat renderer constructor arguments",
+                )
+            boat_kind = BOAT_PROVIDER_KINDS.get(
+                (renderer_class, constructor_arguments[1].canonical)
+            )
+            if boat_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported boat renderer model layer",
+                )
+
+        piglin_kind = None
+        if renderer_class in {PIGLIN_RENDERER_CLASS, ZOMBIFIED_PIGLIN_RENDERER_CLASS}:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            piglin_kind = {
+                (
+                    PIGLIN_RENDERER_CLASS,
+                    (
+                        "context",
+                        "ModelLayers.PIGLIN",
+                        "ModelLayers.PIGLIN_BABY",
+                        "ModelLayers.PIGLIN_ARMOR",
+                        "ModelLayers.PIGLIN_BABY_ARMOR",
+                    ),
+                ): "Piglin",
+                (
+                    PIGLIN_RENDERER_CLASS,
+                    (
+                        "context",
+                        "ModelLayers.PIGLIN_BRUTE",
+                        "ModelLayers.PIGLIN_BRUTE",
+                        "ModelLayers.PIGLIN_BRUTE_ARMOR",
+                        "ModelLayers.PIGLIN_BRUTE_ARMOR",
+                    ),
+                ): "PiglinBrute",
+                (
+                    ZOMBIFIED_PIGLIN_RENDERER_CLASS,
+                    (
+                        "context",
+                        "ModelLayers.ZOMBIFIED_PIGLIN",
+                        "ModelLayers.ZOMBIFIED_PIGLIN_BABY",
+                        "ModelLayers.ZOMBIFIED_PIGLIN_ARMOR",
+                        "ModelLayers.ZOMBIFIED_PIGLIN_BABY_ARMOR",
+                    ),
+                ): "ZombifiedPiglin",
+            }.get((renderer_class, arguments))
+            if piglin_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported piglin renderer constructor arguments",
+                )
+
+        registrations.append(
+            EntityRendererRegistration(
+                entity_type_id,
+                constant_name,
+                renderer_class.removeprefix(RENDERER_PACKAGE + "."),
+                static_full_block_light,
+                item_frame_minimum_block_light
+                if renderer_class == ITEM_FRAME_RENDERER_CLASS
+                and constant_name == item_frame_light_constant
+                else None,
+                thrown_item_scale_bits,
+                *(
+                    _float_bits(value)
+                    for value in _renderer_shadow_values(
+                        renderer_class,
+                        constructor_arguments,
+                        entity_renderers_source,
+                        source_by_type,
+                        type_by_name,
+                    )
+                ),
+                _renderer_hierarchy_references_superclass_type(
+                    renderer_class,
+                    ABSTRACT_FELINE_MODEL_CLASS,
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_inherits(
+                    renderer_class,
+                    ABSTRACT_HORSE_RENDERER_CLASS,
+                    type_by_name,
+                ),
+                _renderer_inherits(
+                    renderer_class,
+                    MOB_RENDERER_CLASS,
+                    type_by_name,
+                )
+                and _renderer_hierarchy_constructs_type(
+                    renderer_class,
+                    ITEM_IN_HAND_LAYER_CLASS,
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isAggressive = entity.isAggressive ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isUnhappy = entity.getUnhappyCounter ()> 0",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isCastingSpell = entity.isCastingSpell ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.headEatAngleScale = entity.getHeadEatAngleScale (partialTicks)",
+                    source_by_type,
+                    type_by_name,
+                )
+                and _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.headEatPositionScale = entity.getHeadEatPositionScale (partialTicks)",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isConverting = entity.isUnderWaterConverting ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                renderer_class == WOLF_RENDERER_CLASS
+                and _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isSitting = entity.isInSittingPose ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                renderer_class == PARROT_RENDERER_CLASS
+                and _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.pose = ParrotModel.getPose (entity)",
+                    source_by_type,
+                    type_by_name,
+                ),
+                undead_horse_kind,
+                horse_kind,
+                llama_kind,
+                boat_kind,
+                piglin_kind,
+            )
+        )
+
+    unregistered = set(registry_constants) - seen_constants
+    if unregistered != SPECIAL_AVATAR_ENTITY_TYPES:
+        raise EntityRendererCatalogExtractionError(
+            "entity renderer registration coverage mismatch: "
+            f"unregistered={sorted(unregistered)}, "
+            f"expected_avatar_path={sorted(SPECIAL_AVATAR_ENTITY_TYPES)}"
+        )
+    minimum_block_light_entries = [
+        entry for entry in registrations if entry.minimum_block_light is not None
+    ]
+    if len(minimum_block_light_entries) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "expected one ItemFrameRenderer minimum block-light registration"
+        )
+    registrations.sort(key=lambda entry: entry.entity_type_id)
+    return registrations

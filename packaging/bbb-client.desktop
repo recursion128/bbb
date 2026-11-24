@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=BBB Client
+GenericName=Minecraft Java 26.1 Client
+Comment=External multiplayer desktop client for Minecraft Java 26.1
+TryExec=/usr/local/bin/bbb-client
+Exec=/usr/local/bin/bbb-client-launch
+Terminal=false
+Categories=Game;AdventureGame;
+Keywords=Minecraft;BBB;Multiplayer;
+StartupNotify=true
+Actions=Fullscreen;
+
+[Desktop Action Fullscreen]
+Name=Launch Fullscreen
+Exec=/usr/local/bin/bbb-client-launch --fullscreen

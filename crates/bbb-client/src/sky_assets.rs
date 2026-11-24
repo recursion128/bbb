@@ -1,0 +1,409 @@
+use anyhow::{Context, Result};
+use bbb_client_assets::{PackRoots, ResourceLocation, SpriteImage};
+use bbb_client_render::{
+    CelestialTextureImage, CelestialTextureKind, CloudTextureImage, StandaloneTextureSampling,
+    WeatherTextureImage, WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
+    WORLD_BORDER_FORCEFIELD_TEXTURE_PATH,
+};
+
+const END_SKY_TEXTURE: &str = "textures/environment/end_sky.png";
+const CLOUD_TEXTURE: &str = "textures/environment/clouds.png";
+const CELESTIAL_TEXTURES: &[(CelestialTextureKind, &str, &str)] = &[
+    (
+        CelestialTextureKind::Sun,
+        "textures/environment/celestial/sun.png",
+        "minecraft:textures/environment/celestial/sun",
+    ),
+    (
+        CelestialTextureKind::MoonFull,
+        "textures/environment/celestial/moon/full_moon.png",
+        "minecraft:textures/environment/celestial/moon/full_moon",
+    ),
+    (
+        CelestialTextureKind::MoonWaningGibbous,
+        "textures/environment/celestial/moon/waning_gibbous.png",
+        "minecraft:textures/environment/celestial/moon/waning_gibbous",
+    ),
+    (
+        CelestialTextureKind::MoonThirdQuarter,
+        "textures/environment/celestial/moon/third_quarter.png",
+        "minecraft:textures/environment/celestial/moon/third_quarter",
+    ),
+    (
+        CelestialTextureKind::MoonWaningCrescent,
+        "textures/environment/celestial/moon/waning_crescent.png",
+        "minecraft:textures/environment/celestial/moon/waning_crescent",
+    ),
+    (
+        CelestialTextureKind::MoonNew,
+        "textures/environment/celestial/moon/new_moon.png",
+        "minecraft:textures/environment/celestial/moon/new_moon",
+    ),
+    (
+        CelestialTextureKind::MoonWaxingCrescent,
+        "textures/environment/celestial/moon/waxing_crescent.png",
+        "minecraft:textures/environment/celestial/moon/waxing_crescent",
+    ),
+    (
+        CelestialTextureKind::MoonFirstQuarter,
+        "textures/environment/celestial/moon/first_quarter.png",
+        "minecraft:textures/environment/celestial/moon/first_quarter",
+    ),
+    (
+        CelestialTextureKind::MoonWaxingGibbous,
+        "textures/environment/celestial/moon/waxing_gibbous.png",
+        "minecraft:textures/environment/celestial/moon/waxing_gibbous",
+    ),
+];
+
+pub(crate) fn load_sky_textures(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: Option<&PackRoots>,
+) {
+    let Some(roots) = roots else {
+        tracing::warn!(
+            "continuing without vanilla sky textures because pack roots are unavailable"
+        );
+        return;
+    };
+    if let Err(err) = try_load_end_sky_texture(renderer, roots) {
+        tracing::warn!(?err, "continuing without vanilla End sky texture");
+    }
+    if let Err(err) = try_load_celestial_textures(renderer, roots) {
+        tracing::warn!(
+            ?err,
+            "continuing without vanilla sun/moon celestial textures"
+        );
+    }
+    if let Err(err) = try_load_cloud_texture(renderer, roots) {
+        tracing::warn!(?err, "continuing without vanilla cloud texture");
+    }
+    if let Err(err) = try_load_weather_textures(renderer, roots) {
+        tracing::warn!(?err, "continuing without vanilla weather textures");
+    }
+    if let Err(err) = try_load_world_border_texture(renderer, roots) {
+        tracing::warn!(
+            ?err,
+            "continuing without vanilla world border forcefield texture"
+        );
+    }
+}
+
+pub(crate) fn try_load_sky_textures(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    try_load_end_sky_texture(renderer, roots)?;
+    try_load_celestial_textures(renderer, roots)?;
+    try_load_cloud_texture(renderer, roots)?;
+    try_load_weather_textures(renderer, roots)?;
+    try_load_world_border_texture(renderer, roots)
+}
+
+fn try_load_end_sky_texture(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let image = load_end_sky_image(roots)?;
+    renderer.upload_end_sky_texture_with_sampling(
+        image.width,
+        image.height,
+        &image.rgba,
+        standalone_sampling(&image),
+    )?;
+    tracing::info!("loaded vanilla End sky texture");
+    Ok(())
+}
+
+fn try_load_celestial_textures(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let celestial_images = load_celestial_images(roots)?;
+    renderer.upload_celestial_textures(&celestial_images)?;
+    tracing::info!("loaded vanilla sun/moon celestial textures");
+    Ok(())
+}
+
+fn try_load_cloud_texture(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let image = load_cloud_image(roots)?;
+    renderer.upload_cloud_texture(&image)?;
+    tracing::info!("loaded vanilla cloud texture");
+    Ok(())
+}
+
+fn try_load_weather_textures(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let images = load_weather_images(roots)?;
+    renderer.upload_weather_textures(&images)?;
+    tracing::info!("loaded vanilla rain/snow weather textures");
+    Ok(())
+}
+
+fn try_load_world_border_texture(
+    renderer: &mut bbb_client_render::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let image = load_world_border_image(roots)?;
+    renderer.upload_world_border_texture_with_sampling(
+        image.width,
+        image.height,
+        &image.rgba,
+        standalone_sampling(&image),
+    )?;
+    tracing::info!("loaded vanilla world border forcefield texture");
+    Ok(())
+}
+
+fn load_end_sky_image(roots: &PackRoots) -> Result<SpriteImage> {
+    let location = ResourceLocation::parse(END_SKY_TEXTURE)?;
+    let resources = roots.resource_stack();
+    let resource = resources
+        .get_resource(&location)
+        .with_context(|| format!("missing End sky texture minecraft:{END_SKY_TEXTURE}"))?;
+    SpriteImage::from_pack_resource(
+        "minecraft:textures/environment/end_sky",
+        &resource,
+        &resources,
+    )
+}
+
+fn load_cloud_image(roots: &PackRoots) -> Result<CloudTextureImage> {
+    let location = ResourceLocation::parse(CLOUD_TEXTURE)?;
+    let resources = roots.resource_stack();
+    let resource = resources
+        .get_resource(&location)
+        .with_context(|| format!("missing cloud texture minecraft:{CLOUD_TEXTURE}"))?;
+    let image = SpriteImage::from_pack_resource(
+        "minecraft:textures/environment/clouds",
+        &resource,
+        &resources,
+    )?;
+    Ok(CloudTextureImage {
+        width: image.width,
+        height: image.height,
+        rgba: image.rgba,
+    })
+}
+
+fn load_weather_images(roots: &PackRoots) -> Result<Vec<WeatherTextureImage>> {
+    Ok(vec![
+        load_weather_image(
+            roots,
+            WeatherTextureKind::Rain,
+            WEATHER_RAIN_TEXTURE_PATH,
+            "minecraft:textures/environment/rain",
+        )?,
+        load_weather_image(
+            roots,
+            WeatherTextureKind::Snow,
+            WEATHER_SNOW_TEXTURE_PATH,
+            "minecraft:textures/environment/snow",
+        )?,
+    ])
+}
+
+fn load_weather_image(
+    roots: &PackRoots,
+    kind: WeatherTextureKind,
+    path: &str,
+    id: &str,
+) -> Result<WeatherTextureImage> {
+    let location = ResourceLocation::parse(path)?;
+    let resources = roots.resource_stack();
+    let resource = resources
+        .get_resource(&location)
+        .with_context(|| format!("missing weather texture minecraft:{path}"))?;
+    let image = SpriteImage::from_pack_resource(id, &resource, &resources)?;
+    Ok(WeatherTextureImage {
+        kind,
+        width: image.width,
+        height: image.height,
+        sampling: standalone_sampling(&image),
+        rgba: image.rgba,
+    })
+}
+
+fn standalone_sampling(image: &SpriteImage) -> StandaloneTextureSampling {
+    StandaloneTextureSampling::new(image.texture_metadata.blur, image.texture_metadata.clamp)
+}
+
+/// Loads vanilla `textures/misc/forcefield.png`
+/// (`WorldBorderRenderer.FORCEFIELD_LOCATION`)
+/// from the pack resource stack; the decoded bytes are fed to the renderer.
+fn load_world_border_image(roots: &PackRoots) -> Result<SpriteImage> {
+    let location = ResourceLocation::parse(WORLD_BORDER_FORCEFIELD_TEXTURE_PATH)?;
+    let resources = roots.resource_stack();
+    let resource = resources.get_resource(&location).with_context(|| {
+        format!("missing world border texture minecraft:{WORLD_BORDER_FORCEFIELD_TEXTURE_PATH}")
+    })?;
+    SpriteImage::from_pack_resource("minecraft:textures/misc/forcefield", &resource, &resources)
+}
+
+fn load_celestial_images(roots: &PackRoots) -> Result<Vec<CelestialTextureImage>> {
+    CELESTIAL_TEXTURES
+        .iter()
+        .map(|(kind, path, id)| load_celestial_image(roots, *kind, path, id))
+        .collect()
+}
+
+fn load_celestial_image(
+    roots: &PackRoots,
+    kind: CelestialTextureKind,
+    path: &str,
+    id: &str,
+) -> Result<CelestialTextureImage> {
+    let location = ResourceLocation::parse(path)?;
+    let resources = roots.resource_stack();
+    let resource = resources
+        .get_resource(&location)
+        .with_context(|| format!("missing celestial texture minecraft:{path}"))?;
+    let image = SpriteImage::from_pack_resource(id, &resource, &resources)?;
+    Ok(CelestialTextureImage {
+        kind,
+        width: image.width,
+        height: image.height,
+        rgba: image.rgba,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loads_vanilla_end_sky_texture_from_resource_stack() {
+        let temp = unique_temp_dir("bbb-end-sky-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources
+            .join("assets")
+            .join("minecraft")
+            .join(END_SKY_TEXTURE);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        write_png(&texture_path, 8, 8);
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
+
+        let image = load_end_sky_image(&roots).unwrap();
+
+        assert_eq!(image.id, "minecraft:textures/environment/end_sky");
+        assert_eq!((image.width, image.height), (8, 8));
+        assert_eq!(image.rgba.len(), 8 * 8 * 4);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_celestial_textures_from_resource_stack_in_phase_order() {
+        let temp = unique_temp_dir("bbb-celestial-textures");
+        let sources = temp.join("sources").join("26.1");
+        for (_, path, _) in CELESTIAL_TEXTURES {
+            let texture_path = sources.join("assets").join("minecraft").join(path);
+            std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+            write_png(&texture_path, 8, 8);
+        }
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
+
+        let images = load_celestial_images(&roots).unwrap();
+
+        assert_eq!(images.len(), CELESTIAL_TEXTURES.len());
+        assert_eq!(images[0].kind, CelestialTextureKind::Sun);
+        assert_eq!(images[1].kind, CelestialTextureKind::MoonFull);
+        assert_eq!(images[2].kind, CelestialTextureKind::MoonWaningGibbous);
+        assert_eq!(
+            images.last().map(|image| image.kind),
+            Some(CelestialTextureKind::MoonWaxingGibbous)
+        );
+        assert!(images
+            .iter()
+            .all(|image| (image.width, image.height) == (8, 8)));
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_cloud_texture_from_resource_stack() {
+        let temp = unique_temp_dir("bbb-cloud-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources.join("assets").join("minecraft").join(CLOUD_TEXTURE);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        write_png(&texture_path, 4, 2);
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
+
+        let image = load_cloud_image(&roots).unwrap();
+
+        assert_eq!((image.width, image.height), (4, 2));
+        assert_eq!(image.rgba.len(), 4 * 2 * 4);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_weather_textures_from_resource_stack_in_rain_snow_order() {
+        let temp = unique_temp_dir("bbb-weather-textures");
+        let sources = temp.join("sources").join("26.1");
+        for path in [WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH] {
+            let texture_path = sources.join("assets").join("minecraft").join(path);
+            std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+            write_png(&texture_path, 4, 4);
+        }
+        std::fs::write(
+            sources
+                .join("assets")
+                .join("minecraft")
+                .join(format!("{WEATHER_RAIN_TEXTURE_PATH}.mcmeta")),
+            br#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
+
+        let images = load_weather_images(&roots).unwrap();
+
+        assert_eq!(images.len(), 2);
+        assert_eq!(images[0].kind, WeatherTextureKind::Rain);
+        assert_eq!(images[1].kind, WeatherTextureKind::Snow);
+        assert_eq!(
+            images[0].sampling,
+            StandaloneTextureSampling::new(true, true)
+        );
+        assert_eq!(images[1].sampling, StandaloneTextureSampling::default());
+        assert!(images
+            .iter()
+            .all(|image| (image.width, image.height, image.rgba.len()) == (4, 4, 4 * 4 * 4)));
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_world_border_forcefield_texture_from_resource_stack() {
+        let temp = unique_temp_dir("bbb-client-world-border-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources
+            .join("assets")
+            .join("minecraft")
+            .join(WORLD_BORDER_FORCEFIELD_TEXTURE_PATH);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        write_png(&texture_path, 32, 32);
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
+
+        let image = load_world_border_image(&roots).unwrap();
+
+        assert_eq!(image.id, "minecraft:textures/misc/forcefield");
+        assert_eq!((image.width, image.height), (32, 32));
+        assert_eq!(image.rgba.len(), 32 * 32 * 4);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    fn unique_temp_dir(prefix: &str) -> std::path::PathBuf {
+        let nanos = bbb_client_clock::SystemTime::now()
+            .duration_since(bbb_client_clock::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
+    }
+
+    fn write_png(path: &std::path::Path, width: u32, height: u32) {
+        let image = image::RgbaImage::from_pixel(width, height, image::Rgba([7, 11, 13, 255]));
+        image.save(path).unwrap();
+    }
+}

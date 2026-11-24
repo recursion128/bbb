@@ -1,0 +1,32 @@
+[package]
+name = "bbb-client-probe"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "bbb-replay-diff"
+path = "src/bin/replay_diff.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+bbb-client-assets = { path = "../bbb-client-assets" }
+bbb-client-net = { path = "../bbb-client-net" }
+bbb-client-world = { path = "../bbb-client-world" }
+bbb-protocol = { path = "../bbb-protocol" }
+chrono = { workspace = true }
+image = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt-multi-thread", "sync", "time"] }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+bbb-client-clock = { path = "../bbb-client-clock" }

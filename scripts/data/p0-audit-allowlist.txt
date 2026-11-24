@@ -1,0 +1,447 @@
+# P0 audit classifications. Format: <path-regex><TAB><line-regex>.
+# Keep entries narrow enough to identify one of the declared non-P0 categories
+# (numeric residual, defensive input rejection, resource fallback, or test fixture);
+# a new path or meaning must fail the audit until it is classified.
+
+# Runtime tick cadence uses “residual” as a numeric accumulator, not a mesh path.
+^crates/bbb-client/src/runtime(/simulation_step)?[.]rs$	entity_animation_tick_residual|dimensionless residual
+# The simulation view carries that same vanilla timer residual as a numeric
+# interpolation accumulator for the render-time partial tick.
+^crates/bbb-client/src/simulation[.]rs$	tick_residual|timer residual|residual: f32|residual [+] advanced|let residual = .*entity_partial_tick|remaining = .*residual
+
+# Unsupported category: explicit renderer defensive failures.
+^crates/bbb-client-render/src/render_core/screenshot[.]rs$	unsupported screenshot surface format
+^crates/bbb-client-render/src/entity_models/textured(/meshes)?[.]rs$	unsupported dynamic player (skin|texture) render type
+# The selected post-effect GLSL adapter rejects declarations outside its frozen
+# WebGPU binding/std140 surface before installing a resource generation.
+^crates/bbb-client-render/src/render_core/post_effect_graph/glsl[.]rs$	unsupported
+# Pack/catalog parsers reject unsupported source shapes with bounded errors.
+^crates/bbb-client-assets/src/atlas_sources[.]rs$	unsupported (required atlas field|required atlas path field|atlas location field|atlas locations field|atlas source type)
+^crates/bbb-client-assets/src/equipment_assets[.]rs$	unsupported equipment layer type
+^crates/bbb-client-assets/src/furnace_fuels[.]rs$	unsupported generated furnace-fuel source catalog manifest
+^crates/bbb-client-assets/src/item_models[.]rs$	unsupported (copper golem statue pose|item model type|item special model type|bed special-model part|chest special-model type|standing special-model attachment|hanging-sign special-model attachment|head special-model kind|end-cube special-model effect|banner special-model color|sign special-model wood type|item tint source type)
+^crates/bbb-client-assets/src/item_models/predicates[.]rs$	unsupported property
+^crates/bbb-client-assets/src/language[.]rs$	unsupported_format
+^crates/bbb-client-assets/src/post_effects[.]rs$	unsupported post-effect uniform type
+^crates/bbb-client-assets/src/zip_pack[.]rs$	unsupported ZIP compression method|is unsupported
+# Unknown packet/component/registry values remain explicit diagnostics; owner-specific
+# entries below deliberately avoid allowing arbitrary new “unsupported” comments.
+^crates/bbb-client/src/control/types/net[.]rs$	unsupported_packet
+^crates/bbb-client-probe/src/types(/.*)?[.]rs$	unsupported[-_]packet
+^crates/bbb-client-probe/src/probe(/interaction_replay)?[.]rs$	unsupported_packet|record_unsupported_packet
+^crates/bbb-client-probe/src/probe/(configuration|login|play)[.]rs$	unsupported_packet|record_unsupported_packet
+^crates/bbb-client/src/runtime/events/control_state[.]rs$	unsupported_packet
+^crates/bbb-protocol/src/packets/entities[.]rs$	unsupported entity data serializer
+^crates/bbb-protocol/src/packets/data_components(/decode)?[.]rs$	unsupported data component type id
+# Creative-slot outbound encoding fails closed for built-in enum component value
+# codecs that the descriptor catalog does not own yet.
+^crates/bbb-protocol/src/packets/data_components/catalog(/(encode|decode))?[.]rs$	unsupported built-in enum component type id
+# Descriptor encoders reject out-of-domain summarized values atomically before
+# packet emission; these errors guard the supported wire path rather than mark
+# a missing packet or component implementation.
+^crates/bbb-protocol/src/packets/data_components/catalog(/(encode|decode))?[.]rs$	unsupported tropical_fish_pattern packed id
+^crates/bbb-client-world/src/client/dialog(/action|/body|/input)?[.]rs$	unsupported dialog|unsupported scheme
+# Timeline codecs reject unknown easing names with a bounded field diagnostic.
+^crates/bbb-client-world/src/registries/timelines[.]rs$	unsupported easing
+# The synchronized environment codec rejects any future syncable attribute until
+# its value type and modifier semantics have an owned typed projection.
+^crates/bbb-client-world/src/registries/environment_attributes[.]rs$	unsupported syncable attribute
+# Target Equippable prediction names one fail-closed result helper for malformed
+# component slot/holder data or a missing live entity-type tag. Supported owner
+# paths retain exact ItemStack PASS ordering and server-authoritative correction.
+^crates/bbb-client-world/src/client/inventory/use_prediction/equippable[.]rs$	unsupported_target_equippable|[.]ok_or_else[(]unsupported[)]
+# Generated block-use-without-item dispatch retains one explicit result boundary
+# for unimplemented owners, malformed generated state properties, or unavailable
+# local neighbor facts. It is surfaced to diagnostics instead of guessing a
+# consuming result or mutating canonical block state.
+^crates/bbb-client-world/src/client/inventory/use_prediction/block_use_without_item[.]rs$	UnsupportedBlockUseWithoutItem|unsupported[(][)]
+# Comparator mode/output prediction fails closed when a required neighboring
+# chunk, generated state fact, synchronized block-entity payload, or atomic
+# local block mutation is unavailable. The generated owner match is exhaustive,
+# and server correction retains canonical authority.
+^crates/bbb-client-world/src/client/inventory/use_prediction/comparator[.]rs$	UnsupportedBlockUseWithoutItem|unsupported[(][)]
+# Generated block-use-item-on dispatch uses the same explicit fail-closed result
+# for malformed state/component facts or unavailable local prediction inputs.
+# Every generated owner is matched exhaustively; these outcomes preserve server
+# correction instead of hiding an unimplemented owner.
+^crates/bbb-client-world/src/client/inventory/use_prediction/block_use_item_on[.]rs$	UnsupportedBlockUseItemOn|unsupported[(][)]
+# Generated mob-interact dispatch likewise classifies every fixed entity row.
+# Its one explicit helper is used only when required live metadata, tags,
+# inventory capacity, or an atomic client mutation is unavailable; these paths
+# fail closed to server correction rather than conceal an owner gap.
+^crates/bbb-client-world/src/client/inventory/use_prediction/mob_interact[.]rs$	return unsupported|Err[(](Box::new[(])?unsupported|fn unsupported
+^crates/bbb-client-world/src/client/inventory/use_prediction/mob_interact_dispatch[.]rs$	let unsupported = \|\| Box::new[(]LocalTargetUsePrediction::UnsupportedEntityInteract[(]owner[)][)]|return Err[(]unsupported[(][)][)]|[.]ok_or_else[(]unsupported[)]
+# PlaceOnWaterBlockItem prediction fails closed when local fluid, block, or registry facts are unavailable.
+^crates/bbb-client-world/src/client/inventory/use_prediction/pov_item[.]rs$	^[[:space:]]*(let unsupported = \|\| \{|return Err[(]unsupported[(][)][)];)$
+
+# Tests are classified as non-P0 regression evidence/fixtures.
+^crates/.*/tests[.]rs$	residual|fallback|unsupported
+^crates/.*/tests/.*[.]rs$	residual|fallback|unsupported
+# The generated DyeColor inline test names Vanilla's zero/default ByIdMap
+# fallback to prove the shared ordinal catalog preserves it; production lookup
+# remains typed and the line is regression evidence, not a runtime owner gap.
+^crates/bbb-facts/src/dye_colors[.]rs$	dye_colors_preserve_vanilla_ids_names_colors_and_zero_fallback
+# Command-dispatcher inline tests use “fallback” only for the explicit
+# server-owned completion branch and the lower-precedence argument fixture.
+^crates/bbb-client-world/src/commands[.]rs$	client_server_fallback_and_item_component_completion_match_parser_owners
+^crates/bbb-client-world/src/commands/dispatcher[.]rs$	^[[:space:]]*"fallback",$
+# Vanilla `RuleBasedStateProvider.fallback`
+# is the codec field name, not a runtime owner-gap fallback.
+^crates/bbb-server-datapack/src/worldgen/(block|tree)[.]rs$	fallback
+# Vanilla `Language.UNSUPPORTED_FORMAT_PATTERN` (`Language.java:30`, `:80`) and the
+# translatable/object component `fallback` codec field; not a BBB fallback branch.
+^crates/bbb-server-datapack/src/language[.]rs$	unsupported_format|fallback
+# ObjectContents.resolve recursively resolves its optional component field
+# (ObjectContents.java:33-38); these lines apply that field in the command resolver.
+^crates/bbb-server-core/src/commands/run/text[.]rs$	if let Some[(]fallback[)] = contents[.]iter_mut[(][)][.]find[(]\|field\| field[.]name == "fallback"[)]|^[[:space:]]*fallback[.]value =|resolve_at[(]&fallback[.]value,
+
+# Fallback category: pack/model/language resource fallback behavior.
+^crates/bbb-client-assets/src/block_models/resolver[.]rs$	let fallback = self|[.]unwrap_or[(]&fallback[)]
+^crates/bbb-client-assets/src/component_text[.]rs$	find_entry[(]entries, "fallback"[)]|[.]is_some_and[(][|]fallback[|]|append_nbt_string_template[(]out, fallback,
+^crates/bbb-client-assets/src/item_models[.]rs$	fallback: (Option<Box<ItemModelDefinition>>|optional_model[(]object, "fallback"[^)]*[)][?])|^[[:space:]]*(entries|cases), fallback, [.][.]$|if let Some[(]fallback[)] = fallback|fallback[.]visit[(]f[)]
+^crates/bbb-client-assets/src/item_models/predicates[.]rs$	"fallback", "translate", "keybind"
+^crates/bbb-client-assets/src/language[.]rs$	"explicit fallback"|fallback_catalog
+^crates/bbb-client-assets/src/periodic_notifications[.]rs$	periodic-fallback
+^crates/bbb-client-assets/src/roots[.]rs$	source[_ ]fallback|source root fallback
+^crates/bbb-client-assets/src/selected_packs[.]rs$	when that fallback resolved
+^crates/bbb-client-assets/src/window_icons[.]rs$	fn icns_budget_failure_keeps_optional_fallback_admitted
+# Colored entity/debug geometry and renderer-owned vanilla fallbacks.
+^crates/bbb-client-render/src/((render_core|item_render)/)?entity_models/.*[.]rs$	fallback
+^crates/bbb-client-render/src/terrain(/.*)?[.]rs$	fallback
+^crates/bbb-client-render/src/hud(/.*)?[.]rs$	fallback
+^crates/bbb-client-render/src/((render_core|item_render)/)?(camera|render|item_models|offscreen|sky|transparency)[.]rs$	fallback
+^crates/bbb-client-render/src/((render_core|item_render)/)?item_models/.*[.]rs$	fallback
+# Core shader startup may keep the embedded core pipelines only when the
+# prepared source projection is empty. Selected/server generations pass false,
+# a missing required selected terrain source fails, and the renderer transaction
+# retains the previous complete generation; this flag is recovery material, not
+# an unsupported current-surface branch.
+^crates/bbb-client-render/src/(resource_reload|renderer/pipelines)[.]rs$	allow_embedded_fallback
+# Renderer/control residency fallback fields are observations for the explicit
+# bounded owner overflow path. The path preserves every visible item/map and is
+# not a required-packet, canonical-state, or default renderer fallback.
+^crates/bbb-client-render/src/render_core/counters[.]rs$	(item_model|map_texture)_fallbacks
+^crates/bbb-client/src/(control/types/renderer|runtime/frame_counters)[.]rs$	(item_model|map_texture)_fallbacks
+# ParticleLifetimeDescriptor carries the Vanilla fallback lifetime/scale when no explicit option overrides it.
+^crates/bbb-client-world/src/particles/descriptors(/sampling)?[.]rs$	fallback: (u32|1)|fallback_scale: (u32|1)|CommandOption [{] fallback [}]|DustScale [{] fallback_scale [}]
+^crates/bbb-client-render/src/renderer[.]rs$	force_fallback_adapter
+# This adapter option appears only in the scalar depth-copy GPU test harness;
+# false requests the normal primary adapter rather than a runtime fallback.
+^crates/bbb-client-render/src/render_core/post_effect_graph/depth[.]rs$	force_fallback_adapter
+^crates/bbb-render-types/src/(entity_textures|hud_glyphs|entity_render_state(/.*)?)[.]rs$	fallback
+# Item profile, icon, tooltip and font fallback behavior.
+^crates/bbb-client-render/src/item_model/item_runtime(/.*)?[.]rs$	fallback
+# CLDR/ICU4X timezone name fallback doc comments in local_time.
+^crates/bbb-client-world/src/local_time(/tables_26_1)?[.]rs$	^[[:space:]]*//[/!].*(exemplar-city|metazone-standard|ICU4X's own|zones-without-a-city) fallback
+^crates/bbb-client-render/src/item_model/(font|profile_resolver)[.]rs$	fallback
+# SkinManager's sole texture-set owner uses the exact UUID-derived default skin
+# while a signed all-of set is pending, invalid or failed. This is the frozen
+# Vanilla profile presentation fallback, not a missing renderer/resource owner.
+^crates/bbb-client-render/src/item_model/skin_runtime[.]rs$	fallback
+# Native terrain/entity/item/particle/HUD/debug fallback behavior.
+^crates/bbb-client-render/src/scene/terrain_textures(/.*)?[.]rs$	fallback
+^crates/bbb-client/src/terrain_upload(/.*)?[.]rs$	fallback
+^crates/bbb-client/src/entity_scene(/.*)?[.]rs$	fallback
+^crates/bbb-client/src/item_models(/.*)?[.]rs$	fallback
+^crates/bbb-client/src/(runtime|input|item_frames|banner_scene|debug_entries|main|desktop|web)[.]rs$	fallback
+# HUD text projections resolve selected-language entries with declared display defaults.
+^crates/bbb-client/src/runtime/(hud_text|inventory_text|screen_projection|screen_narration|recipe_book)[.]rs$	fallback
+# Item attribute projection retains the caller's explicit default registry id.
+^crates/bbb-client/src/runtime/item_projection[.]rs$	fn registry_key_id[(]|[.]unwrap_or[(]fallback[)]
+^crates/bbb-client/src/input/.*[.]rs$	fallback
+# Startup reproduces Vanilla's stored `startedCleanly` fullscreen safety and
+# `Window.<init>` preferred-mode fallback. The inline test name is evidence for
+# that exact branch; none of these lines introduces a generic runtime fallback.
+^crates/bbb-client/src/options[.]rs$	prior startup, which preserves Vanilla's safe fullscreen fallback
+^crates/bbb-client/src/startup[.]rs$	`Window[.]<init>` constructs this fallback only when both launch|fn vanilla_quick_play_unescapes_java_and_cli_fullscreen_dimensions_are_fallback_only|/// Always render text using the GNU Unifont Unicode bitmap fallback[.]
+# Non-MDI RenderBundle stability threshold doc comment in terrain_residency.
+^crates/bbb-client-render/src/renderer/terrain_residency[.]rs$	^[[:space:]]*/// Non-MDI fallback frames a terrain draw revision must remain unchanged before$
+# wgpu's adapter request field is an upstream API name. These GPU-backed tests
+# deliberately require the normal hardware adapter and never opt into it.
+^crates/bbb-client-render/src/((render_core|item_render)/)?(clouds|gpu_timing|terrain_animation)[.]rs$	^[[:space:]]*force_fallback_adapter: false,$
+# This atlas test proves GUI special-pattern sprites have a pack-owned texture
+# when no live dynamic atlas handle is available; it exercises the canonical
+# residency upload path and does not introduce a textured submission bypass.
+^crates/bbb-client/src/entity_assets[.]rs$	special_pattern_atlas_sprites_supply_owned_gui_fallbacks
+# Player-head scene tests name the exact Vanilla owner-specific skin fallback
+# and its render-state field; the skull model remains present in every branch.
+^crates/bbb-client/src/skull_scene[.]rs$	profiled_player_head_projects_owner_fallback_and_ready_dynamic_skin|let fallback =([[:space:]]*skull_model_instances.*)?$|fallback\[0\][.]kind|fallback: EntityDefaultPlayerSkin::SlimAlex
+# Environment extraction uses this flag only to preserve checked-in vanilla
+# defaults when no synchronized dimension registry exists; remote registries use
+# their typed revision and never enter the built-in fallback branch.
+^crates/bbb-client/src/runtime/(render_extract(/.*)?|lightmap|weather)[.]rs$	uses_builtin_dimension_fallback
+# Custom ContentRegistry particles use projected fallback_tint and generic
+# fallback sprites only when a mod pack provides no particle sprite texture.
+^crates/bbb-client/src/particle_runtime([.]rs|/(extract|resolver_core)[.]rs)$	fallback_(tint|custom_particle_sprites)
+# Chat localization uses the selected resource generation first, then a fixed
+# English display template/key fallback. Canonical Component/style ownership,
+# packet acceptance, and renderer submission metadata are unchanged.
+^crates/bbb-client/src/runtime/render_extract(/.*)?[.]rs$	chat_translation_fallback|let [(]translation_key, fallback[)]|^[[:space:]]*fallback[:,]|unwrap_or[(]fallback[)]
+# Social status text follows the same selected-language then fixed-English
+# display fallback; player removal/hidden/blocked state is already canonical.
+^crates/bbb-client/src/runtime/render_extract(/.*)?[.]rs$	let [(]key, fallback[)] = match [(]player[.]blocked, player[.]hidden, player[.]removed[)]|localized_gui_text[(]item_runtime, key, fallback[)]
+# Advancement labels and structured SystemToast titles resolve the selected
+# language first; fixed English text is only the Vanilla display fallback for
+# a missing key and never substitutes canonical toast state or geometry.
+^crates/bbb-client/src/runtime/toast[.]rs$	let [(]translation_key, fallback, frame_label_color[)]|localized_gui_text[(]Some[(]item_runtime[)], translation_key, fallback[)]|^[[:space:]]*fallback: (String|impl Into<String>),$|fallback: fallback[.]into[(][)],|&self[.]fallback
+# Creative-tab titles use fixed Vanilla English only when the active language
+# has no matching key; canonical item/tab identity does not fall back.
+^crates/bbb-client/src/runtime/creative_inventory[.]rs$	let fallback = tab|localized_gui_text[(]item_runtime, &tab[.]title_key, &fallback[)]
+# Entity name displays use the same client-language key/Component fallback
+# semantics; these matches are localization data flow, not model placeholders.
+^crates/bbb-client/src/entity_name_tags[.]rs$	localized_or_fallback|let fallback = match|String[(]fallback[)]|fallback[.]as_str|^[[:space:]]*fallback[:,]|unwrap_or[(]fallback[)]|fallback_formats_arguments|name: "fallback"
+# The cartography test encodes the protocol translation key, not a substitute implementation.
+^crates/bbb-client/src/cartography_preview[.]rs$	^[[:space:]]*name: "fallback"[.]into[(][)],$
+# Shared Component translation and the native book presenter resolve the selected
+# language first, then use the packet's exact `fallback` field or fixed Vanilla
+# English GUI text. This does not replace canonical Component or screen state.
+^crates/bbb-client/src/component_text[.]rs$	fallback
+^crates/bbb-client/src/runtime/book_screen[.]rs$	fallback
+# Entity hover type labels use the same selected-language helper, with the
+# retained entity resource id as the exact missing-language-key display.
+^crates/bbb-client/src/runtime/component_hover[.]rs$	localized_or_fallback
+# Synchronized jukebox audio completes only data-less known-pack stubs by resource
+# identity; server payloads and holder order never use a bootstrap ordinal fallback.
+^crates/bbb-client/src/runtime/events/dispatcher[.]rs$	let fallback = world|JukeboxSongRegistryEntry::new[(]song_id, fallback, None[)]
+# World registry/entity/chunk/client fallbacks preserve vanilla/offline semantics.
+# Bone meal obtains built-in block-tag members when the level has no installed
+# tags; every member still passes the live membership query, including empty tags.
+^crates/bbb-server-core/src/block_behavior/bonemeal[.]rs$	let fallback;|fallback = vanilla_persistent_registry_tag_members_26_1[(]|if let PersistentRegistryTagMembers::Present[(]ref builtin[)] = fallback
+# Synchronized registry helpers use exact Vanilla fallback holder tables only when
+# no server-synchronized registry exists, plus Vanilla NBT `fallback` codec fields.
+^crates/bbb-client-world/src/registries/(state|revision)[.]rs$	vanilla_fallback_(resource_id|holder_id)|registry_has_(exact|static)_vanilla_fallback
+^crates/bbb-client-world/src/registries/enchantments[.]rs$	description_translation_fallback|nbt_field[(]fields, "fallback"[)]|^[[:space:]]*fallback: Box::new[(]|^[[:space:]]*///.*fallback|^[[:space:]]*fn (crossbow_charge_time|trident_spin_attack_strength)_.*fallback.*[(][)]
+^crates/bbb-client-world/src/registries/jukebox_songs[.]rs$	^[[:space:]]*///.*Static fallback|^[[:space:]]*fn level_event_projection_uses_generated_fallback_only_without_server_contents[(][)]|let fallback = store|fallback[.](sound_event|description)
+^crates/bbb-client-world/src/registries/(animal_variants|armor_trims|banner_patterns|chat_types|environment_sampling|instrument_values|instruments|loader_order|painting_variants|store|trim_materials|trim_patterns)[.]rs$	^[[:space:]]*//[/!]?.*fallback|^[[:space:]]*fn (renderer_stub_fallback_uses_resource_identity_not_holder_ordinal|rejects_invalid_instrument_fields_without_bootstrap_fallback)[(][)]
+# Entity metadata/animation helpers use explicit caller-supplied defaults and Vanilla body-rotation fallbacks.
+^crates/bbb-client-world/src/entities/entity_data[.]rs$	fallback: (\$ty|i32)|_ => fallback,|^[[:space:]]*//!.*caller's fallback[.]
+^crates/bbb-client-world/src/entities/(animations(/living_states)?|store/model_source)[.]rs$	fallback_to_body|^[[:space:]]*//.*fallback[.]
+^crates/bbb-client-world/src/entities([.]rs|/(block_effects|dimensions/block_attached|display|name_tags|status|store/local_player|values|world_player)[.]rs)$	^[[:space:]]*//[/!]?.*fallback|^[[:space:]]*fn no_recorded_movement_uses_old_position_fallback[(][)]
+# Client-world interaction and audio helpers retain Vanilla item-use fallback ordering and stub tests.
+^crates/bbb-client-world/src/client/inventory/use_prediction/block_placement[.]rs$	block_item_fallback[(]
+^crates/bbb-client-world/src/client/(audio|component_hover|entity_block_effects|local_player|ui)[.]rs$	^[[:space:]]*//[/!]?.*fallback|[.]expect[(]"vanilla fallback holder id"[)]|^[[:space:]]*fn (synchronized_sound_variant_stubs_use_resource_fallback_in_server_order|slime_step_on_uses_vanilla_legacy_fallback_without_support_cache)[(][)]
+# Chunk and terrain doc comments describing Vanilla fallback contracts.
+^crates/bbb-client-world/src/chunks/(heightmap|sign_text|state|store)[.]rs$	^[[:space:]]*//[/!].*fallback
+^crates/bbb-client-world/src/terrain[.]rs$	CollisionContext-dependent shape and is handled before this fallback[.]
+# The runtime-only pending interaction effect queue intentionally carries an
+# already-produced block callback effect across a PASS result while vanilla
+# continues into the item callback; it is not canonical-state fallback.
+^crates/bbb-client-world/src/store[.]rs$	fallback can continue after the client-visible block callback
+# Bucket prediction uses explicit unsupported outcomes for unloaded/unknown
+# registry facts and generated non-default canSurvive owners. These preserve
+# server authority and never select a renderer or canonical-state fallback.
+^crates/bbb-client-world/src/client/inventory/use_prediction/bucket[.]rs$	let unsupported =|return unsupported[(][)]
+# Block-item placement likewise fails closed when the hand snapshot, target
+# block/registry/tag/player facts, collision query, component payload, or atomic
+# prediction application is unavailable. The generated catalog reverse guard
+# proves all 1,023 BlockItem placement and canSurvive owners have evaluators, so
+# these bounded outcomes preserve server correction rather than hide an owner gap.
+^crates/bbb-client-world/src/client/inventory/use_prediction/block_placement[.]rs$	unsupported[(][)]|UnsupportedItemUseOn
+# Protocol enum/component fallbacks are wire/canonical compatibility behavior.
+^crates/bbb-protocol/src/component/canonical_json[.]rs$	find_entry[(]entries, "fallback"[)]|"fallback"|[(]fallback[)]|canonical_component_at[(]fallback
+^crates/bbb-protocol/src/component/codec[.]rs$	`fallback` is lenientOptionalFieldOf|find_entry[(]entries, \"fallback\"[)]|^[[:space:]]*fallback,$|field fallback
+^crates/bbb-protocol/src/component/projection[.]rs$	empty-component fallback|find_entry[(]entries, "fallback"[)]|append_component_runs(_with_budget)?[(]fallback|unset fallback
+^crates/bbb-protocol/src/java_number[.]rs$	BigDecimal fallback
+^crates/bbb-protocol/src/nbt_summary/json_ops[.]rs$	arithmetic narrowing fallback
+^crates/bbb-protocol/src/nbt_summary/snbt[.]rs$	note_unquoted_fallback
+^crates/bbb-protocol/src/packets/inventory[.]rs$	enchantments provide the fallback
+^crates/bbb-protocol/src/packets/server_play/clientbound_world[.]rs$	coordinates are the fallback
+^crates/bbb-protocol/src/packets/serverbound[.]rs$	(has|with) no fallback
+# Generated Vanilla ordinal-table doc comments and inline regression tests in bbb-facts.
+^crates/bbb-facts/src/(animal_sound_variant_types|enchantment_types)[.]rs$	^[[:space:]]*/// before this fixed-order fallback;
+^crates/bbb-facts/src/[a-z_]+[.]rs$	^[[:space:]]*fn [a-z0-9_]+_fallbacks?(_[a-z0-9_]+)?[(][)]
+^crates/bbb-registry-codec/src/.*[.]rs$	fallback
+
+# Vanilla window-icon startup deliberately skips resource reads on Wayland or an
+# unsupported backend and retains the platform default icon after bounded
+# root-resource/decode/apply failure. These diagnostics do not mask a renderer,
+# resource-provider, or canonical-state fallback.
+^crates/bbb-client/src/window_icon[.]rs$	Self::SkipUnsupported => "unsupported-skip"|window_icon_status = "fallback"
+# Window-surface doc comments naming Vanilla's own preferred-video-mode
+# parse/match/fallback chain (Monitor.getPreferredVidMode) and the borderless
+# equivalent of GLFW's current-mode fallback on winit/Wayland. Both document
+# behavior BBB reproduces from vanilla, not a renderer or canonical-state
+# fallback path.
+^crates/bbb-client/src/window_surface[.]rs$	parse/match/fallback|GLFW's current-mode fallback
+
+# The two bbb-owned client files resolve their path from an override variable,
+# then the platform configuration root, then the working directory. The last
+# step is a file-location convention, not a renderer, packet or canonical-state
+# fallback; every branch reads and writes the same store.
+^crates/bbb-client/src/platform[.]rs$	working_directory_fallback
+# Online mode is a declared non-goal, so a server opening the vanilla encryption
+# handshake gets one attributable error instead of a stall. This is a fail-closed
+# login diagnostic, not a silently dropped or misordered packet.
+^crates/bbb-client-net/src/login[.]rs$	online-mode servers are unsupported by this
+
+# key_bindings.rs documents vanilla's createNameSupplier display-name
+# resolution: the bound key's language entry is vanilla's own non-printable
+# fallback path (glfwGetKeyName has no winit equivalent). Doc comment about
+# vanilla semantics, not a bbb fallback branch.
+^crates/bbb-client/src/options/key_bindings[.]rs$	vanilla's non-printable fallback path
+
+# Audio-device fallback is the exact Vanilla/OpenAL recovery contract: an
+# unavailable or unopenable stored preferred output falls back to the system
+# default and is surfaced through counters/control receipts. It cannot replace
+# packet, world, resource-generation, renderer, or required audio-event state.
+# The verified OpenAL owner preserves Vanilla Library's ordered preferred ->
+# system-default -> null device recovery, polling device-tracker fallback when
+# SOFT callbacks are unavailable, and HRTF attribute fallback. The function and
+# focused-test names make those exact decisions auditable; none hides a missing
+# packet/world/resource/renderer owner or silently drops an audio event.
+^crates/bbb-client-audio/src/openal[.]rs$	polling fallback|open_device_or_fallback|context_attributes_match_vanilla_supported_hrtf_fallback
+# This local value projects whether the exact OpenAL device-open plan selected a
+# later candidate; it feeds the already-audited preferred-device receipt.
+^crates/bbb-client-audio/src/runtime[.]rs$	let fallback = preferred|Ok[(][(]backend, current_device, fallback[)][)]
+^crates/bbb-client-audio/src/(device|command)[.]rs$	adapter fallback|preferred_fallbacks
+^crates/bbb-client-audio/src/runtime[.]rs$	preferred_fallback
+^crates/bbb-client/src/audio_runtime[.]rs$	preferred_device_fallbacks
+^crates/bbb-client/src/control/types/audio[.]rs$	preferred_device_fallbacks
+
+# Frame diagnostics attributes only the residual of an explicitly configured
+# user FPS cap to Vanilla's frameLimiter section. The uncapped Retina contract
+# keeps this zero; the comment does not introduce pacing or hide frame work.
+^crates/bbb-client/src/frame_diagnostics[.]rs$	explicit client cap may own the residual
+
+# Java 26.1 persistence rejects wrong data/storage/compression versions and
+# invalid LZ4 block levels with attributable errors. These are fail-closed save
+# media/schema diagnostics, not an unsupported canonical-state path.
+^crates/bbb-server-types/src/save[.]rs$	unsupported Java (data|storage) version|unsupported Anvil compression id
+^crates/bbb-server-persistence/src/lz4_block[.]rs$	LZ4 block .* level .* is unsupported
+# The built-in Java 26.1 registry resolver tests call a fake registry named
+# `unsupported_registry` to prove the adapter preserves typed `Unavailable`
+# results. Production facts use the same word only in a focused-test name that
+# distinguishes an unknown registry from a supported registry's absent member;
+# both are fail-closed registry validation, not omitted save state.
+^crates/bbb-server-persistence/src/builtin_registry_resolver[.]rs$	unsupported_registry|unsupported_membership_results
+# Vanilla's level.dat_old/player .dat_old recovery is a bounded on-disk backup
+# selection. Both candidates are validated before publication, and a double
+# failure is returned; it cannot hide or synthesize world state.
+^crates/bbb-server-types/src/save[.]rs$	NoUsableLevelData|neither level[.]dat nor level[.]dat_old was usable|fallback: String
+^crates/bbb-server-persistence/src/(level_file|player_file)[.]rs$	fallback
+
+# worldgen_codec.rs test fixtures carry Vanilla's own `"fallback": "minecraft:empty"`
+# density-function field verbatim.
+^crates/bbb-server-datapack/src/worldgen_codec[.]rs$	"fallback": "minecraft:empty"
+# pack_mcmeta.rs transcribes Vanilla's lenient fallback pack.mcmeta codec: sections
+# outside the fallback fail the pack instead of being silently dropped.
+^crates/bbb-server-datapack/src/pack_mcmeta[.]rs$	fallback
+
+# RuleBasedStateProvider.java:18-25,57-65 names its optional codec field
+# `fallback`; absence returns null and `getState` reads the current block.
+^crates/bbb-server-worldgen/src/state_providers[.]rs$	fallback
+
+# Generated catalogs and validated schemas make these defensive fallbacks
+# unreachable for a stored Vanilla value. Focused tests reject unknown entity
+# ids and pin the generated redstone/entity facts.
+^crates/bbb-server-core/src/block_behavior/(redstone_torch|diode)[.]rs$	(FACING|redstone_wire).*fallback
+^crates/bbb-server-core/src/redstone[.]rs$	redstone_wire.*fallback
+
+# These are exact Vanilla defaults, a fail-closed malformed input, or the
+# embedded Vanilla datapack used when no loaded generation was supplied; none
+# synthesizes canonical state or hides a missing packet owner.
+^crates/bbb-server-core/src/enchantment_facts[.]rs$	It is the fallback the same way that function is
+^crates/bbb-server-core/src/world/combat/player_death[.]rs$	oversize fallback the send listener carries
+
+# Storage read refusals stop the server rather than overwrite unread data.
+^crates/bbb-server/src/runtime/world_thread[.]rs$	world[.]stopping_on_unsupported_data
+# Vanilla code-of-conduct language selection and safe dismount placement.
+^crates/bbb-server/src/options[.]rs$	the fallback[.] Vanilla.s `enable-code-of-conduct`
+^crates/bbb-server-core/src/world/dismount_search[.]rs$	getDismountLocationForPassenger.*free-position fallback
+
+# The synchronized-registry codec owner rejects unknown registry routes,
+# variant model values, JSON token shapes, and dispatch ids with typed errors.
+# These strings and focused-test names prove fail-closed selection; they do not
+# skip a required registry, substitute a holder, or publish an untyped value.
+^crates/bbb-registry-codec/src/registry_codec/(direct_leaf|element_value|animal_variants|sound_variants)[.]rs$	unsupported (registry|JSON value|animal variant registry|model value|spawn condition dispatch)
+^crates/bbb-registry-codec/src/registry_codec/sound_variants[.]rs$	making unsupported|unsupported_registry_are_exact
+# The persistent item-component projection rejects an enum id the generated 26.1
+# catalogue cannot name, so an unknown value stays an explicit refusal instead of
+# being folded onto the enum's default; the message quotes the packed id it saw.
+^crates/bbb-registry-codec/src/persistent_item_stack_projection/builtin_enum_components[.]rs$	unsupported tropical_fish_pattern packed id
+
+# Here "unsupported" means that the block lacks physical support according to
+# Vanilla canSurvive/updateShape, not a missing production owner.
+^crates/bbb-server-core/src/block_behavior/(sugar_cane|farmland)[.]rs$	(removes an unsupported cane|reverts unsupported farmland)
+
+# Legacy name-based stats lookup preserves Vanilla's `PlayerList.getPlayerStats`
+# path fallback when migrating from older player stats files.
+^crates/bbb-server-persistence/src/world_storage/saved_data[.]rs$	locateStatsFile.*legacy fallback
+
+# Loot runtime rejects every out-of-scope entry, condition, function, number
+# provider, or field with a typed error before drawing or mutating the world.
+# The preflight walks even branches that a particular draw would skip, so these
+# diagnostics prove a fail-closed datapack boundary; they do not silently turn
+# an unsupported table into an empty (and apparently successful) drop.
+^crates/bbb-server-core/src/loot_runtime[.]rs$	unsupported (entry|condition|function|number provider) type
+^crates/bbb-server-core/src/loot_runtime[.]rs$	fn unsupported_field|unsupported_field[(]
+# Component-copy retains attributed refusals for missing held sources or actual Native environments.
+^crates/bbb-server-core/src/loot_runtime/component_copy[.]rs$	unsupported_field[(]
+# Both production loot environments implement the random enchantment seams;
+# missing environments and Java-list capacity are explicit typed refusals.
+^crates/bbb-server-core/src/loot_runtime/evaluator[.]rs$	Err[(]unsupported_field[(]
+# The forced start dispatcher covers every builtin codec and jigsaw. Unknown
+# codec types fail before placement rather than substituting another structure.
+^crates/bbb-server-core/src/chunk/structure_generation/forced[.]rs$	format![(]"unsupported structure codec
+^crates/bbb-server-core/src/loot_runtime/item_predicate[.]rs$	^use super::[{]unsupported_field, LootRuntimeReason, LootTool[}];$|Err[(]unsupported_field
+# Exact predicates reject component names absent from the fixed protocol catalog.
+^crates/bbb-server-core/src/loot_runtime/item_predicate[.]rs$	unsupported_field[(]"match_tool", format![(]"unknown component [{]id[}]"[)][)]
+# Component reads and text comparisons propagate invalid actual data as attributed errors.
+^crates/bbb-server-core/src/loot_runtime/item_predicate[.]rs$	^[[:space:]]*[)]?[.]map_err[(][|]error[|] unsupported_field[(]"match_tool", error[.]to_string[(][)][)][)][?]?,?$|^[[:space:]]*unsupported_field[(]$
+# The location terms this crate cannot reach are named refusals, not a P0.
+^crates/bbb-server-core/src/loot_runtime/location_predicate[.]rs$	unsupported_field|LootLevelBlocks,$
+# Typed state comparisons reject missing property facts or invalid actual state
+# values instead of comparing strings or inventing an ordering.
+^crates/bbb-server-core/src/loot_runtime/state_properties[.]rs$	unsupported_field
+# The attacker terms and the entity-predicate terms a caller's view cannot
+# answer are counted refusals of the same kind: the table node is rejected
+# whole instead of answering false.
+^crates/bbb-server-core/src/loot_runtime/attacker_terms[.]rs$	unsupported_field
+^crates/bbb-server-core/src/loot_runtime/entity_predicate[.]rs$	unsupported_field
+# Entity slot reads without a backed view return a typed loot refusal instead of guessing empty.
+^crates/bbb-server-core/src/loot_runtime/entity_view[.]rs$	^[[:space:]]+super::unsupported_field[(]$
+# Slot sources still need the level owner to unpack random-container loot.
+^crates/bbb-server-core/src/loot_runtime/slot_source[.]rs$	^[[:space:]]+unsupported_field[(]"slots", "unpack (container|vehicle) loot at its level"[)],$
+# Entity modifiers refuse unreadable caller views; actual session/stored entity
+# views supply names and profiles. Unknown projections are not guessed values.
+^crates/bbb-server-core/src/loot_runtime/native_entity_functions[.]rs$	unsupported_field[(]"copy_name", "source (entity has no view|custom name is unknown)"[)]
+^crates/bbb-server-core/src/loot_runtime/native_entity_functions[.]rs$	unsupported_field[(]"fill_player_head", "(entity has no view|Player profile is unknown)"[)]
+# The damage-source predicate's four terms refuse the same way: an unreadable
+# term fails the condition instead of answering false.
+^crates/bbb-server-core/src/loot_runtime/damage_source[.]rs$	unsupported_field
+
+# PLAY's no-visible-child fallback selects the ordinary Vanilla play actions.
+^crates/bbb-server-core/src/entity/ai/(brain[.]rs|brain/behaviors[.]rs|brain/behaviors/villager_play[.]rs|mob/villager[.]rs)$	villager_play_fallback
+
+# AbstractSkeleton.reassessWeaponGoal selects melee when no bow is held; the
+# BowSpec flag selects that Vanilla goal rather than a missing ranged owner.
+^crates/bbb-server-core/src/entity/ai/mob/ranged[.]rs$	^//! fallback[)],|^[[:space:]]*pub[(]crate[)] melee_fallback: bool,$|^[[:space:]]*self[.]melee_active = self[.]spec[.]melee_fallback && !holding[(]targets, "minecraft:bow"[)];$
+^crates/bbb-server-core/src/entity/ai/mob/spec[.]rs$	^/// `AbstractSkeleton`'s bow goal and its melee fallback$|^[[:space:]]*melee_fallback: true,$
+^crates/bbb-server-core/src/entity/ai/mob/spec/table[.]rs$	^[[:space:]]*melee_fallback: false,$
+
+# Advancement labels use the language entry when present and the declared default text otherwise.
+^crates/bbb-client/src/runtime/advancement_text[.]rs$	^[[:space:]]*fallback: &str,$|^[[:space:]]*let template = localized_gui_text[(]item_runtime, key, fallback[)];$
+
+# Nested chat translation fixture exercises the component template default.
+^crates/bbb-client/src/runtime/render_extract[.]rs$	"translate": "missing[.]parts", "fallback": "%s!", "with": \[
+
+# Vanilla item predicates resolve unregistered predicate names through registered
+# components; this inline test verifies that required existence-check behavior.
+^crates/bbb-client-world/src/commands/dispatcher/completion/items[.]rs$	fn command_item_predicate_completion_accepts_component_existence_fallback[(][)]
+
+# RandomStroll.getTargetSwimPos retains its last valid projected target (Vanilla 26.1).
+# This local variable is Vanilla behavior, not a missing-owner recovery path.
+^crates/bbb-server-core/src/entity/ai/mob/random_pos[.]rs$	let mut fallback: Option<Vec3d> = None;|let target = match fallback|return Some[(]fallback[)];|fallback = Some[(]position[)];|^[[:space:]]*Some[(]fallback[)]$
+
+# ShulkerBoxBlock.getShape uses a full cube when its block entity is absent.
+^crates/bbb-server-core/src/world/movement_collision/shulker_tests[.]rs$	fn shulker_box_collision_covers_colours_and_absent_payload_fallback[(][)]
+
+# Native-only command snapshots have no level recipes, item tags or enchantment world.
+# Actual /item publication uses LevelLootEnvironment; these are explicit cold-view refusals.
+^crates/bbb-server-core/src/loot_runtime/native_environment[.]rs$	Err[(]unsupported_field[(]
+
+# Dolphin treasure navigation samples a wider water route when its first target is absent or blocked.
+^crates/bbb-server-core/src/entity/ai/mob/dolphin[.]rs$	let Some[(]fallback[)] = sample[(]8, [45], std::f64::consts::FRAC_PI_2[)] else|^[[:space:]]*next = fallback;$
+
+# Custom content without pack artwork gets a generated model, texture and deterministic tint.
+^crates/bbb-client-assets/src/content_assets[.]rs$	\bfallback_(tint|block_model|cube_render_model|flat_item_model|texture)\b|gives identical deterministic fallback colors|fn resolves_pack_assets_and_deterministic_fallbacks_for_content_registry

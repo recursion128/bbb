@@ -1,0 +1,1296 @@
+use std::collections::BTreeMap;
+
+use super::*;
+use crate::{
+    ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
+    PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+};
+use bbb_protocol::{
+    block_types::{
+        VANILLA_BLOCK_BAMBOO_ID, VANILLA_BLOCK_BAMBOO_SAPLING_ID,
+        VANILLA_BLOCK_COBBLESTONE_WALL_ID, VANILLA_BLOCK_COPPER_CHEST_ID, VANILLA_BLOCK_DIRT_ID,
+        VANILLA_BLOCK_END_STONE_ID, VANILLA_BLOCK_EXPOSED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_NETHER_BRICK_FENCE_ID, VANILLA_BLOCK_OAK_FENCE_ID, VANILLA_BLOCK_OAK_LOG_ID,
+        VANILLA_BLOCK_OAK_WALL_HANGING_SIGN_ID, VANILLA_BLOCK_OXIDIZED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_PALE_OAK_LOG_ID, VANILLA_BLOCK_SNOW_ID, VANILLA_BLOCK_STONE_ID,
+        VANILLA_BLOCK_WAXED_COPPER_CHEST_ID, VANILLA_BLOCK_WAXED_EXPOSED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_WAXED_WEATHERED_COPPER_CHEST_ID, VANILLA_BLOCK_WEATHERED_COPPER_CHEST_ID,
+    },
+    data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+    game_types::VANILLA_GAME_TYPE_SURVIVAL_ID,
+    item_types::{
+        VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_BAMBOO_ID, VANILLA_ITEM_BELL_ID,
+        VANILLA_ITEM_BRAIN_CORAL_BLOCK_ID, VANILLA_ITEM_BROWN_MUSHROOM_BLOCK_ID,
+        VANILLA_ITEM_BUBBLE_CORAL_BLOCK_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_CHEST_ID,
+        VANILLA_ITEM_CHORUS_PLANT_ID, VANILLA_ITEM_COBBLESTONE_WALL_ID,
+        VANILLA_ITEM_COCOA_BEANS_ID, VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_COMPARATOR_ID,
+        VANILLA_ITEM_CRAFTER_ID, VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_DIRT_PATH_ID,
+        VANILLA_ITEM_FARMLAND_ID, VANILLA_ITEM_FIRE_CORAL_BLOCK_ID, VANILLA_ITEM_FURNACE_ID,
+        VANILLA_ITEM_GLOW_BERRIES_ID, VANILLA_ITEM_GLOW_LICHEN_ID, VANILLA_ITEM_GRASS_BLOCK_ID,
+        VANILLA_ITEM_HANGING_ROOTS_ID, VANILLA_ITEM_HEAVY_CORE_ID,
+        VANILLA_ITEM_HORN_CORAL_BLOCK_ID, VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_KELP_ID,
+        VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID,
+        VANILLA_ITEM_MYCELIUM_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_DOOR_ID,
+        VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
+        VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LEAVES_ID, VANILLA_ITEM_OAK_LOG_ID,
+        VANILLA_ITEM_OAK_SHELF_ID, VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID,
+        VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
+        VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_PALE_MOSS_CARPET_ID,
+        VANILLA_ITEM_PITCHER_POD_ID, VANILLA_ITEM_PODZOL_ID, VANILLA_ITEM_POINTED_DRIPSTONE_ID,
+        VANILLA_ITEM_REDSTONE_ID, VANILLA_ITEM_REDSTONE_LAMP_ID, VANILLA_ITEM_REPEATER_ID,
+        VANILLA_ITEM_RESIN_CLUMP_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SCAFFOLDING_ID,
+        VANILLA_ITEM_SCULK_VEIN_ID, VANILLA_ITEM_SEAGRASS_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID,
+        VANILLA_ITEM_STONE_ID, VANILLA_ITEM_STRING_ID, VANILLA_ITEM_SUNFLOWER_ID,
+        VANILLA_ITEM_TEST_BLOCK_ID, VANILLA_ITEM_TRIPWIRE_HOOK_ID,
+        VANILLA_ITEM_TUBE_CORAL_BLOCK_ID, VANILLA_ITEM_TUBE_CORAL_FAN_ID,
+        VANILLA_ITEM_TWISTING_VINES_ID, VANILLA_ITEM_TYPES, VANILLA_ITEM_VINE_ID,
+        VANILLA_ITEM_WAXED_COPPER_CHEST_ID, VANILLA_ITEM_WAXED_OXIDIZED_COPPER_CHEST_ID,
+        VANILLA_ITEM_WAXED_WEATHERED_COPPER_CHEST_ID, VANILLA_ITEM_WEEPING_VINES_ID,
+        VANILLA_ITEM_WHITE_BED_ID, VANILLA_ITEM_WHITE_CONCRETE_POWDER_ID,
+    },
+    packets::{
+        BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
+        DataComponentPatchSummary, EntityEvent, ItemStackSummary, LightUpdate, LightUpdateData,
+        PlayLogin, PlayerAbilities, RegistryTags, SetChunkCacheCenter, SetPlayerInventory,
+        TagNetworkPayload, UpdateTags, Vec3d,
+    },
+};
+
+mod attachments;
+mod connections;
+mod fluids;
+mod plants;
+mod surfaces;
+mod survival_rules;
+
+const CLICKED: BlockPos = BlockPos { x: 0, y: 8, z: 0 };
+const TARGET: BlockPos = BlockPos { x: 0, y: 9, z: 0 };
+
+#[test]
+fn generated_block_item_placement_and_survival_owners_all_have_client_evaluators() {
+    let block_items = VANILLA_ITEM_TYPES
+        .iter()
+        .filter_map(|item| item.block_item_behavior.map(|behavior| (item, behavior)))
+        .collect::<Vec<_>>();
+    let mut missing_placement = Vec::new();
+    let mut missing_survival = Vec::new();
+    for (item, behavior) in &block_items {
+        for block_type_id in [Some(behavior.block_type_id), behavior.wall_block_type_id]
+            .into_iter()
+            .flatten()
+        {
+            let block_type = vanilla_block_type(block_type_id).expect("generated block item owner");
+            if block_type
+                .get_state_for_placement_override
+                .is_some_and(|owner| {
+                    !state::block_item_get_state_for_placement_owner_supported(owner)
+                })
+            {
+                missing_placement.push((item.resource_id, block_type.resource_id));
+            }
+            if let Some(owner) = block_type.can_survive_override {
+                if !survival::block_can_survive_owner_supported(owner, block_type.resource_id) {
+                    missing_survival.push((item.resource_id, block_type.resource_id, owner));
+                }
+            }
+        }
+    }
+
+    assert_eq!(block_items.len(), 1_023);
+    assert!(
+        missing_placement.is_empty(),
+        "block items without placement evaluators: {missing_placement:?}"
+    );
+    assert!(
+        missing_survival.is_empty(),
+        "block items without survival evaluators: {missing_survival:?}"
+    );
+}
+
+#[test]
+fn generated_vegetation_survival_owners_all_dispatch_virtual_may_place_on() {
+    let missing = bbb_protocol::block_types::VANILLA_BLOCK_TYPES
+        .iter()
+        .filter(|block| {
+            block.can_survive_override
+                == Some(bbb_protocol::block_types::VanillaCanSurviveOverride::VegetationBlock)
+        })
+        .filter(|block| {
+            !survival::block_can_survive_owner_supported(
+                bbb_protocol::block_types::VanillaCanSurviveOverride::VegetationBlock,
+                block.resource_id,
+            )
+        })
+        .map(|block| block.resource_id)
+        .collect::<Vec<_>>();
+
+    assert!(
+        missing.is_empty(),
+        "vegetation blocks without virtual mayPlaceOn dispatch: {missing:?}"
+    );
+}
+
+#[test]
+fn plain_block_item_places_consumes_sounds_and_rolls_back_on_ack() {
+    let mut world = placement_world();
+    set_held(&mut world, VANILLA_ITEM_STONE_ID, 2);
+
+    assert_eq!(
+        use_block(&mut world, 17),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::block_place_from_profile(
+                TARGET,
+                bbb_protocol::block_types::VANILLA_BLOCK_STONE_ID,
+            )
+        ))
+    );
+    assert_eq!(
+        world.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:stone", [])
+    );
+    assert_eq!(held(&world).count, 1);
+    assert_eq!(world.local_block_predictions().len(), 1);
+    assert_eq!(world.local_block_predictions()[0].sequence, 17);
+
+    let mut random = crate::LevelEventSoundRandomState::default();
+    let effect = world
+        .apply_local_interaction_sound_action(
+            LocalInteractionSoundAction::BlockPlaceFromProfile {
+                pos: TARGET,
+                block_type_id: bbb_protocol::block_types::VANILLA_BLOCK_STONE_ID,
+            },
+            &mut random,
+        )
+        .unwrap();
+    let crate::LocalInteractionSoundEffect::Positioned(sound) = effect else {
+        panic!("block placement sound must be positioned");
+    };
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:block.stone.place")
+    );
+    assert_eq!((sound.volume, sound.pitch), (1.0, 0.8));
+
+    world.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 17 });
+    assert_eq!(
+        world.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert!(world.local_block_predictions().is_empty());
+}
+
+#[test]
+fn block_state_component_applies_known_values_and_ignores_unknown_properties() {
+    let mut world = placement_world();
+    let mut stack = ItemStackSummary {
+        item_id: Some(VANILLA_ITEM_RESPAWN_ANCHOR_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default().into(),
+    };
+    stack
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID);
+    stack.component_patch.block_state_properties = BTreeMap::from([
+        ("charges".into(), "2".into()),
+        ("missing".into(), "ignored".into()),
+        (vec![0xd800].into(), "2".into()),
+        ("�".into(), vec![0xd801].into()),
+    ])
+    .into();
+    world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+
+    assert!(matches!(
+        use_block(&mut world, 18),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:respawn_anchor", [("charges", "2")])
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
+fn block_state_component_ignores_raw_value_for_known_property() {
+    let mut world = placement_world();
+    let mut stack = ItemStackSummary {
+        item_id: Some(VANILLA_ITEM_RESPAWN_ANCHOR_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default().into(),
+    };
+    stack
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID);
+    stack.component_patch.block_state_properties =
+        BTreeMap::from([("charges".into(), vec![0xd800].into())]).into();
+    world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    assert!(matches!(
+        use_block(&mut world, 18),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:respawn_anchor", [("charges", "0")])
+    );
+}
+
+#[test]
+fn plain_block_item_replaces_clicked_block_but_rejects_player_obstruction() {
+    let mut replace = placement_world();
+    set_block(&mut replace, CLICKED, state_id("minecraft:short_grass", []));
+    set_held(&mut replace, VANILLA_ITEM_STONE_ID, 1);
+    assert!(matches!(
+        use_block(&mut replace, 1),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        replace.probe_block(CLICKED).unwrap().block_state_id,
+        state_id("minecraft:stone", [])
+    );
+
+    let mut obstructed = placement_world();
+    obstructed.set_local_player_pose(LocalPlayerPoseState {
+        position: Vec3d {
+            x: 0.5,
+            y: 9.0,
+            z: 0.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    set_held(&mut obstructed, VANILLA_ITEM_STONE_ID, 1);
+    assert_eq!(
+        use_block(&mut obstructed, 2),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        obstructed.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&obstructed).count, 1);
+    assert!(obstructed.local_block_predictions().is_empty());
+}
+
+#[test]
+fn directional_and_axis_placement_owners_use_exact_player_and_hit_directions() {
+    let mut log = placement_world();
+    set_held(&mut log, VANILLA_ITEM_OAK_LOG_ID, 1);
+    assert!(matches!(
+        use_block(&mut log, 3),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        log.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:oak_log", [("axis", "y")])
+    );
+
+    let mut furnace = placement_world();
+    set_held(&mut furnace, VANILLA_ITEM_FURNACE_ID, 1);
+    assert!(matches!(
+        use_block(&mut furnace, 4),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        furnace.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:furnace", [("facing", "north"), ("lit", "false")])
+    );
+
+    let mut observer = placement_world();
+    set_held(&mut observer, VANILLA_ITEM_OBSERVER_ID, 1);
+    assert!(matches!(
+        use_block(&mut observer, 5),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        observer.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:observer",
+            [("facing", "south"), ("powered", "false")]
+        )
+    );
+}
+
+#[test]
+fn crafter_placement_uses_nearest_front_top_orientation_without_signal() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut horizontal = placement_world();
+    set_block(&mut horizontal, clicked, state_id("minecraft:stone", []));
+    set_held(&mut horizontal, VANILLA_ITEM_CRAFTER_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut horizontal, clicked, false, 69),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        horizontal.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:crafter",
+            [
+                ("crafting", "false"),
+                ("orientation", "north_up"),
+                ("triggered", "false")
+            ],
+        )
+    );
+
+    let mut vertical = placement_world();
+    set_block(&mut vertical, clicked, state_id("minecraft:stone", []));
+    vertical.set_local_player_pose(LocalPlayerPoseState {
+        position: Vec3d {
+            x: 8.0,
+            y: 8.0,
+            z: 8.0,
+        },
+        x_rot: 90.0,
+        ..LocalPlayerPoseState::default()
+    });
+    set_held(&mut vertical, VANILLA_ITEM_CRAFTER_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut vertical, clicked, false, 70),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        vertical.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:crafter",
+            [
+                ("crafting", "false"),
+                ("orientation", "up_south"),
+                ("triggered", "false")
+            ],
+        )
+    );
+}
+
+#[test]
+fn shelf_placement_uses_horizontal_facing_source_water_and_no_signal() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut world = placement_world();
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut world,
+        target,
+        state_id("minecraft:water", [("level", "0")]),
+    );
+    set_held(&mut world, VANILLA_ITEM_OAK_SHELF_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 72),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_shelf",
+            [
+                ("facing", "north"),
+                ("powered", "false"),
+                ("side_chain", "unconnected"),
+                ("waterlogged", "true")
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
+fn repeater_placement_uses_diode_facing_support_and_no_side_lock() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut world = placement_world();
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_held(&mut world, VANILLA_ITEM_REPEATER_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 73),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:repeater",
+            [
+                ("delay", "1"),
+                ("facing", "north"),
+                ("locked", "false"),
+                ("powered", "false")
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
+fn redstone_lamp_placement_is_unlit_when_signal_is_proven_absent() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut world = placement_world();
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_held(&mut world, VANILLA_ITEM_REDSTONE_LAMP_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 74),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:redstone_lamp", [("lit", "false")])
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
+fn diode_placement_uses_horizontal_facing_and_rigid_floor_support() {
+    let mut supported = placement_world();
+    set_held(&mut supported, VANILLA_ITEM_COMPARATOR_ID, 1);
+    assert!(matches!(
+        use_block(&mut supported, 62),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false")
+            ],
+        )
+    );
+    assert_eq!(held(&supported).count, 0);
+
+    let mut unsupported = placement_world();
+    set_block(
+        &mut unsupported,
+        CLICKED,
+        state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        ),
+    );
+    set_held(&mut unsupported, VANILLA_ITEM_COMPARATOR_ID, 1);
+    assert_eq!(
+        use_block(&mut unsupported, 63),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&unsupported).count, 1);
+    assert!(unsupported.local_block_predictions().is_empty());
+}
+
+#[test]
+fn creaking_heart_placement_uses_hit_axis_logs_and_environment_default() {
+    assert_eq!(state::creaking_heart_state_name(true, true), "awake");
+    assert_eq!(state::creaking_heart_state_name(true, false), "dormant");
+    assert_eq!(state::creaking_heart_state_name(false, true), "uprooted");
+
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::East);
+    let far_log = relative(target, ProtocolDirection::East);
+
+    let mut surrounded = placement_world();
+    set_block_tag(
+        &mut surrounded,
+        "minecraft:pale_oak_logs",
+        &[VANILLA_BLOCK_PALE_OAK_LOG_ID],
+    );
+    set_block(
+        &mut surrounded,
+        clicked,
+        state_id("minecraft:pale_oak_log", [("axis", "x")]),
+    );
+    set_block(
+        &mut surrounded,
+        far_log,
+        state_id("minecraft:pale_oak_log", [("axis", "x")]),
+    );
+    set_held(&mut surrounded, VANILLA_ITEM_CREAKING_HEART_ID, 1);
+    assert!(matches!(
+        surrounded.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            6,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        surrounded.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:creaking_heart",
+            [
+                ("axis", "x"),
+                ("creaking_heart_state", "dormant"),
+                ("natural", "false"),
+            ],
+        )
+    );
+
+    let mut misaligned = placement_world();
+    set_block_tag(
+        &mut misaligned,
+        "minecraft:pale_oak_logs",
+        &[VANILLA_BLOCK_PALE_OAK_LOG_ID],
+    );
+    set_block(
+        &mut misaligned,
+        clicked,
+        state_id("minecraft:pale_oak_log", [("axis", "z")]),
+    );
+    set_block(
+        &mut misaligned,
+        far_log,
+        state_id("minecraft:pale_oak_log", [("axis", "x")]),
+    );
+    set_held(&mut misaligned, VANILLA_ITEM_CREAKING_HEART_ID, 1);
+    assert!(matches!(
+        misaligned.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            7,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        misaligned.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:creaking_heart",
+            [
+                ("axis", "x"),
+                ("creaking_heart_state", "uprooted"),
+                ("natural", "false"),
+            ],
+        )
+    );
+}
+
+#[test]
+fn note_block_placement_uses_above_instrument_then_below_base_instrument() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let above = relative(target, ProtocolDirection::Up);
+
+    let mut below_base = placement_world();
+    set_block(
+        &mut below_base,
+        clicked,
+        state_id("minecraft:oak_planks", []),
+    );
+    set_held(&mut below_base, VANILLA_ITEM_NOTE_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut below_base, clicked, false, 35),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        below_base.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:note_block",
+            [("instrument", "bass"), ("note", "0"), ("powered", "false"),],
+        )
+    );
+
+    let mut above_head = placement_world();
+    set_block(
+        &mut above_head,
+        clicked,
+        state_id("minecraft:oak_planks", []),
+    );
+    set_block(
+        &mut above_head,
+        above,
+        state_id(
+            "minecraft:skeleton_skull",
+            [("powered", "false"), ("rotation", "0")],
+        ),
+    );
+    set_held(&mut above_head, VANILLA_ITEM_NOTE_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut above_head, clicked, false, 36),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        above_head.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:note_block",
+            [
+                ("instrument", "skeleton"),
+                ("note", "0"),
+                ("powered", "false"),
+            ],
+        )
+    );
+
+    let mut below_head = placement_world();
+    set_block(
+        &mut below_head,
+        clicked,
+        state_id(
+            "minecraft:player_head",
+            [("powered", "false"), ("rotation", "0")],
+        ),
+    );
+    set_held(&mut below_head, VANILLA_ITEM_NOTE_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut below_head, clicked, false, 37),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        below_head.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:note_block",
+            [("instrument", "harp"), ("note", "0"), ("powered", "false"),],
+        )
+    );
+}
+
+#[test]
+fn same_item_replace_context_stacks_slabs_and_candles_in_place() {
+    let mut slab = placement_world();
+    set_held(&mut slab, VANILLA_ITEM_OAK_SLAB_ID, 2);
+    assert!(matches!(
+        use_block(&mut slab, 9),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        slab.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")]
+        )
+    );
+    assert!(matches!(
+        use_block(&mut slab, 10),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        slab.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_slab",
+            [("type", "double"), ("waterlogged", "false")]
+        )
+    );
+    assert_eq!(held(&slab).count, 0);
+
+    let mut candle = placement_world();
+    set_held(&mut candle, VANILLA_ITEM_CANDLE_ID, 2);
+    assert!(matches!(
+        use_block(&mut candle, 11),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert!(matches!(
+        use_block(&mut candle, 12),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        candle.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:candle",
+            [("candles", "2"), ("lit", "false"), ("waterlogged", "false"),]
+        )
+    );
+}
+
+#[test]
+fn ordered_direction_placement_selects_exact_ladder_lantern_and_stair_states() {
+    let east_target = BlockPos { x: 1, y: 8, z: 0 };
+    let mut ladder = placement_world();
+    set_held(&mut ladder, VANILLA_ITEM_LADDER_ID, 1);
+    assert!(matches!(
+        ladder.predict_local_block_use_with_hit(
+            CLICKED,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            13,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        ladder.probe_block(east_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:ladder",
+            [("facing", "east"), ("waterlogged", "false")]
+        )
+    );
+
+    let mut lantern = placement_world();
+    set_held(&mut lantern, VANILLA_ITEM_LANTERN_ID, 1);
+    assert!(matches!(
+        use_block(&mut lantern, 14),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        lantern.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:lantern",
+            [("hanging", "false"), ("waterlogged", "false")]
+        )
+    );
+
+    let stair_clicked = BlockPos { x: 8, y: 8, z: 8 };
+    let stair_target = BlockPos {
+        y: 9,
+        ..stair_clicked
+    };
+    let mut stair = placement_world();
+    set_block(&mut stair, stair_clicked, state_id("minecraft:stone", []));
+    stair.set_local_player_pose(LocalPlayerPoseState {
+        position: Vec3d {
+            x: 4.0,
+            y: 8.0,
+            z: 4.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    set_held(&mut stair, VANILLA_ITEM_OAK_STAIRS_ID, 1);
+    assert!(matches!(
+        stair.predict_local_block_use_with_hit(
+            stair_clicked,
+            ProtocolDirection::Up,
+            [0.25, 1.0, 0.75],
+            false,
+            InteractionHand::MainHand,
+            false,
+            15,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        stair.probe_block(stair_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_stairs",
+            [
+                ("facing", "south"),
+                ("half", "bottom"),
+                ("shape", "straight"),
+                ("waterlogged", "false"),
+            ]
+        )
+    );
+}
+
+#[test]
+fn bed_item_places_its_client_foot_and_gamemaster_item_checks_permission() {
+    let mut bed = placement_world();
+    set_held(&mut bed, VANILLA_ITEM_WHITE_BED_ID, 1);
+    assert!(matches!(
+        use_block(&mut bed, 16),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        bed.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:white_bed",
+            [("facing", "south"), ("occupied", "false"), ("part", "foot"),]
+        )
+    );
+    assert_eq!(
+        bed.probe_block(BlockPos {
+            z: TARGET.z + 1,
+            ..TARGET
+        })
+        .unwrap()
+        .block_state_id,
+        state_id("minecraft:air", [])
+    );
+
+    let mut command = placement_world();
+    set_held(&mut command, VANILLA_ITEM_COMMAND_BLOCK_ID, 1);
+    assert_eq!(
+        use_block(&mut command, 17),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(held(&command).count, 1);
+    assert_eq!(
+        command.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+}
+
+#[test]
+fn test_block_requires_instabuild_and_gamemaster_permission_and_uses_item_mode() {
+    let grant_gamemaster = |world: &mut WorldStore| {
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 7,
+            event_id: 26,
+        }));
+    };
+
+    let mut permission_only = placement_world();
+    grant_gamemaster(&mut permission_only);
+    set_held(&mut permission_only, VANILLA_ITEM_TEST_BLOCK_ID, 1);
+    assert_eq!(
+        use_block(&mut permission_only, 67),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        permission_only.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&permission_only).count, 1);
+
+    let mut allowed = placement_world();
+    grant_gamemaster(&mut allowed);
+    allowed.apply_player_abilities(PlayerAbilities {
+        invulnerable: true,
+        flying: false,
+        can_fly: true,
+        instabuild: true,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    set_held(&mut allowed, VANILLA_ITEM_TEST_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block(&mut allowed, 68),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        allowed.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:test_block", [("mode", "start")])
+    );
+    assert_eq!(held(&allowed).count, 1);
+}
+
+#[test]
+fn placement_survival_uses_the_shared_exact_face_support_evaluator() {
+    let mut supported = placement_world();
+    set_held(&mut supported, VANILLA_ITEM_AMETHYST_CLUSTER_ID, 1);
+    assert!(matches!(
+        use_block(&mut supported, 7),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:amethyst_cluster",
+            [("facing", "up"), ("waterlogged", "false")]
+        )
+    );
+
+    let mut unsupported = placement_world();
+    set_block(
+        &mut unsupported,
+        CLICKED,
+        state_id(
+            "minecraft:glass_pane",
+            [
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("waterlogged", "false"),
+                ("west", "false"),
+            ],
+        ),
+    );
+    set_held(&mut unsupported, VANILLA_ITEM_AMETHYST_CLUSTER_ID, 1);
+    assert_eq!(
+        use_block(&mut unsupported, 8),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&unsupported).count, 1);
+}
+
+#[test]
+fn waterlogged_placement_reads_the_replaced_source_fluid() {
+    let mut world = placement_world();
+    set_block(
+        &mut world,
+        CLICKED,
+        state_id("minecraft:water", [("level", "0")]),
+    );
+    set_held(&mut world, VANILLA_ITEM_HEAVY_CORE_ID, 1);
+
+    assert!(matches!(
+        use_block(&mut world, 6),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(CLICKED).unwrap().block_state_id,
+        state_id("minecraft:heavy_core", [("waterlogged", "true")])
+    );
+}
+
+#[test]
+fn standing_and_wall_item_selects_the_exact_attachment_form() {
+    let mut standing = placement_world();
+    set_held(&mut standing, VANILLA_ITEM_OAK_SIGN_ID, 1);
+    assert!(matches!(
+        use_block(&mut standing, 18),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        standing.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_sign",
+            [("rotation", "8"), ("waterlogged", "false")]
+        )
+    );
+
+    let east_target = BlockPos { x: 1, y: 8, z: 0 };
+    let mut wall = placement_world();
+    set_held(&mut wall, VANILLA_ITEM_OAK_SIGN_ID, 1);
+    assert!(matches!(
+        wall.predict_local_block_use_with_hit(
+            CLICKED,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            19,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        wall.probe_block(east_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_wall_sign",
+            [("facing", "east"), ("waterlogged", "false")]
+        )
+    );
+}
+
+#[test]
+fn double_high_item_predicts_each_client_side_write_and_rolls_back_together() {
+    let upper = relative(TARGET, ProtocolDirection::Up);
+    let mut flower = placement_world();
+    set_support_tag(&mut flower, "minecraft:supports_vegetation");
+    set_held(&mut flower, VANILLA_ITEM_SUNFLOWER_ID, 1);
+    assert!(matches!(
+        use_block(&mut flower, 26),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        flower.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:sunflower", [("half", "lower")])
+    );
+    assert_eq!(
+        flower.probe_block(upper).unwrap().block_state_id,
+        state_id("minecraft:sunflower", [("half", "upper")])
+    );
+    assert_eq!(flower.local_block_predictions().len(), 2);
+    assert!(flower
+        .local_block_predictions()
+        .iter()
+        .all(|prediction| prediction.sequence == 26));
+    flower.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 26 });
+    assert_eq!(
+        flower.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(
+        flower.probe_block(upper).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+
+    let mut dripleaf = placement_world();
+    set_support_tag(&mut dripleaf, "minecraft:supports_small_dripleaf");
+    set_block(&mut dripleaf, upper, state_id("minecraft:seagrass", []));
+    set_held(&mut dripleaf, VANILLA_ITEM_SMALL_DRIPLEAF_ID, 1);
+    assert!(matches!(
+        use_block(&mut dripleaf, 27),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        dripleaf.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:small_dripleaf",
+            [
+                ("facing", "north"),
+                ("half", "lower"),
+                ("waterlogged", "false"),
+            ],
+        )
+    );
+    assert_eq!(
+        dripleaf.probe_block(upper).unwrap().block_state_id,
+        state_id("minecraft:water", [("level", "0")])
+    );
+    assert_eq!(dripleaf.local_block_predictions().len(), 2);
+}
+
+#[test]
+fn door_item_predicts_hinge_and_both_halves_atomically() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let lower = relative(clicked, ProtocolDirection::Up);
+    let upper = relative(lower, ProtocolDirection::Up);
+    let left = relative(lower, ProtocolDirection::East);
+    let left_upper = relative(upper, ProtocolDirection::East);
+    let mut door = placement_world();
+    set_block(&mut door, clicked, state_id("minecraft:stone", []));
+    set_block(&mut door, left, state_id("minecraft:stone", []));
+    set_block(&mut door, left_upper, state_id("minecraft:stone", []));
+    set_held(&mut door, VANILLA_ITEM_OAK_DOOR_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut door, clicked, false, 28),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        door.probe_block(lower).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_door",
+            [
+                ("facing", "south"),
+                ("half", "lower"),
+                ("hinge", "left"),
+                ("open", "false"),
+                ("powered", "false"),
+            ],
+        )
+    );
+    assert_eq!(
+        door.probe_block(upper).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_door",
+            [
+                ("facing", "south"),
+                ("half", "upper"),
+                ("hinge", "left"),
+                ("open", "false"),
+                ("powered", "false"),
+            ],
+        )
+    );
+    assert_eq!(door.local_block_predictions().len(), 2);
+    assert!(door
+        .local_block_predictions()
+        .iter()
+        .all(|prediction| prediction.sequence == 28));
+
+    let mut powered = placement_world();
+    set_block(&mut powered, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut powered,
+        relative(lower, ProtocolDirection::West),
+        state_id("minecraft:redstone_block", []),
+    );
+    set_held(&mut powered, VANILLA_ITEM_OAK_DOOR_ID, 1);
+    assert_eq!(
+        use_block_at(&mut powered, clicked, false, 29),
+        LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
+    );
+    assert!(powered.local_block_predictions().is_empty());
+    assert_eq!(held(&powered).count, 1);
+}
+
+fn use_block(world: &mut WorldStore, sequence: i32) -> LocalTargetUsePrediction {
+    use_block_at(world, CLICKED, false, sequence)
+}
+
+fn use_block_at(
+    world: &mut WorldStore,
+    clicked: BlockPos,
+    secondary_use_active: bool,
+    sequence: i32,
+) -> LocalTargetUsePrediction {
+    world.predict_local_block_use_with_hit(
+        clicked,
+        ProtocolDirection::Up,
+        [0.25, 1.0, 0.75],
+        false,
+        InteractionHand::MainHand,
+        secondary_use_active,
+        sequence,
+    )
+}
+
+fn placement_world() -> WorldStore {
+    let air = state_id("minecraft:air", []);
+    let single_value = |domain, entry_count, global_id| PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
+    };
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.apply_login(&PlayLogin {
+        player_id: 7,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    });
+    world.apply_set_chunk_cache_center(SetChunkCacheCenter {
+        chunk_x: 0,
+        chunk_z: 0,
+    });
+    let section_count =
+        usize::try_from(world.dimension().height.div_euclid(16)).expect("section count");
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos { x: 0, z: 0 },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..section_count)
+            .map(|_| {
+                std::sync::Arc::new(ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value(PaletteDomain::BlockStates, 4096, air),
+                    biomes: single_value(PaletteDomain::Biomes, 64, 0),
+                })
+            })
+            .collect(),
+        block_entities: std::sync::Arc::default(),
+        light: LightData::default(),
+    });
+    set_block(&mut world, CLICKED, state_id("minecraft:stone", []));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: Vec3d {
+            x: 8.0,
+            y: 8.0,
+            z: 8.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    world
+}
+
+fn set_held(world: &mut WorldStore, item_id: i32, count: i32) {
+    world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: DataComponentPatchSummary::default().into(),
+        },
+    });
+}
+
+fn set_support_tag(world: &mut WorldStore, tag: &str) {
+    set_block_tag(world, tag, &[VANILLA_BLOCK_STONE_ID]);
+}
+
+fn set_block_tag(world: &mut WorldStore, tag: &str, entries: &[i32]) {
+    set_block_tags(world, &[(tag, entries)]);
+}
+
+fn set_block_tags(world: &mut WorldStore, tags: &[(&str, &[i32])]) {
+    set_registry_tags(world, "minecraft:block", tags);
+}
+
+fn set_fluid_tags(world: &mut WorldStore, tags: &[(&str, &[i32])]) {
+    set_registry_tags(world, "minecraft:fluid", tags);
+}
+
+fn set_registry_tags(world: &mut WorldStore, registry: &str, tags: &[(&str, &[i32])]) {
+    world.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: registry.to_string(),
+            tags: tags
+                .iter()
+                .map(|(tag, entries)| TagNetworkPayload {
+                    tag: (*tag).to_string(),
+                    entries: entries.to_vec(),
+                })
+                .collect(),
+        }],
+    });
+}
+
+fn set_raw_light(world: &mut WorldStore, pos: BlockPos, sky: u8, block: u8) {
+    let light_section_index = pos.y.div_euclid(16) - (world.dimension().min_section_y() - 1);
+    let light_section_mask = 1_i64 << u32::try_from(light_section_index).expect("light section");
+    let packed_nibbles = |value: u8| value | (value << 4);
+    world
+        .queue_light_update(LightUpdate {
+            chunk_x: pos.x.div_euclid(16),
+            chunk_z: pos.z.div_euclid(16),
+            light_data: LightUpdateData {
+                sky_y_mask: vec![light_section_mask],
+                block_y_mask: vec![light_section_mask],
+                empty_sky_y_mask: Vec::new(),
+                empty_block_y_mask: Vec::new(),
+                sky_updates: vec![vec![packed_nibbles(sky); 2048]],
+                block_updates: vec![vec![packed_nibbles(block); 2048]],
+            },
+        })
+        .unwrap();
+    assert!(world.poll_queued_light_updates() > 0);
+}
+
+fn held(world: &WorldStore) -> &ItemStackSummary {
+    &world
+        .inventory()
+        .player_slots
+        .iter()
+        .find(|slot| slot.slot == 0)
+        .expect("selected slot")
+        .item
+}
+
+fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
+    // Scene setup tolerates the vanilla identical-state no-op (setBlockState
+    // returns null); the block must hold the requested state either way.
+    world.apply_block_update(BlockUpdate {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        block_state_id,
+    });
+    assert_eq!(
+        world.probe_block(pos).map(|block| block.block_state_id),
+        Some(block_state_id)
+    );
+}
+
+fn state_id<const N: usize>(name: &str, properties: [(&str, &str); N]) -> i32 {
+    crate::vanilla_block_state_id(
+        name,
+        &properties
+            .into_iter()
+            .map(|(name, value)| (name.to_string(), value.to_string()))
+            .collect(),
+    )
+    .expect("vanilla block state")
+}

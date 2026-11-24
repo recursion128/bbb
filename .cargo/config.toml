@@ -1,0 +1,10 @@
+# Worldgen tests recurse deeper than the 2 MiB default test-thread stack.
+[env]
+RUST_MIN_STACK = "16777216"
+
+[alias]
+xtask = "run --target-dir .local/xtask-target --package bbb-xtask --locked --"
+dev = "run --target-dir .local/xtask-target --package bbb-xtask --locked --"
+worker = "run --target-dir .local/xtask-target --package bbb-xtask --locked -- worker"
+build-web = "run --target-dir .local/xtask-target --package bbb-xtask --locked -- build-web"
+web-up = "run --target-dir .local/xtask-target --package bbb-xtask --locked -- web-up"

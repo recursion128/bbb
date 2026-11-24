@@ -1,0 +1,1650 @@
+use super::*;
+
+/// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
+/// remaining use ticks modulo `BrushItem.ANIMATION_DURATION` (10).
+pub(super) const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;
+/// Vanilla `BowItem.getUseDuration`.
+pub(super) const VANILLA_BOW_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla `CrossbowItem.getUseDuration`.
+pub(super) const VANILLA_CROSSBOW_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla `TridentItem.getUseDuration`.
+pub(super) const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla base `Item.getUseDuration`: stacks with `DataComponents.KINETIC_WEAPON`
+/// and no consumable use the long charged-use timer.
+pub(super) const VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS: f32 = 72_000.0;
+/// Vanilla `ItemInHandRenderer.renderMap`: after the hand/map pose, the map is flipped, scaled to
+/// `0.38`, centered, and converted from 128x128 map pixels into model units.
+pub(super) const VANILLA_FIRST_PERSON_MAP_SCALE: f32 = 0.38;
+pub(super) const VANILLA_FIRST_PERSON_MAP_PIXEL_SCALE: f32 = 1.0 / 128.0;
+
+/// The baked first-person local-player hand item submissions for this frame. Ordinary items use
+/// block/flat item-model meshes; filled maps use vanilla `ItemInHandRenderer.renderMap` dynamic-map
+/// surfaces in the same depth-cleared hand pass.
+pub(crate) struct FirstPersonItemModels {
+    pub residency: ItemModelResidencyFrame,
+    pub map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
+    pub map_background_surfaces: Vec<FirstPersonMapBackgroundSurface>,
+    pub map_textures: Vec<ItemFrameMapTexture>,
+    pub map_surfaces: Vec<ItemFrameMapSurface>,
+    pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    pub map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    pub map_text_surfaces: Vec<ItemFrameMapTextSurface>,
+}
+
+impl FirstPersonItemModels {
+    fn empty() -> Self {
+        Self {
+            residency: ItemModelResidencyFrame::default(),
+            map_background_textures: Vec::new(),
+            map_background_surfaces: Vec::new(),
+            map_textures: Vec::new(),
+            map_surfaces: Vec::new(),
+            map_decoration_textures: Vec::new(),
+            map_decoration_surfaces: Vec::new(),
+            map_text_surfaces: Vec::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn first_person_item_models(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    partial_ticks: f32,
+) -> crate::item_models::test_meshes::ResidentMeshView<FirstPersonItemModels> {
+    let mut map_textures = MapTextureExtractionCache::default();
+    map_textures.begin_frame();
+    let hand_presentation = FirstPersonHandPresentation::fully_raised_for_test(world);
+    let registry_keys = ItemRegistryKeySet::from_world(world);
+    let models = first_person_item_models_with_map_cache(
+        world,
+        &hand_presentation,
+        item_runtime,
+        terrain_textures,
+        None,
+        &registry_keys,
+        &mut map_textures,
+        camera_pose,
+        partial_ticks,
+        1.0,
+    );
+    crate::item_models::test_meshes::ResidentMeshView::new(models, |models| &models.residency)
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn first_person_item_models_with_map_cache(
+    world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
+    map_texture_cache: &mut MapTextureExtractionCache,
+    camera_pose: Option<CameraPose>,
+    partial_ticks: f32,
+    aspect_ratio: f32,
+) -> FirstPersonItemModels {
+    first_person_item_models_for_frame(
+        world,
+        hand_presentation,
+        item_runtime,
+        terrain_textures,
+        variant_textures,
+        registry_keys,
+        map_texture_cache,
+        camera_pose,
+        camera_pose,
+        None,
+        partial_ticks,
+        aspect_ratio,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn first_person_item_models_for_frame(
+    world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
+    map_texture_cache: &mut MapTextureExtractionCache,
+    first_person_camera_pose: Option<CameraPose>,
+    activation_camera_pose: Option<CameraPose>,
+    local_player_instance: Option<&EntityModelInstance>,
+    partial_ticks: f32,
+    aspect_ratio: f32,
+) -> FirstPersonItemModels {
+    let mut models = FirstPersonItemModels::empty();
+    let Some(item_runtime) = item_runtime else {
+        return models;
+    };
+    let hand_light = local_player_instance
+        .map(first_person_player_arm_light)
+        .unwrap_or(ITEM_MODEL_FULL_BRIGHT_LIGHT);
+    if let Some(camera_pose) = first_person_camera_pose {
+        append_first_person_hand_item_models(
+            world,
+            hand_presentation,
+            item_runtime,
+            terrain_textures,
+            variant_textures,
+            registry_keys,
+            map_texture_cache,
+            camera_pose,
+            hand_light,
+            partial_ticks,
+            &mut models,
+        );
+    }
+    // Vanilla `ScreenEffectRenderer.renderScreenEffect` (`ScreenEffectRenderer.java:80-82`):
+    // totem item-activation animation renders under `!hideGui` regardless of camera mode
+    // or sleeping state, anchored to the active render camera (`frame_camera.pose`).
+    if let Some(camera_pose) = activation_camera_pose {
+        append_item_activation_item_model(
+            world,
+            item_runtime,
+            terrain_textures,
+            variant_textures,
+            registry_keys,
+            camera_pose,
+            partial_ticks,
+            aspect_ratio,
+            &mut models,
+        );
+    }
+    models
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_first_person_hand_item_models(
+    world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
+    item_runtime: &NativeItemRuntime,
+    _terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
+    map_texture_cache: &mut MapTextureExtractionCache,
+    camera_pose: CameraPose,
+    hand_light: [f32; 2],
+    partial_ticks: f32,
+    models: &mut FirstPersonItemModels,
+) {
+    // Vanilla `renderItemInHand`: no hands while the camera entity sleeps
+    // (`cameraState.entityRenderState.isSleeping`).
+    if !world.local_player().camera.follows_player
+        || world.local_player_is_spectator()
+        || world.local_player_is_sleeping()
+    {
+        return;
+    }
+    if world.local_player_is_scoping() {
+        return;
+    }
+
+    let main_stack = hand_presentation.visible_stack(InteractionHand::MainHand);
+    let off_stack = hand_presentation.visible_stack(InteractionHand::OffHand);
+    let current_main_stack = world.local_item_in_hand(InteractionHand::MainHand);
+    let current_off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let main_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::MainHand,
+        Some(item_runtime),
+        partial_ticks,
+    );
+    let off_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::OffHand,
+        Some(item_runtime),
+        partial_ticks,
+    );
+    let using_hand = world.local_player().interaction.using_item.then(|| {
+        world
+            .local_player()
+            .interaction
+            .using_item_hand
+            .unwrap_or(InteractionHand::MainHand)
+    });
+    if [main_stack, off_stack]
+        .into_iter()
+        .flatten()
+        .any(|stack| !supported_first_person_item_stack(stack, item_runtime))
+    {
+        return;
+    }
+
+    let env = ItemBakeEnv {
+        world,
+        item_runtime,
+        variant_textures,
+        registry_keys: registry_keys.model_keys(),
+    };
+    let mut map_textures = BTreeMap::new();
+    let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
+    let camera_x_rot = camera_pose.x_rot;
+    let camera_world = first_person_camera_world_transform(camera_pose)
+        * hand_presentation.view_rotation_transform(world, partial_ticks);
+    let attack_swing = world.local_player_attack_swing(partial_ticks);
+    let only_render_using_hand = first_person_only_render_using_hand(
+        item_runtime,
+        current_main_stack,
+        current_off_stack,
+        using_hand,
+    );
+
+    for (hand, stack) in [
+        (InteractionHand::MainHand, main_stack),
+        (InteractionHand::OffHand, off_stack),
+    ] {
+        if only_render_using_hand.is_some_and(|only_hand| only_hand != hand) {
+            continue;
+        }
+        let Some(stack) = stack else {
+            continue;
+        };
+        let arm_left = match hand {
+            InteractionHand::MainHand => owner_main_hand_left,
+            InteractionHand::OffHand => !owner_main_hand_left,
+        };
+        let context = if arm_left {
+            BlockModelDisplayContext::FirstPersonLeftHand
+        } else {
+            BlockModelDisplayContext::FirstPersonRightHand
+        };
+        let attack = attack_swing
+            .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
+            .map_or(0.0, |swing| swing.attack_anim);
+        let inverse_height = match hand {
+            InteractionHand::MainHand => main_inverse_height,
+            InteractionHand::OffHand => off_inverse_height,
+        };
+        if let Some(map_id) = stack.component_patch.map_id {
+            let map = world.map_item(map_id);
+            let map_transform = if hand == InteractionHand::MainHand && off_stack.is_none() {
+                first_person_two_handed_map_transform(
+                    camera_world,
+                    camera_x_rot,
+                    inverse_height,
+                    attack,
+                )
+            } else {
+                first_person_one_handed_map_transform(
+                    camera_world,
+                    arm_left,
+                    inverse_height,
+                    attack,
+                )
+            };
+            let background_kind = if map.is_some() {
+                FirstPersonMapBackgroundKind::Checkerboard
+            } else {
+                FirstPersonMapBackgroundKind::Plain
+            };
+            models
+                .map_background_surfaces
+                .push(bake_first_person_map_background_surface(
+                    background_kind,
+                    map_transform,
+                    hand_light,
+                ));
+            if let Some(map) = map {
+                map_textures
+                    .entry(map.id)
+                    .or_insert_with(|| map_texture_cache.texture(map));
+                models.map_surfaces.push(bake_item_frame_map_surface(
+                    map.id,
+                    map_transform,
+                    hand_light,
+                ));
+                let mut visible_decoration_index = 0;
+                let mut text_submit_sequence = 0;
+                for decoration in &map.decorations {
+                    if let Some(surface) = bake_first_person_map_decoration_surface(
+                        decoration.type_id,
+                        decoration.x,
+                        decoration.y,
+                        decoration.rot,
+                        visible_decoration_index,
+                        map_transform,
+                        hand_light,
+                        visible_decoration_index + 1,
+                    ) {
+                        models.map_decoration_surfaces.push(surface);
+                        if let Some(name) = decoration.name.as_ref() {
+                            if let Some(fonts) = item_runtime.map_text_fonts() {
+                                if let Some(text_surface) = bake_first_person_map_text_surface(
+                                    decoration.type_id,
+                                    &crate::component_text::localized_world_component_runs(
+                                        name,
+                                        Some(item_runtime),
+                                    ),
+                                    decoration.x,
+                                    decoration.y,
+                                    visible_decoration_index,
+                                    map_transform,
+                                    hand_light,
+                                    text_submit_sequence,
+                                    fonts,
+                                    bbb_client_render::text_obfuscation_seed(),
+                                ) {
+                                    models.map_text_surfaces.push(text_surface);
+                                    text_submit_sequence += 1;
+                                }
+                            }
+                        }
+                        visible_decoration_index += 1;
+                    }
+                }
+            }
+            continue;
+        }
+        let mut attach = first_person_item_arm_transform_from_camera_world(
+            camera_world,
+            arm_left,
+            inverse_height,
+        );
+        let using_this_hand = using_hand == Some(hand);
+        if let Some(use_animation) = using_this_hand
+            .then(|| first_person_stack_supported_use_animation(world, stack, item_runtime))
+            .flatten()
+        {
+            match use_animation {
+                FirstPersonUseAnimation::None => {}
+                FirstPersonUseAnimation::EatDrink { use_duration_ticks } => {
+                    attach = first_person_apply_eat_drink_use_transform(
+                        camera_world,
+                        arm_left,
+                        inverse_height,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
+                FirstPersonUseAnimation::Block(kind) => {
+                    if kind == FirstPersonBlockUseKind::NonShieldBlock {
+                        attach = first_person_apply_block_use_transform(attach, arm_left);
+                    }
+                }
+                FirstPersonUseAnimation::Brush { use_duration_ticks } => {
+                    attach = first_person_apply_brush_use_transform(
+                        attach,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
+                FirstPersonUseAnimation::Bundle => {
+                    attach = first_person_apply_whack_swing(attach, arm_left, attack);
+                }
+                FirstPersonUseAnimation::Trident { use_duration_ticks } => {
+                    attach = first_person_apply_trident_use_transform(
+                        attach,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
+                FirstPersonUseAnimation::Bow { use_duration_ticks } => {
+                    attach = first_person_apply_bow_use_transform(
+                        attach,
+                        arm_left,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                    );
+                }
+                FirstPersonUseAnimation::Crossbow { use_duration_ticks } => {
+                    if first_person_stack_is_charged_crossbow(stack, item_runtime) {
+                        attach = first_person_apply_whack_swing(attach, arm_left, attack);
+                        if hand == InteractionHand::MainHand && attack < 0.001 {
+                            attach = first_person_apply_charged_crossbow_idle_transform(
+                                attach, arm_left,
+                            );
+                        }
+                    } else {
+                        let charge_duration_ticks = super::crossbow_charge_duration_ticks(
+                            item_runtime,
+                            world,
+                            &stack.component_patch.enchantments,
+                        ) as f32;
+                        attach = first_person_apply_crossbow_use_transform(
+                            attach,
+                            arm_left,
+                            use_duration_ticks,
+                            charge_duration_ticks,
+                            world.local_player().interaction.using_item_ticks as f32,
+                            partial_ticks,
+                        );
+                    }
+                }
+                FirstPersonUseAnimation::Spear {
+                    kinetic_weapon,
+                    use_duration_ticks,
+                } => {
+                    attach = first_person_apply_spear_use_transform(
+                        camera_world,
+                        arm_left,
+                        inverse_height,
+                        kinetic_weapon,
+                        use_duration_ticks,
+                        world.local_player().interaction.using_item_ticks as f32,
+                        partial_ticks,
+                        world.local_player_ticks_since_kinetic_hit_feedback(partial_ticks),
+                    );
+                }
+            }
+        } else if world
+            .local_player_auto_spin_attack()
+            .is_some_and(|spin| spin.ticks_remaining > 0)
+            && !first_person_stack_is_vanilla_item_type(
+                stack,
+                item_runtime,
+                item_types::VANILLA_ITEM_CROSSBOW_ID,
+            )
+        {
+            // ItemInHandRenderer.renderArmWithItem: auto-spin replaces the ordinary swing.
+            let invert = if arm_left { -1.0 } else { 1.0 };
+            attach = attach
+                * Mat4::from_translation(Vec3::new(invert * -0.4, 0.8, 0.3))
+                * Mat4::from_rotation_y((invert * 65.0_f32).to_radians())
+                * Mat4::from_rotation_z((invert * -85.0_f32).to_radians());
+        } else {
+            match first_person_stack_swing_animation(world, stack) {
+                FirstPersonSwingAnimation::None => {}
+                FirstPersonSwingAnimation::Whack => {
+                    attach = first_person_apply_whack_swing(attach, arm_left, attack);
+                }
+                FirstPersonSwingAnimation::Stab => {
+                    attach = first_person_apply_stab_swing(attach, arm_left, attack);
+                }
+            }
+            if first_person_stack_is_charged_crossbow(stack, item_runtime)
+                && hand == InteractionHand::MainHand
+                && attack < 0.001
+            {
+                attach = first_person_apply_charged_crossbow_idle_transform(attach, arm_left);
+            }
+        }
+        bake_item_stack(
+            &env,
+            stack,
+            context,
+            &ItemOwner {
+                entity_type: Some("minecraft:player"),
+                main_hand_left: Some(owner_main_hand_left),
+                team_color_rgb: world.local_player_team_color_rgb(),
+                using_item: using_this_hand,
+                using_item_ticks: world.local_player().interaction.using_item_ticks as f32,
+            },
+            &ItemPlacement::attached(
+                attach,
+                context,
+                arm_left,
+                first_person_block_fallback(context),
+                GENERATED_FIRST_PERSON_FALLBACK,
+            )
+            .with_light(hand_light),
+            &mut models.residency,
+        );
+    }
+
+    if !models.map_background_surfaces.is_empty() {
+        models.map_background_textures = item_runtime.map_background_textures().to_vec();
+    }
+    models.map_textures = map_textures.into_values().collect();
+    if !models.map_decoration_surfaces.is_empty() {
+        models.map_decoration_textures = item_runtime.map_decoration_textures().to_vec();
+    }
+}
+
+/// Vanilla `ScreenEffectRenderer.renderItemActivationAnimation`: the totem
+/// pops in view space under the hud projection with `ItemDisplayContext.FIXED`
+/// and full-bright light, regardless of camera mode, sleeping, or spectator —
+/// its only gate is `hideGui`, which the shared first-person pass applies.
+#[allow(clippy::too_many_arguments)]
+fn append_item_activation_item_model(
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    _terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    registry_keys: &ItemRegistryKeySet,
+    camera_pose: CameraPose,
+    partial_ticks: f32,
+    aspect_ratio: f32,
+    models: &mut FirstPersonItemModels,
+) {
+    let Some(state) = world.item_activation() else {
+        return;
+    };
+    if state.ticks_remaining == 0 {
+        return;
+    }
+    let attach = first_person_camera_world_transform(camera_pose)
+        * item_activation_view_transform(
+            state.ticks_remaining,
+            state.off_x,
+            state.off_y,
+            partial_ticks,
+            aspect_ratio,
+        );
+    let env = ItemBakeEnv {
+        world,
+        item_runtime,
+        variant_textures,
+        registry_keys: registry_keys.model_keys(),
+    };
+    // Vanilla `updateForTopItem(itemState, item, FIXED, level, null, 0)`
+    // resolves the model with no owning entity or hand.
+    bake_item_stack(
+        &env,
+        &state.item,
+        BlockModelDisplayContext::Fixed,
+        &ItemOwner::default(),
+        &ItemPlacement {
+            attach,
+            left_hand: false,
+            block_fallback: BlockModelDisplayTransform::default(),
+            generated_fallback: BlockModelDisplayTransform::default(),
+            light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            target: ItemModelDrawTarget::FirstPerson,
+            outline_color: None,
+        },
+        &mut models.residency,
+    );
+}
+
+/// The vanilla item-activation pose-stack transform: the smoothed scale
+/// polynomial drives translation `(offX*0.3*aspect*|sin(2πs)|,
+/// offY*0.3*|sin(2πs)|, -10+9sin(πs))`, a uniform 0.8 scale,
+/// `rotY(900°*|sin(πs)|)` and `rotX/Z(6°*cos(8*scale))`.
+pub(super) fn item_activation_view_transform(
+    ticks_remaining: u32,
+    off_x: f32,
+    off_y: f32,
+    partial_ticks: f32,
+    aspect_ratio: f32,
+) -> Mat4 {
+    let length = bbb_client_world::VANILLA_ITEM_ACTIVATION_ANIMATION_LENGTH_TICKS as f32;
+    let tick = length - ticks_remaining as f32;
+    let scale = (tick + partial_ticks) / length;
+    let ts = scale * scale;
+    let tc = scale * ts;
+    let smooth_scale = 10.25 * tc * ts - 24.95 * ts * ts + 25.5 * tc - 13.8 * ts + 4.0 * scale;
+    let pi_scale = smooth_scale * std::f32::consts::PI;
+    let wobble = (pi_scale * 2.0).sin().abs();
+    Mat4::from_translation(Vec3::new(
+        off_x * 0.3 * aspect_ratio * wobble,
+        off_y * 0.3 * wobble,
+        -10.0 + 9.0 * pi_scale.sin(),
+    )) * Mat4::from_scale(Vec3::splat(0.8))
+        * Mat4::from_rotation_y((900.0 * pi_scale.sin().abs()).to_radians())
+        * Mat4::from_rotation_x((6.0 * (scale * 8.0).cos()).to_radians())
+        * Mat4::from_rotation_z((6.0 * (scale * 8.0).cos()).to_radians())
+}
+
+pub(crate) fn first_person_player_arms(
+    world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
+    item_runtime: Option<&NativeItemRuntime>,
+    local_player_instance: Option<&EntityModelInstance>,
+    camera_pose: Option<CameraPose>,
+    partial_ticks: f32,
+) -> Vec<FirstPersonPlayerArm> {
+    let (Some(local_player_instance), Some(camera_pose)) = (local_player_instance, camera_pose)
+    else {
+        return Vec::new();
+    };
+    // Vanilla `renderItemInHand`: no hands while the camera entity sleeps
+    // (`cameraState.entityRenderState.isSleeping`).
+    if !world.local_player().camera.follows_player
+        || world.local_player_is_spectator()
+        || world.local_player_is_sleeping()
+    {
+        return Vec::new();
+    }
+    if world.local_player_is_scoping() {
+        return Vec::new();
+    }
+    if local_player_instance.render_state.invisible {
+        return Vec::new();
+    }
+    let EntityModelKind::Player { skin, parts } = local_player_instance.kind else {
+        return Vec::new();
+    };
+
+    let main_stack = hand_presentation.visible_stack(InteractionHand::MainHand);
+    let off_stack = hand_presentation.visible_stack(InteractionHand::OffHand);
+    let current_main_stack = world.local_item_in_hand(InteractionHand::MainHand);
+    let current_off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let main_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::MainHand,
+        item_runtime,
+        partial_ticks,
+    );
+    let off_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::OffHand,
+        item_runtime,
+        partial_ticks,
+    );
+    let using_hand = world.local_player().interaction.using_item.then(|| {
+        world
+            .local_player()
+            .interaction
+            .using_item_hand
+            .unwrap_or(InteractionHand::MainHand)
+    });
+    let only_render_using_hand = item_runtime.and_then(|item_runtime| {
+        first_person_only_render_using_hand(
+            item_runtime,
+            current_main_stack,
+            current_off_stack,
+            using_hand,
+        )
+    });
+    let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
+    let camera_world = first_person_camera_world_transform(camera_pose)
+        * hand_presentation.view_rotation_transform(world, partial_ticks);
+    let attack_swing = world.local_player_attack_swing(partial_ticks);
+    let hand_attack = |hand: InteractionHand| {
+        attack_swing
+            .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
+            .map_or(0.0, |swing| swing.attack_anim)
+    };
+    let light = first_person_player_arm_light(local_player_instance);
+    let mut arms = Vec::new();
+
+    if only_render_using_hand.is_none_or(|hand| hand == InteractionHand::MainHand)
+        && main_stack.is_none()
+    {
+        let arm_left = owner_main_hand_left;
+        let attack = hand_attack(InteractionHand::MainHand);
+        arms.push(FirstPersonPlayerArm {
+            left: arm_left,
+            skin,
+            sleeve_visible: if arm_left {
+                parts.left_sleeve
+            } else {
+                parts.right_sleeve
+            },
+            transform: first_person_render_player_arm_transform(
+                camera_world,
+                arm_left,
+                main_inverse_height,
+                attack,
+            ),
+            light,
+        });
+    }
+
+    for (hand, stack) in [
+        (InteractionHand::MainHand, main_stack),
+        (InteractionHand::OffHand, off_stack),
+    ] {
+        if only_render_using_hand.is_some_and(|only_hand| only_hand != hand) {
+            continue;
+        }
+        let Some(stack) = stack else {
+            continue;
+        };
+        if stack.component_patch.map_id.is_none() {
+            continue;
+        }
+        let attack = hand_attack(hand);
+        let inverse_height = match hand {
+            InteractionHand::MainHand => main_inverse_height,
+            InteractionHand::OffHand => off_inverse_height,
+        };
+        if hand == InteractionHand::MainHand && off_stack.is_none() {
+            for arm_left in [false, true] {
+                arms.push(FirstPersonPlayerArm {
+                    left: arm_left,
+                    skin,
+                    sleeve_visible: if arm_left {
+                        parts.left_sleeve
+                    } else {
+                        parts.right_sleeve
+                    },
+                    transform: first_person_two_handed_map_arm_transform(
+                        camera_world,
+                        camera_pose.x_rot,
+                        inverse_height,
+                        attack,
+                        arm_left,
+                    ),
+                    light,
+                });
+            }
+        } else {
+            let arm_left = match hand {
+                InteractionHand::MainHand => owner_main_hand_left,
+                InteractionHand::OffHand => !owner_main_hand_left,
+            };
+            arms.push(FirstPersonPlayerArm {
+                left: arm_left,
+                skin,
+                sleeve_visible: if arm_left {
+                    parts.left_sleeve
+                } else {
+                    parts.right_sleeve
+                },
+                transform: first_person_one_handed_map_arm_transform(
+                    camera_world,
+                    arm_left,
+                    inverse_height,
+                    attack,
+                ),
+                light,
+            });
+        }
+    }
+
+    arms
+}
+
+/// Vanilla `ItemInHandRenderer.evaluateWhichHandsToRender` (`ItemInHandRenderer.java:399-429`).
+fn first_person_only_render_using_hand(
+    item_runtime: &NativeItemRuntime,
+    main_stack: Option<&ItemStackSummary>,
+    off_stack: Option<&ItemStackSummary>,
+    using_hand: Option<InteractionHand>,
+) -> Option<InteractionHand> {
+    let is_bow_or_crossbow = |stack: Option<&ItemStackSummary>| {
+        stack.is_some_and(|stack| {
+            first_person_stack_is_vanilla_item_type(
+                stack,
+                item_runtime,
+                item_types::VANILLA_ITEM_BOW_ID,
+            ) || first_person_stack_is_vanilla_item_type(
+                stack,
+                item_runtime,
+                item_types::VANILLA_ITEM_CROSSBOW_ID,
+            )
+        })
+    };
+    if !is_bow_or_crossbow(main_stack) && !is_bow_or_crossbow(off_stack) {
+        return None;
+    }
+    if let Some(used_hand) = using_hand {
+        let used_stack = match used_hand {
+            InteractionHand::MainHand => main_stack,
+            InteractionHand::OffHand => off_stack,
+        };
+        if is_bow_or_crossbow(used_stack) {
+            return Some(used_hand);
+        }
+        return (used_hand == InteractionHand::MainHand
+            && off_stack
+                .is_some_and(|stack| first_person_stack_is_charged_crossbow(stack, item_runtime)))
+        .then_some(InteractionHand::MainHand);
+    }
+    main_stack
+        .is_some_and(|stack| first_person_stack_is_charged_crossbow(stack, item_runtime))
+        .then_some(InteractionHand::MainHand)
+}
+
+fn first_person_player_arm_light(instance: &EntityModelInstance) -> [f32; 2] {
+    let block = (instance.render_state.light_coords >> 4) & 0xF;
+    let sky = (instance.render_state.light_coords >> 20) & 0xF;
+    [block as f32 / 15.0, sky as f32 / 15.0]
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum FirstPersonSwingAnimation {
+    None,
+    Whack,
+    Stab,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum FirstPersonBlockUseKind {
+    Shield,
+    NonShieldBlock,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) enum FirstPersonUseAnimation {
+    None,
+    EatDrink {
+        use_duration_ticks: f32,
+    },
+    Block(FirstPersonBlockUseKind),
+    Brush {
+        use_duration_ticks: f32,
+    },
+    Bundle,
+    Trident {
+        use_duration_ticks: f32,
+    },
+    Bow {
+        use_duration_ticks: f32,
+    },
+    Crossbow {
+        use_duration_ticks: f32,
+    },
+    Spear {
+        kinetic_weapon: SpearKineticWeapon,
+        use_duration_ticks: f32,
+    },
+}
+
+fn supported_first_person_item_stack(
+    stack: &ItemStackSummary,
+    _item_runtime: &NativeItemRuntime,
+) -> bool {
+    stack.item_id.is_some()
+}
+
+pub(super) fn first_person_stack_block_use_kind(
+    world: &WorldStore,
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<FirstPersonBlockUseKind> {
+    let item_id = stack.item_id?;
+    if first_person_stack_has_added_component(stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID) {
+        return None;
+    }
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+    {
+        return None;
+    }
+    if !world
+        .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+    {
+        return None;
+    }
+    let is_shield = item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                item_types::VANILLA_ITEM_SHIELD_ID,
+            )
+        });
+    if is_shield {
+        return Some(FirstPersonBlockUseKind::Shield);
+    }
+    Some(FirstPersonBlockUseKind::NonShieldBlock)
+}
+
+pub(super) fn first_person_stack_supported_use_animation(
+    world: &WorldStore,
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<FirstPersonUseAnimation> {
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_GOAT_HORN_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::None);
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_BRUSH_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Brush {
+            use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
+        });
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_BUNDLE_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Bundle);
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_TRIDENT_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Trident {
+            use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
+        });
+    }
+    if first_person_stack_is_vanilla_item_type(stack, item_runtime, item_types::VANILLA_ITEM_BOW_ID)
+    {
+        return Some(FirstPersonUseAnimation::Bow {
+            use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
+        });
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Crossbow {
+            use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
+        });
+    }
+    if let Some(consumable) = first_person_stack_consumable_summary(world, stack) {
+        let use_duration_ticks = first_person_consumable_use_duration_ticks(consumable);
+        return match consumable.animation {
+            ItemUseAnimationSummary::None => Some(FirstPersonUseAnimation::None),
+            ItemUseAnimationSummary::Eat | ItemUseAnimationSummary::Drink => {
+                Some(FirstPersonUseAnimation::EatDrink { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Block => Some(FirstPersonUseAnimation::Block(
+                first_person_stack_block_kind_for_animation(stack, item_runtime)?,
+            )),
+            ItemUseAnimationSummary::Bow => {
+                Some(FirstPersonUseAnimation::Bow { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Trident => {
+                Some(FirstPersonUseAnimation::Trident { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Crossbow
+            | ItemUseAnimationSummary::Spyglass
+            | ItemUseAnimationSummary::TootHorn => Some(FirstPersonUseAnimation::None),
+            ItemUseAnimationSummary::Brush => {
+                Some(FirstPersonUseAnimation::Brush { use_duration_ticks })
+            }
+            ItemUseAnimationSummary::Bundle => Some(FirstPersonUseAnimation::Bundle),
+            ItemUseAnimationSummary::Spear => Some(FirstPersonUseAnimation::Spear {
+                kinetic_weapon: world
+                    .item_profiles()
+                    .item_stack_spear_kinetic_weapon(stack)?,
+                use_duration_ticks,
+            }),
+        };
+    }
+    if let Some(kinetic_weapon) = world.item_profiles().item_stack_spear_kinetic_weapon(stack) {
+        return Some(FirstPersonUseAnimation::Spear {
+            kinetic_weapon,
+            use_duration_ticks: VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
+        });
+    }
+    first_person_stack_block_use_kind(world, stack, item_runtime)
+        .map(FirstPersonUseAnimation::Block)
+}
+
+fn first_person_stack_resource_id<'a>(
+    stack: &ItemStackSummary,
+    item_runtime: &'a NativeItemRuntime,
+) -> Option<&'a str> {
+    stack
+        .item_id
+        .and_then(|item_id| item_runtime.item_resource_id(item_id))
+}
+
+fn first_person_stack_is_vanilla_item_type(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+    item_type_id: i32,
+) -> bool {
+    first_person_stack_resource_id(stack, item_runtime).is_some_and(|resource_id| {
+        item_types::vanilla_item_resource_id_matches_type(resource_id, item_type_id)
+    })
+}
+
+fn first_person_stack_is_charged_crossbow(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> bool {
+    first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    ) && !stack.component_patch.charged_projectiles_items.is_empty()
+}
+
+fn first_person_stack_consumable_summary(
+    world: &WorldStore,
+    stack: &ItemStackSummary,
+) -> Option<ConsumableSummary> {
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
+    {
+        return None;
+    }
+    stack.component_patch.consumable.or_else(|| {
+        first_person_stack_has_added_component(stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
+            .then(ConsumableSummary::default)
+            .or_else(|| {
+                world
+                    .item_profiles()
+                    .component_source(
+                        stack.item_id,
+                        &stack.component_patch,
+                        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                    )
+                    .consumable
+            })
+    })
+}
+
+fn first_person_stack_block_kind_for_animation(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+) -> Option<FirstPersonBlockUseKind> {
+    let item_id = stack.item_id?;
+    if item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                item_types::VANILLA_ITEM_SHIELD_ID,
+            )
+        })
+    {
+        Some(FirstPersonBlockUseKind::Shield)
+    } else {
+        Some(FirstPersonBlockUseKind::NonShieldBlock)
+    }
+}
+
+fn first_person_consumable_use_duration_ticks(consumable: ConsumableSummary) -> f32 {
+    (consumable.consume_seconds * 20.0) as i32 as f32
+}
+
+fn first_person_stack_has_added_component(stack: &ItemStackSummary, component_id: i32) -> bool {
+    stack.component_patch.added_type_ids.contains(&component_id)
+        && !stack
+            .component_patch
+            .removed_type_ids
+            .contains(&component_id)
+}
+
+pub(super) fn first_person_stack_swing_animation(
+    world: &WorldStore,
+    stack: &ItemStackSummary,
+) -> FirstPersonSwingAnimation {
+    match world.item_stack_swing_animation(stack).animation_type {
+        SwingAnimationTypeSummary::None => FirstPersonSwingAnimation::None,
+        SwingAnimationTypeSummary::Whack => FirstPersonSwingAnimation::Whack,
+        SwingAnimationTypeSummary::Stab => FirstPersonSwingAnimation::Stab,
+    }
+}
+
+fn first_person_block_fallback(context: BlockModelDisplayContext) -> BlockModelDisplayTransform {
+    match context {
+        BlockModelDisplayContext::FirstPersonLeftHand => BLOCK_FIRST_PERSON_LEFT_FALLBACK,
+        BlockModelDisplayContext::FirstPersonRightHand => BLOCK_FIRST_PERSON_RIGHT_FALLBACK,
+        _ => BLOCK_FIRST_PERSON_RIGHT_FALLBACK,
+    }
+}
+
+pub(super) fn first_person_item_arm_transform_from_camera_world(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    camera_world
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.56,
+            -0.52 + inverse_arm_height * -0.6,
+            -0.72,
+        ))
+}
+
+pub(super) fn first_person_one_handed_map_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let attack = attack.clamp(0.0, 1.0);
+    let sqrt_attack = attack.sqrt();
+    let x_swing = (sqrt_attack * std::f32::consts::PI).sin();
+    let x_swing_position = -0.5 * x_swing;
+    let y_swing_position = 0.4 * (sqrt_attack * std::f32::consts::TAU).sin();
+    let z_swing_position = -0.3 * (attack * std::f32::consts::PI).sin();
+    let map_pose = camera_world
+        * Mat4::from_translation(Vec3::new(invert * 0.125, -0.125, 0.0))
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.51,
+            -0.08 + inverse_arm_height * -1.2,
+            -0.75,
+        ))
+        * Mat4::from_translation(Vec3::new(
+            invert * x_swing_position,
+            y_swing_position - 0.3 * x_swing,
+            z_swing_position,
+        ))
+        * Mat4::from_rotation_x((x_swing * -45.0).to_radians())
+        * Mat4::from_rotation_y((invert * x_swing * -30.0).to_radians());
+    first_person_apply_map_render_transform(map_pose)
+}
+
+pub(super) fn first_person_two_handed_map_transform(
+    camera_world: Mat4,
+    x_rot: f32,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let sqrt_attack = attack.sqrt();
+    let y_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+    let z_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+    let map_tilt = first_person_map_tilt(x_rot);
+    let xz_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+    let map_pose = camera_world
+        * Mat4::from_translation(Vec3::new(0.0, -y_swing_position / 2.0, z_swing_position))
+        * Mat4::from_translation(Vec3::new(
+            0.0,
+            0.04 + inverse_arm_height * -1.2 + map_tilt * -0.5,
+            -0.72,
+        ))
+        * Mat4::from_rotation_x((map_tilt * -85.0).to_radians())
+        * Mat4::from_rotation_x((xz_swing_rotation * 20.0).to_radians())
+        * Mat4::from_scale(Vec3::splat(2.0));
+    first_person_apply_map_render_transform(map_pose)
+}
+
+pub(super) fn first_person_render_player_arm_transform(
+    parent_transform: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let sqrt_attack = attack.sqrt();
+    let x_swing_position = -0.3 * (sqrt_attack * std::f32::consts::PI).sin();
+    let y_swing_position = 0.4 * (sqrt_attack * std::f32::consts::TAU).sin();
+    let z_swing_position = -0.4 * (attack * std::f32::consts::PI).sin();
+    let z_swing_rotation = (attack * attack * std::f32::consts::PI).sin();
+    let y_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+
+    parent_transform
+        * Mat4::from_translation(Vec3::new(
+            invert * (x_swing_position + 0.64000005),
+            y_swing_position - 0.6 + inverse_arm_height * -0.6,
+            z_swing_position - 0.71999997,
+        ))
+        * Mat4::from_rotation_y((invert * 45.0_f32).to_radians())
+        * Mat4::from_rotation_y((invert * y_swing_rotation * 70.0).to_radians())
+        * Mat4::from_rotation_z((invert * z_swing_rotation * -20.0).to_radians())
+        * Mat4::from_translation(Vec3::new(-invert, 3.6, 3.5))
+        * Mat4::from_rotation_z((invert * 120.0_f32).to_radians())
+        * Mat4::from_rotation_x(200.0_f32.to_radians())
+        * Mat4::from_rotation_y((invert * -135.0_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(invert * 5.6, 0.0, 0.0))
+}
+
+pub(super) fn first_person_one_handed_map_arm_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    attack: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    first_person_render_player_arm_transform(
+        camera_world
+            * Mat4::from_translation(Vec3::new(invert * 0.125, -0.125, 0.0))
+            * Mat4::from_rotation_z((invert * 10.0_f32).to_radians()),
+        arm_left,
+        inverse_arm_height,
+        attack,
+    )
+}
+
+pub(super) fn first_person_two_handed_map_arm_transform(
+    camera_world: Mat4,
+    x_rot: f32,
+    inverse_arm_height: f32,
+    attack: f32,
+    arm_left: bool,
+) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let sqrt_attack = attack.sqrt();
+    let y_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+    let z_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+    let map_tilt = first_person_map_tilt(x_rot);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    camera_world
+        * Mat4::from_translation(Vec3::new(0.0, -y_swing_position / 2.0, z_swing_position))
+        * Mat4::from_translation(Vec3::new(
+            0.0,
+            0.04 + inverse_arm_height * -1.2 + map_tilt * -0.5,
+            -0.72,
+        ))
+        * Mat4::from_rotation_x((map_tilt * -85.0).to_radians())
+        * Mat4::from_rotation_y(90.0_f32.to_radians())
+        * Mat4::from_rotation_y(92.0_f32.to_radians())
+        * Mat4::from_rotation_x(45.0_f32.to_radians())
+        * Mat4::from_rotation_z((invert * -41.0_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(invert * 0.3, -1.1, 0.45))
+}
+
+fn first_person_apply_map_render_transform(transform: Mat4) -> Mat4 {
+    transform
+        * Mat4::from_rotation_y(180.0_f32.to_radians())
+        * Mat4::from_rotation_z(180.0_f32.to_radians())
+        * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_SCALE))
+        * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.0))
+        * Mat4::from_scale(Vec3::splat(VANILLA_FIRST_PERSON_MAP_PIXEL_SCALE))
+}
+
+pub(super) fn first_person_map_tilt(x_rot: f32) -> f32 {
+    let tilt = (1.0 - x_rot / 45.0 + 0.1).clamp(0.0, 1.0);
+    -(tilt * std::f32::consts::PI).cos() * 0.5 + 0.5
+}
+
+pub(super) fn first_person_apply_whack_swing(transform: Mat4, arm_left: bool, attack: f32) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let sqrt_attack = attack.sqrt();
+    let x_swing_position = -0.4 * (sqrt_attack * std::f32::consts::PI).sin();
+    let y_swing_position = 0.2 * (sqrt_attack * std::f32::consts::TAU).sin();
+    let z_swing_position = -0.2 * (attack * std::f32::consts::PI).sin();
+    let y_swing_rotation = (attack * attack * std::f32::consts::PI).sin();
+    let xz_swing_rotation = (sqrt_attack * std::f32::consts::PI).sin();
+
+    transform
+        * Mat4::from_translation(Vec3::new(
+            invert * x_swing_position,
+            y_swing_position,
+            z_swing_position,
+        ))
+        * Mat4::from_rotation_y((invert * (45.0 + y_swing_rotation * -20.0)).to_radians())
+        * Mat4::from_rotation_z((invert * xz_swing_rotation * -20.0).to_radians())
+        * Mat4::from_rotation_x((xz_swing_rotation * -80.0).to_radians())
+        * Mat4::from_rotation_y((invert * -45.0).to_radians())
+}
+
+pub(super) fn first_person_apply_stab_swing(transform: Mat4, arm_left: bool, attack: f32) -> Mat4 {
+    let attack = attack.clamp(0.0, 1.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let starting_amount = first_person_ease_in_out_sine(first_person_progress(attack, 0.0, 0.05));
+    let middle_amount = first_person_ease_out_back(first_person_progress(attack, 0.05, 0.2));
+    let ending_amount = first_person_ease_in_out_expo(first_person_progress(attack, 0.4, 1.0));
+
+    transform
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.1 * (starting_amount - middle_amount),
+            -0.075 * (starting_amount - ending_amount),
+            0.65 * (starting_amount - middle_amount),
+        ))
+        * Mat4::from_rotation_x((-70.0 * (starting_amount - ending_amount)).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, -0.25 * (ending_amount - middle_amount)))
+}
+
+pub(super) fn first_person_apply_block_use_transform(transform: Mat4, arm_left: bool) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    transform
+        * Mat4::from_translation(Vec3::new(invert * -0.14142136, 0.08, 0.14142136))
+        * Mat4::from_rotation_x((-102.25_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 13.365_f32).to_radians())
+        * Mat4::from_rotation_z((invert * 78.05_f32).to_radians())
+}
+
+pub(super) fn first_person_apply_eat_drink_use_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    inverse_arm_height: f32,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let eat_transform = first_person_eat_drink_use_transform(
+        arm_left,
+        use_duration_ticks,
+        using_item_ticks,
+        partial_ticks,
+    );
+    first_person_item_arm_transform_from_camera_world(
+        camera_world * eat_transform,
+        arm_left,
+        inverse_arm_height,
+    )
+}
+
+fn first_person_eat_drink_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    if use_duration_ticks <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let curr_usage_time = remaining_ticks - partial_ticks + 1.0;
+    let scaled_usage_time = curr_usage_time / use_duration_ticks;
+    let extra_height_offset = if scaled_usage_time < 0.8 {
+        (curr_usage_time / 4.0 * std::f32::consts::PI).cos().abs() * 0.1
+    } else {
+        0.0
+    };
+    let eat_jiggle = 1.0 - scaled_usage_time.powf(27.0);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(0.0, extra_height_offset, 0.0))
+        * Mat4::from_translation(Vec3::new(eat_jiggle * 0.6 * invert, eat_jiggle * -0.5, 0.0))
+        * Mat4::from_rotation_y((invert * eat_jiggle * 90.0).to_radians())
+        * Mat4::from_rotation_x((eat_jiggle * 10.0).to_radians())
+        * Mat4::from_rotation_z((invert * eat_jiggle * 30.0).to_radians())
+}
+
+pub(super) fn first_person_apply_brush_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_brush_use_transform(
+            arm_left,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_brush_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    if use_duration_ticks <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let brush_animation_remaining_ticks = (use_duration_ticks - using_item_ticks).max(0.0) % 10.0;
+    let delta_since_last_update = brush_animation_remaining_ticks - partial_ticks + 1.0;
+    let scaled_usage_time = 1.0 - delta_since_last_update / 10.0;
+    let current_swipe_angle = -15.0 + 75.0 * (scaled_usage_time * 2.0 * std::f32::consts::PI).cos();
+
+    if arm_left {
+        Mat4::from_translation(Vec3::new(0.1, 0.83, 0.35))
+            * Mat4::from_rotation_x((-80.0_f32).to_radians())
+            * Mat4::from_rotation_y((-90.0_f32).to_radians())
+            * Mat4::from_rotation_x(current_swipe_angle.to_radians())
+            * Mat4::from_translation(Vec3::new(-0.3, 0.22, 0.35))
+    } else {
+        Mat4::from_translation(Vec3::new(-0.25, 0.22, 0.35))
+            * Mat4::from_rotation_x((-80.0_f32).to_radians())
+            * Mat4::from_rotation_y(90.0_f32.to_radians())
+            * Mat4::from_rotation_x(current_swipe_angle.to_radians())
+    }
+}
+
+pub(super) fn first_person_apply_trident_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_trident_use_transform(
+            arm_left,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_trident_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let power = (time_held / 10.0).min(1.0);
+    let shake = if power > 0.1 {
+        ((time_held - 0.1) * 1.3).sin() * (power - 0.1)
+    } else {
+        0.0
+    };
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(invert * -0.5, 0.7, 0.1))
+        * Mat4::from_rotation_x((-55.0_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 35.3_f32).to_radians())
+        * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.2))
+        * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+        * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
+}
+
+pub(super) fn first_person_apply_bow_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_bow_use_transform(
+            arm_left,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_bow_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let mut power = time_held / 20.0;
+    power = (power * power + power * 2.0) / 3.0;
+    if power > 1.0 {
+        power = 1.0;
+    }
+    let shake = if power > 0.1 {
+        ((time_held - 0.1) * 1.3).sin() * (power - 0.1)
+    } else {
+        0.0
+    };
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(invert * -0.2785682, 0.18344387, 0.15731531))
+        * Mat4::from_rotation_x((-13.935_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 35.3_f32).to_radians())
+        * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
+        * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+        * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
+}
+
+pub(super) fn first_person_apply_crossbow_use_transform(
+    transform: Mat4,
+    arm_left: bool,
+    use_duration_ticks: f32,
+    charge_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    transform
+        * first_person_crossbow_use_transform(
+            arm_left,
+            use_duration_ticks,
+            charge_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+        )
+}
+
+fn first_person_crossbow_use_transform(
+    arm_left: bool,
+    use_duration_ticks: f32,
+    charge_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let mut power = time_held / charge_duration_ticks.max(1.0);
+    if power > 1.0 {
+        power = 1.0;
+    }
+    let shake = if power > 0.1 {
+        ((time_held - 0.1) * 1.3).sin() * (power - 0.1)
+    } else {
+        0.0
+    };
+    let invert = if arm_left { -1.0 } else { 1.0 };
+
+    Mat4::from_translation(Vec3::new(invert * -0.4785682, -0.094387, 0.05731531))
+        * Mat4::from_rotation_x((-11.935_f32).to_radians())
+        * Mat4::from_rotation_y((invert * 65.3_f32).to_radians())
+        * Mat4::from_rotation_z((invert * -9.785_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, shake * 0.004, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, power * 0.04))
+        * Mat4::from_scale(Vec3::new(1.0, 1.0, 1.0 + power * 0.2))
+        * Mat4::from_rotation_y((-invert * 45.0_f32).to_radians())
+}
+
+/// Vanilla `ItemInHandRenderer.renderArmWithItem` (`ItemInHandRenderer.java:578-582`):
+/// spear charge translates `(invert * 0.56, -0.52, -0.72)` without `inverseArmHeight`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn first_person_apply_spear_use_transform(
+    camera_world: Mat4,
+    arm_left: bool,
+    _inverse_arm_height: f32,
+    kinetic_weapon: SpearKineticWeapon,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+    ticks_since_kinetic_hit_feedback: f32,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    camera_world
+        * Mat4::from_translation(Vec3::new(invert * 0.56, -0.52, -0.72))
+        * first_person_spear_use_transform(
+            arm_left,
+            kinetic_weapon,
+            use_duration_ticks,
+            using_item_ticks,
+            partial_ticks,
+            ticks_since_kinetic_hit_feedback,
+        )
+}
+
+fn first_person_spear_use_transform(
+    arm_left: bool,
+    kinetic_weapon: SpearKineticWeapon,
+    use_duration_ticks: f32,
+    using_item_ticks: f32,
+    partial_ticks: f32,
+    ticks_since_kinetic_hit_feedback: f32,
+) -> Mat4 {
+    let remaining_ticks = use_duration_ticks - using_item_ticks;
+    let time_held = use_duration_ticks - (remaining_ticks - partial_ticks + 1.0);
+    let params = kinetic_weapon.use_params(time_held);
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    let x_rotation_degrees = -65.0 * first_person_ease_in_out_back(params.raise_progress)
+        - 35.0 * params.lower_progress
+        + 100.0 * params.raise_back_progress
+        - 0.5 * params.sway_scale_fast;
+    let y_negative_axis_rotation_degrees = invert
+        * (-90.0 * first_person_progress(params.raise_progress, 0.5, 0.55)
+            + 90.0 * params.sway_progress
+            + 2.0 * params.sway_scale_slow);
+
+    Mat4::from_translation(Vec3::new(
+        invert
+            * (params.raise_progress * 0.15
+                + params.raise_progress_end * -0.05
+                + params.sway_progress * -0.1
+                + params.sway_scale_slow * 0.005),
+        params.raise_progress * -0.075
+            + params.raise_progress_middle * 0.075
+            + params.sway_scale_fast * 0.01,
+        params.raise_progress_start * 0.05
+            + params.raise_progress_end * -0.05
+            + params.sway_scale_slow * 0.005,
+    )) * first_person_rotate_around(
+        Vec3::new(0.0, 0.1, 0.0),
+        Mat4::from_rotation_x(x_rotation_degrees.to_radians()),
+    ) * first_person_rotate_around(
+        Vec3::new(invert * 0.15, 0.0, 0.0),
+        Mat4::from_rotation_y((-y_negative_axis_rotation_degrees).to_radians()),
+    ) * Mat4::from_translation(Vec3::new(
+        0.0,
+        -first_person_spear_kinetic_hit_feedback_amount(ticks_since_kinetic_hit_feedback),
+        0.0,
+    ))
+}
+
+pub(super) fn first_person_apply_charged_crossbow_idle_transform(
+    transform: Mat4,
+    arm_left: bool,
+) -> Mat4 {
+    let invert = if arm_left { -1.0 } else { 1.0 };
+    transform
+        * Mat4::from_translation(Vec3::new(invert * -0.641864, 0.0, 0.0))
+        * Mat4::from_rotation_y((invert * 10.0_f32).to_radians())
+}
+
+pub(super) fn first_person_rotate_around(pivot: Vec3, rotation: Mat4) -> Mat4 {
+    Mat4::from_translation(pivot) * rotation * Mat4::from_translation(-pivot)
+}
+
+pub(super) fn first_person_spear_kinetic_hit_feedback_amount(
+    ticks_since_feedback_start: f32,
+) -> f32 {
+    0.4 * (first_person_ease_out_quart(first_person_progress(ticks_since_feedback_start, 1.0, 3.0))
+        - first_person_ease_in_out_sine(first_person_progress(
+            ticks_since_feedback_start,
+            3.0,
+            10.0,
+        )))
+}
+
+pub(super) fn first_person_progress(value: f32, start: f32, end: f32) -> f32 {
+    ((value - start) / (end - start)).clamp(0.0, 1.0)
+}
+
+fn first_person_ease_in_out_sine(value: f32) -> f32 {
+    -((std::f32::consts::PI * value).cos() - 1.0) / 2.0
+}
+
+fn first_person_ease_out_quart(value: f32) -> f32 {
+    1.0 - (1.0 - value).powi(4)
+}
+
+fn first_person_ease_out_back(value: f32) -> f32 {
+    1.0 + 2.70158 * (value - 1.0).powi(3) + 1.70158 * (value - 1.0).powi(2)
+}
+
+pub(super) fn first_person_ease_in_out_back(value: f32) -> f32 {
+    if value < 0.5 {
+        4.0 * value * value * (7.189819 * value - 2.5949094) / 2.0
+    } else {
+        let delta = 2.0 * value - 2.0;
+        (delta * delta * (3.5949094 * delta + 2.5949094) + 2.0) / 2.0
+    }
+}
+
+fn first_person_ease_in_out_expo(value: f32) -> f32 {
+    if value < 0.5 {
+        if value == 0.0 {
+            0.0
+        } else {
+            2.0_f32.powf(20.0 * value - 10.0) / 2.0
+        }
+    } else if value == 1.0 {
+        1.0
+    } else {
+        (2.0 - 2.0_f32.powf(-20.0 * value + 10.0)) / 2.0
+    }
+}
+
+pub(super) fn first_person_camera_world_transform(pose: CameraPose) -> Mat4 {
+    pose.view_matrix().inverse()
+}

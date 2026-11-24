@@ -1,0 +1,19 @@
+[package]
+name = "bbb-server-net"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bbb-facts = { path = "../bbb-facts", default-features = false, features = ["server-facts"] }
+bbb-protocol = { path = "../bbb-protocol" }
+bytes = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt-multi-thread"] }
+uuid = { workspace = true }

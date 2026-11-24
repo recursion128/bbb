@@ -1,0 +1,1714 @@
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
+
+use anyhow::{bail, Context, Result};
+use bbb_render_types::{SpriteAnimation, SpriteAnimationFrame};
+use serde::{Deserialize, Serialize};
+
+#[cfg(test)]
+use crate::image::read_png_resource_dimensions_with_budget;
+use crate::{
+    image::{
+        decode_png_file_rgba_with_budget, decode_png_resource_rgba_with_budget,
+        read_png_file_dimensions_with_budget, PngDecodeBudget,
+    },
+    resources::{PackResource, PackResourceStack},
+    rgba_len,
+};
+
+pub(crate) const MAX_SPRITE_ANIMATION_FRAMES: u32 = 4_096;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpriteSource {
+    pub id: String,
+    pub width: u32,
+    pub height: u32,
+    #[serde(default)]
+    pub animation: Option<SpriteAnimation>,
+    #[serde(default)]
+    pub texture_metadata: SpriteTextureMetadata,
+    #[serde(default)]
+    pub gui_metadata: SpriteGuiMetadata,
+}
+
+impl SpriteSource {
+    pub fn new(id: impl Into<String>, width: u32, height: u32) -> Self {
+        Self {
+            id: id.into(),
+            width,
+            height,
+            animation: None,
+            texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
+        }
+    }
+
+    pub fn from_png_file(id: impl Into<String>, path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        let metadata_path = mcmeta_path(path);
+        Self::from_png_file_with_metadata_path(id, path, Some(&metadata_path))
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+    ) -> Result<Self> {
+        let mut budget = PngDecodeBudget::single_image();
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            path,
+            metadata_path,
+            &mut budget,
+            None,
+        )
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path_and_budget(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+        budget: &mut PngDecodeBudget,
+        resources: Option<&PackResourceStack>,
+    ) -> Result<Self> {
+        let path = path.as_ref();
+        let (image_width, image_height) =
+            read_png_file_dimensions_with_budget(path, "sprite source", budget)?;
+        let metadata = read_sprite_metadata(metadata_path, resources)?;
+        let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
+        let (width, height, animation) =
+            sprite_frame_metadata(path, image_width, image_height, metadata.animation)?;
+        Ok(Self {
+            id: id.into(),
+            width,
+            height,
+            animation,
+            texture_metadata,
+            gui_metadata,
+        })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_pack_resource_with_budget(
+        id: impl Into<String>,
+        resource: &PackResource,
+        budget: &mut PngDecodeBudget,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let id = id.into();
+        resources.validate_resource(resource, &format!("sprite source {id}"))?;
+        resources.validate_resource_metadata(resource, &format!("sprite metadata {id}"))?;
+        let (image_width, image_height) =
+            read_png_resource_dimensions_with_budget(resource, "sprite source", budget)?;
+        Self::finish_from_pack_resource_dimensions(
+            id,
+            resource,
+            image_width,
+            image_height,
+            resources,
+        )
+    }
+
+    pub(crate) fn finish_from_pack_resource_dimensions(
+        id: String,
+        resource: &PackResource,
+        image_width: u32,
+        image_height: u32,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let metadata = read_pack_resource_sprite_metadata(resource, resources)?;
+        let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let gui_metadata = metadata
+            .gui
+            .unwrap_or_default()
+            .into_metadata(&resource.path)?;
+        let (width, height, animation) = sprite_frame_metadata(
+            &resource.path,
+            image_width,
+            image_height,
+            metadata.animation,
+        )?;
+        Ok(Self {
+            id,
+            width,
+            height,
+            animation,
+            texture_metadata,
+            gui_metadata,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpriteImage {
+    pub id: String,
+    pub width: u32,
+    pub height: u32,
+    pub transparency: SpriteTransparency,
+    #[serde(default)]
+    pub animation: Option<SpriteAnimation>,
+    #[serde(default)]
+    pub texture_metadata: SpriteTextureMetadata,
+    #[serde(default)]
+    pub gui_metadata: SpriteGuiMetadata,
+    #[serde(default)]
+    pub animation_frames_rgba: Vec<Vec<u8>>,
+    pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SpriteTextureMetadata {
+    pub blur: bool,
+    pub clamp: bool,
+    pub mipmap_strategy: SpriteMipmapStrategy,
+    pub alpha_cutoff_bias: f32,
+}
+
+impl Default for SpriteTextureMetadata {
+    fn default() -> Self {
+        Self {
+            blur: false,
+            clamp: false,
+            mipmap_strategy: SpriteMipmapStrategy::Auto,
+            alpha_cutoff_bias: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpriteMipmapStrategy {
+    #[default]
+    Auto,
+    Mean,
+    Cutout,
+    StrictCutout,
+    DarkCutout,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpriteGuiMetadata {
+    #[serde(default)]
+    pub scaling: SpriteGuiScaling,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SpriteGuiScaling {
+    #[default]
+    Stretch,
+    Tile {
+        width: u32,
+        height: u32,
+    },
+    NineSlice {
+        width: u32,
+        height: u32,
+        border: SpriteNineSliceBorder,
+        #[serde(default)]
+        stretch_inner: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SpriteNineSliceBorder {
+    pub left: u32,
+    pub top: u32,
+    pub right: u32,
+    pub bottom: u32,
+}
+
+impl SpriteNineSliceBorder {
+    pub fn uniform(size: u32) -> Self {
+        Self {
+            left: size,
+            top: size,
+            right: size,
+            bottom: size,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SpriteNineSliceBorder {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        RawNineSliceBorder::deserialize(deserializer).map(RawNineSliceBorder::into_border_unchecked)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpriteTransparency {
+    pub has_transparent: bool,
+    pub has_translucent: bool,
+}
+
+impl SpriteTransparency {
+    pub fn from_rgba(rgba: &[u8]) -> Self {
+        let mut transparency = Self::default();
+        for alpha in rgba.as_chunks::<4>().0.iter().map(|pixel| pixel[3]) {
+            if alpha == 0 {
+                transparency.has_transparent = true;
+            } else if alpha != 255 {
+                transparency.has_translucent = true;
+            }
+        }
+        transparency
+    }
+
+    pub fn or(self, other: Self) -> Self {
+        Self {
+            has_transparent: self.has_transparent || other.has_transparent,
+            has_translucent: self.has_translucent || other.has_translucent,
+        }
+    }
+}
+
+impl SpriteImage {
+    pub fn new(id: impl Into<String>, width: u32, height: u32, rgba: Vec<u8>) -> Result<Self> {
+        let transparency = SpriteTransparency::from_rgba(&rgba);
+        Self::new_with_transparency(id, width, height, rgba, transparency, None)
+    }
+
+    fn new_with_transparency(
+        id: impl Into<String>,
+        width: u32,
+        height: u32,
+        rgba: Vec<u8>,
+        transparency: SpriteTransparency,
+        animation: Option<SpriteAnimation>,
+    ) -> Result<Self> {
+        let expected = rgba_len(width, height)?;
+        if rgba.len() != expected {
+            bail!(
+                "sprite image has {} RGBA bytes, expected {} for {}x{}",
+                rgba.len(),
+                expected,
+                width,
+                height
+            );
+        }
+        Ok(Self {
+            id: id.into(),
+            width,
+            height,
+            transparency,
+            animation,
+            texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
+            animation_frames_rgba: Vec::new(),
+            rgba,
+        })
+    }
+
+    pub fn from_png_file(id: impl Into<String>, path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        let metadata_path = mcmeta_path(path);
+        Self::from_png_file_with_metadata_path(id, path, Some(&metadata_path))
+    }
+
+    pub fn from_png_file_with_resource_stack(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let path = path.as_ref();
+        let metadata_path = mcmeta_path(path);
+        let mut budget = resources.single_image_png_decode_budget();
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            path,
+            Some(&metadata_path),
+            &mut budget,
+            Some(resources),
+        )
+    }
+
+    pub fn from_pack_resource_pixels(
+        id: impl Into<String>,
+        resource: &PackResource,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let id = id.into();
+        resources.validate_resource(resource, &format!("image {id}"))?;
+        let rgba = decode_png_resource_rgba_with_budget(
+            resource,
+            &id,
+            &mut resources.single_image_png_decode_budget(),
+        )?;
+        Self::new(id, rgba.width(), rgba.height(), rgba.into_raw())
+    }
+
+    pub fn from_pack_resource(
+        id: impl Into<String>,
+        resource: &PackResource,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        Self::from_pack_resource_with_budget(
+            id,
+            resource,
+            &mut resources.single_image_png_decode_budget(),
+            resources,
+        )
+    }
+
+    pub(crate) fn from_pack_resource_with_budget(
+        id: impl Into<String>,
+        resource: &PackResource,
+        budget: &mut PngDecodeBudget,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let id = id.into();
+        resources.validate_resource(resource, &format!("sprite image {id}"))?;
+        resources.validate_resource_metadata(resource, &format!("sprite metadata {id}"))?;
+        let rgba = decode_png_resource_rgba_with_budget(resource, "sprite image", budget)
+            .with_context(|| format!("open sprite {}", resource.path.display()))?;
+        let (image_width, image_height) = rgba.dimensions();
+        let metadata = read_pack_resource_sprite_metadata(resource, resources)?;
+        Self::from_decoded_rgba_and_metadata(
+            id,
+            &resource.path,
+            image_width,
+            image_height,
+            rgba.into_raw(),
+            metadata,
+            budget,
+        )
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+    ) -> Result<Self> {
+        let mut budget = PngDecodeBudget::single_image();
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            path,
+            metadata_path,
+            &mut budget,
+            None,
+        )
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path_and_budget(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+        budget: &mut PngDecodeBudget,
+        resources: Option<&PackResourceStack>,
+    ) -> Result<Self> {
+        let path = path.as_ref();
+        let rgba = decode_png_file_rgba_with_budget(path, "sprite image", budget)
+            .with_context(|| format!("open sprite {}", path.display()))?;
+        let (image_width, image_height) = rgba.dimensions();
+        let metadata = read_sprite_metadata(metadata_path, resources)?;
+        Self::from_decoded_rgba_and_metadata(
+            id.into(),
+            path,
+            image_width,
+            image_height,
+            rgba.into_raw(),
+            metadata,
+            budget,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn finish_from_pack_resource_rgba(
+        id: String,
+        resource: &PackResource,
+        image_width: u32,
+        image_height: u32,
+        source_rgba: Vec<u8>,
+        transparency: SpriteTransparency,
+        resources: &PackResourceStack,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<Self> {
+        let metadata = read_pack_resource_sprite_metadata(resource, resources)?;
+        Self::from_decoded_rgba_transparency_and_metadata(
+            id,
+            &resource.path,
+            image_width,
+            image_height,
+            source_rgba,
+            transparency,
+            metadata,
+            budget,
+        )
+    }
+
+    fn from_decoded_rgba_and_metadata(
+        id: String,
+        display_path: &Path,
+        image_width: u32,
+        image_height: u32,
+        source_rgba: Vec<u8>,
+        metadata: RawSpriteMetadata,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<Self> {
+        let transparency = SpriteTransparency::from_rgba(&source_rgba);
+        Self::from_decoded_rgba_transparency_and_metadata(
+            id,
+            display_path,
+            image_width,
+            image_height,
+            source_rgba,
+            transparency,
+            metadata,
+            budget,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn from_decoded_rgba_transparency_and_metadata(
+        id: String,
+        display_path: &Path,
+        image_width: u32,
+        image_height: u32,
+        source_rgba: Vec<u8>,
+        transparency: SpriteTransparency,
+        metadata: RawSpriteMetadata,
+        budget: &mut PngDecodeBudget,
+    ) -> Result<Self> {
+        let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let gui_metadata = metadata
+            .gui
+            .unwrap_or_default()
+            .into_metadata(display_path)?;
+        let (width, height, animation) =
+            sprite_frame_metadata(display_path, image_width, image_height, metadata.animation)?;
+        let animation_frames_rgba = match animation.as_ref() {
+            Some(animation) => {
+                let frame_rgba_bytes = u64::from(width)
+                    .checked_mul(u64::from(height))
+                    .and_then(|pixels| pixels.checked_mul(4))
+                    .and_then(|bytes| bytes.checked_mul(u64::from(animation.frame_count)))
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "animation frame RGBA size overflow in {}",
+                            display_path.display()
+                        )
+                    })?;
+                budget.reserve_raw_bytes(frame_rgba_bytes, "sprite animation frames")?;
+                copy_animation_frames_rgba(&source_rgba, image_width, width, height, animation)?
+            }
+            None => Vec::new(),
+        };
+        let rgba = if (width, height) == (image_width, image_height) {
+            source_rgba
+        } else {
+            copy_first_frame_rgba(&source_rgba, image_width, width, height)?
+        };
+        let mut image =
+            Self::new_with_transparency(id, width, height, rgba, transparency, animation)?;
+        image.texture_metadata = texture_metadata;
+        image.gui_metadata = gui_metadata;
+        image.animation_frames_rgba = animation_frames_rgba;
+        Ok(image)
+    }
+
+    pub(crate) fn source(&self) -> SpriteSource {
+        SpriteSource {
+            id: self.id.clone(),
+            width: self.width,
+            height: self.height,
+            animation: self.animation.clone(),
+            texture_metadata: self.texture_metadata,
+            gui_metadata: self.gui_metadata,
+        }
+    }
+
+    pub fn frame_rgba(&self, frame_index: u32) -> Option<&[u8]> {
+        if self.animation.is_some() {
+            return self
+                .animation_frames_rgba
+                .get(frame_index as usize)
+                .map(Vec::as_slice)
+                .or_else(|| {
+                    (frame_index == 0 && self.animation_frames_rgba.is_empty())
+                        .then_some(self.rgba.as_slice())
+                });
+        }
+        (frame_index == 0).then_some(self.rgba.as_slice())
+    }
+
+    pub fn frame_rgba_at_tick(&self, tick: u64) -> Result<Cow<'_, [u8]>> {
+        let Some(animation) = self.animation.as_ref() else {
+            return Ok(Cow::Borrowed(self.rgba.as_slice()));
+        };
+        let frame = animation
+            .frame_at_tick(tick)
+            .ok_or_else(|| anyhow::anyhow!("animated sprite {} has no frames", self.id))?;
+        let current = self.frame_rgba(frame.frame_index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "animated sprite {} missing frame {}",
+                self.id,
+                frame.frame_index
+            )
+        })?;
+        if !animation.interpolate || frame.frame_progress <= 0.0 {
+            return Ok(Cow::Borrowed(current));
+        }
+        let next = self.frame_rgba(frame.next_frame_index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "animated sprite {} missing frame {}",
+                self.id,
+                frame.next_frame_index
+            )
+        })?;
+        Ok(Cow::Owned(interpolate_rgba(
+            current,
+            next,
+            frame.frame_progress,
+        )?))
+    }
+}
+
+fn interpolate_rgba(current: &[u8], next: &[u8], progress: f32) -> Result<Vec<u8>> {
+    if current.len() != next.len() {
+        bail!(
+            "animated sprite frame length mismatch: {} bytes vs {} bytes",
+            current.len(),
+            next.len()
+        );
+    }
+    let progress = progress.clamp(0.0, 1.0);
+    Ok(current
+        .iter()
+        .zip(next)
+        .map(|(current, next)| {
+            let current = f32::from(*current);
+            let next = f32::from(*next);
+            (current + (next - current) * progress).round() as u8
+        })
+        .collect())
+}
+
+fn sprite_frame_metadata(
+    path: &Path,
+    image_width: u32,
+    image_height: u32,
+    animation: Option<RawAnimationMetadata>,
+) -> Result<(u32, u32, Option<SpriteAnimation>)> {
+    if image_width == 0 || image_height == 0 {
+        bail!("sprite image {} must not be empty", path.display());
+    }
+    let Some(animation) = animation else {
+        return Ok((image_width, image_height, None));
+    };
+
+    let width = match animation.width {
+        Some(width) => positive_dimension(width, "animation width", path)?,
+        None if animation.height.is_some() => image_width,
+        None => image_width.min(image_height),
+    };
+    let height = match animation.height {
+        Some(height) => positive_dimension(height, "animation height", path)?,
+        None if animation.width.is_some() => image_height,
+        None => image_width.min(image_height),
+    };
+
+    if !image_width.is_multiple_of(width) || !image_height.is_multiple_of(height) {
+        bail!(
+            "image {} size {}x{} is not a multiple of animation frame size {}x{}",
+            path.display(),
+            image_width,
+            image_height,
+            width,
+            height
+        );
+    }
+    let frame_count = (image_width / width)
+        .checked_mul(image_height / height)
+        .ok_or_else(|| anyhow::anyhow!("animation frame count overflow in {}", path.display()))?;
+    if frame_count > MAX_SPRITE_ANIMATION_FRAMES {
+        bail!(
+            "animation in {} has {frame_count} frames, exceeding the {MAX_SPRITE_ANIMATION_FRAMES} frame limit",
+            path.display()
+        );
+    }
+    let animation = sprite_animation(path, animation, frame_count)?;
+    Ok((width, height, Some(animation)))
+}
+
+fn read_pack_resource_sprite_metadata(
+    resource: &PackResource,
+    resources: &PackResourceStack,
+) -> Result<RawSpriteMetadata> {
+    if let Some(source) = resource.metadata_archive_source() {
+        let display = resource.metadata_path.as_deref().unwrap_or(&resource.path);
+        return source
+            .with_entry(|entry| {
+                let size = entry.size();
+                resources.data_budget().read_json_from_reader(
+                    entry,
+                    size,
+                    display,
+                    "sprite metadata",
+                )
+            })
+            .with_context(|| format!("parse mcmeta {}", display.display()));
+    }
+    read_sprite_metadata(resource.metadata_path.as_deref(), Some(resources))
+}
+
+fn read_sprite_metadata(
+    path: Option<&Path>,
+    resources: Option<&PackResourceStack>,
+) -> Result<RawSpriteMetadata> {
+    let Some(path) = path else {
+        return Ok(RawSpriteMetadata::default());
+    };
+    let exists = if crate::virtual_store::is_virtual_path(path) {
+        crate::virtual_store::has_virtual_file(path)
+    } else {
+        path.is_file()
+    };
+    if !exists {
+        return Ok(RawSpriteMetadata::default());
+    }
+    match resources {
+        Some(resources) => resources.read_json_file(path, "sprite metadata"),
+        None => crate::resource_budget::read_standalone_json(path, "sprite metadata"),
+    }
+    .with_context(|| format!("parse mcmeta {}", path.display()))
+}
+
+pub(crate) fn read_resource_texture_metadata(
+    resource: &PackResource,
+    resources: &PackResourceStack,
+) -> Result<SpriteTextureMetadata> {
+    resources.validate_resource_metadata(resource, "resource texture metadata")?;
+    Ok(read_pack_resource_sprite_metadata(resource, resources)?
+        .texture
+        .unwrap_or_default()
+        .into_metadata())
+}
+
+fn mcmeta_path(path: &Path) -> PathBuf {
+    let file_name = path
+        .file_name()
+        .map(|name| format!("{}.mcmeta", name.to_string_lossy()))
+        .unwrap_or_else(|| ".mcmeta".to_string());
+    path.with_file_name(file_name)
+}
+
+fn positive_dimension(value: u32, name: &str, path: &Path) -> Result<u32> {
+    if value == 0 {
+        bail!("{name} in {} must be positive", path.display());
+    }
+    Ok(value)
+}
+
+fn sprite_animation(
+    path: &Path,
+    metadata: RawAnimationMetadata,
+    frame_count: u32,
+) -> Result<SpriteAnimation> {
+    let default_frame_time =
+        positive_dimension(metadata.frametime.unwrap_or(1), "animation frametime", path)?;
+    let frames = match metadata.frames {
+        Some(frames) => {
+            if frames.len() > MAX_SPRITE_ANIMATION_FRAMES as usize {
+                bail!(
+                    "animation in {} has {} frame entries, exceeding the {MAX_SPRITE_ANIMATION_FRAMES} frame limit",
+                    path.display(),
+                    frames.len()
+                );
+            }
+            frames
+                .into_iter()
+                .map(|frame| frame.into_frame(default_frame_time, path))
+                .collect::<Result<Vec<_>>>()?
+        }
+        None => (0..frame_count)
+            .map(|index| SpriteAnimationFrame {
+                index,
+                time: default_frame_time,
+            })
+            .collect(),
+    };
+    if frames.is_empty() {
+        bail!(
+            "animation in {} must contain at least one frame",
+            path.display()
+        );
+    }
+    for frame in &frames {
+        if frame.index >= frame_count {
+            bail!(
+                "animation frame {} in {} exceeds frame count {}",
+                frame.index,
+                path.display(),
+                frame_count
+            );
+        }
+    }
+    Ok(SpriteAnimation {
+        frame_count,
+        default_frame_time,
+        interpolate: metadata.interpolate.unwrap_or(false),
+        frames,
+    })
+}
+
+fn copy_first_frame_rgba(
+    rgba: &[u8],
+    image_width: u32,
+    frame_width: u32,
+    frame_height: u32,
+) -> Result<Vec<u8>> {
+    copy_frame_rgba(rgba, image_width, frame_width, frame_height, 0)
+}
+
+fn copy_animation_frames_rgba(
+    rgba: &[u8],
+    image_width: u32,
+    frame_width: u32,
+    frame_height: u32,
+    animation: &SpriteAnimation,
+) -> Result<Vec<Vec<u8>>> {
+    (0..animation.frame_count)
+        .map(|frame| copy_frame_rgba(rgba, image_width, frame_width, frame_height, frame))
+        .collect()
+}
+
+fn copy_frame_rgba(
+    rgba: &[u8],
+    image_width: u32,
+    frame_width: u32,
+    frame_height: u32,
+    frame_index: u32,
+) -> Result<Vec<u8>> {
+    let frames_per_row = image_width
+        .checked_div(frame_width)
+        .ok_or_else(|| anyhow::anyhow!("invalid animation frame width"))?;
+    if frames_per_row == 0 {
+        bail!("invalid animation frame row size");
+    }
+    let frame_x = (frame_index % frames_per_row)
+        .checked_mul(frame_width)
+        .ok_or_else(|| anyhow::anyhow!("animation frame x offset overflow"))?;
+    let frame_y = (frame_index / frames_per_row)
+        .checked_mul(frame_height)
+        .ok_or_else(|| anyhow::anyhow!("animation frame y offset overflow"))?;
+    let source_stride = image_width as usize * 4;
+    let frame_stride = frame_width as usize * 4;
+    let mut frame = Vec::with_capacity(frame_stride * frame_height as usize);
+    for y in 0..frame_height as usize {
+        let start = (frame_y as usize + y)
+            .checked_mul(source_stride)
+            .and_then(|row| row.checked_add(frame_x as usize * 4))
+            .ok_or_else(|| anyhow::anyhow!("animation frame offset overflow"))?;
+        let end = start + frame_stride;
+        if end > rgba.len() {
+            bail!("animation frame exceeds source image bounds");
+        }
+        frame.extend_from_slice(&rgba[start..end]);
+    }
+    Ok(frame)
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawSpriteMetadata {
+    animation: Option<RawAnimationMetadata>,
+    texture: Option<RawTextureMetadata>,
+    gui: Option<RawGuiMetadata>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawAnimationMetadata {
+    width: Option<u32>,
+    height: Option<u32>,
+    frametime: Option<u32>,
+    interpolate: Option<bool>,
+    frames: Option<Vec<RawAnimationFrame>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawAnimationFrame {
+    Index(u32),
+    Object { index: u32, time: Option<u32> },
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawTextureMetadata {
+    blur: Option<bool>,
+    clamp: Option<bool>,
+    mipmap_strategy: Option<SpriteMipmapStrategy>,
+    alpha_cutoff_bias: Option<f32>,
+}
+
+impl RawTextureMetadata {
+    fn into_metadata(self) -> SpriteTextureMetadata {
+        SpriteTextureMetadata {
+            blur: self.blur.unwrap_or(false),
+            clamp: self.clamp.unwrap_or(false),
+            mipmap_strategy: self.mipmap_strategy.unwrap_or_default(),
+            alpha_cutoff_bias: self.alpha_cutoff_bias.unwrap_or(0.0),
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawGuiMetadata {
+    scaling: Option<RawGuiScaling>,
+}
+
+impl RawGuiMetadata {
+    fn into_metadata(self, path: &Path) -> Result<SpriteGuiMetadata> {
+        Ok(SpriteGuiMetadata {
+            scaling: self
+                .scaling
+                .map(|scaling| scaling.into_scaling(path))
+                .transpose()?
+                .unwrap_or_default(),
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum RawGuiScaling {
+    Stretch,
+    Tile {
+        width: u32,
+        height: u32,
+    },
+    NineSlice {
+        width: u32,
+        height: u32,
+        border: RawNineSliceBorder,
+        stretch_inner: Option<bool>,
+    },
+}
+
+impl RawGuiScaling {
+    fn into_scaling(self, path: &Path) -> Result<SpriteGuiScaling> {
+        match self {
+            Self::Stretch => Ok(SpriteGuiScaling::Stretch),
+            Self::Tile { width, height } => Ok(SpriteGuiScaling::Tile {
+                width: positive_dimension(width, "gui tile width", path)?,
+                height: positive_dimension(height, "gui tile height", path)?,
+            }),
+            Self::NineSlice {
+                width,
+                height,
+                border,
+                stretch_inner,
+            } => {
+                let width = positive_dimension(width, "gui nine-slice width", path)?;
+                let height = positive_dimension(height, "gui nine-slice height", path)?;
+                let border = border.into_border(path)?;
+                let horizontal_border = border
+                    .left
+                    .checked_add(border.right)
+                    .ok_or_else(|| anyhow::anyhow!("gui nine-slice horizontal border overflow"))?;
+                if horizontal_border >= width {
+                    bail!(
+                        "gui nine-slice in {} has no horizontal center slice: {} + {} >= {}",
+                        path.display(),
+                        border.left,
+                        border.right,
+                        width
+                    );
+                }
+                let vertical_border = border
+                    .top
+                    .checked_add(border.bottom)
+                    .ok_or_else(|| anyhow::anyhow!("gui nine-slice vertical border overflow"))?;
+                if vertical_border >= height {
+                    bail!(
+                        "gui nine-slice in {} has no vertical center slice: {} + {} >= {}",
+                        path.display(),
+                        border.top,
+                        border.bottom,
+                        height
+                    );
+                }
+                Ok(SpriteGuiScaling::NineSlice {
+                    width,
+                    height,
+                    border,
+                    stretch_inner: stretch_inner.unwrap_or(false),
+                })
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawNineSliceBorder {
+    Uniform(u32),
+    Sides {
+        left: u32,
+        top: u32,
+        right: u32,
+        bottom: u32,
+    },
+}
+
+impl RawNineSliceBorder {
+    fn into_border_unchecked(self) -> SpriteNineSliceBorder {
+        match self {
+            Self::Uniform(size) => SpriteNineSliceBorder::uniform(size),
+            Self::Sides {
+                left,
+                top,
+                right,
+                bottom,
+            } => SpriteNineSliceBorder {
+                left,
+                top,
+                right,
+                bottom,
+            },
+        }
+    }
+
+    fn into_border(self, path: &Path) -> Result<SpriteNineSliceBorder> {
+        match self {
+            Self::Uniform(size) => Ok(SpriteNineSliceBorder::uniform(positive_dimension(
+                size,
+                "gui nine-slice border",
+                path,
+            )?)),
+            Self::Sides {
+                left,
+                top,
+                right,
+                bottom,
+            } => Ok(SpriteNineSliceBorder {
+                left,
+                top,
+                right,
+                bottom,
+            }),
+        }
+    }
+}
+
+impl RawAnimationFrame {
+    fn into_frame(self, default_frame_time: u32, path: &Path) -> Result<SpriteAnimationFrame> {
+        let (index, time) = match self {
+            Self::Index(index) => (index, default_frame_time),
+            Self::Object { index, time } => (
+                index,
+                positive_dimension(
+                    time.unwrap_or(default_frame_time),
+                    "animation frame time",
+                    path,
+                )?,
+            ),
+        };
+        Ok(SpriteAnimationFrame { index, time })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use bbb_render_types::SpriteAnimationFrameTick;
+
+    use super::{
+        SpriteAnimation, SpriteAnimationFrame, SpriteGuiMetadata, SpriteGuiScaling, SpriteImage,
+        SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource, SpriteTextureMetadata,
+    };
+
+    #[test]
+    fn sprite_source_reads_png_dimensions() {
+        let dir = unique_temp_dir("png-dimensions");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sprite.png");
+        write_test_png(&path, 7, 11);
+
+        let source = SpriteSource::from_png_file("test:sprite", &path).unwrap();
+        assert_eq!(source, SpriteSource::new("test:sprite", 7, 11));
+        assert_eq!(source.texture_metadata, SpriteTextureMetadata::default());
+        assert_eq!(source.gui_metadata, SpriteGuiMetadata::default());
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_reads_gui_nine_slice_metadata_from_mcmeta() {
+        let dir = unique_temp_dir("gui-nine-slice-source");
+        let path = dir.join("button.png");
+        write_test_png(&path, 200, 20);
+        write_json(
+            &dir.join("button.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "nine_slice",
+                  "width": 200,
+                  "height": 20,
+                  "border": 3
+                }
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:widget/button", &path).unwrap();
+
+        assert_eq!(
+            source.gui_metadata,
+            SpriteGuiMetadata {
+                scaling: SpriteGuiScaling::NineSlice {
+                    width: 200,
+                    height: 20,
+                    border: SpriteNineSliceBorder::uniform(3),
+                    stretch_inner: false,
+                },
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_reads_gui_nine_slice_stretch_inner_from_mcmeta() {
+        // Mirrors the real `tooltip/frame.png.mcmeta`: a scalar border plus `stretch_inner: true`.
+        let dir = unique_temp_dir("gui-nine-slice-stretch-inner");
+        let path = dir.join("frame.png");
+        write_test_png(&path, 100, 100);
+        write_json(
+            &dir.join("frame.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "nine_slice",
+                  "width": 100,
+                  "height": 100,
+                  "border": 10,
+                  "stretch_inner": true
+                }
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:tooltip/frame", &path).unwrap();
+
+        assert_eq!(
+            source.gui_metadata,
+            SpriteGuiMetadata {
+                scaling: SpriteGuiScaling::NineSlice {
+                    width: 100,
+                    height: 100,
+                    border: SpriteNineSliceBorder::uniform(10),
+                    stretch_inner: true,
+                },
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_rejects_gui_nine_slice_without_center() {
+        let dir = unique_temp_dir("gui-nine-slice-invalid");
+        let path = dir.join("bad_button.png");
+        write_test_png(&path, 10, 10);
+        write_json(
+            &dir.join("bad_button.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "nine_slice",
+                  "width": 10,
+                  "height": 10,
+                  "border": {
+                    "left": 5,
+                    "right": 5,
+                    "top": 1,
+                    "bottom": 1
+                  }
+                }
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:widget/bad_button", &path).unwrap_err();
+
+        assert!(err.to_string().contains("no horizontal center slice"));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_deserializes_without_animation_metadata() {
+        let source: SpriteSource =
+            serde_json::from_str(r#"{"id":"minecraft:block/stone","width":16,"height":16}"#)
+                .unwrap();
+
+        assert_eq!(source, SpriteSource::new("minecraft:block/stone", 16, 16));
+    }
+
+    #[test]
+    fn sprite_source_reads_texture_metadata_from_mcmeta() {
+        let dir = unique_temp_dir("texture-metadata-source");
+        let path = dir.join("torchflower.png");
+        write_test_png(&path, 16, 16);
+        write_json(
+            &dir.join("torchflower.png.mcmeta"),
+            r#"{
+              "texture": {
+                "blur": true,
+                "clamp": true,
+                "mipmap_strategy": "strict_cutout",
+                "alpha_cutoff_bias": 0.125
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:block/torchflower", &path).unwrap();
+
+        assert_eq!(
+            source.texture_metadata,
+            SpriteTextureMetadata {
+                blur: true,
+                clamp: true,
+                mipmap_strategy: SpriteMipmapStrategy::StrictCutout,
+                alpha_cutoff_bias: 0.125,
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_reads_animation_frame_dimensions_from_mcmeta() {
+        let dir = unique_temp_dir("animation-dimensions");
+        let path = dir.join("water_still.png");
+        write_test_png(&path, 16, 48);
+        write_json(
+            &dir.join("water_still.png.mcmeta"),
+            r#"{
+              "animation": {
+                "frametime": 2
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:block/water_still", &path).unwrap();
+        assert_eq!(
+            source,
+            SpriteSource {
+                id: "minecraft:block/water_still".to_string(),
+                width: 16,
+                height: 16,
+                animation: Some(SpriteAnimation {
+                    frame_count: 3,
+                    default_frame_time: 2,
+                    interpolate: false,
+                    frames: vec![
+                        SpriteAnimationFrame { index: 0, time: 2 },
+                        SpriteAnimationFrame { index: 1, time: 2 },
+                        SpriteAnimationFrame { index: 2, time: 2 },
+                    ],
+                }),
+                texture_metadata: SpriteTextureMetadata::default(),
+                gui_metadata: SpriteGuiMetadata::default(),
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_reads_explicit_animation_frames() {
+        let dir = unique_temp_dir("animation-explicit-frames");
+        let path = dir.join("locator_bar_arrow_down.png");
+        write_test_png(&path, 7, 10);
+        write_json(
+            &dir.join("locator_bar_arrow_down.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 5,
+                "frames": [
+                  { "index": 0, "time": 10 },
+                  { "index": 1, "time": 4 }
+                ]
+              }
+            }"#,
+        );
+
+        let source =
+            SpriteSource::from_png_file("minecraft:hud/locator_bar_arrow_down", &path).unwrap();
+        assert_eq!((source.width, source.height), (7, 5));
+        assert_eq!(
+            source.animation,
+            Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: false,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 10 },
+                    SpriteAnimationFrame { index: 1, time: 4 },
+                ],
+            })
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_animation_selects_frame_by_tick_duration() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: false,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 2 },
+                SpriteAnimationFrame { index: 1, time: 1 },
+            ],
+        };
+
+        assert_eq!(animation.frame_index_at_tick(0), Some(0));
+        assert_eq!(animation.frame_index_at_tick(1), Some(0));
+        assert_eq!(animation.frame_index_at_tick(2), Some(1));
+        assert_eq!(animation.frame_index_at_tick(3), Some(0));
+    }
+
+    #[test]
+    fn sprite_animation_reports_frame_progress_for_interpolation() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: true,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 4 },
+                SpriteAnimationFrame { index: 1, time: 2 },
+            ],
+        };
+
+        assert_eq!(
+            animation.frame_at_tick(0),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 0,
+                next_frame_index: 1,
+                frame_progress: 0.0,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(1),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 0,
+                next_frame_index: 1,
+                frame_progress: 0.25,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(3),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 0,
+                next_frame_index: 1,
+                frame_progress: 0.75,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(4),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 1,
+                next_frame_index: 0,
+                frame_progress: 0.0,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(5),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 1,
+                next_frame_index: 0,
+                frame_progress: 0.5,
+            })
+        );
+        assert_eq!(animation.frame_index_at_tick(6), Some(0));
+    }
+
+    #[test]
+    fn sprite_image_crops_first_animation_frame() {
+        let dir = unique_temp_dir("animation-first-frame");
+        let path = dir.join("arrow.png");
+        write_test_rgba_png(
+            &path,
+            2,
+            4,
+            &[
+                1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255, 13, 14, 15, 255, 16, 17,
+                18, 127, 19, 20, 21, 255, 22, 23, 24, 255,
+            ],
+        );
+        write_json(
+            &dir.join("arrow.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 2
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:hud/arrow", &path).unwrap();
+        assert_eq!((image.width, image.height), (2, 2));
+        assert_eq!(
+            image.rgba,
+            vec![1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]
+        );
+        assert_eq!(image.frame_rgba(0), Some(image.rgba.as_slice()));
+        assert_eq!(
+            image.frame_rgba(1),
+            Some(
+                vec![13, 14, 15, 255, 16, 17, 18, 127, 19, 20, 21, 255, 22, 23, 24, 255,]
+                    .as_slice()
+            )
+        );
+        assert_eq!(image.frame_rgba(2), None);
+        assert!(image.transparency.has_translucent);
+        assert_eq!(
+            image.animation,
+            Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: false,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 1 },
+                    SpriteAnimationFrame { index: 1, time: 1 },
+                ],
+            })
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_reads_animation_frames_in_row_major_order() {
+        let dir = unique_temp_dir("animation-row-major-frames");
+        let path = dir.join("grid.png");
+        write_test_rgba_png(
+            &path,
+            4,
+            4,
+            &[
+                1, 0, 0, 255, 2, 0, 0, 255, 3, 0, 0, 255, 4, 0, 0, 255, 5, 0, 0, 255, 6, 0, 0, 255,
+                7, 0, 0, 255, 8, 0, 0, 255, 9, 0, 0, 255, 10, 0, 0, 255, 11, 0, 0, 255, 12, 0, 0,
+                255, 13, 0, 0, 255, 14, 0, 0, 255, 15, 0, 0, 255, 16, 0, 0, 255,
+            ],
+        );
+        write_json(
+            &dir.join("grid.png.mcmeta"),
+            r#"{
+              "animation": {
+                "width": 2,
+                "height": 2
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:block/grid", &path).unwrap();
+
+        assert_eq!(
+            image.frame_rgba(2),
+            Some(vec![9, 0, 0, 255, 10, 0, 0, 255, 13, 0, 0, 255, 14, 0, 0, 255].as_slice())
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_interpolated_animation_metadata() {
+        let dir = unique_temp_dir("animation-interpolate");
+        let path = dir.join("sculk.png");
+        write_test_png(&path, 2, 4);
+        write_json(
+            &dir.join("sculk.png.mcmeta"),
+            r#"{
+              "animation": {
+                "frametime": 20,
+                "interpolate": true
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:block/sculk", &path).unwrap();
+        assert_eq!(
+            image.animation,
+            Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 20,
+                interpolate: true,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 20 },
+                    SpriteAnimationFrame { index: 1, time: 20 },
+                ],
+            })
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_texture_metadata() {
+        let dir = unique_temp_dir("texture-metadata-image");
+        let path = dir.join("glass.png");
+        write_test_png(&path, 16, 16);
+        write_json(
+            &dir.join("glass.png.mcmeta"),
+            r#"{
+              "texture": {
+                "mipmap_strategy": "mean"
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:block/glass", &path).unwrap();
+
+        assert_eq!(
+            image.texture_metadata,
+            SpriteTextureMetadata {
+                blur: false,
+                clamp: false,
+                mipmap_strategy: SpriteMipmapStrategy::Mean,
+                alpha_cutoff_bias: 0.0,
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_gui_tile_metadata() {
+        let dir = unique_temp_dir("gui-tile-image");
+        let path = dir.join("panel.png");
+        write_test_png(&path, 8, 8);
+        write_json(
+            &dir.join("panel.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "tile",
+                  "width": 4,
+                  "height": 5
+                }
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:panel", &path).unwrap();
+
+        assert_eq!(
+            image.gui_metadata,
+            SpriteGuiMetadata {
+                scaling: SpriteGuiScaling::Tile {
+                    width: 4,
+                    height: 5,
+                },
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_interpolates_animation_frame_rgba() {
+        let mut image =
+            SpriteImage::new("minecraft:block/interpolated", 1, 1, vec![0, 20, 100, 255]).unwrap();
+        image.animation = Some(SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: true,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 4 },
+                SpriteAnimationFrame { index: 1, time: 4 },
+            ],
+        });
+        image.animation_frames_rgba = vec![vec![0, 20, 100, 255], vec![100, 60, 0, 127]];
+
+        assert_eq!(
+            image.frame_rgba_at_tick(0).unwrap().as_ref(),
+            [0, 20, 100, 255]
+        );
+        assert_eq!(
+            image.frame_rgba_at_tick(1).unwrap().as_ref(),
+            [25, 30, 75, 223]
+        );
+        assert_eq!(
+            image.frame_rgba_at_tick(2).unwrap().as_ref(),
+            [50, 40, 50, 191]
+        );
+        assert_eq!(
+            image.frame_rgba_at_tick(4).unwrap().as_ref(),
+            [100, 60, 0, 127]
+        );
+    }
+
+    #[test]
+    fn sprite_image_records_alpha_transparency() {
+        let opaque = SpriteImage::new("test:opaque", 1, 1, vec![1, 2, 3, 255]).unwrap();
+        assert!(!opaque.transparency.has_transparent);
+        assert!(!opaque.transparency.has_translucent);
+        assert_eq!(opaque.frame_rgba(0), Some([1, 2, 3, 255].as_slice()));
+        assert_eq!(opaque.frame_rgba(1), None);
+
+        let transparent = SpriteImage::new("test:transparent", 1, 1, vec![1, 2, 3, 0]).unwrap();
+        assert!(transparent.transparency.has_transparent);
+        assert!(!transparent.transparency.has_translucent);
+
+        let translucent = SpriteImage::new("test:translucent", 1, 1, vec![1, 2, 3, 127]).unwrap();
+        assert!(!translucent.transparency.has_transparent);
+        assert!(translucent.transparency.has_translucent);
+    }
+
+    #[test]
+    fn sprite_source_rejects_non_multiple_animation_frame_size() {
+        let dir = unique_temp_dir("animation-invalid");
+        let path = dir.join("bad.png");
+        write_test_png(&path, 5, 9);
+        write_json(
+            &dir.join("bad.png.mcmeta"),
+            r#"{
+              "animation": {
+                "width": 3,
+                "height": 3
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
+        assert!(err.to_string().contains("not a multiple"));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_rejects_out_of_range_animation_frame() {
+        let dir = unique_temp_dir("animation-invalid-frame");
+        let path = dir.join("bad.png");
+        write_test_png(&path, 4, 8);
+        write_json(
+            &dir.join("bad.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 4,
+                "frames": [0, 2]
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
+        assert!(err.to_string().contains("exceeds frame count"));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_rejects_empty_animation_frames() {
+        let dir = unique_temp_dir("animation-empty-frames");
+        let path = dir.join("bad.png");
+        write_test_png(&path, 4, 8);
+        write_json(
+            &dir.join("bad.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 4,
+                "frames": []
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
+        assert!(err.to_string().contains("must contain at least one frame"));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_animation_rejects_excessive_frame_counts_and_charges_frame_budget() {
+        let dir = unique_temp_dir("animation-frame-cap");
+        let many_frames_png = dir.join("many.png");
+        // 65 * 65 = 4225 1x1 frames (> MAX_SPRITE_ANIMATION_FRAMES = 4096) in a tiny PNG!
+        write_test_png(&many_frames_png, 65, 65);
+        write_json(
+            &dir.join("many.png.mcmeta"),
+            r#"{"animation":{"width":1,"height":1}}"#,
+        );
+        let err = SpriteImage::from_png_file("minecraft:many", &many_frames_png).unwrap_err();
+        assert!(format!("{err:#}").contains("frame limit"), "{err:#}");
+
+        let many_entries_png = dir.join("entries.png");
+        write_test_png(&many_entries_png, 2, 4);
+        let frame_list = vec![0u32; super::MAX_SPRITE_ANIMATION_FRAMES as usize + 1];
+        write_json(
+            &dir.join("entries.png.mcmeta"),
+            &serde_json::to_string(&serde_json::json!({
+                "animation": { "width": 2, "height": 2, "frames": frame_list }
+            }))
+            .unwrap(),
+        );
+        let err = SpriteImage::from_png_file("minecraft:entries", &many_entries_png).unwrap_err();
+        assert!(format!("{err:#}").contains("frame limit"), "{err:#}");
+
+        // Valid 2-frame 2x4 animated sprite (32 bytes source + 32 bytes frame copies = 64 bytes):
+        // must fail under a 48-byte generation image budget before copying frames.
+        let root = dir.join("pack_root");
+        let anim_png = root.join("sources/26.1/assets/minecraft/textures/block/anim.png");
+        write_test_png(&anim_png, 2, 4);
+        write_json(
+            &root.join("sources/26.1/assets/minecraft/textures/block/anim.png.mcmeta"),
+            r#"{"animation":{"width":2,"height":2}}"#,
+        );
+        let base = crate::PackRoots::from_root(&root).unwrap();
+        let selected = crate::SelectedClientPackStack::from_startup_dirs(&base, []).unwrap();
+        let tight = base
+            .with_client_resource_generation_image_limit(1, selected, 48)
+            .unwrap();
+        let stack = tight.resource_stack();
+        let res = stack
+            .get_resource(
+                &crate::ResourceLocation::parse("minecraft:textures/block/anim.png").unwrap(),
+            )
+            .unwrap();
+        let err =
+            SpriteImage::from_pack_resource("minecraft:block/anim", &res, &stack).unwrap_err();
+        assert!(
+            format!("{err:#}").contains("sprite animation frames"),
+            "{err:#}"
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn write_test_png(path: &Path, width: u32, height: u32) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let image = image::RgbaImage::from_pixel(width, height, image::Rgba([1, 2, 3, 255]));
+        image.save(path).unwrap();
+    }
+
+    fn write_test_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let image = image::RgbaImage::from_raw(width, height, rgba.to_vec()).unwrap();
+        image.save(path).unwrap();
+    }
+
+    fn write_json(path: &Path, contents: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
+    }
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "bbb-client-assets-{name}-{}-{nonce}",
+            std::process::id()
+        ))
+    }
+}

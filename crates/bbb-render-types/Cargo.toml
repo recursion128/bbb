@@ -1,0 +1,22 @@
+[package]
+name = "bbb-render-types"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+bbb-facts = { path = "../bbb-facts", default-features = false, features = ["client-facts"] }
+bbb-protocol = { path = "../bbb-protocol" }
+image = { workspace = true }
+rustc-hash = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+unicode-bidi = { workspace = true }
+unicode-character-database = { workspace = true }
+uuid = { workspace = true }

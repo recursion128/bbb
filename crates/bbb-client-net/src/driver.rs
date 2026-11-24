@@ -1,0 +1,2391 @@
+use std::{future::Future, pin::Pin, task::Poll, time::Duration};
+
+use anyhow::Result;
+use bbb_protocol::{
+    content_registry::ContentRegistry,
+    packets::{self, PlayerPositionState},
+};
+use tokio::sync::mpsc;
+
+use crate::{
+    chat_session::{
+        prepare_outbound_chat_command, prepare_outbound_chat_message, PreparedChatCommand,
+    },
+    connection::RawConnection,
+    session::PlayerMovementFlags,
+    types::{AcceptTeleportCommand, ConnectionState, NetCommand},
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+type IdleReadTimer = Pin<Box<tokio::time::Sleep>>;
+
+#[cfg(target_arch = "wasm32")]
+type IdleReadTimer = Pin<Box<dyn Future<Output = ()>>>;
+
+/// Persistent idle-read timer shared across `tokio::select!` iterations and
+/// consecutive packet reads so outbound commands/ticks never churn timers.
+#[derive(Default)]
+pub(crate) struct IdleReadDeadline {
+    armed_limit: Option<Duration>,
+    timer: Option<IdleReadTimer>,
+}
+
+impl IdleReadDeadline {
+    pub(crate) fn clear(&mut self) {
+        self.armed_limit = None;
+        self.timer = None;
+    }
+
+    fn ensure_armed(&mut self, conn: &RawConnection) -> Result<()> {
+        let Some(limit) = conn.read_timeout_limit() else {
+            self.clear();
+            return Ok(());
+        };
+        if self.armed_limit != Some(limit) {
+            self.timer = None;
+            self.armed_limit = Some(limit);
+        }
+        if self.timer.is_none() {
+            let remaining = conn.remaining_read_timeout(limit);
+            if remaining.is_zero() {
+                return Err(RawConnection::read_timeout_error(limit));
+            }
+            self.timer = Some(Self::new_timer(remaining));
+        }
+        Ok(())
+    }
+
+    fn on_fired(&mut self, conn: &RawConnection) -> Result<()> {
+        self.timer = None;
+        self.ensure_armed(conn)
+    }
+
+    async fn wait(&mut self) {
+        std::future::poll_fn(|cx| match self.timer.as_mut() {
+            Some(timer) => timer.as_mut().poll(cx),
+            None => Poll::Pending,
+        })
+        .await;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn new_timer(remaining: Duration) -> IdleReadTimer {
+        Box::pin(tokio::time::sleep(remaining))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn new_timer(remaining: Duration) -> IdleReadTimer {
+        Box::pin(crate::transport::sleep_duration(remaining))
+    }
+}
+
+mod commands;
+
+pub(crate) use commands::{
+    send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
+    send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
+    send_chat_command_signed, send_chat_message, send_client_command,
+    send_command_suggestion_request, send_configuration_client_information,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_custom_click_action, send_custom_payload,
+    send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
+    send_jigsaw_generate, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
+    send_pick_item_from_entity, send_ping_request, send_place_recipe, send_play_client_information,
+    send_player_abilities_command, send_player_action, send_player_command,
+    send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
+    send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
+    send_set_beacon, send_set_command_block, send_set_command_minecart,
+    send_set_creative_mode_slot, send_set_game_rule, send_set_held_slot_command,
+    send_set_jigsaw_block, send_set_structure_block, send_set_test_block, send_sign_update,
+    send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_test_instance_block_action, send_use_item, send_use_item_on,
+};
+use commands::{
+    send_client_tick_end, send_configuration_custom_payload, send_player_loaded,
+    send_player_move_command, send_resource_pack_response, send_vehicle_move_command,
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn read_packet_or_send_play_tick(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    play_tick: &mut Option<tokio::time::Interval>,
+) -> Result<(i32, Vec<u8>)> {
+    read_packet_or_eof_or_send_play_tick(conn, state, play_tick)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("connection closed"))
+}
+
+/// The same, answering `None` when the server closed the connection rather
+/// than treating the close as a transport failure.
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn read_packet_or_eof_or_send_play_tick(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    play_tick: &mut Option<tokio::time::Interval>,
+) -> Result<Option<(i32, Vec<u8>)>> {
+    if !matches!(state, ConnectionState::Play) {
+        return conn.read_packet_or_eof().await;
+    }
+
+    let Some(tick) = play_tick.as_mut() else {
+        return conn.read_packet_or_eof().await;
+    };
+
+    if let Some(id) = conn.try_read_buffered_packet_touching_inbound()? {
+        return Ok(Some((id, conn.payload().to_vec())));
+    }
+
+    let mut idle_deadline = IdleReadDeadline::default();
+    idle_deadline.ensure_armed(conn)?;
+    loop {
+        tokio::select! {
+            biased;
+            packet = conn.read_packet_id_or_eof_untimed() => {
+                return Ok(packet?.map(|id| (id, conn.payload().to_vec())));
+            }
+            _ = idle_deadline.wait() => {
+                idle_deadline.on_fired(conn)?;
+            }
+            _ = tick.tick() => {
+                let (id, payload) = packets::encode_play_client_tick_end();
+                conn.send_packet(id, &payload).await?;
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum ConnectionDrive {
+    Packet(i32),
+    AcceptTeleport(AcceptTeleportCommand),
+    AcknowledgePlayerRotation {
+        y_rot: f32,
+        x_rot: f32,
+    },
+    AcknowledgeConfiguration {
+        pending_chat_acknowledgement: Option<packets::ChatAcknowledgement>,
+    },
+    FinishConfiguration,
+    Disconnect,
+    DisconnectWithReason(String),
+}
+
+pub(crate) struct ConnectionDriveContext<'a> {
+    pub(crate) conn: &'a mut RawConnection,
+    pub(crate) state: ConnectionState,
+    pub(crate) commands: &'a mut mpsc::Receiver<NetCommand>,
+    pub(crate) player_position_state: &'a mut PlayerPositionState,
+    pub(crate) player_movement_flags: &'a mut PlayerMovementFlags,
+    pub(crate) teleport_pending: bool,
+    pub(crate) inbound_paused: bool,
+    pub(crate) content_registry: &'a ContentRegistry,
+    pub(crate) idle_deadline: &'a mut IdleReadDeadline,
+}
+
+#[cfg(test)]
+pub(crate) async fn read_packet_or_drive_connection(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    commands: &mut mpsc::Receiver<NetCommand>,
+    player_position_state: &mut PlayerPositionState,
+    player_movement_flags: &mut PlayerMovementFlags,
+    teleport_pending: bool,
+) -> Result<ConnectionDrive> {
+    let mut idle_deadline = IdleReadDeadline::default();
+    read_packet_or_drive_connection_with_deadline(ConnectionDriveContext {
+        conn,
+        state,
+        commands,
+        player_position_state,
+        player_movement_flags,
+        teleport_pending,
+        inbound_paused: false,
+        content_registry: ContentRegistry::vanilla(),
+        idle_deadline: &mut idle_deadline,
+    })
+    .await
+}
+
+pub(crate) async fn read_packet_or_drive_connection_with_deadline(
+    ctx: ConnectionDriveContext<'_>,
+) -> Result<ConnectionDrive> {
+    let ConnectionDriveContext {
+        conn,
+        state,
+        commands,
+        player_position_state,
+        player_movement_flags,
+        teleport_pending,
+        inbound_paused,
+        content_registry,
+        idle_deadline,
+    } = ctx;
+
+    if !matches!(state, ConnectionState::Play) {
+        return read_packet_or_disconnect_command_with_deadline(
+            conn,
+            state,
+            commands,
+            inbound_paused,
+            idle_deadline,
+        )
+        .await;
+    }
+
+    if !inbound_paused {
+        if let Some(packet) = conn.try_read_buffered_packet_touching_inbound()? {
+            return Ok(ConnectionDrive::Packet(packet));
+        }
+
+        idle_deadline.ensure_armed(conn)?;
+    }
+    loop {
+        tokio::select! {
+            // Like netty's event loop, finish the inbound packets already
+            // buffered (and their connection-thread replies) before writing
+            // what the client thread queued meanwhile. When a terminal packet
+            // paused inbound reads, only drain commands until the protocol swap
+            // completes or the client disconnects.
+            biased;
+            packet = conn.read_packet_id_untimed(), if !inbound_paused => {
+                return Ok(ConnectionDrive::Packet(packet?));
+            }
+            _ = idle_deadline.wait(), if !inbound_paused => {
+                idle_deadline.on_fired(conn)?;
+            }
+            command = commands.recv() => {
+                match command {
+                    Some(NetCommand::ClientTickEnd) => {
+                        send_client_tick_end(conn).await?;
+                    }
+                    Some(NetCommand::PlayerLoaded) => {
+                        send_player_loaded(conn).await?;
+                    }
+                    Some(NetCommand::AcceptTeleport(command)) => {
+                        return Ok(ConnectionDrive::AcceptTeleport(command));
+                    }
+                    Some(NetCommand::AcknowledgePlayerRotation { y_rot, x_rot }) => {
+                        return Ok(ConnectionDrive::AcknowledgePlayerRotation { y_rot, x_rot });
+                    }
+                    Some(NetCommand::AcknowledgeConfiguration { pending_chat_acknowledgement }) => {
+                        return Ok(ConnectionDrive::AcknowledgeConfiguration {
+                            pending_chat_acknowledgement,
+                        });
+                    }
+                    Some(NetCommand::FinishConfiguration) => {}
+                    Some(NetCommand::MovePlayer(command)) => {
+                        // Vanilla ignores player moves while a teleport awaits
+                        // its accept; queueing them would echo stale
+                        // pre-teleport positions right after the accept.
+                        if !teleport_pending {
+                            send_player_move_command(
+                                conn,
+                                command,
+                                player_position_state,
+                                player_movement_flags,
+                            )
+                            .await?;
+                        }
+                    }
+                    Some(NetCommand::MoveVehicle(command)) => {
+                        send_vehicle_move_command(conn, command).await?;
+                    }
+                    Some(NetCommand::PlayerAction(action)) => {
+                        send_player_action(conn, action).await?;
+                    }
+                    Some(NetCommand::PlayerCommand(command)) => {
+                        send_player_command(conn, command).await?;
+                    }
+                    Some(NetCommand::PlayerAbilities(command)) => {
+                        send_player_abilities_command(conn, command).await?;
+                    }
+                    Some(NetCommand::PlayerInput(input)) => {
+                        send_player_input_command(conn, input).await?;
+                    }
+                    Some(NetCommand::ChatAcknowledgement(command)) => {
+                        send_chat_acknowledgement(conn, command).await?;
+                    }
+                    Some(NetCommand::ChatCommand(command)) => {
+                        match prepare_outbound_chat_command(command)? {
+                            PreparedChatCommand::Unsigned(packet) => {
+                                send_chat_command(conn, packet).await?;
+                            }
+                            PreparedChatCommand::Signed(packet) => {
+                                send_chat_command_signed(conn, packet).await?;
+                            }
+                        }
+                    }
+                    Some(NetCommand::ChatMessage(message)) => {
+                        let packet = prepare_outbound_chat_message(message)?;
+                        send_chat_message(conn, packet).await?;
+                    }
+                    Some(NetCommand::CustomPayload(packet)) => {
+                        send_custom_payload(conn, packet).await?;
+                    }
+                    Some(NetCommand::CustomClickAction(packet)) => {
+                        send_custom_click_action(conn, state, packet).await?;
+                    }
+                    Some(NetCommand::ResourcePackResponse { id, action }) => {
+                        send_resource_pack_response(conn, state, id, action).await?;
+                    }
+                    Some(NetCommand::DebugSubscriptionRequest { subscription_ids }) => {
+                        send_debug_subscription_request(conn, &subscription_ids).await?;
+                    }
+                    Some(NetCommand::AttackEntity(packet)) => {
+                        send_attack_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::InteractEntity(packet)) => {
+                        send_interact_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetHeldSlot(slot)) => {
+                        send_set_held_slot_command(conn, slot).await?;
+                    }
+                    Some(NetCommand::Swing(hand)) => {
+                        send_swing_command(conn, hand).await?;
+                    }
+                    Some(NetCommand::UseItemOn(packet)) => {
+                        send_use_item_on(conn, packet).await?;
+                    }
+                    Some(NetCommand::UseItem(packet)) => {
+                        send_use_item(conn, packet).await?;
+                    }
+                    Some(NetCommand::PickItemFromBlock(packet)) => {
+                        send_pick_item_from_block(conn, packet).await?;
+                    }
+                    Some(NetCommand::PickItemFromEntity(packet)) => {
+                        send_pick_item_from_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::PaddleBoat(packet)) => {
+                        send_paddle_boat(conn, packet).await?;
+                    }
+                    Some(NetCommand::PingRequest(time)) => {
+                        send_ping_request(conn, time).await?;
+                    }
+                    Some(NetCommand::BroadcastClientInformation(information)) => {
+                        send_play_client_information(conn, &information).await?;
+                    }
+                    Some(NetCommand::BlockEntityTagQuery(packet)) => {
+                        send_block_entity_tag_query(conn, packet).await?;
+                    }
+                    Some(NetCommand::EntityTagQuery(packet)) => {
+                        send_entity_tag_query(conn, packet).await?;
+                    }
+                    Some(NetCommand::ChangeDifficulty(command)) => {
+                        send_change_difficulty(conn, command).await?;
+                    }
+                    Some(NetCommand::ChangeGameMode(command)) => {
+                        send_change_game_mode(conn, command).await?;
+                    }
+                    Some(NetCommand::LockDifficulty(command)) => {
+                        send_lock_difficulty(conn, command).await?;
+                    }
+                    Some(NetCommand::SetGameRule(packet)) => {
+                        send_set_game_rule(conn, packet).await?;
+                    }
+                    Some(NetCommand::PlaceRecipe(command)) => {
+                        send_place_recipe(conn, command).await?;
+                    }
+                    Some(NetCommand::RecipeBookChangeSettings(command)) => {
+                        send_recipe_book_change_settings(conn, command).await?;
+                    }
+                    Some(NetCommand::RecipeBookSeenRecipe(command)) => {
+                        send_recipe_book_seen_recipe(conn, command).await?;
+                    }
+                    Some(NetCommand::EditBook(packet)) => {
+                        send_edit_book(conn, packet).await?;
+                    }
+                    Some(NetCommand::RenameItem(packet)) => {
+                        send_rename_item(conn, packet).await?;
+                    }
+                    Some(NetCommand::SeenAdvancements(packet)) => {
+                        send_seen_advancements(conn, packet).await?;
+                    }
+                    Some(NetCommand::SelectTrade(command)) => {
+                        send_select_trade(conn, command).await?;
+                    }
+                    Some(NetCommand::SetBeacon(packet)) => {
+                        send_set_beacon(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetCommandBlock(packet)) => {
+                        send_set_command_block(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetCommandMinecart(packet)) => {
+                        send_set_command_minecart(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetJigsawBlock(packet)) => {
+                        send_set_jigsaw_block(conn, packet).await?;
+                    }
+                    Some(NetCommand::JigsawGenerate(packet)) => {
+                        send_jigsaw_generate(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetStructureBlock(packet)) => {
+                        send_set_structure_block(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetTestBlock(packet)) => {
+                        send_set_test_block(conn, packet).await?;
+                    }
+                    Some(NetCommand::TestInstanceBlockAction(packet)) => {
+                        send_test_instance_block_action(conn, packet).await?;
+                    }
+                    Some(NetCommand::SetCreativeModeSlot(packet)) => {
+                        send_set_creative_mode_slot(conn, packet, content_registry).await?;
+                    }
+                    Some(NetCommand::SignUpdate(packet)) => {
+                        send_sign_update(conn, packet).await?;
+                    }
+                    Some(NetCommand::SpectateEntity(packet)) => {
+                        send_spectate_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::TeleportToEntity(packet)) => {
+                        send_teleport_to_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::SelectBundleItem(packet)) => {
+                        send_select_bundle_item(conn, packet).await?;
+                    }
+                    Some(NetCommand::ContainerButtonClick(packet)) => {
+                        send_container_button_click(conn, packet).await?;
+                    }
+                    Some(NetCommand::ContainerClick(packet)) => {
+                        send_container_click(conn, packet, content_registry).await?;
+                    }
+                    Some(NetCommand::ContainerClose(packet)) => {
+                        send_container_close(conn, packet).await?;
+                    }
+                    Some(NetCommand::ContainerSlotStateChanged(packet)) => {
+                        send_container_slot_state_changed(conn, packet).await?;
+                    }
+                    Some(NetCommand::CommandSuggestionRequest(request)) => {
+                        send_command_suggestion_request(conn, request).await?;
+                    }
+                    Some(command @ (NetCommand::PerformRespawn
+                    | NetCommand::RequestStats
+                    | NetCommand::RequestGameRuleValues)) => {
+                        send_client_command(
+                            conn,
+                            command
+                                .client_command_action()
+                                .expect("client command action variant"),
+                        )
+                        .await?;
+                    }
+                    Some(NetCommand::AcceptCodeOfConduct) => {}
+                    Some(NetCommand::DisconnectWithReason(reason)) => return Ok(ConnectionDrive::DisconnectWithReason(reason)),
+                    Some(NetCommand::Disconnect) | None => {
+                        return Ok(ConnectionDrive::Disconnect);
+                    }
+                }
+                if inbound_paused {
+                    conn.flush().await?;
+                }
+            }
+        }
+    }
+}
+
+async fn read_packet_or_disconnect_command_with_deadline(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    commands: &mut mpsc::Receiver<NetCommand>,
+    inbound_paused: bool,
+    idle_deadline: &mut IdleReadDeadline,
+) -> Result<ConnectionDrive> {
+    if !inbound_paused {
+        if let Some(packet) = conn.try_read_buffered_packet_touching_inbound()? {
+            return Ok(ConnectionDrive::Packet(packet));
+        }
+
+        idle_deadline.ensure_armed(conn)?;
+    }
+    loop {
+        tokio::select! {
+            biased;
+            packet = conn.read_packet_id_untimed(), if !inbound_paused => {
+                return Ok(ConnectionDrive::Packet(packet?));
+            }
+            _ = idle_deadline.wait(), if !inbound_paused => {
+                idle_deadline.on_fired(conn)?;
+            }
+            command = commands.recv() => {
+                match command {
+                    Some(NetCommand::ClientTickEnd) => {}
+                    Some(NetCommand::PlayerLoaded) => {}
+                    Some(NetCommand::AcceptTeleport(_)) => {}
+                    Some(NetCommand::AcknowledgePlayerRotation { .. }) => {}
+                    Some(NetCommand::AcknowledgeConfiguration { .. }) => {}
+                    Some(NetCommand::FinishConfiguration) => {
+                        if matches!(state, ConnectionState::Configuration) {
+                            return Ok(ConnectionDrive::FinishConfiguration);
+                        }
+                    }
+                    Some(NetCommand::MovePlayer(_)) => {}
+                    Some(NetCommand::MoveVehicle(_)) => {}
+                    Some(NetCommand::PlayerAction(_)) => {}
+                    Some(NetCommand::PlayerCommand(_)) => {}
+                    Some(NetCommand::PlayerAbilities(_)) => {}
+                    Some(NetCommand::PlayerInput(_)) => {}
+                    Some(NetCommand::ChatAcknowledgement(_)) => {}
+                    Some(NetCommand::ChatCommand(_)) => {}
+                    Some(NetCommand::ChatMessage(_)) => {}
+                    Some(NetCommand::CustomPayload(packet)) => {
+                        if matches!(state, ConnectionState::Configuration) {
+                            send_configuration_custom_payload(conn, packet).await?;
+                        }
+                    }
+                    Some(NetCommand::CustomClickAction(packet)) => {
+                        send_custom_click_action(conn, state, packet).await?;
+                    }
+                    Some(NetCommand::DebugSubscriptionRequest { .. }) => {}
+                    Some(NetCommand::AttackEntity(_)) => {}
+                    Some(NetCommand::InteractEntity(_)) => {}
+                    Some(NetCommand::SetHeldSlot(_)) => {}
+                    Some(NetCommand::Swing(_)) => {}
+                    Some(NetCommand::UseItemOn(_)) => {}
+                    Some(NetCommand::UseItem(_)) => {}
+                    Some(NetCommand::PickItemFromBlock(_)) => {}
+                    Some(NetCommand::PickItemFromEntity(_)) => {}
+                    Some(NetCommand::PaddleBoat(_)) => {}
+                    Some(NetCommand::PingRequest(_)) => {}
+                    Some(NetCommand::BroadcastClientInformation(information)) => {
+                        if matches!(state, ConnectionState::Configuration) {
+                            send_configuration_client_information(conn, &information).await?;
+                        }
+                    }
+                    Some(NetCommand::BlockEntityTagQuery(_)) => {}
+                    Some(NetCommand::EntityTagQuery(_)) => {}
+                    Some(NetCommand::ChangeDifficulty(_)) => {}
+                    Some(NetCommand::ChangeGameMode(_)) => {}
+                    Some(NetCommand::LockDifficulty(_)) => {}
+                    Some(NetCommand::SetGameRule(_)) => {}
+                    Some(NetCommand::PlaceRecipe(_)) => {}
+                    Some(NetCommand::RecipeBookChangeSettings(_)) => {}
+                    Some(NetCommand::RecipeBookSeenRecipe(_)) => {}
+                    Some(NetCommand::EditBook(_)) => {}
+                    Some(NetCommand::RenameItem(_)) => {}
+                    Some(NetCommand::SeenAdvancements(_)) => {}
+                    Some(NetCommand::SelectTrade(_)) => {}
+                    Some(NetCommand::SetBeacon(_)) => {}
+                    Some(NetCommand::SetCommandBlock(_)) => {}
+                    Some(NetCommand::SetCommandMinecart(_)) => {}
+                    Some(NetCommand::SetJigsawBlock(_)) => {}
+                    Some(NetCommand::JigsawGenerate(_)) => {}
+                    Some(NetCommand::SetStructureBlock(_)) => {}
+                    Some(NetCommand::SetTestBlock(_)) => {}
+                    Some(NetCommand::TestInstanceBlockAction(_)) => {}
+                    Some(NetCommand::SetCreativeModeSlot(_)) => {}
+                    Some(NetCommand::SignUpdate(_)) => {}
+                    Some(NetCommand::SpectateEntity(_)) => {}
+                    Some(NetCommand::TeleportToEntity(_)) => {}
+                    Some(NetCommand::SelectBundleItem(_)) => {}
+                    Some(NetCommand::ContainerButtonClick(_)) => {}
+                    Some(NetCommand::ContainerClick(_)) => {}
+                    Some(NetCommand::ContainerClose(_)) => {}
+                    Some(NetCommand::ContainerSlotStateChanged(_)) => {}
+                    Some(NetCommand::CommandSuggestionRequest(_)) => {}
+                    Some(NetCommand::ResourcePackResponse { id, action }) => {
+                        send_resource_pack_response(conn, state, id, action).await?;
+                    }
+                    Some(NetCommand::PerformRespawn) => {}
+                    Some(NetCommand::RequestStats) => {}
+                    Some(NetCommand::RequestGameRuleValues) => {}
+                    Some(NetCommand::AcceptCodeOfConduct) => {
+                        if matches!(state, ConnectionState::Configuration) {
+                            send_accept_code_of_conduct(conn).await?;
+                        }
+                    }
+                    Some(NetCommand::DisconnectWithReason(reason)) => return Ok(ConnectionDrive::DisconnectWithReason(reason)),
+                    Some(NetCommand::Disconnect) | None => {
+                        return Ok(ConnectionDrive::Disconnect);
+                    }
+                }
+                if inbound_paused {
+                    conn.flush().await?;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{
+        AttackEntityCommand, InteractEntityCommand, OutboundChatCommand, OutboundChatMessage,
+        UseItemCommand, UseItemOnCommand,
+    };
+    use bbb_protocol::packets::{OutboundLastSeenMessages, SignableCommandArgument};
+    use bbb_protocol::{
+        codec::Decoder,
+        ids,
+        packets::{
+            AttackEntity, BlockEntityTagQuery, BlockHitResult, BlockPos, ChangeDifficultyCommand,
+            ChangeGameModeCommand, ChatAcknowledgement, CommandBlockMode, CommandSuggestionRequest,
+            ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
+            ContainerSlotStateChanged, CustomClickAction, DataComponentPatchSummary, Difficulty,
+            Direction, EditBook, EntityTagQuery, GameType, HashedStack, InteractEntity,
+            InteractionHand, ItemStackSummary, JigsawGenerate, JigsawJoint, LockDifficultyCommand,
+            PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+            PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
+            PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
+            RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
+            ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+            ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart,
+            SetCreativeModeSlot, SetGameRule, SetGameRuleEntry, SetJigsawBlock, SetStructureBlock,
+            SetTestBlock, SignUpdate, SpectateEntity, StructureBlockMirror, StructureBlockMode,
+            StructureBlockRotation, StructureBlockUpdateKind, TeleportToEntity, TestBlockMode,
+            TestInstanceBlockAction, TestInstanceBlockActionKind, TestInstanceBlockRotation,
+            UseItem, UseItemOn, Vec3d, Vec3i,
+        },
+    };
+    use std::{collections::BTreeMap, time::Duration};
+    use tokio::{sync::mpsc, time::timeout};
+    use uuid::Uuid;
+
+    use crate::types::{PlayerMoveCommand, VehicleMoveCommand};
+
+    #[tokio::test]
+    async fn drive_connection_disconnects_when_command_channel_closes_before_play() {
+        let (mut conn, server) = raw_connection_pair().await;
+        let (tx, mut commands) = mpsc::channel(1);
+        drop(tx);
+        let mut player_position_state = PlayerPositionState::default();
+
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Login,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("drive should not hang")
+        .unwrap();
+
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_honors_disconnect_command() {
+        let (mut conn, server) = raw_connection_pair().await;
+        let (tx, mut commands) = mpsc::channel(1);
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Configuration,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("drive should not hang")
+        .unwrap();
+
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_finishes_configuration_only_after_canonical_command() {
+        let (mut conn, server) = raw_connection_pair().await;
+        let (tx, mut commands) = mpsc::channel(1);
+        tx.send(NetCommand::FinishConfiguration).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Configuration,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("canonical completion should drive the configuration handoff")
+        .unwrap();
+
+        assert!(matches!(result, ConnectionDrive::FinishConfiguration));
+        drop(conn);
+        server.await.unwrap();
+
+        let (mut conn, server) = raw_connection_pair().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::FinishConfiguration).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Login,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("stale completion outside configuration should be ignored")
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_code_of_conduct_accept_in_configuration() {
+        let (mut conn, server) = raw_connection_pair_expect_accept_code_of_conduct().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::AcceptCodeOfConduct).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Configuration,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("drive should not hang")
+        .unwrap();
+
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_custom_click_action_in_configuration_and_play_only() {
+        for (state, expected_packet_id) in [
+            (
+                ConnectionState::Configuration,
+                ids::configuration::SERVERBOUND_CUSTOM_CLICK_ACTION,
+            ),
+            (
+                ConnectionState::Play,
+                ids::play::SERVERBOUND_CUSTOM_CLICK_ACTION,
+            ),
+        ] {
+            let (mut conn, mut server) = raw_connection_pair_with_server().await;
+            let (tx, mut commands) = mpsc::channel(2);
+            tx.send(NetCommand::CustomClickAction(CustomClickAction {
+                id: "bbb:submit".to_string(),
+                payload: None,
+            }))
+            .await
+            .unwrap();
+            tx.send(NetCommand::Disconnect).await.unwrap();
+            let drive = tokio::spawn(async move {
+                let mut player_position_state = PlayerPositionState::default();
+                read_packet_or_drive_connection(
+                    &mut conn,
+                    state,
+                    &mut commands,
+                    &mut player_position_state,
+                    &mut PlayerMovementFlags::default(),
+                    false,
+                )
+                .await
+                .unwrap()
+            });
+
+            let (packet_id, payload) = read_server_packet(&mut server, "custom click action").await;
+            assert_eq!(packet_id, expected_packet_id);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_string(32_767).unwrap(), "bbb:submit");
+            assert_eq!(decoder.read_len().unwrap(), 1);
+            assert_eq!(decoder.read_u8().unwrap(), 0);
+            assert!(decoder.is_empty());
+            assert!(matches!(drive.await.unwrap(), ConnectionDrive::Disconnect));
+        }
+
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::CustomClickAction(CustomClickAction {
+            id: "bbb:submit".to_string(),
+            payload: None,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+        assert!(matches!(
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Login,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            )
+            .await
+            .unwrap(),
+            ConnectionDrive::Disconnect
+        ));
+        drop(conn);
+        assert!(server.read_packet().await.is_err());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_encodes_resource_pack_response_for_current_state() {
+        let pack_id = Uuid::from_u128(0x22222222_3333_4444_5555_666666666666);
+        for (state, expected_packet_id) in [
+            (
+                ConnectionState::Configuration,
+                ids::configuration::SERVERBOUND_RESOURCE_PACK,
+            ),
+            (ConnectionState::Play, ids::play::SERVERBOUND_RESOURCE_PACK),
+        ] {
+            let (mut conn, mut server) = raw_connection_pair_with_server().await;
+            let (tx, mut commands) = mpsc::channel(2);
+            tx.send(NetCommand::ResourcePackResponse {
+                id: pack_id,
+                action: ResourcePackResponseAction::Downloaded,
+            })
+            .await
+            .unwrap();
+            tx.send(NetCommand::Disconnect).await.unwrap();
+            let drive = tokio::spawn(async move {
+                let mut player_position_state = PlayerPositionState::default();
+                read_packet_or_drive_connection(
+                    &mut conn,
+                    state,
+                    &mut commands,
+                    &mut player_position_state,
+                    &mut PlayerMovementFlags::default(),
+                    false,
+                )
+                .await
+                .unwrap()
+            });
+
+            let (packet_id, payload) =
+                read_server_packet(&mut server, "resource pack response").await;
+            assert_eq!(packet_id, expected_packet_id);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+            assert_eq!(
+                decoder.read_var_i32().unwrap(),
+                ResourcePackResponseAction::Downloaded.ordinal()
+            );
+            assert!(decoder.is_empty());
+            assert!(matches!(drive.await.unwrap(), ConnectionDrive::Disconnect));
+        }
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_client_tick_end_only_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::ClientTickEnd).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+
+        let drive_task = tokio::spawn(async move {
+            let mut player_position_state = PlayerPositionState::default();
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Play,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            )
+            .await
+            .unwrap()
+        });
+
+        let (packet_id, payload) = read_server_packet(&mut server, "client tick end").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_TICK_END);
+        assert!(payload.is_empty());
+
+        let result = timeout(Duration::from_secs(1), drive_task)
+            .await
+            .expect("drive should not hang")
+            .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::ClientTickEnd).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+        let result = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Configuration,
+            &mut commands,
+            &mut player_position_state,
+            &mut PlayerMovementFlags::default(),
+            false,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_player_loaded_only_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlayerLoaded).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        let drive_task = tokio::spawn(async move {
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Play,
+                &mut commands,
+                &mut player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            )
+            .await
+        });
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("player-loaded command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_LOADED);
+        assert!(payload.is_empty());
+        assert!(matches!(
+            drive_task.await.unwrap().unwrap(),
+            ConnectionDrive::Disconnect
+        ));
+
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlayerLoaded).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+        let result = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Configuration,
+            &mut commands,
+            &mut player_position_state,
+            &mut PlayerMovementFlags::default(),
+            false,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_movement_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        let move_state = PlayerPositionState {
+            position: Vec3d {
+                x: 1.25,
+                y: 64.5,
+                z: -8.75,
+            },
+            delta_movement: Vec3d {
+                x: 0.1,
+                y: 0.0,
+                z: -0.2,
+            },
+            y_rot: 90.0,
+            x_rot: -15.0,
+        };
+        tx.send(NetCommand::MovePlayer(PlayerMoveCommand {
+            state: move_state,
+            on_ground: true,
+            horizontal_collision: false,
+            force_position: false,
+            force_pos_rot: false,
+            force_rotation_only: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::MoveVehicle(VehicleMoveCommand {
+            position: Vec3d {
+                x: 2.5,
+                y: 70.0,
+                z: -9.25,
+            },
+            y_rot: 180.0,
+            x_rot: 12.5,
+            on_ground: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        assert_eq!(player_position_state, move_state);
+        let (packet_id, payload) = read_server_packet(&mut server, "move player").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 1.25);
+        assert_eq!(decoder.read_f64().unwrap(), 64.5);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_f32().unwrap(), 90.0);
+        assert_eq!(decoder.read_f32().unwrap(), -15.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0b01);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "move vehicle").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 2.5);
+        assert_eq!(decoder.read_f64().unwrap(), 70.0);
+        assert_eq!(decoder.read_f64().unwrap(), -9.25);
+        assert_eq!(decoder.read_f32().unwrap(), 180.0);
+        assert_eq!(decoder.read_f32().unwrap(), 12.5);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_client_command_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(4);
+        tx.send(NetCommand::PerformRespawn).await.unwrap();
+        tx.send(NetCommand::RequestStats).await.unwrap();
+        tx.send(NetCommand::RequestGameRuleValues).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        for (name, ordinal) in [
+            ("perform respawn", 0),
+            ("request stats", 1),
+            ("request game rule values", 2),
+        ] {
+            let (packet_id, payload) = read_server_packet(&mut server, name).await;
+            assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_COMMAND);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_var_i32().unwrap(), ordinal);
+            assert!(decoder.is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_chat_and_command_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(5);
+        tx.send(NetCommand::ChatCommand(OutboundChatCommand::unsigned(
+            "give @p minecraft:stone",
+        )))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ChatCommand(OutboundChatCommand::signed(
+            "say hello",
+            1_717_986_918_300,
+            0x0102_0304_0506_0708,
+            vec![SignableCommandArgument {
+                name: "message".to_string(),
+                value: "hello".into(),
+            }],
+            OutboundLastSeenMessages::default(),
+        )))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ChatMessage(OutboundChatMessage {
+            message: "hello".to_string().into(),
+            timestamp_millis: 1_717_986_918_300,
+            salt: 0x0102_0304_0506_0708,
+            last_seen: OutboundLastSeenMessages::default(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::CommandSuggestionRequest(
+            CommandSuggestionRequest {
+                id: 44,
+                command: "/give @p minecraft:stone".to_string().into(),
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "chat command").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_COMMAND);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decoder.read_string(32767).unwrap(),
+            "give @p minecraft:stone"
+        );
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "signed chat command").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_COMMAND_SIGNED);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "say hello");
+        assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+        assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decoder.read_exact(3, "last seen bitset").unwrap(),
+            &[0, 0, 0]
+        );
+        assert_eq!(decoder.read_u8().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "chat message").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(256).unwrap(), "hello");
+        assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+        assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decoder.read_exact(3, "last seen bitset").unwrap(),
+            &[0, 0, 0]
+        );
+        assert_eq!(decoder.read_u8().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "command suggestion request").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_COMMAND_SUGGESTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 44);
+        assert_eq!(
+            decoder.read_string(32767).unwrap(),
+            "/give @p minecraft:stone"
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_chat_acknowledgement_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::ChatAcknowledgement(ChatAcknowledgement {
+            offset: 65,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "chat acknowledgement").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_ACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 65);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_custom_payload_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::CustomPayload(ServerboundCustomPayload::Brand {
+            brand: "bbb-client".to_string(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "custom payload").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CUSTOM_PAYLOAD);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb-client");
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_player_abilities_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlayerAbilities(PlayerAbilitiesCommand {
+            flying: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player abilities").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_ABILITIES);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_u8().unwrap(), 0x02);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_place_recipe_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlaceRecipe(PlaceRecipeCommand {
+            container_id: 7,
+            recipe_index: 123,
+            use_max_items: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "place recipe").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLACE_RECIPE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_recipe_book_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        tx.send(NetCommand::RecipeBookChangeSettings(
+            RecipeBookChangeSettingsCommand {
+                book_type: RecipeBookType::Crafting,
+                open: true,
+                filtering: true,
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::RecipeBookSeenRecipe(
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 321 },
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "recipe book change settings").await;
+        assert_eq!(
+            packet_id,
+            ids::play::SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "recipe book seen recipe").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 321);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_edit_book_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::EditBook(EditBook {
+            slot: 5,
+            pages: vec![
+                "first page".encode_utf16().collect(),
+                vec![0xd800, 0x20ac, 0xdc00],
+            ],
+            title: Some(vec![0xd800]),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "edit book").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_EDIT_BOOK);
+        assert_eq!(
+            bbb_protocol::packets::decode_play_serverbound(packet_id, &payload).unwrap(),
+            bbb_protocol::packets::PlayServerbound::EditBook(EditBook {
+                slot: 5,
+                pages: vec!["first page".to_string(), "?�?".to_string()],
+                title: Some("?".to_string()),
+            })
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(decoder.read_string(1024).unwrap(), "first page");
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(
+            [
+                decoder.read_u8().unwrap(),
+                decoder.read_u8().unwrap(),
+                decoder.read_u8().unwrap()
+            ],
+            [0x3f, 0xac, 0x3f]
+        );
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_string(32).unwrap(), "?");
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_sign_update_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SignUpdate(SignUpdate {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+            lines: [
+                "line 0".to_string(),
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "sign update").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SIGN_UPDATE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_string(384).unwrap(), "line 0");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 1");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 2");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 3");
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_rename_item_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::RenameItem(RenameItem {
+            name: "Sharp Pick".to_string(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "rename item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RENAME_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "Sharp Pick");
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_seen_advancements_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SeenAdvancements(SeenAdvancements::ClosedScreen))
+            .await
+            .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "seen advancements").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SEEN_ADVANCEMENTS);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_ping_request_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PingRequest(123_456_789)).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "ping request").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PING_REQUEST);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 123_456_789);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_tag_query_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        tx.send(NetCommand::BlockEntityTagQuery(BlockEntityTagQuery {
+            transaction_id: 7,
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::EntityTagQuery(EntityTagQuery {
+            transaction_id: 8,
+            entity_id: 1234,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "block entity tag query").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_BLOCK_ENTITY_TAG_QUERY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12
+            }
+        );
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "entity tag query").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ENTITY_TAG_QUERY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 8);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1234);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_spectator_entity_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+        tx.send(NetCommand::SpectateEntity(SpectateEntity {
+            entity_id: 1234,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::TeleportToEntity(TeleportToEntity { uuid }))
+            .await
+            .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "spectate entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SPECTATE_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1234);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "teleport to entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_TELEPORT_TO_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), uuid);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_difficulty_and_set_game_rule_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(5);
+        tx.send(NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
+            difficulty: Difficulty::Easy,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ChangeGameMode(ChangeGameModeCommand {
+            game_mode: GameType::Creative,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::LockDifficulty(LockDifficultyCommand {
+            locked: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::SetGameRule(SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "keep_inventory".to_string(),
+                value: "true".to_string(),
+            }],
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "change difficulty").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHANGE_DIFFICULTY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "change game mode").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHANGE_GAME_MODE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "lock difficulty").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_LOCK_DIFFICULTY);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set game rule").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_GAME_RULE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(
+            decoder.read_string(32_767).unwrap(),
+            "minecraft:keep_inventory"
+        );
+        assert_eq!(decoder.read_string(32_767).unwrap(), "true");
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_select_trade_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SelectTrade(SelectTradeCommand { item: 2 }))
+            .await
+            .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "select trade").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SELECT_TRADE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_beacon_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetBeacon(SetBeacon {
+            primary_effect: Some(1),
+            secondary_effect: Some(10),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set beacon").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_BEACON);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 10);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_command_block_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetCommandBlock(SetCommandBlock {
+            pos: BlockPos { x: 1, y: 2, z: 3 },
+            command: "say routed".into(),
+            mode: CommandBlockMode::Sequence,
+            track_output: false,
+            conditional: true,
+            automatic: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set command block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_COMMAND_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_string(32_500).unwrap(), "say routed");
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_u8().unwrap(), 0b010);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_command_minecart_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetCommandMinecart(SetCommandMinecart {
+            entity_id: 300,
+            command: "say routed rails".into(),
+            track_output: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set command minecart").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_COMMAND_MINECART);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 300);
+        assert_eq!(decoder.read_string(32_767).unwrap(), "say routed rails");
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_jigsaw_set_before_generate_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        let pos = BlockPos { x: 1, y: 2, z: 3 };
+        tx.send(NetCommand::SetJigsawBlock(SetJigsawBlock {
+            pos,
+            name: "example:entry".to_string(),
+            target: "example:target".to_string(),
+            pool: "example:pool".to_string(),
+            final_state: "minecraft:air".into(),
+            joint: JigsawJoint::Rollable,
+            selection_priority: 1,
+            placement_priority: 2,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::JigsawGenerate(JigsawGenerate {
+            pos,
+            levels: 7,
+            keep_jigsaws: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, _) = read_server_packet(&mut server, "set jigsaw block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_JIGSAW_BLOCK);
+        let (packet_id, payload) = read_server_packet(&mut server, "jigsaw generate").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_JIGSAW_GENERATE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_structure_block_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetStructureBlock(SetStructureBlock {
+            pos: BlockPos { x: 1, y: 2, z: 3 },
+            update: StructureBlockUpdateKind::ScanArea,
+            mode: StructureBlockMode::Save,
+            name: "example:test".to_string(),
+            offset: BlockPos { x: 0, y: 1, z: 0 },
+            size: Vec3i { x: 2, y: 3, z: 4 },
+            mirror: StructureBlockMirror::None,
+            rotation: StructureBlockRotation::Clockwise90,
+            data: Default::default(),
+            ignore_entities: false,
+            strict: false,
+            show_air: true,
+            show_bounding_box: false,
+            integrity: 1.0,
+            seed: 0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set structure block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_STRUCTURE_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_string(128).unwrap(), "example:test");
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_test_block_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetTestBlock(SetTestBlock {
+            pos: BlockPos { x: 1, y: 2, z: 3 },
+            mode: TestBlockMode::Log,
+            message: "log this test".into(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set test block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_TEST_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_string(128).unwrap(), "log this test");
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_test_instance_block_action_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::TestInstanceBlockAction(
+            TestInstanceBlockAction {
+                pos: BlockPos { x: 1, y: 2, z: 3 },
+                action: TestInstanceBlockActionKind::Query,
+                test: None,
+                size: Vec3i { x: 1, y: 2, z: 3 },
+                rotation: TestInstanceBlockRotation::Clockwise90,
+                ignore_entities: true,
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "test-instance block action").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 274_877_919_234);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_player_command_and_input_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        tx.send(NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StartRidingJump,
+            data: 12,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            backward: false,
+            left: true,
+            right: false,
+            jump: true,
+            shift: false,
+            sprint: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player command").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_COMMAND);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 77);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_var_i32().unwrap(), 12);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player input").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_INPUT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_u8().unwrap(), 0b0101_0101);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_interaction_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(10);
+        tx.send(NetCommand::PlayerAction(PlayerAction {
+            action: PlayerActionKind::StartDestroyBlock,
+            pos: BlockPos { x: 1, y: 64, z: -2 },
+            direction: Direction::West,
+            sequence: 9,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::AttackEntity(AttackEntityCommand {
+            packet: AttackEntity { entity_id: 123 },
+            selected_hotbar_slot: 0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::InteractEntity(InteractEntityCommand {
+            packet: InteractEntity {
+                entity_id: 5,
+                hand: InteractionHand::OffHand,
+                location: Vec3d::default(),
+                using_secondary_action: true,
+            },
+            selected_hotbar_slot: 0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Swing(InteractionHand::MainHand))
+            .await
+            .unwrap();
+        tx.send(NetCommand::UseItemOn(UseItemOnCommand {
+            packet: UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: BlockHitResult {
+                    pos: BlockPos {
+                        x: -5,
+                        y: 70,
+                        z: 12,
+                    },
+                    direction: Direction::South,
+                    cursor_x: 0.25,
+                    cursor_y: 0.5,
+                    cursor_z: 0.75,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 4,
+            },
+            selected_hotbar_slot: 0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::UseItem(UseItemCommand {
+            packet: UseItem {
+                hand: InteractionHand::OffHand,
+                sequence: 8,
+                y_rot: 45.0,
+                x_rot: -20.0,
+            },
+            selected_hotbar_slot: 0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PickItemFromBlock(PickItemFromBlock {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            include_data: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PickItemFromEntity(PickItemFromEntity {
+            entity_id: 456,
+            include_data: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PaddleBoat(PaddleBoat {
+            left: true,
+            right: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player action").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_ACTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos { x: 1, y: 64, z: -2 }
+        );
+        assert_eq!(decoder.read_u8().unwrap(), 4);
+        assert_eq!(decoder.read_var_i32().unwrap(), 9);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "carried slot repair").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "attack entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ATTACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "interact entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_INTERACT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_u8().unwrap(), 0);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "swing hand").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SWING);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "use item on").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_USE_ITEM_ON);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_f32().unwrap(), 0.25);
+        assert_eq!(decoder.read_f32().unwrap(), 0.5);
+        assert_eq!(decoder.read_f32().unwrap(), 0.75);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 4);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "use item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_USE_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 8);
+        assert_eq!(decoder.read_f32().unwrap(), 45.0);
+        assert_eq!(decoder.read_f32().unwrap(), -20.0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "pick item from block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PICK_ITEM_FROM_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "pick item from entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 456);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "paddle boat").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PADDLE_BOAT);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_inventory_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(8);
+        tx.send(NetCommand::SetHeldSlot(12)).await.unwrap();
+        tx.send(NetCommand::SetCreativeModeSlot(SetCreativeModeSlot {
+            slot_num: 36,
+            item: ItemStackSummary {
+                item_id: Some(42),
+                count: 64,
+                component_patch: DataComponentPatchSummary::default().into(),
+            },
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::SelectBundleItem(SelectBundleItem {
+            slot_id: 9,
+            selected_item_index: -1,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerButtonClick(ContainerButtonClick {
+            container_id: 7,
+            button_id: 2,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerClick(ContainerClick {
+            container_id: 7,
+            state_id: 33,
+            slot_num: 5,
+            button_num: 1,
+            input: ContainerInput::Pickup,
+            changed_slots: BTreeMap::new(),
+            carried_item: HashedStack::empty(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerClose(ContainerCloseRequest {
+            container_id: 7,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerSlotStateChanged(
+            ContainerSlotStateChanged {
+                slot_id: 12,
+                container_id: 7,
+                new_state: true,
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set carried item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 8);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set creative mode slot").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 36);
+        assert_eq!(decoder.read_var_i32().unwrap(), 64);
+        assert_eq!(decoder.read_var_i32().unwrap(), 42);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "select bundle item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 9);
+        assert_eq!(decoder.read_var_i32().unwrap(), -1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "container button click").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "container click").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLICK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 33);
+        assert_eq!(decoder.read_i16().unwrap(), 5);
+        assert_eq!(decoder.read_i8().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "container close").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLOSE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "container slot state changed").await;
+        assert_eq!(
+            packet_id,
+            ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 12);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    async fn raw_connection_pair() -> (RawConnection, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (_stream, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        });
+        let conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+        (conn, server)
+    }
+
+    async fn raw_connection_pair_with_server() -> (RawConnection, RawConnection) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let client = tokio::spawn(async move {
+            RawConnection::connect(&addr.to_string(), None)
+                .await
+                .unwrap()
+        });
+        let (server_stream, _) = listener.accept().await.unwrap();
+        let client = client.await.unwrap();
+        let server = RawConnection::from_stream(server_stream, None);
+        (client, server)
+    }
+
+    async fn raw_connection_pair_expect_accept_code_of_conduct(
+    ) -> (RawConnection, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut conn = RawConnection::from_stream(stream, None);
+            let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+                .await
+                .expect("code-of-conduct accept should be sent")
+                .unwrap();
+            assert_eq!(
+                packet_id,
+                ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
+            );
+            assert!(payload.is_empty());
+        });
+        let conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+        (conn, server)
+    }
+
+    async fn drive_play_until_disconnect(
+        conn: &mut RawConnection,
+        commands: &mut mpsc::Receiver<NetCommand>,
+        player_position_state: &mut PlayerPositionState,
+    ) {
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                conn,
+                ConnectionState::Play,
+                commands,
+                player_position_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("drive should not hang")
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+    }
+
+    async fn read_server_packet(conn: &mut RawConnection, label: &str) -> (i32, Vec<u8>) {
+        timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .unwrap_or_else(|_| panic!("{label} packet should be sent"))
+            .unwrap()
+    }
+
+    fn decode_packed_block_pos(packed: i64) -> BlockPos {
+        BlockPos {
+            x: (packed >> 38) as i32,
+            y: ((packed << 52) >> 52) as i32,
+            z: ((packed << 26) >> 38) as i32,
+        }
+    }
+
+    #[tokio::test]
+    async fn login_ignores_client_info_and_configuration_forwards_custom_payload() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut conn = RawConnection::from_stream(stream, None);
+            let (packet_id, payload) = read_server_packet(&mut conn, "config custom payload").await;
+            assert_eq!(packet_id, ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD);
+            let mut dec = Decoder::new(&payload);
+            assert_eq!(dec.read_string(32_767).unwrap(), "mod:cfg_chan");
+            assert_eq!(dec.remaining(), b"hello");
+        });
+
+        let mut conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+        let (tx, mut rx) = mpsc::channel(8);
+        // During Login, BroadcastClientInformation and CustomPayload must NOT be emitted.
+        tx.send(NetCommand::BroadcastClientInformation(
+            packets::ClientInformation::default(),
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::CustomPayload(
+            ServerboundCustomPayload::Unknown {
+                id: "mod:cfg_chan".to_string(),
+                raw_payload: b"ignored".to_vec(),
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut pos_state = PlayerPositionState::default();
+        let drive = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Login,
+            &mut rx,
+            &mut pos_state,
+            &mut PlayerMovementFlags::default(),
+            false,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(drive, ConnectionDrive::Disconnect));
+
+        // During Configuration, CustomPayload must be forwarded with the configuration packet id.
+        let (tx2, mut rx2) = mpsc::channel(8);
+        tx2.send(NetCommand::CustomPayload(
+            ServerboundCustomPayload::Unknown {
+                id: "mod:cfg_chan".to_string(),
+                raw_payload: b"hello".to_vec(),
+            },
+        ))
+        .await
+        .unwrap();
+        tx2.send(NetCommand::Disconnect).await.unwrap();
+        let drive = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Configuration,
+            &mut rx2,
+            &mut pos_state,
+            &mut PlayerMovementFlags::default(),
+            false,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(drive, ConnectionDrive::Disconnect));
+        conn.flush().await.unwrap();
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn play_drive_read_timeout_fires_even_when_client_ticks_keep_sending() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let _server = tokio::spawn(async move {
+            let (_stream, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        });
+
+        let mut conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+        conn.set_read_timeout(Some(Duration::from_millis(80)));
+        let (tx, mut rx) = mpsc::channel(16);
+        let ticker = tokio::spawn(async move {
+            for _ in 0..10 {
+                if tx.send(NetCommand::ClientTickEnd).await.is_err() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(15)).await;
+            }
+        });
+        let mut pos_state = PlayerPositionState::default();
+        let err = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Play,
+                &mut rx,
+                &mut pos_state,
+                &mut PlayerMovementFlags::default(),
+                false,
+            ),
+        )
+        .await
+        .expect("read timeout should not hang")
+        .expect_err("silent peer must time out despite outbound ticks");
+        assert!(err.to_string().contains("timed out"), "{err:#}");
+        ticker.abort();
+    }
+}

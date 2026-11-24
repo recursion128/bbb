@@ -1,0 +1,26 @@
+[package]
+name = "bbb-client-assets"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-registry-codec = { path = "../bbb-registry-codec" }
+bbb-render-types = { path = "../bbb-render-types" }
+crc32fast = { workspace = true }
+glam = { workspace = true }
+image = { workspace = true }
+indexmap = { workspace = true }
+rayon = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha1 = { workspace = true }
+zip = { workspace = true }

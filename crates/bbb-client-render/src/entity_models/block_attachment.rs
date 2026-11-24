@@ -1,0 +1,518 @@
+//! Block-model attachments for entity render layers. The renderer owns these transforms because they
+//! depend on the same posed model bones as the entity mesh; native resolves the block model to quads and
+//! bakes it through the returned matrix into the shared item-model pass.
+
+use std::f32::consts::PI;
+
+use glam::{Mat4, Vec3};
+
+use super::model_layers::{copper_golem_model, cow_model, iron_golem_model, snow_golem_model};
+use super::transforms::{
+    entity_model_root_transform, iron_golem_model_root_transform,
+    minecart_display_block_content_transform,
+};
+use super::{EntityModelInstance, EntityModelKind, MooshroomVariant};
+
+fn unit_cube_bottom_center_to_antenna_center() -> Mat4 {
+    Mat4::from_translation(Vec3::new(-0.5, 0.0, -0.5))
+        * Mat4::from_translation(Vec3::splat(0.5))
+        * Mat4::from_rotation_z(PI)
+        * Mat4::from_translation(Vec3::splat(-0.5))
+}
+
+/// World transform for vanilla `BlockDecorationLayer` on a copper golem's antenna block.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. It includes
+/// `CopperGolemModel.applyBlockOnAntennaTransform`: `root -> body -> head`, translate `(0, -1.75, 0)`,
+/// then the layer's shared unit-cube-bottom-center-to-antenna-center transform.
+pub fn copper_golem_antenna_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::CopperGolem { .. })
+        || instance.render_state.invisible
+    {
+        return None;
+    }
+    let model = copper_golem_model(instance);
+    Some(
+        entity_model_root_transform(instance)
+            * model.try_descendant_attach_transform(&["body", "head"])?
+            * Mat4::from_translation(Vec3::new(0.0, -1.75, 0.0))
+            * unit_cube_bottom_center_to_antenna_center(),
+    )
+}
+
+/// World transform for vanilla `CarriedBlockLayer` on endermen.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla applies this
+/// layer from the entity model root, not from the arms: translate `(0, 0.6875, -0.75)`, rotate X 20°,
+/// rotate Y 45°, translate `(0.25, 0.1875, 0.25)`, scale `(-0.5, -0.5, 0.5)`, then rotate Y 90°.
+pub fn enderman_carried_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::Enderman)
+        || !instance.render_state.kind.enderman().carrying
+        || instance.render_state.invisible
+    {
+        return None;
+    }
+    Some(
+        entity_model_root_transform(instance)
+            * Mat4::from_translation(Vec3::new(0.0, 0.6875, -0.75))
+            * Mat4::from_rotation_x(20.0_f32.to_radians())
+            * Mat4::from_rotation_y(45.0_f32.to_radians())
+            * Mat4::from_translation(Vec3::new(0.25, 0.1875, 0.25))
+            * Mat4::from_scale(Vec3::new(-0.5, -0.5, 0.5))
+            * Mat4::from_rotation_y(PI / 2.0),
+    )
+}
+
+/// World transform for vanilla `IronGolemFlowerLayer`'s held poppy block model.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube, matching
+/// [`crate::ItemModelMesh::append_quads`]. It includes the posed right-arm bone and the vanilla layer
+/// transform after `getFlowerHoldingArm().translateAndRotate`: translate `(-1.1875, 1.0625,
+/// -0.9375)`, translate to the block center, scale by `0.5`, rotate X by `-90°`, then translate the
+/// block origin by `(-0.5, -0.5, -0.5)`.
+pub fn iron_golem_flower_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::IronGolem { .. })
+        || instance.render_state.kind.iron_golem().offer_flower_tick <= 0
+        || instance.render_state.invisible
+    {
+        return None;
+    }
+    let model = iron_golem_model(instance);
+    Some(
+        iron_golem_model_root_transform(instance)
+            * model.try_child_attach_transform("right_arm")?
+            * Mat4::from_translation(Vec3::new(-1.1875, 1.0625, -0.9375))
+            * Mat4::from_translation(Vec3::splat(0.5))
+            * Mat4::from_scale(Vec3::splat(0.5))
+            * Mat4::from_rotation_x(-PI / 2.0)
+            * Mat4::from_translation(Vec3::splat(-0.5)),
+    )
+}
+
+/// World transform for vanilla `FallingBlockRenderer.submit`.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla entity dispatch
+/// has already translated to the falling block entity position; the renderer then translates the block
+/// model by `(-0.5, 0, -0.5)` before submitting `MovingBlockRenderState`.
+pub fn falling_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::NoRender) {
+        return None;
+    }
+    Some(
+        Mat4::from_translation(Vec3::from_array(instance.position))
+            * Mat4::from_translation(Vec3::new(-0.5, 0.0, -0.5)),
+    )
+}
+
+/// World transforms for vanilla `MushroomCowMushroomLayer`'s three mushroom block models.
+///
+/// The returned matrices expect block quads normalized to the `0..1` unit cube. The first two
+/// transforms mirror the layer's hardcoded back mushrooms in entity-model space; the third includes the
+/// posed cow head bone before applying the head mushroom transform.
+pub fn mooshroom_mushroom_block_transforms(
+    instance: &EntityModelInstance,
+) -> Option<(MooshroomVariant, [Mat4; 3])> {
+    let EntityModelKind::Mooshroom {
+        baby: false,
+        variant,
+    } = instance.kind
+    else {
+        return None;
+    };
+    if instance.render_state.invisible && !instance.render_state.appears_glowing {
+        return None;
+    }
+
+    let root = entity_model_root_transform(instance);
+    let model = cow_model(super::model_layer::ModelLayer::MOOSHROOM, instance);
+    Some((
+        variant,
+        [
+            root * Mat4::from_translation(Vec3::new(0.2, -0.35, 0.5))
+                * Mat4::from_rotation_y(-48.0_f32.to_radians())
+                * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+                * Mat4::from_translation(Vec3::splat(-0.5)),
+            root * Mat4::from_translation(Vec3::new(0.2, -0.35, 0.5))
+                * Mat4::from_rotation_y(42.0_f32.to_radians())
+                * Mat4::from_translation(Vec3::new(0.1, 0.0, -0.6))
+                * Mat4::from_rotation_y(-48.0_f32.to_radians())
+                * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+                * Mat4::from_translation(Vec3::splat(-0.5)),
+            root * model.try_child_attach_transform("head")?
+                * Mat4::from_translation(Vec3::new(0.0, -0.7, -0.2))
+                * Mat4::from_rotation_y(-78.0_f32.to_radians())
+                * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+                * Mat4::from_translation(Vec3::splat(-0.5)),
+        ],
+    ))
+}
+
+/// World transform for vanilla `AbstractMinecartRenderer` display-block contents.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla applies this
+/// content transform after minecart jitter, old/new render, and hurt roll, but before the minecart body
+/// model's final `scale(-1, -1, 1)`.
+pub fn minecart_display_block_transform(
+    instance: &EntityModelInstance,
+    display_offset: i32,
+) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::Minecart)
+        || (instance.render_state.invisible && !instance.render_state.appears_glowing)
+    {
+        return None;
+    }
+    Some(minecart_display_block_content_transform(
+        instance,
+        display_offset,
+    ))
+}
+
+/// World transform for vanilla `TntMinecartRenderer.submitMinecartContents`.
+///
+/// TNT minecarts inherit the ordinary display-block content transform, then scale the block uniformly
+/// when the extracted `fuseRemainingInTicks` is in the final 10 ticks:
+/// `s = 1 + clamp(1 - fuse/10, 0, 1)^4 * 0.3`.
+pub fn minecart_tnt_display_block_transform(
+    instance: &EntityModelInstance,
+    display_offset: i32,
+) -> Option<Mat4> {
+    Some(
+        minecart_display_block_transform(instance, display_offset)?
+            * Mat4::from_scale(Vec3::splat(minecart_tnt_display_block_scale(
+                instance
+                    .render_state
+                    .kind
+                    .minecart()
+                    .tnt_fuse_remaining_in_ticks,
+            ))),
+    )
+}
+
+fn minecart_tnt_display_block_scale(fuse_remaining_in_ticks: f32) -> f32 {
+    if fuse_remaining_in_ticks > -1.0 && fuse_remaining_in_ticks < 10.0 {
+        let g = (1.0 - fuse_remaining_in_ticks / 10.0).clamp(0.0, 1.0);
+        1.0 + g * g * g * g * 0.3
+    } else {
+        1.0
+    }
+}
+
+/// World transform for vanilla `TntRenderer.submit`.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla translates the
+/// TNT model up by `0.5`, applies the final-10-tick pulse scale, then rotates/translates the block model
+/// from the entity origin: `rotateY(-90)`, `translate(-0.5, -0.5, 0.5)`, `rotateY(90)`.
+pub fn primed_tnt_block_transform(
+    instance: &EntityModelInstance,
+    fuse_remaining_in_ticks: f32,
+) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::NoRender)
+        || (instance.render_state.invisible && !instance.render_state.appears_glowing)
+    {
+        return None;
+    }
+    Some(
+        Mat4::from_translation(Vec3::from_array(instance.position))
+            * Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0))
+            * Mat4::from_scale(Vec3::splat(primed_tnt_block_scale(fuse_remaining_in_ticks)))
+            * Mat4::from_rotation_y(-PI / 2.0)
+            * Mat4::from_translation(Vec3::new(-0.5, -0.5, 0.5))
+            * Mat4::from_rotation_y(PI / 2.0),
+    )
+}
+
+fn primed_tnt_block_scale(fuse_remaining_in_ticks: f32) -> f32 {
+    if fuse_remaining_in_ticks < 10.0 {
+        let g = (1.0 - fuse_remaining_in_ticks / 10.0).clamp(0.0, 1.0);
+        1.0 + g * g * g * g * 0.3
+    } else {
+        1.0
+    }
+}
+
+/// World transform for vanilla `SnowGolemHeadLayer`'s carved-pumpkin block model.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube, matching
+/// [`crate::ItemModelMesh::append_quads`]. It includes the posed snow-golem head bone and the vanilla
+/// layer transform after `getHead().translateAndRotate`: translate `(0, -0.34375, 0)`, rotate Y 180°,
+/// scale `(0.625, -0.625, -0.625)`, then translate the block origin by `(-0.5, -0.5, -0.5)`.
+pub fn snow_golem_head_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::SnowGolem)
+        || !instance.render_state.kind.snow_golem().pumpkin
+        || (instance.render_state.invisible && !instance.render_state.appears_glowing)
+    {
+        return None;
+    }
+    let model = snow_golem_model(instance);
+    Some(
+        entity_model_root_transform(instance)
+            * model.try_child_attach_transform("head")?
+            * Mat4::from_translation(Vec3::new(0.0, -0.34375, 0.0))
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_scale(Vec3::new(0.625, -0.625, -0.625))
+            * Mat4::from_translation(Vec3::splat(-0.5)),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity_models::CopperGolemWeathering;
+    use glam::Vec3;
+
+    fn copper_golem() -> EntityModelInstance {
+        EntityModelInstance::new(
+            28,
+            EntityModelKind::CopperGolem {
+                weathering: CopperGolemWeathering::Unaffected,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        )
+    }
+
+    fn iron_golem() -> EntityModelInstance {
+        EntityModelInstance::iron_golem(74, [0.0, 64.0, 0.0], 0.0)
+            .with(|s| s.kind.iron_golem_mut().offer_flower_tick = 400)
+    }
+
+    fn snow_golem() -> EntityModelInstance {
+        EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
+            .with(|s| s.kind.snow_golem_mut().pumpkin = true)
+    }
+
+    fn mooshroom(baby: bool) -> EntityModelInstance {
+        EntityModelInstance::new(
+            86,
+            EntityModelKind::Mooshroom {
+                baby,
+                variant: MooshroomVariant::Red,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        )
+    }
+
+    #[test]
+    fn enderman_carried_block_is_gated_on_kind_visibility_and_carry_state() {
+        let enderman = EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 0.0)
+            .with(|s| s.kind.enderman_mut().carrying = true);
+        assert!(enderman_carried_block_transform(&enderman).is_some());
+
+        let empty = enderman.with(|s| s.kind.enderman_mut().carrying = false);
+        assert!(enderman_carried_block_transform(&empty).is_none());
+
+        let invisible = enderman.with_invisible(true);
+        assert!(enderman_carried_block_transform(&invisible).is_none());
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with(|s| s.kind.enderman_mut().carrying = true);
+        assert!(enderman_carried_block_transform(&creeper).is_none());
+    }
+
+    #[test]
+    fn enderman_carried_block_follows_model_root_rotation() {
+        let base = enderman_carried_block_transform(
+            &EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 0.0)
+                .with(|s| s.kind.enderman_mut().carrying = true),
+        )
+        .unwrap();
+        let turned = enderman_carried_block_transform(
+            &EntityModelInstance::enderman(41, [0.0, 64.0, 0.0], 90.0)
+                .with(|s| s.kind.enderman_mut().carrying = true),
+        )
+        .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let turned_center = turned.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(turned_center.is_finite());
+        assert_ne!(base_center, turned_center);
+    }
+
+    #[test]
+    fn copper_golem_antenna_block_is_gated_on_kind_and_visibility() {
+        assert!(copper_golem_antenna_block_transform(&copper_golem()).is_some());
+        assert!(
+            copper_golem_antenna_block_transform(&copper_golem().with_invisible(true)).is_none()
+        );
+        assert!(copper_golem_antenna_block_transform(&snow_golem()).is_none());
+    }
+
+    #[test]
+    fn copper_golem_antenna_block_follows_head_look() {
+        let base = copper_golem_antenna_block_transform(&copper_golem()).unwrap();
+        let turned = copper_golem_antenna_block_transform(
+            &copper_golem().with(|s| (s.head_yaw, s.head_pitch) = (30.0, 20.0)),
+        )
+        .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let turned_center = turned.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(turned_center.is_finite());
+        assert_ne!(base_center, turned_center);
+    }
+
+    #[test]
+    fn iron_golem_flower_block_is_gated_on_kind_visibility_and_offer_state() {
+        assert!(iron_golem_flower_block_transform(&iron_golem()).is_some());
+
+        let idle = iron_golem().with(|s| s.kind.iron_golem_mut().offer_flower_tick = 0);
+        assert!(iron_golem_flower_block_transform(&idle).is_none());
+
+        let invisible = iron_golem().with_invisible(true);
+        assert!(iron_golem_flower_block_transform(&invisible).is_none());
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with(|s| s.kind.iron_golem_mut().offer_flower_tick = 400);
+        assert!(iron_golem_flower_block_transform(&creeper).is_none());
+    }
+
+    #[test]
+    fn iron_golem_flower_block_follows_flower_arm_pose() {
+        let base = iron_golem_flower_block_transform(&iron_golem()).unwrap();
+        let later = iron_golem_flower_block_transform(
+            &iron_golem().with(|s| s.kind.iron_golem_mut().offer_flower_tick = 350),
+        )
+        .unwrap();
+        let attacking = iron_golem_flower_block_transform(
+            &iron_golem().with(|s| s.kind.iron_golem_mut().attack_ticks_remaining = 5.0),
+        )
+        .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let later_center = later.transform_point3(Vec3::splat(0.5));
+        let attacking_center = attacking.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(later_center.is_finite());
+        assert!(attacking_center.is_finite());
+        assert_ne!(base_center, later_center);
+        assert_ne!(base_center, attacking_center);
+    }
+
+    #[test]
+    fn iron_golem_flower_block_follows_renderer_body_wobble() {
+        let walking =
+            iron_golem().with(|s| (s.walk_animation_pos, s.walk_animation_speed) = (0.0, 1.0));
+        let model = iron_golem_model(&walking);
+        let flower_from_arm = model.try_child_attach_transform("right_arm").unwrap()
+            * Mat4::from_translation(Vec3::new(-1.1875, 1.0625, -0.9375))
+            * Mat4::from_translation(Vec3::splat(0.5))
+            * Mat4::from_scale(Vec3::splat(0.5))
+            * Mat4::from_rotation_x(-PI / 2.0)
+            * Mat4::from_translation(Vec3::splat(-0.5));
+        let actual = iron_golem_flower_block_transform(&walking).unwrap();
+
+        assert_close_transform(
+            actual,
+            iron_golem_model_root_transform(&walking) * flower_from_arm,
+        );
+        assert_ne!(
+            actual,
+            entity_model_root_transform(&walking) * flower_from_arm,
+            "held poppy uses the same renderer root wobble as the golem body"
+        );
+    }
+
+    #[test]
+    fn falling_block_transform_matches_submit_translation_and_ignores_visibility() {
+        let falling = EntityModelInstance::no_render(51, [1.25, 64.0, -2.75], 0.0);
+        let expected = Mat4::from_translation(Vec3::new(1.25, 64.0, -2.75))
+            * Mat4::from_translation(Vec3::new(-0.5, 0.0, -0.5));
+
+        assert_close_transform(falling_block_transform(&falling).unwrap(), expected);
+        assert_close_transform(
+            falling_block_transform(&falling.with_invisible(true)).unwrap(),
+            expected,
+        );
+        assert_close_transform(
+            falling_block_transform(&falling.with_appears_glowing(true)).unwrap(),
+            expected,
+        );
+        let turned = EntityModelInstance::no_render(51, [1.25, 64.0, -2.75], 90.0);
+        assert_close_transform(falling_block_transform(&turned).unwrap(), expected);
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [1.25, 64.0, -2.75], 0.0);
+        assert!(falling_block_transform(&creeper).is_none());
+    }
+
+    #[test]
+    fn mooshroom_mushroom_blocks_are_gated_on_adult_visibility_and_kind() {
+        let (variant, transforms) = mooshroom_mushroom_block_transforms(&mooshroom(false)).unwrap();
+        assert_eq!(variant, MooshroomVariant::Red);
+        assert_eq!(transforms.len(), 3);
+
+        assert!(mooshroom_mushroom_block_transforms(&mooshroom(true)).is_none());
+        let invisible = mooshroom(false).with_invisible(true);
+        assert!(mooshroom_mushroom_block_transforms(&invisible).is_none());
+        assert!(
+            mooshroom_mushroom_block_transforms(&invisible.with_appears_glowing(true)).is_some()
+        );
+        assert!(mooshroom_mushroom_block_transforms(&snow_golem()).is_none());
+    }
+
+    #[test]
+    fn mooshroom_head_mushroom_follows_head_look() {
+        let (_, base) = mooshroom_mushroom_block_transforms(&mooshroom(false)).unwrap();
+        let (_, turned) = mooshroom_mushroom_block_transforms(
+            &mooshroom(false).with(|s| (s.head_yaw, s.head_pitch) = (35.0, -15.0)),
+        )
+        .unwrap();
+        let base_back_center = base[0].transform_point3(Vec3::splat(0.5));
+        let turned_back_center = turned[0].transform_point3(Vec3::splat(0.5));
+        let base_head_center = base[2].transform_point3(Vec3::splat(0.5));
+        let turned_head_center = turned[2].transform_point3(Vec3::splat(0.5));
+
+        assert_eq!(base_back_center, turned_back_center);
+        assert!(base_head_center.is_finite());
+        assert!(turned_head_center.is_finite());
+        assert_ne!(base_head_center, turned_head_center);
+    }
+
+    #[test]
+    fn snow_golem_head_block_is_gated_on_kind_visibility_and_pumpkin_state() {
+        assert!(snow_golem_head_block_transform(&snow_golem()).is_some());
+
+        let sheared = snow_golem().with(|s| s.kind.snow_golem_mut().pumpkin = false);
+        assert!(snow_golem_head_block_transform(&sheared).is_none());
+
+        let invisible = snow_golem().with_invisible(true);
+        assert!(snow_golem_head_block_transform(&invisible).is_none());
+        assert!(snow_golem_head_block_transform(&invisible.with_appears_glowing(true)).is_some());
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with(|s| s.kind.snow_golem_mut().pumpkin = true);
+        assert!(snow_golem_head_block_transform(&creeper).is_none());
+    }
+
+    #[test]
+    fn snow_golem_head_block_follows_head_look() {
+        let base = snow_golem_head_block_transform(&snow_golem()).unwrap();
+        let turned = snow_golem_head_block_transform(
+            &snow_golem().with(|s| (s.head_yaw, s.head_pitch) = (45.0, 20.0)),
+        )
+        .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let turned_center = turned.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(turned_center.is_finite());
+        assert_ne!(base_center, turned_center);
+    }
+
+    fn assert_close_transform(actual: Mat4, expected: Mat4) {
+        for point in [Vec3::ZERO, Vec3::X, Vec3::Y, Vec3::Z] {
+            let actual = actual.transform_point3(point);
+            let expected = expected.transform_point3(point);
+            assert!(
+                actual.abs_diff_eq(expected, 1.0e-5),
+                "expected {expected:?}, got {actual:?}"
+            );
+        }
+    }
+}

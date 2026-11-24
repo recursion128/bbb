@@ -1,0 +1,22 @@
+[package]
+name = "bbb-server-worldgen"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bbb-facts = { path = "../bbb-facts", default-features = false, features = ["server-facts"] }
+bbb-server-types = { path = "../bbb-server-types" }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-registry-codec = { path = "../bbb-registry-codec" }
+bbb-server-datapack = { path = "../bbb-server-datapack" }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+flate2 = { workspace = true }
+serde_json = { workspace = true }

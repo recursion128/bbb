@@ -1,0 +1,564 @@
+use std::collections::{BTreeMap, BTreeSet};
+
+use bbb_protocol::packets::{
+    custom_chat_completions_action_name, CommandSuggestions as ProtocolCommandSuggestions,
+    CustomChatCompletions as ProtocolCustomChatCompletions,
+    CustomChatCompletionsAction as ProtocolCustomChatCompletionsAction,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::WorldStore;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommandSuggestionsState {
+    pub by_id: BTreeMap<i32, CommandSuggestionsResultState>,
+    pub last_id: Option<i32>,
+    #[serde(default)]
+    pub next_request_id: i32,
+    #[serde(default)]
+    pub last_request: Option<CommandSuggestionRequestState>,
+    #[serde(default)]
+    pub pending_request_id: Option<i32>,
+    #[serde(default)]
+    pub custom_completions: BTreeSet<String>,
+    #[serde(default)]
+    pub last_custom_completion_update: Option<CustomChatCompletionUpdateState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommandSuggestionsResultState {
+    pub id: i32,
+    pub start: i32,
+    pub length: i32,
+    pub suggestions: Vec<CommandSuggestionState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommandSuggestionState {
+    pub text: bbb_protocol::JavaString,
+    pub tooltip: Option<String>,
+    #[serde(default)]
+    pub tooltip_translation_key: Option<String>,
+    #[serde(default)]
+    pub tooltip_styled: Option<Vec<bbb_protocol::StyledTextRun>>,
+    #[serde(default)]
+    pub tooltip_component: Option<bbb_protocol::NbtSummaryValue>,
+}
+
+pub type CommandSuggestionRequestState =
+    bbb_protocol::packets::CommandSuggestionRequest<bbb_protocol::JavaString>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomChatCompletionUpdateState {
+    pub action: String,
+    pub entries: usize,
+}
+
+impl From<ProtocolCommandSuggestions> for CommandSuggestionsResultState {
+    fn from(packet: ProtocolCommandSuggestions) -> Self {
+        Self {
+            id: packet.id,
+            start: packet.start,
+            length: packet.length,
+            suggestions: packet
+                .suggestions
+                .into_iter()
+                .map(|suggestion| CommandSuggestionState {
+                    text: suggestion.text,
+                    tooltip: suggestion.tooltip,
+                    tooltip_translation_key: None,
+                    tooltip_styled: suggestion.tooltip_styled,
+                    tooltip_component: suggestion.tooltip_component,
+                })
+                .collect(),
+        }
+    }
+}
+
+impl WorldStore {
+    pub fn next_command_suggestion_request(
+        &mut self,
+        command: impl Into<bbb_protocol::JavaString>,
+    ) -> CommandSuggestionRequestState {
+        let request = CommandSuggestionRequestState {
+            id: self.command_suggestions.next_request_id,
+            command: command.into(),
+        };
+        self.command_suggestions.next_request_id =
+            if self.command_suggestions.next_request_id == i32::MAX {
+                0
+            } else {
+                self.command_suggestions.next_request_id + 1
+            };
+        self.command_suggestions.last_request = Some(request.clone());
+        self.command_suggestions.pending_request_id = Some(request.id);
+        self.advance_command_completion_sources_revision();
+        request
+    }
+
+    pub fn apply_custom_chat_completions(&mut self, packet: ProtocolCustomChatCompletions) {
+        self.counters.custom_chat_completion_packets += 1;
+        let action = packet.action;
+        let entries = packet.entries;
+        let entry_count = entries.len();
+
+        match action {
+            ProtocolCustomChatCompletionsAction::Add => {
+                self.command_suggestions.custom_completions.extend(entries);
+            }
+            ProtocolCustomChatCompletionsAction::Remove => {
+                for entry in entries {
+                    self.command_suggestions.custom_completions.remove(&entry);
+                }
+            }
+            ProtocolCustomChatCompletionsAction::Set => {
+                self.command_suggestions.custom_completions = entries.into_iter().collect();
+            }
+        }
+
+        self.command_suggestions.last_custom_completion_update =
+            Some(CustomChatCompletionUpdateState {
+                action: custom_chat_completions_action_name(action).to_string(),
+                entries: entry_count,
+            });
+        self.update_custom_completion_count();
+    }
+
+    pub fn apply_command_suggestions(
+        &mut self,
+        packet: ProtocolCommandSuggestions,
+    ) -> Option<&CommandSuggestionsResultState> {
+        self.counters.command_suggestion_packets += 1;
+        if !self.preflight_packet_components(&packet, "command suggestions") {
+            return None;
+        }
+        let id = packet.id;
+        if self.command_suggestions.pending_request_id != Some(id) {
+            return None;
+        }
+        self.command_suggestions.pending_request_id = None;
+        let result = CommandSuggestionsResultState::from(packet);
+        self.command_suggestions.last_id = Some(id);
+        self.command_suggestions.by_id.clear();
+        self.command_suggestions.by_id.insert(id, result);
+        self.advance_command_completion_sources_revision();
+        self.update_command_suggestion_count();
+        self.command_suggestions.by_id.get(&id)
+    }
+
+    pub fn command_suggestions(&self) -> &CommandSuggestionsState {
+        &self.command_suggestions
+    }
+
+    pub fn client_command_suggestions(&self) -> &CommandSuggestionsState {
+        self.command_suggestions()
+    }
+
+    pub fn custom_chat_completions(&self) -> &BTreeSet<String> {
+        &self.command_suggestions.custom_completions
+    }
+
+    pub fn last_custom_chat_completion_update(&self) -> Option<&CustomChatCompletionUpdateState> {
+        self.command_suggestions
+            .last_custom_completion_update
+            .as_ref()
+    }
+
+    pub fn command_suggestions_by_id(&self, id: i32) -> Option<&CommandSuggestionsResultState> {
+        self.command_suggestions.by_id.get(&id)
+    }
+
+    pub fn last_command_suggestions(&self) -> Option<&CommandSuggestionsResultState> {
+        self.command_suggestions
+            .last_id
+            .and_then(|id| self.command_suggestions.by_id.get(&id))
+    }
+
+    pub(crate) fn reset_command_suggestions_for_new_listener(&mut self) {
+        self.command_suggestions = CommandSuggestionsState::default();
+        self.advance_command_completion_sources_revision();
+        self.update_command_suggestion_count();
+        self.update_custom_completion_count();
+    }
+
+    fn update_command_suggestion_count(&mut self) {
+        self.counters.command_suggestion_entries_tracked = self
+            .command_suggestions
+            .by_id
+            .values()
+            .map(|result| result.suggestions.len())
+            .sum();
+    }
+
+    fn update_custom_completion_count(&mut self) {
+        self.counters.custom_chat_completions_tracked =
+            self.command_suggestions.custom_completions.len();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::packets::{
+        CommandSuggestion, CommandSuggestions, CustomChatCompletions, CustomChatCompletionsAction,
+    };
+    use bbb_protocol::{ComponentStyle, NbtSummaryValue, StyledTextRun};
+
+    #[test]
+    fn command_suggestion_requests_start_at_zero_increment_and_wrap() {
+        let mut store = WorldStore::new();
+
+        let first = store.next_command_suggestion_request("/");
+        let second = store.next_command_suggestion_request("/give");
+
+        assert_eq!(
+            first,
+            CommandSuggestionRequestState {
+                id: 0,
+                command: "/".into(),
+            }
+        );
+        assert_eq!(
+            second,
+            CommandSuggestionRequestState {
+                id: 1,
+                command: "/give".into(),
+            }
+        );
+        assert_eq!(store.command_suggestions().next_request_id, 2);
+        assert_eq!(
+            store.command_suggestions().last_request.as_ref(),
+            Some(&second)
+        );
+
+        store.command_suggestions.next_request_id = i32::MAX;
+        let max = store.next_command_suggestion_request("/seed");
+        let wrapped = store.next_command_suggestion_request("/time");
+
+        assert_eq!(max.id, i32::MAX);
+        assert_eq!(wrapped.id, 0);
+        assert_eq!(store.command_suggestions().next_request_id, 1);
+        assert_eq!(
+            store.command_suggestions().last_request.as_ref(),
+            Some(&CommandSuggestionRequestState {
+                id: 0,
+                command: "/time".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn custom_chat_completions_apply_set_add_and_remove_as_suggestions_set() {
+        let mut store = WorldStore::new();
+
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Set,
+            entries: vec!["/warp".to_string(), "/spawn".to_string()],
+        });
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Add,
+            entries: vec!["/home".to_string(), "/warp".to_string()],
+        });
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Remove,
+            entries: vec!["/spawn".to_string(), "/missing".to_string()],
+        });
+
+        assert_eq!(
+            store
+                .custom_chat_completions()
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["/home", "/warp"]
+        );
+        assert_eq!(
+            store
+                .client_command_suggestions()
+                .last_custom_completion_update
+                .as_ref(),
+            Some(&CustomChatCompletionUpdateState {
+                action: "remove".to_string(),
+                entries: 2,
+            })
+        );
+        let counters = store.counters();
+        assert_eq!(counters.custom_chat_completion_packets, 3);
+        assert_eq!(counters.custom_chat_completions_tracked, 2);
+    }
+
+    /// `Utf8String.read` (Utf8String.java:10-31) decodes the slice through
+    /// `ByteBuf.toString(UTF_8)`, which replaces a malformed sequence instead of
+    /// refusing the packet, and bounds `String.length()` -- UTF-16 units, not
+    /// code points -- so an astral suggestion costs two of them.
+    #[test]
+    fn wire_strings_reach_the_suggestion_consumer_the_way_utf8string_reads_them() {
+        fn suggestion_packet(text: &[u8]) -> Vec<u8> {
+            let mut out = Vec::new();
+            for value in [7, 1, 4, 1] {
+                bbb_protocol::codec::write_var_i32_to(&mut out, value);
+            }
+            bbb_protocol::codec::write_var_i32_to(&mut out, text.len() as i32);
+            out.extend_from_slice(text);
+            out.push(0);
+            out
+        }
+        fn decode(
+            text: &[u8],
+        ) -> Result<ProtocolCommandSuggestions, bbb_protocol::codec::ProtocolError> {
+            match bbb_protocol::packets::decode_play_clientbound(
+                bbb_protocol::ids::play::CLIENTBOUND_COMMAND_SUGGESTIONS,
+                &suggestion_packet(text),
+            )? {
+                bbb_protocol::packets::PlayClientbound::CommandSuggestions(packet) => Ok(packet),
+                other => panic!("unexpected packet {other:?}"),
+            }
+        }
+
+        let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
+        let applied = store
+            .apply_command_suggestions(decode(b"gi\xc3(ve").unwrap())
+            .expect("a malformed sequence does not refuse the packet");
+        assert_eq!(applied.suggestions[0].text, "gi\u{fffd}(ve");
+
+        // 16384 astral code points are 16384 `chars` but 32768 `String.length()`
+        // units, which is one past `readUtf(32767)`.
+        let astral = "\u{1f600}".repeat(16384);
+        assert!(matches!(
+            decode(astral.as_bytes()),
+            Err(bbb_protocol::codec::ProtocolError::StringTooLong {
+                actual: 32768,
+                max: 32767
+            })
+        ));
+        assert!(decode("\u{1f600}".repeat(16383).as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn command_suggestions_store_by_id_and_last_response() {
+        let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
+        store.apply_command_suggestions(CommandSuggestions {
+            id: 7,
+            start: 1,
+            length: 4,
+            suggestions: vec![
+                CommandSuggestion {
+                    text: "give".into(),
+                    tooltip: Some("Run give".to_string()),
+                    tooltip_styled: Some(vec![StyledTextRun {
+                        text: "Run give".into(),
+                        style: ComponentStyle {
+                            italic: Some(true),
+                            color: Some(0x55ff55),
+                            ..ComponentStyle::default()
+                        },
+                    }]),
+                    tooltip_component: Some(NbtSummaryValue::string("Run give")),
+                },
+                CommandSuggestion {
+                    text: "gamemode".into(),
+                    tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
+                },
+            ],
+        });
+
+        let result = store.command_suggestions_by_id(7).unwrap().clone();
+        assert_eq!(result.start, 1);
+        assert_eq!(result.length, 4);
+        assert_eq!(result.suggestions.len(), 2);
+        assert_eq!(result.suggestions[0].text, "give");
+        assert_eq!(result.suggestions[0].tooltip.as_deref(), Some("Run give"));
+        assert_eq!(
+            result.suggestions[0].tooltip_styled,
+            Some(vec![StyledTextRun {
+                text: "Run give".to_string(),
+                style: ComponentStyle {
+                    italic: Some(true),
+                    color: Some(0x55ff55),
+                    ..ComponentStyle::default()
+                },
+            }])
+        );
+        assert_eq!(
+            result.suggestions[0].tooltip_component,
+            Some(NbtSummaryValue::string("Run give"))
+        );
+        assert_eq!(store.last_command_suggestions(), Some(&result));
+        assert_eq!(store.counters().command_suggestion_packets, 1);
+        assert_eq!(store.counters().command_suggestion_entries_tracked, 2);
+
+        let restored: WorldStore = serde_json::from_value(serde_json::to_value(&store).unwrap())
+            .expect("rich command suggestions should survive world JSON round trip");
+        assert_eq!(restored.command_suggestions_by_id(7), Some(&result));
+    }
+
+    #[test]
+    fn configuration_reentry_rebuilds_suggestion_provider_and_preserves_packet_counters() {
+        let mut store = WorldStore::new();
+        let request = store.next_command_suggestion_request("/give");
+        store.apply_command_suggestions(CommandSuggestions {
+            id: request.id,
+            start: 1,
+            length: 4,
+            suggestions: vec![CommandSuggestion {
+                text: "give".into(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            }],
+        });
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Set,
+            entries: vec!["/home".to_string()],
+        });
+
+        store.clear_client_level();
+
+        assert_eq!(
+            store.command_suggestions(),
+            &CommandSuggestionsState::default()
+        );
+        assert_eq!(store.counters().command_suggestion_packets, 1);
+        assert_eq!(store.counters().custom_chat_completion_packets, 1);
+        assert_eq!(store.counters().command_suggestion_entries_tracked, 0);
+        assert_eq!(store.counters().custom_chat_completions_tracked, 0);
+    }
+
+    #[test]
+    fn command_suggestions_update_existing_response_id() {
+        let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
+        store.apply_command_suggestions(CommandSuggestions {
+            id: 7,
+            start: 0,
+            length: 1,
+            suggestions: vec![CommandSuggestion {
+                text: "first".into(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            }],
+        });
+        store.command_suggestions.pending_request_id = Some(7);
+        store.apply_command_suggestions(CommandSuggestions {
+            id: 7,
+            start: 2,
+            length: 3,
+            suggestions: vec![CommandSuggestion {
+                text: "second".into(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            }],
+        });
+
+        assert_eq!(store.command_suggestions().by_id.len(), 1);
+        let result = store.command_suggestions_by_id(7).unwrap();
+        assert_eq!(result.start, 2);
+        assert_eq!(result.suggestions[0].text, "second");
+        assert_eq!(store.counters().command_suggestion_packets, 2);
+        assert_eq!(store.counters().command_suggestion_entries_tracked, 1);
+    }
+
+    #[test]
+    fn command_suggestions_retain_only_latest_matching_result() {
+        let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
+        store.apply_command_suggestions(CommandSuggestions {
+            id: 7,
+            start: 0,
+            length: 1,
+            suggestions: vec![CommandSuggestion {
+                text: "first".into(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            }],
+        });
+        store.command_suggestions.pending_request_id = Some(8);
+        store.apply_command_suggestions(CommandSuggestions {
+            id: 8,
+            start: 0,
+            length: 1,
+            suggestions: vec![
+                CommandSuggestion {
+                    text: "second".into(),
+                    tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
+                },
+                CommandSuggestion {
+                    text: "third".into(),
+                    tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
+                },
+            ],
+        });
+
+        assert_eq!(store.command_suggestions().by_id.len(), 1);
+        assert!(store.command_suggestions_by_id(7).is_none());
+        assert_eq!(
+            store
+                .command_suggestions_by_id(8)
+                .unwrap()
+                .suggestions
+                .len(),
+            2
+        );
+        assert_eq!(store.counters().command_suggestion_entries_tracked, 2);
+    }
+
+    #[test]
+    fn command_suggestions_ignore_stale_and_clear_matching_pending_request() {
+        let mut store = WorldStore::new();
+        store.command_suggestions.next_request_id = 7;
+        let request = store.next_command_suggestion_request("/give");
+        assert_eq!(request.id, 7);
+
+        assert!(store
+            .apply_command_suggestions(CommandSuggestions {
+                id: 6,
+                start: 1,
+                length: 3,
+                suggestions: vec![CommandSuggestion {
+                    text: "stale".into(),
+                    tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
+                }],
+            })
+            .is_none());
+        assert_eq!(store.command_suggestions.pending_request_id, Some(7));
+        assert!(store.command_suggestions.by_id.is_empty());
+
+        assert!(store
+            .apply_command_suggestions(CommandSuggestions {
+                id: 7,
+                start: 1,
+                length: 4,
+                suggestions: vec![CommandSuggestion {
+                    text: "give".into(),
+                    tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
+                }],
+            })
+            .is_some());
+        assert_eq!(store.command_suggestions.pending_request_id, None);
+
+        assert!(store
+            .apply_command_suggestions(CommandSuggestions {
+                id: 6,
+                start: 0,
+                length: 0,
+                suggestions: Vec::new(),
+            })
+            .is_none());
+        assert_eq!(store.command_suggestions().last_id, Some(7));
+    }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "description": "Hand-written Rust sources in every crate stay within line_cap; files over the cap when the rule landed are pinned at the count they may not exceed (one-time 5% headroom for lanes in flight), pins only shrink, generated files are exempt.",
+  "line_cap": 3000,
+  "roots": [
+    "crates/bbb-admin",
+    "crates/bbb-client",
+    "crates/bbb-client-clock",
+    "crates/bbb-client-audio",
+    "crates/bbb-client-net",
+    "crates/bbb-client-probe",
+    "crates/bbb-client-assets",
+    "crates/bbb-client-render",
+    "crates/bbb-client-world",
+    "crates/bbb-facts",
+    "crates/bbb-mcp",
+    "crates/bbb-protocol",
+    "crates/bbb-registry-codec",
+    "crates/bbb-render-types",
+    "crates/bbb-server",
+    "crates/bbb-server-admin",
+    "crates/bbb-server-core",
+    "crates/bbb-server-datapack",
+    "crates/bbb-server-net",
+    "crates/bbb-server-persistence",
+    "crates/bbb-server-types",
+    "crates/bbb-server-worldgen",
+    "crates/bbb-web-host",
+    "crates/bbb-xtask"
+  ],
+  "pinned": {}
+}

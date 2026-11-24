@@ -1,0 +1,1560 @@
+#!/usr/bin/env python3
+"""Generate the checked-in vanilla 26.1 item protocol catalog."""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import math
+import struct
+import subprocess
+import sys
+from pathlib import Path
+
+from bbb_tools.vanilla.arguments import add_vanilla_root, resolve_source_root
+from block_registry_catalog_extractor import extract_block_registry_catalog
+from item_registry_catalog_extractor import (
+    extract_block_item_behaviors,
+    extract_bucket_item_behaviors,
+    extract_item_can_destroy_block_override_owners,
+    extract_item_interact_living_entity_override_owners,
+    extract_item_registry_catalog,
+    extract_item_use_on_override_owners,
+    extract_item_use_override_owners,
+    extract_tool_use_on_catalog,
+    item_factory_class,
+    item_resource_ids_for_declaration,
+)
+from sound_event_catalog_extractor import direct_sound_event_entries
+from targeted_block_use_catalog_extractor import (
+    extract_targeted_block_use_catalog,
+)
+from vanilla_java_source import expression_fact, parse_source, type_body_members
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-facts/src/item_types.rs"
+DEFAULT_TYPES_BIN_OUTPUT = REPO_ROOT / "crates/bbb-facts/data/item_types_26_1.bin"
+ITEMS_PATH = Path("net/minecraft/world/item/Items.java")
+ITEM_PATH = Path("net/minecraft/world/item/Item.java")
+ITEM_IDS_PATH = Path("net/minecraft/references/ItemIds.java")
+DATA_COMPONENTS_PATH = Path("net/minecraft/core/component/DataComponents.java")
+SOUND_EVENTS_PATH = Path("net/minecraft/sounds/SoundEvents.java")
+ITEM_PACKAGE_PATH = Path("net/minecraft/world/item")
+BLOCKS_PATH = Path("net/minecraft/world/level/block/Blocks.java")
+FLOWER_BLOCK_PATH = Path("net/minecraft/world/level/block/FlowerBlock.java")
+EYEBLOSSOM_BLOCK_PATH = Path(
+    "net/minecraft/world/level/block/EyeblossomBlock.java"
+)
+BLOCK_IDS_PATH = Path("net/minecraft/references/BlockIds.java")
+BLOCK_ENTITY_TYPES_PATH = Path(
+    "net/minecraft/world/level/block/entity/BlockEntityType.java"
+)
+WEATHERING_COPPER_PATH = Path(
+    "net/minecraft/world/level/block/WeatheringCopper.java"
+)
+WEATHERING_COPPER_BLOCKS_PATH = Path(
+    "net/minecraft/world/level/block/WeatheringCopperBlocks.java"
+)
+COMPOSTER_BLOCK_PATH = Path(
+    "net/minecraft/world/level/block/ComposterBlock.java"
+)
+CAULDRON_INTERACTIONS_PATH = Path(
+    "net/minecraft/core/cauldron/CauldronInteractions.java"
+)
+ITEM_TAGS_PATH = Path("net/minecraft/tags/ItemTags.java")
+EXPECTED_TOOL_USE_ON_COUNTS = {
+    "axe_strippables": 23,
+    "axe_scrapeables": 45,
+    "axe_wax_off": 60,
+    "honeycomb_waxables": 60,
+    "hoe_tillables": 5,
+    "shovel_flattenables": 6,
+}
+EXPECTED_BLOCK_ITEM_BEHAVIOR_COUNT = 1023
+EXPECTED_COMPOSTABLE_COUNT = 115
+EXPECTED_CAULDRON_ITEM_INTERACTION_COUNT = 50
+EXPECTED_CAULDRON_TAG_INTERACTION_COUNT = 1
+EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT = 17
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    add_vanilla_root(parser)
+    parser.add_argument("--types-output", type=Path, default=DEFAULT_TYPES_OUTPUT)
+    parser.add_argument(
+        "--types-bin-output", type=Path, default=DEFAULT_TYPES_BIN_OUTPUT
+    )
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    args.source_root = resolve_source_root(args)
+    return args
+
+
+def _field_access(fact: dict, owner: str) -> str | None:
+    if fact.get("kind") != "field_access" or fact.get("name") is None:
+        return None
+    object_fact = fact.get("object")
+    if object_fact and object_fact.get("canonical") == owner:
+        return fact["name"]
+    return None
+
+
+def _walk_facts(expression: dict):
+    yield expression
+    object_fact = expression.get("object")
+    if object_fact is not None:
+        yield from _walk_facts(object_fact)
+    for key in ("arguments", "children"):
+        for child in expression.get(key, []):
+            yield from _walk_facts(child)
+
+
+def _f32(value: float) -> float:
+    return struct.unpack(">f", struct.pack(">f", value))[0]
+
+
+def _float_literal(fact: dict) -> float | None:
+    if fact.get("kind") not in {
+        "decimal_floating_point_literal",
+        "hex_floating_point_literal",
+    }:
+        return None
+    spelling = fact.get("canonical")
+    if not isinstance(spelling, str):
+        return None
+    spelling = spelling.replace("_", "")
+    if spelling[-1:] in {"f", "F", "d", "D"}:
+        spelling = spelling[:-1]
+    try:
+        return _f32(float.fromhex(spelling) if "p" in spelling.lower() else float(spelling))
+    except ValueError:
+        return None
+
+
+def _validate_flower_effect_duration_formula(flower_source) -> None:
+    owner = "net.minecraft.world.level.block.FlowerBlock"
+    methods = [
+        method
+        for method in flower_source.methods_for(owner)
+        if method.name == "makeEffectList" and method.body is not None
+    ]
+    if len(methods) != 1:
+        raise ValueError("expected exactly one FlowerBlock.makeEffectList method")
+    method = methods[0]
+    floor_calls = [
+        call
+        for call in flower_source.calls_for(owner)
+        if call.name == "floor"
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    if (
+        len(floor_calls) != 1
+        or len(floor_calls[0].arguments) != 1
+        or floor_calls[0].arguments[0].canonical != "effectSeconds * 20.0F"
+    ):
+        raise ValueError(
+            "FlowerBlock.makeEffectList no longer floors effectSeconds * 20.0F"
+        )
+
+
+def _eyeblossom_type_effects(eyeblossom_source) -> dict[str, tuple[str, int]]:
+    types = [
+        java_type
+        for java_type in eyeblossom_source.types
+        if java_type.kind == "enum" and java_type.simple_name == "Type"
+    ]
+    if len(types) != 1:
+        raise ValueError("expected exactly one EyeblossomBlock.Type enum")
+    effects: dict[str, tuple[str, int]] = {}
+    for node in type_body_members(types[0].body_node):
+        if node.type != "enum_constant":
+            continue
+        name = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if name is None or arguments is None or len(arguments.named_children) != 6:
+            raise ValueError("EyeblossomBlock.Type constant lacks six arguments")
+        argument_facts = [
+            expression_fact(
+                eyeblossom_source,
+                eyeblossom_source.expression(argument),
+            )
+            for argument in arguments.named_children
+        ]
+        effect = _field_access(argument_facts[1], "MobEffects")
+        seconds = _float_literal(argument_facts[2])
+        if effect is None or seconds is None:
+            raise ValueError(
+                f"EyeblossomBlock.Type.{eyeblossom_source.text(name)} "
+                "lacks a direct MobEffects holder and float duration"
+            )
+        effects[eyeblossom_source.text(name)] = (
+            effect,
+            math.floor(_f32(seconds * _f32(20.0))),
+        )
+    if set(effects) != {"OPEN", "CLOSED"}:
+        raise ValueError(
+            f"unexpected EyeblossomBlock.Type effect constants: {sorted(effects)}"
+        )
+    return effects
+
+
+def _suspicious_stew_effects_by_block(
+    block_declarations: list[dict],
+    flower_source,
+    eyeblossom_source,
+) -> dict[str, tuple[str, int]]:
+    _validate_flower_effect_duration_formula(flower_source)
+    eyeblossom_effects = _eyeblossom_type_effects(eyeblossom_source)
+    effects: dict[str, tuple[str, int]] = {}
+    for declaration in block_declarations:
+        creations = [
+            fact
+            for fact in _walk_facts(declaration["initializer"])
+            if fact.get("kind") == "object_creation_expression"
+            and fact.get("name")
+            in {"FlowerBlock", "WitherRoseBlock", "EyeblossomBlock"}
+        ]
+        if not creations:
+            continue
+        if len(creations) != 1:
+            raise ValueError(
+                f"Blocks.{declaration['field']}: expected one suspicious-effect block constructor"
+            )
+        creation = creations[0]
+        arguments = creation.get("arguments", [])
+        if creation["name"] == "EyeblossomBlock":
+            if len(arguments) != 2:
+                raise ValueError(
+                    f"Blocks.{declaration['field']}: EyeblossomBlock lacks two arguments"
+                )
+            type_name = _field_access(arguments[0], "EyeblossomBlock.Type")
+            if type_name not in eyeblossom_effects:
+                raise ValueError(
+                    f"Blocks.{declaration['field']}: unknown EyeblossomBlock.Type {type_name}"
+                )
+            effects[declaration["field"]] = eyeblossom_effects[type_name]
+            continue
+        if len(arguments) != 3:
+            raise ValueError(
+                f"Blocks.{declaration['field']}: {creation['name']} lacks three arguments"
+            )
+        effect = _field_access(arguments[0], "MobEffects")
+        seconds = _float_literal(arguments[1])
+        if effect is None or seconds is None:
+            raise ValueError(
+                f"Blocks.{declaration['field']}: suspicious effect lacks direct source facts"
+            )
+        effects[declaration["field"]] = (
+            effect,
+            math.floor(_f32(seconds * _f32(20.0))),
+        )
+    if len(effects) != EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT:
+        raise ValueError(
+            "unexpected vanilla 26.1 suspicious-stew ingredient count: "
+            f"{len(effects)}"
+        )
+    return effects
+
+
+def _equip_on_interact_owner(declaration: dict) -> str | None:
+    matches = []
+    for fact in _walk_facts(declaration["initializer"]):
+        if fact.get("kind") != "method_invocation":
+            continue
+        object_fact = fact.get("object")
+        if object_fact is None or object_fact.get("canonical") != "Equippable":
+            continue
+        if fact.get("name") == "saddle":
+            matches.append("Saddle")
+        elif fact.get("name") == "harness":
+            matches.append("Harness")
+    if len(matches) > 1:
+        raise ValueError(
+            f"Items.{declaration['field']}: multiple equip-on-interact owners: {matches}"
+        )
+    return matches[0] if matches else None
+
+
+def _break_sound_constant(expression: dict, call_names: set[str]) -> str | None:
+    matches = []
+    for fact in _walk_facts(expression):
+        if fact.get("kind") != "method_invocation" or fact.get("name") not in call_names:
+            continue
+        arguments = fact.get("arguments", [])
+        if len(arguments) < 2:
+            continue
+        component = _field_access(arguments[0], "DataComponents")
+        if component is None and arguments[0].get("canonical") == "BREAK_SOUND":
+            component = "BREAK_SOUND"
+        sound = _field_access(arguments[1], "SoundEvents")
+        if component == "BREAK_SOUND" and sound is not None:
+            matches.append(sound)
+    if len(matches) > 1:
+        raise ValueError(f"multiple break-sound component assignments: {matches}")
+    return matches[0] if matches else None
+
+
+def _method_break_sound_constant(source, owner: str, method_name: str) -> str:
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and method.body is not None
+    ]
+    if len(methods) != 1:
+        raise ValueError(f"expected exactly one {owner}.{method_name} method")
+    method = methods[0]
+    matches = []
+    for call in source.calls_for(owner):
+        if (
+            call.name == "component"
+            and method.body.start_byte <= call.span.start_byte
+            and call.span.end_byte <= method.body.end_byte
+        ):
+            fact = expression_fact(source, source.expression(call.node))
+            sound = _break_sound_constant(fact, {"component"})
+            if sound is not None:
+                matches.append(sound)
+    if len(matches) != 1:
+        raise ValueError(
+            f"expected exactly one break-sound assignment in {owner}.{method_name}, got {matches}"
+        )
+    return matches[0]
+
+
+def _default_break_sounds(
+    declarations: list[dict],
+    item_id_constants: dict[str, str],
+    item_source,
+    data_components_source,
+    sound_events_source,
+) -> tuple[str, dict[str, str]]:
+    sounds = {
+        entry.constant_name: entry.resource_id
+        for entry in direct_sound_event_entries(sound_events_source)
+    }
+    common_fields = [
+        field
+        for field in data_components_source.fields_for(
+            "net.minecraft.core.component.DataComponents"
+        )
+        if field.name == "COMMON_ITEM_COMPONENTS" and field.initializer is not None
+    ]
+    if len(common_fields) != 1:
+        raise ValueError("expected exactly one DataComponents.COMMON_ITEM_COMPONENTS field")
+    common_constant = _break_sound_constant(
+        expression_fact(data_components_source, common_fields[0].initializer), {"set"}
+    )
+    if common_constant is None:
+        raise ValueError("COMMON_ITEM_COMPONENTS lacks a BREAK_SOUND assignment")
+    common_sound = sounds[common_constant]
+    wolf_armor_constant = _method_break_sound_constant(
+        item_source, "net.minecraft.world.item.Item.Properties", "wolfArmor"
+    )
+
+    overrides: dict[str, str] = {}
+    for declaration in declarations:
+        sound_constant = _break_sound_constant(
+            declaration["initializer"], {"component"}
+        )
+        if sound_constant is None and any(
+            fact.get("kind") == "method_invocation" and fact.get("name") == "wolfArmor"
+            for fact in _walk_facts(declaration["initializer"])
+        ):
+            sound_constant = wolf_armor_constant
+        if sound_constant is None:
+            continue
+        sound = sounds[sound_constant]
+        if sound == common_sound:
+            continue
+        for resource_id in item_resource_ids_for_declaration(
+            declaration, item_id_constants
+        ):
+            overrides["minecraft:" + resource_id] = sound
+    return common_sound, overrides
+
+
+def _render_types(
+    resource_paths: list[str],
+    can_destroy_block_override_owners: list[str | None],
+    use_override_owners: list[str | None],
+    use_on_override_owners: list[str | None],
+    interact_living_entity_override_owners: list[str | None],
+    equip_on_interact_owners: list[str | None],
+    bucket_behaviors: list[dict[str, str | None] | None],
+    block_item_behaviors: list[dict[str, str | None] | None],
+    item_constants: dict[str, int],
+    common_break_sound: str,
+    break_sound_overrides: dict[str, str],
+    tool_use_on_catalog: dict[str, list[dict]],
+    compostables: list[dict],
+    suspicious_stew_ingredients: list[dict],
+    cauldron_item_interactions: list[dict],
+    cauldron_tag_interactions: list[dict],
+    crafting_remainders: list[tuple[int, int]],
+    special_item_blocks: list[tuple[int, str]],
+    alternative_item_blocks: list[tuple[int, str]],
+    block_id_by_field: dict[str, int],
+) -> tuple[str, bytes]:
+    if len(resource_paths) != 1506:
+        raise ValueError(f"expected 1506 vanilla item ids, got {len(resource_paths)}")
+    resources = ["minecraft:" + path for path in resource_paths]
+    if len(set(resources)) != len(resources):
+        raise ValueError("duplicate vanilla item resource id")
+    for behavior, owners in (
+        ("canDestroyBlock", can_destroy_block_override_owners),
+        ("use", use_override_owners),
+        ("useOn", use_on_override_owners),
+        ("interactLivingEntity", interact_living_entity_override_owners),
+        ("Equippable.equipOnInteract", equip_on_interact_owners),
+    ):
+        if len(owners) != len(resources):
+            raise ValueError(
+                f"item {behavior}-override catalog length does not match item ids"
+            )
+    if len(bucket_behaviors) != len(resources):
+        raise ValueError("bucket behavior catalog length does not match item ids")
+    if len(block_item_behaviors) != len(resources):
+        raise ValueError("block item behavior catalog length does not match item ids")
+    can_destroy_block_override_count = sum(
+        owner is not None for owner in can_destroy_block_override_owners
+    )
+    if can_destroy_block_override_count != 1:
+        raise ValueError(
+            "expected exactly one vanilla 26.1 Item.canDestroyBlock direct-deny "
+            f"registration, got {can_destroy_block_override_count}"
+        )
+    use_override_variants = sorted(
+        {owner for owner in use_override_owners if owner is not None}
+    )
+    use_override_count = sum(owner is not None for owner in use_override_owners)
+    use_on_override_variants = sorted(
+        {owner for owner in use_on_override_owners if owner is not None}
+    )
+    use_on_override_count = sum(
+        owner is not None for owner in use_on_override_owners
+    )
+    interact_living_entity_override_variants = sorted(
+        {
+            owner
+            for owner in interact_living_entity_override_owners
+            if owner is not None
+        }
+    )
+    interact_living_entity_override_count = sum(
+        owner is not None for owner in interact_living_entity_override_owners
+    )
+    equip_on_interact_variants = sorted(
+        {owner for owner in equip_on_interact_owners if owner is not None}
+    )
+    equip_on_interact_count = sum(
+        owner is not None for owner in equip_on_interact_owners
+    )
+    lines = [
+        "// @generated by scripts/generate-item-registry-catalog.py; do not edit manually.",
+        "// Sources: vanilla 26.1 item registrations/use/canDestroyBlock overrides, BlockItem registrations, suspicious-stew effect holders, tool transform maps, targeted block-use registrations, block registrations/weathering groups, component defaults, item tags, and sound ids through the shared Tree-sitter Java frontend.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py --check",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaItemUseOverride {",
+    ]
+    lines.extend(f"    {owner}," for owner in use_override_variants)
+    lines.extend([
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaItemUseOnOverride {",
+    ])
+    lines.extend(f"    {owner}," for owner in use_on_override_variants)
+    lines.extend([
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaItemInteractLivingEntityOverride {",
+    ])
+    lines.extend(
+        f"    {owner},"
+        for owner in interact_living_entity_override_variants
+    )
+    lines.extend([
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaItemEquipOnInteract {",
+    ])
+    lines.extend(f"    {owner}," for owner in equip_on_interact_variants)
+    lines.extend([
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaBucketFluid {",
+        "    Empty,",
+        "    Water,",
+        "    Lava,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaBucketItemBehavior {",
+        "    pub fluid: VanillaBucketFluid,",
+        "    pub mob_empty_sound_resource_id: Option<&'static str>,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaBlockItemKind {",
+        "    BannerItem,",
+        "    BedItem,",
+        "    BlockItem,",
+        "    DoubleHighBlockItem,",
+        "    GameMasterBlockItem,",
+        "    HangingSignItem,",
+        "    PlayerHeadItem,",
+        "    ScaffoldingBlockItem,",
+        "    SignItem,",
+        "    StandingAndWallBlockItem,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaBlockItemBehavior {",
+        "    pub kind: VanillaBlockItemKind,",
+        "    pub block_type_id: i32,",
+        "    pub wall_block_type_id: Option<i32>,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaCompostable {",
+        "    pub item_type_id: i32,",
+        "    pub chance_bits: u32,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaSuspiciousStewIngredient {",
+        "    pub item_type_id: i32,",
+        "    pub effect_type_id: i32,",
+        "    pub duration_ticks: i32,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaCauldronKind {",
+        "    Empty,",
+        "    Water,",
+        "    Lava,",
+        "    PowderSnow,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaCauldronInteraction {",
+        "    CleanBanner,",
+        "    CleanDyedItem,",
+        "    CleanShulkerBox,",
+        "    PourLavaBucket,",
+        "    PourPowderSnowBucket,",
+        "    PourWaterBucket,",
+        "    PourWaterPotionIntoEmpty,",
+        "    PourWaterPotionIntoWater,",
+        "    TakeLavaBucket,",
+        "    TakePowderSnowBucket,",
+        "    TakeWaterBottle,",
+        "    TakeWaterBucket,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaCauldronItemInteractionEntry {",
+        "    pub cauldron: VanillaCauldronKind,",
+        "    pub item_type_id: i32,",
+        "    pub interaction: VanillaCauldronInteraction,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaCauldronTagInteractionEntry {",
+        "    pub cauldron: VanillaCauldronKind,",
+        "    pub item_tag_resource_id: &'static str,",
+        "    pub interaction: VanillaCauldronInteraction,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct ItemTypeCatalogEntry {",
+        "    pub id: i32,",
+        "    pub resource_id: &'static str,",
+        "    pub use_override: Option<VanillaItemUseOverride>,",
+        "    pub use_on_override: Option<VanillaItemUseOnOverride>,",
+        "    pub interact_living_entity_override: Option<VanillaItemInteractLivingEntityOverride>,",
+        "    pub equip_on_interact: Option<VanillaItemEquipOnInteract>,",
+        "    pub bucket_behavior: Option<VanillaBucketItemBehavior>,",
+        "    pub block_item_behavior: Option<VanillaBlockItemBehavior>,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaBlockTransform {",
+        "    pub source_block_type_id: i32,",
+        "    pub target_block_type_id: i32,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaHoeTillable {",
+        "    pub transform: VanillaBlockTransform,",
+        "    pub requires_air_above: bool,",
+        "}",
+        "",
+        f"pub const VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE: i32 = {item_constants['DEFAULT_MAX_STACK_SIZE']};",
+        f"pub const VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE: i32 = {item_constants['ABSOLUTE_MAX_STACK_SIZE']};",
+        f'pub const VANILLA_ITEM_DEFAULT_BREAK_SOUND_RESOURCE_ID: &str = "{common_break_sound}";',
+        "",
+    ])
+    for item_id, resource_id in enumerate(resources):
+        suffix = resource_id.removeprefix("minecraft:").upper()
+        lines.append(f"pub const VANILLA_ITEM_{suffix}_ID: i32 = {item_id};")
+    denied_item_ids = [
+        item_id
+        for item_id, owner in enumerate(can_destroy_block_override_owners)
+        if owner is not None
+    ]
+    lines.extend((
+        "",
+        "pub const VANILLA_DESTROY_BLOCK_DENIED_ITEM_IDS: &[i32] = &[",
+    ))
+    for item_id in denied_item_ids:
+        suffix = resources[item_id].removeprefix("minecraft:").upper()
+        lines.append(f"    VANILLA_ITEM_{suffix}_ID,")
+    lines.append("];")
+    for constant_name, catalog_name in (
+        ("VANILLA_AXE_STRIPPABLES", "axe_strippables"),
+        ("VANILLA_AXE_SCRAPEABLES", "axe_scrapeables"),
+        ("VANILLA_AXE_WAX_OFF", "axe_wax_off"),
+        ("VANILLA_HONEYCOMB_WAXABLES", "honeycomb_waxables"),
+        ("VANILLA_SHOVEL_FLATTENABLES", "shovel_flattenables"),
+    ):
+        lines.extend(("", f"pub const {constant_name}: &[VanillaBlockTransform] = &["))
+        for entry in tool_use_on_catalog[catalog_name]:
+            lines.extend(
+                (
+                    "    VanillaBlockTransform {",
+                    "        source_block_type_id: "
+                    f"crate::block_types::VANILLA_BLOCK_{entry['source']}_ID,",
+                    "        target_block_type_id: "
+                    f"crate::block_types::VANILLA_BLOCK_{entry['target']}_ID,",
+                    "    },",
+                )
+            )
+        lines.append("];")
+    lines.extend(("", "pub const VANILLA_COMPOSTABLES: &[VanillaCompostable] = &["))
+    for entry in compostables:
+        lines.extend(
+            (
+                "    VanillaCompostable {",
+                f"        item_type_id: {entry['item_type_id']},",
+                f"        chance_bits: 0x{entry['chance_bits']:08x},",
+                "    },",
+            )
+        )
+    lines.append("];")
+    lines.extend(
+        (
+            "",
+            "pub const VANILLA_SUSPICIOUS_STEW_INGREDIENTS: &[VanillaSuspiciousStewIngredient] = &[",
+        )
+    )
+    for entry in suspicious_stew_ingredients:
+        lines.extend(
+            (
+                "    VanillaSuspiciousStewIngredient {",
+                f"        item_type_id: VANILLA_ITEM_{entry['item_suffix']}_ID,",
+                "        effect_type_id: "
+                f"crate::mob_effect_types::VANILLA_MOB_EFFECT_{entry['effect']}_ID,",
+                f"        duration_ticks: {entry['duration_ticks']},",
+                "    },",
+            )
+        )
+    lines.append("];")
+    lines.extend(
+        (
+            "",
+            "pub const VANILLA_CAULDRON_ITEM_INTERACTIONS: &[VanillaCauldronItemInteractionEntry] = &[",
+        )
+    )
+    for entry in cauldron_item_interactions:
+        lines.extend(
+            (
+                "    VanillaCauldronItemInteractionEntry {",
+                f"        cauldron: VanillaCauldronKind::{entry['dispatcher'].title().replace('_', '')},",
+                f"        item_type_id: {entry['item_type_id']},",
+                f"        interaction: VanillaCauldronInteraction::{entry['handler']},",
+                "    },",
+            )
+        )
+    lines.append("];")
+    lines.extend(
+        (
+            "",
+            "pub const VANILLA_CAULDRON_TAG_INTERACTIONS: &[VanillaCauldronTagInteractionEntry] = &[",
+        )
+    )
+    for entry in cauldron_tag_interactions:
+        lines.extend(
+            (
+                "    VanillaCauldronTagInteractionEntry {",
+                f"        cauldron: VanillaCauldronKind::{entry['dispatcher'].title().replace('_', '')},",
+                f'        item_tag_resource_id: "{entry["tag_resource_id"]}",',
+                f"        interaction: VanillaCauldronInteraction::{entry['handler']},",
+                "    },",
+            )
+        )
+    lines.append("];")
+    lines.extend(("", "pub const VANILLA_HOE_TILLABLES: &[VanillaHoeTillable] = &["))
+    for entry in tool_use_on_catalog["hoe_tillables"]:
+        lines.extend(
+            (
+                "    VanillaHoeTillable {",
+                "        transform: VanillaBlockTransform {",
+                "            source_block_type_id: "
+                f"crate::block_types::VANILLA_BLOCK_{entry['source']}_ID,",
+                "            target_block_type_id: "
+                f"crate::block_types::VANILLA_BLOCK_{entry['target']}_ID,",
+                "        },",
+                f"        requires_air_above: {str(entry['requires_air_above']).lower()},",
+                "    },",
+            )
+        )
+    lines.append("];")
+    for name, entries, block_targets in (
+        ("VANILLA_ITEM_CRAFTING_REMAINDERS", crafting_remainders, False),
+        ("VANILLA_ITEM_SPECIAL_BLOCKS", special_item_blocks, True),
+        ("VANILLA_ITEM_ALTERNATIVE_BLOCKS", alternative_item_blocks, True),
+    ):
+        lines.extend(("", f"pub const {name}: &[(i32, i32)] = &["))
+        for item_id, target in entries:
+            target_id = (
+                f"crate::block_types::VANILLA_BLOCK_{target}_ID"
+                if block_targets else str(target)
+            )
+            lines.append(f"    ({item_id}, {target_id}),")
+        lines.append("];")
+
+    block_item_kind_variants = [
+        "BannerItem",
+        "BedItem",
+        "BlockItem",
+        "DoubleHighBlockItem",
+        "GameMasterBlockItem",
+        "HangingSignItem",
+        "PlayerHeadItem",
+        "ScaffoldingBlockItem",
+        "SignItem",
+        "StandingAndWallBlockItem",
+    ]
+    bucket_fluid_variants = ["Empty", "Water", "Lava"]
+
+    def tag_map(variants: list[str]) -> dict[str, int]:
+        if len(variants) >= 255:
+            raise ValueError(f"too many enum variants for u8 tag: {len(variants)}")
+        return {variant: idx + 1 for idx, variant in enumerate(variants)}
+
+    use_tags = tag_map(use_override_variants)
+    use_on_tags = tag_map(use_on_override_variants)
+    interact_living_tags = tag_map(interact_living_entity_override_variants)
+    equip_tags = tag_map(equip_on_interact_variants)
+    bucket_fluid_tags = tag_map(bucket_fluid_variants)
+    block_item_kind_tags = tag_map(block_item_kind_variants)
+
+    string_pool = bytearray()
+    string_offsets: dict[str, tuple[int, int]] = {}
+
+    def intern_str(text: str) -> tuple[int, int]:
+        cached = string_offsets.get(text)
+        if cached is not None:
+            return cached
+        raw = text.encode("utf-8")
+        if not raw.isascii():
+            raise ValueError(f"non-ASCII item catalog string: {text!r}")
+        if len(raw) >= 0xFFFF:
+            raise ValueError(f"string exceeds u16 length: {len(raw)}")
+        entry = (len(string_pool), len(raw))
+        string_pool.extend(raw)
+        string_offsets[text] = entry
+        return entry
+
+    record_struct = struct.Struct("<IH5BIHBHH")
+    packed_records = bytearray()
+    for (
+        resource_id,
+        use_override_owner,
+        use_on_override_owner,
+        interact_living_entity_override_owner,
+        equip_on_interact_owner,
+        bucket_behavior,
+        block_item_behavior,
+    ) in zip(
+        resources,
+        use_override_owners,
+        use_on_override_owners,
+        interact_living_entity_override_owners,
+        equip_on_interact_owners,
+        bucket_behaviors,
+        block_item_behaviors,
+        strict=True,
+    ):
+        res_off, res_len = intern_str(resource_id)
+        if bucket_behavior is not None:
+            fluid_tag = bucket_fluid_tags[bucket_behavior["fluid"].title()]
+            mob_sound = bucket_behavior["mob_empty_sound"]
+            if mob_sound is not None:
+                sound_off, sound_len = intern_str(mob_sound)
+            else:
+                sound_off, sound_len = (0, 0xFFFF)
+        else:
+            fluid_tag = 0
+            sound_off, sound_len = (0, 0xFFFF)
+        if block_item_behavior is not None:
+            kind_tag = block_item_kind_tags[block_item_behavior["kind"]]
+            blk_id = block_id_by_field[block_item_behavior["block_field"]]
+            wall_field = block_item_behavior["wall_block_field"]
+            wall_id = 0xFFFF if wall_field is None else block_id_by_field[wall_field]
+        else:
+            kind_tag = 0
+            blk_id = 0
+            wall_id = 0xFFFF
+        packed_records.extend(
+            record_struct.pack(
+                res_off,
+                res_len,
+                0 if use_override_owner is None else use_tags[use_override_owner],
+                0 if use_on_override_owner is None else use_on_tags[use_on_override_owner],
+                0
+                if interact_living_entity_override_owner is None
+                else interact_living_tags[interact_living_entity_override_owner],
+                0 if equip_on_interact_owner is None else equip_tags[equip_on_interact_owner],
+                fluid_tag,
+                sound_off,
+                sound_len,
+                kind_tag,
+                blk_id,
+                wall_id,
+            )
+        )
+
+    records_offset = len(string_pool)
+    blob = bytes(string_pool + packed_records)
+
+    def emit_enum_table(table_name: str, enum_name: str, variants: list[str]) -> None:
+        lines.append(
+            f"const {table_name}: [Option<{enum_name}>; {len(variants) + 1}] = ["
+        )
+        lines.append("    None,")
+        for variant in variants:
+            lines.append(f"    Some({enum_name}::{variant}),")
+        lines.append("];")
+        lines.append("")
+
+    lines.extend(
+        (
+            "",
+            'const BYTES: &[u8] = include_bytes!("../data/item_types_26_1.bin");',
+            f"const ITEM_COUNT: usize = {len(resources)};",
+            f"const RECORDS_OFFSET: usize = {records_offset};",
+            f"const RECORD_STRIDE: usize = {record_struct.size};",
+            "const STRINGS_END: usize = RECORDS_OFFSET;",
+            "",
+            "const _: () = {",
+            "    let mut i = 0;",
+            "    while i + 8 <= STRINGS_END {",
+            "        let word = u64::from_ne_bytes([",
+            "            BYTES[i],",
+            "            BYTES[i + 1],",
+            "            BYTES[i + 2],",
+            "            BYTES[i + 3],",
+            "            BYTES[i + 4],",
+            "            BYTES[i + 5],",
+            "            BYTES[i + 6],",
+            "            BYTES[i + 7],",
+            "        ]);",
+            "        assert!(word & 0x8080_8080_8080_8080 == 0);",
+            "        i += 8;",
+            "    }",
+            "    while i < STRINGS_END {",
+            "        assert!(BYTES[i] < 0x80);",
+            "        i += 1;",
+            "    }",
+            "};",
+            "",
+            "macro_rules! u16_at {",
+            "    ($offset:expr) => {{",
+            "        let off = $offset;",
+            "        u16::from_le_bytes([BYTES[off], BYTES[off + 1]])",
+            "    }};",
+            "}",
+            "",
+            "macro_rules! u32_at {",
+            "    ($offset:expr) => {{",
+            "        let off = $offset;",
+            "        u32::from_le_bytes([",
+            "            BYTES[off],",
+            "            BYTES[off + 1],",
+            "            BYTES[off + 2],",
+            "            BYTES[off + 3],",
+            "        ])",
+            "    }};",
+            "}",
+            "",
+            "macro_rules! str_at {",
+            "    ($offset:expr, $len:expr) => {{",
+            "        let off: usize = $offset;",
+            "        let len: usize = $len;",
+            "        assert!(off + len <= STRINGS_END);",
+            "        // SAFETY: `BYTES[..STRINGS_END]` is verified ASCII above and `off + len`",
+            "        // is bounded within `BYTES`.",
+            "        unsafe {",
+            "            core::str::from_utf8_unchecked(core::slice::from_raw_parts(",
+            "                BYTES.as_ptr().add(off),",
+            "                len,",
+            "            ))",
+            "        }",
+            "    }};",
+            "}",
+            "",
+            "macro_rules! opt_str_at {",
+            "    ($offset:expr, $len:expr) => {{",
+            "        let len_u16: u16 = $len;",
+            "        if len_u16 == u16::MAX {",
+            "            None",
+            "        } else {",
+            "            Some(str_at!($offset, len_u16 as usize))",
+            "        }",
+            "    }};",
+            "}",
+            "",
+        )
+    )
+    emit_enum_table("USE_OVERRIDE_TABLE", "VanillaItemUseOverride", use_override_variants)
+    emit_enum_table(
+        "USE_ON_OVERRIDE_TABLE", "VanillaItemUseOnOverride", use_on_override_variants
+    )
+    emit_enum_table(
+        "INTERACT_LIVING_TABLE",
+        "VanillaItemInteractLivingEntityOverride",
+        interact_living_entity_override_variants,
+    )
+    emit_enum_table("EQUIP_TABLE", "VanillaItemEquipOnInteract", equip_on_interact_variants)
+    emit_enum_table("BUCKET_FLUID_TABLE", "VanillaBucketFluid", bucket_fluid_variants)
+    emit_enum_table("BLOCK_ITEM_KIND_TABLE", "VanillaBlockItemKind", block_item_kind_variants)
+
+    lines.extend(
+        (
+            "const EMPTY_ITEM_ENTRY: ItemTypeCatalogEntry = ItemTypeCatalogEntry {",
+            "    id: 0,",
+            '    resource_id: "",',
+            "    use_override: None,",
+            "    use_on_override: None,",
+            "    interact_living_entity_override: None,",
+            "    equip_on_interact: None,",
+            "    bucket_behavior: None,",
+            "    block_item_behavior: None,",
+            "};",
+            "",
+            "const fn decode_item_types() -> [ItemTypeCatalogEntry; ITEM_COUNT] {",
+            "    let mut out = [EMPTY_ITEM_ENTRY; ITEM_COUNT];",
+            "    let mut idx = 0;",
+            "    while idx < ITEM_COUNT {",
+            "        let base = RECORDS_OFFSET + idx * RECORD_STRIDE;",
+            "        let bucket_behavior = match BUCKET_FLUID_TABLE[BYTES[base + 10] as usize] {",
+            "            None => None,",
+            "            Some(fluid) => Some(VanillaBucketItemBehavior {",
+            "                fluid,",
+            "                mob_empty_sound_resource_id: opt_str_at!(",
+            "                    u32_at!(base + 11) as usize,",
+            "                    u16_at!(base + 15)",
+            "                ),",
+            "            }),",
+            "        };",
+            "        let block_item_behavior = match BLOCK_ITEM_KIND_TABLE[BYTES[base + 17] as usize] {",
+            "            None => None,",
+            "            Some(kind) => {",
+            "                let wall_raw = u16_at!(base + 20);",
+            "                Some(VanillaBlockItemBehavior {",
+            "                    kind,",
+            "                    block_type_id: u16_at!(base + 18) as i32,",
+            "                    wall_block_type_id: if wall_raw == u16::MAX {",
+            "                        None",
+            "                    } else {",
+            "                        Some(wall_raw as i32)",
+            "                    },",
+            "                })",
+            "            }",
+            "        };",
+            "        out[idx] = ItemTypeCatalogEntry {",
+            "            id: idx as i32,",
+            "            resource_id: str_at!(u32_at!(base) as usize, u16_at!(base + 4) as usize),",
+            "            use_override: USE_OVERRIDE_TABLE[BYTES[base + 6] as usize],",
+            "            use_on_override: USE_ON_OVERRIDE_TABLE[BYTES[base + 7] as usize],",
+            "            interact_living_entity_override: INTERACT_LIVING_TABLE[BYTES[base + 8] as usize],",
+            "            equip_on_interact: EQUIP_TABLE[BYTES[base + 9] as usize],",
+            "            bucket_behavior,",
+            "            block_item_behavior,",
+            "        };",
+            "        idx += 1;",
+            "    }",
+            "    out",
+            "}",
+            "",
+            "static DECODED_ITEM_TYPES: [ItemTypeCatalogEntry; ITEM_COUNT] = decode_item_types();",
+            "pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &DECODED_ITEM_TYPES;",
+            "",
+            "pub fn vanilla_item_type(id: i32) -> Option<&'static ItemTypeCatalogEntry> {",
+        "    VANILLA_ITEM_TYPES.get(usize::try_from(id).ok()?)", "}", "",
+        "#[inline]",
+        "pub fn vanilla_item_type_for_resource_id(resource_id: &str) -> Option<&'static ItemTypeCatalogEntry> {",
+        "    crate::lookup_tables::item_type_for_resource_id(resource_id)",
+        "}", "",
+        "pub fn vanilla_item_resource_id_matches_type(resource_id: &str, item_type_id: i32) -> bool {",
+        "    vanilla_item_type(item_type_id).is_some_and(|entry| entry.resource_id == resource_id)",
+        "}", "",
+        "pub fn vanilla_compost_chance_bits(item_type_id: i32) -> Option<u32> {",
+        "    VANILLA_COMPOSTABLES",
+        "        .binary_search_by_key(&item_type_id, |entry| entry.item_type_id)",
+        "        .ok()",
+        "        .map(|index| VANILLA_COMPOSTABLES[index].chance_bits)",
+        "}", "",
+        "pub fn vanilla_suspicious_stew_ingredient(",
+        "    item_type_id: i32,",
+        ") -> Option<VanillaSuspiciousStewIngredient> {",
+        "    VANILLA_SUSPICIOUS_STEW_INGREDIENTS",
+        "        .binary_search_by_key(&item_type_id, |entry| entry.item_type_id)",
+        "        .ok()",
+        "        .map(|index| VANILLA_SUSPICIOUS_STEW_INGREDIENTS[index])",
+        "}", "",
+        "pub fn vanilla_cauldron_item_interaction(",
+        "    cauldron: VanillaCauldronKind,",
+        "    item_type_id: i32,",
+        ") -> Option<VanillaCauldronInteraction> {",
+        "    VANILLA_CAULDRON_ITEM_INTERACTIONS",
+        "        .iter()",
+        "        .find(|entry| entry.cauldron == cauldron && entry.item_type_id == item_type_id)",
+        "        .map(|entry| entry.interaction)",
+        "}", "",
+        "pub fn vanilla_cauldron_tag_interactions(",
+        "    cauldron: VanillaCauldronKind,",
+        ") -> impl Iterator<Item = &'static VanillaCauldronTagInteractionEntry> {",
+        "    VANILLA_CAULDRON_TAG_INTERACTIONS",
+        "        .iter()",
+        "        .filter(move |entry| entry.cauldron == cauldron)",
+        "}", "",
+        "pub fn vanilla_item_default_break_sound_resource_id(item_type_id: i32) -> Option<&'static str> {",
+        "    vanilla_item_type(item_type_id)?;",
+        "    Some(match item_type_id {",
+    ))
+    for resource_id, sound in sorted(
+        break_sound_overrides.items(), key=lambda entry: resources.index(entry[0])
+    ):
+        suffix = resource_id.removeprefix("minecraft:").upper()
+        lines.append(f'        VANILLA_ITEM_{suffix}_ID => "{sound}",')
+    lines.extend((
+        "        _ => VANILLA_ITEM_DEFAULT_BREAK_SOUND_RESOURCE_ID,",
+        "    })",
+        "}", "",
+        "#[cfg(test)]", "mod tests {", "    use std::collections::HashSet;", "", "    use super::*;", "",
+        "    #[test]", "    fn item_catalog_is_complete_contiguous_and_unique() {",
+        "        assert_eq!(VANILLA_ITEM_TYPES.len(), 1506);", "        let mut resources = HashSet::new();",
+        "        for (id, entry) in VANILLA_ITEM_TYPES.iter().enumerate() {", "            assert_eq!(entry.id, id as i32);",
+        '            assert!(entry.resource_id.starts_with("minecraft:"));', "            assert!(resources.insert(entry.resource_id));",
+        "        }", "    }", "", "    #[test]", "    fn item_catalog_preserves_vanilla_registration_order() {",
+        "        assert_eq!(VANILLA_ITEM_AIR_ID, 0);", "        assert_eq!(VANILLA_ITEM_SADDLE_ID, 838);",
+        "        assert_eq!(VANILLA_ITEM_ELYTRA_ID, 863);", "        assert_eq!(VANILLA_ITEM_SNOWBALL_ID, 1017);",
+        "        assert_eq!(VANILLA_ITEM_EGG_ID, 1032);", "        assert_eq!(VANILLA_ITEM_ENDER_EYE_ID, 1129);",
+        "        assert_eq!(VANILLA_ITEM_SPLASH_POTION_ID, 1292);", "        assert_eq!(VANILLA_ITEM_OMINOUS_BOTTLE_ID, 1505);",
+        "        assert_eq!(vanilla_item_type(-1), None);", "        assert_eq!(vanilla_item_type(1506), None);",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.use_override.is_some()).count(), {use_override_count});",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.use_on_override.is_some()).count(), {use_on_override_count});",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.interact_living_entity_override.is_some()).count(), {interact_living_entity_override_count});",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.equip_on_interact.is_some()).count(), {equip_on_interact_count});",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.bucket_behavior.is_some()).count(), {sum(behavior is not None for behavior in bucket_behaviors)});",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.block_item_behavior.is_some()).count(), {sum(behavior is not None for behavior in block_item_behaviors)});",
+        "        assert_eq!(VANILLA_DESTROY_BLOCK_DENIED_ITEM_IDS, &[VANILLA_ITEM_DEBUG_STICK_ID]);",
+        "        assert!(VANILLA_ITEM_TYPES.iter().all(|entry| entry.block_item_behavior.is_some() == matches!(entry.use_on_override, Some(VanillaItemUseOnOverride::BlockItem))));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().use_override, None);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().use_on_override, Some(VanillaItemUseOnOverride::BlockItem));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().block_item_behavior, Some(VanillaBlockItemBehavior { kind: VanillaBlockItemKind::BlockItem, block_type_id: crate::block_types::VANILLA_BLOCK_STONE_ID, wall_block_type_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_OAK_SIGN_ID).unwrap().block_item_behavior, Some(VanillaBlockItemBehavior { kind: VanillaBlockItemKind::SignItem, block_type_id: crate::block_types::VANILLA_BLOCK_OAK_SIGN_ID, wall_block_type_id: Some(crate::block_types::VANILLA_BLOCK_OAK_WALL_SIGN_ID) }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_REDSTONE_ID).unwrap().block_item_behavior.unwrap().block_type_id, crate::block_types::VANILLA_BLOCK_REDSTONE_WIRE_ID);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_EXPOSED_COPPER_BARS_ID).unwrap().block_item_behavior.unwrap().block_type_id, crate::block_types::VANILLA_BLOCK_EXPOSED_COPPER_BARS_ID);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_TALL_GRASS_ID).unwrap().block_item_behavior.unwrap().kind, VanillaBlockItemKind::DoubleHighBlockItem);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_COMMAND_BLOCK_ID).unwrap().block_item_behavior.unwrap().kind, VanillaBlockItemKind::GameMasterBlockItem);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_SCAFFOLDING_ID).unwrap().block_item_behavior.unwrap().kind, VanillaBlockItemKind::ScaffoldingBlockItem);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().interact_living_entity_override, None);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_RED_DYE_ID).unwrap().interact_living_entity_override, Some(VanillaItemInteractLivingEntityOverride::DyeItem));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_SADDLE_ID).unwrap().equip_on_interact, Some(VanillaItemEquipOnInteract::Saddle));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_WHITE_HARNESS_ID).unwrap().equip_on_interact, Some(VanillaItemEquipOnInteract::Harness));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_ELYTRA_ID).unwrap().equip_on_interact, None);",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_CARROT_ON_A_STICK_ID).unwrap().use_override, Some(VanillaItemUseOverride::FoodOnAStickItem));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_SNOWBALL_ID).unwrap().use_override, Some(VanillaItemUseOverride::SnowballItem));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_WRITABLE_BOOK_ID).unwrap().use_override, Some(VanillaItemUseOverride::WritableBookItem));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Empty, mob_empty_sound_resource_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_WATER_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Water, mob_empty_sound_resource_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_LAVA_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Lava, mob_empty_sound_resource_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_COD_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Water, mob_empty_sound_resource_id: Some(\"minecraft:item.bucket.empty_fish\") }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_MILK_BUCKET_ID).unwrap().bucket_behavior, None);",
+        '        assert_eq!(vanilla_item_type_for_resource_id("snowball").unwrap().id, VANILLA_ITEM_SNOWBALL_ID);',
+        '        assert_eq!(vanilla_item_type_for_resource_id("example:snowball"), None);',
+        '        assert!(vanilla_item_resource_id_matches_type("minecraft:snowball", VANILLA_ITEM_SNOWBALL_ID));',
+        '        assert!(!vanilla_item_resource_id_matches_type("snowball", VANILLA_ITEM_SNOWBALL_ID));',
+        '        assert!(!vanilla_item_resource_id_matches_type("minecraft:snowball", VANILLA_ITEM_EGG_ID));',
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(VANILLA_ITEM_STONE_ID), Some(\"minecraft:entity.item.break\"));",
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(VANILLA_ITEM_SHIELD_ID), Some(\"minecraft:item.shield.break\"));",
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(VANILLA_ITEM_WOLF_ARMOR_ID), Some(\"minecraft:item.wolf_armor.break\"));",
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(-1), None);",
+        f"        assert_eq!(VANILLA_AXE_STRIPPABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['axe_strippables']});",
+        f"        assert_eq!(VANILLA_AXE_SCRAPEABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['axe_scrapeables']});",
+        f"        assert_eq!(VANILLA_AXE_WAX_OFF.len(), {EXPECTED_TOOL_USE_ON_COUNTS['axe_wax_off']});",
+        f"        assert_eq!(VANILLA_HONEYCOMB_WAXABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['honeycomb_waxables']});",
+        f"        assert_eq!(VANILLA_HOE_TILLABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['hoe_tillables']});",
+        f"        assert_eq!(VANILLA_SHOVEL_FLATTENABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['shovel_flattenables']});",
+        f"        assert_eq!(VANILLA_COMPOSTABLES.len(), {EXPECTED_COMPOSTABLE_COUNT});",
+        f"        assert_eq!(VANILLA_SUSPICIOUS_STEW_INGREDIENTS.len(), {EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT});",
+        f"        assert_eq!(VANILLA_CAULDRON_ITEM_INTERACTIONS.len(), {EXPECTED_CAULDRON_ITEM_INTERACTION_COUNT});",
+        f"        assert_eq!(VANILLA_CAULDRON_TAG_INTERACTIONS.len(), {EXPECTED_CAULDRON_TAG_INTERACTION_COUNT});",
+        "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_OAK_LEAVES_ID), Some(0.3_f32.to_bits()));",
+        "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_APPLE_ID), Some(0.65_f32.to_bits()));",
+        "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_CAKE_ID), Some(1.0_f32.to_bits()));",
+        "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_STONE_ID), None);",
+        "        assert!(VANILLA_COMPOSTABLES.windows(2).all(|entries| entries[0].item_type_id < entries[1].item_type_id));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_DANDELION_ID), Some(VanillaSuspiciousStewIngredient { item_type_id: VANILLA_ITEM_DANDELION_ID, effect_type_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_SATURATION_ID, duration_ticks: 7 }));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_OPEN_EYEBLOSSOM_ID), Some(VanillaSuspiciousStewIngredient { item_type_id: VANILLA_ITEM_OPEN_EYEBLOSSOM_ID, effect_type_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_BLINDNESS_ID, duration_ticks: 220 }));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_WITHER_ROSE_ID), Some(VanillaSuspiciousStewIngredient { item_type_id: VANILLA_ITEM_WITHER_ROSE_ID, effect_type_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_WITHER_ID, duration_ticks: 140 }));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_STONE_ID), None);",
+        "        assert!(VANILLA_SUSPICIOUS_STEW_INGREDIENTS.windows(2).all(|entries| entries[0].item_type_id < entries[1].item_type_id));",
+        "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Empty, VANILLA_ITEM_WATER_BUCKET_ID), Some(VanillaCauldronInteraction::PourWaterBucket));",
+        "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Water, VANILLA_ITEM_BUCKET_ID), Some(VanillaCauldronInteraction::TakeWaterBucket));",
+        "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Lava, VANILLA_ITEM_BUCKET_ID), Some(VanillaCauldronInteraction::TakeLavaBucket));",
+        "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::PowderSnow, VANILLA_ITEM_BUCKET_ID), Some(VanillaCauldronInteraction::TakePowderSnowBucket));",
+        "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Empty, VANILLA_ITEM_STONE_ID), None);",
+        "        assert_eq!(vanilla_cauldron_tag_interactions(VanillaCauldronKind::Water).map(|entry| (entry.item_tag_resource_id, entry.interaction)).collect::<Vec<_>>(), vec![(\"minecraft:cauldron_can_remove_dye\", VanillaCauldronInteraction::CleanDyedItem)]);",
+        "        assert_eq!(vanilla_cauldron_tag_interactions(VanillaCauldronKind::Empty).count(), 0);",
+        "        assert!(VANILLA_AXE_STRIPPABLES.iter().any(|entry| entry.source_block_type_id == crate::block_types::VANILLA_BLOCK_OAK_LOG_ID && entry.target_block_type_id == crate::block_types::VANILLA_BLOCK_STRIPPED_OAK_LOG_ID));",
+        "        assert!(VANILLA_AXE_SCRAPEABLES.iter().any(|entry| entry.source_block_type_id == crate::block_types::VANILLA_BLOCK_WEATHERED_COPPER_ID && entry.target_block_type_id == crate::block_types::VANILLA_BLOCK_EXPOSED_COPPER_ID));",
+        "        assert!(VANILLA_AXE_WAX_OFF.iter().any(|entry| entry.source_block_type_id == crate::block_types::VANILLA_BLOCK_WAXED_COPPER_BLOCK_ID && entry.target_block_type_id == crate::block_types::VANILLA_BLOCK_COPPER_BLOCK_ID));",
+        "        assert!(VANILLA_HONEYCOMB_WAXABLES.iter().any(|entry| entry.source_block_type_id == crate::block_types::VANILLA_BLOCK_COPPER_BLOCK_ID && entry.target_block_type_id == crate::block_types::VANILLA_BLOCK_WAXED_COPPER_BLOCK_ID));",
+        "        assert!(VANILLA_HOE_TILLABLES.iter().any(|entry| entry.transform.source_block_type_id == crate::block_types::VANILLA_BLOCK_ROOTED_DIRT_ID && !entry.requires_air_above));",
+        "        assert!(VANILLA_SHOVEL_FLATTENABLES.iter().any(|entry| entry.source_block_type_id == crate::block_types::VANILLA_BLOCK_GRASS_BLOCK_ID && entry.target_block_type_id == crate::block_types::VANILLA_BLOCK_DIRT_PATH_ID));",
+        "    }", "", "    #[test]", "    fn item_stack_size_consumers_use_generated_constants() {",
+        "        assert_eq!(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, 64);",
+        "        assert_eq!(VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, 99);",
+        "    }", "}", "",
+    ))
+    formatted = subprocess.run(
+        ["rustfmt", "--edition", "2021", "--emit", "stdout"],
+        input="\n".join(lines), text=True, capture_output=True, check=False,
+    )
+    if formatted.returncode != 0:
+        raise ValueError(f"rustfmt rejected generated item types:\n{formatted.stderr}")
+    return formatted.stdout, blob
+
+
+def generate(source_root: Path) -> tuple[str, bytes]:
+    items = parse_source(ITEMS_PATH.as_posix(), (source_root / ITEMS_PATH).read_bytes())
+    item = parse_source(ITEM_PATH.as_posix(), (source_root / ITEM_PATH).read_bytes())
+    item_ids = parse_source(ITEM_IDS_PATH.as_posix(), (source_root / ITEM_IDS_PATH).read_bytes())
+    data_components = parse_source(
+        DATA_COMPONENTS_PATH.as_posix(), (source_root / DATA_COMPONENTS_PATH).read_bytes()
+    )
+    sound_events = parse_source(
+        SOUND_EVENTS_PATH.as_posix(), (source_root / SOUND_EVENTS_PATH).read_bytes()
+    )
+    extracted = extract_item_registry_catalog(items, item_ids, item)
+    resource_paths: list[str] = []
+    can_destroy_block_override_owners: list[str | None] = []
+    use_override_owners: list[str | None] = []
+    use_on_override_owners: list[str | None] = []
+    interact_living_entity_override_owners: list[str | None] = []
+    equip_on_interact_owners: list[str | None] = []
+    bucket_behaviors: list[dict[str, str | None] | None] = []
+    block_item_behaviors: list[dict[str, str | None] | None] = []
+    item_type_ids_by_field: dict[str, tuple[int, ...]] = {}
+    item_class_sources = [
+        parse_source(
+            path.relative_to(source_root).as_posix(),
+            path.read_bytes(),
+        )
+        for path in sorted((source_root / ITEM_PACKAGE_PATH).glob("*.java"))
+    ]
+    item_class_source_by_file = {
+        Path(source.relative_path).name: source for source in item_class_sources
+    }
+    use_override_owner_by_factory = extract_item_use_override_owners(
+        extracted.declarations, item_class_sources
+    )
+    use_on_override_owner_by_factory = extract_item_use_on_override_owners(
+        extracted.declarations, item_class_sources
+    )
+    interact_living_entity_override_owner_by_factory = (
+        extract_item_interact_living_entity_override_owners(
+            extracted.declarations, item_class_sources
+        )
+    )
+    can_destroy_block_override_owner_by_factory = (
+        extract_item_can_destroy_block_override_owners(
+            extracted.declarations, item_class_sources
+        )
+    )
+    bucket_behavior_by_field = extract_bucket_item_behaviors(extracted.declarations)
+    block_item_behavior_by_field = extract_block_item_behaviors(
+        extracted.declarations, use_on_override_owner_by_factory
+    )
+    block_catalog = extract_block_registry_catalog(
+        parse_source(
+            BLOCKS_PATH.as_posix(), (source_root / BLOCKS_PATH).read_bytes()
+        ),
+        parse_source(
+            BLOCK_IDS_PATH.as_posix(), (source_root / BLOCK_IDS_PATH).read_bytes()
+        ),
+        parse_source(
+            BLOCK_ENTITY_TYPES_PATH.as_posix(),
+            (source_root / BLOCK_ENTITY_TYPES_PATH).read_bytes(),
+        ),
+    )
+    suspicious_stew_effects_by_block = _suspicious_stew_effects_by_block(
+        block_catalog.declarations,
+        parse_source(
+            FLOWER_BLOCK_PATH.as_posix(),
+            (source_root / FLOWER_BLOCK_PATH).read_bytes(),
+        ),
+        parse_source(
+            EYEBLOSSOM_BLOCK_PATH.as_posix(),
+            (source_root / EYEBLOSSOM_BLOCK_PATH).read_bytes(),
+        ),
+    )
+    block_fields = {
+        declaration["field"] for declaration in block_catalog.declarations
+    }
+    block_id_by_field = {
+        declaration["field"]: declaration["declaration_order"]
+        for declaration in block_catalog.declarations
+    }
+    block_field_by_resource_id = {
+        declaration["resource_id"]: declaration["field"]
+        for declaration in block_catalog.declarations
+    }
+    sound_resources = {
+        entry.constant_name: entry.resource_id
+        for entry in direct_sound_event_entries(sound_events)
+    }
+    for declaration in extracted.declarations:
+        declaration_resources = item_resource_ids_for_declaration(
+            declaration, extracted.item_id_constants
+        )
+        first_item_type_id = len(resource_paths)
+        factory_class = item_factory_class(declaration)
+        resource_count = len(declaration_resources)
+        item_type_ids_by_field[declaration["field"]] = tuple(
+            range(first_item_type_id, first_item_type_id + resource_count)
+        )
+        resource_paths.extend(declaration_resources)
+        can_destroy_block_override_owners.extend(
+            [can_destroy_block_override_owner_by_factory[factory_class]]
+            * resource_count
+        )
+        use_override_owners.extend(
+            [use_override_owner_by_factory[factory_class]] * resource_count
+        )
+        use_on_override_owners.extend(
+            [use_on_override_owner_by_factory[factory_class]] * resource_count
+        )
+        interact_living_entity_override_owners.extend(
+            [interact_living_entity_override_owner_by_factory[factory_class]]
+            * resource_count
+        )
+        equip_on_interact_owners.extend(
+            [_equip_on_interact_owner(declaration)] * resource_count
+        )
+        bucket_behavior = bucket_behavior_by_field[declaration["field"]]
+        if bucket_behavior is not None:
+            bucket_behavior = dict(bucket_behavior)
+            empty_sound = bucket_behavior["mob_empty_sound"]
+            if empty_sound is not None:
+                if empty_sound not in sound_resources:
+                    raise ValueError(
+                        f"Items.{declaration['field']}: unknown sound {empty_sound}"
+                    )
+                bucket_behavior["mob_empty_sound"] = sound_resources[empty_sound]
+        bucket_behaviors.extend([bucket_behavior] * resource_count)
+        block_item_behavior = block_item_behavior_by_field[declaration["field"]]
+        if block_item_behavior is None:
+            block_item_behaviors.extend([None] * resource_count)
+            continue
+        primary_block = block_item_behavior["primary_block"]
+        if declaration["field_type"] == "WeatheringCopperItems":
+            expanded_block_fields = []
+            for resource_path in declaration_resources:
+                resource_id = "minecraft:" + resource_path
+                block_field = block_field_by_resource_id.get(resource_id)
+                if block_field is None:
+                    raise ValueError(
+                        f"Items.{declaration['field']}: unresolved weathering "
+                        f"block resource {resource_id}"
+                    )
+                expanded_block_fields.append(block_field)
+            if expanded_block_fields[0] != primary_block:
+                raise ValueError(
+                    f"Items.{declaration['field']}: weathering primary block "
+                    f"{primary_block} does not match {expanded_block_fields[0]}"
+                )
+        else:
+            if primary_block not in block_fields:
+                raise ValueError(
+                    f"Items.{declaration['field']}: unresolved primary block "
+                    f"Blocks.{primary_block}"
+                )
+            expanded_block_fields = [primary_block] * resource_count
+        wall_block = block_item_behavior["wall_block"]
+        if wall_block is not None and wall_block not in block_fields:
+            raise ValueError(
+                f"Items.{declaration['field']}: unresolved wall block "
+                f"Blocks.{wall_block}"
+            )
+        block_item_behaviors.extend(
+            [
+                {
+                    "kind": block_item_behavior["kind"],
+                    "block_field": block_field,
+                    "wall_block_field": wall_block,
+                }
+                for block_field in expanded_block_fields
+            ]
+        )
+    actual_block_item_behavior_count = sum(
+        behavior is not None for behavior in block_item_behaviors
+    )
+    if actual_block_item_behavior_count != EXPECTED_BLOCK_ITEM_BEHAVIOR_COUNT:
+        raise ValueError(
+            "unexpected vanilla 26.1 BlockItem behavior count: "
+            f"{actual_block_item_behavior_count}"
+        )
+    suspicious_stew_ingredients = sorted(
+        (
+            {
+                "item_type_id": item_type_id,
+                "item_suffix": resource_paths[item_type_id].upper(),
+                "effect": suspicious_stew_effects_by_block[behavior["block_field"]],
+            }
+            for item_type_id, behavior in enumerate(block_item_behaviors)
+            if behavior is not None
+            and behavior["block_field"] in suspicious_stew_effects_by_block
+        ),
+        key=lambda entry: entry["item_type_id"],
+    )
+    for entry in suspicious_stew_ingredients:
+        effect, duration_ticks = entry.pop("effect")
+        entry["effect"] = effect
+        entry["duration_ticks"] = duration_ticks
+    generated_stew_blocks = {
+        behavior["block_field"]
+        for behavior in block_item_behaviors
+        if behavior is not None
+        and behavior["block_field"] in suspicious_stew_effects_by_block
+    }
+    if (
+        len(suspicious_stew_ingredients)
+        != EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT
+        or generated_stew_blocks != set(suspicious_stew_effects_by_block)
+    ):
+        raise ValueError(
+            "suspicious-stew effect blocks do not map one-to-one onto generated items"
+        )
+    common_break_sound, break_sound_overrides = _default_break_sounds(
+        extracted.declarations,
+        extracted.item_id_constants,
+        item,
+        data_components,
+        sound_events,
+    )
+    tool_use_on_catalog = extract_tool_use_on_catalog(
+        block_catalog.declarations,
+        item_class_source_by_file["AxeItem.java"],
+        item_class_source_by_file["HoeItem.java"],
+        item_class_source_by_file["ShovelItem.java"],
+        item_class_source_by_file["HoneycombItem.java"],
+        parse_source(
+            WEATHERING_COPPER_PATH.as_posix(),
+            (source_root / WEATHERING_COPPER_PATH).read_bytes(),
+        ),
+        parse_source(
+            WEATHERING_COPPER_BLOCKS_PATH.as_posix(),
+            (source_root / WEATHERING_COPPER_BLOCKS_PATH).read_bytes(),
+        ),
+    )
+    actual_tool_use_on_counts = {
+        name: len(entries) for name, entries in tool_use_on_catalog.items()
+    }
+    if actual_tool_use_on_counts != EXPECTED_TOOL_USE_ON_COUNTS:
+        raise ValueError(
+            "unexpected vanilla 26.1 tool useOn catalog counts: "
+            f"{actual_tool_use_on_counts}"
+        )
+    targeted_block_use_catalog = extract_targeted_block_use_catalog(
+        parse_source(
+            COMPOSTER_BLOCK_PATH.as_posix(),
+            (source_root / COMPOSTER_BLOCK_PATH).read_bytes(),
+        ),
+        parse_source(
+            CAULDRON_INTERACTIONS_PATH.as_posix(),
+            (source_root / CAULDRON_INTERACTIONS_PATH).read_bytes(),
+        ),
+        parse_source(
+            ITEM_TAGS_PATH.as_posix(),
+            (source_root / ITEM_TAGS_PATH).read_bytes(),
+        ),
+    )
+    if len(targeted_block_use_catalog.compostables) != EXPECTED_COMPOSTABLE_COUNT:
+        raise ValueError(
+            "unexpected vanilla 26.1 compostable count: "
+            f"{len(targeted_block_use_catalog.compostables)}"
+        )
+    if (
+        len(targeted_block_use_catalog.cauldron_items)
+        != EXPECTED_CAULDRON_ITEM_INTERACTION_COUNT
+    ):
+        raise ValueError(
+            "unexpected vanilla 26.1 cauldron item interaction count: "
+            f"{len(targeted_block_use_catalog.cauldron_items)}"
+        )
+    if (
+        len(targeted_block_use_catalog.cauldron_tags)
+        != EXPECTED_CAULDRON_TAG_INTERACTION_COUNT
+    ):
+        raise ValueError(
+            "unexpected vanilla 26.1 cauldron tag interaction count: "
+            f"{len(targeted_block_use_catalog.cauldron_tags)}"
+        )
+
+    def one_item_type_id(item_field: str) -> int:
+        item_type_ids = item_type_ids_by_field.get(item_field)
+        if item_type_ids is None:
+            raise ValueError(f"unresolved targeted block-use Items.{item_field}")
+        if len(item_type_ids) != 1:
+            raise ValueError(
+                f"targeted block-use Items.{item_field} expands to "
+                f"{len(item_type_ids)} item ids"
+            )
+        return item_type_ids[0]
+
+    crafting_remainders = []
+    special_item_blocks = []
+    alternative_item_blocks = []
+    for declaration in extracted.declarations:
+        expression = declaration["initializer"]
+        for call in _walk_facts(expression):
+            if call.get("kind") != "method_invocation" or call.get("name") != "craftRemainder":
+                continue
+            arguments = call.get("arguments", [])
+            if len(arguments) != 1 or arguments[0].get("kind") != "identifier":
+                raise ValueError("craftRemainder requires one Items field")
+            crafting_remainders.append((
+                one_item_type_id(declaration["field"]),
+                one_item_type_id(arguments[0]["canonical"]),
+            ))
+        if expression.get("name") != "registerBlock":
+            continue
+        arguments = expression["arguments"]
+        primary = _field_access(arguments[0], "Blocks")
+        if primary not in block_fields:
+            raise ValueError("registerBlock requires a known primary block")
+        if block_item_behavior_by_field[declaration["field"]] is None:
+            special_item_blocks.append((one_item_type_id(declaration["field"]), primary))
+        alternatives = [_field_access(argument, "Blocks") for argument in arguments[1:]]
+        if alternatives and all(block is not None for block in alternatives):
+            for block in alternatives:
+                if block not in block_fields:
+                    raise ValueError("registerBlock requires known alternative blocks")
+                alternative_item_blocks.append((one_item_type_id(declaration["field"]), block))
+    for name, entries, expected in (
+        ("crafting remainders", crafting_remainders, 5),
+        ("special block items", special_item_blocks, 3),
+        ("alternative block items", alternative_item_blocks, 4),
+    ):
+        if len(entries) != expected or len(set(entries)) != expected:
+            raise ValueError(f"unexpected vanilla 26.1 {name}: {len(entries)}")
+
+    compostables = sorted(
+        (
+            {
+                "item_type_id": one_item_type_id(entry.item_field),
+                "chance_bits": entry.chance_bits,
+            }
+            for entry in targeted_block_use_catalog.compostables
+        ),
+        key=lambda entry: entry["item_type_id"],
+    )
+    cauldron_item_interactions = [
+        {
+            "dispatcher": entry.dispatcher,
+            "item_type_id": one_item_type_id(entry.item_field),
+            "handler": entry.handler,
+        }
+        for entry in targeted_block_use_catalog.cauldron_items
+    ]
+    cauldron_tag_interactions = [
+        {
+            "dispatcher": entry.dispatcher,
+            "tag_resource_id": entry.tag_resource_id,
+            "handler": entry.handler,
+        }
+        for entry in targeted_block_use_catalog.cauldron_tags
+    ]
+    return _render_types(
+        resource_paths,
+        can_destroy_block_override_owners,
+        use_override_owners,
+        use_on_override_owners,
+        interact_living_entity_override_owners,
+        equip_on_interact_owners,
+        bucket_behaviors,
+        block_item_behaviors,
+        extracted.item_constants,
+        common_break_sound,
+        break_sound_overrides,
+        tool_use_on_catalog,
+        compostables,
+        suspicious_stew_ingredients,
+        cauldron_item_interactions,
+        cauldron_tag_interactions,
+        sorted(crafting_remainders),
+        sorted(special_item_blocks),
+        sorted(alternative_item_blocks),
+        block_id_by_field,
+    )
+
+
+def _check(path: Path, generated: str) -> bool:
+    current = path.read_text(encoding="utf-8") if path.exists() else ""
+    if current == generated:
+        return True
+    sys.stderr.writelines(difflib.unified_diff(
+        current.splitlines(keepends=True), generated.splitlines(keepends=True),
+        fromfile=str(path), tofile="generated",
+    ))
+    return False
+
+
+def _check_binary(path: Path, generated: bytes) -> bool:
+    current = path.read_bytes() if path.exists() else b""
+    if current == generated:
+        return True
+    sys.stderr.write(
+        f"binary output differs: {path} (expected {len(generated)} bytes, got {len(current)})\n"
+    )
+    return False
+
+
+def main() -> int:
+    args = parse_args()
+    types, types_blob = generate(args.source_root)
+    if args.check:
+        types_match = _check(args.types_output, types)
+        bin_match = _check_binary(args.types_bin_output, types_blob)
+        return 0 if (types_match and bin_match) else 1
+    args.types_output.parent.mkdir(parents=True, exist_ok=True)
+    args.types_output.write_text(types, encoding="utf-8")
+    args.types_bin_output.parent.mkdir(parents=True, exist_ok=True)
+    args.types_bin_output.write_bytes(types_blob)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,909 @@
+use super::*;
+
+fn firework_metadata_accessors() -> VanillaFireworkRocketMetadataAccessors {
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    )
+    .expect("generated FireworkRocket metadata accessors")
+}
+
+fn firework_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
+    let accessors = firework_metadata_accessors();
+    let mut value = item_stack_entity_data(item);
+    value.data_id = accessors.item_data_id;
+    value
+}
+
+fn ominous_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
+    let mut value = item_stack_entity_data(item);
+    value.data_id = vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    )
+    .expect("generated OminousItemSpawner item accessor must resolve");
+    value
+}
+
+/// Deliberately sends the OminousItemSpawner item field to a Cow to cover type gating.
+fn ominous_item_stack_collision_entity_data(
+    item: ProtocolItemStackSummary,
+) -> ProtocolEntityDataValue {
+    ominous_item_stack_entity_data(item)
+}
+
+#[test]
+fn item_entity_stacks_filters_and_preserves_protocol_order() {
+    let mut store = WorldStore::new();
+
+    let mut first = protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_ITEM_ID);
+    first.position = ProtocolVec3d {
+        x: 3.25,
+        y: 65.5,
+        z: -7.75,
+    };
+    store.apply_add_entity(first);
+    store.apply_add_entity(protocol_add_entity_with_type(20, 7));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        40,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        50,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 30,
+        values: vec![item_stack_entity_data(item_stack(42, 3))],
+    }));
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![item_stack_entity_data(item_stack(99, 1))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![item_stack_entity_data(item_stack(51, 2))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 40,
+        values: vec![item_stack_entity_data(ProtocolItemStackSummary::empty())],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![item_stack_entity_data(item_stack(77, 0))],
+    }));
+
+    let items = store.item_entity_stacks().collect::<Vec<_>>();
+    assert_eq!(
+        items.iter().map(|item| item.entity_id).collect::<Vec<_>>(),
+        vec![30, 10]
+    );
+    assert_eq!(
+        items[0].position,
+        EntityVec3 {
+            x: 3.25,
+            y: 65.5,
+            z: -7.75,
+        }
+    );
+    assert_eq!(items[0].stack, &item_stack(42, 3));
+    assert_eq!(items[0].light, ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+    assert_eq!(
+        items[1].position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(items[1].stack, &item_stack(51, 2));
+    assert_eq!(items[1].light, ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+}
+
+#[test]
+fn item_stacks_for_entity_types_collects_thrown_item_projectiles() {
+    // The thrown-item projectiles carry their displayed item in owner-specific `DATA_ITEM_STACK`
+    // accessors. Snowball is type id 120, egg 39; a plain item (71) is excluded when those types are
+    // requested.
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(60, 120));
+    store.apply_add_entity(protocol_add_entity_with_type(61, 39));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        62,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![item_stack_entity_data(item_stack(880, 1))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 61,
+        values: vec![item_stack_entity_data(item_stack(881, 1))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 62,
+        values: vec![item_stack_entity_data(item_stack(882, 1))],
+    }));
+
+    let projectiles = store
+        .item_stacks_for_entity_types(&[120, 39])
+        .collect::<Vec<_>>();
+    assert_eq!(
+        projectiles
+            .iter()
+            .map(|item| item.entity_id)
+            .collect::<Vec<_>>(),
+        vec![60, 61]
+    );
+    assert_eq!(projectiles[0].stack, &item_stack(880, 1));
+    assert_eq!(projectiles[1].stack, &item_stack(881, 1));
+
+    for type_id in [120, 39] {
+        let accessor = vanilla_entity_metadata_accessor_for_entity_type(type_id, "DATA_ITEM_STACK")
+            .expect("fixture projectile type must resolve its generated item-stack accessor");
+        assert_eq!(accessor.serializer_name, "ITEM_STACK");
+        assert_eq!(
+            vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+                type_id,
+                "ITEM_STACK"
+            ),
+            Some(accessor)
+        );
+    }
+
+    // The dropped item (type 71) is untouched by the projectile-only query.
+    assert!(!projectiles.iter().any(|item| item.entity_id == 62));
+}
+
+#[test]
+fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
+    let accessors = firework_metadata_accessors();
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![firework_item_stack_entity_data(item_stack(900, 1))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 71,
+        values: vec![
+            firework_item_stack_entity_data(item_stack(901, 1)),
+            protocol_bool_data(accessors.shot_at_angle_data_id, true),
+        ],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 72,
+        values: vec![
+            firework_item_stack_entity_data(item_stack(902, 1)),
+            protocol_optional_unsigned_int_data(accessors.attached_to_target_data_id, Some(5)),
+            protocol_bool_data(accessors.shot_at_angle_data_id, true),
+        ],
+    }));
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 73,
+        values: vec![firework_item_stack_entity_data(item_stack(903, 1))],
+    }));
+
+    let fireworks = store.firework_rocket_item_states().collect::<Vec<_>>();
+    assert_eq!(
+        fireworks
+            .iter()
+            .map(|firework| firework.entity_id)
+            .collect::<Vec<_>>(),
+        vec![70, 71]
+    );
+    assert_eq!(fireworks[0].stack, &item_stack(900, 1));
+    assert!(!fireworks[0].shot_at_angle);
+    assert_eq!(fireworks[1].stack, &item_stack(901, 1));
+    assert!(fireworks[1].shot_at_angle);
+    assert!(fireworks
+        .iter()
+        .all(|firework| firework.light == ENTITY_LIGHT_PROBE_FULL_BRIGHT));
+}
+
+#[test]
+fn firework_rocket_explosion_particle_state_projects_event_context() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        75,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 75,
+        delta_movement: ProtocolVec3d {
+            x: 0.2,
+            y: 0.4,
+            z: -0.6,
+        },
+    }));
+
+    let mut empty_stack = item_stack(904, 1);
+    empty_stack.component_patch = DataComponentPatchSummary {
+        fireworks_flight_duration: Some(0),
+        ..DataComponentPatchSummary::default()
+    }
+    .into();
+    let explosion = FireworkExplosionSummary {
+        shape: FireworkExplosionShapeSummary::Burst,
+        colors: vec![0x112233],
+        fade_colors: vec![0x445566],
+        has_trail: true,
+        has_twinkle: false,
+    };
+    let mut decoded_stack = item_stack(905, 1);
+    decoded_stack.component_patch = DataComponentPatchSummary {
+        fireworks_flight_duration: Some(0),
+        fireworks_explosions: vec![explosion.clone()],
+        ..DataComponentPatchSummary::default()
+    }
+    .into();
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 74,
+        values: vec![firework_item_stack_entity_data(empty_stack)],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 75,
+        values: vec![firework_item_stack_entity_data(decoded_stack)],
+    }));
+
+    let empty = store.firework_rocket_explosion_particle_state(74).unwrap();
+    assert_eq!(empty.entity_id, 74);
+    assert_eq!(
+        empty.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert!(!empty.has_explosions);
+    assert!(empty.explosions.is_empty());
+
+    let decoded = store.firework_rocket_explosion_particle_state(75).unwrap();
+    assert_eq!(decoded.entity_id, 75);
+    assert_eq!(
+        decoded.delta_movement,
+        EntityVec3 {
+            x: 0.2,
+            y: 0.4,
+            z: -0.6,
+        }
+    );
+    assert!(decoded.has_explosions);
+    assert_eq!(decoded.explosions, vec![explosion]);
+
+    assert!(store.firework_rocket_explosion_particle_state(77).is_none());
+}
+
+#[test]
+fn ominous_item_spawner_item_states_project_item_stack_and_age_ticks() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![ominous_item_stack_entity_data(item_stack(910, 3))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 81,
+        values: vec![ominous_item_stack_entity_data(
+            ProtocolItemStackSummary::empty(),
+        )],
+    }));
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![ominous_item_stack_collision_entity_data(item_stack(912, 1))],
+    }));
+    let mut wrong_data_id = ominous_item_stack_entity_data(item_stack(913, 1));
+    wrong_data_id.data_id = wrong_data_id
+        .data_id
+        .checked_add(1)
+        .expect("fixture accessor id must permit an adjacent wrong-id sample");
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 83,
+        values: vec![wrong_data_id],
+    }));
+
+    store.advance_entity_client_animations(7);
+
+    let items = store
+        .ominous_item_spawner_item_states_at_partial_tick(0.25)
+        .collect::<Vec<_>>();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].entity_id, 80);
+    assert_eq!(items[0].stack, &item_stack(910, 3));
+    assert_eq!(items[0].age_ticks, 7.25);
+}
+
+#[test]
+fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(30, 7));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![item_stack_entity_data(item_stack(42, 5))],
+    }));
+
+    assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+        item_id: 10,
+        player_id: 99,
+        amount: 2,
+    }));
+    let item_entity = store.probe_entity(10).unwrap();
+    assert_eq!(
+        item_entity.data_values,
+        vec![item_stack_entity_data(item_stack(42, 3))]
+    );
+
+    assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+        item_id: 10,
+        player_id: 99,
+        amount: 3,
+    }));
+    assert!(store.probe_entity(10).is_none());
+
+    assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+        item_id: 20,
+        player_id: 99,
+        amount: 1,
+    }));
+    assert!(store.probe_entity(20).is_some());
+
+    assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+        item_id: 30,
+        player_id: 99,
+        amount: 1,
+    }));
+    assert!(store.probe_entity(30).is_none());
+    assert!(!store.apply_take_item_entity(ProtocolTakeItemEntity {
+        item_id: 999,
+        player_id: 99,
+        amount: 1,
+    }));
+
+    assert_eq!(store.entity_count(), 1);
+    assert_eq!(store.counters().take_item_entities_received, 5);
+    assert_eq!(store.counters().take_item_entities_applied, 4);
+    assert_eq!(store.counters().take_item_entities_ignored, 1);
+    assert_eq!(store.counters().item_entity_stack_shrinks, 2);
+    assert_eq!(store.counters().take_item_entities_removed, 2);
+    assert_eq!(store.counters().entities_removed, 2);
+    assert_eq!(store.counters().entities_tracked, 1);
+}
+
+#[test]
+fn experience_orb_icon_thresholds_match_vanilla() {
+    let cases = [
+        (-1, 0),
+        (0, 0),
+        (2, 0),
+        (3, 1),
+        (6, 1),
+        (7, 2),
+        (16, 2),
+        (17, 3),
+        (36, 3),
+        (37, 4),
+        (72, 4),
+        (73, 5),
+        (148, 5),
+        (149, 6),
+        (306, 6),
+        (307, 7),
+        (616, 7),
+        (617, 8),
+        (1236, 8),
+        (1237, 9),
+        (2476, 9),
+        (2477, 10),
+    ];
+    for (value, icon) in cases {
+        assert_eq!(experience_orb_icon(value), icon, "value {value}");
+    }
+}
+
+#[test]
+fn experience_orb_model_source_light_adds_renderer_block_light() {
+    // Vanilla `ExperienceOrbRenderer.getBlockLightLevel`: `clamp(super + 7, 0, 15)` — the orb's
+    // projected model-source light rides the same override as the pickup-particle capture.
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    let in_chunk = ProtocolVec3d {
+        x: 1.0,
+        y: 5.0,
+        z: 3.0,
+    };
+    store.apply_add_entity(ProtocolAddEntity {
+        position: in_chunk,
+        ..protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        position: in_chunk,
+        ..protocol_add_entity_with_type(31, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID)
+    });
+
+    let orb = store
+        .entity_model_source_at_partial_tick(30, 0.0)
+        .expect("experience orb must project a model source");
+    let reference = store
+        .entity_model_source_at_partial_tick(31, 0.0)
+        .expect("armor stand must project a model source");
+    let reference_block = (reference.render.light_coords >> 4) & 15;
+    assert!(
+        reference_block <= 8,
+        "reference block light {reference_block} must keep the +7 offset unclamped",
+    );
+    assert_eq!(
+        orb.render.light_coords,
+        reference.render.light_coords + (7 << 4)
+    );
+}
+
+#[test]
+fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
+    let (value_data_id, _) = vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    )
+    .expect("generated ExperienceOrb value accessor");
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![ProtocolEntityDataValue {
+            data_id: value_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(149),
+        }],
+    }));
+
+    let state = store
+        .take_item_entity_pickup_particle_state(10, 20)
+        .expect("experience orb pickup particle state");
+
+    assert_eq!(state.item_entity_id, 10);
+    assert_eq!(
+        state.item_entity_type_id,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID
+    );
+    assert_eq!(state.item_stack, None);
+    assert_eq!(state.experience_orb_icon, Some(6));
+    assert_eq!(state.projectile_model, None);
+    assert_eq!(
+        vanilla_entity_renderer_block_light(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            TerrainLight { block: 6, sky: 12 }
+        ),
+        TerrainLight { block: 13, sky: 12 }
+    );
+    assert_eq!(
+        vanilla_entity_renderer_block_light(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            TerrainLight { block: 14, sky: 3 }
+        ),
+        TerrainLight { block: 15, sky: 3 }
+    );
+    assert_eq!(
+        vanilla_entity_renderer_block_light(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            TerrainLight { block: 6, sky: 12 }
+        ),
+        TerrainLight { block: 6, sky: 12 }
+    );
+}
+
+#[test]
+fn take_item_entity_pickup_particle_state_captures_projectile_models() {
+    // Vanilla `ClientboundTakeItemEntity` spawns `ItemPickupParticle` for any
+    // picked entity; arrows and tridents render their projectile models through
+    // `ArrowRenderer` / `TippableArrowRenderer` / `SpectralArrowRenderer` /
+    // `ThrownTridentRenderer` using the extracted `yRot`/`xRot`.
+    let arrow_accessors =
+        vanilla_entity_metadata_arrow_accessors_for_entity_type(VANILLA_ENTITY_TYPE_ARROW_ID)
+            .expect("generated Arrow metadata accessors");
+    let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated ThrownTrident metadata accessors");
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        11,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        12,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        13,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        14,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        15,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        16,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    // Tipped arrow: vanilla `TippableArrowRenderer.isTipped = getColor() > 0`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 11,
+        values: vec![ProtocolEntityDataValue {
+            data_id: arrow_accessors.effect_color_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(0x38_5DC6),
+        }],
+    }));
+    // Color 0 is NOT tipped (vanilla uses a strict `> 0`).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 12,
+        values: vec![ProtocolEntityDataValue {
+            data_id: arrow_accessors.effect_color_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(0),
+        }],
+    }));
+    // Enchanted trident: vanilla `ThrownTrident.ID_FOIL`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 15,
+        values: vec![ProtocolEntityDataValue {
+            data_id: trident_accessors.foil_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 16,
+        values: vec![item_stack_entity_data(item_stack(42, 5))],
+    }));
+
+    let state = store
+        .take_item_entity_pickup_particle_state(10, 20)
+        .expect("untipped arrow pickup particle state");
+    assert_eq!(
+        state.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Arrow { tipped: false })
+    );
+    assert_eq!(state.item_stack, None);
+    assert_eq!(state.experience_orb_icon, None);
+    // The extracted render-state rotations travel with the descriptor
+    // (`protocol_add_entity_with_type` spawns with yRot 20 / xRot -10).
+    assert_eq!(state.item_y_rot, 20.0);
+    assert_eq!(state.item_x_rot, -10.0);
+
+    let tipped = store
+        .take_item_entity_pickup_particle_state(11, 20)
+        .expect("tipped arrow pickup particle state");
+    assert_eq!(
+        tipped.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Arrow { tipped: true })
+    );
+
+    let zero_color = store
+        .take_item_entity_pickup_particle_state(12, 20)
+        .expect("zero-color arrow pickup particle state");
+    assert_eq!(
+        zero_color.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Arrow { tipped: false })
+    );
+
+    let spectral = store
+        .take_item_entity_pickup_particle_state(13, 20)
+        .expect("spectral arrow pickup particle state");
+    assert_eq!(
+        spectral.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::SpectralArrow)
+    );
+
+    let trident = store
+        .take_item_entity_pickup_particle_state(14, 20)
+        .expect("trident pickup particle state");
+    assert_eq!(
+        trident.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Trident { foil: false })
+    );
+
+    let foil_trident = store
+        .take_item_entity_pickup_particle_state(15, 20)
+        .expect("foil trident pickup particle state");
+    assert_eq!(
+        foil_trident.projectile_model,
+        Some(TakeItemEntityPickupProjectileModel::Trident { foil: true })
+    );
+
+    // Item entities keep the dedicated stack channel; no carried projectile.
+    let item = store
+        .take_item_entity_pickup_particle_state(16, 20)
+        .expect("item pickup particle state");
+    assert_eq!(item.projectile_model, None);
+    assert_eq!(item.item_stack, Some(item_stack(42, 5)));
+}
+
+#[test]
+fn player_model_light_samples_the_eyes_at_a_cave_light_boundary() {
+    for (light, packed) in [
+        (TerrainLight { sky: 15, block: 0 }, 15 << 20),
+        (TerrainLight { sky: 0, block: 14 }, 14 << 4),
+        (TerrainLight { sky: 0, block: 0 }, 0),
+    ] {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        let mut chunk = empty_test_chunk();
+        let index = crate::section_block_index(1, 6, 3);
+        let mut sky = [0; crate::chunks::LIGHT_ARRAY_BYTES];
+        let mut block = [0; crate::chunks::LIGHT_ARRAY_BYTES];
+        sky[index / 2] = light.sky << ((index % 2) * 4);
+        block[index / 2] = light.block << ((index % 2) * 4);
+        chunk.light = crate::LightData::default();
+        chunk.light.set_sky_packed(1, sky);
+        chunk.light.set_block_packed(1, block);
+        store.insert_decoded_chunk(chunk);
+        store.apply_add_entity(ProtocolAddEntity {
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 5.0,
+                z: 3.0,
+            },
+            ..protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_PLAYER_ID)
+        });
+        assert_eq!(
+            store.sample_block_light(BlockPos { x: 1, y: 5, z: 3 }),
+            Some(TerrainLight { sky: 0, block: 0 })
+        );
+        let player = store.entity_model_source_at_partial_tick(30, 1.0).unwrap();
+        assert_eq!(player.render.light_coords, packed);
+    }
+}
+
+#[test]
+fn entity_light_coords_packs_vanilla_block_and_sky_with_on_fire_override() {
+    // A generic (non-special) entity type — no per-renderer block-light override.
+    let generic = VANILLA_ENTITY_TYPE_CHICKEN_ID;
+    // Daylight surface (block 0, sky 15) -> LightCoordsUtil.pack(0, 15).
+    assert_eq!(
+        entity_light_coords(generic, &[], TerrainLight { sky: 15, block: 0 }),
+        15 << 20
+    );
+    // Full-bright fallback (block 15, sky 15) -> LightCoordsUtil.FULL_BRIGHT.
+    assert_eq!(
+        entity_light_coords(generic, &[], TerrainLight { sky: 15, block: 15 }),
+        15_728_880
+    );
+    // Torch-lit cave (block 14, sky 0) -> pack(14, 0).
+    assert_eq!(
+        entity_light_coords(generic, &[], TerrainLight { sky: 0, block: 14 }),
+        14 << 4
+    );
+    // EntityRenderer.getBlockLightLevel forces block light to 15 on fire,
+    // leaving sky light untouched.
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    let on_fire = vec![protocol_byte_data(
+        accessors.shared_flags_data_id,
+        accessors.on_fire_mask,
+    )];
+    assert_eq!(
+        entity_light_coords(generic, &on_fire, TerrainLight { sky: 4, block: 0 }),
+        (15 << 4) | (4 << 20)
+    );
+}
+
+#[test]
+fn entity_light_coords_applies_vanilla_per_renderer_block_light_overrides() {
+    let dark = TerrainLight { sky: 0, block: 0 };
+    // Vanilla `BlazeRenderer`/`MagmaCubeRenderer.getBlockLightLevel` = 15 unconditionally: even in pitch
+    // dark, the block light packs to 15 (sky stays 0).
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_BLAZE_ID, &[], dark),
+        15 << 4
+    );
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, &[], dark),
+        15 << 4
+    );
+    // The source-derived full set also covers the direct renderer overrides and the three
+    // `ThrownItemRenderer(..., true)` registrations.
+    for full_bright in [
+        VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_ALLAY_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+    ] {
+        assert_eq!(entity_light_coords(full_bright, &[], dark), 15 << 4);
+    }
+
+    // Vanilla `ItemFrameRenderer`: normal item frames use the sampled light; glow item frames clamp
+    // only the block component to at least `GLOW_FRAME_BRIGHTNESS = 5`.
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, &[], dark),
+        0
+    );
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, &[], dark),
+        5 << 4
+    );
+    assert_eq!(
+        entity_light_coords(
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            &[],
+            TerrainLight { sky: 3, block: 7 }
+        ),
+        (7 << 4) | (3 << 20)
+    );
+
+    // Vanilla `GlowSquidRenderer.getBlockLightLevel` = max(super, (int)clampedLerp(1 - darkTicks/10, 0,
+    // 15)). Undamaged (no DARK_TICKS data, so 0) -> fully bright 15.
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &[], dark),
+        15 << 4
+    );
+    let (dark_ticks_id, _) =
+        vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        )
+        .unwrap();
+    let dark_ticks = |ticks: i32| vec![protocol_int_data(dark_ticks_id, ticks)];
+    // Just hurt (darkTicks 100): factor = 1 - 10 = -9 < 0 -> min 0, so the boost is 0 and the squid is as
+    // dark as its surroundings (block 0 here).
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &dark_ticks(100), dark),
+        0
+    );
+    // Mid-ramp (darkTicks 5): factor = 0.5 -> (int) lerp(0.5, 0, 15) = (int) 7.5 = 7.
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &dark_ticks(5), dark),
+        7 << 4
+    );
+    // darkTicks 10: factor = 0 -> 0 boost.
+    assert_eq!(
+        entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &dark_ticks(10), dark),
+        0
+    );
+    // The boost only ever RAISES the block light: a torch-lit (block 12) hurt glow squid keeps 12.
+    assert_eq!(
+        entity_light_coords(
+            VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+            &dark_ticks(100),
+            TerrainLight { sky: 0, block: 12 }
+        ),
+        12 << 4
+    );
+}
+
+#[test]
+fn marker_armor_stand_light_selects_brightest_cell_in_non_marker_bounds() {
+    let accessors = crate::vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    )
+    .unwrap();
+    let sample_stand = |lit_y: u8, flags: i8| {
+        let mut store = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        let mut chunk = empty_test_chunk();
+        let index = crate::section_block_index(1, lit_y, 3);
+        let mut block = [0; crate::chunks::LIGHT_ARRAY_BYTES];
+        block[index / 2] = 12 << ((index % 2) * 4);
+        chunk.light = crate::LightData::default();
+        chunk
+            .light
+            .set_sky_packed(1, [0; crate::chunks::LIGHT_ARRAY_BYTES]);
+        chunk.light.set_block_packed(1, block);
+        store.insert_decoded_chunk(chunk);
+        store.apply_add_entity(ProtocolAddEntity {
+            position: ProtocolVec3d {
+                x: 1.5,
+                y: 5.0,
+                z: 3.5,
+            },
+            ..protocol_add_entity_with_type(41, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID)
+        });
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 41,
+            values: vec![ProtocolEntityDataValue {
+                data_id: accessors.client_flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(flags),
+            }],
+        }));
+        store
+            .entity_model_source_at_partial_tick(41, 1.0)
+            .unwrap()
+            .render
+            .light_coords
+    };
+
+    // Adult marker stand covers y = [5.0, 6.975] -> blocks y=5 and y=6.
+    assert_eq!(sample_stand(6, accessors.marker_mask), 12 << 4);
+    // Small marker stand covers y = [5.0, 5.9875] -> only block y=5.
+    assert_eq!(
+        sample_stand(6, accessors.marker_mask | accessors.small_mask),
+        0
+    );
+    assert_eq!(
+        sample_stand(5, accessors.marker_mask | accessors.small_mask),
+        12 << 4
+    );
+}

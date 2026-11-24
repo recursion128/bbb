@@ -1,0 +1,1791 @@
+//! GPU picture-in-picture drawing for GUI entity previews.
+//!
+//! Vanilla `PictureInPictureRenderer.prepare` renders each `GuiEntityRenderState` into a private
+//! color texture (RGBA8) plus a private depth texture sized `bounds × guiScale`, cleared per
+//! prepare (`clearColorAndDepthTextures(color, 0, depth, 1.0)`), under a
+//! `setupOrtho(-1000, 1000, width, height, invertY)` projection and the pose chain
+//! `translate(w/2, h/2, 0) · scale(s, s, -s) · translate(state.translation) ·
+//! mulPose(state.rotation)`; `GuiEntityRenderer.renderToTexture` submits the entity render state
+//! at the origin under `Lighting.Entry.ENTITY_IN_UI`, and `blitTexture` enqueues the color
+//! texture onto the current GUI layer. bbb mirrors that shape: each sanitized
+//! [`HudEntityPreview`](crate::hud::HudEntityPreview) owns a persistent
+//! [`HudEntityPreviewPipTarget`] (color + depth textures recreated only on bounds resize, vanilla
+//! `needsAResize`), the preview's `EntityModelInstance` is baked through the production entity
+//! model mesh pipeline at the origin, drawn with the existing entity model pipelines under a
+//! [`CameraUniform::hud_entity_preview_pip`] camera, and the HUD pass blits the color texture
+//! through the HUD sprite pipeline in GUI submission order.
+
+use glam::{Mat4, Quat, Vec3};
+
+use crate::camera::{CameraUniform, LightingEntry};
+use crate::frame_buffers::FrameDataBuffer;
+use crate::gpu::create_depth_target;
+use crate::hud::HudEntityPreview;
+use crate::item_models::GuiItemLightingEntry;
+use crate::texture_sampling::{
+    create_camera_texture_bind_group, create_nearest_clamp_sampler, create_texture_bind_group,
+};
+use crate::Renderer;
+
+use super::catalog::{
+    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
+    EntityModelOwnedTextureAtlasEntry, EntityModelTextureAtlasLayout, SignModelAttachment,
+    SignModelWood,
+};
+use super::dispatch::TexturedSink;
+use super::equipment::ResolvedEntityEquipmentAssetCatalog;
+use super::geometry::{
+    EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
+    EntityModelTexturedVertex,
+};
+use super::instances::EntityModelInstance;
+use super::model_layers::sign_model_layer;
+use super::textured::{
+    entity_model_textured_meshes_with_equipment_for_camera_orientation, sign_textured_layer_passes,
+    EntityModelTexturedDrawAtlas, EntityModelTexturedMeshes,
+};
+use super::transforms::SIGN_RENDER_SCALE;
+
+pub(crate) const HUD_ENTITY_PREVIEW_PIP_PASS_LABEL: &str = "bbb-client-hud-entity-preview-pip-pass";
+
+/// The entity model pipeline a PIP textured draw range runs through, mirroring the world path's
+/// render-type → pipeline mapping (`main_world_pass` cutout family +
+/// `draw_entity_translucent_features` translucent family).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HudEntityPreviewPipPipeline {
+    Solid,
+    Cutout,
+    CutoutCull,
+    SolidZOffsetForward,
+    CutoutZOffset,
+    ArmorCutout,
+    ArmorTrim,
+    ArmorTrimDecal,
+    Translucent,
+    BannerPattern,
+    ArmorTranslucent,
+    TranslucentEmissive,
+    Eyes,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct HudEntityPreviewPipTexturedDraw {
+    pub(crate) pipeline: HudEntityPreviewPipPipeline,
+    pub(crate) atlas: EntityModelTexturedDrawAtlas,
+    pub(crate) index_start: u32,
+    pub(crate) index_count: u32,
+}
+
+/// A scroll-mesh glint draw range (vanilla `armorEntityGlint` / `entityGlint` — foil armor on the
+/// smithing preview).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct HudEntityPreviewPipScrollDraw {
+    pub(crate) armor: bool,
+    pub(crate) index_start: u32,
+    pub(crate) index_count: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudEntityPreviewPipDrawOrder {
+    Textured(usize),
+    Scroll(usize),
+}
+
+/// CPU geometry for one preview frame: every textured bucket the preview's entity model produces,
+/// concatenated (indices rebased) into one vertex/index stream per vertex layout, with per-bucket
+/// draw ranges in the world path's bucket order.
+#[derive(Default)]
+pub(crate) struct HudEntityPreviewPipGeometry {
+    textured_vertices: Vec<EntityModelTexturedVertex>,
+    pub(crate) textured_indices: Vec<u32>,
+    pub(crate) textured_draws: Vec<HudEntityPreviewPipTexturedDraw>,
+    scroll_vertices: Vec<EntityModelScrollVertex>,
+    pub(crate) scroll_indices: Vec<u32>,
+    pub(crate) scroll_draws: Vec<HudEntityPreviewPipScrollDraw>,
+    draw_order: Vec<HudEntityPreviewPipDrawOrder>,
+}
+
+impl HudEntityPreviewPipGeometry {
+    pub(crate) fn textured_vertex_bytes(&self) -> &[u8] {
+        bytemuck::cast_slice(&self.textured_vertices)
+    }
+
+    pub(crate) fn scroll_vertex_bytes(&self) -> &[u8] {
+        bytemuck::cast_slice(&self.scroll_vertices)
+    }
+
+    /// The first textured face's model-space center (mean of its four vertices) — a
+    /// deterministic sentinel anchor for readback tests: the face's own pixels cover its
+    /// projected center regardless of which (equally textured) part wins the depth test.
+    #[cfg(test)]
+    pub(crate) fn first_textured_face_center(&self) -> Option<glam::Vec3> {
+        let face = self.textured_vertices.get(0..4)?;
+        let mut center = glam::Vec3::ZERO;
+        for vertex in face {
+            center += glam::Vec3::from_array(vertex.position);
+        }
+        Some(center / 4.0)
+    }
+
+    fn append_textured(
+        &mut self,
+        pipeline: HudEntityPreviewPipPipeline,
+        atlas: EntityModelTexturedDrawAtlas,
+        mesh: EntityModelTexturedMesh,
+    ) {
+        if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+            return;
+        }
+        let vertex_base = u32::try_from(self.textured_vertices.len())
+            .expect("preview textured vertex count fits in u32");
+        let index_start = u32::try_from(self.textured_indices.len())
+            .expect("preview textured index count fits in u32");
+        let index_count =
+            u32::try_from(mesh.indices.len()).expect("preview textured index count fits in u32");
+        self.textured_vertices.extend_from_slice(&mesh.vertices);
+        self.textured_indices
+            .extend(mesh.indices.iter().map(|index| index + vertex_base));
+        let draw_index = self.textured_draws.len();
+        self.textured_draws.push(HudEntityPreviewPipTexturedDraw {
+            pipeline,
+            atlas,
+            index_start,
+            index_count,
+        });
+        self.draw_order
+            .push(HudEntityPreviewPipDrawOrder::Textured(draw_index));
+    }
+
+    fn append_scroll(&mut self, armor: bool, mesh: EntityModelScrollMesh) {
+        if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+            return;
+        }
+        let vertex_base = u32::try_from(self.scroll_vertices.len())
+            .expect("preview scroll vertex count fits in u32");
+        let index_start = u32::try_from(self.scroll_indices.len())
+            .expect("preview scroll index count fits in u32");
+        let index_count =
+            u32::try_from(mesh.indices.len()).expect("preview scroll index count fits in u32");
+        self.scroll_vertices.extend_from_slice(&mesh.vertices);
+        self.scroll_indices
+            .extend(mesh.indices.iter().map(|index| index + vertex_base));
+        let draw_index = self.scroll_draws.len();
+        self.scroll_draws.push(HudEntityPreviewPipScrollDraw {
+            armor,
+            index_start,
+            index_count,
+        });
+        self.draw_order
+            .push(HudEntityPreviewPipDrawOrder::Scroll(draw_index));
+    }
+}
+
+/// Bakes one preview entity through the production entity model mesh pipeline (the same
+/// dispatch + layer path the world scene uses) and folds the buckets into a PIP draw list. No
+/// sort camera: the PIP target owns a private depth buffer, so buckets draw in vanilla
+/// render-type order (cutout family, then glint, then the translucent family) and depth testing
+/// resolves overlap exactly like the isolated vanilla PIP pass.
+pub(crate) fn bake_hud_preview_pip_geometry(
+    preview: &HudEntityPreview,
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> HudEntityPreviewPipGeometry {
+    if preview.lighting == GuiItemLightingEntry::ItemsFlat {
+        if let EntityModelKind::Sign { wood, attachment } = preview.entity.kind {
+            return bake_hud_gui_sign_preview_pip_geometry(
+                &preview.entity,
+                wood,
+                attachment,
+                atlas,
+            );
+        }
+    }
+    bake_hud_entity_preview_pip_geometry_with_equipment(
+        &preview.entity,
+        atlas,
+        owned_entries,
+        equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+        gui_entity_camera_orientation(preview.override_camera_rotation),
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn bake_hud_entity_preview_pip_geometry(
+    instance: &EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> HudEntityPreviewPipGeometry {
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+    bake_hud_entity_preview_pip_geometry_with_equipment(
+        instance,
+        atlas,
+        &[],
+        &equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+        Mat4::IDENTITY,
+    )
+}
+
+fn bake_hud_entity_preview_pip_geometry_with_equipment(
+    instance: &EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    camera_orientation: Mat4,
+) -> HudEntityPreviewPipGeometry {
+    let meshes = entity_model_textured_meshes_with_equipment_for_camera_orientation(
+        std::slice::from_ref(instance),
+        atlas,
+        owned_entries,
+        equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+        None,
+        Some(camera_orientation),
+    );
+    let mut geometry = HudEntityPreviewPipGeometry::default();
+    let translucent_pipeline = if matches!(instance.kind, EntityModelKind::Banner { .. }) {
+        HudEntityPreviewPipPipeline::BannerPattern
+    } else {
+        HudEntityPreviewPipPipeline::Translucent
+    };
+
+    use EntityModelTexturedDrawAtlas::{DynamicPlayerSkin, DynamicPlayerTexture, Static};
+    use HudEntityPreviewPipPipeline::*;
+    // Cutout family, in main_world_pass order.
+    geometry.append_textured(Solid, Static, meshes.solid);
+    geometry.append_textured(CutoutCull, Static, meshes.cutout_cull);
+    geometry.append_textured(Cutout, Static, meshes.cutout);
+    geometry.append_textured(SolidZOffsetForward, Static, meshes.solid_z_offset_forward);
+    geometry.append_textured(CutoutZOffset, Static, meshes.cutout_z_offset);
+    geometry.append_textured(ArmorCutout, Static, meshes.armor_cutout);
+    geometry.append_textured(Solid, DynamicPlayerSkin, meshes.dynamic_player_skin_solid);
+    geometry.append_textured(
+        CutoutCull,
+        DynamicPlayerSkin,
+        meshes.dynamic_player_skin_cutout_cull,
+    );
+    geometry.append_textured(Cutout, DynamicPlayerSkin, meshes.dynamic_player_skin_cutout);
+    geometry.append_textured(
+        SolidZOffsetForward,
+        DynamicPlayerSkin,
+        meshes.dynamic_player_skin_solid_z_offset_forward,
+    );
+    geometry.append_textured(
+        CutoutZOffset,
+        DynamicPlayerSkin,
+        meshes.dynamic_player_skin_cutout_z_offset,
+    );
+    geometry.append_textured(
+        Solid,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_solid,
+    );
+    geometry.append_textured(
+        CutoutCull,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_cutout_cull,
+    );
+    geometry.append_textured(
+        Cutout,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_cutout,
+    );
+    geometry.append_textured(
+        SolidZOffsetForward,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_solid_z_offset_forward,
+    );
+    geometry.append_textured(
+        CutoutZOffset,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_cutout_z_offset,
+    );
+    geometry.append_textured(
+        ArmorCutout,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_armor_cutout,
+    );
+    // Vanilla EquipmentLayerRenderer draws armor foil before the trim, then later entity glints.
+    geometry.append_scroll(true, meshes.armor_entity_glint);
+    geometry.append_textured(ArmorTrim, Static, meshes.armor_trim);
+    geometry.append_textured(
+        ArmorTrim,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_armor_trim,
+    );
+    geometry.append_textured(ArmorTrimDecal, Static, meshes.armor_trim_decal);
+    geometry.append_textured(
+        ArmorTrimDecal,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_armor_trim_decal,
+    );
+    geometry.append_scroll(false, meshes.entity_glint);
+    // Translucent family, in draw_entity_translucent_features order.
+    geometry.append_textured(translucent_pipeline, Static, meshes.translucent);
+    geometry.append_textured(ArmorTranslucent, Static, meshes.armor_translucent);
+    geometry.append_textured(TranslucentEmissive, Static, meshes.translucent_emissive);
+    geometry.append_textured(
+        translucent_pipeline,
+        DynamicPlayerSkin,
+        meshes.dynamic_player_skin_translucent,
+    );
+    geometry.append_textured(
+        translucent_pipeline,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_translucent,
+    );
+    geometry.append_textured(Eyes, Static, meshes.eyes);
+    geometry
+}
+
+/// Vanilla `GuiEntityRenderer.renderToTexture`: a fresh `CameraRenderState` starts with identity
+/// orientation. When the preview supplies an override, the camera-facing feature orientation is
+/// `override.conjugate(new Quaternionf()).rotateY(PI)`.
+fn gui_entity_camera_orientation(override_rotation: Option<[f32; 4]>) -> Mat4 {
+    let Some(rotation) = override_rotation else {
+        return Mat4::IDENTITY;
+    };
+    let rotation = Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]);
+    let rotation = if rotation.is_finite() && rotation.length_squared() > f32::EPSILON {
+        rotation.normalize()
+    } else {
+        Quat::IDENTITY
+    };
+    Mat4::from_quat(rotation.conjugate() * Quat::from_rotation_y(std::f32::consts::PI))
+}
+
+fn bake_hud_gui_sign_preview_pip_geometry(
+    instance: &EntityModelInstance,
+    wood: SignModelWood,
+    attachment: SignModelAttachment,
+    atlas: &EntityModelTextureAtlasLayout,
+) -> HudEntityPreviewPipGeometry {
+    let mut meshes = EntityModelTexturedMeshes::new(None);
+    let scale = if attachment.is_hanging() {
+        1.0
+    } else {
+        SIGN_RENDER_SCALE
+    };
+    let transform = Mat4::from_scale(Vec3::new(scale, -scale, -scale));
+    let passes = sign_textured_layer_passes(wood, attachment);
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+    let mut sink = TexturedSink {
+        meshes: &mut meshes,
+        atlas,
+        owned_entries: &[],
+        equipment_assets: &equipment_assets,
+        dynamic_player_skin_atlas: None,
+        dynamic_player_texture_atlas: None,
+        data_driven_rigs: &[],
+    };
+    sink.model(
+        &sign_model_layer(attachment).bake(),
+        transform,
+        instance,
+        &passes,
+    );
+
+    let mut geometry = HudEntityPreviewPipGeometry::default();
+    use EntityModelTexturedDrawAtlas::Static;
+    use HudEntityPreviewPipPipeline::Cutout;
+    geometry.append_textured(Cutout, Static, meshes.cutout);
+    geometry
+}
+
+fn hud_preview_lighting_entry(lighting: GuiItemLightingEntry) -> LightingEntry {
+    match lighting {
+        GuiItemLightingEntry::ItemsFlat => LightingEntry::ItemsFlat,
+        GuiItemLightingEntry::Items3d => LightingEntry::Items3d,
+        GuiItemLightingEntry::EntityInUi => LightingEntry::EntityInUi,
+    }
+}
+
+fn hud_entity_preview_camera_uniform(
+    preview: &HudEntityPreview,
+    width: f32,
+    height: f32,
+    glint_elapsed_millis: f64,
+    glint_speed: f64,
+    glint_alpha: f32,
+) -> CameraUniform {
+    let camera = if preview.lighting == GuiItemLightingEntry::EntityInUi {
+        CameraUniform::hud_entity_preview_pip(
+            width,
+            height,
+            preview.scale,
+            preview.translation,
+            preview.rotation,
+        )
+    } else {
+        CameraUniform::hud_picture_in_picture(
+            width,
+            height,
+            preview.scale,
+            preview.translation,
+            preview.rotation,
+            hud_preview_lighting_entry(preview.lighting),
+        )
+    };
+    camera.with_glint_texture_time(glint_elapsed_millis, glint_speed, glint_alpha)
+}
+
+/// Persistent GPU state for one GUI entity preview slot: the vanilla-private color + depth
+/// textures (recreated only when the preview bounds change), the PIP camera buffer, the HUD blit
+/// bind group over the color texture, and the per-frame vertex/index streams.
+pub(crate) struct HudEntityPreviewPipTarget {
+    width: u32,
+    height: u32,
+    _color_texture: wgpu::Texture,
+    color_view: wgpu::TextureView,
+    _depth_texture: wgpu::Texture,
+    depth_view: wgpu::TextureView,
+    camera_buffer: wgpu::Buffer,
+    _blit_sampler: wgpu::Sampler,
+    pub(crate) blit_bind_group: wgpu::BindGroup,
+    textured_vertices: FrameDataBuffer,
+    textured_indices: FrameDataBuffer,
+    scroll_vertices: FrameDataBuffer,
+    scroll_indices: FrameDataBuffer,
+}
+
+impl HudEntityPreviewPipTarget {
+    pub(crate) fn retire(mut self, queue: &wgpu::Queue) {
+        let mut buffers = vec![self.camera_buffer];
+        for frame_buf in [
+            &mut self.textured_vertices,
+            &mut self.textured_indices,
+            &mut self.scroll_vertices,
+            &mut self.scroll_indices,
+        ] {
+            if let Some(buffer) = frame_buf.take_buffer() {
+                buffers.push(buffer);
+            }
+        }
+        crate::frame_buffers::retire_gpu_resources(
+            queue,
+            buffers,
+            vec![self._color_texture, self._depth_texture],
+        );
+    }
+
+    fn new(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        hud_bind_group_layout: &wgpu::BindGroupLayout,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let width = width.max(1);
+        let height = height.max(1);
+        let color_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("bbb-hud-entity-preview-pip-color"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let color_view = color_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth = create_depth_target(device, width, height);
+        let camera_buffer = crate::frame_buffers::create_initialized_buffer(
+            device,
+            Some("bbb-hud-entity-preview-pip-camera"),
+            bytemuck::bytes_of(&CameraUniform::identity()),
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        );
+        // Vanilla blits the PIP texture with a NEAREST sampler
+        // (`RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST)`).
+        let blit_sampler =
+            create_nearest_clamp_sampler(device, "bbb-hud-entity-preview-pip-blit-sampler");
+        let blit_bind_group = create_texture_bind_group(
+            device,
+            hud_bind_group_layout,
+            "bbb-hud-entity-preview-pip-blit-bind-group",
+            &color_view,
+            &blit_sampler,
+        );
+        Self {
+            width,
+            height,
+            _color_texture: color_texture,
+            color_view,
+            _depth_texture: depth._texture,
+            depth_view: depth.view,
+            camera_buffer,
+            _blit_sampler: blit_sampler,
+            blit_bind_group,
+            textured_vertices: FrameDataBuffer::vertex("bbb-hud-entity-preview-pip-vertices"),
+            textured_indices: FrameDataBuffer::index("bbb-hud-entity-preview-pip-indices"),
+            scroll_vertices: FrameDataBuffer::vertex("bbb-hud-entity-preview-pip-scroll-vertices"),
+            scroll_indices: FrameDataBuffer::index("bbb-hud-entity-preview-pip-scroll-indices"),
+        }
+    }
+}
+
+impl Renderer {
+    /// Reuses the preview slot's persistent PIP target when its size still matches the preview
+    /// bounds, otherwise creates a fresh one (vanilla `needsAResize` texture recreation).
+    pub(crate) fn ensure_hud_entity_preview_pip_target(
+        &self,
+        existing: Option<HudEntityPreviewPipTarget>,
+        width: u32,
+        height: u32,
+    ) -> HudEntityPreviewPipTarget {
+        let width = width.max(1);
+        let height = height.max(1);
+        match existing {
+            Some(target) if target.width == width && target.height == height => target,
+            other => {
+                if let Some(previous) = other {
+                    previous.retire(&self.queue);
+                }
+                HudEntityPreviewPipTarget::new(
+                    &self.device,
+                    self.config.format,
+                    &self.hud_bind_group_layout,
+                    width,
+                    height,
+                )
+            }
+        }
+    }
+
+    /// Renders one sanitized preview into its PIP target: writes the PIP camera, bakes and
+    /// uploads the entity geometry, then encodes the isolated color+depth pass (cleared to
+    /// transparent color and depth 1.0 per preview, vanilla `clearColorAndDepthTextures`).
+    /// Returns `(entity_draw_calls, item_draw_calls, pipeline_switches)`.
+    pub(crate) fn encode_hud_entity_preview_pip(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &mut HudEntityPreviewPipTarget,
+        preview: &HudEntityPreview,
+        preview_index: u32,
+        glint_elapsed_millis: f64,
+    ) -> (u64, u64, u64) {
+        self.pack.item_model_residency.stage_pending_uploads(
+            &self.device,
+            encoder,
+            self.frame_uploads.belt(),
+        );
+        let camera = hud_entity_preview_camera_uniform(
+            preview,
+            target.width as f32,
+            target.height as f32,
+            glint_elapsed_millis,
+            self.glint_speed,
+            self.glint_alpha,
+        );
+        self.frame_uploads.belt().write_bytes(
+            encoder,
+            &target.camera_buffer,
+            0,
+            bytemuck::bytes_of(&camera),
+        );
+
+        let geometry = self.pack.entity_model_texture_atlas.as_ref().map(|atlas| {
+            bake_hud_preview_pip_geometry(
+                preview,
+                &atlas.layout,
+                &atlas.owned_entries,
+                &atlas.equipment_assets,
+                self.entity_dynamic_player_skin_atlas
+                    .as_ref()
+                    .map(|atlas| &atlas.layout),
+                self.entity_dynamic_player_texture_atlas
+                    .as_ref()
+                    .map(|atlas| &atlas.layout),
+            )
+        });
+
+        let mut has_textured = false;
+        let mut has_scroll = false;
+        if let Some(geometry) = &geometry {
+            let belt = self.frame_uploads.belt();
+            has_textured = target.textured_vertices.upload_staged(
+                &self.device,
+                encoder,
+                belt,
+                geometry.textured_vertex_bytes(),
+            ) && target.textured_indices.upload_staged(
+                &self.device,
+                encoder,
+                belt,
+                bytemuck::cast_slice(&geometry.textured_indices),
+            );
+            has_scroll = target.scroll_vertices.upload_staged(
+                &self.device,
+                encoder,
+                belt,
+                geometry.scroll_vertex_bytes(),
+            ) && target.scroll_indices.upload_staged(
+                &self.device,
+                encoder,
+                belt,
+                bytemuck::cast_slice(&geometry.scroll_indices),
+            );
+        }
+
+        let static_bind_group = self.pack.entity_model_texture_atlas.as_ref().map(|atlas| {
+            let (view, sampler) = atlas.view_and_sampler();
+            create_camera_texture_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                "bbb-hud-entity-preview-pip-atlas-bind-group",
+                &target.camera_buffer.as_entire_buffer_binding(),
+                view,
+                sampler,
+            )
+        });
+        let dynamic_skin_bind_group = self.entity_dynamic_player_skin_atlas.as_ref().map(|atlas| {
+            let (view, sampler) = atlas.view_and_sampler();
+            create_camera_texture_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                "bbb-hud-entity-preview-pip-atlas-bind-group",
+                &target.camera_buffer.as_entire_buffer_binding(),
+                view,
+                sampler,
+            )
+        });
+        let dynamic_texture_bind_group =
+            self.entity_dynamic_player_texture_atlas
+                .as_ref()
+                .map(|atlas| {
+                    let (view, sampler) = atlas.view_and_sampler();
+                    create_camera_texture_bind_group(
+                        &self.device,
+                        &self.terrain_bind_group_layout,
+                        "bbb-hud-entity-preview-pip-atlas-bind-group",
+                        &target.camera_buffer.as_entire_buffer_binding(),
+                        view,
+                        sampler,
+                    )
+                });
+        let block_item_bind_group = {
+            let (view, sampler) = self.pack.terrain_atlas.view_and_sampler();
+            create_camera_texture_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                "bbb-hud-entity-preview-pip-atlas-bind-group",
+                &target.camera_buffer.as_entire_buffer_binding(),
+                view,
+                sampler,
+            )
+        };
+        let item_bind_group = self.pack.item_entity_atlas.as_ref().map(|atlas| {
+            let (view, sampler) = atlas.view_and_sampler();
+            create_camera_texture_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                "bbb-hud-entity-preview-pip-atlas-bind-group",
+                &target.camera_buffer.as_entire_buffer_binding(),
+                view,
+                sampler,
+            )
+        });
+        let item_glint_bind_group = self.pack.item_glint_texture.as_ref().map(|glint| {
+            let (view, sampler) = glint.view_and_sampler();
+            create_camera_texture_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                "bbb-hud-entity-preview-pip-atlas-bind-group",
+                &target.camera_buffer.as_entire_buffer_binding(),
+                view,
+                sampler,
+            )
+        });
+        let armor_glint_bind_group = self.pack.armor_glint_texture.as_ref().map(|glint| {
+            let (view, sampler) = glint.view_and_sampler();
+            create_camera_texture_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                "bbb-hud-entity-preview-pip-atlas-bind-group",
+                &target.camera_buffer.as_entire_buffer_binding(),
+                view,
+                sampler,
+            )
+        });
+
+        let mut entity_draw_calls = 0u64;
+        let mut pipeline_switches = 0u64;
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(HUD_ENTITY_PREVIEW_PIP_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &target.color_view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            // The vanilla PIP depth texture is private and cleared to 1.0 per preview: preview
+            // depth never mixes with the world depth target (`depth_isolated`).
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &target.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+            multiview_mask: None,
+        });
+
+        if let (Some(geometry), Some(static_bind_group)) =
+            (geometry.as_ref(), static_bind_group.as_ref())
+        {
+            for ordered_draw in &geometry.draw_order {
+                match *ordered_draw {
+                    HudEntityPreviewPipDrawOrder::Textured(draw_index) => {
+                        if !has_textured {
+                            continue;
+                        }
+                        let (Some(vertex_buffer), Some(index_buffer)) = (
+                            target.textured_vertices.buffer(),
+                            target.textured_indices.buffer(),
+                        ) else {
+                            unreachable!("textured buffers uploaded above");
+                        };
+                        let draw = &geometry.textured_draws[draw_index];
+                        let bind_group = match draw.atlas {
+                            EntityModelTexturedDrawAtlas::Static => static_bind_group,
+                            EntityModelTexturedDrawAtlas::DynamicPlayerSkin => {
+                                match &dynamic_skin_bind_group {
+                                    Some(bind_group) => bind_group,
+                                    None => continue,
+                                }
+                            }
+                            EntityModelTexturedDrawAtlas::DynamicPlayerTexture => {
+                                match &dynamic_texture_bind_group {
+                                    Some(bind_group) => bind_group,
+                                    None => continue,
+                                }
+                            }
+                        };
+                        let (pipeline, uses_lightmap) = match draw.pipeline {
+                            HudEntityPreviewPipPipeline::Solid => {
+                                (&self.pipelines.entity_model_solid, true)
+                            }
+                            HudEntityPreviewPipPipeline::Cutout => {
+                                (&self.pipelines.entity_model_textured, true)
+                            }
+                            HudEntityPreviewPipPipeline::CutoutCull => {
+                                (&self.pipelines.entity_model_textured_cull, true)
+                            }
+                            HudEntityPreviewPipPipeline::SolidZOffsetForward => {
+                                (&self.pipelines.entity_model_solid_z_offset_forward, true)
+                            }
+                            HudEntityPreviewPipPipeline::CutoutZOffset => {
+                                (&self.pipelines.entity_model_cutout_z_offset, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorCutout => {
+                                (&self.pipelines.entity_model_armor_cutout, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorTrim => {
+                                (&self.pipelines.entity_model_armor_cutout, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorTrimDecal => {
+                                (&self.pipelines.entity_model_armor_decal, true)
+                            }
+                            HudEntityPreviewPipPipeline::Translucent => {
+                                (&self.pipelines.entity_model_translucent, true)
+                            }
+                            HudEntityPreviewPipPipeline::BannerPattern => {
+                                (&self.pipelines.entity_model_banner_pattern, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorTranslucent => {
+                                (&self.pipelines.entity_model_armor_translucent, true)
+                            }
+                            HudEntityPreviewPipPipeline::TranslucentEmissive => {
+                                (&self.pipelines.entity_model_translucent_emissive, false)
+                            }
+                            HudEntityPreviewPipPipeline::Eyes => {
+                                (&self.pipelines.entity_model_eyes, false)
+                            }
+                        };
+                        pass.set_pipeline(pipeline);
+                        pipeline_switches += 1;
+                        pass.set_bind_group(0, bind_group, &[]);
+                        if uses_lightmap {
+                            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                        }
+                        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(
+                            draw.index_start..draw.index_start + draw.index_count,
+                            0,
+                            0..1,
+                        );
+                        entity_draw_calls += 1;
+                    }
+                    HudEntityPreviewPipDrawOrder::Scroll(draw_index) => {
+                        if !has_scroll {
+                            continue;
+                        }
+                        let (Some(vertex_buffer), Some(index_buffer)) = (
+                            target.scroll_vertices.buffer(),
+                            target.scroll_indices.buffer(),
+                        ) else {
+                            unreachable!("scroll buffers uploaded above");
+                        };
+                        let draw = &geometry.scroll_draws[draw_index];
+                        let bind_group = if draw.armor {
+                            pass.set_pipeline(&self.pipelines.entity_model_armor_entity_glint);
+                            match &armor_glint_bind_group {
+                                Some(bind_group) => bind_group,
+                                None => continue,
+                            }
+                        } else {
+                            pass.set_pipeline(&self.pipelines.entity_model_entity_glint);
+                            match &item_glint_bind_group {
+                                Some(bind_group) => bind_group,
+                                None => continue,
+                            }
+                        };
+                        pipeline_switches += 1;
+                        pass.set_bind_group(0, bind_group, &[]);
+                        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(
+                            draw.index_start..draw.index_start + draw.index_count,
+                            0,
+                            0..1,
+                        );
+                        entity_draw_calls += 1;
+                    }
+                }
+            }
+        }
+
+        let (item_draw_calls, item_pipeline_switches) = self.draw_hud_entity_preview_items(
+            &mut pass,
+            preview_index,
+            &block_item_bind_group,
+            item_bind_group.as_ref(),
+            static_bind_group.as_ref(),
+            dynamic_skin_bind_group.as_ref(),
+            dynamic_texture_bind_group.as_ref(),
+            item_glint_bind_group.as_ref(),
+        );
+        pipeline_switches = pipeline_switches.saturating_add(item_pipeline_switches);
+        (entity_draw_calls, item_draw_calls, pipeline_switches)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_hud_entity_preview_items<'pass>(
+        &'pass self,
+        pass: &mut wgpu::RenderPass<'pass>,
+        preview_index: u32,
+        block_bind_group: &'pass wgpu::BindGroup,
+        item_bind_group: Option<&'pass wgpu::BindGroup>,
+        entity_bind_group: Option<&'pass wgpu::BindGroup>,
+        dynamic_skin_bind_group: Option<&'pass wgpu::BindGroup>,
+        dynamic_entity_bind_group: Option<&'pass wgpu::BindGroup>,
+        glint_bind_group: Option<&'pass wgpu::BindGroup>,
+    ) -> (u64, u64) {
+        let target = crate::item_models::ItemModelDrawTarget::EntityPreview(preview_index);
+        if !self.pack.item_model_residency.has_draws_for_target(target) {
+            return (0, 0);
+        }
+        let Some((vertex_arena, index_arena, instance_buffer)) =
+            self.pack.item_model_residency.shared_buffers()
+        else {
+            return (0, 0);
+        };
+        let mut buffers_bound = false;
+        let mut draw_calls = 0u64;
+        let mut pipeline_switches = 0u64;
+        let mut active_phase = None;
+        let mut active_group0: Option<*const wgpu::BindGroup> = None;
+        let mut active_group1: Option<*const wgpu::BindGroup> = None;
+        for draw in self.pack.item_model_residency.draws_for_target(target) {
+            if draw.scissor.is_some()
+                || draw.phase == crate::item_models::ItemModelDrawPhase::Outline
+            {
+                continue;
+            }
+            let Some(owner) = self.pack.item_model_residency.draw_owner(draw) else {
+                continue;
+            };
+            let (group0, needs_group1) = if matches!(
+                draw.phase,
+                crate::item_models::ItemModelDrawPhase::Glint
+                    | crate::item_models::ItemModelDrawPhase::GlintTranslucent
+            ) {
+                let Some(bind_group) = glint_bind_group else {
+                    continue;
+                };
+                (bind_group, false)
+            } else {
+                let bind_group = match draw.asset.atlas() {
+                    crate::item_models::ItemModelAtlasKind::Blocks => block_bind_group,
+                    crate::item_models::ItemModelAtlasKind::Items => {
+                        let Some(bind_group) = item_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                    crate::item_models::ItemModelAtlasKind::Entity => {
+                        let Some(bind_group) = entity_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                    crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin => {
+                        let Some(bind_group) = dynamic_skin_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                    crate::item_models::ItemModelAtlasKind::DynamicEntity => {
+                        let Some(bind_group) = dynamic_entity_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                };
+                let needs_lightmap = !matches!(
+                    draw.phase,
+                    crate::item_models::ItemModelDrawPhase::EndPortal
+                        | crate::item_models::ItemModelDrawPhase::EndGateway
+                );
+                (bind_group, needs_lightmap)
+            };
+            let pipeline = match draw.phase {
+                crate::item_models::ItemModelDrawPhase::Solid => {
+                    &self.pipelines.resident_item_model
+                }
+                crate::item_models::ItemModelDrawPhase::SolidNoCutout => {
+                    &self.pipelines.resident_item_model_solid_no_cutout
+                }
+                crate::item_models::ItemModelDrawPhase::SolidZOffsetForward => {
+                    &self.pipelines.resident_item_model_z_offset_forward
+                }
+                crate::item_models::ItemModelDrawPhase::CutoutNoCull => {
+                    &self.pipelines.resident_item_model_cutout_no_cull
+                }
+                crate::item_models::ItemModelDrawPhase::CutoutZOffset => {
+                    &self.pipelines.resident_item_model_cutout_z_offset
+                }
+                crate::item_models::ItemModelDrawPhase::Pattern => {
+                    &self.pipelines.resident_item_model_pattern
+                }
+                crate::item_models::ItemModelDrawPhase::Translucent => {
+                    &self.pipelines.resident_item_model_translucent
+                }
+                crate::item_models::ItemModelDrawPhase::TranslucentNoCull => {
+                    &self.pipelines.resident_item_model_translucent_no_cull
+                }
+                crate::item_models::ItemModelDrawPhase::Glint
+                | crate::item_models::ItemModelDrawPhase::GlintTranslucent => {
+                    &self.pipelines.resident_item_model_glint
+                }
+                crate::item_models::ItemModelDrawPhase::EndPortal => {
+                    &self.pipelines.resident_item_model_end_portal
+                }
+                crate::item_models::ItemModelDrawPhase::EndGateway => {
+                    &self.pipelines.resident_item_model_end_gateway
+                }
+                crate::item_models::ItemModelDrawPhase::Outline => continue,
+            };
+            if active_phase != Some(draw.phase) {
+                pass.set_pipeline(pipeline);
+                active_phase = Some(draw.phase);
+                if !needs_group1 {
+                    active_group1 = None;
+                }
+                pipeline_switches = pipeline_switches.saturating_add(1);
+            }
+            let group0_ptr = std::ptr::from_ref(group0);
+            if active_group0 != Some(group0_ptr) {
+                pass.set_bind_group(0, group0, &[]);
+                active_group0 = Some(group0_ptr);
+            }
+            if needs_group1 {
+                let group1 = &self.lightmap.sample_bind_group;
+                let group1_ptr = std::ptr::from_ref(group1);
+                if active_group1 != Some(group1_ptr) {
+                    pass.set_bind_group(1, group1, &[]);
+                    active_group1 = Some(group1_ptr);
+                }
+            }
+            if !buffers_bound {
+                pass.set_vertex_buffer(0, vertex_arena.slice(..));
+                pass.set_vertex_buffer(1, instance_buffer.slice(..));
+                pass.set_index_buffer(index_arena.slice(..), wgpu::IndexFormat::Uint32);
+                buffers_bound = true;
+            }
+            pass.draw_indexed(
+                owner.first_index..owner.first_index.saturating_add(owner.index_count),
+                owner.base_vertex,
+                draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+            );
+            draw_calls = draw_calls.saturating_add(1);
+        }
+        (draw_calls, pipeline_switches)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+    use std::sync::Arc;
+
+    use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
+    use super::super::model_layers::{
+        ARMOR_IRON_HUMANOID_TEXTURE_REF, ARMOR_IRON_LEGGINGS_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
+        DRAGON_FIREBALL_TEXTURE_REF,
+    };
+    use super::super::tests::texture_refs_matching;
+    use super::super::{
+        EntityEquipmentLayerType, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    };
+    use super::*;
+    use bbb_render_types::EntityEquipmentAssetId;
+
+    const TEST_PREVIEW_EQUIPMENT_GENERATION: u64 = 81_001;
+
+    fn preview_iron_equipment_catalog() -> ResolvedEntityEquipmentAssetCatalog {
+        let layer = |layer_type, texture| {
+            (
+                layer_type,
+                vec![super::super::equipment::EntityEquipmentAssetLayer {
+                    texture: super::super::equipment::EntityEquipmentAssetLayerTexture::Static(
+                        texture,
+                    ),
+                    dyeable: None,
+                    use_player_texture: false,
+                }],
+            )
+        };
+        super::super::equipment::EntityEquipmentAssetCatalog::new(
+            TEST_PREVIEW_EQUIPMENT_GENERATION,
+            vec![super::super::equipment::EntityEquipmentAsset {
+                layers: BTreeMap::from([
+                    layer(
+                        EntityEquipmentLayerType::Humanoid,
+                        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+                    ),
+                    layer(
+                        EntityEquipmentLayerType::HumanoidLeggings,
+                        ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+                    ),
+                ]),
+            }],
+        )
+        .resolve(&[])
+        .expect("preview equipment catalog")
+    }
+
+    fn bake_iron_equipment_preview(
+        instance: &EntityModelInstance,
+        atlas: &EntityModelTextureAtlasLayout,
+        dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    ) -> HudEntityPreviewPipGeometry {
+        let equipment_assets = preview_iron_equipment_catalog();
+        bake_hud_entity_preview_pip_geometry_with_equipment(
+            instance,
+            atlas,
+            &[],
+            &equipment_assets,
+            None,
+            dynamic_player_texture_atlas,
+            Mat4::IDENTITY,
+        )
+    }
+    use crate::{
+        BannerPatternLayer, BannerPatternTexture, DynamicEntityTextureImage, EntityArmorTrim,
+        EntityDyeColor, EntityDynamicTexture, HudEntityPreviewRect, PigModelVariant,
+        StandaloneTextureSampling,
+    };
+
+    #[test]
+    fn smithing_entity_preview_pip_draws_the_exact_resident_item_target() {
+        use crate::hud::{
+            HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+            HudEntityPreviewItemSlot, HudEntityPreviewRect,
+        };
+        use crate::item_models::{
+            ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource,
+            ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
+            ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelQuad,
+            ItemModelResidencyFrame, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+        };
+
+        const WIDTH: u32 = 40;
+        const HEIGHT: u32 = 40;
+        const PADDED_BYTES_PER_ROW: u32 = 256;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &[255, 0, 0, 255])
+            .expect("red block atlas");
+        let identity = ItemModelAssetIdentity::new("minecraft:smithing_preview_test", "plain", 0);
+        let front = ItemModelQuad {
+            corners: [
+                [-8.0, -8.0, 0.0],
+                [8.0, -8.0, 0.0],
+                [8.0, 8.0, 0.0],
+                [-8.0, 8.0, 0.0],
+            ],
+            uvs: [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+            tint: [1.0; 4],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let back = ItemModelQuad {
+            corners: [
+                [-8.0, 8.0, 0.0],
+                [8.0, 8.0, 0.0],
+                [8.0, -8.0, 0.0],
+                [-8.0, -8.0, 0.0],
+            ],
+            normal: [0.0, 0.0, -1.0],
+            ..front
+        };
+        renderer
+            .set_item_model_residency_frame(ItemModelResidencyFrame {
+                assets: vec![ItemModelAssetRequest {
+                    identity: identity.clone(),
+                    atlas: ItemModelAtlasKind::Blocks,
+                    geometry_class: ItemModelGeometryClass::Solid,
+                    source: ItemModelAssetSource::Quads(Arc::from([front, back])),
+                }],
+                instances: vec![
+                    ItemModelInstanceRequest {
+                        identity: identity.clone(),
+                        atlas: ItemModelAtlasKind::Blocks,
+                        geometry_class: ItemModelGeometryClass::Solid,
+                        transform: Mat4::IDENTITY,
+                        tint: [1.0; 4],
+                        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        overlay: ITEM_MODEL_NO_OVERLAY,
+                        foil: ItemModelFoil::None,
+                        target: ItemModelDrawTarget::EntityPreview(0),
+                        phase: ItemModelDrawPhase::Solid,
+                        submit_order: 0,
+                        scissor: None,
+                    },
+                    // If target filtering regresses, this later black draw wins the equal-depth
+                    // test and erases the red sentinel.
+                    ItemModelInstanceRequest {
+                        identity,
+                        atlas: ItemModelAtlasKind::Blocks,
+                        geometry_class: ItemModelGeometryClass::Solid,
+                        transform: Mat4::IDENTITY,
+                        tint: [0.0, 0.0, 0.0, 1.0],
+                        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        overlay: ITEM_MODEL_NO_OVERLAY,
+                        foil: ItemModelFoil::None,
+                        target: ItemModelDrawTarget::EntityPreview(1),
+                        phase: ItemModelDrawPhase::Solid,
+                        submit_order: 1,
+                        scissor: None,
+                    },
+                ],
+                special_items: Vec::new(),
+            })
+            .expect("resident preview item");
+
+        let preview = HudEntityPreview {
+            entity: armor_stand_preview_instance(),
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width: WIDTH,
+                height: HEIGHT,
+            },
+            scissor: None,
+            translation: [0.0; 3],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 20.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: vec![HudEntityPreviewItemLayer {
+                slot: HudEntityPreviewItemSlot::LeftHand,
+                display_context: HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+                item_id: 1,
+                count: 1,
+                foil: false,
+                light_coords: crate::ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+                overlay: ITEM_MODEL_NO_OVERLAY,
+                order: 0,
+                submit_sequence: 1,
+            }],
+        };
+        let mut target = renderer.ensure_hud_entity_preview_pip_target(None, WIDTH, HEIGHT);
+        let mut encoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("bbb-smithing-preview-item-test"),
+            });
+        let (_, item_draw_calls, _) =
+            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0, 0.0);
+        assert_eq!(item_draw_calls, 1);
+
+        let readback = renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bbb-smithing-preview-item-readback"),
+            size: u64::from(PADDED_BYTES_PER_ROW * HEIGHT),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &target._color_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(PADDED_BYTES_PER_ROW),
+                    rows_per_image: Some(HEIGHT),
+                },
+            },
+            wgpu::Extent3d {
+                width: WIDTH,
+                height: HEIGHT,
+                depth_or_array_layers: 1,
+            },
+        );
+        renderer.frame_uploads.belt().finish();
+        renderer
+            .frame_uploads
+            .belt()
+            .flush_to_queue(&renderer.queue);
+        renderer.queue.submit(std::iter::once(encoder.finish()));
+        renderer.frame_uploads.recall_belt();
+        renderer.pack.item_model_residency.mark_submitted();
+        let slice = readback.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        let _ = renderer.device.poll(wgpu::PollType::wait_indefinitely());
+        let data = slice.get_mapped_range().expect("mapped GPU readback");
+        let has_red_item_pixel = data
+            .as_chunks::<{ PADDED_BYTES_PER_ROW as usize }>()
+            .0
+            .iter()
+            .take(HEIGHT as usize)
+            .flat_map(|row| row[..(WIDTH * 4) as usize].as_chunks::<4>().0.iter())
+            // Offscreen production targets are BGRA.
+            .any(|pixel| {
+                pixel[3] > 0 && pixel[2] > 32 && u16::from(pixel[2]) > u16::from(pixel[0]) + 16
+            });
+        assert!(
+            has_red_item_pixel,
+            "resident PIP item must produce red pixels"
+        );
+        drop(data);
+        readback.unmap();
+    }
+
+    #[test]
+    fn resource_texture_pip_pixels_distinguish_filtering_without_atlas_bleeding() {
+        const WIDTH: u32 = 64;
+        const HEIGHT: u32 = 64;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            eprintln!("skipping resource-texture PIP test without a compatible adapter");
+            return;
+        };
+        let static_images = texture_refs_matching(|path| path.starts_with("textures/entity/pig/"))
+            .iter()
+            .copied()
+            .map(|texture| {
+                EntityModelTextureImage::new(
+                    texture,
+                    vec![0xff; usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap()],
+                )
+            })
+            .collect::<Vec<_>>();
+        renderer
+            .upload_entity_model_textures(&static_images)
+            .expect("pig entity atlas");
+
+        let nearest = render_resource_texture_pig_pip(
+            &mut renderer,
+            StandaloneTextureSampling::new(false, false),
+            WIDTH,
+            HEIGHT,
+        );
+        let linear = render_resource_texture_pig_pip(
+            &mut renderer,
+            StandaloneTextureSampling::new(true, false),
+            WIDTH,
+            HEIGHT,
+        );
+
+        let visible = |pixel: &&[u8; 4]| pixel[3] > 0;
+        assert!(nearest.iter().filter(visible).count() > 100);
+        assert!(linear.iter().filter(visible).count() > 100);
+        let sentinel_green = |pixel: &&[u8; 4]| {
+            pixel[3] > 0
+                && u16::from(pixel[1]) > u16::from(pixel[0]) + 24
+                && u16::from(pixel[1]) > u16::from(pixel[2]) + 24
+        };
+        assert_eq!(
+            nearest.iter().filter(sentinel_green).count(),
+            0,
+            "nearest resource sampling must not read the green neighbour entry"
+        );
+        assert_eq!(
+            linear.iter().filter(sentinel_green).count(),
+            0,
+            "all four linear taps must remain inside the red/blue resource entry"
+        );
+
+        let purple = |pixel: &&[u8; 4]| {
+            pixel[3] > 0
+                && pixel[0] > 24
+                && pixel[2] > 24
+                && u16::from(pixel[1]) + 16 < u16::from(pixel[0]).min(u16::from(pixel[2]))
+        };
+        let nearest_purple = nearest.iter().filter(purple).count();
+        let linear_purple = linear.iter().filter(purple).count();
+        assert!(
+            linear_purple > nearest_purple + 8,
+            "linear filtering must blend red/blue texels ({linear_purple}) more than nearest ({nearest_purple})"
+        );
+    }
+
+    fn render_resource_texture_pig_pip(
+        renderer: &mut Renderer,
+        sampling: StandaloneTextureSampling,
+        width: u32,
+        height: u32,
+    ) -> Vec<[u8; 4]> {
+        const TEXTURE_HANDLE: u64 = 91_001;
+        const SENTINEL_HANDLE: u64 = 91_002;
+        const BYTES_PER_ROW: u32 = 256;
+
+        renderer
+            .upload_dynamic_entity_textures(vec![
+                DynamicEntityTextureImage {
+                    handle: TEXTURE_HANDLE,
+                    size: [2, 1],
+                    standalone_sampling: Some(sampling),
+                    rgba: vec![255, 0, 0, 255, 0, 0, 255, 255],
+                },
+                DynamicEntityTextureImage {
+                    handle: SENTINEL_HANDLE,
+                    size: [1, 1],
+                    standalone_sampling: None,
+                    rgba: vec![0, 255, 0, 255],
+                },
+            ])
+            .expect("dynamic resource texture atlas");
+        let preview = HudEntityPreview {
+            entity: EntityModelInstance {
+                dynamic_texture: Some(EntityDynamicTexture {
+                    handle: TEXTURE_HANDLE,
+                }),
+                ..EntityModelInstance::pig(
+                    -1,
+                    [0.0, 0.0, 0.0],
+                    210.0,
+                    PigModelVariant::Temperate,
+                    false,
+                )
+            },
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            scissor: None,
+            translation: [0.0; 3],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 24.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: Vec::new(),
+        };
+        let mut target = renderer.ensure_hud_entity_preview_pip_target(None, width, height);
+        let mut encoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("bbb-resource-texture-pip-test"),
+            });
+        let (entity_draw_calls, _, _) =
+            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0, 0.0);
+        assert!(entity_draw_calls > 0);
+
+        let readback = renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bbb-resource-texture-pip-readback"),
+            size: u64::from(BYTES_PER_ROW * height),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &target._color_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(BYTES_PER_ROW),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        renderer.frame_uploads.belt().finish();
+        renderer
+            .frame_uploads
+            .belt()
+            .flush_to_queue(&renderer.queue);
+        renderer.queue.submit(std::iter::once(encoder.finish()));
+        renderer.frame_uploads.recall_belt();
+        renderer.pack.item_model_residency.mark_submitted();
+        let slice = readback.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        let _ = renderer.device.poll(wgpu::PollType::wait_indefinitely());
+        let data = slice.get_mapped_range().expect("mapped GPU readback");
+        let pixels = data
+            .as_chunks::<{ BYTES_PER_ROW as usize }>()
+            .0
+            .iter()
+            .take(height as usize)
+            .flat_map(|row| row[..(width * 4) as usize].as_chunks::<4>().0.iter())
+            // Offscreen production targets are BGRA.
+            .map(|pixel| [pixel[2], pixel[1], pixel[0], pixel[3]])
+            .collect();
+        drop(data);
+        readback.unmap();
+        pixels
+    }
+
+    fn armor_stand_preview_instance() -> EntityModelInstance {
+        EntityModelInstance::armor_stand(
+            -1,
+            [0.0, 0.0, 0.0],
+            210.0,
+            false,
+            true,
+            false,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        )
+        .with(|s| (s.head_yaw, s.head_pitch) = (0.0, 25.0))
+    }
+
+    fn armor_stand_atlas() -> EntityModelTextureAtlasLayout {
+        let images: Vec<EntityModelTextureImage> = [ARMOR_STAND_TEXTURE_REF]
+            .iter()
+            .map(|texture| {
+                let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                EntityModelTextureImage::new(*texture, vec![0xff; len])
+            })
+            .collect();
+        build_entity_model_texture_atlas(&images).expect("atlas").0
+    }
+
+    fn entity_preview_for(
+        entity: EntityModelInstance,
+        override_camera_rotation: Option<[f32; 4]>,
+    ) -> HudEntityPreview {
+        HudEntityPreview {
+            entity,
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width: 40,
+                height: 40,
+            },
+            scissor: None,
+            translation: [0.0; 3],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation,
+            scale: 20.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn preview_override_camera_orients_camera_facing_entity_geometry_like_vanilla() {
+        let texture = DRAGON_FIREBALL_TEXTURE_REF;
+        let texture_len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        let images = [EntityModelTextureImage::new(
+            texture,
+            vec![0xff; texture_len],
+        )];
+        let atlas = build_entity_model_texture_atlas(&images)
+            .expect("dragon fireball atlas")
+            .0;
+        let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+        let entity = EntityModelInstance::new(7, EntityModelKind::DragonFireball, [0.0; 3], 0.0);
+        let x_rotation = Quat::from_rotation_x(30.0_f32.to_radians());
+        let preview = entity_preview_for(entity, Some(x_rotation.to_array()));
+
+        let geometry =
+            bake_hud_preview_pip_geometry(&preview, &atlas, &[], &equipment_assets, None, None);
+        assert_eq!(geometry.textured_vertices.len(), 4);
+
+        // `GuiEntityRenderer`: override.conjugate().rotateY(PI), after the fireball's scale(2).
+        let camera_orientation =
+            Mat4::from_quat(x_rotation.conjugate() * Quat::from_rotation_y(std::f32::consts::PI));
+        let transform = Mat4::from_scale(Vec3::splat(2.0)) * camera_orientation;
+        let expected = [
+            Vec3::new(-0.5, -0.25, 0.0),
+            Vec3::new(0.5, -0.25, 0.0),
+            Vec3::new(0.5, 0.75, 0.0),
+            Vec3::new(-0.5, 0.75, 0.0),
+        ]
+        .map(|corner| transform.transform_point3(corner));
+        for (vertex, expected) in geometry.textured_vertices.iter().zip(expected) {
+            let actual = Vec3::from_array(vertex.position);
+            assert!(
+                actual.abs_diff_eq(expected, 1.0e-5),
+                "camera-facing vertex {actual:?} != {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn preview_camera_uniform_uses_the_frame_glint_clock() {
+        let preview = entity_preview_for(armor_stand_preview_instance(), None);
+        let camera = hud_entity_preview_camera_uniform(
+            &preview,
+            40.0,
+            60.0,
+            1_000.0,
+            crate::camera::VANILLA_DEFAULT_GLINT_SPEED,
+            crate::camera::VANILLA_DEFAULT_GLINT_STRENGTH,
+        );
+
+        assert_eq!(
+            camera.glint_offsets(),
+            [
+                -4000.0 / 110_000.0,
+                4000.0 / 30_000.0,
+                crate::camera::VANILLA_DEFAULT_GLINT_STRENGTH,
+                0.0
+            ]
+        );
+    }
+
+    #[test]
+    fn bake_concatenates_buckets_with_rebased_contiguous_draw_ranges() {
+        let atlas = armor_stand_atlas();
+        let geometry = bake_hud_entity_preview_pip_geometry(
+            &armor_stand_preview_instance(),
+            &atlas,
+            None,
+            None,
+        );
+
+        assert!(!geometry.textured_vertices.is_empty());
+        assert!(!geometry.textured_draws.is_empty());
+        // Draw ranges tile the concatenated index stream exactly, in bucket append order.
+        let mut expected_start = 0u32;
+        for draw in &geometry.textured_draws {
+            assert_eq!(draw.index_start, expected_start, "contiguous draw ranges");
+            assert!(draw.index_count > 0);
+            expected_start += draw.index_count;
+        }
+        assert_eq!(expected_start as usize, geometry.textured_indices.len());
+        // Rebased indices stay inside the concatenated vertex stream.
+        let vertex_count = geometry.textured_vertices.len() as u32;
+        assert!(geometry
+            .textured_indices
+            .iter()
+            .all(|index| *index < vertex_count));
+        // The bare armor stand is cutout-family only.
+        assert!(geometry.textured_draws.iter().all(|draw| matches!(
+            draw.pipeline,
+            HudEntityPreviewPipPipeline::Solid
+                | HudEntityPreviewPipPipeline::Cutout
+                | HudEntityPreviewPipPipeline::CutoutCull
+        )));
+        assert!(geometry
+            .textured_draws
+            .iter()
+            .all(|draw| draw.atlas == EntityModelTexturedDrawAtlas::Static));
+        assert!(geometry.scroll_draws.is_empty());
+    }
+
+    #[test]
+    fn bake_routes_static_and_runtime_banner_patterns_through_banner_pattern_pipeline() {
+        let images: Vec<EntityModelTextureImage> =
+            texture_refs_matching(|path| path.starts_with("textures/entity/banner"))
+                .iter()
+                .map(|texture| {
+                    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                    EntityModelTextureImage::new(*texture, vec![0xff; len])
+                })
+                .collect();
+        let atlas = build_entity_model_texture_atlas(&images)
+            .expect("banner atlas")
+            .0;
+        let runtime_texture = EntityDynamicTexture { handle: 82_001 };
+        let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+            handle: runtime_texture.handle,
+            size: [64, 64],
+            standalone_sampling: None,
+            rgba: vec![0xff; 64 * 64 * 4],
+        }])
+        .expect("runtime banner-pattern atlas")
+        .0;
+        let mut layers = [None; 16];
+        layers[0] = Some(BannerPatternLayer {
+            texture: BannerPatternTexture::Runtime(runtime_texture),
+            color: EntityDyeColor::Blue,
+        });
+        let instance = EntityModelInstance::banner_flag(-1, EntityDyeColor::White, layers);
+
+        let geometry =
+            bake_hud_entity_preview_pip_geometry(&instance, &atlas, None, Some(&dynamic_atlas));
+        let banner_draws = geometry
+            .textured_draws
+            .iter()
+            .filter(|draw| draw.pipeline == HudEntityPreviewPipPipeline::BannerPattern)
+            .collect::<Vec<_>>();
+
+        assert_eq!(banner_draws.len(), 2, "base mask + runtime pattern");
+        assert_eq!(banner_draws[0].atlas, EntityModelTexturedDrawAtlas::Static);
+        assert_eq!(
+            banner_draws[1].atlas,
+            EntityModelTexturedDrawAtlas::DynamicPlayerTexture
+        );
+        assert!(!geometry
+            .textured_draws
+            .iter()
+            .any(|draw| draw.pipeline == HudEntityPreviewPipPipeline::Translucent));
+    }
+
+    #[test]
+    fn bake_routes_foil_armor_through_armor_cutout_and_armor_glint_buckets() {
+        // The smithing result projection: iron chestplate with foil — vanilla `HumanoidArmorLayer`
+        // submits `armorCutoutNoCull` plus `armorEntityGlint`. The full texture-ref atlas keeps
+        // the iron equipment texture and the enchanted-glint texture resolvable.
+        let images: Vec<EntityModelTextureImage> =
+            super::super::model_layers::entity_model_texture_refs()
+                .iter()
+                .map(|texture| {
+                    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                    EntityModelTextureImage::new(*texture, vec![0xff; len])
+                })
+                .collect();
+        let atlas = build_entity_model_texture_atlas(&images).expect("atlas").0;
+        let mut instance = armor_stand_preview_instance();
+        instance.render_state.chest_equipment_asset = Some(EntityEquipmentAssetId::new(
+            TEST_PREVIEW_EQUIPMENT_GENERATION,
+            0,
+        ));
+        instance.render_state.chest_armor_foil = true;
+        let geometry = bake_iron_equipment_preview(&instance, &atlas, None);
+
+        assert!(geometry
+            .textured_draws
+            .iter()
+            .any(|draw| draw.pipeline == HudEntityPreviewPipPipeline::ArmorCutout));
+        assert!(geometry.scroll_draws.iter().any(|draw| draw.armor));
+        // Glint indices are rebased against the scroll vertex stream.
+        let scroll_vertex_count = geometry.scroll_vertices.len() as u32;
+        assert!(geometry
+            .scroll_indices
+            .iter()
+            .all(|index| *index < scroll_vertex_count));
+    }
+
+    #[test]
+    fn bake_draws_runtime_armor_trim_after_armor_foil() {
+        let images: Vec<EntityModelTextureImage> =
+            super::super::model_layers::entity_model_texture_refs()
+                .iter()
+                .map(|texture| {
+                    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                    EntityModelTextureImage::new(*texture, vec![0xff; len])
+                })
+                .collect();
+        let atlas = build_entity_model_texture_atlas(&images).expect("atlas").0;
+        let trim_texture = EntityDynamicTexture { handle: 81_001 };
+        let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+            handle: trim_texture.handle,
+            size: [64, 32],
+            standalone_sampling: None,
+            rgba: vec![0xff; 64 * 32 * 4],
+        }])
+        .expect("dynamic trim atlas")
+        .0;
+        let mut instance = armor_stand_preview_instance();
+        instance.render_state.chest_equipment_asset = Some(EntityEquipmentAssetId::new(
+            TEST_PREVIEW_EQUIPMENT_GENERATION,
+            0,
+        ));
+        instance.render_state.chest_armor_foil = true;
+        instance.render_state.chest_armor_trim = Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        });
+
+        let geometry = bake_iron_equipment_preview(&instance, &atlas, Some(&dynamic_atlas));
+        let armor_glint = geometry
+            .draw_order
+            .iter()
+            .position(|draw| {
+                matches!(
+                    draw,
+                    HudEntityPreviewPipDrawOrder::Scroll(index)
+                        if geometry.scroll_draws[*index].armor
+                )
+            })
+            .expect("armor foil draw");
+        let trim = geometry
+            .draw_order
+            .iter()
+            .position(|draw| {
+                matches!(
+                    draw,
+                    HudEntityPreviewPipDrawOrder::Textured(index)
+                        if geometry.textured_draws[*index].pipeline
+                            == HudEntityPreviewPipPipeline::ArmorTrim
+                            && geometry.textured_draws[*index].atlas
+                                == EntityModelTexturedDrawAtlas::DynamicPlayerTexture
+                )
+            })
+            .expect("runtime trim draw");
+
+        assert!(armor_glint < trim, "vanilla draws foil before armor trim");
+    }
+}

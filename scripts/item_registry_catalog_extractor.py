@@ -1,0 +1,938 @@
+"""Tree-sitter-backed vanilla item registry declaration extraction.
+
+This module owns only the Minecraft item registration vocabulary. Java lexing,
+declaration discovery, delimiter handling, and malformed-CST diagnostics remain
+owned by :mod:`vanilla_java_source`.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Any
+
+from vanilla_java_source import (
+    JavaExpression,
+    JavaSource,
+    descendants,
+    expression_fact,
+    resolve_class_hierarchy,
+)
+
+
+class ItemRegistryCatalogExtractionError(ValueError):
+    pass
+
+
+ITEMS_OWNER = "net.minecraft.world.item.Items"
+ITEM_OWNER = "net.minecraft.world.item.Item"
+ITEM_IDS_OWNER = "net.minecraft.references.ItemIds"
+ITEM_FIELD_TYPES = {"Item", "WeatheringCopperItems"}
+BLOCK_ITEM_FACTORY_CLASSES = {
+    "BannerItem",
+    "BedItem",
+    "BlockItem",
+    "DoubleHighBlockItem",
+    "GameMasterBlockItem",
+    "HangingSignItem",
+    "PlayerHeadItem",
+    "ScaffoldingBlockItem",
+    "SignItem",
+    "StandingAndWallBlockItem",
+}
+WALL_BLOCK_ITEM_FACTORY_CLASSES = {
+    "BannerItem",
+    "HangingSignItem",
+    "PlayerHeadItem",
+    "SignItem",
+    "StandingAndWallBlockItem",
+}
+
+
+def _walk_expression_facts(expression: dict):
+    yield expression
+    object_fact = expression.get("object")
+    if object_fact is not None:
+        yield from _walk_expression_facts(object_fact)
+    for key in ("arguments", "children"):
+        for child in expression.get(key, []):
+            yield from _walk_expression_facts(child)
+
+
+def item_factory_class(declaration: dict) -> str:
+    initializer = declaration["initializer"]
+    name = initializer.get("name")
+    arguments = initializer.get("arguments", [])
+    if declaration["field_type"] == "WeatheringCopperItems":
+        return "BlockItem"
+    if name == "registerSpawnEgg":
+        return "SpawnEggItem"
+    if name not in {"registerBlock", "registerItem"}:
+        raise ItemRegistryCatalogExtractionError(
+            f"Items.{declaration['field']}: unsupported factory root {name!r}"
+        )
+
+    for argument in arguments[1:]:
+        if (
+            argument.get("kind") == "method_invocation"
+            and argument.get("name") == "createBlockItemWithCustomItemName"
+        ):
+            return "BlockItem"
+        for fact in _walk_expression_facts(argument):
+            if fact.get("kind") == "method_reference":
+                owner, separator, constructor = fact["canonical"].partition("::")
+                if separator and constructor == "new":
+                    return owner.rsplit(".", 1)[-1]
+            if fact.get("kind") == "object_creation_expression":
+                class_name = (
+                    fact.get("name", "").rsplit(".", 1)[-1].split("<", 1)[0]
+                )
+                if class_name.endswith("Item"):
+                    return class_name
+
+    return "BlockItem" if name == "registerBlock" else "Item"
+
+
+def _qualified_field(expression: dict, owner: str) -> str | None:
+    if expression.get("kind") != "field_access":
+        return None
+    object_expression = expression.get("object")
+    if object_expression is None or object_expression.get("canonical") != owner:
+        return None
+    name = expression.get("name")
+    return name if isinstance(name, str) and name else None
+
+
+def item_resource_ids_for_declaration(
+    declaration: dict, item_id_constants: dict[str, str]
+) -> tuple[str, ...]:
+    """Resolve one extracted ``Items`` declaration to registered resource paths.
+
+    This is the shared registration vocabulary for downstream generators. It
+    returns all eight members of ``WeatheringCopperItems`` in accessor order.
+    """
+
+    initializer = declaration["initializer"]
+    name = initializer.get("name")
+    arguments = initializer.get("arguments", [])
+    field = declaration["field"]
+    if declaration["field_type"] == "WeatheringCopperItems":
+        if name != "create" or not arguments:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{field}: unsupported weathering registration"
+            )
+        block = _qualified_field(arguments[0], "Blocks")
+        if block is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{field}: weathering registration lacks Blocks constant"
+            )
+        base = block.lower()
+        return (
+            base,
+            f"exposed_{base}",
+            f"weathered_{base}",
+            f"oxidized_{base}",
+            f"waxed_{base}",
+            f"waxed_exposed_{base}",
+            f"waxed_weathered_{base}",
+            f"waxed_oxidized_{base}",
+        )
+    if name == "registerBlock" and arguments:
+        block = _qualified_field(arguments[0], "Blocks")
+        if block is not None:
+            return (block.lower(),)
+    if name == "registerSpawnEgg" and arguments:
+        entity = _qualified_field(arguments[0], "EntityType")
+        if entity is not None:
+            return (entity.lower() + "_spawn_egg",)
+    if name == "registerItem" and arguments:
+        first = arguments[0]
+        if first.get("kind") == "string_literal":
+            try:
+                literal = json.loads(first["canonical"])
+            except (json.JSONDecodeError, KeyError, TypeError) as error:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{field}: invalid string registration key: {error}"
+                ) from error
+            if isinstance(literal, str) and literal:
+                return (literal,)
+        constant = _qualified_field(first, "ItemIds")
+        if constant is not None:
+            resource_id = item_id_constants.get(constant)
+            if resource_id is None:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{field}: unresolved ItemIds.{constant} registration key"
+                )
+            return (resource_id,)
+    raise ItemRegistryCatalogExtractionError(
+        f"Items.{field}: unsupported root registration {name!r}"
+    )
+
+
+def extract_bucket_item_behaviors(
+    declarations: Sequence[dict],
+) -> dict[str, dict[str, str | None] | None]:
+    """Extract exact ``BucketItem``/``MobBucketItem`` constructor arguments."""
+
+    behaviors: dict[str, dict[str, str | None] | None] = {}
+    for declaration in declarations:
+        factory_class = item_factory_class(declaration)
+        if factory_class not in {"BucketItem", "MobBucketItem"}:
+            behaviors[declaration["field"]] = None
+            continue
+        creations = [
+            fact
+            for fact in _walk_expression_facts(declaration["initializer"])
+            if fact.get("kind") == "object_creation_expression"
+            and fact.get("name") == factory_class
+        ]
+        if len(creations) != 1:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: expected one {factory_class} constructor"
+            )
+        arguments = creations[0].get("arguments", [])
+        expected_count = 4 if factory_class == "MobBucketItem" else 2
+        if len(arguments) != expected_count:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: {factory_class} has "
+                f"{len(arguments)} constructor arguments"
+            )
+        fluid_argument = arguments[1] if factory_class == "MobBucketItem" else arguments[0]
+        fluid = _qualified_field(fluid_argument, "Fluids")
+        if fluid not in {"EMPTY", "WATER", "LAVA"}:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: unsupported bucket fluid {fluid!r}"
+            )
+        empty_sound = None
+        if factory_class == "MobBucketItem":
+            if fluid != "WATER":
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: mob bucket fluid must be WATER"
+                )
+            empty_sound = _qualified_field(arguments[2], "SoundEvents")
+            if empty_sound is None:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: mob bucket lacks SoundEvents constant"
+                )
+        behaviors[declaration["field"]] = {
+            "fluid": fluid,
+            "mob_empty_sound": empty_sound,
+        }
+    return behaviors
+
+
+def extract_block_item_behaviors(
+    declarations: Sequence[dict],
+    use_on_owner_by_factory: dict[str, str | None],
+) -> dict[str, dict[str, str | None] | None]:
+    """Extract exact ``BlockItem`` registration and subclass placement facts."""
+
+    behaviors: dict[str, dict[str, str | None] | None] = {}
+    for declaration in declarations:
+        factory_class = item_factory_class(declaration)
+        if use_on_owner_by_factory[factory_class] != "BlockItem":
+            behaviors[declaration["field"]] = None
+            continue
+        if factory_class not in BLOCK_ITEM_FACTORY_CLASSES:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: unsupported BlockItem factory "
+                f"{factory_class}"
+            )
+
+        initializer = declaration["initializer"]
+        arguments = initializer.get("arguments", [])
+        primary_block = None
+        if (
+            declaration["field_type"] == "WeatheringCopperItems"
+            or initializer.get("name") == "registerBlock"
+        ):
+            primary_block = (
+                _qualified_field(arguments[0], "Blocks") if arguments else None
+            )
+        elif initializer.get("name") == "registerItem":
+            custom_name_factories = [
+                fact
+                for fact in _walk_expression_facts(initializer)
+                if fact.get("kind") == "method_invocation"
+                and fact.get("name") == "createBlockItemWithCustomItemName"
+            ]
+            if len(custom_name_factories) == 1:
+                factory_arguments = custom_name_factories[0].get("arguments", [])
+                primary_block = (
+                    _qualified_field(factory_arguments[0], "Blocks")
+                    if factory_arguments
+                    else None
+                )
+        if primary_block is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: BlockItem registration lacks "
+                "a primary Blocks constant"
+            )
+
+        wall_block = None
+        if factory_class in WALL_BLOCK_ITEM_FACTORY_CLASSES:
+            creations = [
+                fact
+                for fact in _walk_expression_facts(initializer)
+                if fact.get("kind") == "object_creation_expression"
+                and fact.get("name") == factory_class
+            ]
+            if len(creations) != 1:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: expected one "
+                    f"{factory_class} constructor"
+                )
+            wall_blocks = [
+                block
+                for argument in creations[0].get("arguments", [])
+                if (block := _qualified_field(argument, "Blocks")) is not None
+            ]
+            if len(wall_blocks) != 1:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: expected one wall Blocks "
+                    f"constant, got {wall_blocks}"
+                )
+            wall_block = wall_blocks[0]
+            if factory_class == "StandingAndWallBlockItem":
+                directions = [
+                    direction
+                    for argument in creations[0].get("arguments", [])
+                    if (direction := _qualified_field(argument, "Direction"))
+                    is not None
+                ]
+                if directions != ["DOWN"]:
+                    raise ItemRegistryCatalogExtractionError(
+                        f"Items.{declaration['field']}: expected "
+                        "StandingAndWallBlockItem attachment Direction.DOWN"
+                    )
+
+        behaviors[declaration["field"]] = {
+            "kind": factory_class,
+            "primary_block": primary_block,
+            "wall_block": wall_block,
+        }
+    return behaviors
+
+
+def _is_item_behavior_method(
+    source: JavaSource,
+    method,
+    method_name: str,
+    parameter_types: tuple[str, ...],
+    return_type_spelling: str = "InteractionResult",
+) -> bool:
+    if (
+        method.is_constructor
+        or method.name != method_name
+        or len(method.parameters) != len(parameter_types)
+    ):
+        return False
+    return_type = method.node.child_by_field_name("type")
+    actual_parameter_types = [
+        parameter.node.child_by_field_name("type") for parameter in method.parameters
+    ]
+    return (
+        return_type is not None
+        and all(
+            parameter_type is not None for parameter_type in actual_parameter_types
+        )
+        and source.text(return_type) == return_type_spelling
+        and tuple(
+            source.text(parameter_type) for parameter_type in actual_parameter_types
+        )
+        == parameter_types
+    )
+
+
+def _extract_item_behavior_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+    method_name: str,
+    parameter_types: tuple[str, ...],
+    return_type_spelling: str = "InteractionResult",
+) -> dict[str, str | None]:
+    types = [item for source in item_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_fqcn = {item.fqcn: item for item in types}
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+    behavior_owners = {
+        method.owner
+        for source in item_class_sources
+        for method in source.methods
+        if _is_item_behavior_method(
+            source,
+            method,
+            method_name,
+            parameter_types,
+            return_type_spelling,
+        )
+    }
+
+    owners: dict[str, str | None] = {}
+    for factory_class in sorted({item_factory_class(item) for item in declarations}):
+        matches = by_simple_name.get(factory_class, [])
+        if len(matches) != 1:
+            raise ItemRegistryCatalogExtractionError(
+                f"expected exactly one item class {factory_class}, got "
+                f"{[item.fqcn for item in matches]}"
+            )
+        item_type = matches[0]
+        seen = set()
+        while item_type.fqcn not in seen:
+            seen.add(item_type.fqcn)
+            if item_type.fqcn in behavior_owners:
+                owners[factory_class] = (
+                    None if item_type.simple_name == "Item" else item_type.simple_name
+                )
+                break
+            if item_type.superclass is None or item_type.superclass not in by_fqcn:
+                raise ItemRegistryCatalogExtractionError(
+                    f"{item_type.source_path}: {factory_class} does not resolve to "
+                    f"Item.{method_name}"
+                )
+            item_type = by_fqcn[item_type.superclass]
+        else:
+            raise ItemRegistryCatalogExtractionError(
+                f"superclass cycle while resolving {factory_class}.{method_name}"
+            )
+    return owners
+
+
+def extract_item_use_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "use",
+        ("Level", "Player", "InteractionHand"),
+    )
+
+
+def extract_item_use_on_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "useOn",
+        ("UseOnContext",),
+    )
+
+
+def extract_item_interact_living_entity_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "interactLivingEntity",
+        ("ItemStack", "Player", "LivingEntity", "InteractionHand"),
+    )
+
+
+def extract_item_can_destroy_block_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    owners = _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "canDestroyBlock",
+        ("ItemStack", "BlockState", "Level", "BlockPos", "LivingEntity"),
+        "boolean",
+    )
+    override_owners = {owner for owner in owners.values() if owner is not None}
+    for source in item_class_sources:
+        for method in source.methods:
+            if (
+                method.owner.rsplit(".", 1)[-1] not in override_owners
+                or not _is_item_behavior_method(
+                    source,
+                    method,
+                    "canDestroyBlock",
+                    ("ItemStack", "BlockState", "Level", "BlockPos", "LivingEntity"),
+                    "boolean",
+                )
+            ):
+                continue
+            returns = [
+                node
+                for node in descendants(method.node)
+                if node.type == "return_statement"
+            ]
+            if (
+                len(returns) != 1
+                or len(returns[0].named_children) != 1
+                or source.expression(returns[0].named_children[0]).canonical != "false"
+            ):
+                raise ItemRegistryCatalogExtractionError(
+                    f"{source.relative_path}: {method.owner}.canDestroyBlock "
+                    "override is no longer a direct deny"
+                )
+    return owners
+
+
+def _unique_field(source: JavaSource, owner: str, name: str):
+    fields = [
+        field
+        for field in source.fields_for(owner)
+        if field.name == name and field.initializer is not None
+    ]
+    if len(fields) != 1:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one {owner}.{name} field"
+        )
+    return fields[0]
+
+
+def _calls_within(source: JavaSource, owner: str, span, name: str):
+    return [
+        call
+        for call in source.calls_for(owner)
+        if call.name == name
+        and span.start_byte <= call.span.start_byte
+        and call.span.end_byte <= span.end_byte
+    ]
+
+
+def _fact_field(fact: dict, owner: str) -> str | None:
+    if fact.get("kind") != "field_access":
+        return None
+    object_fact = fact.get("object")
+    if object_fact is None or object_fact.get("canonical") != owner:
+        return None
+    return fact.get("name")
+
+
+def _block_constant(source: JavaSource, expression: JavaExpression) -> str | None:
+    fact = expression_fact(source, expression)
+    direct = _fact_field(fact, "Blocks")
+    if direct is not None:
+        return direct
+    if fact.get("kind") == "method_invocation" and fact.get("name") == "defaultBlockState":
+        object_fact = fact.get("object")
+        if object_fact is not None:
+            return _fact_field(object_fact, "Blocks")
+    return None
+
+
+def _map_put_pairs(source: JavaSource, owner: str, field_name: str):
+    field = _unique_field(source, owner, field_name)
+    pairs = []
+    for call in _calls_within(source, owner, field.initializer.span, "put"):
+        if len(call.arguments) != 2:
+            _fail(source, field.initializer, "map put must have two arguments")
+        source_block = _block_constant(source, call.arguments[0])
+        target_block = _block_constant(source, call.arguments[1])
+        if source_block is None or target_block is None:
+            _fail(source, field.initializer, "map put must use Blocks constants")
+        pairs.append((source_block, target_block))
+    return field, pairs
+
+
+def _camel_to_snake(value: str) -> str:
+    result = []
+    for character in value:
+        if character.isupper() and result:
+            result.append("_")
+        result.append(character.lower())
+    return "".join(result)
+
+
+def _weathering_group_relations(
+    source: JavaSource,
+    method_name: str,
+) -> list[tuple[str, str]]:
+    owner = "net.minecraft.world.level.block.WeatheringCopperBlocks"
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and method.body is not None
+    ]
+    if len(methods) != 1:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one "
+            f"WeatheringCopperBlocks.{method_name}"
+        )
+    method = methods[0]
+    calls = _calls_within(source, owner, method.body, "of")
+    calls = [call for call in calls if len(call.arguments) >= 2]
+    if len(calls) != 1 or len(calls[0].arguments) % 2:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: {method_name} must return one even map"
+        )
+    components = []
+    for argument in calls[0].arguments:
+        fact = expression_fact(source, argument)
+        component = _fact_field(fact, "this")
+        if component is None:
+            _fail(source, argument, f"{method_name} must use record components")
+        components.append(_camel_to_snake(component))
+    return list(zip(components[::2], components[1::2], strict=True))
+
+
+def _group_mapping_calls(
+    source: JavaSource,
+    owner: str,
+    field,
+    method_name: str,
+) -> list[str]:
+    groups = []
+    for call in _calls_within(source, owner, field.initializer.span, "putAll"):
+        if len(call.arguments) != 1:
+            _fail(source, field.initializer, "putAll must have one argument")
+        fact = expression_fact(source, call.arguments[0])
+        if fact.get("kind") != "method_invocation" or fact.get("name") != method_name:
+            _fail(
+                source,
+                call.arguments[0],
+                f"unsupported putAll in {field.name}; expected {method_name}",
+            )
+        object_fact = fact.get("object")
+        group = _fact_field(object_fact or {}, "Blocks")
+        if group is None:
+            _fail(source, call.arguments[0], f"{method_name} must target Blocks group")
+        groups.append(group)
+    return groups
+
+
+def _expanded_group_pairs(
+    declarations: Sequence[dict],
+    group: str,
+    relations: Sequence[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    base = next(
+        (declaration for declaration in declarations if declaration["field"] == group),
+        None,
+    )
+    if base is None or base.get("group_variant") is None:
+        raise ItemRegistryCatalogExtractionError(
+            f"unresolved WeatheringCopperBlocks group Blocks.{group}"
+        )
+    canonical = base["initializer"]["canonical"]
+    variants = {
+        declaration["group_variant"]: declaration["field"]
+        for declaration in declarations
+        if declaration.get("group_variant") is not None
+        and declaration["initializer"]["canonical"] == canonical
+    }
+    pairs = []
+    for source_variant, target_variant in relations:
+        if source_variant not in variants or target_variant not in variants:
+            raise ItemRegistryCatalogExtractionError(
+                f"Blocks.{group} lacks {source_variant}->{target_variant}"
+            )
+        pairs.append((variants[source_variant], variants[target_variant]))
+    return pairs
+
+
+def _validate_transform_pairs(
+    declarations: Sequence[dict],
+    name: str,
+    pairs: Sequence[tuple[str, str]],
+) -> list[dict[str, str]]:
+    block_fields = {declaration["field"] for declaration in declarations}
+    seen = set()
+    values = []
+    for source, target in pairs:
+        if source not in block_fields or target not in block_fields:
+            raise ItemRegistryCatalogExtractionError(
+                f"{name}: unresolved Blocks constant {source}->{target}"
+            )
+        if source in seen:
+            raise ItemRegistryCatalogExtractionError(
+                f"{name}: duplicate source Blocks.{source}"
+            )
+        seen.add(source)
+        values.append({"source": source, "target": target})
+    return sorted(values, key=lambda entry: entry["source"])
+
+
+def extract_tool_use_on_catalog(
+    block_declarations: Sequence[dict],
+    axe_source: JavaSource,
+    hoe_source: JavaSource,
+    shovel_source: JavaSource,
+    honeycomb_source: JavaSource,
+    weathering_copper_source: JavaSource,
+    weathering_copper_blocks_source: JavaSource,
+) -> dict[str, list[dict]]:
+    """Extract source-owned tool block transforms and client-result predicates."""
+    axe_owner = "net.minecraft.world.item.AxeItem"
+    strip_field, strip_pairs = _map_put_pairs(
+        axe_source, axe_owner, "STRIPPABLES"
+    )
+
+    weather_owner = "net.minecraft.world.level.block.WeatheringCopper"
+    weather_field, weather_next_pairs = _map_put_pairs(
+        weathering_copper_source, weather_owner, "NEXT_BY_BLOCK"
+    )
+    weather_relations = _weathering_group_relations(
+        weathering_copper_blocks_source, "weatheringMapping"
+    )
+    for group in _group_mapping_calls(
+        weathering_copper_source,
+        weather_owner,
+        weather_field,
+        "weatheringMapping",
+    ):
+        weather_next_pairs.extend(
+            _expanded_group_pairs(block_declarations, group, weather_relations)
+        )
+
+    honey_owner = "net.minecraft.world.item.HoneycombItem"
+    wax_field, wax_pairs = _map_put_pairs(
+        honeycomb_source, honey_owner, "WAXABLES"
+    )
+    wax_relations = _weathering_group_relations(
+        weathering_copper_blocks_source, "waxedMapping"
+    )
+    for group in _group_mapping_calls(
+        honeycomb_source, honey_owner, wax_field, "waxedMapping"
+    ):
+        wax_pairs.extend(
+            _expanded_group_pairs(block_declarations, group, wax_relations)
+        )
+
+    shovel_owner = "net.minecraft.world.item.ShovelItem"
+    _, shovel_pairs = _map_put_pairs(
+        shovel_source, shovel_owner, "FLATTENABLES"
+    )
+
+    hoe_owner = "net.minecraft.world.item.HoeItem"
+    hoe_field = _unique_field(hoe_source, hoe_owner, "TILLABLES")
+    map_calls = [
+        call
+        for call in _calls_within(
+            hoe_source, hoe_owner, hoe_field.initializer.span, "of"
+        )
+        if expression_fact(hoe_source, hoe_source.expression(call.node))
+        .get("object", {})
+        .get("canonical")
+        == "ImmutableMap"
+    ]
+    if len(map_calls) != 1 or len(map_calls[0].arguments) % 2:
+        _fail(hoe_source, hoe_field.initializer, "TILLABLES must contain one even map")
+    hoe_entries = []
+    for source_expression, pair_expression in zip(
+        map_calls[0].arguments[::2],
+        map_calls[0].arguments[1::2],
+        strict=True,
+    ):
+        source_block = _block_constant(hoe_source, source_expression)
+        pair_fact = expression_fact(hoe_source, pair_expression)
+        if (
+            source_block is None
+            or pair_fact.get("kind") != "method_invocation"
+            or pair_fact.get("name") != "of"
+            or pair_fact.get("object", {}).get("canonical") != "Pair"
+            or len(pair_fact.get("arguments", [])) != 2
+        ):
+            _fail(hoe_source, pair_expression, "invalid TILLABLES entry")
+        predicate, action = pair_fact["arguments"]
+        predicate_name = predicate.get("canonical")
+        if predicate_name == "HoeItem::onlyIfAirAbove":
+            requires_air_above = True
+        elif predicate.get("kind") == "lambda_expression" and predicate_name == "context -> true":
+            requires_air_above = False
+        else:
+            _fail(hoe_source, pair_expression, "unsupported TILLABLES predicate")
+        if (
+            action.get("kind") != "method_invocation"
+            or action.get("name")
+            not in {"changeIntoState", "changeIntoStateAndDropItem"}
+            or not action.get("arguments")
+        ):
+            _fail(hoe_source, pair_expression, "unsupported TILLABLES action")
+        target_fact = action["arguments"][0]
+        target = _fact_field(target_fact.get("object", {}), "Blocks")
+        if (
+            target_fact.get("kind") != "method_invocation"
+            or target_fact.get("name") != "defaultBlockState"
+            or target is None
+        ):
+            _fail(hoe_source, pair_expression, "TILLABLES target is not a default block")
+        hoe_entries.append(
+            {
+                "source": source_block,
+                "target": target,
+                "requires_air_above": requires_air_above,
+            }
+        )
+
+    validated_hoe = _validate_transform_pairs(
+        block_declarations,
+        "hoe_tillables",
+        [(entry["source"], entry["target"]) for entry in hoe_entries],
+    )
+    hoe_predicates = {
+        entry["source"]: entry["requires_air_above"] for entry in hoe_entries
+    }
+    for entry in validated_hoe:
+        entry["requires_air_above"] = hoe_predicates[entry["source"]]
+
+    return {
+        "axe_strippables": _validate_transform_pairs(
+            block_declarations, "axe_strippables", strip_pairs
+        ),
+        "axe_scrapeables": _validate_transform_pairs(
+            block_declarations,
+            "axe_scrapeables",
+            [(target, source) for source, target in weather_next_pairs],
+        ),
+        "axe_wax_off": _validate_transform_pairs(
+            block_declarations,
+            "axe_wax_off",
+            [(target, source) for source, target in wax_pairs],
+        ),
+        "honeycomb_waxables": _validate_transform_pairs(
+            block_declarations, "honeycomb_waxables", wax_pairs
+        ),
+        "hoe_tillables": validated_hoe,
+        "shovel_flattenables": _validate_transform_pairs(
+            block_declarations, "shovel_flattenables", shovel_pairs
+        ),
+    }
+
+
+def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
+    span = expression.span
+    raise ItemRegistryCatalogExtractionError(
+        f"{source.relative_path}:{span.start_point[0] + 1}:"
+        f"{span.start_point[1] + 1}: {message}"
+    )
+
+
+def _string(source: JavaSource, expression: JavaExpression) -> str:
+    if expression.node.type != "string_literal":
+        _fail(source, expression, "expected a Java string literal")
+    try:
+        value = json.loads(source.text(expression.node))
+    except json.JSONDecodeError as error:
+        _fail(source, expression, f"invalid Java string literal: {error}")
+    if not isinstance(value, str) or not value:
+        _fail(source, expression, "expected a non-empty Java string literal")
+    return value
+
+
+def _integer(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_integer_literal":
+        _fail(source, expression, "expected a Java decimal integer literal")
+    try:
+        return int(expression.canonical.replace("_", ""), 10)
+    except ValueError:
+        _fail(source, expression, "invalid Java integer literal")
+
+
+def _arguments(source: JavaSource, node) -> list[JavaExpression]:
+    arguments = node.child_by_field_name("arguments")
+    if arguments is None:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: expression lacks an argument list"
+        )
+    return [
+        source.expression(child)
+        for child in arguments.named_children
+        if child.type not in {"line_comment", "block_comment"}
+    ]
+
+
+@dataclass(frozen=True)
+class ExtractedItemRegistryCatalog:
+    item_id_constants: dict[str, str]
+    item_constants: dict[str, int]
+    declarations: tuple[dict[str, Any], ...]
+
+
+def extract_item_id_constants(item_ids_source: JavaSource) -> dict[str, str]:
+    constants: dict[str, str] = {}
+    for field in item_ids_source.fields_for(ITEM_IDS_OWNER):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            raise ItemRegistryCatalogExtractionError(
+                f"{item_ids_source.relative_path}: ItemIds.{field.name} lacks createKey initializer"
+            )
+        name = initializer.node.child_by_field_name("name")
+        arguments = _arguments(item_ids_source, initializer.node)
+        if name is None or item_ids_source.text(name) != "createKey" or len(arguments) != 1:
+            _fail(item_ids_source, initializer, "expected createKey(string) initializer")
+        constants[field.name] = _string(item_ids_source, arguments[0])
+    if not constants:
+        raise ItemRegistryCatalogExtractionError(
+            f"{item_ids_source.relative_path}: no ItemIds constants found"
+        )
+    return constants
+
+
+def extract_item_declarations(items_source: JavaSource) -> tuple[dict[str, Any], ...]:
+    declarations: list[dict[str, Any]] = []
+    fields = [
+        field
+        for field in items_source.fields_for(ITEMS_OWNER)
+        if field.type_spelling in ITEM_FIELD_TYPES
+    ]
+    for field in fields:
+        if field.initializer is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"{items_source.relative_path}: Items.{field.name} lacks initializer"
+            )
+        if field.initializer.node.type != "method_invocation":
+            _fail(items_source, field.initializer, "item initializer must be a method invocation")
+        declarations.append(
+            {
+                "field": field.name,
+                "field_type": field.type_spelling,
+                "initializer": expression_fact(items_source, field.initializer),
+            }
+        )
+    if len(declarations) != len(fields) or not declarations:
+        raise ItemRegistryCatalogExtractionError(
+            f"{items_source.relative_path}: failed to close all item declarations"
+        )
+    return tuple(declarations)
+
+
+def extract_item_registry_catalog(
+    items_source: JavaSource,
+    item_ids_source: JavaSource,
+    item_source: JavaSource,
+) -> ExtractedItemRegistryCatalog:
+    constants = extract_item_id_constants(item_ids_source)
+
+    item_constant_names = {"DEFAULT_MAX_STACK_SIZE", "ABSOLUTE_MAX_STACK_SIZE"}
+    item_constants = {}
+    for field in item_source.fields_for(ITEM_OWNER):
+        if field.name not in item_constant_names:
+            continue
+        if field.type_spelling != "int" or field.initializer is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"{item_source.relative_path}: Item.{field.name} must be an initialized int"
+            )
+        if not {"public", "static", "final"}.issubset(field.modifiers):
+            raise ItemRegistryCatalogExtractionError(
+                f"{item_source.relative_path}: Item.{field.name} must be public static final"
+            )
+        item_constants[field.name] = _integer(item_source, field.initializer)
+    if set(item_constants) != item_constant_names:
+        raise ItemRegistryCatalogExtractionError(
+            f"{item_source.relative_path}: expected item constants {sorted(item_constant_names)}, "
+            f"extracted {sorted(item_constants)}"
+        )
+    if not 0 < item_constants["DEFAULT_MAX_STACK_SIZE"] <= item_constants["ABSOLUTE_MAX_STACK_SIZE"]:
+        raise ItemRegistryCatalogExtractionError(
+            f"{item_source.relative_path}: invalid item max stack size constants"
+        )
+
+    declarations = extract_item_declarations(items_source)
+    return ExtractedItemRegistryCatalog(
+        constants,
+        item_constants,
+        declarations,
+    )

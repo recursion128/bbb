@@ -1,0 +1,1927 @@
+use bbb_client_clock::UNIX_EPOCH;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+use crate::control::NetCounters;
+use bbb_client_net::{
+    AttackEntityCommand, InteractEntityCommand, NetCommand, OutboundChatCommand,
+    OutboundChatMessage, UseItemCommand, UseItemOnCommand, VehicleMoveCommand,
+};
+use bbb_client_world::{BlockPos, WorldStore};
+use bbb_protocol::packets::{
+    AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
+    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
+    InteractEntity, InteractionHand, JigsawGenerate, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SetCommandBlock, SetCommandMinecart,
+    SetCreativeModeSlot, SetGameRule, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate,
+    SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
+    Vec3d as ProtocolVec3d,
+};
+use tokio::sync::mpsc;
+use winit::keyboard::KeyCode;
+
+use crate::crosshair::{protocol_block_hit_result_from_crosshair_hit, CrosshairBlockHit};
+use crate::options::key_bindings::{BoundInput, KeyBindings};
+
+static CHAT_SALT_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+fn unsigned_chat_clock_fields<T: Hash + ?Sized>(message: &T) -> (i64, i64) {
+    let timestamp_millis = current_epoch_millis();
+    let salt_sequence = CHAT_SALT_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let mut hasher = DefaultHasher::new();
+    timestamp_millis.hash(&mut hasher);
+    salt_sequence.hash(&mut hasher);
+    message.hash(&mut hasher);
+    let salt = (hasher.finish() | 1) as i64;
+    (timestamp_millis, salt)
+}
+
+fn current_epoch_millis() -> i64 {
+    bbb_client_clock::system_now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| i64::try_from(duration.as_millis()).unwrap_or(i64::MAX))
+        .unwrap_or(0)
+}
+
+pub(super) fn queue_player_input_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    input: PlayerInput,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::PlayerInput(input)).is_ok() {
+            counters.player_input_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_sprint_command(
+    counters: &mut NetCounters,
+    world: &WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    sprinting: bool,
+) -> bool {
+    let action = if sprinting {
+        PlayerCommandAction::StartSprinting
+    } else {
+        PlayerCommandAction::StopSprinting
+    };
+    queue_player_command_action(counters, world, net_commands, action, 0)
+}
+
+pub(crate) fn queue_player_abilities_command(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    flying: bool,
+) -> bool {
+    if !world.set_local_flying(flying) {
+        return false;
+    }
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::PlayerAbilities(PlayerAbilitiesCommand {
+                flying,
+            }))
+            .is_ok()
+        {
+            counters.player_abilities_commands_queued += 1;
+        }
+    }
+    true
+}
+
+pub(crate) fn queue_perform_respawn_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::PerformRespawn).is_ok() {
+            counters.perform_respawn_commands_queued += 1;
+        }
+    }
+}
+
+/// `Options.broadcastOptions`: `Options.save` ends by sending the current
+/// player information back, outside the block that catches a failed write.
+pub(crate) fn queue_broadcast_client_information_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    information: &bbb_protocol::packets::ClientInformation,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::BroadcastClientInformation(information.clone()))
+            .is_ok()
+        {
+            counters.broadcast_client_information_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_request_stats_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::RequestStats).is_ok() {
+            counters.request_stats_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_request_game_rule_values_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::RequestGameRuleValues).is_ok() {
+            counters.request_game_rule_values_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_game_rule_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetGameRule,
+) -> bool {
+    if command.entries.is_empty() {
+        return false;
+    }
+    let Some(tx) = net_commands else {
+        return false;
+    };
+    if tx.try_send(NetCommand::SetGameRule(command)).is_err() {
+        return false;
+    }
+    counters.set_game_rule_commands_queued += 1;
+    true
+}
+
+pub(crate) fn queue_place_recipe_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: PlaceRecipeCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::PlaceRecipe(command)).is_ok() {
+            counters.place_recipe_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_recipe_book_change_settings_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: RecipeBookChangeSettingsCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::RecipeBookChangeSettings(command))
+            .is_ok()
+        {
+            counters.recipe_book_change_settings_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_recipe_book_seen_recipe_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: RecipeBookSeenRecipeCommand,
+) -> bool {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::RecipeBookSeenRecipe(command))
+            .is_ok()
+        {
+            counters.recipe_book_seen_recipe_commands_queued += 1;
+            return true;
+        }
+    }
+    false
+}
+
+pub(crate) fn queue_edit_book_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: EditBook<Vec<u16>>,
+) -> bool {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::EditBook(command)).is_ok() {
+            counters.edit_book_commands_queued += 1;
+            return true;
+        }
+    }
+    false
+}
+
+pub(crate) fn queue_change_difficulty_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: ChangeDifficultyCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::ChangeDifficulty(command)).is_ok() {
+            counters.change_difficulty_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_change_game_mode_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: ChangeGameModeCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::ChangeGameMode(command)).is_ok() {
+            counters.change_game_mode_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_lock_difficulty_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: LockDifficultyCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::LockDifficulty(command)).is_ok() {
+            counters.lock_difficulty_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_rename_item_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: RenameItem,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::RenameItem(command)).is_ok() {
+            counters.rename_item_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_seen_advancements_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SeenAdvancements,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SeenAdvancements(command)).is_ok() {
+            counters.advancements_seen_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_select_trade_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SelectTradeCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SelectTrade(command)).is_ok() {
+            counters.select_trade_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_beacon_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetBeacon,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetBeacon(command)).is_ok() {
+            counters.set_beacon_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_command_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetCommandBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetCommandBlock(command)).is_ok() {
+            counters.set_command_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_command_minecart_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetCommandMinecart,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetCommandMinecart(command)).is_ok() {
+            counters.set_command_minecart_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_structure_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetStructureBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetStructureBlock(command)).is_ok() {
+            counters.set_structure_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_jigsaw_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetJigsawBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetJigsawBlock(command)).is_ok() {
+            counters.set_jigsaw_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_jigsaw_generate_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: JigsawGenerate,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::JigsawGenerate(command)).is_ok() {
+            counters.jigsaw_generate_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_test_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetTestBlock,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetTestBlock(command)).is_ok() {
+            counters.set_test_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_test_instance_block_action_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: TestInstanceBlockAction,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::TestInstanceBlockAction(command))
+            .is_ok()
+        {
+            counters.test_instance_block_action_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_creative_mode_slot_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetCreativeModeSlot,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::SetCreativeModeSlot(command))
+            .is_ok()
+        {
+            counters.set_creative_mode_slot_commands_queued += 1;
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum QueueCreativeModeSlotBatchError {
+    Unavailable,
+    Full,
+    Closed,
+}
+
+pub(crate) fn queue_set_creative_mode_slot_commands_atomically(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    commands: &[SetCreativeModeSlot],
+) -> Result<(), QueueCreativeModeSlotBatchError> {
+    if commands.is_empty() {
+        return Ok(());
+    }
+    let tx = net_commands
+        .as_ref()
+        .ok_or(QueueCreativeModeSlotBatchError::Unavailable)?;
+    let permits = tx
+        .try_reserve_many(commands.len())
+        .map_err(|error| match error {
+            mpsc::error::TrySendError::Full(()) => QueueCreativeModeSlotBatchError::Full,
+            mpsc::error::TrySendError::Closed(()) => QueueCreativeModeSlotBatchError::Closed,
+        })?;
+    for (permit, command) in permits.zip(commands.iter().cloned()) {
+        permit.send(NetCommand::SetCreativeModeSlot(command));
+    }
+    counters.set_creative_mode_slot_commands_queued += commands.len();
+    Ok(())
+}
+
+pub(crate) fn queue_sign_update_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SignUpdate,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SignUpdate(command)).is_ok() {
+            counters.sign_update_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_block_entity_tag_query_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: BlockEntityTagQuery,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::BlockEntityTagQuery(command))
+            .is_ok()
+        {
+            counters.block_entity_tag_query_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_entity_tag_query_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: EntityTagQuery,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::EntityTagQuery(command)).is_ok() {
+            counters.entity_tag_query_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_spectate_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SpectateEntity,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SpectateEntity(command)).is_ok() {
+            counters.spectate_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_teleport_to_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: TeleportToEntity,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::TeleportToEntity(command)).is_ok() {
+            counters.teleport_to_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_select_bundle_item_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot_id: i32,
+    selected_item_index: i32,
+) -> bool {
+    if selected_item_index < -1 {
+        return false;
+    }
+
+    if let Some(tx) = net_commands {
+        let packet = SelectBundleItem {
+            slot_id,
+            selected_item_index,
+        };
+        if tx.try_send(NetCommand::SelectBundleItem(packet)).is_ok() {
+            counters.select_bundle_item_commands_queued += 1;
+            return true;
+        }
+    }
+
+    false
+}
+
+pub(super) fn queue_player_command_action(
+    counters: &mut NetCounters,
+    world: &WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    action: PlayerCommandAction,
+    data: i32,
+) -> bool {
+    let (Some(tx), Some(entity_id)) = (net_commands, world.local_player_id()) else {
+        return false;
+    };
+    let command = PlayerCommand {
+        entity_id,
+        action,
+        data,
+    };
+    if tx.try_send(NetCommand::PlayerCommand(command)).is_ok() {
+        counters.player_command_commands_queued += 1;
+        return true;
+    }
+    false
+}
+
+pub(super) fn hotbar_slot_for_key(bindings: &KeyBindings, code: KeyCode) -> Option<u8> {
+    super::HOTBAR_BINDING_NAMES
+        .iter()
+        .position(|name| bindings.input(name) == BoundInput::Key(code))
+        .map(|slot| slot as u8)
+}
+
+pub(crate) fn select_hotbar_slot(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot: u8,
+) {
+    let slot = slot.min(8);
+    if !world.set_local_selected_hotbar_slot(slot) {
+        return;
+    }
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetHeldSlot(slot)).is_ok() {
+            counters.held_slot_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn hotbar_slot_for_scroll(wheel: i32, current_slot: u8) -> Option<u8> {
+    let step = wheel.signum();
+    if step == 0 {
+        return None;
+    }
+
+    let limit = 9;
+    let mut slot = i32::from(current_slot.min(8)) - step;
+    slot = slot.max(-1);
+    while slot < 0 {
+        slot += limit;
+    }
+    while slot >= limit {
+        slot -= limit;
+    }
+    Some(slot as u8)
+}
+
+pub(super) fn queue_player_action_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    action_kind: PlayerActionKind,
+    pos: BlockPos,
+    direction: ProtocolDirection,
+    sequence: i32,
+) {
+    let Some(tx) = net_commands else {
+        return;
+    };
+    let Ok(permit) = tx.try_reserve() else {
+        return;
+    };
+    send_reserved_player_action_command(counters, permit, action_kind, pos, direction, sequence);
+}
+
+pub(super) fn send_reserved_player_action_command(
+    counters: &mut NetCounters,
+    permit: mpsc::Permit<'_, NetCommand>,
+    action_kind: PlayerActionKind,
+    pos: BlockPos,
+    direction: ProtocolDirection,
+    sequence: i32,
+) {
+    let action = PlayerAction {
+        action: action_kind,
+        pos,
+        direction,
+        sequence,
+    };
+    permit.send(NetCommand::PlayerAction(action));
+    counters.player_action_commands_queued += 1;
+}
+
+pub(crate) fn queue_chat_command(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: impl Into<bbb_protocol::JavaString>,
+) {
+    if let Some(tx) = net_commands {
+        let command = command.into();
+        // The signed/unsigned decision and the signed values come from the raw
+        // units the command will be sent as, not from a `String` projection.
+        let arguments = world.signable_command_arguments_utf16(command.units());
+        let request = if arguments.is_empty() {
+            OutboundChatCommand::unsigned(command)
+        } else {
+            let (timestamp_millis, salt) = unsigned_chat_clock_fields(&command);
+            let last_seen = world.take_last_seen_messages_for_outbound_chat();
+            OutboundChatCommand::signed(command, timestamp_millis, salt, arguments, last_seen)
+        };
+        if tx.try_send(NetCommand::ChatCommand(request)).is_ok() {
+            counters.chat_command_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_chat_message_command(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    message: impl Into<bbb_protocol::JavaString>,
+) {
+    if let Some(tx) = net_commands {
+        let message = message.into();
+        let (timestamp_millis, salt) = unsigned_chat_clock_fields(&message);
+        let request = OutboundChatMessage {
+            message,
+            timestamp_millis,
+            salt,
+            last_seen: world.take_last_seen_messages_for_outbound_chat(),
+        };
+        if tx.try_send(NetCommand::ChatMessage(request)).is_ok() {
+            counters.chat_message_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_container_close_command(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) -> bool {
+    let Some(container_id) = world.open_container_id() else {
+        return false;
+    };
+    if !world.close_local_container(container_id) {
+        return false;
+    }
+
+    queue_container_close_request_command(counters, net_commands, container_id);
+    true
+}
+
+pub(crate) fn queue_container_close_request_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    container_id: i32,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ContainerCloseRequest { container_id };
+        if tx.try_send(NetCommand::ContainerClose(packet)).is_ok() {
+            counters.container_close_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_container_button_click_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    container_id: i32,
+    button_id: i32,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ContainerButtonClick {
+            container_id,
+            button_id,
+        };
+        if tx
+            .try_send(NetCommand::ContainerButtonClick(packet))
+            .is_ok()
+        {
+            counters.container_button_click_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_container_click_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    packet: ContainerClick,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::ContainerClick(packet)).is_ok() {
+            counters.container_click_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_container_slot_state_changed_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot_id: i32,
+    container_id: i32,
+    new_state: bool,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ContainerSlotStateChanged {
+            slot_id,
+            container_id,
+            new_state,
+        };
+        if tx
+            .try_send(NetCommand::ContainerSlotStateChanged(packet))
+            .is_ok()
+        {
+            counters.container_slot_state_changed_commands_queued += 1;
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum QueueContainerSlotStateClickError {
+    Unavailable,
+    Full,
+    Closed,
+    BuildRejected,
+}
+
+pub(crate) fn queue_container_slot_state_click_commands_atomically(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    build: impl FnOnce() -> Option<(ContainerSlotStateChanged, ContainerClick)>,
+) -> Result<(), QueueContainerSlotStateClickError> {
+    let tx = net_commands
+        .as_ref()
+        .ok_or(QueueContainerSlotStateClickError::Unavailable)?;
+    let mut permits = tx.try_reserve_many(2).map_err(|error| match error {
+        mpsc::error::TrySendError::Full(()) => QueueContainerSlotStateClickError::Full,
+        mpsc::error::TrySendError::Closed(()) => QueueContainerSlotStateClickError::Closed,
+    })?;
+    let (state, click) = build().ok_or(QueueContainerSlotStateClickError::BuildRejected)?;
+    permits
+        .next()
+        .expect("two command permits were reserved")
+        .send(NetCommand::ContainerSlotStateChanged(state));
+    permits
+        .next()
+        .expect("two command permits were reserved")
+        .send(NetCommand::ContainerClick(click));
+    counters.container_slot_state_changed_commands_queued += 1;
+    counters.container_click_commands_queued += 1;
+    Ok(())
+}
+
+pub(super) fn queue_attack_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_id: i32,
+    selected_hotbar_slot: u8,
+) {
+    if let Some(tx) = net_commands {
+        let command = AttackEntityCommand {
+            packet: AttackEntity { entity_id },
+            selected_hotbar_slot: selected_hotbar_slot.min(8),
+        };
+        if tx.try_send(NetCommand::AttackEntity(command)).is_ok() {
+            counters.attack_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_interact_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    selected_hotbar_slot: u8,
+    entity_id: i32,
+    hand: InteractionHand,
+    location: ProtocolVec3d,
+    using_secondary_action: bool,
+) {
+    if let Some(tx) = net_commands {
+        let command = InteractEntityCommand {
+            packet: InteractEntity {
+                entity_id,
+                hand,
+                location,
+                using_secondary_action,
+            },
+            selected_hotbar_slot: selected_hotbar_slot.min(8),
+        };
+        if tx.try_send(NetCommand::InteractEntity(command)).is_ok() {
+            counters.interact_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_zero_pos_player_action_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    action_kind: PlayerActionKind,
+) {
+    queue_player_action_command(
+        counters,
+        net_commands,
+        action_kind,
+        BlockPos { x: 0, y: 0, z: 0 },
+        ProtocolDirection::Down,
+        0,
+    );
+}
+
+pub(super) fn queue_swing_command(
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    hand: InteractionHand,
+) {
+    world.trigger_local_player_swing(hand);
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::Swing(hand)).is_ok() {
+            counters.swing_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn send_reserved_use_item_on_command(
+    counters: &mut NetCounters,
+    permit: mpsc::Permit<'_, NetCommand>,
+    selected_hotbar_slot: u8,
+    hand: InteractionHand,
+    hit: CrosshairBlockHit,
+    sequence: i32,
+) {
+    let command = UseItemOnCommand {
+        packet: UseItemOn {
+            hand,
+            hit: protocol_block_hit_result_from_crosshair_hit(hit),
+            sequence,
+        },
+        selected_hotbar_slot: selected_hotbar_slot.min(8),
+    };
+    permit.send(NetCommand::UseItemOn(command));
+    counters.use_item_on_commands_queued += 1;
+}
+
+pub(super) fn send_reserved_use_item_command(
+    counters: &mut NetCounters,
+    permit: mpsc::Permit<'_, NetCommand>,
+    selected_hotbar_slot: u8,
+    hand: InteractionHand,
+    y_rot: f32,
+    x_rot: f32,
+    sequence: i32,
+) {
+    let command = UseItemCommand {
+        packet: UseItem {
+            hand,
+            sequence,
+            y_rot,
+            x_rot,
+        },
+        selected_hotbar_slot: selected_hotbar_slot.min(8),
+    };
+    permit.send(NetCommand::UseItem(command));
+    counters.use_item_commands_queued += 1;
+}
+
+pub(super) fn queue_pick_item_from_block_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    pos: BlockPos,
+    include_data: bool,
+) {
+    if let Some(tx) = net_commands {
+        let packet = PickItemFromBlock { pos, include_data };
+        if tx.try_send(NetCommand::PickItemFromBlock(packet)).is_ok() {
+            counters.pick_item_from_block_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_pick_item_from_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_id: i32,
+    include_data: bool,
+) {
+    if let Some(tx) = net_commands {
+        let packet = PickItemFromEntity {
+            entity_id,
+            include_data,
+        };
+        if tx.try_send(NetCommand::PickItemFromEntity(packet)).is_ok() {
+            counters.pick_item_from_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_command_suggestion_request(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    id: i32,
+    command: impl Into<bbb_protocol::JavaString>,
+) {
+    if let Some(tx) = net_commands {
+        let request = CommandSuggestionRequest {
+            id,
+            command: command.into(),
+        };
+        if tx
+            .try_send(NetCommand::CommandSuggestionRequest(request))
+            .is_ok()
+        {
+            counters.command_suggestion_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_vehicle_move_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    report: bbb_client_world::VehicleMoveReport,
+) {
+    if let Some(tx) = net_commands {
+        let command = VehicleMoveCommand {
+            position: report.position,
+            y_rot: report.y_rot,
+            x_rot: report.x_rot,
+            on_ground: report.on_ground,
+        };
+        if tx.try_send(NetCommand::MoveVehicle(command)).is_ok() {
+            counters.move_vehicle_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_paddle_boat_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    left: bool,
+    right: bool,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::PaddleBoat(PaddleBoat { left, right }))
+            .is_ok()
+        {
+            counters.paddle_boat_commands_queued += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    use super::*;
+    use bbb_client_world::BlockPos;
+    use bbb_protocol::packets::{
+        AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
+        CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestionRequest, Commands,
+        ContainerButtonClick, ContainerSlotStateChanged, Direction as ProtocolDirection,
+        InteractEntity, InteractionHand, LastSeenMessagesUpdate, PickItemFromBlock,
+        PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType, RecipeDisplayId,
+        UseItemOn, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    };
+    use bbb_protocol::packets::{
+        ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
+    };
+
+    use crate::crosshair::CrosshairBlockHit;
+    use uuid::Uuid;
+
+    #[test]
+    fn hotbar_slot_for_scroll_matches_vanilla_direction_and_wrap() {
+        assert_eq!(hotbar_slot_for_scroll(1, 0), Some(8));
+        assert_eq!(hotbar_slot_for_scroll(-1, 8), Some(0));
+        assert_eq!(hotbar_slot_for_scroll(2, 4), Some(3));
+        assert_eq!(hotbar_slot_for_scroll(-2, 4), Some(5));
+        assert_eq!(hotbar_slot_for_scroll(0, 4), None);
+    }
+
+    #[test]
+    fn queues_command_suggestion_request() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_command_suggestion_request(&mut counters, &commands, 18, "/give @p minecraft:stone");
+
+        assert_eq!(counters.command_suggestion_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+                id: 18,
+                command: "/give @p minecraft:stone".to_string().into(),
+            })
+        );
+    }
+
+    #[test]
+    fn queues_chat_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+
+        queue_chat_command(
+            &mut counters,
+            &mut world,
+            &commands,
+            "give @p minecraft:stone",
+        );
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(OutboundChatCommand::unsigned("give @p minecraft:stone"))
+        );
+    }
+
+    #[test]
+    fn queues_signed_chat_command_for_signable_message_argument() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_commands(signable_message_command_tree());
+
+        queue_chat_command(&mut counters, &mut world, &commands, "say hello world");
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        match rx.try_recv().unwrap() {
+            NetCommand::ChatCommand(packet) => {
+                assert_eq!(packet.command, "say hello world");
+                let signing = packet.signing.expect("signable command signing context");
+                assert!(signing.timestamp_millis > 0);
+                assert_ne!(signing.salt, 0);
+                assert_eq!(signing.arguments.len(), 1);
+                assert_eq!(signing.arguments[0].name, "message");
+                assert_eq!(signing.arguments[0].value, "hello world");
+                assert_eq!(signing.last_seen.update, LastSeenMessagesUpdate::default());
+                assert!(signing.last_seen.signatures.is_empty());
+            }
+            command => panic!("expected chat command request, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn queues_unsigned_chat_message() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+
+        queue_chat_message_command(&mut counters, &mut world, &commands, "hello world");
+
+        assert_eq!(counters.chat_message_commands_queued, 1);
+        match rx.try_recv().unwrap() {
+            NetCommand::ChatMessage(packet) => {
+                assert_eq!(packet.message, "hello world");
+                assert!(packet.timestamp_millis > 0);
+                assert_ne!(packet.salt, 0);
+                assert_eq!(packet.last_seen.update, LastSeenMessagesUpdate::default());
+                assert!(packet.last_seen.signatures.is_empty());
+            }
+            command => panic!("expected chat message command, got {command:?}"),
+        }
+    }
+
+    fn signable_message_command_tree() -> Commands {
+        Commands {
+            root_index: 0,
+            nodes: vec![
+                CommandNode {
+                    node_type: CommandNodeType::Root,
+                    flags: 0,
+                    children: vec![1],
+                    redirect: None,
+                    name: None,
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Literal,
+                    flags: 1,
+                    children: vec![2],
+                    redirect: None,
+                    name: Some("say".to_string()),
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Argument,
+                    flags: 6,
+                    children: Vec::new(),
+                    redirect: None,
+                    name: Some("message".to_string()),
+                    parser: Some(CommandArgumentParser {
+                        type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+                        name: "minecraft:message".to_string(),
+                        properties: Vec::new(),
+                    }),
+                    suggestions: None,
+                    executable: true,
+                    restricted: false,
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn queues_recipe_book_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_recipe_book_change_settings_command(
+            &mut counters,
+            &commands,
+            RecipeBookChangeSettingsCommand {
+                book_type: RecipeBookType::Furnace,
+                open: true,
+                filtering: false,
+            },
+        );
+        assert!(queue_recipe_book_seen_recipe_command(
+            &mut counters,
+            &commands,
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 321 },
+            },
+        ));
+
+        assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+        assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookChangeSettings(RecipeBookChangeSettingsCommand {
+                book_type: RecipeBookType::Furnace,
+                open: true,
+                filtering: false,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 321 },
+            })
+        );
+    }
+
+    #[test]
+    fn reports_recipe_book_seen_recipe_queue_saturation() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetCommand::RecipeBookSeenRecipe(
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 1 },
+            },
+        ))
+        .unwrap();
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(!queue_recipe_book_seen_recipe_command(
+            &mut counters,
+            &commands,
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 2 },
+            },
+        ));
+        assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 1 },
+            })
+        );
+    }
+
+    #[test]
+    fn queues_perform_respawn_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_perform_respawn_command(&mut counters, &commands);
+
+        assert_eq!(counters.perform_respawn_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
+    }
+
+    #[test]
+    fn queues_client_command_requests() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_request_stats_command(&mut counters, &commands);
+        queue_request_game_rule_values_command(&mut counters, &commands);
+
+        assert_eq!(counters.request_stats_commands_queued, 1);
+        assert_eq!(counters.request_game_rule_values_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestGameRuleValues);
+    }
+
+    #[test]
+    fn queues_non_empty_game_rule_updates_only() {
+        use bbb_protocol::packets::SetGameRuleEntry;
+
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(!queue_set_game_rule_command(
+            &mut counters,
+            &commands,
+            SetGameRule {
+                entries: Vec::new(),
+            },
+        ));
+        let command = SetGameRule {
+            entries: vec![SetGameRuleEntry {
+                rule: "minecraft:keep_inventory".to_string(),
+                value: "true".to_string(),
+            }],
+        };
+        assert!(queue_set_game_rule_command(
+            &mut counters,
+            &commands,
+            command.clone(),
+        ));
+
+        assert_eq!(counters.set_game_rule_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetGameRule(command));
+    }
+
+    #[test]
+    fn queues_edit_book_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = EditBook {
+            slot: 5,
+            pages: vec!["first page".encode_utf16().collect()],
+            title: Some("Field Notes".encode_utf16().collect()),
+        };
+
+        queue_edit_book_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.edit_book_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::EditBook(command));
+    }
+
+    #[test]
+    fn queues_difficulty_commands() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_change_difficulty_command(
+            &mut counters,
+            &commands,
+            ChangeDifficultyCommand {
+                difficulty: bbb_protocol::packets::Difficulty::Hard,
+            },
+        );
+        queue_change_game_mode_command(
+            &mut counters,
+            &commands,
+            ChangeGameModeCommand {
+                game_mode: bbb_protocol::packets::GameType::Adventure,
+            },
+        );
+        queue_lock_difficulty_command(
+            &mut counters,
+            &commands,
+            LockDifficultyCommand { locked: true },
+        );
+
+        assert_eq!(counters.change_difficulty_commands_queued, 1);
+        assert_eq!(counters.change_game_mode_commands_queued, 1);
+        assert_eq!(counters.lock_difficulty_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
+                difficulty: bbb_protocol::packets::Difficulty::Hard,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeGameMode(ChangeGameModeCommand {
+                game_mode: bbb_protocol::packets::GameType::Adventure,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::LockDifficulty(LockDifficultyCommand { locked: true })
+        );
+    }
+
+    #[test]
+    fn queues_rename_item_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = RenameItem {
+            name: "Sharp Pick".to_string(),
+        };
+
+        queue_rename_item_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.rename_item_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RenameItem(command));
+    }
+
+    #[test]
+    fn queues_seen_advancements_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SeenAdvancements::OpenedTab {
+            tab: "minecraft:story/root".to_string(),
+        };
+
+        queue_seen_advancements_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.advancements_seen_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SeenAdvancements(command)
+        );
+    }
+
+    #[test]
+    fn queues_set_beacon_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SetBeacon {
+            primary_effect: Some(1),
+            secondary_effect: None,
+        };
+
+        queue_set_beacon_command(&mut counters, &commands, command);
+
+        assert_eq!(counters.set_beacon_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetBeacon(command));
+    }
+
+    #[test]
+    fn queues_set_creative_mode_slot_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SetCreativeModeSlot {
+            slot_num: 36,
+            item: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(42),
+                count: 64,
+                component_patch: Default::default(),
+            },
+        };
+
+        queue_set_creative_mode_slot_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(command)
+        );
+    }
+
+    #[test]
+    fn creative_mode_slot_batch_reserves_all_capacity_before_sending() {
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetCommand::ClientTickEnd).unwrap();
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let batch = [
+            SetCreativeModeSlot {
+                slot_num: 36,
+                item: bbb_protocol::packets::ItemStackSummary::empty(),
+            },
+            SetCreativeModeSlot {
+                slot_num: 37,
+                item: bbb_protocol::packets::ItemStackSummary::empty(),
+            },
+        ];
+
+        assert_eq!(
+            queue_set_creative_mode_slot_commands_atomically(&mut counters, &commands, &batch),
+            Err(QueueCreativeModeSlotBatchError::Full)
+        );
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 0);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::ClientTickEnd);
+        assert!(rx.try_recv().is_err());
+
+        queue_set_creative_mode_slot_commands_atomically(&mut counters, &commands, &batch).unwrap();
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(batch[0].clone())
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(batch[1].clone())
+        );
+    }
+
+    #[test]
+    fn queues_sign_update_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SignUpdate {
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+            lines: [
+                "line 0".to_string(),
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+
+        queue_sign_update_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.sign_update_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SignUpdate(command));
+    }
+
+    #[test]
+    fn queues_tag_query_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let block_query = BlockEntityTagQuery {
+            transaction_id: 11,
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+        };
+        let entity_query = EntityTagQuery {
+            transaction_id: 12,
+            entity_id: 123,
+        };
+
+        queue_block_entity_tag_query_command(&mut counters, &commands, block_query);
+        queue_entity_tag_query_command(&mut counters, &commands, entity_query);
+
+        assert_eq!(counters.block_entity_tag_query_commands_queued, 1);
+        assert_eq!(counters.entity_tag_query_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::BlockEntityTagQuery(block_query)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::EntityTagQuery(entity_query)
+        );
+    }
+
+    #[test]
+    fn queues_spectator_entity_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+        let spectate = SpectateEntity { entity_id: 1234 };
+        let teleport = TeleportToEntity { uuid };
+
+        queue_spectate_entity_command(&mut counters, &commands, spectate);
+        queue_teleport_to_entity_command(&mut counters, &commands, teleport);
+
+        assert_eq!(counters.spectate_entity_commands_queued, 1);
+        assert_eq!(counters.teleport_to_entity_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SpectateEntity(spectate));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::TeleportToEntity(teleport)
+        );
+    }
+
+    #[test]
+    fn queues_container_button_click_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_container_button_click_command(&mut counters, &commands, 7, 2);
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_container_close_request_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_container_close_request_command(&mut counters, &commands, 7);
+
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
+        );
+    }
+
+    #[test]
+    fn queues_container_click_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let packet = ContainerClick {
+            container_id: 7,
+            state_id: 33,
+            slot_num: 5,
+            button_num: 1,
+            input: ContainerInput::Pickup,
+            changed_slots: BTreeMap::from([(
+                5,
+                HashedStack::Item(HashedItemStack {
+                    item_id: 42,
+                    count: 64,
+                    components: HashedComponentPatch {
+                        added_components: BTreeMap::from([(10, 0x0102_0304)]),
+                        removed_components: BTreeSet::from([20]),
+                    },
+                }),
+            )]),
+            carried_item: HashedStack::empty(),
+        };
+
+        queue_container_click_command(&mut counters, &commands, packet.clone());
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::ContainerClick(packet));
+    }
+
+    #[test]
+    fn queues_container_slot_state_changed_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_container_slot_state_changed_command(&mut counters, &commands, 12, 7, true);
+
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerSlotStateChanged(ContainerSlotStateChanged {
+                slot_id: 12,
+                container_id: 7,
+                new_state: true,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_container_slot_state_and_click_atomically() {
+        let state = ContainerSlotStateChanged {
+            slot_id: 0,
+            container_id: 7,
+            new_state: true,
+        };
+        let click = ContainerClick {
+            container_id: 7,
+            state_id: 12,
+            slot_num: 0,
+            button_num: 0,
+            input: ContainerInput::Swap,
+            changed_slots: BTreeMap::new(),
+            carried_item: HashedStack::Empty,
+        };
+
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        assert_eq!(
+            queue_container_slot_state_click_commands_atomically(
+                &mut counters,
+                &commands,
+                || Some((state, click.clone())),
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerSlotStateChanged(state)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(click.clone())
+        );
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 1);
+
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let mut build_called = false;
+        assert_eq!(
+            queue_container_slot_state_click_commands_atomically(&mut counters, &commands, || {
+                build_called = true;
+                Some((state, click))
+            },),
+            Err(QueueContainerSlotStateClickError::Full)
+        );
+        assert!(!build_called);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 0);
+        assert_eq!(counters.container_click_commands_queued, 0);
+    }
+
+    #[test]
+    fn queues_select_bundle_item_command_and_rejects_invalid_index() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            3
+        ));
+        assert!(queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            -1
+        ));
+        assert!(!queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            -2
+        ));
+
+        assert_eq!(counters.select_bundle_item_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: 3,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: -1,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn select_bundle_item_counter_tracks_accepted_commands_only() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            3
+        ));
+        assert!(!queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            4
+        ));
+
+        assert_eq!(counters.select_bundle_item_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: 3,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn queues_start_destroy_block_for_crosshair_hit() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let hit = CrosshairBlockHit {
+            pos: BlockPos { x: 1, y: 64, z: -2 },
+            face: ProtocolDirection::West,
+            cursor: [0.0, 0.5, 0.5],
+            inside: false,
+        };
+
+        queue_player_action_command(
+            &mut counters,
+            &commands,
+            PlayerActionKind::StartDestroyBlock,
+            hit.pos,
+            hit.face,
+            3,
+        );
+
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+                direction: ProtocolDirection::West,
+                sequence: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_entity_attack_and_interact_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let location = ProtocolVec3d {
+            x: 0.25,
+            y: 1.0,
+            z: -0.5,
+        };
+
+        queue_attack_entity_command(&mut counters, &commands, 123, 4);
+        queue_interact_entity_command(
+            &mut counters,
+            &commands,
+            4,
+            123,
+            InteractionHand::OffHand,
+            location,
+            true,
+        );
+
+        assert_eq!(counters.attack_entity_commands_queued, 1);
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(AttackEntityCommand {
+                packet: AttackEntity { entity_id: 123 },
+                selected_hotbar_slot: 4,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::InteractEntity(InteractEntityCommand {
+                packet: InteractEntity {
+                    entity_id: 123,
+                    hand: InteractionHand::OffHand,
+                    location,
+                    using_secondary_action: true,
+                },
+                selected_hotbar_slot: 4,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_use_item_on_for_crosshair_hit() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let hit = CrosshairBlockHit {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            face: ProtocolDirection::South,
+            cursor: [0.25, 0.5, 0.75],
+            inside: false,
+        };
+
+        let permit = commands
+            .as_ref()
+            .unwrap()
+            .try_reserve()
+            .expect("use-item-on command permit");
+        send_reserved_use_item_on_command(
+            &mut counters,
+            permit,
+            6,
+            InteractionHand::OffHand,
+            hit,
+            5,
+        );
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::OffHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos {
+                            x: -5,
+                            y: 70,
+                            z: 12
+                        },
+                        direction: ProtocolDirection::South,
+                        cursor_x: 0.25,
+                        cursor_y: 0.5,
+                        cursor_z: 0.75,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 5,
+                },
+                selected_hotbar_slot: 6,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_pick_item_from_block_for_crosshair_hit() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_pick_item_from_block_command(
+            &mut counters,
+            &commands,
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            true,
+        );
+
+        assert_eq!(counters.pick_item_from_block_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PickItemFromBlock(PickItemFromBlock {
+                pos: ProtocolBlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                include_data: true,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_pick_item_from_entity() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_pick_item_from_entity_command(&mut counters, &commands, 123, true);
+
+        assert_eq!(counters.pick_item_from_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PickItemFromEntity(PickItemFromEntity {
+                entity_id: 123,
+                include_data: true,
+            })
+        );
+    }
+}

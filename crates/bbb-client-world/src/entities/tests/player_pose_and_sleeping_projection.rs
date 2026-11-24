@@ -1,0 +1,1261 @@
+use super::*;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID,
+};
+
+fn entity_metadata_accessors() -> VanillaEntityMetadataAccessors {
+    vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve")
+}
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
+
+fn living_health_data(entity_type_id: i32, health: f32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors must resolve");
+    assert_eq!(accessors.health_default, 1.0);
+    protocol_float_data(accessors.health_data_id, health)
+}
+
+fn entity_shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    protocol_byte_data(entity_metadata_accessors().shared_flags_data_id, flags)
+}
+
+fn entity_custom_name_data(name: Option<&str>) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id: entity_metadata_accessors().custom_name_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+        value: EntityDataValueKind::OptionalComponent(
+            name.map(bbb_protocol::RichTextComponent::plain),
+        ),
+    }
+}
+
+fn living_sleeping_pos_data(
+    entity_type_id: i32,
+    pos: Option<ProtocolBlockPos>,
+) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors must resolve");
+    ProtocolEntityDataValue {
+        data_id: accessors.sleeping_pos_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+        value: EntityDataValueKind::OptionalBlockPos(pos),
+    }
+}
+
+#[test]
+fn player_stuck_counts_project_generated_living_metadata_only_to_avatar_sources() {
+    let counts = |store: &WorldStore, entity_id| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .expect("entity model source");
+        (
+            source.render.kind.player().arrow_count,
+            source.render.kind.player().stinger_count,
+        )
+    };
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    )
+    .expect("generated LivingEntity metadata accessors");
+    assert_eq!(
+        (
+            accessors.arrow_count_data_id,
+            accessors.stinger_count_data_id,
+            accessors.arrow_count_default,
+            accessors.stinger_count_default,
+        ),
+        (
+            VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID,
+            VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID,
+            0,
+            0,
+        )
+    );
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        201,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        202,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert_eq!(counts(&store, 201), (0, 0));
+    assert_eq!(counts(&store, 202), (0, 0));
+
+    for entity_id in [201, 202] {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: entity_id,
+            values: vec![
+                protocol_int_data(accessors.arrow_count_data_id, -7),
+                protocol_int_data(accessors.stinger_count_data_id, 1_000),
+            ],
+        }));
+    }
+    assert_eq!(
+        counts(&store, 201),
+        (-7, 1_000),
+        "world preserves synchronized values; renderer owns the bounded/non-positive gate"
+    );
+    assert_eq!(
+        counts(&store, 202),
+        (0, 0),
+        "non-player LivingEntity renderers do not register the avatar stuck layers"
+    );
+}
+
+#[test]
+fn entity_model_sources_project_elytra_animation_state() {
+    const EPSILON: f32 = 1.0e-6;
+    const DEFAULT_X: f32 = std::f32::consts::PI / 12.0;
+    const DEFAULT_Y: f32 = 0.0;
+    const DEFAULT_Z: f32 = -std::f32::consts::PI / 12.0;
+
+    let elytra = |store: &WorldStore, id: i32, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (
+            source.render.elytra_rot_x,
+            source.render.elytra_rot_y,
+            source.render.elytra_rot_z,
+        )
+    };
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() <= EPSILON,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+    let add_player = || {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(
+            76,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ));
+        store
+    };
+
+    // Source rows preserve the renderer's steady non-flying elytra default before
+    // the first living-entity animation tick.
+    let mut standing = add_player();
+    assert_eq!(
+        elytra(&standing, 76, 1.0),
+        (DEFAULT_X, DEFAULT_Y, DEFAULT_Z)
+    );
+    standing.advance_entity_client_animations(1);
+    let (x0, y0, z0) = elytra(&standing, 76, 0.0);
+    assert_close(x0, DEFAULT_X, "standing old x");
+    assert_close(y0, DEFAULT_Y, "standing old y");
+    assert_close(z0, DEFAULT_Z, "standing old z");
+    let (x, y, z) = elytra(&standing, 76, 1.0);
+    assert_close(x, DEFAULT_X, "standing x stays at PI/12");
+    assert_close(y, DEFAULT_Y, "standing y stays zero");
+    assert_close(z, DEFAULT_Z, "standing z stays at -PI/12");
+
+    // Vanilla `Entity.isCrouching()` makes the target (2PI/9, 5deg, -PI/4).
+    let mut crouching = add_player();
+    assert!(crouching.apply_set_entity_data(ProtocolSetEntityData {
+        id: 76,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
+    }));
+    crouching.advance_entity_client_animations(1);
+    let (x, y, z) = elytra(&crouching, 76, 1.0);
+    let crouching_target_x = std::f32::consts::PI * 2.0 / 9.0;
+    let crouching_target_y = 0.087_266_46;
+    let crouching_target_z = -std::f32::consts::PI / 4.0;
+    assert_close(
+        x,
+        DEFAULT_X + (crouching_target_x - DEFAULT_X) * 0.3,
+        "crouching x target",
+    );
+    assert_close(
+        y,
+        DEFAULT_Y + (crouching_target_y - DEFAULT_Y) * 0.3,
+        "crouching y target",
+    );
+    assert_close(
+        z,
+        DEFAULT_Z + (crouching_target_z - DEFAULT_Z) * 0.3,
+        "crouching z target",
+    );
+
+    // Vanilla `isFallFlying()` reads shared flag bit 7 and then derives the
+    // X/Z target from the normalized downward velocity.
+    let mut fall_flying = add_player();
+    assert!(fall_flying.apply_set_entity_data(ProtocolSetEntityData {
+        id: 76,
+        values: vec![entity_shared_flags_data(
+            entity_metadata_accessors().fall_flying_mask,
+        )],
+    }));
+    assert!(
+        fall_flying.apply_set_entity_motion(ProtocolSetEntityMotion {
+            id: 76,
+            delta_movement: ProtocolVec3d {
+                x: 1.0,
+                y: -1.0,
+                z: 0.0,
+            },
+        })
+    );
+    fall_flying.advance_entity_client_animations(1);
+    let normalized_down = 1.0_f32 / 2.0_f32.sqrt();
+    let ratio = 1.0 - normalized_down.powf(1.5);
+    let target_x = std::f32::consts::PI / 12.0
+        + ratio * (std::f32::consts::PI / 9.0 - std::f32::consts::PI / 12.0);
+    let target_z = -std::f32::consts::PI / 12.0
+        + ratio * (-std::f32::consts::PI / 2.0 + std::f32::consts::PI / 12.0);
+    let expected_x = DEFAULT_X + (target_x - DEFAULT_X) * 0.3;
+    let expected_z = DEFAULT_Z + (target_z - DEFAULT_Z) * 0.3;
+    let (x, y, z) = elytra(&fall_flying, 76, 1.0);
+    assert_close(x, expected_x, "fall-flying x velocity target");
+    assert_close(y, DEFAULT_Y, "fall-flying y target");
+    assert_close(z, expected_z, "fall-flying z velocity target");
+    let (mid_x, _, mid_z) = elytra(&fall_flying, 76, 0.5);
+    assert_close(
+        mid_x,
+        DEFAULT_X + (expected_x - DEFAULT_X) * 0.5,
+        "fall-flying x partial lerp",
+    );
+    assert_close(
+        mid_z,
+        DEFAULT_Z + (expected_z - DEFAULT_Z) * 0.5,
+        "fall-flying z partial lerp",
+    );
+
+    // Non-living entities never tick `LivingEntity.elytraAnimationState`; source
+    // rows still preserve the renderer's steady elytra defaults.
+    let mut boat = WorldStore::new();
+    boat.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(boat.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![entity_shared_flags_data(
+            entity_metadata_accessors().fall_flying_mask,
+        )],
+    }));
+    boat.advance_entity_client_animations(1);
+    assert_eq!(elytra(&boat, 77, 1.0), (DEFAULT_X, DEFAULT_Y, DEFAULT_Z));
+}
+
+#[test]
+fn player_flight_swim_projects_visual_pose_speed_time_and_signed_yaw() {
+    let source = |store: &WorldStore, id: i32, partial_tick: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .expect("player model source")
+    };
+
+    // `LivingEntity.isVisuallySwimming` accepts the explicit swimming pose and
+    // the crawling FALL_FLYING pose only while the real flying flag is clear.
+    let mut crawling = WorldStore::new();
+    crawling.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(crawling.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_FALL_FLYING_ID)],
+    }));
+    crawling.advance_entity_client_animations(1);
+    let crawling_source = source(&crawling, 77, 1.0);
+    assert!(!crawling_source.render.is_fall_flying);
+    assert!(crawling_source.render.is_visually_swimming);
+    assert!((crawling_source.render.swim_amount - 0.09).abs() < 1.0e-6);
+
+    assert!(crawling.apply_set_entity_data(ProtocolSetEntityData {
+        id: 77,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_SWIMMING_ID),
+            entity_shared_flags_data(entity_metadata_accessors().swimming_mask),
+        ],
+    }));
+    assert!(source(&crawling, 77, 1.0).render.is_visually_swimming);
+
+    let mut flying = WorldStore::new();
+    flying.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(flying.apply_set_entity_data(ProtocolSetEntityData {
+        id: 78,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_FALL_FLYING_ID),
+            entity_shared_flags_data(entity_metadata_accessors().fall_flying_mask),
+        ],
+    }));
+    assert!(flying.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 78,
+        delta_movement: ProtocolVec3d {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        },
+    }));
+    flying.advance_entity_client_animations(1);
+    assert!(flying.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 78,
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 1.0,
+        },
+    }));
+
+    let flying_source = source(&flying, 78, 0.5);
+    assert!(flying_source.render.is_fall_flying);
+    assert!(!flying_source.render.is_visually_swimming);
+    assert_eq!(
+        flying_source.render.kind.player().fall_flying_time_in_ticks,
+        1.5
+    );
+    assert_eq!(flying_source.render.humanoid_speed_value, 125.0);
+    assert!(flying_source.render.kind.player().should_apply_flying_y_rot);
+
+    let look = calculate_view_vector(-10.0, 20.0);
+    let movement_length = 0.5_f64.hypot(0.5);
+    let look_length = look.x.hypot(look.z);
+    let dot = 0.5 / movement_length * (look.x / look_length)
+        + 0.5 / movement_length * (look.z / look_length);
+    let cross = 0.5 * look.z - 0.5 * look.x;
+    let expected_yaw = (cross.signum() * dot.abs().min(1.0).acos()) as f32;
+    assert!((flying_source.render.kind.player().flying_y_rot - expected_yaw).abs() < 1.0e-6);
+
+    let mut standing = WorldStore::new();
+    standing.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let standing_source = source(&standing, 79, 0.5);
+    assert!(
+        !standing_source
+            .render
+            .kind
+            .player()
+            .should_apply_flying_y_rot
+    );
+    assert_eq!(standing_source.render.kind.player().flying_y_rot, 0.0);
+}
+
+#[test]
+fn entity_model_sources_project_player_cape_cloak_state() {
+    const EPSILON: f32 = 1.0e-5;
+
+    let sync_position = |store: &mut WorldStore, x: f64, y: f64, z: f64| {
+        assert!(store
+            .entities
+            .with_transform_mut(78, |transform| {
+                transform.position = EntityVec3 { x, y, z };
+                transform.position_base = transform.position;
+                // Facing vanilla north: forwardX = 0, forwardZ = -1.
+                transform.y_rot = 0.0;
+                transform.x_rot = 0.0;
+            })
+            .is_some());
+    };
+    let cape = |store: &WorldStore, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 78)
+            .unwrap();
+        (
+            source.render.kind.player().cape_flap,
+            source.render.kind.player().cape_lean,
+            source.render.kind.player().cape_lean2,
+        )
+    };
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() <= EPSILON,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    // The first cloak tick initializes both entity and cloak positions to the
+    // player position, matching vanilla's teleport-safe startup behavior.
+    sync_position(&mut store, 0.0, 64.0, 0.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(cape(&store, 1.0), (0.0, 0.0, 0.0));
+
+    // Vanilla `ClientAvatarState.moveCloak`: each axis follows the player by 25%
+    // per tick when the delta stays within 10 blocks. Moving +1y/+1z leaves the
+    // cloak 0.75 blocks behind on both axes at partial=1:
+    // flap = clamp(-0.75 * 10, -6, 32) = -6,
+    // lean = (-0.75 * forwardZ=-1) * 100 * (1 - 1^2/100) = 74.25,
+    // lean2 = 0.
+    sync_position(&mut store, 0.0, 65.0, 1.0);
+    store.advance_entity_client_animations(1);
+    let (flap, lean, lean2) = cape(&store, 1.0);
+    assert_close(flap, -6.0, "full-tick cape flap clamp");
+    assert_close(lean, 74.25, "full-tick forward cape lean");
+    assert_close(lean2, 0.0, "full-tick side cape lean");
+
+    // Partial tick lerps both entity and cloak positions before the same
+    // projection: the lag is half as large at partial=0.5.
+    let (flap, lean, lean2) = cape(&store, 0.5);
+    assert_close(flap, -3.75, "mid-tick cape flap");
+    assert_close(lean, 37.40625, "mid-tick forward cape lean");
+    assert_close(lean2, 0.0, "mid-tick side cape lean");
+}
+
+#[test]
+fn entity_model_sources_project_dinnerbone_upside_down() {
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+    let set_custom_name = |store: &mut WorldStore, id: i32, name: Option<&str>| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![entity_custom_name_data(name)],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // A normally-named living entity is upright but still carries a real bb height.
+    assert!(source(&store, 80).render.upside_down_height.is_none());
+    assert!(source(&store, 80).render.bounding_box_height > 0.0);
+
+    // Vanilla LivingEntityRenderer.isUpsideDownName: "Dinnerbone" and "Grumm" flip.
+    assert!(set_custom_name(&mut store, 80, Some("Dinnerbone")));
+    assert!(source(&store, 80).render.upside_down_height.is_some());
+    assert!(set_custom_name(&mut store, 80, Some("Grumm")));
+    assert!(source(&store, 80).render.upside_down_height.is_some());
+    // Any other name (or clearing it) leaves the entity upright.
+    assert!(set_custom_name(&mut store, 80, Some("Dinnerbon")));
+    assert!(source(&store, 80).render.upside_down_height.is_none());
+    assert!(set_custom_name(&mut store, 80, None));
+    assert!(source(&store, 80).render.upside_down_height.is_none());
+
+    // A non-living entity (boat) named Dinnerbone is never flipped: only
+    // LivingEntityRenderer reads the easter egg.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_custom_name(&mut store, 81, Some("Dinnerbone")));
+    assert!(source(&store, 81).render.upside_down_height.is_none());
+
+    // The player path keys off the GameProfile name + cape part (AvatarRenderer),
+    // not the custom name, so a player with only a "Dinnerbone" custom name (no
+    // player-info profile, no shown cape) stays upright. The profile-driven player
+    // flip is covered by `entity_model_sources_project_player_upside_down`.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(set_custom_name(&mut store, 82, Some("Dinnerbone")));
+    assert!(source(&store, 82).render.upside_down_height.is_none());
+}
+
+#[test]
+fn entity_model_sources_project_player_upside_down() {
+    // Vanilla AvatarRenderer.isEntityUpsideDown: a Player is flipped only when its
+    // cape model part is shown (DATA_PLAYER_MODE_CUSTOMISATION id 16, CAPE bit 0x01)
+    // AND its GameProfile name (from the player-info list, not the custom name) is
+    // "Dinnerbone"/"Grumm".
+    let upside_down = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .render
+            .upside_down_height
+            .is_some()
+    };
+    let set_customization = |store: &mut WorldStore, id: i32, mask: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(mask),
+            }],
+        })
+    };
+    let add_player = |store: &mut WorldStore, id: i32, uuid: Uuid| {
+        let mut add = protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_PLAYER_ID);
+        add.uuid = uuid;
+        store.apply_add_entity(add);
+    };
+    let add_profile = |store: &mut WorldStore, uuid: Uuid, name: &str| {
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![ProtocolPlayerInfoAction::AddPlayer],
+            entries: vec![ProtocolPlayerInfoEntry {
+                profile_id: uuid,
+                profile: Some(ProtocolGameProfile {
+                    uuid,
+                    name: name.to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: ProtocolGameType::Survival,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+    };
+
+    let mut store = WorldStore::new();
+    add_player(&mut store, 90, default_entity_uuid());
+
+    // A shown cape but no player-info profile yet: the GameProfile name is unknown,
+    // so the player stays upright.
+    assert!(set_customization(
+        &mut store,
+        90,
+        VANILLA_AVATAR_MODEL_PART_CAPE
+    ));
+    assert!(!upside_down(&store, 90));
+
+    // Dinnerbone profile + shown cape: flipped.
+    add_profile(&mut store, default_entity_uuid(), "Dinnerbone");
+    assert!(upside_down(&store, 90));
+
+    // Hiding the cape (CAPE bit clear) suppresses the flip even for Dinnerbone.
+    assert!(set_customization(&mut store, 90, 0));
+    assert!(!upside_down(&store, 90));
+
+    // Other customization bits without the cape bit also do not flip.
+    assert!(set_customization(
+        &mut store,
+        90,
+        !VANILLA_AVATAR_MODEL_PART_CAPE
+    ));
+    assert!(!upside_down(&store, 90));
+
+    // Showing the cape again restores the flip.
+    assert!(set_customization(
+        &mut store,
+        90,
+        VANILLA_AVATAR_MODEL_PART_CAPE
+    ));
+    assert!(upside_down(&store, 90));
+
+    // A cape-showing player whose profile name is not Dinnerbone/Grumm is upright.
+    let steve_uuid = Uuid::from_u128(0xAAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA_AAAA);
+    add_player(&mut store, 91, steve_uuid);
+    add_profile(&mut store, steve_uuid, "Steve");
+    assert!(set_customization(
+        &mut store,
+        91,
+        VANILLA_AVATAR_MODEL_PART_CAPE
+    ));
+    assert!(!upside_down(&store, 91));
+
+    // The other easter-egg name, "Grumm", flips too (cape shown).
+    let grumm_uuid = Uuid::from_u128(0xBBBB_BBBB_BBBB_BBBB_BBBB_BBBB_BBBB_BBBB);
+    add_player(&mut store, 92, grumm_uuid);
+    add_profile(&mut store, grumm_uuid, "Grumm");
+    assert!(set_customization(
+        &mut store,
+        92,
+        VANILLA_AVATAR_MODEL_PART_CAPE
+    ));
+    assert!(upside_down(&store, 92));
+}
+
+#[test]
+fn entity_model_sources_project_player_extra_ears_from_profile_name() {
+    // Vanilla `AbstractClientPlayer.showExtraEars` is an exact, lowercase
+    // GameProfile-name check for `"deadmau5"`; it is not driven by custom names.
+    let show_extra_ears = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .render
+            .kind
+            .player()
+            .show_extra_ears
+    };
+    let add_player = |store: &mut WorldStore, id: i32, uuid: Uuid| {
+        let mut add = protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_PLAYER_ID);
+        add.uuid = uuid;
+        store.apply_add_entity(add);
+    };
+    let add_profile = |store: &mut WorldStore, uuid: Uuid, name: &str| {
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![ProtocolPlayerInfoAction::AddPlayer],
+            entries: vec![ProtocolPlayerInfoEntry {
+                profile_id: uuid,
+                profile: Some(ProtocolGameProfile {
+                    uuid,
+                    name: name.to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: ProtocolGameType::Survival,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+    };
+
+    let mut store = WorldStore::new();
+    let deadmau5_uuid = Uuid::from_u128(0xCCCC_CCCC_CCCC_CCCC_CCCC_CCCC_CCCC_CCCC);
+    add_player(&mut store, 93, deadmau5_uuid);
+    assert!(!show_extra_ears(&store, 93));
+
+    add_profile(&mut store, deadmau5_uuid, "deadmau5");
+    assert!(show_extra_ears(&store, 93));
+
+    let mixed_case_uuid = Uuid::from_u128(0xDDDD_DDDD_DDDD_DDDD_DDDD_DDDD_DDDD_DDDD);
+    add_player(&mut store, 94, mixed_case_uuid);
+    add_profile(&mut store, mixed_case_uuid, "Deadmau5");
+    assert!(!show_extra_ears(&store, 94));
+
+    let mut chicken = protocol_add_entity_with_type(95, VANILLA_ENTITY_TYPE_CHICKEN_ID);
+    chicken.uuid = deadmau5_uuid;
+    store.apply_add_entity(chicken);
+    assert!(!show_extra_ears(&store, 95));
+}
+
+#[test]
+fn sleeping_bed_yaw_and_offset_matches_vanilla() {
+    let eye = 2.0_f32;
+    let ho = eye - 0.1;
+    let bed = |facing: &str| {
+        let mut props = std::collections::BTreeMap::new();
+        props.insert("facing".to_string(), facing.to_string());
+        super::sleeping_bed_yaw_and_offset("minecraft:white_bed", &props, eye)
+    };
+    // Vanilla LivingEntityRenderer.sleepDirectionToRotation + Direction.getStepX/Z;
+    // the head-offset translate is [-stepX * (eye - 0.1), -stepZ * (eye - 0.1)].
+    assert_eq!(bed("south"), Some((90.0, [0.0, -ho])));
+    assert_eq!(bed("west"), Some((0.0, [ho, 0.0])));
+    assert_eq!(bed("north"), Some((270.0, [0.0, ho])));
+    assert_eq!(bed("east"), Some((180.0, [-ho, 0.0])));
+
+    // A non-bed block, or a bed without a facing, never resolves.
+    let mut props = std::collections::BTreeMap::new();
+    props.insert("facing".to_string(), "north".to_string());
+    assert_eq!(
+        super::sleeping_bed_yaw_and_offset("minecraft:stone", &props, eye),
+        None
+    );
+    assert_eq!(
+        super::sleeping_bed_yaw_and_offset("example:white_bed", &props, eye),
+        None
+    );
+    assert_eq!(
+        super::sleeping_bed_yaw_and_offset(
+            "minecraft:white_bed",
+            &std::collections::BTreeMap::new(),
+            eye,
+        ),
+        None
+    );
+}
+
+#[test]
+fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_int() {
+    // Vanilla `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT` are generated `OPTIONAL_UNSIGNED_INT`
+    // accessors after Player absorption/score. The decoded value is the `Parrot.Variant` id.
+
+    let shoulders = |store: &WorldStore, id: i32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (
+            source
+                .render
+                .kind
+                .player()
+                .left_shoulder_parrot
+                .map(ParrotModelVariant::vanilla_id),
+            source
+                .render
+                .kind
+                .player()
+                .right_shoulder_parrot
+                .map(ParrotModelVariant::vanilla_id),
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        101,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        102,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    assert_eq!(shoulders(&store, 101), (None, None));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 101,
+        values: vec![
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+                Some(4),
+            ),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+                Some(1),
+            ),
+        ],
+    }));
+    assert_eq!(shoulders(&store, 101), (Some(4), Some(1)));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 101,
+        values: vec![protocol_optional_unsigned_int_data(
+            VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+            None,
+        )],
+    }));
+    assert_eq!(shoulders(&store, 101), (None, Some(1)));
+
+    // Non-player entities ignore the same data ids even if the metadata packet carries them.
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 102,
+        values: vec![
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+                Some(2),
+            ),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+                Some(3),
+            ),
+        ],
+    }));
+    assert_eq!(shoulders(&store, 102), (None, None));
+}
+
+#[test]
+fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+    let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![entity_pose_data(pose)],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // An awake (standing) entity is not sleeping.
+    assert!(!source(&store, 90).is_sleeping);
+
+    // Vanilla Pose.SLEEPING marks the entity sleeping; with no bed resolved the bed
+    // yaw/offset stay at the no-bed fallback (the renderer uses the body yaw).
+    assert!(set_pose(&mut store, 90, VANILLA_ENTITY_POSE_SLEEPING_ID));
+    let asleep = source(&store, 90);
+    assert!(asleep.is_sleeping);
+    assert_eq!(asleep.sleeping_bed_yaw, None);
+    assert_eq!(asleep.sleeping_bed_offset, [0.0, 0.0]);
+
+    // Standing again clears it.
+    assert!(set_pose(&mut store, 90, VANILLA_ENTITY_POSE_STANDING_ID));
+    assert!(!source(&store, 90).is_sleeping);
+
+    // A non-living entity (boat) with a SLEEPING pose never sleeps: only
+    // LivingEntityRenderer lays entities down.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(set_pose(&mut store, 91, VANILLA_ENTITY_POSE_SLEEPING_ID));
+    assert!(!source(&store, 91).is_sleeping);
+}
+
+#[test]
+fn entity_model_sources_resolve_sleeping_bed_orientation() {
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+
+    // Place a north-facing bed and point the entity's sleeping position at it.
+    let mut bed_props = std::collections::BTreeMap::new();
+    bed_props.insert("facing".to_string(), "north".to_string());
+    bed_props.insert("occupied".to_string(), "false".to_string());
+    bed_props.insert("part".to_string(), "foot".to_string());
+    let bed_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:white_bed", &bed_props)
+        .expect("vanilla 26.1 north white_bed state exists")
+        .id;
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 2, y: 1, z: 2 },
+        block_state_id: bed_id,
+    }));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 92,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID),
+            living_sleeping_pos_data(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                Some(ProtocolBlockPos { x: 2, y: 1, z: 2 }),
+            ),
+        ],
+    }));
+
+    let source = store
+        .entity_model_sources_at_partial_tick(0.0)
+        .into_iter()
+        .find(|source| source.entity_id == 92)
+        .unwrap();
+    assert!(source.is_sleeping);
+    // Vanilla BedBlock.getBedOrientation reads FACING; sleepDirectionToRotation(NORTH) = 270.
+    assert_eq!(source.sleeping_bed_yaw, Some(270.0));
+    // headOffset = standingEyeHeight - 0.1 > 0; the NORTH step (0, -1) lifts the
+    // offset to [0, +headOffset].
+    assert!(source.sleeping_bed_offset[0].abs() < 1e-6);
+    assert!(source.sleeping_bed_offset[1] > 0.0);
+}
+
+#[test]
+fn entity_model_sources_project_scale_attribute() {
+    let scale = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .render
+            .scale
+    };
+    let set_scale = |store: &mut WorldStore, id: i32, value: f64| {
+        store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: id,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+                base: value,
+                modifiers: Vec::new(),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        95,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    // No SCALE attribute synced -> vanilla getScale() default of 1.0.
+    assert_eq!(scale(&store, 95), 1.0);
+
+    // Vanilla LivingEntity.getScale() is the SCALE attribute value.
+    assert!(set_scale(&mut store, 95, 1.5));
+    assert_eq!(scale(&store, 95), 1.5);
+
+    // The SCALE attribute is clamped to [0.0625, 16.0].
+    assert!(set_scale(&mut store, 95, 20.0));
+    assert_eq!(scale(&store, 95), 16.0);
+    assert!(set_scale(&mut store, 95, 0.001));
+    assert_eq!(scale(&store, 95), 0.0625);
+
+    // A non-living entity (boat) is gated out of the living render scale (the same
+    // `vanilla_living_entity_type` gate as the other render-state projections).
+    store.apply_add_entity(protocol_add_entity_with_type(
+        96,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert_eq!(scale(&store, 96), 1.0);
+}
+
+#[test]
+fn death_animation_gates_on_living_entity_health() {
+    let zero_health = vec![living_health_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, 0.0)];
+
+    // A non-living entity (item) is not a LivingEntity, so a stray float at the
+    // health id never starts the death animation.
+    let mut item = EntityClientAnimationState::default();
+    item.sync_targets_from_metadata(VANILLA_ENTITY_TYPE_ITEM_ID, &zero_health);
+    assert!(item.death.is_none());
+
+    // A living entity at zero health begins it (deathTime 0 until the first tick).
+    let mut chicken = EntityClientAnimationState::default();
+    chicken.sync_targets_from_metadata(VANILLA_ENTITY_TYPE_CHICKEN_ID, &zero_health);
+    assert!(chicken.death.is_some());
+    assert_eq!(chicken.death_time(0.0), 0.0);
+    assert!(!chicken.has_red_overlay());
+}
+
+#[test]
+fn local_player_record_takes_pose_and_using_flags_from_local_state() {
+    // Player.updatePlayerPose and LocalPlayer.isUsingItem/getUsedItemHand
+    // answer from local state, so the self entity crouches and raises its
+    // off hand before (and regardless of) the server's metadata echo.
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(61));
+    let id = store.local_player_id.unwrap();
+    store.local_player.pose = Some(crate::LocalPlayerPoseState {
+        sneaking: true,
+        ..crate::LocalPlayerPoseState::default()
+    });
+    store.local_player.interaction.using_item = true;
+    store.local_player.interaction.using_item_hand = Some(InteractionHand::OffHand);
+    store.sync_local_player_entity();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
+    }));
+
+    assert_eq!(
+        store.entities.pose(id),
+        Some(VANILLA_ENTITY_POSE_CROUCHING_ID)
+    );
+    let living = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    )
+    .unwrap();
+    let flags = store
+        .entities
+        .metadata_byte_for_entity(id, living.flags_data_id, living.flags_default)
+        .unwrap();
+    assert_ne!(flags & living.is_using_mask, 0);
+    assert_ne!(flags & living.off_hand_mask, 0);
+    // A top slab right above the crouching head (height 1.5) is placeable.
+    assert_eq!(
+        store.local_block_placement_is_unobstructed([0.0, 1.5, 0.0], [1.0, 2.0, 1.0]),
+        Some(true)
+    );
+}
+
+#[test]
+fn local_player_crawl_keeps_fall_flying_pose_but_the_swimming_flag_wins() {
+    // Player.getDesiredPose: isSwimming() (the Entity.updateSwimming flag)
+    // precedes fall flying, while the crawl fallback only applies when the
+    // desired pose does not fit, and FALL_FLYING fits wherever SWIMMING does.
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(61));
+    let id = store.local_player_id.unwrap();
+    let accessors = entity_metadata_accessors();
+    store.local_player.pose = Some(crate::LocalPlayerPoseState {
+        swimming: true,
+        ..crate::LocalPlayerPoseState::default()
+    });
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id,
+        values: vec![entity_shared_flags_data(accessors.fall_flying_mask)],
+    }));
+    assert_eq!(
+        store.entities.pose(id),
+        Some(VANILLA_ENTITY_POSE_FALL_FLYING_ID)
+    );
+
+    store.local_player.swimming = true;
+    store.sync_local_player_entity();
+    assert_eq!(
+        store.entities.pose(id),
+        Some(VANILLA_ENTITY_POSE_SWIMMING_ID)
+    );
+    let shared = store
+        .entities
+        .metadata_byte_for_entity(
+            id,
+            accessors.shared_flags_data_id,
+            accessors.shared_flags_default,
+        )
+        .unwrap();
+    assert_ne!(shared & accessors.swimming_mask, 0);
+}
+
+#[test]
+fn local_player_shift_flag_follows_the_sneak_key_not_the_crouch_pose() {
+    // LocalPlayer.isShiftKeyDown reads input.keyPresses.shift(): set while
+    // creative flying with sneak held (pose stays standing), clear when a
+    // low ceiling keeps the crouch pose after the key is released.
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(61));
+    let id = store.local_player_id.unwrap();
+    let accessors = entity_metadata_accessors();
+    let shared = |store: &WorldStore| {
+        store
+            .entities
+            .metadata_byte_for_entity(
+                id,
+                accessors.shared_flags_data_id,
+                accessors.shared_flags_default,
+            )
+            .unwrap()
+            & accessors.shift_key_down_mask
+    };
+    store.local_player.pose = Some(crate::LocalPlayerPoseState::default());
+    store.local_player.abilities = Some(crate::LocalPlayerAbilitiesState {
+        invulnerable: true,
+        flying: true,
+        can_fly: true,
+        instabuild: true,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    store.advance_local_player_input(
+        crate::LocalPlayerInputState {
+            focused: true,
+            sneak: true,
+            ..crate::LocalPlayerInputState::default()
+        },
+        0.05,
+    );
+    store.sync_local_player_entity();
+    assert_ne!(shared(&store), 0);
+    assert_eq!(
+        store.entities.pose(id),
+        Some(VANILLA_ENTITY_POSE_STANDING_ID)
+    );
+
+    store.local_player.shift_key_down = false;
+    store.local_player.pose = Some(crate::LocalPlayerPoseState {
+        sneaking: true,
+        ..crate::LocalPlayerPoseState::default()
+    });
+    store.sync_local_player_entity();
+    assert_eq!(shared(&store), 0);
+    assert_eq!(
+        store.entities.pose(id),
+        Some(VANILLA_ENTITY_POSE_CROUCHING_ID)
+    );
+}
+
+fn logged_in_local_player() -> (WorldStore, i32) {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(61));
+    store.local_player.pose = Some(crate::LocalPlayerPoseState::default());
+    let id = store.local_player_id.unwrap();
+    (store, id)
+}
+
+#[test]
+fn local_player_gliding_uses_the_fall_flying_box_and_eye_height() {
+    // Avatar.POSES: FALL_FLYING is 0.6 x 0.6 with eye height 0.4, and
+    // Player.getDesiredPose ranks it above crouching.
+    let (mut store, id) = logged_in_local_player();
+    let accessors = entity_metadata_accessors();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id,
+        values: vec![entity_shared_flags_data(accessors.fall_flying_mask)],
+    }));
+    let pose = store
+        .advance_local_player_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                sneak: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            0.05,
+        )
+        .unwrap();
+    assert!(!pose.swimming);
+    let dimensions = store.local_player_dimensions(pose);
+    assert_eq!((dimensions.width, dimensions.height), (0.6, 0.6));
+    assert_eq!(store.local_player_eye_height(pose), 0.4);
+}
+
+#[test]
+fn local_player_riptide_spin_uses_the_spin_attack_box() {
+    let (mut store, id) = logged_in_local_player();
+    let living = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    )
+    .unwrap();
+    let pose = crate::LocalPlayerPoseState::default();
+    assert_eq!(store.local_player_dimensions(pose).height, 1.8);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id,
+        values: vec![protocol_byte_data(
+            living.flags_data_id,
+            living.spin_attack_mask
+        )],
+    }));
+    let dimensions = store.local_player_dimensions(pose);
+    assert_eq!(
+        (dimensions.width, dimensions.height, dimensions.eye_height),
+        (0.6, 0.6, 0.4)
+    );
+}
+
+#[test]
+fn local_player_scale_two_doubles_the_box_and_eye_height() {
+    // LivingEntity.getDimensions scales Avatar.POSES by getScale().
+    let (mut store, id) = logged_in_local_player();
+    let slab_at_head = ([0.0, 2.5, 0.0], [1.0, 3.0, 1.0]);
+    assert_eq!(
+        store.local_block_placement_is_unobstructed(slab_at_head.0, slab_at_head.1),
+        Some(true)
+    );
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: id,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.local_block_placement_is_unobstructed(slab_at_head.0, slab_at_head.1),
+        Some(false)
+    );
+    let pose = crate::LocalPlayerPoseState::default();
+    assert_eq!(
+        store.local_player_eye_height(pose),
+        f64::from(1.62_f32 * 2.0)
+    );
+    assert_eq!(
+        store.local_player_dimensions(pose).width,
+        f64::from(0.6_f32 * 2.0)
+    );
+}
+
+#[test]
+fn local_player_riptide_spin_keeps_the_crouch_slow_down() {
+    // LocalPlayer.crouching (isMovingSlowly) is independent of the
+    // SPIN_ATTACK body pose, so Shift keeps slowing the input mid-spin.
+    let (mut store, id) = logged_in_local_player();
+    let living = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    )
+    .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id,
+        values: vec![protocol_byte_data(
+            living.flags_data_id,
+            living.spin_attack_mask
+        )],
+    }));
+    let pose = store
+        .advance_local_player_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                sneak: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            0.05,
+        )
+        .unwrap();
+    assert!(pose.sneaking);
+    assert_eq!(store.local_player_dimensions(pose).height, 0.6);
+}
+
+#[test]
+fn local_player_scaled_dimensions_use_float_math() {
+    // EntityDimensions.scale multiplies floats: 1.8F * 2.7777778F == 5.0F.
+    let (mut store, id) = logged_in_local_player();
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: id,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.7777778,
+            modifiers: Vec::new(),
+        }],
+    }));
+    let dimensions = store.local_player_dimensions(crate::LocalPlayerPoseState::default());
+    assert_eq!(dimensions.height, 5.0);
+    assert_eq!(dimensions.eye_height, f64::from(1.62_f32 * 2.777_778_f32));
+}
+
+#[test]
+fn sleeping_local_player_lies_in_the_bed_with_the_fixed_sleeping_box() {
+    // setPosToBed puts the feet at bed + (0.5, 0.6875, 0.5); SLEEPING_DIMENSIONS
+    // is a fixed 0.2 box with eye height 0.2 that the scale does not touch; the
+    // first-person camera faces getBedOrientation().toYRot() - 180.
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.local_player_id = Some(61);
+    store.entities.spawn_local_player(61, uuid::Uuid::nil());
+    store.local_player.pose = Some(crate::LocalPlayerPoseState::default());
+    let mut bed_props = std::collections::BTreeMap::new();
+    bed_props.insert("facing".to_string(), "east".to_string());
+    bed_props.insert("occupied".to_string(), "true".to_string());
+    bed_props.insert("part".to_string(), "head".to_string());
+    let bed_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:white_bed", &bed_props)
+        .unwrap()
+        .id;
+    let bed = ProtocolBlockPos { x: 2, y: 1, z: 2 };
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: bed,
+        block_state_id: bed_id,
+    }));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 61,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 61,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID),
+            living_sleeping_pos_data(VANILLA_ENTITY_TYPE_PLAYER_ID, Some(bed)),
+        ],
+    }));
+
+    let pose = store.local_player_pose().unwrap();
+    assert_eq!(
+        [pose.position.x, pose.position.y, pose.position.z],
+        [2.5, 1.6875, 2.5]
+    );
+    let dimensions = store.local_player_dimensions(pose);
+    let sleeping = f64::from(0.2_f32);
+    assert_eq!(
+        (dimensions.width, dimensions.height, dimensions.eye_height),
+        (sleeping, sleeping, sleeping)
+    );
+    assert_eq!(store.sleeping_camera_y_rot(61), Some(90.0));
+}

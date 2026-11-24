@@ -1,0 +1,1818 @@
+//! Offscreen whole-frame readback harness.
+//!
+//! Runs the complete `render()` frame through the production passes, in
+//! production order — against an injected offscreen color target instead of a
+//! window swapchain, then reads the presented pixels back through the shared
+//! screenshot copy path (`prepare_screenshot_copy` + `read_screenshot_pixels`,
+//! the single home of padded-row and BGRA handling). Pixel-proof tests for
+//! HUD / screen slices build on these two entry points instead of hand-rolling
+//! per-test sub-passes.
+
+use std::sync::Arc;
+
+use anyhow::{bail, Result};
+use winit::dpi::PhysicalSize;
+
+use crate::frame_flight::RenderSurface;
+use crate::screenshot::ScreenshotPixels;
+use crate::Renderer;
+
+/// The production surface format family `choose_format` requires. Vanilla
+/// 26.1 maps `TextureFormat.RGBA8` to `GL_RGBA8`, so colors remain numeric
+/// UNORM values rather than entering an implicit sRGB decode/encode path.
+/// BGRA keeps the production swapchain byte-order conversion in readback.
+const OFFSCREEN_SURFACE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;
+
+impl Renderer {
+    /// Builds a windowless `Renderer` whose frame target is a `width`x`height`
+    /// offscreen texture in the production-preferred surface format. Returns
+    /// `None` when the machine has no usable GPU adapter or device (callers
+    /// skip rather than fail, matching the existing readback-test pattern).
+    pub fn new_offscreen(width: u32, height: u32) -> Option<Self> {
+        Self::new_offscreen_with_indirect_draws(width, height, true)
+    }
+
+    pub(crate) fn new_offscreen_with_indirect_draws(
+        width: u32,
+        height: u32,
+        indirect_draws: bool,
+    ) -> Option<Self> {
+        Self::new_offscreen_with_terrain_filtering(
+            width,
+            height,
+            crate::renderer::TerrainTextureFiltering::None,
+            indirect_draws,
+        )
+    }
+
+    pub(crate) fn new_offscreen_with_terrain_filtering(
+        width: u32,
+        height: u32,
+        terrain_texture_filtering: crate::renderer::TerrainTextureFiltering,
+        indirect_draws: bool,
+    ) -> Option<Self> {
+        let instance = crate::renderer::renderer_instance();
+        let software_adapter = crate::renderer::force_software_adapter();
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: if software_adapter {
+                wgpu::PowerPreference::None
+            } else {
+                wgpu::PowerPreference::LowPower
+            },
+            compatible_surface: None,
+            force_fallback_adapter: software_adapter,
+            apply_limit_buckets: false,
+        }))
+        .ok()?;
+        let mut required_features = crate::renderer::renderer_device_features(&adapter);
+        if !indirect_draws {
+            required_features.remove(wgpu::Features::INDIRECT_FIRST_INSTANCE);
+        }
+        eprintln!(
+            "offscreen frame harness adapter: {}, terrain indirect draws: {}",
+            adapter.get_info().name,
+            required_features.contains(wgpu::Features::INDIRECT_FIRST_INSTANCE)
+        );
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            memory_hints: crate::renderer::RENDERER_MEMORY_HINTS,
+            label: Some("bbb-offscreen-frame-device"),
+            required_features,
+            required_limits: wgpu::Limits::downlevel_defaults(),
+            ..Default::default()
+        }))
+        .ok()?;
+
+        // Mirrors the swapchain configuration `Renderer::new` builds, minus the
+        // window-dependent present/alpha negotiation (both irrelevant offscreen).
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
+            format: OFFSCREEN_SURFACE_FORMAT,
+            width: width.max(1),
+            height: height.max(1),
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
+            color_space: wgpu::SurfaceColorSpace::Auto,
+            desired_maximum_frame_latency: 2,
+        };
+        let target = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("bbb-offscreen-frame-target"),
+            size: wgpu::Extent3d {
+                width: config.width,
+                height: config.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: config.format,
+            usage: config.usage,
+            view_formats: &[],
+        });
+        let size = PhysicalSize::new(config.width, config.height);
+        Some(
+            Renderer::with_gpu(
+                RenderSurface::Offscreen(Arc::new(target)),
+                device,
+                queue,
+                config,
+                size,
+                terrain_texture_filtering,
+                adapter
+                    .get_downlevel_capabilities()
+                    .flags
+                    .contains(wgpu::DownlevelFlags::VERTEX_STORAGE),
+            )
+            .expect("offscreen renderer construction"),
+        )
+    }
+
+    /// Renders one full production frame into the offscreen target
+    /// and returns its pixels, read back through the shared screenshot path.
+    pub fn render_offscreen_frame(&mut self) -> Result<ScreenshotPixels> {
+        self.render(None)?;
+        self.read_offscreen_frame()
+    }
+
+    fn read_offscreen_frame(&self) -> Result<ScreenshotPixels> {
+        let RenderSurface::Offscreen(target) = &self.surface else {
+            bail!("read_offscreen_frame requires a Renderer built by new_offscreen");
+        };
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("bbb-offscreen-frame-readback"),
+            });
+        let pending = self.prepare_screenshot_copy(&mut encoder, target)?;
+        self.queue.submit(Some(encoder.finish()));
+        self.read_screenshot_pixels(pending)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use crate::gpu::TerrainGpuVertex;
+    use crate::hud::HudDrawCommand;
+    use crate::screenshot::ScreenshotPixels;
+    use crate::terrain::{TerrainMesh, TerrainTint};
+    use crate::{
+        BlockSelectionPhase, BlockSelectionRenderState, CameraPose, ClearColor,
+        EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef, EntityPlayerSkin,
+        HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen, HudComponentTextRun,
+        HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
+        HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen, HudDisconnectedScreen,
+        HudDisconnectedScreenButton, HudFontGlyphMap, HudGameEventButton, HudGameEventScreen,
+        HudLevelLoadingBackground, HudLevelLoadingScreen, HudNineSliceScaling,
+        HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
+        HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
+        HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsScrollbarSprite,
+        HudStyledTextRun, HudSystemToast, HudTextField, HudVignette, HudWinScreen, LevelFrameRoute,
+        Renderer, SelectionBox, StandaloneTextureSampling,
+    };
+
+    const WIDTH: u32 = 320;
+    const HEIGHT: u32 = 240;
+
+    /// Harness acceptance: a whole `render()` frame runs headless and the
+    /// readback shows a known HUD element (hotbar) over the clear
+    /// color, with the frame counters proving the step pipeline executed.
+    #[test]
+    fn offscreen_frame_renders_hud_sentinel_over_clear_color() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail.
+            return;
+        };
+        // Pure blue remains byte 255 through the Vanilla-compatible UNORM target.
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        // Use an ordinary HUD sprite; the crosshair inverts the destination.
+        renderer
+            .add_test_gui_sprite("hud/hotbar", 182, 22, &[255, 0, 0, 255].repeat(182 * 22))
+            .expect("upload hotbar");
+        renderer.set_hud_hotbar_mode(crate::HudHotbarMode::Ordinary);
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+
+        assert_eq!((pixels.width, pixels.height), (WIDTH, HEIGHT));
+        let center = pixels.pixel(WIDTH / 2, HEIGHT - 2);
+        let corner = pixels.pixel(8, 8);
+        assert!(
+            center[0] > 128 && center[2] < 128,
+            "hotbar should stay red, got {center:?}"
+        );
+        assert!(
+            corner[2] > 128 && corner[0] < 128,
+            "corner should stay clear-color blue, got {corner:?}"
+        );
+
+        // The frame went through finish_frame's counter fold: one frame, a HUD
+        // draw for the hotbar and the always-on lightmap. Presentation copies
+        // are not draw calls. The default regular route has no combine.
+        assert_eq!(renderer.counters.frame_index, 1);
+        assert!(
+            renderer.counters.hud_draw_calls >= 1,
+            "hotbar HUD draw is tallied, got {}",
+            renderer.counters.hud_draw_calls
+        );
+        assert!(
+            renderer.counters.draw_calls >= 2,
+            "lightmap/HUD draws are tallied, got {}",
+            renderer.counters.draw_calls
+        );
+        assert_eq!(renderer.counters.screenshots_written, 0);
+    }
+
+    #[test]
+    fn completed_upload_batch_remains_visible_to_the_next_frame() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .add_test_gui_sprite("hud/hotbar", 182, 22, &[255, 0, 0, 255].repeat(182 * 22))
+            .expect("upload hotbar");
+        renderer.set_hud_hotbar_mode(crate::HudHotbarMode::Ordinary);
+
+        renderer
+            .finish_upload_batch()
+            .expect("complete upload-only submission");
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+
+        let center = pixels.pixel(8, 14);
+        assert!(
+            center[0] > 128 && center[2] < 128,
+            "completed upload should feed the next frame, got {center:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_improved_route_without_transparency_graph_renders_like_regular() {
+        let Some(mut renderer) = Renderer::new_offscreen(24, 20) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.125,
+            g: 0.5,
+            b: 0.875,
+            a: 1.0,
+        });
+
+        renderer.set_level_frame_route(LevelFrameRoute::Regular);
+        let regular = renderer.render_offscreen_frame().expect("regular frame");
+        let regular_draw_calls = renderer.counters.draw_calls;
+        renderer.set_level_frame_route(LevelFrameRoute::ImprovedTransparency);
+        renderer.lightmap_dirty = true;
+        let improved = renderer.render_offscreen_frame().expect("improved frame");
+        let improved_draw_calls = renderer.counters.draw_calls;
+
+        assert_channels_within_one(regular.pixel(2, 2), [32, 128, 223, 255]);
+        assert_eq!(regular.rgba, improved.rgba);
+        assert_eq!(improved_draw_calls, regular_draw_calls);
+    }
+
+    /// Vanilla 26.1 creates its main target and ordinary resource textures as
+    /// `GL_RGBA8`, so neither clear values nor sampled texels receive implicit
+    /// sRGB transfer-function conversion. Keep a non-primary color here: pure
+    /// red/green/blue would fail to distinguish UNORM from sRGB encoding.
+    #[test]
+    fn offscreen_frame_preserves_vanilla_rgba8_numeric_channels() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let clear = [17_u8, 34, 51, 113];
+        let texel = [120_u8, 167, 255, 255];
+        renderer.set_clear_color(ClearColor {
+            r: f64::from(clear[0]) / 255.0,
+            g: f64::from(clear[1]) / 255.0,
+            b: f64::from(clear[2]) / 255.0,
+            a: f64::from(clear[3]) / 255.0,
+        });
+        renderer
+            .add_test_gui_sprite("hud/hotbar", 182, 22, &texel.repeat(182 * 22))
+            .expect("upload hotbar");
+        renderer.set_hud_hotbar_mode(crate::HudHotbarMode::Ordinary);
+
+        assert!(renderer
+            .config
+            .usage
+            .contains(wgpu::TextureUsages::COPY_DST));
+        let direct = renderer
+            .render_offscreen_frame()
+            .expect("direct presentation");
+        assert_channels_within_one(direct.pixel(8, 8), clear);
+        assert_channels_within_one(direct.pixel(WIDTH / 2, HEIGHT - 2), texel);
+
+        let crate::RenderOutcome::Presented {
+            capture: Some(capture),
+            ..
+        } = renderer
+            .render_with_capture(None, true)
+            .expect("capture presentation")
+        else {
+            panic!("expected a captured frame")
+        };
+        let copied = renderer.read_offscreen_frame().expect("copy presentation");
+        assert_eq!(direct.rgba, capture.unwrap().rgba);
+        assert_eq!(direct.rgba, copied.rgba);
+
+        renderer.config.usage.remove(wgpu::TextureUsages::COPY_DST);
+        renderer
+            .surface
+            .configure(&renderer.device, &renderer.config);
+        renderer
+            .render_with_capture(None, true)
+            .expect("capture with shader presentation");
+        let sampled = renderer
+            .read_offscreen_frame()
+            .expect("shader presentation");
+        assert_eq!(
+            copied.rgba, sampled.rgba,
+            "same-format copy must preserve the shader route's numeric RGBA and orientation"
+        );
+    }
+
+    #[test]
+    fn offscreen_terrain_samples_noon_sky_fourteen_from_the_dynamic_lightmap() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let texel = [132_u8, 135, 134, 255];
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &texel)
+            .expect("upload terrain texel");
+        let vertex = |position| {
+            TerrainGpuVertex::pack(position, [0.5, 0.5], 14 << 20, TerrainTint::WHITE, 1.0, 1.0)
+        };
+        renderer.show_test_terrain_mesh(TerrainMesh {
+            vertices: vec![
+                vertex([-0.5, -0.5, 0.0]),
+                vertex([0.5, -0.5, 0.0]),
+                vertex([0.5, 0.5, 0.0]),
+                vertex([-0.5, 0.5, 0.0]),
+            ],
+            indices: vec![0, 1, 2, 0, 2, 3],
+            source_sections: 1,
+            opaque_faces: 1,
+            ..TerrainMesh::default()
+        });
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+        let center = pixels.pixel(WIDTH / 2, HEIGHT / 2);
+
+        assert!(
+            (115..=125).contains(&center[0])
+                && (118..=128).contains(&center[1])
+                && (117..=127).contains(&center[2]),
+            "sky-14 terrain texel should be daylight-lit, got {center:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_block_selection_renders_both_material_phase_paths() {
+        let Some(mut renderer) = Renderer::new_offscreen(96, 96) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.1,
+            g: 0.1,
+            b: 0.1,
+            a: 1.0,
+        });
+        renderer.set_camera_pose(Some(CameraPose {
+            position: [0.0, 0.0, -3.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+        let state = |phase| BlockSelectionRenderState {
+            boxes: vec![SelectionBox {
+                min: [-0.5, -0.5, 0.0],
+                max: [0.5, 0.5, 1.0],
+            }],
+            phase,
+            line_width: 2.5,
+            high_contrast: true,
+        };
+
+        let cyan_pixels = |pixels: &ScreenshotPixels| {
+            pixels
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|pixel| pixel[0] < 130 && pixel[1] > 200 && pixel[2] > 180)
+                .count()
+        };
+        for route in [
+            LevelFrameRoute::Regular,
+            LevelFrameRoute::ImprovedTransparency,
+        ] {
+            renderer.set_level_frame_route(route);
+            renderer.set_block_selection(Some(state(BlockSelectionPhase::BeforeTranslucent)));
+            let before = renderer
+                .render_offscreen_frame()
+                .expect("solid-phase selection frame");
+            assert_eq!(renderer.counters.selection_draw_calls, 1);
+
+            renderer.set_block_selection(Some(state(BlockSelectionPhase::AfterTranslucent)));
+            let after = renderer
+                .render_offscreen_frame()
+                .expect("translucent-phase selection frame");
+            assert_eq!(renderer.counters.selection_draw_calls, 1);
+
+            assert!(
+                cyan_pixels(&before) > 0,
+                "{route:?} before-translucent lane must draw cyan outline pixels"
+            );
+            assert!(
+                cyan_pixels(&after) > 0,
+                "{route:?} after-translucent lane must draw cyan outline pixels"
+            );
+        }
+    }
+
+    #[test]
+    fn offscreen_dark_disc_stays_under_the_camera_when_it_pitches() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer.set_sky_environment(
+            crate::SkyEnvironment::from_rgb([0.5, 0.6, 0.7]).with_dark_disc(true),
+        );
+        let mut bottom_center = |x_rot| {
+            renderer.set_camera_pose(Some(CameraPose {
+                position: [0.0, 0.0, 0.0],
+                y_rot: 0.0,
+                x_rot,
+                eye_height: 0.0,
+            }));
+            renderer.render_offscreen_frame().unwrap().pixel(16, 30)
+        };
+        let up = bottom_center(-60.0);
+        let down = bottom_center(60.0);
+        assert!(
+            up[2] > 64,
+            "looking up leaves the dark disc off screen, got {up:?}"
+        );
+        assert!(
+            down[..3].iter().all(|channel| *channel < 16),
+            "looking down shows the dark disc below the camera, got {down:?}"
+        );
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn offscreen_selected_sky_model_view_follows_camera_rotation_without_translation() {
+        use bbb_render_types::{CoreShaderSourceProjection, ShaderSourceKey, ShaderStage};
+
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        let roots = bbb_client_assets::PackRoots::from_environment().unwrap();
+        let catalog = bbb_client_assets::ShaderSourceCatalog::load(&roots).unwrap();
+        let mut sources = catalog.sources().clone();
+        for (stage, source) in [
+            (
+                ShaderStage::Vertex,
+                r#"#version 330
+in vec3 Position;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+void main() {
+    gl_Position = vec4(Position.xz / 512.0, 0.0, 1.0);
+    sphericalVertexDistance = length(Position);
+    cylindricalVertexDistance = length(Position.xz);
+}
+"#,
+            ),
+            (
+                ShaderStage::Fragment,
+                r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+out vec4 fragColor;
+void main() { fragColor = vec4(abs((ModelViewMat * vec4(0.0, 1.0, 0.0, 0.0)).xyz), 1.0); }
+"#,
+            ),
+        ] {
+            let selected = sources
+                .get_mut(&ShaderSourceKey {
+                    id: "minecraft:core/sky".into(),
+                    stage,
+                })
+                .unwrap();
+            selected.pack_id = "selected-sky-view-fixture".into();
+            selected.source = source.into();
+        }
+        renderer
+            .reload_core_shaders(
+                &CoreShaderSourceProjection::new(1, Arc::new(sources)),
+                false,
+            )
+            .unwrap();
+        renderer.set_sky_environment(crate::SkyEnvironment::from_rgb([0.0; 3]));
+        for (position, x_rot, expected) in [
+            ([0.0; 3], 0.0, [0, 255, 0, 255]),
+            ([70.0, -20.0, 40.0], 60.0, [0, 128, 221, 255]),
+            ([140.0, 50.0, -80.0], 0.0, [0, 255, 0, 255]),
+        ] {
+            renderer.set_camera_pose(Some(CameraPose {
+                position,
+                y_rot: 0.0,
+                x_rot,
+                eye_height: 0.0,
+            }));
+            let pixel = renderer.render_offscreen_frame().unwrap().pixel(16, 16);
+            assert_channels_within_one(pixel, expected);
+        }
+    }
+
+    #[test]
+    fn offscreen_celestial_pixels_follow_moon_phase_visibility_and_atlas_changes() {
+        use crate::{CelestialTextureImage, CelestialTextureKind, SkyEnvironment, SkyMoonPhase};
+
+        let Some(mut renderer) = Renderer::new_offscreen(64, 64) else {
+            return;
+        };
+        renderer.set_camera_pose(Some(CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: -90.0,
+            eye_height: 0.0,
+        }));
+        let images = |sun_width, new_moon: [u8; 4]| {
+            CelestialTextureKind::ALL.map(|kind| {
+                let (width, color) = match kind {
+                    CelestialTextureKind::Sun => (sun_width, [255, 0, 0, 255]),
+                    CelestialTextureKind::MoonNew => (1, new_moon),
+                    _ => (1, [0, 255, 0, 255]),
+                };
+                CelestialTextureImage {
+                    kind,
+                    width,
+                    height: 1,
+                    rgba: color.repeat(width as usize),
+                }
+            })
+        };
+        renderer
+            .upload_celestial_textures(&images(1, [0, 0, 255, 255]))
+            .unwrap();
+        let mut environment = SkyEnvironment::from_rgb([0.0; 3]);
+        renderer.set_sky_environment(environment);
+        assert_channels_within_one(
+            renderer.render_offscreen_frame().unwrap().pixel(32, 32),
+            [255, 0, 0, 255],
+        );
+        environment.sun_angle_radians = std::f32::consts::PI;
+        environment.moon_angle_radians = 0.0;
+        renderer.set_sky_environment(environment);
+        assert_channels_within_one(
+            renderer.render_offscreen_frame().unwrap().pixel(32, 32),
+            [0, 255, 0, 255],
+        );
+        environment.moon_phase = SkyMoonPhase::NewMoon;
+        renderer.set_sky_environment(environment);
+        assert_channels_within_one(
+            renderer.render_offscreen_frame().unwrap().pixel(32, 32),
+            [0, 0, 255, 255],
+        );
+        renderer.set_sky_environment(SkyEnvironment::disabled());
+        renderer.render_offscreen_frame().unwrap();
+        renderer.set_sky_environment(environment);
+        assert_channels_within_one(
+            renderer.render_offscreen_frame().unwrap().pixel(32, 32),
+            [0, 0, 255, 255],
+        );
+        for (sun_width, color) in [(1, [255, 255, 0, 255]), (3, [255, 0, 255, 255])] {
+            renderer
+                .upload_celestial_textures(&images(sun_width, color))
+                .unwrap();
+            assert_channels_within_one(
+                renderer.render_offscreen_frame().unwrap().pixel(32, 32),
+                color,
+            );
+        }
+    }
+
+    fn assert_channels_within_one(actual: [u8; 4], expected: [u8; 4]) {
+        for (channel, (&actual_channel, &expected_channel)) in
+            actual.iter().zip(expected.iter()).enumerate()
+        {
+            assert!(
+                actual_channel.abs_diff(expected_channel) <= 1,
+                "channel {channel}: expected {expected_channel}, got {actual_channel}; full expected={expected:?} actual={actual:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn offscreen_code_of_conduct_draws_native_widget_states_scroll_and_scissor() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_hud_screen_blur(false);
+        renderer
+            .upload_gui_texture(
+                "textures/gui/inworld_menu_background.png",
+                1,
+                1,
+                &[16, 32, 64, 255],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("menu background");
+        renderer
+            .add_test_gui_sprite("widget/text_field", 1, 1, &[180, 0, 0, 255])
+            .expect("text field");
+        renderer
+            .add_test_gui_sprite("widget/text_field_highlighted", 1, 1, &[180, 0, 180, 255])
+            .expect("focused text field");
+        renderer
+            .add_test_gui_sprite("widget/button", 1, 1, &[0, 180, 0, 255])
+            .expect("button");
+        renderer
+            .add_test_gui_sprite("widget/button_highlighted", 1, 1, &[180, 180, 0, 255])
+            .expect("highlighted button");
+        renderer
+            .add_test_gui_sprite("widget/checkbox", 1, 1, &[0, 0, 180, 255])
+            .expect("checkbox");
+        renderer
+            .add_test_gui_sprite("widget/checkbox_highlighted", 1, 1, &[0, 180, 180, 255])
+            .expect("focused checkbox");
+        renderer
+            .add_test_gui_sprite("widget/checkbox_selected", 1, 1, &[180, 90, 0, 255])
+            .expect("selected checkbox");
+        renderer
+            .add_test_gui_sprite(
+                "widget/checkbox_selected_highlighted",
+                1,
+                1,
+                &[220, 220, 220, 255],
+            )
+            .expect("selected focused checkbox");
+        let scaling = HudNineSliceScaling {
+            sprite_width: 1,
+            sprite_height: 1,
+            border_left: 0,
+            border_top: 0,
+            border_right: 0,
+            border_bottom: 0,
+            stretch_inner: true,
+        };
+        renderer
+            .add_test_gui_sprite_scaled(
+                HudStatsScrollbarSprite::Background.sprite_path(),
+                1,
+                1,
+                &[24, 24, 24, 255],
+                crate::HudGuiSpriteScaling::NineSlice(scaling),
+            )
+            .expect("scrollbar background");
+        renderer
+            .add_test_gui_sprite_scaled(
+                HudStatsScrollbarSprite::Scroller.sprite_path(),
+                1,
+                1,
+                &[120, 120, 120, 255],
+                crate::HudGuiSpriteScaling::NineSlice(scaling),
+            )
+            .expect("scrollbar thumb");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "TA".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2.0,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+
+        let mut screen = HudCodeOfConductScreen {
+            text_hash: 7,
+            title: "T".to_string(),
+            message_lines: vec![
+                vec![HudStyledTextRun::plain("A")],
+                vec![HudStyledTextRun::plain(String::new())],
+            ],
+            message_content_height: 89,
+            title_rect: HudCodeOfConductRect {
+                x: 159,
+                y: 18,
+                width: 2,
+                height: 9,
+            },
+            message_rect: HudCodeOfConductRect {
+                x: 40,
+                y: 40,
+                width: 220,
+                height: 80,
+            },
+            message_scissor: HudCodeOfConductRect {
+                x: 41,
+                y: 41,
+                width: 218,
+                height: 78,
+            },
+            scroll_amount: 0,
+            max_scroll_amount: 9,
+            scrollbar_track: Some(HudCodeOfConductRect {
+                x: 260,
+                y: 40,
+                width: 6,
+                height: 80,
+            }),
+            scrollbar_thumb: Some(HudCodeOfConductRect {
+                x: 260,
+                y: 40,
+                width: 6,
+                height: 32,
+            }),
+            message_focused: false,
+            scrollbar_hovered: false,
+            scrollbar_dragging: false,
+            checkbox_rect: HudCodeOfConductRect {
+                x: 50,
+                y: 140,
+                width: 17,
+                height: 17,
+            },
+            checkbox_label: String::new(),
+            checkbox_label_lines: vec![String::new()],
+            checkbox_selected: false,
+            checkbox_focused: false,
+            checkbox_hovered: false,
+            acknowledge_rect: HudCodeOfConductRect {
+                x: 20,
+                y: 180,
+                width: 130,
+                height: 20,
+            },
+            acknowledge_label: String::new(),
+            acknowledge_highlighted: false,
+            disconnect_rect: HudCodeOfConductRect {
+                x: 170,
+                y: 180,
+                width: 130,
+                height: 20,
+            },
+            disconnect_label: String::new(),
+            disconnect_highlighted: false,
+        };
+        renderer.set_hud_code_of_conduct_screen(Some(screen.clone()));
+
+        let draws = renderer.collect_hud_draws();
+        assert!(draws.commands.iter().any(|command| matches!(
+            command,
+            HudDrawCommand::Scissor {
+                x: 41,
+                y: 41,
+                width: 218,
+                height: 78,
+            }
+        )));
+        assert!(draws.commands.iter().any(|command| matches!(
+            command,
+            HudDrawCommand::Scissor {
+                x: 0,
+                y: 0,
+                width: WIDTH,
+                height: HEIGHT,
+            }
+        )));
+        drop(draws);
+
+        let normal = renderer
+            .render_offscreen_frame()
+            .expect("normal code-of-conduct screen");
+        assert!(
+            normal.pixel(4, 4)[2] > normal.pixel(4, 4)[0],
+            "menu background must cover the ordinary frame"
+        );
+        assert!(
+            normal.pixel(250, 100)[0] > 120 && normal.pixel(250, 100)[2] < 40,
+            "unfocused message must use the normal text-field sprite"
+        );
+        assert!(
+            normal.pixel(22, 182)[1] > 120,
+            "normal acknowledge button must use the normal button sprite"
+        );
+        assert!(
+            normal.pixel(52, 142)[2] > 120,
+            "unchecked checkbox must use the unchecked sprite"
+        );
+        assert!(
+            normal.pixel(262, 50)[0].abs_diff(normal.pixel(262, 50)[1]) < 8,
+            "scrollbar thumb must cover the track in its projected position"
+        );
+        let unscrolled_text = normal.pixel(44, 44);
+
+        screen.message_focused = true;
+        screen.scroll_amount = 9;
+        screen.scrollbar_thumb.as_mut().unwrap().y = 88;
+        screen.checkbox_selected = true;
+        screen.checkbox_focused = true;
+        screen.acknowledge_highlighted = true;
+        renderer.set_hud_code_of_conduct_screen(Some(screen));
+        let active = renderer
+            .render_offscreen_frame()
+            .expect("active code-of-conduct screen");
+        assert!(
+            active.pixel(250, 100)[0] > 120 && active.pixel(250, 100)[2] > 120,
+            "focused message must use the highlighted text-field sprite"
+        );
+        assert!(
+            active.pixel(22, 182)[0] > 120 && active.pixel(22, 182)[1] > 120,
+            "hovered/focused acknowledge must use the highlighted button sprite"
+        );
+        let checked = active.pixel(52, 142);
+        assert!(
+            checked[0] > 160 && checked[1] > 160 && checked[2] > 160,
+            "checked focused checkbox must use the combined sprite"
+        );
+        assert!(
+            unscrolled_text[0] > active.pixel(44, 44)[0]
+                || unscrolled_text[1] > active.pixel(44, 44)[1],
+            "nine-pixel scrolling must move the first message line out of the scissor"
+        );
+        assert!(
+            active.pixel(262, 50)[0] < 60,
+            "scrolled thumb must leave the upper track visible"
+        );
+    }
+
+    #[test]
+    fn offscreen_frame_applies_vignette_before_ordinary_hud() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_screen_effect_underwater_texture(1, 1, &[0, 0, 255, 128])
+            .expect("underwater overlay");
+        renderer.set_screen_effect_quads(vec![crate::screen_effects::ScreenEffectQuad {
+            positions: [
+                [-1.0, -1.0, -0.5],
+                [1.0, -1.0, -0.5],
+                [1.0, 1.0, -0.5],
+                [-1.0, 1.0, -0.5],
+            ],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            color: [1.0; 4],
+            texture: crate::screen_effects::ScreenEffectTexture::Underwater,
+        }]);
+        renderer
+            .add_test_gui_sprite("hud/crosshair", 4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("crosshair sentinel");
+        renderer
+            .upload_hud_vignette_texture(1, 1, &[255, 255, 255, 255], true, false)
+            .expect("upload vignette");
+        renderer.set_hud_vignette(Some(HudVignette {
+            brightness: 0.5,
+            border_warning_strength: 0.5,
+            color: [0.25, 0.5, 0.75],
+        }));
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+        let corner = pixels.pixel(4, 4);
+
+        // The half-alpha blue overlay first tints white, then vignette multiplies it.
+        let expected = [95_u8, 64, 64, 255];
+        assert!(
+            corner
+                .iter()
+                .zip(expected)
+                .all(|(&a, b)| a.abs_diff(b) <= 1),
+            "underwater overlay must precede vignette, got {corner:?}"
+        );
+        let crosshair = pixels.pixel(16, 16);
+        assert_eq!(
+            crosshair,
+            [255 - corner[0], corner[1], corner[2], 255],
+            "ordinary HUD must invert red after both screen effects"
+        );
+        assert_eq!(renderer.counters.hud_draw_calls, 3);
+
+        renderer.set_camera_fov_degrees(70.0, 150.0);
+        let wide = renderer
+            .render_offscreen_frame()
+            .expect("wide HUD projection");
+        let wide_corner = wide.pixel(4, 4);
+        assert!(wide_corner[0] > corner[0] && wide_corner[1] > corner[1]);
+        assert_eq!(wide.pixel(16, 16), crosshair);
+    }
+
+    #[test]
+    fn hud_demo_popup_offscreen_readback_covers_ordinary_hud_with_popup_background() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .add_test_gui_sprite("hud/crosshair", 4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        renderer
+            .upload_gui_texture(
+                "textures/gui/inworld_menu_background.png",
+                1,
+                1,
+                &[16, 32, 64, 255],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("in-world menu background");
+        renderer
+            .add_test_gui_sprite("popup/background", 1, 1, &[0, 255, 0, 255])
+            .expect("popup background");
+        renderer.set_hud_game_event_screen(Some(HudGameEventScreen::DemoPopup(
+            HudDemoPopupScreen {
+                generation: 1,
+                title: "Demo".to_string(),
+                controls_message: "Controls".to_string(),
+                duration_message: "Duration".to_string(),
+                buy_label: "Buy".to_string(),
+                later_label: "Later".to_string(),
+                focused: HudGameEventButton::DemoBuy,
+                hovered: None,
+            },
+        )));
+
+        let pixels = renderer.render_offscreen_frame().expect("demo popup frame");
+        let center = pixels.pixel(160, 120);
+        let corner = pixels.pixel(4, 4);
+        assert!(
+            center[1] > 128 && center[0] < 128,
+            "popup center should be green instead of the ordinary red crosshair, got {center:?}"
+        );
+        assert!(
+            corner[0] < corner[1] && corner[1] < corner[2] && corner[2] < 128,
+            "popup screen should replace the ordinary HUD with the in-world menu background at the corner, got {corner:?}"
+        );
+    }
+
+    #[test]
+    fn hud_win_screen_offscreen_readback_orders_portal_then_credits_vignette() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        let sky = EntityModelTextureRef {
+            path: "textures/environment/end_sky.png",
+            size: [128, 128],
+        };
+        let portal = EntityModelTextureRef {
+            path: "textures/entity/end_portal/end_portal.png",
+            size: [256, 256],
+        };
+        renderer
+            .upload_entity_model_textures(&[
+                EntityModelTextureImage::with_physical_size(sky, [1, 1], vec![255, 255, 255, 255]),
+                EntityModelTextureImage::with_physical_size(
+                    portal,
+                    [1, 1],
+                    vec![255, 255, 255, 255],
+                ),
+            ])
+            .expect("portal textures");
+        renderer
+            .upload_hud_win_credits_vignette(1, 1, &[128, 0, 0, 255], true, false)
+            .expect("credits vignette");
+        renderer.set_hud_game_event_screen(Some(HudGameEventScreen::Win(HudWinScreen {
+            generation: 2,
+            scroll: 0.0,
+            show_easter_egg_logo: false,
+            lines: Arc::from([]),
+        })));
+
+        let pixels = renderer.render_offscreen_frame().expect("win frame");
+        let center = pixels.pixel(16, 16);
+        assert!(
+            center[0] < center[1] && center[1] == center[2],
+            "red credits-vignette channel should destination-multiply the portal after HUD, got {center:?}"
+        );
+        assert!(
+            renderer.counters.hud_draw_calls >= 2,
+            "portal and credits vignette must both be submitted"
+        );
+    }
+
+    #[test]
+    fn offscreen_social_interactions_draws_shared_rows_faces_scroll_empty_and_link_surfaces() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .add_test_gui_sprite("hud/crosshair", 4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        renderer
+            .upload_gui_texture(
+                "textures/gui/inworld_menu_background.png",
+                1,
+                1,
+                &[16, 32, 64, 255],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("menu background");
+        renderer
+            .add_test_gui_sprite("social_interactions/background", 1, 1, &[180, 16, 32, 255])
+            .expect("social background");
+        renderer
+            .add_test_gui_sprite("icon/search", 1, 1, &[0, 255, 255, 255])
+            .expect("search icon");
+        renderer
+            .add_test_gui_sprite("social_interactions/mute_button", 1, 1, &[255, 128, 0, 255])
+            .expect("mute");
+        renderer
+            .add_test_gui_sprite(
+                "social_interactions/mute_button_highlighted",
+                1,
+                1,
+                &[255, 255, 0, 255],
+            )
+            .expect("highlighted mute");
+        renderer
+            .add_test_gui_sprite(
+                "social_interactions/unmute_button",
+                1,
+                1,
+                &[0, 128, 255, 255],
+            )
+            .expect("unmute");
+        renderer
+            .add_test_gui_sprite(
+                "social_interactions/unmute_button_highlighted",
+                1,
+                1,
+                &[0, 255, 0, 255],
+            )
+            .expect("highlighted unmute");
+        renderer
+            .add_test_gui_sprite("widget/text_field", 1, 1, &[8, 8, 8, 255])
+            .expect("search field");
+        renderer
+            .add_test_gui_sprite("widget/button", 1, 1, &[0, 160, 0, 255])
+            .expect("button");
+        renderer
+            .add_test_gui_sprite("widget/button_highlighted", 1, 1, &[160, 160, 0, 255])
+            .expect("highlighted button");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "SocialInteractionsServerAllHiddenBlockedSearchDoneRemoteOfflineManage".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2.0,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+        let mut skin_rgba = vec![0_u8; 64 * 64 * 4];
+        for pixel in skin_rgba.as_chunks_mut::<4>().0 {
+            pixel.copy_from_slice(&[0, 255, 0, 255]);
+        }
+        renderer
+            .upload_entity_model_textures(&[EntityModelTextureImage::with_physical_size(
+                EntityModelTextureRef {
+                    path: EntityDefaultPlayerSkin::WideSteve.texture_path(),
+                    size: [64, 64],
+                },
+                [64, 64],
+                skin_rgba,
+            )])
+            .expect("default player face");
+
+        let make_player = |id: u128, removed, hidden| HudSocialInteractionsPlayer {
+            profile_id: id.to_be_bytes(),
+            name: format!("Remote{id}"),
+            skin: EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve),
+            removed,
+            hidden,
+            blocked: false,
+            action: Some(if hidden {
+                HudSocialInteractionsPlayerAction::Show
+            } else {
+                HudSocialInteractionsPlayerAction::Hide
+            }),
+            status: removed.then(|| "Offline".to_string()),
+        };
+        let rows = (1_u128..=8)
+            .map(|id| make_player(id, id == 2, id == 2))
+            .collect::<Vec<_>>();
+        renderer.set_hud_screen_blur(false);
+        renderer.set_hud_social_interactions_screen(Some(HudSocialInteractionsScreen::Main(
+            HudSocialInteractionsMainScreen {
+                generation: 9,
+                title: "Social Interactions".to_string(),
+                server_label: "Server".to_string(),
+                page: HudSocialInteractionsPage::All,
+                tab_labels: [
+                    "All".to_string(),
+                    "Hidden".to_string(),
+                    "Blocked".to_string(),
+                ],
+                search: HudTextField::default(),
+                search_hint: "Search".to_string(),
+                rows: rows.clone(),
+                scroll_amount: 0,
+                empty_text: None,
+                blocking_help_label: "Manage".to_string(),
+                done_label: "Done".to_string(),
+                focus: HudSocialInteractionsFocus::Search,
+                hovered: Some(HudSocialInteractionsFocus::Player {
+                    profile_id: 1_u128.to_be_bytes(),
+                    action: HudSocialInteractionsPlayerAction::Hide,
+                }),
+                tooltip: None,
+            },
+        )));
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("social interactions frame");
+        let corner = pixels.pixel(4, 4);
+        let panel = pixels.pixel(45, 70);
+        let search_icon = pixels.pixel(55, 77);
+        let active_face = pixels.pixel(55, 100);
+        let removed_face = pixels.pixel(55, 136);
+        let hovered_mute = pixels.pixel(225, 100);
+        let scrollbar = pixels.pixel(280, 120);
+        assert!(
+            corner[0] < corner[1] && corner[1] < corner[2],
+            "menu background must cover ordinary HUD outside the panel, got {corner:?}"
+        );
+        assert!(
+            panel[0] > panel[1].saturating_add(80),
+            "official social panel owner must draw at y=64, got {panel:?}"
+        );
+        assert!(
+            search_icon[1] > 180 && search_icon[2] > 180,
+            "search icon must draw at the shared layout coordinate, got {search_icon:?}"
+        );
+        assert!(
+            active_face[1] > active_face[0].saturating_add(80),
+            "default player face must draw at 24 pixels, got {active_face:?}"
+        );
+        assert!(
+            removed_face[1] < active_face[1],
+            "removed row must shade the same face, active={active_face:?}, removed={removed_face:?}"
+        );
+        assert!(
+            hovered_mute[0] > 180 && hovered_mute[1] > 180,
+            "hovered hide action must use its highlighted sprite, got {hovered_mute:?}"
+        );
+        assert!(
+            scrollbar[0].abs_diff(scrollbar[1]) < 24,
+            "overflowing rows must draw a deterministic scrollbar, got {scrollbar:?}"
+        );
+
+        renderer.set_hud_social_interactions_screen(Some(HudSocialInteractionsScreen::Main(
+            HudSocialInteractionsMainScreen {
+                generation: 9,
+                title: String::new(),
+                server_label: String::new(),
+                page: HudSocialInteractionsPage::All,
+                tab_labels: [String::new(), String::new(), String::new()],
+                search: HudTextField::default(),
+                search_hint: String::new(),
+                rows,
+                scroll_amount: 36,
+                empty_text: None,
+                blocking_help_label: String::new(),
+                done_label: String::new(),
+                focus: HudSocialInteractionsFocus::Search,
+                hovered: None,
+                tooltip: None,
+            },
+        )));
+        let scrolled = renderer
+            .render_offscreen_frame()
+            .expect("scrolled social list");
+        assert!(
+            scrolled.pixel(55, 100)[1] < active_face[1],
+            "one-row scroll must move the removed shaded face into the first visible row"
+        );
+
+        renderer.set_hud_social_interactions_screen(Some(HudSocialInteractionsScreen::Main(
+            HudSocialInteractionsMainScreen {
+                generation: 9,
+                title: String::new(),
+                server_label: String::new(),
+                page: HudSocialInteractionsPage::Blocked,
+                tab_labels: [String::new(), String::new(), String::new()],
+                search: HudTextField::default(),
+                search_hint: String::new(),
+                rows: Vec::new(),
+                scroll_amount: 0,
+                empty_text: Some("Blocked".to_string()),
+                blocking_help_label: String::new(),
+                done_label: String::new(),
+                focus: HudSocialInteractionsFocus::BlockingHelp,
+                hovered: None,
+                tooltip: None,
+            },
+        )));
+        let empty = renderer
+            .render_offscreen_frame()
+            .expect("empty blocked page");
+        assert!(
+            empty.pixel(61, 161)[1] > 80,
+            "blocked empty page must retain its dedicated help button"
+        );
+
+        renderer.set_hud_social_interactions_screen(Some(
+            HudSocialInteractionsScreen::LinkConfirmation(
+                HudSocialInteractionsLinkConfirmationScreen {
+                    generation: 9,
+                    title: "Social".to_string(),
+                    message: "Server".to_string(),
+                    open_label: String::new(),
+                    copy_label: String::new(),
+                    cancel_label: String::new(),
+                    focus: HudSocialInteractionsFocus::LinkOpen,
+                    hovered: None,
+                },
+            ),
+        ));
+        let link = renderer
+            .render_offscreen_frame()
+            .expect("social link confirmation");
+        assert!(
+            link.pixel(10, 10)[2] > link.pixel(10, 10)[0],
+            "link confirmation must retain the ordinary menu background"
+        );
+        let first_link_button = link.pixel(8, 138);
+        assert!(
+            first_link_button[0] > 80 && first_link_button[1] > 80,
+            "link confirmation must draw its highlighted first button, got {first_link_button:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .add_test_gui_sprite("hud/crosshair", 4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "TCS".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 5,
+                    height: 8,
+                    advance: 6.0,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("test font");
+        renderer
+            .add_test_gui_sprite("widget/button", 1, 1, &[0, 255, 0, 255])
+            .expect("enabled button");
+        renderer
+            .add_test_gui_sprite("widget/button_disabled", 1, 1, &[64, 64, 64, 255])
+            .expect("disabled button");
+        renderer
+            .add_test_gui_sprite("widget/button_highlighted", 1, 1, &[255, 255, 0, 255])
+            .expect("highlighted button");
+        renderer
+            .upload_gui_texture(
+                "textures/gui/inworld_menu_background.png",
+                1,
+                1,
+                &[16, 32, 64, 255],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("in-world menu background");
+        renderer.set_hud_screen_blur(false);
+        renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
+            generation: 1,
+            title: "T".to_string(),
+            cause_runs: vec![HudComponentTextRun::plain("C")],
+            cause_link_run_indices: vec![None],
+            score_runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: "S".to_string(),
+                    color: Some(0xFF_FF_55),
+                    ..HudStyledTextRun::default()
+                },
+                font: None,
+            }],
+            respawn_label: String::new(),
+            title_screen_label: String::new(),
+            buttons_active: false,
+            focused: HudDeathScreenButton::TitleScreen,
+            hovered: None,
+        })));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_none(),
+            "DeathScreen does not request menu blur"
+        );
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("death screen frame");
+        let top = pixels.pixel(4, 4);
+        let bottom = pixels.pixel(4, HEIGHT - 5);
+        let center = pixels.pixel(WIDTH / 2, HEIGHT / 2);
+        let beside_center = pixels.pixel(WIDTH / 2 + 8, HEIGHT / 2);
+        let title = pixels.pixel(WIDTH / 2, 64);
+        let cause = pixels.pixel(WIDTH / 2, 88);
+        let score = pixels.pixel(WIDTH / 2, 103);
+        let disabled_button = pixels.pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+
+        assert!(
+            bottom[0] > top[0],
+            "death background must retain its red top-to-bottom gradient, top={top:?}, bottom={bottom:?}"
+        );
+        assert!(
+            (120..=132).contains(&center[0].saturating_sub(beside_center[0]))
+                && center[2].abs_diff(beside_center[2]) <= 1,
+            "the death gradient must cover the inverted red-on-blue crosshair, center={center:?}, beside={beside_center:?}"
+        );
+        assert!(
+            title[0] > 220 && title[1] > 220 && title[2] > 220,
+            "2x title glyph must be rendered at y=60, got {title:?}"
+        );
+        assert!(
+            cause[0] > 220 && cause[1] > 220 && cause[2] > 220,
+            "cause glyph must be rendered at y=85, got {cause:?}"
+        );
+        assert!(
+            score[0] > score[2].saturating_add(40) && score[1] > score[2].saturating_add(40),
+            "score argument must use Vanilla yellow at y=100, got {score:?}"
+        );
+        assert!(
+            disabled_button[0].abs_diff(disabled_button[1]) < 8
+                && disabled_button[1].abs_diff(disabled_button[2]) < 8,
+            "the delayed main button must use the disabled sprite, got {disabled_button:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
+            generation: 1,
+            title: String::new(),
+            cause_runs: Vec::new(),
+            cause_link_run_indices: Vec::new(),
+            score_runs: Vec::new(),
+            respawn_label: String::new(),
+            title_screen_label: String::new(),
+            buttons_active: true,
+            focused: HudDeathScreenButton::TitleScreen,
+            hovered: None,
+        })));
+        let enabled = renderer
+            .render_offscreen_frame()
+            .expect("enabled death buttons")
+            .pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+        assert!(
+            enabled[1] > 220 && enabled[0] < 32,
+            "enabled unfocused button must use the normal sprite, got {enabled:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
+            generation: 1,
+            title: String::new(),
+            cause_runs: Vec::new(),
+            cause_link_run_indices: Vec::new(),
+            score_runs: Vec::new(),
+            respawn_label: String::new(),
+            title_screen_label: String::new(),
+            buttons_active: true,
+            focused: HudDeathScreenButton::TitleScreen,
+            hovered: Some(HudDeathScreenButton::Respawn),
+        })));
+        let hovered = renderer
+            .render_offscreen_frame()
+            .expect("hovered death button")
+            .pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+        assert!(
+            hovered[0] > 220 && hovered[1] > 220 && hovered[2] < 32,
+            "hovered button must use the highlighted sprite, got {hovered:?}"
+        );
+
+        renderer.set_hud_screen_blur(true);
+        renderer.set_hud_death_screen(Some(HudDeathScreen::QuitConfirmation(
+            HudDeathQuitConfirmationScreen {
+                generation: 1,
+                title: "T".to_string(),
+                title_screen_label: String::new(),
+                respawn_label: String::new(),
+                buttons_active: true,
+                focused: HudDeathScreenButton::QuitRespawn,
+                hovered: None,
+            },
+        )));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_none(),
+            "DeathScreen.TitleConfirmScreen keeps the death gradient without generic blur"
+        );
+        let quit = renderer
+            .render_offscreen_frame()
+            .expect("quit confirmation")
+            .pixel(12, 132);
+        assert!(
+            quit[1] > 220 && quit[0] < 32,
+            "quit confirmation must render its 150-wide first button, got {quit:?}"
+        );
+
+        renderer.set_hud_death_screen(Some(HudDeathScreen::LinkConfirmation(
+            HudDeathLinkConfirmationScreen {
+                generation: 1,
+                title: "T".to_string(),
+                message: "C".to_string(),
+                open_label: String::new(),
+                copy_label: String::new(),
+                cancel_label: String::new(),
+                focused: HudDeathScreenButton::LinkCancel,
+                hovered: None,
+            },
+        )));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_some(),
+            "ConfirmLinkScreen must retain generic menu blur"
+        );
+        let link = renderer
+            .render_offscreen_frame()
+            .expect("link confirmation")
+            .pixel(12, 138);
+        assert!(
+            link[1] > 220 && link[0] < 32,
+            "link confirmation must render its 100-wide first button, got {link:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_disconnected_screen_exclusively_draws_menu_background_and_button() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .add_test_gui_sprite("hud/crosshair", 4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "Connection LostReasonBack".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 5,
+                    height: 8,
+                    advance: 6.0,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("test font");
+        renderer
+            .add_test_gui_sprite("widget/button", 1, 1, &[0, 255, 0, 255])
+            .expect("enabled button");
+        renderer
+            .add_test_gui_sprite("widget/button_disabled", 1, 1, &[64, 64, 64, 255])
+            .expect("disabled button");
+        renderer
+            .add_test_gui_sprite("widget/button_highlighted", 1, 1, &[255, 255, 0, 255])
+            .expect("highlighted button");
+        renderer
+            .upload_gui_texture(
+                "textures/gui/menu_background.png",
+                1,
+                1,
+                &[40, 80, 120, 255],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("menu background");
+        renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+            generation: 4,
+            panorama_rotation_degrees: 0.0,
+            title: "Connection Lost".to_string(),
+            reason_runs: vec![HudComponentTextRun::plain("Reason")],
+            report_to_server_label: None,
+            open_report_directory_label: None,
+            reconnect_label: None,
+            back_label: "Back".to_string(),
+            focused: HudDisconnectedScreenButton::Back,
+            hovered: None,
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("disconnected screen frame");
+        let corner = pixels.pixel(4, 4);
+        let back_button = pixels.pixel(WIDTH / 2 - 90, 145);
+        assert!(
+            corner[2] > corner[1] && corner[1] > corner[0],
+            "menu background must cover the whole screen, got {corner:?}"
+        );
+        assert!(
+            back_button[1] > 180 && back_button[0] > 180,
+            "focused back button must cover ordinary HUD with highlighted sprite, got {back_button:?}"
+        );
+    }
+
+    #[test]
+    fn full_screen_screens_still_draw_toasts_and_the_debug_overlay() {
+        // Vanilla `GameRenderer.render` extracts the `ToastManager` and
+        // `Gui.extractDebugOverlay` after the screen, so toasts draw above
+        // `LevelLoadingScreen`, the win screen and `DisconnectedScreen`.
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "Toastbdy".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2.0,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+        let toast = HudSystemToast {
+            title: "Toast".to_string(),
+            message_lines: vec!["body".to_string()],
+            width: 160,
+            visible_portion: 1.0,
+        };
+
+        type ScreenAction<'a> = (&'a str, Box<dyn Fn(&mut Renderer)>);
+        let screens: [ScreenAction<'_>; 3] = [
+            (
+                "level loading",
+                Box::new(|renderer: &mut Renderer| {
+                    renderer.set_hud_level_loading_screen(Some(HudLevelLoadingScreen {
+                        background: HudLevelLoadingBackground::EndPortal,
+                        downloading_terrain: String::new(),
+                    }));
+                }),
+            ),
+            (
+                "disconnected",
+                Box::new(|renderer: &mut Renderer| {
+                    renderer.set_hud_level_loading_screen(None);
+                    renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+                        generation: 1,
+                        panorama_rotation_degrees: 0.0,
+                        title: String::new(),
+                        reason_runs: Vec::new(),
+                        report_to_server_label: None,
+                        open_report_directory_label: None,
+                        reconnect_label: None,
+                        back_label: String::new(),
+                        focused: HudDisconnectedScreenButton::Back,
+                        hovered: None,
+                    }));
+                }),
+            ),
+            (
+                "win",
+                Box::new(|renderer: &mut Renderer| {
+                    renderer.set_hud_disconnected_screen(None);
+                    renderer.set_hud_game_event_screen(Some(HudGameEventScreen::Win(
+                        HudWinScreen {
+                            generation: 2,
+                            scroll: 0.0,
+                            show_easter_egg_logo: false,
+                            lines: Arc::from([]),
+                        },
+                    )));
+                }),
+            ),
+        ];
+        for (label, set_screen) in screens {
+            set_screen(&mut renderer);
+            renderer.set_hud_system_toast(None);
+            let without_toast = renderer.collect_hud_draws().vertices.len();
+            renderer.set_hud_system_toast(Some(toast.clone()));
+            let with_toast = renderer.collect_hud_draws().vertices.len();
+            assert!(
+                with_toast > without_toast,
+                "the system toast must add draw geometry above the {label} screen"
+            );
+        }
+    }
+
+    #[test]
+    fn offscreen_panorama_preserves_vanilla_face_row_orientation() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let face_size = 16_u32;
+        let face_bytes = usize::try_from(face_size * face_size * 4).unwrap();
+        let mut faces: [Vec<u8>; 6] = std::array::from_fn(|_| vec![0; face_bytes]);
+        let front = &mut faces[4];
+        for y in 0..face_size {
+            let color = if y < face_size / 2 {
+                [255, 0, 0, 255]
+            } else {
+                [0, 0, 255, 255]
+            };
+            for x in 0..face_size {
+                let offset = usize::try_from((y * face_size + x) * 4).unwrap();
+                front[offset..offset + 4].copy_from_slice(&color);
+            }
+        }
+        renderer
+            .upload_hud_panorama(
+                face_size,
+                face_size,
+                std::array::from_fn(|index| faces[index].as_slice()),
+                1,
+                1,
+                &[0, 0, 0, 0],
+                StandaloneTextureSampling::NEAREST_REPEAT,
+            )
+            .expect("oriented panorama");
+        renderer
+            .upload_gui_texture(
+                "textures/gui/menu_background.png",
+                1,
+                1,
+                &[0, 0, 0, 0],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("transparent menu background");
+        renderer.set_hud_screen_blur(false);
+        renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+            generation: 4,
+            panorama_rotation_degrees: 0.0,
+            title: String::new(),
+            reason_runs: Vec::new(),
+            report_to_server_label: None,
+            open_report_directory_label: None,
+            reconnect_label: None,
+            back_label: String::new(),
+            focused: HudDisconnectedScreenButton::Back,
+            hovered: None,
+        }));
+
+        let frame = renderer
+            .render_offscreen_frame()
+            .expect("oriented panorama frame");
+        let top = frame.pixel(WIDTH / 4, HEIGHT / 4);
+        let bottom = frame.pixel(WIDTH / 4, HEIGHT * 3 / 4);
+        assert!(
+            top[0] > 220 && top[2] < 20,
+            "the PNG top rows must remain at the displayed cubemap top, got {top:?}"
+        );
+        assert!(
+            bottom[2] > 220 && bottom[0] < 20,
+            "the PNG bottom rows must remain at the displayed cubemap bottom, got {bottom:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let faces_with_front = |front: [u8; 4]| {
+            [
+                vec![0, 255, 0, 255],
+                vec![0, 0, 255, 255],
+                vec![0, 255, 255, 255],
+                vec![255, 255, 0, 255],
+                front.to_vec(),
+                vec![255, 0, 255, 255],
+            ]
+        };
+        let old_faces = faces_with_front([255, 0, 0, 255]);
+        renderer
+            .upload_hud_panorama(
+                1,
+                1,
+                std::array::from_fn(|index| old_faces[index].as_slice()),
+                1,
+                1,
+                &[0, 0, 0, 0],
+                StandaloneTextureSampling::NEAREST_REPEAT,
+            )
+            .expect("old panorama");
+        renderer
+            .upload_gui_texture(
+                "textures/gui/menu_background.png",
+                1,
+                1,
+                &[0, 0, 0, 0],
+                crate::StandaloneTextureSampling::default(),
+            )
+            .expect("transparent menu background");
+        renderer.set_hud_screen_blur(true);
+        renderer.set_menu_background_blurriness(5);
+        renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+            generation: 4,
+            panorama_rotation_degrees: 0.0,
+            title: String::new(),
+            reason_runs: Vec::new(),
+            report_to_server_label: None,
+            open_report_directory_label: None,
+            reconnect_label: None,
+            back_label: String::new(),
+            focused: HudDisconnectedScreenButton::Back,
+            hovered: None,
+        }));
+
+        let draws = renderer.collect_hud_draws();
+        let blur = draws.screen_blur.expect("panorama screen blur marker");
+        assert_eq!(
+            blur.first_base_command, 1,
+            "only the panorama overlay must be emitted before blur"
+        );
+        drop(draws);
+
+        let before = renderer
+            .render_offscreen_frame()
+            .expect("old panorama frame");
+        let center = before.pixel(WIDTH / 2, HEIGHT / 2);
+        assert!(
+            center[0] > 180 && center[1] < 80 && center[2] < 80,
+            "zero rotation must sample the `_0`/+Z front face, got {center:?}"
+        );
+        assert!(renderer.counters.panorama_resource_ready);
+        assert_eq!(renderer.counters.panorama_resident_bytes, 28);
+        assert_eq!(renderer.counters.panorama_draw_calls, 1);
+
+        let new_faces = faces_with_front([0, 255, 0, 255]);
+        renderer
+            .transactional_resource_reload(|renderer| -> anyhow::Result<()> {
+                renderer.upload_hud_panorama(
+                    1,
+                    1,
+                    std::array::from_fn(|index| new_faces[index].as_slice()),
+                    1,
+                    1,
+                    &[0, 0, 0, 0],
+                    StandaloneTextureSampling::NEAREST_REPEAT,
+                )?;
+                anyhow::bail!("injected failure after panorama upload")
+            })
+            .expect_err("failed reload must roll back panorama owner");
+
+        let after = renderer
+            .render_offscreen_frame()
+            .expect("rolled-back panorama frame");
+        let center = after.pixel(WIDTH / 2, HEIGHT / 2);
+        assert!(
+            center[0] > 180 && center[1] < 80 && center[2] < 80,
+            "rollback must retain the exact old red panorama owner, got {center:?}"
+        );
+        assert!(renderer.counters.panorama_resource_ready);
+        assert_eq!(renderer.counters.panorama_resident_bytes, 28);
+    }
+}

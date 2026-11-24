@@ -1,0 +1,426 @@
+{
+  "registries": [
+    {
+      "resource_id": "minecraft:activity",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:attribute",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:attribute_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:block",
+      "tags": [
+        "minecraft:incorrect_for_copper_tool",
+        "minecraft:incorrect_for_diamond_tool",
+        "minecraft:incorrect_for_gold_tool",
+        "minecraft:incorrect_for_iron_tool",
+        "minecraft:incorrect_for_netherite_tool",
+        "minecraft:incorrect_for_stone_tool",
+        "minecraft:incorrect_for_wooden_tool",
+        "minecraft:leaves",
+        "minecraft:mineable/axe",
+        "minecraft:mineable/hoe",
+        "minecraft:mineable/pickaxe",
+        "minecraft:mineable/shovel",
+        "minecraft:sword_efficient",
+        "minecraft:sword_instantly_mines",
+        "minecraft:wool"
+      ]
+    },
+    {
+      "resource_id": "minecraft:block_entity_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:block_predicate_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:block_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:chunk_status",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:command_argument_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:consume_effect_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:creative_mode_tab",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:custom_stat",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:data_component_predicate_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:data_component_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:debug_subscription",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:decorated_pot_pattern",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:dialog_action_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:dialog_body_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:dialog_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:enchantment_effect_component_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:enchantment_entity_effect_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:enchantment_level_based_value_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:enchantment_location_based_effect_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:enchantment_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:enchantment_value_effect_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:entity_sub_predicate_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:entity_type",
+      "tags": [
+        "minecraft:can_equip_harness",
+        "minecraft:can_equip_saddle",
+        "minecraft:can_wear_horse_armor",
+        "minecraft:can_wear_nautilus_armor"
+      ]
+    },
+    {
+      "resource_id": "minecraft:environment_attribute",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:float_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:fluid",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:game_event",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:game_rule",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:height_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:incoming_rpc_methods",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:input_control_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:int_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:item",
+      "tags": [
+        "minecraft:copper_tool_materials",
+        "minecraft:diamond_tool_materials",
+        "minecraft:gold_tool_materials",
+        "minecraft:iron_tool_materials",
+        "minecraft:netherite_tool_materials",
+        "minecraft:repairs_chain_armor",
+        "minecraft:repairs_copper_armor",
+        "minecraft:repairs_diamond_armor",
+        "minecraft:repairs_gold_armor",
+        "minecraft:repairs_iron_armor",
+        "minecraft:repairs_leather_armor",
+        "minecraft:repairs_netherite_armor",
+        "minecraft:repairs_turtle_helmet",
+        "minecraft:repairs_wolf_armor",
+        "minecraft:stone_tool_materials",
+        "minecraft:wooden_tool_materials"
+      ]
+    },
+    {
+      "resource_id": "minecraft:loot_condition_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:loot_function_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:loot_nbt_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:loot_number_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:loot_pool_entry_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:loot_score_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:map_decoration_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:memory_module_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:menu",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:mob_effect",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:number_format_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:outgoing_rpc_methods",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:particle_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:permission_check_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:permission_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:point_of_interest_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:pos_rule_test",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:position_source_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:potion",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:recipe_book_category",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:recipe_display",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:recipe_serializer",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:recipe_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:rule_block_entity_modifier",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:rule_test",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:sensor_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:slot_display",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:slot_source_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:sound_event",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:spawn_condition_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:stat_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:test_environment_definition_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:test_function",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:test_instance_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:ticket_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:trigger_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:villager_profession",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:villager_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/biome_source",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/block_state_provider_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/carver",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/chunk_generator",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/density_function_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/feature",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/feature_size_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/foliage_placer_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/material_condition",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/material_rule",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/placement_modifier_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/pool_alias_binding",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/root_placer_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/structure_piece",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/structure_placement",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/structure_pool_element",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/structure_processor",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/structure_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/tree_decorator_type",
+      "tags": []
+    },
+    {
+      "resource_id": "minecraft:worldgen/trunk_placer_type",
+      "tags": []
+    }
+  ],
+  "registry_count": 95,
+  "source": "Bootstrap.bootStrap BuiltInRegistries.REGISTRY.getTags before VanillaRegistries.createLookup",
+  "tag_count": 35,
+  "vanilla_version": "26.1"
+}
