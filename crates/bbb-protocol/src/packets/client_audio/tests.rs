@@ -1,0 +1,412 @@
+use super::*;
+use crate::{
+    codec::{Decoder, Encoder},
+    ids,
+    packets::{decode_play_clientbound, PlayClientbound},
+};
+
+#[test]
+fn decodes_sound_packet_wire_order_and_fixed_position() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(42);
+    payload.write_var_i32(4);
+    payload.write_i32(20);
+    payload.write_i32(-8);
+    payload.write_i32(0);
+    payload.write_f32(0.75);
+    payload.write_f32(1.25);
+    payload.write_i64(123456789);
+    let mut payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::Sound(SoundEvent {
+            sound: SoundEventHolder::Reference { registry_id: 41 },
+            source: SoundSource::Blocks,
+            position: Vec3d {
+                x: 2.5,
+                y: -1.0,
+                z: 0.0,
+            },
+            volume: 0.75,
+            pitch: 1.25,
+            seed: 123456789,
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_var_i32().unwrap(), 4);
+    assert_eq!(decoder.read_i32().unwrap(), 20);
+    assert_eq!(decoder.read_i32().unwrap(), -8);
+    assert_eq!(decoder.read_i32().unwrap(), 0);
+    assert_eq!(decoder.read_f32().unwrap(), 0.75);
+    assert_eq!(decoder.read_f32().unwrap(), 1.25);
+    assert_eq!(decoder.read_i64().unwrap(), 123456789);
+    assert!(decoder.is_empty());
+
+    payload.push(0);
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after sound packet"));
+}
+
+#[test]
+fn decodes_sound_entity_packet_with_direct_sound_holder() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_string("minecraft:entity.cat.ambient");
+    payload.write_bool(true);
+    payload.write_f32(32.0);
+    payload.write_var_i32(6);
+    payload.write_var_i32(123);
+    payload.write_f32(1.0);
+    payload.write_f32(0.5);
+    payload.write_i64(-9);
+    let mut payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::SoundEntity(SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: Some(32.0),
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        decoder.read_string(32767).unwrap(),
+        "minecraft:entity.cat.ambient"
+    );
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_f32().unwrap(), 32.0);
+    assert_eq!(decoder.read_var_i32().unwrap(), 6);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
+    assert_eq!(decoder.read_f32().unwrap(), 1.0);
+    assert_eq!(decoder.read_f32().unwrap(), 0.5);
+    assert_eq!(decoder.read_i64().unwrap(), -9);
+    assert!(decoder.is_empty());
+
+    payload.push(0);
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after sound entity packet"));
+}
+
+#[test]
+fn decodes_direct_sound_holder_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_string("entity.cat.ambient");
+    payload.write_bool(false);
+    payload.write_var_i32(6);
+    payload.write_var_i32(123);
+    payload.write_f32(1.0);
+    payload.write_f32(0.5);
+    payload.write_i64(-9);
+    let payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::SoundEntity(SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: None,
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(decoder.read_string(32767).unwrap(), "entity.cat.ambient");
+    assert!(!decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_var_i32().unwrap(), 6);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
+    assert_eq!(decoder.read_f32().unwrap(), 1.0);
+    assert_eq!(decoder.read_f32().unwrap(), 0.5);
+    assert_eq!(decoder.read_i64().unwrap(), -9);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn decodes_stop_sound_flags() {
+    let mut payload = Encoder::new();
+    payload.write_u8(3);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:music.menu");
+    let mut payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::StopSound(StopSound {
+            source: Some(SoundSource::Music),
+            name: Some("minecraft:music.menu".to_string()),
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_u8().unwrap(), 3);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:music.menu");
+    assert!(decoder.is_empty());
+
+    payload.push(0);
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after stop sound packet"));
+}
+
+#[test]
+fn decodes_stop_sound_source_only_and_ignores_unknown_flag_bits() {
+    let mut payload = Encoder::new();
+    payload.write_u8(5);
+    payload.write_var_i32(2);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner()).unwrap(),
+        PlayClientbound::StopSound(StopSound {
+            source: Some(SoundSource::Records),
+            name: None,
+        })
+    );
+
+    let mut payload = Encoder::new();
+    payload.write_u8(4);
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner()).unwrap(),
+        PlayClientbound::StopSound(StopSound {
+            source: None,
+            name: None,
+        })
+    );
+}
+
+#[test]
+fn decodes_stop_sound_name_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_u8(2);
+    payload.write_string("music.menu");
+    let payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::StopSound(StopSound {
+            source: None,
+            name: Some("minecraft:music.menu".to_string()),
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_u8().unwrap(), 2);
+    assert_eq!(decoder.read_string(32767).unwrap(), "music.menu");
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn decodes_stop_all_sounds_packet() {
+    let mut payload = Encoder::new();
+    payload.write_u8(0);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner()).unwrap(),
+        PlayClientbound::StopSound(StopSound {
+            source: None,
+            name: None,
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_sound_source_ordinal() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(42);
+    payload.write_var_i32(11);
+    payload.write_i32(0);
+    payload.write_i32(0);
+    payload.write_i32(0);
+    payload.write_f32(1.0);
+    payload.write_f32(1.0);
+    payload.write_i64(0);
+
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload.into_inner()).unwrap_err();
+    assert!(err.to_string().contains("invalid sound source ordinal 11"));
+}
+
+#[test]
+fn rejects_invalid_direct_sound_holder_name() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_string("minecraft:Entity.Cat");
+    payload.write_bool(false);
+    payload.write_var_i32(6);
+    payload.write_var_i32(123);
+    payload.write_f32(1.0);
+    payload.write_f32(0.5);
+    payload.write_i64(-9);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload.into_inner())
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("invalid resource location `minecraft:Entity.Cat`: invalid path"));
+}
+
+#[test]
+fn rejects_invalid_stop_sound_name() {
+    let mut payload = Encoder::new();
+    payload.write_u8(2);
+    payload.write_string("minecraft:Music.Menu");
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner())
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("invalid resource location `minecraft:Music.Menu`: invalid path"));
+}
+
+#[test]
+fn rejects_negative_sound_event_holder_id() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(-1);
+    payload.write_var_i32(0);
+    payload.write_i32(0);
+    payload.write_i32(0);
+    payload.write_i32(0);
+    payload.write_f32(1.0);
+    payload.write_f32(1.0);
+    payload.write_i64(0);
+
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload.into_inner()).unwrap_err();
+    assert!(err.to_string().contains("invalid sound event holder id -1"));
+}
+
+/// `encode_play_clientbound_sound` is the exact inverse of the decoder for a
+/// position that survives `LOCATION_ACCURACY` (`ClientboundSoundPacket.java:15`),
+/// which is what a note-block sound at a block centre is: every coordinate is a
+/// whole number of eighths.
+#[test]
+fn round_trips_a_registered_sound_at_a_block_centre() {
+    let packet = SoundEvent {
+        sound: SoundEventHolder::Reference { registry_id: 41 },
+        source: SoundSource::Records,
+        position: Vec3d {
+            x: 5.5,
+            y: 64.5,
+            z: -6.5,
+        },
+        volume: 3.0,
+        pitch: 0.5,
+        seed: -8_070_450_532_247_928_832,
+    };
+
+    let (packet_id, payload) = encode_play_clientbound_sound(&packet).unwrap();
+    assert_eq!(packet_id, ids::play::CLIENTBOUND_SOUND);
+    assert_eq!(
+        decode_play_clientbound(packet_id, &payload).unwrap(),
+        PlayClientbound::Sound(packet)
+    );
+}
+
+/// The same for the inline holder the custom-head instrument needs, where the
+/// resource location and the optional fixed range are on the wire instead of a
+/// registry id.
+#[test]
+fn round_trips_a_direct_sound_with_a_fixed_range() {
+    let packet = SoundEvent {
+        sound: SoundEventHolder::Direct {
+            location: "minecraft:block.note_block.imitate.piglin".to_string(),
+            fixed_range: Some(48.0),
+        },
+        source: SoundSource::Records,
+        position: Vec3d {
+            x: -0.125,
+            y: 0.0,
+            z: 0.375,
+        },
+        volume: 1.0,
+        pitch: 1.0,
+        seed: 0,
+    };
+
+    let (packet_id, payload) = encode_play_clientbound_sound(&packet).unwrap();
+    assert_eq!(
+        decode_play_clientbound(packet_id, &payload).unwrap(),
+        PlayClientbound::Sound(packet)
+    );
+}
+
+#[test]
+fn round_trips_an_entity_bound_sound() {
+    let packet = SoundEntityEvent {
+        sound: SoundEventHolder::Direct {
+            location: "minecraft:entity.happy_ghast.spawn".to_string(),
+            fixed_range: Some(32.0),
+        },
+        source: SoundSource::Blocks,
+        entity_id: 123,
+        volume: 1.0,
+        pitch: 0.75,
+        seed: -9,
+    };
+
+    let (packet_id, payload) = encode_play_clientbound_sound_entity(&packet).unwrap();
+    assert_eq!(packet_id, ids::play::CLIENTBOUND_SOUND_ENTITY);
+    assert_eq!(
+        decode_play_clientbound(packet_id, &payload).unwrap(),
+        PlayClientbound::SoundEntity(packet)
+    );
+}
+
+/// All four flag shapes `ClientboundStopSoundPacket.write` can produce
+/// (`ClientboundStopSoundPacket.java:40-56`), each decoding back to itself.
+#[test]
+fn round_trips_every_stop_sound_shape() {
+    for packet in [
+        StopSound {
+            source: None,
+            name: None,
+        },
+        StopSound {
+            source: Some(SoundSource::Weather),
+            name: None,
+        },
+        StopSound {
+            source: None,
+            name: Some("minecraft:entity.pig.ambient".to_string()),
+        },
+        StopSound {
+            source: Some(SoundSource::Music),
+            name: Some("minecraft:music.game".to_string()),
+        },
+    ] {
+        let (packet_id, payload) = encode_play_clientbound_stop_sound(&packet).unwrap();
+        assert_eq!(packet_id, ids::play::CLIENTBOUND_STOP_SOUND);
+        assert_eq!(
+            decode_play_clientbound(packet_id, &payload).unwrap(),
+            PlayClientbound::StopSound(packet)
+        );
+    }
+}

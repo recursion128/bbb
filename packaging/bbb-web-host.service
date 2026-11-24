@@ -1,0 +1,35 @@
+[Unit]
+Description=BBB WebGPU client asset gateway and WebSocket bridge
+Documentation=file:///usr/share/doc/bbb/packaging/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bbb
+Group=bbb
+WorkingDirectory=/var/lib/bbb
+ExecStart=/usr/local/bin/bbb-web-host \
+    --bind 127.0.0.1:8080 \
+    --server 127.0.0.1:25565 \
+    --vanilla-root /var/lib/bbb/vanilla \
+    --wasm-dir /var/lib/bbb/web-dist \
+    --cache-dir /var/cache/bbb-web
+
+# bbb-web-host handles SIGTERM and SIGINT in its accept loop and holds no mutable
+# world state; sending SIGTERM lets it exit 0 cleanly behind a reverse proxy.
+KillSignal=SIGTERM
+TimeoutStopSec=15
+Restart=on-failure
+RestartSec=5
+
+# Only the assembled core-26.1.zip cache directory needs write access; Vanilla
+# assets and the compiled WASM bundle remain strictly read-only.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/cache/bbb-web
+
+[Install]
+WantedBy=multi-user.target

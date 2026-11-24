@@ -1,0 +1,786 @@
+use bbb_protocol::packets::{
+    BlockChangedAck as ProtocolBlockChangedAck, BlockDestruction as ProtocolBlockDestruction,
+    BlockEvent as ProtocolBlockEvent, LevelEvent as ProtocolLevelEvent, Vec3d as ProtocolVec3d,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+use crate::{
+    chest_model_kind_for_block_name, is_bell_block_name, is_decorated_pot_block_name,
+    shulker_box_color_for_block_name, BlockPos, JukeboxLevelEventState, LevelEventSoundRandomState,
+    NoPlayApplyEffects, PlayApplyEffects, WorldStore,
+};
+
+const BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS: u32 = 20;
+const BLOCK_DESTRUCTION_EXPIRY_TICKS: u32 = 400;
+const MAX_BLOCK_DESTRUCTIONS: usize = 4096;
+const MAX_RETAINED_BLOCK_EVENTS: usize = 256;
+const MAX_RETAINED_LEVEL_EVENTS: usize = 256;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockDestructionProgress {
+    pub id: i32,
+    pub pos: BlockPos,
+    pub progress: u8,
+    #[serde(default)]
+    pub updated_render_tick: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockEventRecord {
+    pub pos: BlockPos,
+    pub b0: u8,
+    pub b1: u8,
+    pub block_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LevelEventRecord {
+    pub event_type: i32,
+    pub pos: BlockPos,
+    pub data: i32,
+    pub global: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockChangedAckState {
+    pub sequence: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LocalBlockPredictionState {
+    pub sequence: i32,
+    pub pos: BlockPos,
+    pub server_block_state_id: i32,
+    pub predicted_block_state_id: i32,
+    #[serde(default)]
+    pub player_position: Option<ProtocolVec3d>,
+}
+
+impl WorldStore {
+    /// Starts one Vanilla `BlockStatePredictionHandler` scope. Java `int`
+    /// arithmetic wraps from MAX to MIN, and acknowledgements compare the
+    /// signed values directly.
+    pub fn next_local_prediction_sequence(&mut self) -> i32 {
+        self.local_prediction_sequence = self.local_prediction_sequence.wrapping_add(1);
+        self.local_prediction_sequence
+    }
+
+    pub fn local_prediction_sequence(&self) -> i32 {
+        self.local_prediction_sequence
+    }
+
+    pub fn set_local_prediction_sequence(&mut self, sequence: i32) {
+        self.local_prediction_sequence = sequence;
+    }
+
+    pub fn local_prediction_last_teleport_sequence(&self) -> Option<i32> {
+        self.local_prediction_last_teleport_sequence
+    }
+
+    pub(crate) fn mark_local_prediction_teleport(&mut self) {
+        self.local_prediction_last_teleport_sequence = Some(self.local_prediction_sequence);
+    }
+
+    pub fn apply_block_changed_ack(&mut self, ack: ProtocolBlockChangedAck) {
+        self.counters.block_changed_ack_packets += 1;
+        self.last_block_changed_ack = Some(BlockChangedAckState {
+            sequence: ack.sequence,
+        });
+        let reconciled = self.sync_ended_local_block_predictions(ack.sequence);
+        self.counters.local_block_predictions_reconciled_by_ack += reconciled;
+    }
+
+    pub fn apply_block_destruction(&mut self, update: ProtocolBlockDestruction) -> bool {
+        self.counters.block_destructions_received += 1;
+        if update.progress < 10 {
+            let progress = BlockDestructionProgress {
+                id: update.id,
+                pos: update.pos,
+                progress: update.progress,
+                updated_render_tick: self.block_destruction_render_tick,
+            };
+            if let Some(existing) = self
+                .block_destructions
+                .iter_mut()
+                .find(|existing| existing.id == update.id)
+            {
+                *existing = progress;
+            } else {
+                if self.block_destructions.len() >= MAX_BLOCK_DESTRUCTIONS {
+                    self.counters.block_destructions_ignored += 1;
+                    return false;
+                }
+                self.block_destructions.push(progress);
+            }
+            self.counters.block_destructions_tracked = self.block_destructions.len();
+            return true;
+        }
+
+        let before = self.block_destructions.len();
+        self.block_destructions
+            .retain(|progress| progress.id != update.id);
+        let removed = before - self.block_destructions.len();
+        self.counters.block_destructions_removed += removed;
+        if removed == 0 {
+            self.counters.block_destructions_ignored += 1;
+        }
+        self.counters.block_destructions_tracked = self.block_destructions.len();
+        removed > 0
+    }
+
+    pub fn advance_block_destruction_render_ticks(&mut self, ticks: u32) -> usize {
+        if ticks == 0 {
+            return 0;
+        }
+
+        let previous_tick = self.block_destruction_render_tick;
+        self.block_destruction_render_tick =
+            self.block_destruction_render_tick.saturating_add(ticks);
+        if !crossed_block_destruction_expiry_scan(previous_tick, self.block_destruction_render_tick)
+        {
+            return 0;
+        }
+
+        let before = self.block_destructions.len();
+        let scan_tick = block_destruction_expiry_scan_tick(self.block_destruction_render_tick);
+        self.block_destructions.retain(|progress| {
+            scan_tick.saturating_sub(progress.updated_render_tick) <= BLOCK_DESTRUCTION_EXPIRY_TICKS
+        });
+        let expired = before - self.block_destructions.len();
+        self.counters.block_destructions_expired += expired;
+        self.counters.block_destructions_tracked = self.block_destructions.len();
+        expired
+    }
+
+    pub fn apply_block_event(&mut self, event: ProtocolBlockEvent) -> bool {
+        self.apply_block_event_with_effects(
+            event,
+            &mut LevelEventSoundRandomState::default(),
+            &mut NoPlayApplyEffects,
+        )
+    }
+
+    pub(crate) fn apply_block_event_with_effects(
+        &mut self,
+        event: ProtocolBlockEvent,
+        random: &mut LevelEventSoundRandomState,
+        effects: &mut dyn PlayApplyEffects,
+    ) -> bool {
+        self.counters.block_events_received += 1;
+        // The packet holder is registry validated, but vanilla Level.blockEvent
+        // dispatches through getBlockState(pos) and does not compare the packet
+        // block against that current state.
+        if self
+            .registries
+            .block_name_by_registry_id(event.block_id)
+            .is_none()
+        {
+            self.counters.block_events_ignored += 1;
+            return false;
+        }
+        let pos = event.pos;
+        if self.block_events.len() >= MAX_RETAINED_BLOCK_EVENTS {
+            let overflow = self.block_events.len() + 1 - MAX_RETAINED_BLOCK_EVENTS;
+            self.block_events.drain(..overflow);
+        }
+        self.block_events.push(BlockEventRecord {
+            pos,
+            b0: event.b0,
+            b1: event.b1,
+            block_id: event.block_id,
+        });
+        self.counters.block_events_tracked = self.block_events.len();
+
+        let Some(current) = self.block_view(pos) else {
+            self.counters.block_events_ignored += 1;
+            return false;
+        };
+        let Some(block_name) = current.block_name else {
+            self.counters.block_events_ignored += 1;
+            return false;
+        };
+        let applied = if chest_model_kind_for_block_name(block_name).is_some() {
+            self.update_chest_lid_from_block_event(pos, event.b0, event.b1)
+        } else if is_bell_block_name(block_name) {
+            self.update_bell_shake_from_block_event(pos, event.b0, event.b1)
+        } else if shulker_box_color_for_block_name(block_name).is_some() {
+            self.update_shulker_box_lid_from_block_event(pos, event.b0, event.b1)
+        } else if is_decorated_pot_block_name(block_name) {
+            self.update_decorated_pot_wobble_from_block_event(pos, event.b0, event.b1)
+        } else if block_name == "minecraft:end_gateway" {
+            self.update_end_gateway_from_block_event(pos, event.b0)
+        } else if block_name == "minecraft:spawner" {
+            self.update_spawner_from_block_event(pos, event.b0)
+        } else if block_name == "minecraft:note_block" {
+            self.trigger_note_block_event(pos, current.block_properties, random, effects)
+        } else if matches!(block_name, "minecraft:piston" | "minecraft:sticky_piston") {
+            self.trigger_piston_block_event(
+                pos,
+                block_name,
+                current.block_properties,
+                event,
+                random,
+                effects,
+            )
+        } else {
+            false
+        };
+        if applied {
+            self.counters.block_events_applied += 1;
+        } else {
+            self.counters.block_events_ignored += 1;
+        }
+        applied
+    }
+
+    pub fn apply_level_event(
+        &mut self,
+        event: ProtocolLevelEvent,
+    ) -> Option<JukeboxLevelEventState> {
+        self.counters.level_events_received += 1;
+        if self.level_events.len() >= MAX_RETAINED_LEVEL_EVENTS {
+            let overflow = self.level_events.len() + 1 - MAX_RETAINED_LEVEL_EVENTS;
+            self.level_events.drain(..overflow);
+        }
+        self.level_events.push(LevelEventRecord {
+            event_type: event.event_type,
+            pos: event.pos,
+            data: event.data,
+            global: event.global,
+        });
+        self.counters.level_events_tracked = self.level_events.len();
+        self.record_jukebox_level_event(event)
+    }
+
+    pub fn block_destructions(&self) -> &[BlockDestructionProgress] {
+        &self.block_destructions
+    }
+
+    pub fn block_destruction(&self, id: i32) -> Option<&BlockDestructionProgress> {
+        self.block_destructions
+            .iter()
+            .find(|progress| progress.id == id)
+    }
+
+    /// Produces the one ordered block-breaking projection consumed by render extraction.
+    ///
+    /// Vanilla's `LevelRenderer` stores server and local-player updates in the same
+    /// id/position maps and extracts the greatest `(progress, id)` entry per position.
+    /// BBB keeps gameplay-local progress in `LocalPlayerInteractionState`, so the world
+    /// owner performs that one merge here instead of letting native rendering recreate
+    /// a second resolver.
+    pub fn block_destruction_render_stages(&self) -> Vec<(BlockPos, u8)> {
+        let mut stages: BTreeMap<BlockPos, u8> = BTreeMap::new();
+        for progress in &self.block_destructions {
+            if progress.progress < 10 {
+                stages
+                    .entry(progress.pos)
+                    .and_modify(|stage| *stage = (*stage).max(progress.progress))
+                    .or_insert(progress.progress);
+            }
+        }
+
+        let interaction = &self.local_player.interaction;
+        if let (Some(pos), Some(stage)) = (
+            interaction.destroying_block,
+            interaction.destroying_block_stage,
+        ) {
+            stages
+                .entry(pos)
+                .and_modify(|existing| *existing = (*existing).max(stage))
+                .or_insert(stage);
+        }
+        stages.into_iter().collect()
+    }
+
+    pub fn block_events(&self) -> &[BlockEventRecord] {
+        &self.block_events
+    }
+
+    pub fn level_events(&self) -> &[LevelEventRecord] {
+        &self.level_events
+    }
+
+    pub fn last_block_changed_ack(&self) -> Option<&BlockChangedAckState> {
+        self.last_block_changed_ack.as_ref()
+    }
+
+    pub fn local_block_predictions(&self) -> &[LocalBlockPredictionState] {
+        &self.local_block_predictions
+    }
+
+    pub(crate) fn record_local_block_prediction(
+        &mut self,
+        sequence: i32,
+        pos: BlockPos,
+        server_block_state_id: i32,
+        predicted_block_state_id: i32,
+        player_position: Option<ProtocolVec3d>,
+    ) {
+        if let Some(prediction) = self
+            .local_block_predictions
+            .iter_mut()
+            .find(|prediction| prediction.pos == pos)
+        {
+            prediction.sequence = sequence;
+            prediction.predicted_block_state_id = predicted_block_state_id;
+            self.local_block_predictions
+                .sort_by_key(|prediction| prediction.sequence);
+            return;
+        }
+        self.local_block_predictions
+            .push(LocalBlockPredictionState {
+                sequence,
+                pos,
+                server_block_state_id,
+                predicted_block_state_id,
+                player_position,
+            });
+        self.local_block_predictions
+            .sort_by_key(|prediction| prediction.sequence);
+        self.counters.local_block_predictions_created += 1;
+        self.update_local_block_prediction_count();
+    }
+
+    pub(crate) fn update_local_block_prediction_server_state(
+        &mut self,
+        pos: BlockPos,
+        server_block_state_id: i32,
+    ) -> bool {
+        if !self
+            .registries
+            .is_valid_block_state_id(server_block_state_id)
+        {
+            return false;
+        }
+        let Some(prediction) = self
+            .local_block_predictions
+            .iter_mut()
+            .find(|prediction| prediction.pos == pos)
+        else {
+            return false;
+        };
+        prediction.server_block_state_id = server_block_state_id;
+        true
+    }
+
+    pub(crate) fn take_local_block_predictions_through_sequence(
+        &mut self,
+        sequence: i32,
+    ) -> Vec<LocalBlockPredictionState> {
+        let mut ended = Vec::new();
+        self.local_block_predictions.retain(|prediction| {
+            if prediction.sequence <= sequence {
+                ended.push(*prediction);
+                false
+            } else {
+                true
+            }
+        });
+        self.update_local_block_prediction_count();
+        ended
+    }
+
+    pub(crate) fn update_local_block_prediction_count(&mut self) {
+        self.counters.local_block_predictions_tracked = self.local_block_predictions.len();
+    }
+}
+
+fn crossed_block_destruction_expiry_scan(previous_tick: u32, current_tick: u32) -> bool {
+    previous_tick / BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS
+        != current_tick / BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS
+}
+
+fn block_destruction_expiry_scan_tick(current_tick: u32) -> u32 {
+    (current_tick / BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS)
+        * BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::packets::{
+        BlockChangedAck, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+        PlayLogin as ProtocolPlayLogin,
+    };
+
+    #[test]
+    fn prediction_sequence_uses_java_signed_wrap_and_ack_order() {
+        let mut store = WorldStore::new();
+        assert_eq!(store.next_local_prediction_sequence(), 1);
+        store.set_local_prediction_sequence(i32::MAX);
+        assert_eq!(store.next_local_prediction_sequence(), i32::MIN);
+
+        store.record_local_block_prediction(i32::MAX, BlockPos { x: 1, y: 2, z: 3 }, 1, 2, None);
+        store.record_local_block_prediction(i32::MIN, BlockPos { x: 4, y: 5, z: 6 }, 1, 2, None);
+
+        let ended = store.take_local_block_predictions_through_sequence(i32::MIN);
+        assert_eq!(ended.len(), 1);
+        assert_eq!(ended[0].sequence, i32::MIN);
+        assert_eq!(store.local_block_predictions()[0].sequence, i32::MAX);
+        assert_eq!(
+            store
+                .take_local_block_predictions_through_sequence(i32::MAX)
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn tracks_block_changed_ack_sequence_and_counter() {
+        let mut store = WorldStore::new();
+
+        store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
+
+        assert_eq!(
+            store.last_block_changed_ack(),
+            Some(&BlockChangedAckState { sequence: 17 })
+        );
+        assert_eq!(store.counters().block_changed_ack_packets, 1);
+
+        store.apply_block_changed_ack(BlockChangedAck { sequence: 18 });
+
+        assert_eq!(
+            store.last_block_changed_ack(),
+            Some(&BlockChangedAckState { sequence: 18 })
+        );
+        assert_eq!(store.counters().block_changed_ack_packets, 2);
+    }
+
+    #[test]
+    fn tracks_block_destruction_progress_by_id() {
+        let mut store = WorldStore::new();
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 3,
+        }));
+        assert_eq!(
+            store.block_destruction(7),
+            Some(&BlockDestructionProgress {
+                id: 7,
+                pos: BlockPos {
+                    x: 12,
+                    y: 64,
+                    z: -5,
+                },
+                progress: 3,
+                updated_render_tick: 0,
+            })
+        );
+        assert_eq!(store.counters().block_destructions_received, 1);
+        assert_eq!(store.counters().block_destructions_tracked, 1);
+        assert_eq!(store.counters().block_destructions_removed, 0);
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos {
+                x: 13,
+                y: 65,
+                z: -6,
+            },
+            progress: 9,
+        }));
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(
+            store.block_destruction(7),
+            Some(&BlockDestructionProgress {
+                id: 7,
+                pos: BlockPos {
+                    x: 13,
+                    y: 65,
+                    z: -6,
+                },
+                progress: 9,
+                updated_render_tick: 0,
+            })
+        );
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos {
+                x: 13,
+                y: 65,
+                z: -6,
+            },
+            progress: 10,
+        }));
+        assert!(store.block_destructions().is_empty());
+        assert_eq!(store.counters().block_destructions_received, 3);
+        assert_eq!(store.counters().block_destructions_tracked, 0);
+        assert_eq!(store.counters().block_destructions_removed, 1);
+
+        assert!(!store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 99,
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            progress: 255,
+        }));
+        assert_eq!(store.counters().block_destructions_received, 4);
+        assert_eq!(store.counters().block_destructions_removed, 1);
+        assert_eq!(store.counters().block_destructions_ignored, 1);
+    }
+
+    #[test]
+    fn block_destruction_render_stages_merge_server_and_local_progress() {
+        let mut store = WorldStore::new();
+        let shared = BlockPos { x: 2, y: 3, z: 4 };
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 10,
+            pos: ProtocolBlockPos { x: 2, y: 3, z: 4 },
+            progress: 2,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 11,
+            pos: ProtocolBlockPos { x: 2, y: 3, z: 4 },
+            progress: 7,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 12,
+            pos: ProtocolBlockPos { x: -1, y: 3, z: 4 },
+            progress: 3,
+        }));
+        store.local_player.interaction.destroying_block = Some(shared);
+        store.local_player.interaction.destroying_block_stage = Some(8);
+
+        assert_eq!(
+            store.block_destruction_render_stages(),
+            vec![(BlockPos { x: -1, y: 3, z: 4 }, 3), (shared, 8),]
+        );
+    }
+
+    #[test]
+    fn block_destruction_budget_rejects_only_new_ids() {
+        let mut store = WorldStore::new();
+        for id in 0..MAX_BLOCK_DESTRUCTIONS {
+            assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+                id: i32::try_from(id).unwrap(),
+                pos: ProtocolBlockPos {
+                    x: i32::try_from(id).unwrap(),
+                    y: 0,
+                    z: 0,
+                },
+                progress: 1,
+            }));
+        }
+
+        assert!(!store.apply_block_destruction(ProtocolBlockDestruction {
+            id: i32::try_from(MAX_BLOCK_DESTRUCTIONS).unwrap(),
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 0 },
+            progress: 2,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 0,
+            pos: ProtocolBlockPos { x: 5, y: 6, z: 7 },
+            progress: 9,
+        }));
+        assert_eq!(store.block_destructions().len(), MAX_BLOCK_DESTRUCTIONS);
+        assert_eq!(
+            store
+                .block_destruction(0)
+                .map(|progress| (progress.pos, progress.progress)),
+            Some((BlockPos { x: 5, y: 6, z: 7 }, 9))
+        );
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 0,
+            pos: ProtocolBlockPos { x: 5, y: 6, z: 7 },
+            progress: 10,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: i32::try_from(MAX_BLOCK_DESTRUCTIONS).unwrap(),
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 0 },
+            progress: 2,
+        }));
+        assert_eq!(
+            store.counters().block_destructions_tracked,
+            MAX_BLOCK_DESTRUCTIONS
+        );
+        assert_eq!(store.counters().block_destructions_ignored, 1);
+    }
+
+    #[test]
+    fn block_destruction_progress_expires_after_vanilla_render_tick_window() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 3,
+        }));
+
+        assert_eq!(store.advance_block_destruction_render_ticks(399), 0);
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(store.advance_block_destruction_render_ticks(1), 0);
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(store.advance_block_destruction_render_ticks(20), 1);
+
+        assert!(store.block_destructions().is_empty());
+        assert_eq!(store.counters().block_destructions_expired, 1);
+        assert_eq!(store.counters().block_destructions_tracked, 0);
+        assert_eq!(store.counters().block_destructions_removed, 0);
+    }
+
+    #[test]
+    fn block_destruction_batched_tick_advance_expires_at_scan_tick() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 3,
+        }));
+
+        assert_eq!(store.advance_block_destruction_render_ticks(401), 0);
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(store.advance_block_destruction_render_ticks(19), 1);
+
+        assert!(store.block_destructions().is_empty());
+        assert_eq!(store.counters().block_destructions_expired, 1);
+    }
+
+    #[test]
+    fn block_destruction_update_refreshes_expiry_tick() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 3,
+        }));
+        assert_eq!(store.advance_block_destruction_render_ticks(399), 0);
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 6,
+        }));
+        assert_eq!(
+            store
+                .block_destruction(7)
+                .map(|progress| progress.updated_render_tick),
+            Some(399)
+        );
+
+        assert_eq!(store.advance_block_destruction_render_ticks(20), 0);
+        assert_eq!(
+            store.block_destruction(7).map(|progress| progress.progress),
+            Some(6)
+        );
+        assert_eq!(store.advance_block_destruction_render_ticks(400), 1);
+        assert!(store.block_destructions().is_empty());
+    }
+
+    #[test]
+    fn block_destruction_level_teardown_clears_entries_but_preserves_renderer_tick_cursor() {
+        let mut store = WorldStore::new();
+        assert_eq!(store.advance_block_destruction_render_ticks(123), 0);
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 4,
+        }));
+
+        store.clear_client_level();
+        assert!(store.block_destruction_render_stages().is_empty());
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 8,
+            pos: ProtocolBlockPos { x: 4, y: 5, z: 6 },
+            progress: 5,
+        }));
+        assert_eq!(
+            store
+                .block_destruction(8)
+                .map(|progress| progress.updated_render_tick),
+            Some(123)
+        );
+    }
+
+    #[test]
+    fn tracks_transient_block_and_level_events() {
+        let mut store = WorldStore::new();
+
+        store.apply_block_event(ProtocolBlockEvent {
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            b0: 1,
+            b1: 5,
+            block_id: 123,
+        });
+        store.apply_level_event(ProtocolLevelEvent {
+            event_type: 2001,
+            pos: ProtocolBlockPos {
+                x: 13,
+                y: 65,
+                z: -6,
+            },
+            data: 9,
+            global: true,
+        });
+
+        assert_eq!(
+            store.block_events(),
+            &[BlockEventRecord {
+                pos: BlockPos {
+                    x: 12,
+                    y: 64,
+                    z: -5,
+                },
+                b0: 1,
+                b1: 5,
+                block_id: 123,
+            }]
+        );
+        assert_eq!(
+            store.level_events(),
+            &[LevelEventRecord {
+                event_type: 2001,
+                pos: BlockPos {
+                    x: 13,
+                    y: 65,
+                    z: -6,
+                },
+                data: 9,
+                global: true,
+            }]
+        );
+        assert_eq!(store.counters().block_events_received, 1);
+        assert_eq!(store.counters().block_events_tracked, 1);
+        assert_eq!(store.counters().level_events_received, 1);
+        assert_eq!(store.counters().level_events_tracked, 1);
+
+        store.apply_login(&ProtocolPlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:the_nether".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 1,
+                dimension: "minecraft:the_nether".to_string(),
+                seed: 12345,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 32,
+            },
+            enforces_secure_chat: true,
+        });
+
+        assert!(store.block_events().is_empty());
+        assert!(store.level_events().is_empty());
+        assert_eq!(store.counters().block_events_tracked, 0);
+        assert_eq!(store.counters().level_events_tracked, 0);
+    }
+}

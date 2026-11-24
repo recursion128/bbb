@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bbb.web-host</string>
+
+    <key>UserName</key>
+    <string>bbb</string>
+    <key>GroupName</key>
+    <string>bbb</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/bbb-web-host</string>
+        <string>--bind</string>
+        <string>127.0.0.1:8080</string>
+        <string>--server</string>
+        <string>127.0.0.1:25565</string>
+        <string>--vanilla-root</string>
+        <string>/usr/local/var/bbb/vanilla</string>
+        <string>--wasm-dir</string>
+        <string>/usr/local/var/bbb/web-dist</string>
+        <string>--cache-dir</string>
+        <string>/usr/local/var/cache/bbb-web</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/usr/local/var/bbb</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- launchd sends SIGTERM first and waits this long before SIGKILL.
+         bbb-web-host handles SIGTERM gracefully and exits 0. -->
+    <key>ExitTimeOut</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/bbb-web-host.log</string>
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/bbb-web-host.log</string>
+</dict>
+</plist>

@@ -1,0 +1,166 @@
+use super::*;
+use crate::{
+    codec::Encoder,
+    ids,
+    packets::{decode_play_clientbound, PlayClientbound},
+};
+
+#[test]
+fn decodes_mount_screen_open_packet() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(12);
+    payload.write_var_i32(5);
+    payload.write_i32(345);
+
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_MOUNT_SCREEN_OPEN,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::MountScreenOpen(MountScreenOpen {
+            container_id: 12,
+            inventory_columns: 5,
+            entity_id: 345,
+        })
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(12);
+    trailing.write_var_i32(5);
+    trailing.write_i32(345);
+    trailing.write_u8(0);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_MOUNT_SCREEN_OPEN,
+        &trailing.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after mount screen open packet"));
+}
+
+#[test]
+fn decodes_open_book_packet() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_BOOK, &payload.into_inner()).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::OpenBook(OpenBook {
+            hand: InteractionHand::OffHand,
+        })
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(1);
+    trailing.write_u8(0);
+    let error = decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_BOOK, &trailing.into_inner())
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after open book packet"));
+
+    let mut invalid = Encoder::new();
+    invalid.write_var_i32(2);
+    let error = decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_BOOK, &invalid.into_inner())
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("invalid interaction hand ordinal 2"));
+}
+
+#[test]
+fn decodes_open_sign_editor_packet() {
+    let mut payload = Encoder::new();
+    payload.write_i64(chunks::encode_block_pos(BlockPos {
+        x: -5,
+        y: 70,
+        z: 12,
+    }));
+    payload.write_bool(false);
+
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_OPEN_SIGN_EDITOR,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::OpenSignEditor(OpenSignEditor {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+        })
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_i64(chunks::encode_block_pos(BlockPos {
+        x: -5,
+        y: 70,
+        z: 12,
+    }));
+    trailing.write_bool(false);
+    trailing.write_u8(0);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_OPEN_SIGN_EDITOR,
+        &trailing.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after open sign editor packet"));
+}
+
+#[test]
+fn decodes_pong_response_packet() {
+    let mut payload = Encoder::new();
+    payload.write_i64(123456789);
+
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_PONG_RESPONSE, &payload.into_inner())
+            .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::PongResponse(PongResponse { time: 123456789 })
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_i64(123456789);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_PONG_RESPONSE, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after pong response packet")
+    );
+}
+
+#[test]
+fn decodes_low_disk_space_warning_packet() {
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_LOW_DISK_SPACE_WARNING, &[]).unwrap();
+    assert_eq!(packet, PlayClientbound::LowDiskSpaceWarning);
+}
+
+#[test]
+fn rejects_trailing_low_disk_space_warning_payload() {
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_LOW_DISK_SPACE_WARNING, &[1]);
+    assert!(packet.is_err());
+}
+
+#[test]
+fn rejects_invalid_open_book_hand_ordinal() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_BOOK, &payload.into_inner())
+        .unwrap_err();
+    assert!(err.to_string().contains("invalid interaction hand"));
+}

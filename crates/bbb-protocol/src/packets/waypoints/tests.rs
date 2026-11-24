@@ -1,0 +1,320 @@
+use super::*;
+use crate::{
+    codec::{Decoder, Encoder},
+    ids,
+    packets::{decode_play_clientbound, PlayClientbound},
+};
+
+#[test]
+fn encodes_every_operation_and_waypoint_data_form_round_trip() {
+    let waypoint_id = Uuid::from_u128(0x123456789abcdef0011223344556677);
+    let operations = [
+        WaypointOperation::Track,
+        WaypointOperation::Untrack,
+        WaypointOperation::Update,
+    ];
+    let data = [
+        WaypointData::Empty,
+        WaypointData::Position(WaypointVec3i {
+            x: i32::MIN,
+            y: 64,
+            z: i32::MAX,
+        }),
+        WaypointData::Chunk(ChunkPos { x: -3, z: 4 }),
+        WaypointData::Azimuth(-1.5),
+    ];
+
+    for (operation_index, operation) in operations.into_iter().enumerate() {
+        for (data_index, data) in data.into_iter().enumerate() {
+            let identifier = if data_index % 2 == 0 {
+                WaypointIdentifier::Uuid(waypoint_id)
+            } else {
+                WaypointIdentifier::Name(format!("waypoint-{operation_index}-{data_index}"))
+            };
+            let color_rgb = match data_index {
+                0 => None,
+                1 => Some(0),
+                2 => Some(0x00ff_ffff),
+                _ => Some(0x0012_3456),
+            };
+            let packet = TrackedWaypointPacket {
+                operation,
+                waypoint: TrackedWaypoint {
+                    identifier,
+                    icon: WaypointIcon {
+                        style: "minecraft:default".to_string(),
+                        color_rgb,
+                    },
+                    data,
+                },
+            };
+
+            let (packet_id, payload) = encode_play_clientbound_tracked_waypoint(&packet).unwrap();
+            assert_eq!(packet_id, ids::play::CLIENTBOUND_WAYPOINT);
+            assert_eq!(
+                decode_play_clientbound(packet_id, &payload).unwrap(),
+                PlayClientbound::Waypoint(packet)
+            );
+        }
+    }
+}
+
+#[test]
+fn encodes_waypoint_color_as_exactly_three_rgb_bytes() {
+    let packet = TrackedWaypointPacket {
+        operation: WaypointOperation::Track,
+        waypoint: TrackedWaypoint {
+            identifier: WaypointIdentifier::Name("color".to_string()),
+            icon: WaypointIcon {
+                style: "minecraft:default".to_string(),
+                color_rgb: Some(0x00ab_cdef),
+            },
+            data: WaypointData::Empty,
+        },
+    };
+    let (_, payload) = encode_play_clientbound_tracked_waypoint(&packet).unwrap();
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(!decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_string(32767).unwrap(), "color");
+    assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:default");
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_exact(3, "RGB").unwrap(), &[0xab, 0xcd, 0xef]);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encoder_rejects_unrepresentable_waypoint_fields() {
+    let mut packet = TrackedWaypointPacket {
+        operation: WaypointOperation::Update,
+        waypoint: TrackedWaypoint {
+            identifier: WaypointIdentifier::Name("valid".to_string()),
+            icon: WaypointIcon {
+                style: "minecraft:Default".to_string(),
+                color_rgb: None,
+            },
+            data: WaypointData::Empty,
+        },
+    };
+    assert!(encode_play_clientbound_tracked_waypoint(&packet)
+        .unwrap_err()
+        .to_string()
+        .contains("invalid resource location"));
+
+    packet.waypoint.icon.style = "minecraft:default".to_string();
+    packet.waypoint.identifier =
+        WaypointIdentifier::Name("a".repeat(MAX_WAYPOINT_IDENTIFIER_NAME_CHARS + 1));
+    let err = encode_play_clientbound_tracked_waypoint(&packet).unwrap_err();
+    assert!(matches!(
+        err,
+        ProtocolError::StringTooLong {
+            actual: 32_768,
+            max: MAX_WAYPOINT_IDENTIFIER_NAME_CHARS
+        }
+    ));
+
+    packet.waypoint.identifier = WaypointIdentifier::Name("valid".to_string());
+    packet.waypoint.icon.color_rgb = Some(0x0100_0000);
+    assert!(encode_play_clientbound_tracked_waypoint(&packet)
+        .unwrap_err()
+        .to_string()
+        .contains("exceeds 24-bit RGB"));
+}
+
+#[test]
+fn decodes_position_waypoint_packet_wire_order() {
+    let waypoint_id = Uuid::from_u128(0x123456789abcdef0011223344556677);
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_bool(true);
+    payload.write_uuid(waypoint_id);
+    payload.write_string("minecraft:default");
+    payload.write_bool(true);
+    payload.write_u8(0x11);
+    payload.write_u8(0x22);
+    payload.write_u8(0x33);
+    payload.write_var_i32(1);
+    payload.write_var_i32(10);
+    payload.write_var_i32(64);
+    payload.write_var_i32(-5);
+    let mut payload = payload.into_inner();
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload).unwrap(),
+        PlayClientbound::Waypoint(TrackedWaypointPacket {
+            operation: WaypointOperation::Track,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Uuid(waypoint_id),
+                icon: WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: Some(0x112233),
+                },
+                data: WaypointData::Position(WaypointVec3i {
+                    x: 10,
+                    y: 64,
+                    z: -5,
+                }),
+            },
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_uuid().unwrap(), waypoint_id);
+    assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:default");
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_u8().unwrap(), 0x11);
+    assert_eq!(decoder.read_u8().unwrap(), 0x22);
+    assert_eq!(decoder.read_u8().unwrap(), 0x33);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 10);
+    assert_eq!(decoder.read_var_i32().unwrap(), 64);
+    assert_eq!(decoder.read_var_i32().unwrap(), -5);
+    assert!(decoder.is_empty());
+
+    payload.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after waypoint packet")
+    );
+}
+
+#[test]
+fn decodes_chunk_waypoint_with_named_identifier() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+    payload.write_bool(false);
+    payload.write_string("spawn");
+    payload.write_string("minecraft:default");
+    payload.write_bool(false);
+    payload.write_var_i32(2);
+    payload.write_var_i32(-3);
+    payload.write_var_i32(4);
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload).unwrap(),
+        PlayClientbound::Waypoint(TrackedWaypointPacket {
+            operation: WaypointOperation::Update,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Name("spawn".to_string()),
+                icon: WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: None,
+                },
+                data: WaypointData::Chunk(ChunkPos { x: -3, z: 4 }),
+            },
+        })
+    );
+}
+
+#[test]
+fn decodes_waypoint_icon_style_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_bool(false);
+    payload.write_string("DisplayName");
+    payload.write_string("default");
+    payload.write_bool(false);
+    payload.write_var_i32(0);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload.into_inner()).unwrap(),
+        PlayClientbound::Waypoint(TrackedWaypointPacket {
+            operation: WaypointOperation::Track,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Name("DisplayName".to_string()),
+                icon: WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: None,
+                },
+                data: WaypointData::Empty,
+            },
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_waypoint_icon_style_resource_location() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_bool(false);
+    payload.write_string("bad-style");
+    payload.write_string("minecraft:Default");
+    payload.write_bool(false);
+    payload.write_var_i32(0);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload.into_inner())
+        .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
+fn decodes_empty_and_azimuth_waypoints() {
+    let waypoint_id = Uuid::from_u128(0xabcdef001234567889abcdef00123456);
+    let mut empty = Encoder::new();
+    empty.write_var_i32(1);
+    empty.write_bool(true);
+    empty.write_uuid(waypoint_id);
+    empty.write_string("minecraft:default");
+    empty.write_bool(false);
+    empty.write_var_i32(0);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &empty.into_inner()).unwrap(),
+        PlayClientbound::Waypoint(TrackedWaypointPacket {
+            operation: WaypointOperation::Untrack,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Uuid(waypoint_id),
+                icon: WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: None,
+                },
+                data: WaypointData::Empty,
+            },
+        })
+    );
+
+    let mut azimuth = Encoder::new();
+    azimuth.write_var_i32(5);
+    azimuth.write_bool(false);
+    azimuth.write_string("north");
+    azimuth.write_string("bbb:marker");
+    azimuth.write_bool(false);
+    azimuth.write_var_i32(3);
+    azimuth.write_f32(1.5);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &azimuth.into_inner()).unwrap(),
+        PlayClientbound::Waypoint(TrackedWaypointPacket {
+            operation: WaypointOperation::Update,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Name("north".to_string()),
+                icon: WaypointIcon {
+                    style: "bbb:marker".to_string(),
+                    color_rgb: None,
+                },
+                data: WaypointData::Azimuth(1.5),
+            },
+        })
+    );
+}
+
+#[test]
+fn rejects_unknown_waypoint_type() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_bool(false);
+    payload.write_string("bad");
+    payload.write_string("minecraft:default");
+    payload.write_bool(false);
+    payload.write_var_i32(4);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload.into_inner())
+        .unwrap_err();
+    assert!(err.to_string().contains("invalid waypoint type ordinal 4"));
+}

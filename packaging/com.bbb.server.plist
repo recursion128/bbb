@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bbb.server</string>
+
+    <key>UserName</key>
+    <string>bbb</string>
+    <key>GroupName</key>
+    <string>bbb</string>
+
+    <!-- Offline-only server: default to loopback. To expose on a trusted LAN/VPN,
+         change the bind argument to 0.0.0.0:25565 and add white-list true plus
+         enforce-whitelist true. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/bbb-server</string>
+        <string>--bind</string>
+        <string>127.0.0.1:25565</string>
+        <string>--world</string>
+        <string>/usr/local/var/bbb/world</string>
+        <string>--admin-dir</string>
+        <string>/usr/local/var/bbb/admin</string>
+        <string>--mcp-bind</string>
+        <string>127.0.0.1:25585</string>
+        <string>--mcp-loopback-scope</string>
+        <string>manage</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/usr/local/var/bbb</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- launchd sends SIGTERM first and waits this long before SIGKILL. The
+         server saves the world on the way out, so the wait has to be long
+         enough for a save rather than the 20 second default. -->
+    <key>ExitTimeOut</key>
+    <integer>60</integer>
+
+    <!-- The server writes its structured log to stderr; both streams are kept
+         so a supervisor collects the same record systemd's journal does. -->
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/bbb-server.log</string>
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/bbb-server.log</string>
+</dict>
+</plist>

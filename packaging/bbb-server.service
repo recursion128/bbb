@@ -1,0 +1,37 @@
+[Unit]
+Description=BBB dedicated Minecraft server
+Documentation=file:///usr/share/doc/bbb/packaging/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bbb
+Group=bbb
+WorkingDirectory=/var/lib/bbb
+# Offline-only server: default to loopback. To expose on a trusted LAN/VPN,
+# change --bind to 0.0.0.0:25565 and add --white-list true --enforce-whitelist true.
+ExecStart=/usr/local/bin/bbb-server \
+    --bind 127.0.0.1:25565 \
+    --world /var/lib/bbb/world \
+    --admin-dir /var/lib/bbb/admin \
+    --mcp-bind 127.0.0.1:25585 \
+    --mcp-loopback-scope manage
+
+# The server saves the world on the way out and needs a moment to do it. The
+# stop is a SIGTERM, which is the signal it treats as a graceful shutdown and
+# names in its log; SIGKILL after the timeout is the last resort, not the plan.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=5
+
+# The server needs its save directory and nothing else on the filesystem.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/bbb
+
+[Install]
+WantedBy=multi-user.target

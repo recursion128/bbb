@@ -1,0 +1,1014 @@
+	0	AM	AM	AM
+	720	PM	PM	PM
+af	0	die nag	die nag	n
+af	300	die oggend	die oggend	o
+af	720	die middag	die middag	m
+af	1080	die aand	die aand	a
+af_za	0	die nag	die nag	n
+af_za	300	die oggend	die oggend	o
+af_za	720	die middag	die middag	m
+af_za	1080	die aand	die aand	a
+ar	0	في المساء	في المساء	منتصف الليل
+ar	60	ليلاً	ليلاً	ليلاً
+ar	180	فجرًا	في الصباح	فجرًا
+ar	360	ص	صباحًا	صباحًا
+ar	720	ظهرًا	ظهرًا	ظهرًا
+ar	780	بعد الظهر	بعد الظهر	بعد الظهر
+ar	1080	مساءً	مساءً	مساءً
+ar_sa	0	في المساء	في المساء	منتصف الليل
+ar_sa	60	ل	ليلاً	ليلاً
+ar_sa	180	فجرًا	في الصباح	فجرًا
+ar_sa	360	ص	صباحًا	صباحًا
+ar_sa	720	ظهرًا	ظهرًا	ظهرًا
+ar_sa	780	بعد الظهر	بعد الظهر	بعد الظهر
+ar_sa	1080	مساءً	مساءً	مساءً
+ast	0	de la mañana	de la mañana	a
+ast	720	de la tarde	de la tarde	p
+ast_es	0	de la mañana	de la mañana	a
+ast_es	720	de la tarde	de la tarde	p
+az	0	gecə	gecə	gecə
+az	240	sübh	sübh	sübh
+az	360	səhər	səhər	səhər
+az	720	günorta	günorta	g
+az	780	gündüz	gündüz	gündüz
+az	1020	axşamüstü	axşamüstü	axşamüstü
+az	1140	axşam	axşam	axşam
+az_az	0	gecə	gecə	gecə
+az_az	240	sübh	sübh	sübh
+az_az	360	səhər	səhər	səhər
+az_az	720	günorta	günorta	g
+az_az	780	gündüz	gündüz	gündüz
+az_az	1020	axşamüstü	axşamüstü	axşamüstü
+az_az	1140	axşam	axşam	axşam
+ba	0	AM	AM	a
+ba	720	PM	PM	p
+ba_ru	0	AM	AM	a
+ba_ru	720	PM	PM	p
+bar	0	AM	AM	a
+bar	720	PM	PM	p
+be	0	AM	AM	am
+be	720	PM	PM	pm
+be_by	0	AM	AM	am
+be_by	720	PM	PM	pm
+be_latn	0	AM	AM	a
+be_latn	720	PM	PM	p
+bg	0	през нощта	през нощта	през нощта
+bg	240	сутринта	сутринта	сутринта
+bg	660	на обяд	на обяд	на обяд
+bg	840	следобед	следобед	следобед
+bg	1080	вечерта	вечерта	вечерта
+bg	1320	през нощта	през нощта	през нощта
+bg_bg	0	през нощта	през нощта	през нощта
+bg_bg	240	сутринта	сутринта	сутринта
+bg_bg	660	на обяд	на обяд	на обяд
+bg_bg	840	следобед	следобед	следобед
+bg_bg	1080	вечерта	вечерта	вечерта
+bg_bg	1320	през нощта	през нощта	през нощта
+br	0	A.M.	A.M.	am
+br	720	G.M.	G.M.	gm
+br_fr	0	A.M.	A.M.	am
+br_fr	720	G.M.	G.M.	gm
+brb	0	AM	AM	a
+brb	720	PM	PM	p
+bs	0	po noći	po noći	po noći
+bs	240	ujutro	ujutro	ujutro
+bs	720	podne	podne	podne
+bs	780	poslijepodne	poslijepodne	poslijepodne
+bs	1080	navečer	navečer	navečer
+bs	1260	po noći	po noći	po noći
+bs_ba	0	po noći	po noći	po noći
+bs_ba	240	ujutro	ujutro	ujutro
+bs_ba	720	podne	podne	podne
+bs_ba	780	poslijepodne	poslijepodne	poslijepodne
+bs_ba	1080	navečer	navečer	navečer
+bs_ba	1260	po noći	po noći	po noći
+ca	0	matinada	matinada	matinada
+ca	360	matí	matí	matí
+ca	720	migdia	migdia	migdia
+ca	780	tarda	tarda	tarda
+ca	1140	vespre	vespre	vespre
+ca	1260	nit	nit	nit
+ca_es	0	matinada	matinada	matinada
+ca_es	360	matí	matí	matí
+ca_es	720	migdia	migdia	migdia
+ca_es	780	tarda	tarda	tarda
+ca_es	1140	vespre	vespre	vespre
+ca_es	1260	nit	nit	nit
+cs	0	v n.	v noci	n.
+cs	240	r.	ráno	r.
+cs	540	dop.	dopoledne	d.
+cs	720	pol.	poledne	pol.
+cs	780	odp.	odpoledne	o.
+cs	1080	več.	večer	v.
+cs	1320	v n.	v noci	n.
+cs_cz	0	v n.	v noci	n.
+cs_cz	240	r.	ráno	r.
+cs_cz	540	dop.	dopoledne	d.
+cs_cz	720	pol.	poledne	pol.
+cs_cz	780	odp.	odpoledne	o.
+cs_cz	1080	več.	večer	v.
+cs_cz	1320	v n.	v noci	n.
+cv	0	AM	AM	AM
+cv	720	PM	PM	PM
+cv_cu	0	AM	AM	AM
+cv_cu	720	PM	PM	PM
+cy	0	y bore	y bore	yn y bore
+cy	720	canol dydd	canol dydd	canol dydd
+cy	780	y prynhawn	y prynhawn	yn y prynhawn
+cy	1080	yr hwyr	yr hwyr	min nos
+cy_gb	0	y bore	y bore	yn y bore
+cy_gb	720	canol dydd	canol dydd	canol dydd
+cy_gb	780	y prynhawn	y prynhawn	yn y prynhawn
+cy_gb	1080	yr hwyr	yr hwyr	min nos
+da	0	om natten	om natten	om natten
+da	300	om morgenen	om morgenen	om morgenen
+da	600	om formiddagen	om formiddagen	om formiddagen
+da	720	om eftermiddagen	om eftermiddagen	om eftermiddagen
+da	1080	om aftenen	om aftenen	om aftenen
+da_dk	0	om natten	om natten	om natten
+da_dk	300	om morgenen	om morgenen	om morgenen
+da_dk	600	om formiddagen	om formiddagen	om formiddagen
+da_dk	720	om eftermiddagen	om eftermiddagen	om eftermiddagen
+da_dk	1080	om aftenen	om aftenen	om aftenen
+de	0	nachts	nachts	nachts
+de	300	morgens	morgens	morgens
+de	600	vorm.	vormittags	vorm.
+de	720	mittags	mittags	mittags
+de	780	nachm.	nachmittags	nachm.
+de	1080	abends	abends	abends
+de_at	0	nachts	nachts	nachts
+de_at	300	morgens	morgens	morgens
+de_at	600	vorm.	vormittags	vorm.
+de_at	720	mittags	mittags	mittags
+de_at	780	nachm.	nachmittags	nachm.
+de_at	1080	abends	abends	abends
+de_ch	0	nachts	nachts	nachts
+de_ch	300	morgens	morgens	morgens
+de_ch	600	vorm.	vormittags	vorm.
+de_ch	720	mittags	mittags	mittags
+de_ch	780	nachm.	nachmittags	nachm.
+de_ch	1080	abends	abends	abends
+de_de	0	nachts	nachts	nachts
+de_de	300	morgens	morgens	morgens
+de_de	600	vorm.	vormittags	vorm.
+de_de	720	mittags	mittags	mittags
+de_de	780	nachm.	nachmittags	nachm.
+de_de	1080	abends	abends	abends
+el	0	βράδυ	το βράδυ	βράδυ
+el	240	πρωί	το πρωί	πρωί
+el	720	μεσημ.	το μεσημέρι	μεσημ.
+el	1020	απόγ.	το απόγευμα	απόγ.
+el	1200	βράδυ	το βράδυ	βράδυ
+el_gr	0	βράδυ	το βράδυ	βράδυ
+el_gr	240	πρωί	το πρωί	πρωί
+el_gr	720	μεσημ.	το μεσημέρι	μεσημ.
+el_gr	1020	απόγ.	το απόγευμα	απόγ.
+el_gr	1200	βράδυ	το βράδυ	βράδυ
+en	0	in the morning	in the morning	in the morning
+en	720	noon	noon	n
+en	780	in the afternoon	in the afternoon	in the afternoon
+en	1080	in the evening	in the evening	in the evening
+en	1260	at night	at night	at night
+en_au	0	in the morning	in the morning	in the morning
+en_au	720	midday	midday	midday
+en_au	780	in the afternoon	in the afternoon	in the afternoon
+en_au	1080	in the evening	in the evening	in the evening
+en_au	1260	at night	at night	at night
+en_ca	0	in the morning	in the morning	mor
+en_ca	720	noon	noon	n
+en_ca	780	in the afternoon	in the afternoon	aft
+en_ca	1080	in the evening	in the evening	eve
+en_ca	1260	at night	at night	night
+en_gb	0	in the morning	in the morning	in the morning
+en_gb	720	noon	noon	n
+en_gb	780	in the afternoon	in the afternoon	in the afternoon
+en_gb	1080	in the evening	in the evening	in the evening
+en_gb	1260	at night	at night	at night
+en_nz	0	in the morning	in the morning	in the morning
+en_nz	720	noon	noon	n
+en_nz	780	in the afternoon	in the afternoon	in the afternoon
+en_nz	1080	in the evening	in the evening	in the evening
+en_nz	1260	at night	at night	at night
+en_pt	0	in the morning	in the morning	in the morning
+en_pt	720	noon	noon	n
+en_pt	780	in the afternoon	in the afternoon	in the afternoon
+en_pt	1080	in the evening	in the evening	in the evening
+en_pt	1260	at night	at night	at night
+en_ud	0	in the morning	in the morning	in the morning
+en_ud	720	noon	noon	n
+en_ud	780	in the afternoon	in the afternoon	in the afternoon
+en_ud	1080	in the evening	in the evening	in the evening
+en_ud	1260	at night	at night	at night
+enp	0	AM	AM	a
+enp	720	PM	PM	p
+enws	0	AM	AM	a
+enws	720	PM	PM	p
+eo	0	atm	atm	atm
+eo	720	ptm	ptm	ptm
+eo_uy	0	atm	atm	atm
+eo_uy	720	ptm	ptm	ptm
+es	0	de la madrugada	de la madrugada	de la madrugada
+es	360	de la mañana	de la mañana	de la mañana
+es	720	del mediodía	del mediodía	del mediodía
+es	780	de la tarde	de la tarde	de la tarde
+es	1200	de la noche	de la noche	de la noche
+es_ar	0	madrugada	madrugada	madrugada
+es_ar	360	mañana	mañana	mañana
+es_ar	720	mediodía	mediodía	mediodía
+es_ar	780	tarde	tarde	tarde
+es_ar	1200	noche	noche	noche
+es_cl	0	de la madrugada	de la madrugada	de la madrugada
+es_cl	360	de la mañana	de la mañana	de la mañana
+es_cl	720	del mediodía	del mediodía	del mediodía
+es_cl	780	de la tarde	de la tarde	de la tarde
+es_cl	1200	de la noche	de la noche	de la noche
+es_ec	0	de la madrugada	de la madrugada	de la madrugada
+es_ec	360	de la mañana	de la mañana	de la mañana
+es_ec	720	del mediodía	del mediodía	del mediodía
+es_ec	780	de la tarde	de la tarde	de la tarde
+es_ec	1200	de la noche	de la noche	de la noche
+es_es	0	de la madrugada	de la madrugada	de la madrugada
+es_es	360	de la mañana	de la mañana	de la mañana
+es_es	720	del mediodía	del mediodía	del mediodía
+es_es	780	de la tarde	de la tarde	de la tarde
+es_es	1200	de la noche	de la noche	de la noche
+es_mx	0	de la madrugada	de la madrugada	de la madrugada
+es_mx	360	de la mañana	de la mañana	de la mañana
+es_mx	720	del mediodía	del mediodía	del mediodía
+es_mx	780	de la tarde	de la tarde	de la tarde
+es_mx	1200	de la noche	de la noche	de la noche
+es_uy	0	de la madrugada	de la madrugada	de la madrugada
+es_uy	360	de la mañana	de la mañana	de la mañana
+es_uy	720	del mediodía	del mediodía	del mediodía
+es_uy	780	de la tarde	de la tarde	de la tarde
+es_uy	1200	de la noche	de la noche	de la noche
+es_ve	0	de la madrugada	de la madrugada	de la madrugada
+es_ve	360	de la mañana	de la mañana	de la mañana
+es_ve	720	del mediodía	del mediodía	del mediodía
+es_ve	780	de la tarde	de la tarde	de la tarde
+es_ve	1200	de la noche	de la noche	de la noche
+esan	0	AM	AM	a
+esan	720	PM	PM	p
+et	0	öösel	öösel	öösel
+et	300	hommikul	hommikul	hommikul
+et	720	keskpäeval	keskpäeval	keskpäeval
+et	780	pärastlõunal	pärastlõunal	pärastlõunal
+et	1080	õhtul	õhtul	õhtul
+et	1380	öösel	öösel	öösel
+et_ee	0	öösel	öösel	öösel
+et_ee	300	hommikul	hommikul	hommikul
+et_ee	720	keskpäeval	keskpäeval	keskpäeval
+et_ee	780	pärastlõunal	pärastlõunal	pärastlõunal
+et_ee	1080	õhtul	õhtul	õhtul
+et_ee	1380	öösel	öösel	öösel
+eu	0	goizald.	goizaldeko	goizald.
+eu	360	goizeko	goizeko	goizeko
+eu	720	eguerd.	eguerdiko	eguerd.
+eu	840	arrats.	arratsaldeko	arrats.
+eu	1140	iluntz.	iluntzeko	iluntz.
+eu	1260	gaueko	gaueko	gaueko
+eu_es	0	goizald.	goizaldeko	goizald.
+eu_es	360	goizeko	goizeko	goizeko
+eu_es	720	eguerd.	eguerdiko	eguerd.
+eu_es	840	arrats.	arratsaldeko	arrats.
+eu_es	1140	iluntz.	iluntzeko	iluntz.
+eu_es	1260	gaueko	gaueko	gaueko
+fa	0	نیمه‌شب	نیمه‌شب	نیمه‌شب
+fa	60	بامداد	بامداد	بامداد
+fa	240	صبح	صبح	صبح
+fa	720	ظهر	بعدازظهر	ظهر
+fa	780	عصر	عصر	عصر
+fa	1140	شب	شب	شب
+fa_ir	0	نیمه‌شب	نیمه‌شب	نیمه‌شب
+fa_ir	60	بامداد	بامداد	بامداد
+fa_ir	240	صبح	صبح	صبح
+fa_ir	720	ظهر	بعدازظهر	ظهر
+fa_ir	780	عصر	عصر	عصر
+fa_ir	1140	شب	شب	شب
+fi	0	yöllä	yöllä	yöllä
+fi	300	aamulla	aamulla	aamulla
+fi	600	aamup.	aamupäivällä	ap.
+fi	720	keskip.	keskipäivällä	kp.
+fi	780	iltap.	iltapäivällä	ip.
+fi	1080	illalla	illalla	illalla
+fi	1380	yöllä	yöllä	yöllä
+fi_fi	0	yöllä	yöllä	yöllä
+fi_fi	300	aamulla	aamulla	aamulla
+fi_fi	600	aamup.	aamupäivällä	ap.
+fi_fi	720	keskip.	keskipäivällä	kp.
+fi_fi	780	iltap.	iltapäivällä	ip.
+fi_fi	1080	illalla	illalla	illalla
+fi_fi	1380	yöllä	yöllä	yöllä
+fil	0	ng umaga	ng umaga	ng umaga
+fil	360	madaling-araw	madaling-araw	madaling-araw
+fil	720	tanghaling-tapat	tanghaling-tapat	tanghaling-tapat
+fil	780	ng hapon	ng hapon	ng hapon
+fil	960	ng gabi	ng gabi	ng gabi
+fil_ph	0	ng umaga	ng umaga	ng umaga
+fil_ph	360	madaling-araw	madaling-araw	madaling-araw
+fil_ph	720	tanghaling-tapat	tanghaling-tapat	tanghaling-tapat
+fil_ph	780	ng hapon	ng hapon	ng hapon
+fil_ph	960	ng gabi	ng gabi	ng gabi
+fo	0	AM	AM	AM
+fo	720	PM	PM	PM
+fo_fo	0	AM	AM	AM
+fo_fo	720	PM	PM	PM
+fr	0	matin	du matin	matin
+fr	240	matin	du matin	mat.
+fr	720	midi	midi	midi
+fr	780	après-midi	de l’après-midi	ap.m.
+fr	1080	soir	du soir	soir
+fr_ca	0	du mat.	du matin	mat.
+fr_ca	720	midi	midi	midi
+fr_ca	780	après-midi	de l’après-midi	après-midi
+fr_ca	1080	du soir	du soir	du soir
+fr_ch	0	du mat.	du matin	du mat.
+fr_ch	720	midi	midi	midi
+fr_ch	780	de l’ap.m.	de l’après-midi	de l’ap.m.
+fr_ch	1080	du soir	du soir	du soir
+fr_fr	0	matin	du matin	matin
+fr_fr	240	matin	du matin	mat.
+fr_fr	720	midi	midi	midi
+fr_fr	780	après-midi	de l’après-midi	ap.m.
+fr_fr	1080	soir	du soir	soir
+fra	0	matin	du matin	matin
+fra	240	matin	du matin	mat.
+fra	720	midi	midi	midi
+fra	780	après-midi	de l’après-midi	ap.m.
+fra	1080	soir	du soir	soir
+fra_de	0	matin	du matin	matin
+fra_de	240	matin	du matin	mat.
+fra_de	720	midi	midi	midi
+fra_de	780	après-midi	de l’après-midi	ap.m.
+fra_de	1080	soir	du soir	soir
+fur	0	a.	a.	a.
+fur	720	p.	p.	p.
+fur_it	0	a.	a.	a.
+fur_it	720	p.	p.	p.
+fy	0	AM	AM	AM
+fy	720	PM	PM	PM
+fy_nl	0	AM	AM	AM
+fy_nl	720	PM	PM	PM
+ga	0	r.n.	r.n.	r.n.
+ga	720	i.n.	i.n.	i.n.
+ga_ie	0	r.n.	r.n.	r.n.
+ga_ie	720	i.n.	i.n.	i.n.
+gd	0	m	m	m
+gd	720	f	f	f
+gd_gb	0	m	m	m
+gd_gb	720	f	f	f
+gl	0	da madrugada	da madrugada	da madrugada
+gl	360	da mañá	da mañá	da mañá
+gl	720	do mediodía	do mediodía	do mediodía
+gl	780	da tarde	da tarde	da tarde
+gl	1260	da noite	da noite	da noite
+gl_es	0	da madrugada	da madrugada	da madrugada
+gl_es	360	da mañá	da mañá	da mañá
+gl_es	720	do mediodía	do mediodía	do mediodía
+gl_es	780	da tarde	da tarde	da tarde
+gl_es	1260	da noite	da noite	da noite
+go	0	AM	AM	a
+go	720	PM	PM	p
+go_fr	0	AM	AM	a
+go_fr	720	PM	PM	p
+hal	0	AM	AM	a
+hal	720	PM	PM	p
+hal_ua	0	AM	AM	a
+hal_ua	720	PM	PM	p
+haw	0	AM	AM	AM
+haw	720	PM	PM	PM
+haw_us	0	AM	AM	AM
+haw_us	720	PM	PM	PM
+he	0	לילה	בלילה	בלילה
+he	180	לפנות בוקר	לפנות בוקר	לפנות בוקר
+he	360	בוקר	בבוקר	בבוקר
+he	720	צהריים	בצהריים	בצהריים
+he	960	אחר הצהריים	אחר הצהריים	אחה״צ
+he	1080	ערב	בערב	בערב
+he	1320	לילה	בלילה	בלילה
+he_il	0	לילה	בלילה	בלילה
+he_il	180	לפנות בוקר	לפנות בוקר	לפנות בוקר
+he_il	360	בוקר	בבוקר	בבוקר
+he_il	720	צהריים	בצהריים	בצהריים
+he_il	960	אחר הצהריים	אחר הצהריים	אחה״צ
+he_il	1080	ערב	בערב	בערב
+he_il	1320	לילה	בלילה	בלילה
+hi	0	रात	रात	रात
+hi	240	सुबह	सुबह	सुबह
+hi	720	दोपहर	दोपहर	दोपहर
+hi	960	शाम	शाम	शाम
+hi	1200	रात	रात	रात
+hi_in	0	रात	रात	रात
+hi_in	240	सुबह	सुबह	सुबह
+hi_in	720	दोपहर	दोपहर	दोपहर
+hi_in	960	शाम	शाम	शाम
+hi_in	1200	रात	रात	रात
+hn	0	AM	AM	a
+hn	720	PM	PM	p
+hn_no	0	AM	AM	a
+hn_no	720	PM	PM	p
+hr	0	noću	noću	noću
+hr	240	ujutro	ujutro	ujutro
+hr	720	podne	podne	podne
+hr	780	popodne	poslije podne	popodne
+hr	1080	navečer	navečer	navečer
+hr	1260	noću	noću	noću
+hr_hr	0	noću	noću	noću
+hr_hr	240	ujutro	ujutro	ujutro
+hr_hr	720	podne	podne	podne
+hr_hr	780	popodne	poslije podne	popodne
+hr_hr	1080	navečer	navečer	navečer
+hr_hr	1260	noću	noću	noću
+hu	0	éjjel	éjjel	éjjel
+hu	240	hajnal	hajnal	hajnal
+hu	360	reggel	reggel	reggel
+hu	540	de.	délelőtt	de.
+hu	720	dél	dél	dél
+hu	780	du.	délután	du.
+hu	1080	este	este	este
+hu	1260	éjjel	éjjel	éjjel
+hu_hu	0	éjjel	éjjel	éjjel
+hu_hu	240	hajnal	hajnal	hajnal
+hu_hu	360	reggel	reggel	reggel
+hu_hu	540	de.	délelőtt	de.
+hu_hu	720	dél	dél	dél
+hu_hu	780	du.	délután	du.
+hu_hu	1080	este	este	este
+hu_hu	1260	éjjel	éjjel	éjjel
+hy	0	գիշերը	գիշերվա	գշր
+hy	360	առավոտյան	առավոտյան	առվ
+hy	720	կեսօր	կեսօրին	կօ․
+hy	780	ցերեկը	ցերեկվա	ցրկ
+hy	1080	երեկոյան	երեկոյան	երկ
+hy_am	0	գիշերը	գիշերվա	գշր
+hy_am	360	առավոտյան	առավոտյան	առվ
+hy_am	720	կեսօր	կեսօրին	կօ․
+hy_am	780	ցերեկը	ցերեկվա	ցրկ
+hy_am	1080	երեկոյան	երեկոյան	երկ
+id	0	pagi	pagi	pagi
+id	600	siang	siang	siang
+id	720	tengah hari	tengah hari	tengah hari
+id	780	siang	siang	siang
+id	900	sore	sore	sore
+id	1080	malam	malam	malam
+id_id	0	pagi	pagi	pagi
+id_id	600	siang	siang	siang
+id_id	720	tengah hari	tengah hari	tengah hari
+id_id	780	siang	siang	siang
+id_id	900	sore	sore	sore
+id_id	1080	malam	malam	malam
+ig	0	N’ụtụtụ	N’ụtụtụ	N’ụtụtụ
+ig	720	N’abali	N’abali	N’abalị
+ig_ng	0	N’ụtụtụ	N’ụtụtụ	N’ụtụtụ
+ig_ng	720	N’abali	N’abali	N’abalị
+io	0	AM	AM	a
+io	720	PM	PM	p
+io_en	0	AM	AM	a
+io_en	720	PM	PM	p
+is	0	að nóttu	að nóttu	n.
+is	360	að morgni	að morgni	mrg.
+is	720	hádegi	hádegi	h.
+is	780	síðdegis	síðdegis	sd.
+is	1080	að kvöldi	að kvöldi	kv.
+is_is	0	að nóttu	að nóttu	n.
+is_is	360	að morgni	að morgni	mrg.
+is_is	720	hádegi	hádegi	h.
+is_is	780	síðdegis	síðdegis	sd.
+is_is	1080	að kvöldi	að kvöldi	kv.
+isv	0	AM	AM	a
+isv	720	PM	PM	p
+it	0	di notte	di notte	di notte
+it	360	di mattina	di mattina	di mattina
+it	720	mezzogiorno	mezzogiorno	mezzogiorno
+it	780	di pomeriggio	del pomeriggio	di pomeriggio
+it	1080	di sera	di sera	di sera
+it_it	0	di notte	di notte	di notte
+it_it	360	di mattina	di mattina	di mattina
+it_it	720	mezzogiorno	mezzogiorno	mezzogiorno
+it_it	780	di pomeriggio	del pomeriggio	di pomeriggio
+it_it	1080	di sera	di sera	di sera
+ja	0	夜中	夜中	夜中
+ja	240	朝	朝	朝
+ja	720	正午	正午	正午
+ja	780	昼	昼	昼
+ja	960	夕方	夕方	夕方
+ja	1140	夜	夜	夜
+ja	1380	夜中	夜中	夜中
+ja_jp	0	夜中	夜中	夜中
+ja_jp	240	朝	朝	朝
+ja_jp	720	正午	正午	正午
+ja_jp	780	昼	昼	昼
+ja_jp	960	夕方	夕方	夕方
+ja_jp	1140	夜	夜	夜
+ja_jp	1380	夜中	夜中	夜中
+jbo	0	AM	AM	a
+jbo	720	PM	PM	p
+jbo_en	0	AM	AM	a
+jbo_en	720	PM	PM	p
+ka	0	ღამ.	ღამით	ღამ.
+ka	300	დილ.	დილით	დილ.
+ka	720	შუადღ.	შუადღეს	შუადღ.
+ka	780	ნაშუადღ.	ნაშუადღევს	ნაშუადღ.
+ka	1080	საღ.	საღამოს	საღ.
+ka	1260	ღამ.	ღამით	ღამ.
+ka_ge	0	ღამ.	ღამით	ღამ.
+ka_ge	300	დილ.	დილით	დილ.
+ka_ge	720	შუადღ.	შუადღეს	შუადღ.
+ka_ge	780	ნაშუადღ.	ნაშუადღევს	ნაშუადღ.
+ka_ge	1080	საღ.	საღამოს	საღ.
+ka_ge	1260	ღამ.	ღამით	ღამ.
+kk	0	түнгі	түнгі	түнгі
+kk	360	таңғы	таңғы	таңғы
+kk	720	түскі	түскі	түскі
+kk	780	түстен кейінгі	түстен кейінгі	түстен кейінгі
+kk	1080	кешкі	кешкі	кешкі
+kk	1260	түнгі	түнгі	түнгі
+kk_kz	0	түнгі	түнгі	түнгі
+kk_kz	360	таңғы	таңғы	таңғы
+kk_kz	720	түскі	түскі	түскі
+kk_kz	780	түстен кейінгі	түстен кейінгі	түстен кейінгі
+kk_kz	1080	кешкі	кешкі	кешкі
+kk_kz	1260	түнгі	түнгі	түнгі
+kn	0	ರಾತ್ರಿ	ರಾತ್ರಿ	ರಾತ್ರಿ
+kn	360	ಬೆಳಗ್ಗೆ	ಬೆಳಗ್ಗೆ	ಬೆಳಗ್ಗೆ
+kn	720	ಮಧ್ಯಾಹ್ನ	ಮಧ್ಯಾಹ್ನ	ಮಧ್ಯಾಹ್ನ
+kn	1080	ಸಂಜೆ	ಸಂಜೆ	ಸಂಜೆ
+kn	1260	ರಾತ್ರಿ	ರಾತ್ರಿ	ರಾತ್ರಿ
+kn_in	0	ರಾತ್ರಿ	ರಾತ್ರಿ	ರಾತ್ರಿ
+kn_in	360	ಬೆಳಗ್ಗೆ	ಬೆಳಗ್ಗೆ	ಬೆಳಗ್ಗೆ
+kn_in	720	ಮಧ್ಯಾಹ್ನ	ಮಧ್ಯಾಹ್ನ	ಮಧ್ಯಾಹ್ನ
+kn_in	1080	ಸಂಜೆ	ಸಂಜೆ	ಸಂಜೆ
+kn_in	1260	ರಾತ್ರಿ	ರಾತ್ರಿ	ರಾತ್ರಿ
+ko	0	밤	밤	밤
+ko	180	아침	아침	아침
+ko	360	오전	오전	오전
+ko	720	정오	정오	정오
+ko	780	오후	오후	오후
+ko	1080	저녁	저녁	저녁
+ko	1260	밤	밤	밤
+ko_kr	0	밤	밤	밤
+ko_kr	180	아침	아침	아침
+ko_kr	360	오전	오전	오전
+ko_kr	720	정오	정오	정오
+ko_kr	780	오후	오후	오후
+ko_kr	1080	저녁	저녁	저녁
+ko_kr	1260	밤	밤	밤
+ksh	0	Uhr vörmiddaachs	Uhr vörmiddaachs	v.M.
+ksh	720	Uhr nommendaachs	Uhr nommendaachs	n.M.
+kw	0	a.m.	a.m.	a.m.
+kw	720	p.m.	p.m.	p.m.
+kw_gb	0	a.m.	a.m.	a.m.
+kw_gb	720	p.m.	p.m.	p.m.
+ky	0	түн ичинде	түн ичинде	түн
+ky	360	эртең менен	эртең менен	эртң мн
+ky	720	чак түш	чак түш	чт
+ky	780	түштөн кийин	түштөн кийин	түшт кйн
+ky	1080	кечинде	кечинде	кечк
+ky	1260	түн ичинде	түн ичинде	түн
+ky_kg	0	түн ичинде	түн ичинде	түн
+ky_kg	360	эртең менен	эртең менен	эртң мн
+ky_kg	720	чак түш	чак түш	чт
+ky_kg	780	түштөн кийин	түштөн кийин	түшт кйн
+ky_kg	1080	кечинде	кечинде	кечк
+ky_kg	1260	түн ичинде	түн ичинде	түн
+la	0	AM	AM	a
+la	720	PM	PM	p
+la_la	0	AM	AM	a
+la_la	720	PM	PM	p
+lb	0	moies	moies	mo.
+lb	720	nomëttes	nomëttes	nomë.
+lb_lu	0	moies	moies	mo.
+lb_lu	720	nomëttes	nomëttes	nomë.
+li	0	AM	AM	a
+li	720	PM	PM	p
+li_li	0	AM	AM	a
+li_li	720	PM	PM	p
+lmo	0	del matin	del matin	AM
+lmo	720	de sira	de sira	PM
+lo	0	ກາງຄືນ	ຕອນກາງຄືນ	ກາງຄືນ
+lo	300	ຕອນເຊົ້າ	ຕອນເຊົ້າ	ຕອນເຊົ້າ
+lo	720	ຕອນທ່ຽງ	ຕອນທ່ຽງ	ຕອນທ່ຽງ
+lo	780	ຕອນບ່າຍ	ຕອນບ່າຍ	ຕອນທ່ຽງ
+lo	960	ຕອນແລງ	ຕອນແລງ	ຕອນແລງ
+lo	1200	ກາງຄືນ	ຕອນກາງຄືນ	ກາງຄືນ
+lo_la	0	ກາງຄືນ	ຕອນກາງຄືນ	ກາງຄືນ
+lo_la	300	ຕອນເຊົ້າ	ຕອນເຊົ້າ	ຕອນເຊົ້າ
+lo_la	720	ຕອນທ່ຽງ	ຕອນທ່ຽງ	ຕອນທ່ຽງ
+lo_la	780	ຕອນບ່າຍ	ຕອນບ່າຍ	ຕອນທ່ຽງ
+lo_la	960	ຕອນແລງ	ຕອນແລງ	ຕອນແລງ
+lo_la	1200	ກາງຄືນ	ຕອນກາງຄືນ	ກາງຄືນ
+lol	0	AM	AM	a
+lol	720	PM	PM	p
+lol_us	0	AM	AM	a
+lol_us	720	PM	PM	p
+lt	0	naktis	naktis	naktis
+lt	360	rytas	rytas	rytas
+lt	720	perpiet	perpiet	perpiet
+lt	780	popietė	popietė	popietė
+lt	1080	vakaras	vakaras	vakaras
+lt_lt	0	naktis	naktis	naktis
+lt_lt	360	rytas	rytas	rytas
+lt_lt	720	perpiet	perpiet	perpiet
+lt_lt	780	popietė	popietė	popietė
+lt_lt	1080	vakaras	vakaras	vakaras
+lv	0	naktī	naktī	naktī
+lv	360	no rīta	no rīta	no rīta
+lv	720	pusd.	pusdienlaikā	pusd.
+lv	780	pēcpusd.	pēcpusdienā	pēcpusd.
+lv	1080	vakarā	vakarā	vakarā
+lv	1380	naktī	naktī	naktī
+lv_lv	0	naktī	naktī	naktī
+lv_lv	360	no rīta	no rīta	no rīta
+lv_lv	720	pusd.	pusdienlaikā	pusd.
+lv_lv	780	pēcpusd.	pēcpusdienā	pēcpusd.
+lv_lv	1080	vakarā	vakarā	vakarā
+lv_lv	1380	naktī	naktī	naktī
+lzh	0	AM	AM	a
+lzh	720	PM	PM	p
+mk	0	ноќе	ноќе	ноќе
+mk	240	наутро	наутро	наутро
+mk	600	претпладне	претпладне	претпл.
+mk	720	напладне	напладне	напл.
+mk	780	попладне	попладне	попл.
+mk	1080	навечер	навечер	навечер
+mk_mk	0	ноќе	ноќе	ноќе
+mk_mk	240	наутро	наутро	наутро
+mk_mk	600	претпладне	претпладне	претпл.
+mk_mk	720	напладне	напладне	напл.
+mk_mk	780	попладне	попладне	попл.
+mk_mk	1080	навечер	навечер	навечер
+mn	0	шөнө	шөнө	шөнө
+mn	360	өглөө	өглөө	өглөө
+mn	720	үд дунд	үд дунд	үд дунд
+mn	780	өдөр	өдөр	өдөр
+mn	1080	орой	орой	орой
+mn	1260	шөнө	шөнө	шөнө
+mn_mn	0	шөнө	шөнө	шөнө
+mn_mn	360	өглөө	өглөө	өглөө
+mn_mn	720	үд дунд	үд дунд	үд дунд
+mn_mn	780	өдөр	өдөр	өдөр
+mn_mn	1080	орой	орой	орой
+mn_mn	1260	шөнө	шөнө	шөнө
+ms	0	pagi	tengah malam	pagi
+ms	60	pagi	pagi	pagi
+ms	720	tengah hari	tengah hari	tengah hari
+ms	840	petang	petang	petang
+ms	1140	malam	malam	malam
+ms_my	0	pagi	tengah malam	pagi
+ms_my	60	pagi	pagi	pagi
+ms_my	720	tengah hari	tengah hari	tengah hari
+ms_my	840	petang	petang	petang
+ms_my	1140	malam	malam	malam
+mt	0	AM	AM	am
+mt	720	PM	PM	pm
+mt_mt	0	AM	AM	am
+mt_mt	720	PM	PM	pm
+nah	0	AM	AM	a
+nah	720	PM	PM	p
+nds	0	AM	AM	AM
+nds	720	PM	PM	PM
+nds_de	0	AM	AM	AM
+nds_de	720	PM	PM	PM
+nl	0	’s nachts	’s nachts	’s nachts
+nl	360	’s ochtends	’s ochtends	’s ochtends
+nl	720	’s middags	’s middags	’s middags
+nl	1080	’s avonds	’s avonds	’s avonds
+nl_be	0	’s nachts	’s nachts	’s nachts
+nl_be	360	’s ochtends	’s ochtends	’s ochtends
+nl_be	720	’s middags	’s middags	’s middags
+nl_be	1080	’s avonds	’s avonds	’s avonds
+nl_nl	0	’s nachts	’s nachts	’s nachts
+nl_nl	360	’s ochtends	’s ochtends	’s ochtends
+nl_nl	720	’s middags	’s middags	’s middags
+nl_nl	1080	’s avonds	’s avonds	’s avonds
+nn	0	natt	på natta	nt.
+nn	360	morg.	på morgonen	mg.
+nn	600	form.	på formiddagen	fm.
+nn	720	etterm.	på ettermiddagen	em.
+nn	1080	kveld	på kvelden	kv.
+nn_no	0	natt	på natta	nt.
+nn_no	360	morg.	på morgonen	mg.
+nn_no	600	form.	på formiddagen	fm.
+nn_no	720	etterm.	på ettermiddagen	em.
+nn_no	1080	kveld	på kvelden	kv.
+no	0	natt	på natten	nt.
+no	360	morg.	på morgenen	mg.
+no	600	form.	på formiddagen	fm.
+no	720	etterm.	på ettermiddagen	em.
+no	1080	kveld	på kvelden	kv.
+no_no	0	natt	på natten	nt.
+no_no	360	morg.	på morgenen	mg.
+no_no	600	form.	på formiddagen	fm.
+no_no	720	etterm.	på ettermiddagen	em.
+no_no	1080	kveld	på kvelden	kv.
+oc	0	AM	AM	AM
+oc	720	PM	PM	PM
+oc_fr	0	AM	AM	AM
+oc_fr	720	PM	PM	PM
+ovd	0	AM	AM	a
+ovd	720	PM	PM	p
+pl	0	w nocy	w nocy	w nocy
+pl	360	rano	rano	rano
+pl	600	przed południem	przed południem	przed poł.
+pl	720	w południe	w południe	w poł.
+pl	780	po południu	po południu	po poł.
+pl	1080	wieczorem	wieczorem	wiecz.
+pl	1260	w nocy	w nocy	w nocy
+pl_pl	0	w nocy	w nocy	w nocy
+pl_pl	360	rano	rano	rano
+pl_pl	600	przed południem	przed południem	przed poł.
+pl_pl	720	w południe	w południe	w poł.
+pl_pl	780	po południu	po południu	po poł.
+pl_pl	1080	wieczorem	wieczorem	wiecz.
+pl_pl	1260	w nocy	w nocy	w nocy
+pls	0	AM	AM	a
+pls	720	PM	PM	p
+pt	0	da madrugada	da madrugada	da madrugada
+pt	360	da manhã	da manhã	da manhã
+pt	720	meio-dia	meio-dia	meio-dia
+pt	780	da tarde	da tarde	da tarde
+pt	1140	da noite	da noite	da noite
+pt_br	0	da madrugada	da madrugada	da madrugada
+pt_br	360	da manhã	da manhã	da manhã
+pt_br	720	meio-dia	meio-dia	meio-dia
+pt_br	780	da tarde	da tarde	da tarde
+pt_br	1140	da noite	da noite	da noite
+pt_pt	0	da madrugada	da madrugada	madrugada
+pt_pt	360	da manhã	da manhã	manhã
+pt_pt	720	meio-dia	meio-dia	meio-dia
+pt_pt	780	da tarde	da tarde	tarde
+pt_pt	1140	da noite	da noite	noite
+qcb	0	AM	AM	a
+qcb	720	PM	PM	p
+qcb_es	0	AM	AM	a
+qcb_es	720	PM	PM	p
+qid	0	AM	AM	a
+qid	720	PM	PM	p
+qya	0	AM	AM	a
+qya	720	PM	PM	p
+qya_aa	0	AM	AM	a
+qya_aa	720	PM	PM	p
+ro	0	noaptea	noaptea	noaptea
+ro	300	dimineața	dimineața	dimineața
+ro	720	amiază	la amiază	amiază
+ro	780	după-amiaza	după-amiaza	după-amiaza
+ro	1080	seara	seara	seara
+ro	1320	noaptea	noaptea	noaptea
+ro_ro	0	noaptea	noaptea	noaptea
+ro_ro	300	dimineața	dimineața	dimineața
+ro_ro	720	amiază	la amiază	amiază
+ro_ro	780	după-amiaza	după-amiaza	după-amiaza
+ro_ro	1080	seara	seara	seara
+ro_ro	1320	noaptea	noaptea	noaptea
+rpr	0	AM	AM	a
+rpr	720	PM	PM	p
+ru	0	ночи	ночи	ночи
+ru	240	утра	утра	утра
+ru	720	полд.	полдень	полд.
+ru	780	дня	дня	дня
+ru	1080	вечера	вечера	веч.
+ru	1320	ночи	ночи	ночи
+ru_ru	0	ночи	ночи	ночи
+ru_ru	240	утра	утра	утра
+ru_ru	720	полд.	полдень	полд.
+ru_ru	780	дня	дня	дня
+ru_ru	1080	вечера	вечера	веч.
+ru_ru	1320	ночи	ночи	ночи
+ry	0	AM	AM	a
+ry	720	PM	PM	p
+ry_ua	0	AM	AM	a
+ry_ua	720	PM	PM	p
+sah	0	ЭИ	ЭИ	ЭИ
+sah	720	ЭК	ЭК	ЭК
+sah_sah	0	ЭИ	ЭИ	ЭИ
+sah_sah	720	ЭК	ЭК	ЭК
+se	0	iđitbeaivet	iđitbeaivet	i.b.
+se	720	eahketbeaivet	eahketbeaivet	e.b.
+se_no	0	iđitbeaivet	iđitbeaivet	i.b.
+se_no	720	eahketbeaivet	eahketbeaivet	e.b.
+sk	0	v noci	v noci	v n.
+sk	240	ráno	ráno	ráno
+sk	540	dopol.	dopoludnia	dop.
+sk	720	napol.	napoludnie	nap.
+sk	780	popol.	popoludní	pop.
+sk	1080	večer	večer	več.
+sk	1320	v noci	v noci	v n.
+sk_sk	0	v noci	v noci	v n.
+sk_sk	240	ráno	ráno	ráno
+sk_sk	540	dopol.	dopoludnia	dop.
+sk_sk	720	napol.	napoludnie	nap.
+sk_sk	780	popol.	popoludní	pop.
+sk_sk	1080	večer	večer	več.
+sk_sk	1320	v noci	v noci	v n.
+sl	0	ponoči	ponoči	po
+sl	360	zjut.	zjutraj	zj
+sl	600	dop.	dopoldan	d
+sl	720	opold.	opoldne	12.00
+sl	780	pop.	popoldan	p
+sl	1080	zveč.	zvečer	zv
+sl	1320	ponoči	ponoči	po
+sl_si	0	ponoči	ponoči	po
+sl_si	360	zjut.	zjutraj	zj
+sl_si	600	dop.	dopoldan	d
+sl_si	720	opold.	opoldne	12.00
+sl_si	780	pop.	popoldan	p
+sl_si	1080	zveč.	zvečer	zv
+sl_si	1320	ponoči	ponoči	po
+so	0	GH	GH	h
+so	720	GD	GD	d
+so_so	0	GH	GH	h
+so_so	720	GD	GD	d
+sq	0	e natës	e natës	e natës
+sq	240	e mëngjesit	e mëngjesit	e mëngjesit
+sq	540	e paradites	e paradites	e paradites
+sq	720	e mesditës	e mesditës	e mesditës
+sq	780	e pasdites	e pasdites	e pasdites
+sq	1080	e mbrëmjes	e mbrëmjes	e mbrëmjes
+sq_al	0	e natës	e natës	e natës
+sq_al	240	e mëngjesit	e mëngjesit	e mëngjesit
+sq_al	540	e paradites	e paradites	e paradites
+sq_al	720	e mesditës	e mesditës	e mesditës
+sq_al	780	e pasdites	e pasdites	e pasdites
+sq_al	1080	e mbrëmjes	e mbrëmjes	e mbrëmjes
+sr	0	ноћу	ноћу	ноћу
+sr	360	ујутру	ујутру	ујутру
+sr	720	подне	подне	подне
+sr	780	по подне	по подне	по подне
+sr	1080	увече	увече	увече
+sr	1260	ноћу	ноћу	ноћу
+sr_cs	0	ноћу	ноћу	ноћу
+sr_cs	360	ујутру	ујутру	ујутру
+sr_cs	720	подне	подне	подне
+sr_cs	780	по подне	по подне	по подне
+sr_cs	1080	увече	увече	увече
+sr_cs	1260	ноћу	ноћу	ноћу
+sr_sp	0	ноћу	ноћу	ноћу
+sr_sp	360	ујутру	ујутру	ујутру
+sr_sp	720	подне	подне	подне
+sr_sp	780	по подне	по подне	по подне
+sr_sp	1080	увече	увече	увече
+sr_sp	1260	ноћу	ноћу	ноћу
+sv	0	på natten	på natten	på natten
+sv	300	på morg.	på morgonen	på morg.
+sv	600	på förm.	på förmiddagen	på förm.
+sv	720	på efterm.	på eftermiddagen	på efterm.
+sv	1080	på kvällen	på kvällen	på kvällen
+sv_se	0	på natten	på natten	på natten
+sv_se	300	på morg.	på morgonen	på morg.
+sv_se	600	på förm.	på förmiddagen	på förm.
+sv_se	720	på efterm.	på eftermiddagen	på efterm.
+sv_se	1080	på kvällen	på kvällen	på kvällen
+sxu	0	AM	AM	a
+sxu	720	PM	PM	p
+szl	0	do połedniŏ	do połedniŏ	do połedniŏ
+szl	720	po połedniu	po połedniu	po połedniu
+ta	0	இரவு	இரவு	இர.
+ta	180	அதிகாலை	அதிகாலை	அதி.
+ta	300	காலை	காலை	கா.
+ta	720	நண்பகல்	நண்பகல்	நண்.
+ta	780	மதியம்	மதியம்	மதி.
+ta	840	பிற்பகல்	பிற்பகல்	பிற்.
+ta	960	மாலை	மாலை	மா.
+ta	1080	அந்தி மாலை	அந்தி மாலை	அந்தி மா.
+ta	1260	இரவு	இரவு	இர.
+ta_in	0	இரவு	இரவு	இர.
+ta_in	180	அதிகாலை	அதிகாலை	அதி.
+ta_in	300	காலை	காலை	கா.
+ta_in	720	நண்பகல்	நண்பகல்	நண்.
+ta_in	780	மதியம்	மதியம்	மதி.
+ta_in	840	பிற்பகல்	பிற்பகல்	பிற்.
+ta_in	960	மாலை	மாலை	மா.
+ta_in	1080	அந்தி மாலை	அந்தி மாலை	அந்தி மா.
+ta_in	1260	இரவு	இரவு	இர.
+th	0	กลางคืน	กลางคืน	กลางคืน
+th	360	ในตอนเช้า	ในตอนเช้า	เช้า
+th	720	เที่ยง	เที่ยง	เที่ยง
+th	780	บ่าย	บ่าย	บ่าย
+th	960	ในตอนเย็น	ในตอนเย็น	เย็น
+th	1080	ค่ำ	ค่ำ	ค่ำ
+th	1260	กลางคืน	กลางคืน	กลางคืน
+th_th	0	กลางคืน	กลางคืน	กลางคืน
+th_th	360	ในตอนเช้า	ในตอนเช้า	เช้า
+th_th	720	เที่ยง	เที่ยง	เที่ยง
+th_th	780	บ่าย	บ่าย	บ่าย
+th_th	960	ในตอนเย็น	ในตอนเย็น	เย็น
+th_th	1080	ค่ำ	ค่ำ	ค่ำ
+th_th	1260	กลางคืน	กลางคืน	กลางคืน
+tl	0	AM	AM	am
+tl	720	PM	PM	pm
+tl_ph	0	AM	AM	am
+tl_ph	720	PM	PM	pm
+tlh	0	AM	AM	a
+tlh	720	PM	PM	p
+tlh_aa	0	AM	AM	a
+tlh_aa	720	PM	PM	p
+tok	0	pi open suno	pi open suno	AM
+tok	720	pi pini suno	pi pini suno	PM
+tr	0	gece	gece	gece
+tr	360	sabah	sabah	sabah
+tr	660	öğleden önce	öğleden önce	öğleden önce
+tr	720	öğle	öğle	ö
+tr	780	öğleden sonra	öğleden sonra	öğleden sonra
+tr	1080	akşamüstü	akşamüstü	akşamüstü
+tr	1140	akşam	akşam	akşam
+tr	1260	gece	gece	gece
+tr_tr	0	gece	gece	gece
+tr_tr	360	sabah	sabah	sabah
+tr_tr	660	öğleden önce	öğleden önce	öğleden önce
+tr_tr	720	öğle	öğle	ö
+tr_tr	780	öğleden sonra	öğleden sonra	öğleden sonra
+tr_tr	1080	akşamüstü	akşamüstü	akşamüstü
+tr_tr	1140	akşam	akşam	akşam
+tr_tr	1260	gece	gece	gece
+tt	0	AM	AM	AM
+tt	720	PM	PM	PM
+tt_ru	0	AM	AM	AM
+tt_ru	720	PM	PM	PM
+tzo	0	AM	AM	a
+tzo	720	PM	PM	p
+tzo_mx	0	AM	AM	a
+tzo_mx	720	PM	PM	p
+uk	0	ночі	ночі	ночі
+uk	240	ранку	ранку	ранку
+uk	720	дня	дня	дня
+uk	1080	вечора	вечора	вечора
+uk_ua	0	ночі	ночі	ночі
+uk_ua	240	ранку	ранку	ранку
+uk_ua	720	дня	дня	дня
+uk_ua	1080	вечора	вечора	вечора
+uz	0	kechasi	kechasi	kechasi
+uz	360	ertalab	ertalab	ertalab
+uz	660	kunduzi	kunduzi	kunduzi
+uz	720	tush payti	tush payti	tush payti
+uz	780	kunduzi	kunduzi	kunduzi
+uz	1080	kechqurun	kechqurun	kechqurun
+uz	1320	kechasi	kechasi	kechasi
+uz_uz	0	kechasi	kechasi	kechasi
+uz_uz	360	ertalab	ertalab	ertalab
+uz_uz	660	kunduzi	kunduzi	kunduzi
+uz_uz	720	tush payti	tush payti	tush payti
+uz_uz	780	kunduzi	kunduzi	kunduzi
+uz_uz	1080	kechqurun	kechqurun	kechqurun
+uz_uz	1320	kechasi	kechasi	kechasi
+val	0	AM	AM	a
+val	720	PM	PM	p
+val_es	0	AM	AM	a
+val_es	720	PM	PM	p
+vec	0	AM	AM	AM
+vec	720	PM	PM	PM
+vec_it	0	AM	AM	AM
+vec_it	720	PM	PM	PM
+vi	0	đêm	đêm	đêm
+vi	240	sáng	sáng	sáng
+vi	720	TR	trưa	tr
+vi	780	chiều	chiều	chiều
+vi	1080	tối	tối	tối
+vi	1260	đêm	đêm	đêm
+vi_vn	0	đêm	đêm	đêm
+vi_vn	240	sáng	sáng	sáng
+vi_vn	720	TR	trưa	tr
+vi_vn	780	chiều	chiều	chiều
+vi_vn	1080	tối	tối	tối
+vi_vn	1260	đêm	đêm	đêm
+vp	0	AM	AM	a
+vp	720	PM	PM	p
+vp_vl	0	AM	AM	a
+vp_vl	720	PM	PM	p
+vro	0	AM	AM	a
+vro	720	PM	PM	p
+yi	0	פֿאַרמיטאָג	פֿאַרמיטאָג	פֿאַרמיטאָג
+yi	720	נאָכמיטאָג	נאָכמיטאָג	נאָכמיטאָג
+yi_de	0	פֿאַרמיטאָג	פֿאַרמיטאָג	פֿאַרמיטאָג
+yi_de	720	נאָכמיטאָג	נאָכמיטאָג	נאָכמיטאָג
+yo	0	Àárọ̀	Àárọ̀	Àárọ̀
+yo	720	Ọ̀sán	Ọ̀sán	Ọ̀sán
+yo_ng	0	Àárọ̀	Àárọ̀	Àárọ̀
+yo_ng	720	Ọ̀sán	Ọ̀sán	Ọ̀sán
+zh	0	凌晨	凌晨	凌晨
+zh	300	早上	清晨	早上
+zh	480	上午	上午	上午
+zh	720	中午	中午	中午
+zh	780	下午	下午	下午
+zh	1140	晚上	晚上	晚上
+zh_cn	0	凌晨	凌晨	凌晨
+zh_cn	300	早上	清晨	早上
+zh_cn	480	上午	上午	上午
+zh_cn	720	中午	中午	中午
+zh_cn	780	下午	下午	下午
+zh_cn	1140	晚上	晚上	晚上
+zh_hk	0	凌晨	凌晨	凌晨
+zh_hk	300	早上	早上	早上
+zh_hk	480	上午	上午	上午
+zh_hk	720	中午	中午	中午
+zh_hk	780	下午	下午	下午
+zh_hk	1140	晚上	晚上	晚上
+zh_tw	0	凌晨	凌晨	凌晨
+zh_tw	300	清晨	清晨	清晨
+zh_tw	480	上午	上午	上午
+zh_tw	720	中午	中午	中午
+zh_tw	780	下午	下午	下午
+zh_tw	1140	晚上	晚上	晚上
+zlm	0	AM	AM	a
+zlm	720	PM	PM	p
+zlm_arab	0	AM	AM	a
+zlm_arab	720	PM	PM	p

@@ -1,0 +1,178 @@
+use super::native_level::NativeLevel;
+use super::*;
+
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID;
+use bbb_protocol::packets::Vec3d;
+
+use crate::entity::item::plain_stack;
+use crate::entity::projectile_shoot::ProjectileShot;
+use crate::entity::save::{read_entity_chunk, write_entity_chunk};
+use crate::entity::store::{EntityIdCounter, EntityLifecycleEvent, EntityStore};
+use crate::entity::{spawn_experience_bottle, tick_entities, EntityData, ExperienceBottleData};
+
+fn experience_bottle_stack() -> RuntimeItemStack {
+    plain_stack("minecraft:experience_bottle", 1).expect("experience bottle is a built-in stack")
+}
+
+fn flying_experience_bottle() -> (EntityStore, NativeLevel, i32) {
+    let mut store = EntityStore::new(11, EntityIdCounter::new());
+    let level = NativeLevel::new();
+    let id = spawn_experience_bottle(
+        &mut store,
+        Vec3d {
+            x: 0.5,
+            y: 68.0,
+            z: 0.5,
+        },
+        ProjectileShot::new(Vec3d {
+            x: 0.0,
+            y: -0.5,
+            z: 0.0,
+        }),
+        experience_bottle_stack(),
+        None,
+    )
+    .expect("a fresh UUID");
+    store.drain_lifecycle_events();
+    (store, level, id)
+}
+
+fn experience_bottle_data(store: &EntityStore, id: i32) -> ExperienceBottleData {
+    match store.get(id).expect("entity is live").data() {
+        EntityData::ExperienceBottle(data) => data.clone(),
+        other => panic!("expected an experience bottle, found {other:?}"),
+    }
+}
+
+#[test]
+fn a_spawned_experience_bottle_carries_motion_and_item_defaults() {
+    let (store, _, id) = flying_experience_bottle();
+    let entity = store.get(id).unwrap();
+    assert_eq!(
+        entity.entity_type_id(),
+        VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
+    );
+    assert_eq!(
+        entity.delta_movement(),
+        Vec3d {
+            x: 0.0,
+            y: -0.5,
+            z: 0.0
+        }
+    );
+    assert_eq!(
+        experience_bottle_data(&store, id).item(),
+        &experience_bottle_stack()
+    );
+    assert!(!experience_bottle_data(&store, id)
+        .projectile()
+        .has_been_shot());
+}
+
+fn land_experience_bottle(store: &mut EntityStore, level: &mut NativeLevel, id: i32) {
+    for _ in 0..200 {
+        level.with_level(|level| tick_entities(store, level, true));
+        if store.get(id).is_none() {
+            return;
+        }
+    }
+    panic!("experience bottle never hit the ground");
+}
+
+#[test]
+fn an_experience_bottle_falls_and_discards_on_block_hit() {
+    let (mut store, mut level, id) = flying_experience_bottle();
+    land_experience_bottle(&mut store, &mut level, id);
+    assert!(store.get(id).is_none());
+    let removed = store
+        .drain_lifecycle_events()
+        .into_iter()
+        .any(|event| matches!(event, EntityLifecycleEvent::Removed { .. }));
+    assert!(removed);
+}
+
+#[test]
+fn an_experience_bottle_round_trips_through_the_entity_chunk_save_form() {
+    let (mut store, mut level, id) = flying_experience_bottle();
+    {
+        let entity = store.get_mut(id).unwrap();
+        entity.set_rot(30.0, -10.0);
+        entity.set_delta_movement(Vec3d {
+            x: 0.15,
+            y: -0.25,
+            z: 0.05,
+        });
+    }
+    for _ in 0..2 {
+        level.with_level(|level| tick_entities(&mut store, level, true));
+    }
+    let before = store.get(id).unwrap().clone();
+    let before_data = experience_bottle_data(&store, id);
+
+    let document = write_entity_chunk(&store, (0, 0)).expect("the save form is well formed");
+    assert_eq!(
+        document.entities().next().unwrap().id(),
+        "minecraft:experience_bottle"
+    );
+
+    let mut reloaded = EntityStore::new(0, EntityIdCounter::new());
+    let ids = read_entity_chunk(&mut reloaded, &document).expect("the save form reads back");
+    let after = reloaded.get(ids[0]).unwrap();
+    assert_eq!(after.uuid(), before.uuid());
+    assert_eq!(after.position(), before.position());
+    assert_eq!(after.delta_movement(), before.delta_movement());
+    assert!(after.needs_sync());
+
+    let after_data = experience_bottle_data(&reloaded, ids[0]);
+    assert_eq!(after_data.item(), before_data.item());
+    assert_eq!(
+        after_data.projectile().owner(),
+        before_data.projectile().owner()
+    );
+    assert_eq!(
+        after_data.projectile().left_owner(),
+        before_data.projectile().left_owner()
+    );
+    assert_eq!(
+        after_data.projectile().has_been_shot(),
+        before_data.projectile().has_been_shot()
+    );
+}
+
+#[test]
+fn experience_from_a_bottle_bursts_away_from_the_face_it_hit() {
+    let mut store = EntityStore::new(11, EntityIdCounter::new());
+    let mut level = NativeLevel::new();
+    level.set(
+        bbb_protocol::packets::BlockPos { x: 2, y: 68, z: 0 },
+        state_id("minecraft:stone"),
+    );
+    let id = spawn_experience_bottle(
+        &mut store,
+        Vec3d {
+            x: 0.5,
+            y: 68.5,
+            z: 0.5,
+        },
+        ProjectileShot::new(Vec3d {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        }),
+        experience_bottle_stack(),
+        None,
+    )
+    .unwrap();
+    land_experience_bottle(&mut store, &mut level, id);
+    let orbs: Vec<_> = store
+        .ids()
+        .into_iter()
+        .filter_map(|id| store.get(id))
+        .filter(|entity| matches!(entity.data(), EntityData::ExperienceOrb(_)))
+        .collect();
+    assert!(!orbs.is_empty());
+    for orb in orbs {
+        assert!(orb.position().x <= 1.75 + 1.0e-9, "{:?}", orb.position());
+        assert!(orb.delta_movement().x <= 0.0, "{:?}", orb.delta_movement());
+    }
+}

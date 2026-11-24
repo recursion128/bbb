@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+project_root="$repo_root"
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: scripts/python <python-command-or-script> [args...]" >&2
+  exit 2
+fi
+if ! command -v uv >/dev/null 2>&1; then
+  echo "bbb Python tooling requires uv 0.12.3; install it, then run: cargo dev bootstrap" >&2
+  exit 2
+fi
+has_venv_python() {
+  [ -x "$1/.venv/bin/python" ] || [ -x "$1/.venv/Scripts/python.exe" ]
+}
+if ! has_venv_python "$repo_root"; then
+  project_root="$({
+    git -C "$repo_root" worktree list --porcelain 2>/dev/null |
+      sed -n 's/^worktree //p' |
+      sed -n '1p'
+  })"
+  if [ -z "$project_root" ] || [ ! -d "$project_root" ]; then
+    echo "cannot resolve the primary Git worktree from: $repo_root" >&2
+    exit 2
+  fi
+fi
+if ! has_venv_python "$project_root" || \
+   [ ! -f "$project_root/pyproject.toml" ] || \
+   [ ! -f "$project_root/uv.lock" ]; then
+  echo "bbb Python environment is not prepared in the primary worktree" >&2
+  echo "run: cargo dev bootstrap (from $project_root)" >&2
+  exit 2
+fi
+
+export PYTHONPATH="$repo_root/scripts"
+
+exec uv run --offline --locked --exact --no-python-downloads \
+  --project "$project_root" -- "$@"

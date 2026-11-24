@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+project_root="$repo_root"
+resolve_venv_python() {
+  if [ -x "$1/.venv/bin/python" ]; then
+    printf '%s\n' "$1/.venv/bin/python"
+    return 0
+  fi
+  if [ -x "$1/.venv/Scripts/python.exe" ]; then
+    printf '%s\n' "$1/.venv/Scripts/python.exe"
+    return 0
+  fi
+  return 1
+}
+if ! python="$(resolve_venv_python "$repo_root")"; then
+  project_root="$({
+    git -C "$repo_root" worktree list --porcelain 2>/dev/null |
+      sed -n 's/^worktree //p' |
+      sed -n '1p'
+  })"
+  if [ -z "$project_root" ] || [ ! -d "$project_root" ]; then
+    echo "cannot resolve the primary Git worktree from: $repo_root" >&2
+    exit 2
+  fi
+  python="$(resolve_venv_python "$project_root" || true)"
+fi
+if [ -z "${python:-}" ] || [ ! -x "$python" ] || \
+   [ ! -f "$project_root/pyproject.toml" ] || \
+   [ ! -f "$project_root/uv.lock" ]; then
+  echo "bbb Python environment is not prepared in the primary worktree" >&2
+  echo "run: cargo dev bootstrap (from $project_root)" >&2
+  exit 2
+fi
+
+# Do not insert `uv run` here. uv supervises its Python child instead of
+# replacing itself, so callers would record uv's PID while `exec` creates a
+# different process group. This entry point must preserve one PID from the
+# caller through execution of the supervised command.
+export PYTHONPATH="$repo_root/scripts"
+exec "$python" -m bbb_tools.execution.cli "$@"

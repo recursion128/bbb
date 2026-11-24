@@ -1,0 +1,130 @@
+[package]
+name = "bbb-client"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+lifecycle-soak = ["bbb-client-render/lifecycle-soak"]
+
+[lib]
+name = "bbb_client"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "bbb-client"
+path = "src/main.rs"
+
+[dependencies]
+bbb-client-clock = { path = "../bbb-client-clock" }
+anyhow = { workspace = true }
+arc-swap = { workspace = true }
+base64 = { workspace = true }
+bbb-client-net = { path = "../bbb-client-net" }
+bbb-client-assets = { path = "../bbb-client-assets" }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-render-types = { path = "../bbb-render-types" }
+bbb-client-render = { path = "../bbb-client-render" }
+bbb-client-world = { path = "../bbb-client-world" }
+chrono = { workspace = true }
+glam = { workspace = true }
+hexf-parse = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+url = { workspace = true }
+winit = { workspace = true }
+zip = { workspace = true }
+image = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = { workspace = true }
+bbb-client-audio = { path = "../bbb-client-audio", features = ["device"] }
+bbb-client-probe = { path = "../bbb-client-probe" }
+bbb-mcp = { path = "../bbb-mcp" }
+clap = { workspace = true }
+isocountry = { workspace = true }
+libc = { workspace = true }
+pollster = { workspace = true }
+sys-locale = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt-multi-thread"] }
+tracing-subscriber = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+bbb-client-audio = { path = "../bbb-client-audio", default-features = false, features = ["web"] }
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+wasm-bindgen-rayon = { workspace = true }
+web-sys = { workspace = true, features = [
+    "Blob",
+    "BlobPropertyBag",
+    "Cache",
+    "CacheStorage",
+    "Crypto",
+    "Clipboard",
+    "CloseEvent",
+    "console",
+    "CssStyleDeclaration",
+    "DataTransfer",
+    "Document",
+    "DragEvent",
+    "Element",
+    "Event",
+    "File",
+    "FileList",
+    "HtmlAnchorElement",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "KeyboardEvent",
+    "Location",
+    "MessageEvent",
+    "Navigator",
+    "ReadableStream",
+    "ReadableStreamDefaultReader",
+    "Request",
+    "Response",
+    "SpeechSynthesis",
+    "SpeechSynthesisUtterance",
+    "Storage",
+    "Url",
+    "UrlSearchParams",
+    "WebSocket",
+    "Window",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11-dl = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_Media_MediaFoundation",
+    "Win32_System_Com",
+    "Win32_System_Console",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+    "std",
+    "NSApplication",
+    "NSImage",
+    "NSResponder",
+] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+    "std",
+    "NSData",
+] }

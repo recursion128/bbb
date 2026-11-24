@@ -1,0 +1,58 @@
+[package]
+name = "bbb-client-audio"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+device = ["dep:libloading", "dep:symphonia"]
+web = ["dep:symphonia"]
+
+[dependencies]
+bbb-client-assets = { path = "../bbb-client-assets" }
+bbb-client-clock = { path = "../bbb-client-clock" }
+anyhow = { workspace = true }
+libloading = { workspace = true, optional = true }
+serde = { workspace = true }
+sha1 = { workspace = true }
+symphonia = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true }
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = [
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioContext",
+    "AudioContextState",
+    "AudioDestinationNode",
+    "AudioListener",
+    "AudioNode",
+    "AudioParam",
+    "AudioScheduledSourceNode",
+    "Cache",
+    "CacheStorage",
+    "DistanceModelType",
+    "GainNode",
+    "Headers",
+    "PannerNode",
+    "PanningModelType",
+    "Response",
+    "Window",
+] }
+
+[dev-dependencies]
+base64 = { workspace = true }
+symphonia = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+kira = { version = "0.12.1", default-features = false, features = ["ogg", "vorbis"] }

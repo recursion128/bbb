@@ -1,0 +1,19 @@
+[package]
+name = "bbb-server-types"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bbb-facts = { path = "../bbb-facts", default-features = false, features = ["server-facts"] }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-registry-codec = { path = "../bbb-registry-codec" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }

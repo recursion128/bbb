@@ -1,0 +1,138 @@
+use super::*;
+
+#[test]
+fn ghast_layer_passes_match_vanilla_renderer() {
+    let passes = ghast_textured_layer_passes(false);
+    assert_eq!(passes.len(), 1);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(passes[0].texture, GHAST_TEXTURE_REF);
+    // The vestigial `parts` slice is nulled; emit builds `GhastModel::new()` and renders its tree.
+    assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(passes[0].order, 0);
+    // Vanilla `GhastRenderer.getTextureLocation`: `isCharging` swaps to the shooting face.
+    let charging = ghast_textured_layer_passes(true);
+    assert_eq!(charging[0].texture, GHAST_SHOOTING_TEXTURE_REF);
+}
+
+#[test]
+fn ghast_texture_ref_matches_vanilla_renderer() {
+    assert_eq!(GHAST_TEXTURE_REF.size, [64, 32]);
+    assert_eq!(GHAST_SHOOTING_TEXTURE_REF.size, [64, 32]);
+    assert_eq!(ModelLayer::GHAST, ModelLayer::GHAST);
+    assert!(entity_model_texture_refs().contains(&GHAST_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&GHAST_SHOOTING_TEXTURE_REF));
+}
+
+#[test]
+fn ghast_tentacle_x_rot_matches_vanilla_formula() {
+    // Vanilla GhastModel.animateTentacles: tentacle[i].xRot = 0.2 * sin(ageInTicks*0.3 + i)
+    // + 0.4. Driven purely by ageInTicks (never zero), so the tentacles always wave.
+    for &(index, age) in &[(0usize, 0.0f32), (3, 12.5), (8, 40.0)] {
+        let expected = 0.2 * (age * 0.3 + index as f32).sin() + 0.4;
+        assert!((ghast_tentacle_x_rot(index, age) - expected).abs() < 1e-7);
+    }
+    // At ageInTicks 0 the tentacles already carry a nonzero tilt (sin(i) terms), so there is
+    // no rest pose.
+    assert!((ghast_tentacle_x_rot(0, 0.0) - 0.4).abs() < 1e-7);
+    assert_ne!(ghast_tentacle_x_rot(1, 0.0), 0.0);
+}
+
+#[test]
+fn ghast_textured_mesh_uses_vanilla_uvs_and_scaling() {
+    let (atlas, _) = build_entity_model_texture_atlas(&ghast_texture_images()).unwrap();
+    let base = EntityModelInstance::ghast(57, [0.0, 64.0, 0.0], 0.0).with(|s| {
+        s.light_coords = (6_u32 << 4) | (13_u32 << 20);
+        s.white_overlay_progress = 0.8;
+        s.has_red_overlay = true;
+    });
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 60);
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(meshes.cutout.indices.len(), 360);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.render_state.shader_light()
+            && vertex.overlay == base.render_state.overlay_coords()));
+    assert_ne!(base.render_state.overlay_coords(), [0.0, 10.0]);
+    // The body's first vertex samples u = 2*depth/width = 32/64 = 0.5 at the texOffs(0, 0)
+    // top edge.
+    let body = ModelLayer::GHAST.bake().part_vertex_range("body").unwrap();
+    assert_close2(meshes.cutout.vertices[body.start].uv, [0.5, 0.0]);
+    let (min, max) = textured_mesh_extents(&meshes.cutout);
+    assert_close3(min, [-2.2500002, 60.56373, -3.5384488]);
+    assert_close3(max, [2.2500002, 68.054504, 2.2500002]);
+
+    let charging = EntityModelInstance::new(
+        58,
+        EntityModelKind::Ghast { charging: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let charging_meshes = entity_model_textured_meshes(&[charging], &atlas);
+
+    assert_eq!(
+        charging_meshes.cutout.vertices.len(),
+        meshes.cutout.vertices.len()
+    );
+}
+
+#[test]
+fn ghast_tentacles_wave_as_age_in_ticks_advances() {
+    // Vanilla runs setupAnim every frame, waving the nine tentacles by ageInTicks while the
+    // body holds still.
+    let body = ModelLayer::GHAST.bake().part_vertex_range("body").unwrap();
+    let base = EntityModelInstance::ghast(57, [0.0, 64.0, 0.0], 0.0);
+    let early = entity_model_mesh(&[base]);
+    let later = entity_model_mesh(&[base.with(|s| s.age_in_ticks = 31.4)]);
+    assert_eq!(early.vertices.len(), later.vertices.len());
+    assert_ne!(
+        early.vertices, later.vertices,
+        "the tentacles wave as ageInTicks advances"
+    );
+    assert_eq!(
+        early.vertices[body.clone()],
+        later.vertices[body.clone()],
+        "the body does not depend on ageInTicks"
+    );
+
+    let (atlas, _) = build_entity_model_texture_atlas(&ghast_texture_images()).unwrap();
+    let early_t = entity_model_textured_meshes(&[base], &atlas);
+
+    let later_instance = base.with(|s| s.age_in_ticks = 31.4);
+    let later_t = entity_model_textured_meshes(&[later_instance], &atlas);
+
+    assert_ne!(
+        early_t.cutout.vertices, later_t.cutout.vertices,
+        "the textured tentacles wave too"
+    );
+    assert_eq!(
+        early_t.cutout.vertices[body.clone()],
+        later_t.cutout.vertices[body],
+        "the textured body does not depend on ageInTicks"
+    );
+}
+
+fn ghast_texture_images() -> Vec<EntityModelTextureImage> {
+    [GHAST_TEXTURE_REF, GHAST_SHOOTING_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}

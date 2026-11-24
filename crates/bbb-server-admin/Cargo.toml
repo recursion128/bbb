@@ -1,0 +1,22 @@
+[package]
+name = "bbb-server-admin"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bbb-mcp = { path = "../bbb-mcp" }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-server-core = { path = "../bbb-server-core" }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["net", "rt-multi-thread"] }

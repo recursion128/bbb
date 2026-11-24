@@ -1,0 +1,98 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
+  RUST_MIN_STACK: "16777216"
+  UV_VERSION: "0.12.3"
+
+jobs:
+  build-pages:
+    name: Build Docs & WebGPU Pages Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WASM_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-wasm')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WEB_OUT_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-web-dist')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo and WASM artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+            ${{ runner.temp }}/bbb-target-wasm
+            ${{ runner.temp }}/bbb-target-wasm-bindgen-cli
+            ${{ runner.temp }}/bbb-wasm-bindgen-*
+          key: pages-wasm-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            pages-wasm-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            pages-wasm-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Build release threaded WASM bundle
+        run: cargo dev build-web --release --out-dir "${{ runner.temp }}/bbb-web-dist"
+
+      - name: Build static Pages site (docs + COOP/COEP WebGPU portal)
+        run: >
+          cargo dev python scripts/build_pages_site.py
+          --web-dist "${{ runner.temp }}/bbb-web-dist"
+          --out "${{ runner.temp }}/pages-site"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/pages-site
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: [build-pages]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

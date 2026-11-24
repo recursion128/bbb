@@ -1,0 +1,1679 @@
+//! Held-item attachment: world-space transforms that place an item on a posed entity model. The renderer
+//! owns the model pose (the posed arm bone or head bone); the native layer resolves the item to quads and
+//! applies the per-item display transform before baking the held-item mesh into the item-model pass.
+
+use std::f32::consts::{FRAC_PI_2, PI};
+
+use glam::{Mat4, Vec3};
+
+use super::model_layers::{
+    allay_arm_holding_x_rot, allay_model, armor_stand_model, copper_golem_model, fox_model,
+    giant_model, illager_model, piglin_model, player_model, skeleton_model, villager_model,
+    wandering_trader_model, witch_model, zombie_model, zombie_variant_model,
+};
+use super::transforms::{
+    entity_model_root_transform, fox_model_root_transform, illusioner_model_root_transform,
+    player_model_root_transform, zombie_variant_root_transform,
+};
+use super::{EntityModelInstance, EntityModelKind, SpearKineticWeapon, ZombieVariantModelFamily};
+
+const CUSTOM_HEAD_ITEM_SCALE: f32 = 0.625;
+const CUSTOM_HEAD_SKULL_SCALE: f32 = 1.1875;
+const PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE: f32 = 1.001_953_1;
+const VILLAGER_CUSTOM_HEAD_Y_OFFSET: f32 = -0.117_187_5;
+const VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET: f32 = -0.074_218_75;
+
+#[derive(Debug, Clone, Copy)]
+struct CustomHeadTransforms {
+    y_offset: f32,
+    skull_y_offset: f32,
+    horizontal_scale: f32,
+}
+
+impl CustomHeadTransforms {
+    const DEFAULT: Self = Self {
+        y_offset: 0.0,
+        skull_y_offset: 0.0,
+        horizontal_scale: 1.0,
+    };
+
+    const PIGLIN: Self = Self {
+        y_offset: 0.0,
+        skull_y_offset: 0.0,
+        horizontal_scale: PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE,
+    };
+
+    const VILLAGER: Self = Self {
+        y_offset: VILLAGER_CUSTOM_HEAD_Y_OFFSET,
+        skull_y_offset: VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET,
+        horizontal_scale: 1.0,
+    };
+}
+
+/// The model→world transform of the hand attach point for a humanoid's main (`right`) or off (`left`)
+/// hand, or `None` if the instance is not a humanoid that holds items the standard way. Composes the
+/// posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
+/// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±offsetX, offsetY, offsetZ)/16`)
+/// plus the attack-arm spear item transform (`SpearAnimations.thirdPersonAttackItem`) when the
+/// rendered player is mid-STAB swing, followed by the spear use transform
+/// (`SpearAnimations.thirdPersonUseItem`) when the same hand is using a spear.
+/// Vanilla `useBabyOffset` selects the offsets: adult `(1, 2, -10)`, baby `(0, 1, -4.5)`. The baby
+/// humanoid families (zombie, zombie variants, piglin) bake their reduced proportions straight into an
+/// explicit baby mesh (no part scale), so the baby attach uses the same `root · arm` formula on the baby
+/// model with only the offset swapped. The caller applies the item's third-person display transform and
+/// the `0..=16`→unit model on top.
+pub fn humanoid_hand_attach_transform(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Option<Mat4> {
+    let arm_name = if left_hand { "left_arm" } else { "right_arm" };
+    let (arm_world, baby) = humanoid_arm_world_transform(instance, arm_name)?;
+    Some(
+        item_in_hand_layer_base_transform(arm_world, left_hand, baby)
+            * item_in_hand_layer_item_transform(instance, left_hand),
+    )
+}
+
+/// Clone-aware variant of [`humanoid_hand_attach_transform`]. Ordinary humanoids return one transform;
+/// an invisible illusioner returns one transform for each vanilla clone root because
+/// `IllusionerRenderer.submit` wraps the full `LivingEntityRenderer.submit` call in the clone loop.
+pub fn humanoid_hand_attach_transforms(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Vec<Mat4> {
+    if instance.illusioner_body_visible_when_invisible() {
+        let arm_name = if left_hand { "left_arm" } else { "right_arm" };
+        let Some((_, arm, baby)) = model_bone_transform(instance, arm_name) else {
+            return Vec::new();
+        };
+        let item_transform = item_in_hand_layer_item_transform(instance, left_hand);
+        return (0..instance.render_state.kind.illager().clone_offsets.len())
+            .map(|index| {
+                let root = illusioner_model_root_transform(
+                    instance,
+                    instance.illusioner_clone_offset(index),
+                );
+                item_in_hand_layer_base_transform(root * arm, left_hand, baby) * item_transform
+            })
+            .collect();
+    }
+
+    humanoid_hand_attach_transform(instance, left_hand)
+        .into_iter()
+        .collect()
+}
+
+fn item_in_hand_layer_base_transform(arm_world: Mat4, left_hand: bool, baby: bool) -> Mat4 {
+    let sign = if left_hand { -1.0 } else { 1.0 };
+    // Vanilla `ItemInHandLayer.submitArmWithItem`: `offsetX/Y/Z` are `(1, 2, -10)` adult, `(0, 1, -4.5)`
+    // baby (so baby hands share the X=0 column — the left/right split comes only from the arm bone).
+    let (offset_x, offset_y, offset_z) = if baby {
+        (0.0, 1.0, -4.5)
+    } else {
+        (1.0, 2.0, -10.0)
+    };
+    arm_world
+        * Mat4::from_rotation_x(-FRAC_PI_2)
+        * Mat4::from_rotation_y(PI)
+        * Mat4::from_translation(Vec3::new(
+            sign * offset_x / 16.0,
+            offset_y / 16.0,
+            offset_z / 16.0,
+        ))
+}
+
+fn item_in_hand_layer_item_transform(instance: &EntityModelInstance, left_hand: bool) -> Mat4 {
+    let mut transform = Mat4::IDENTITY;
+    if left_hand == instance.render_state.attack_arm_off_hand
+        && instance.render_state.main_hand_swing_is_stab
+    {
+        transform *= spear_third_person_attack_item_transform(instance.render_state.attack_anim);
+    }
+    if let Some(kinetic_weapon) = instance.render_state.kind.player().using_spear {
+        if left_hand == instance.render_state.use_item_off_hand {
+            transform *= spear_third_person_use_item_transform(
+                kinetic_weapon,
+                instance.render_state.crossbow_charge_ticks,
+                instance.render_state.attack_anim,
+                left_hand,
+                instance.render_state.ticks_since_kinetic_hit_feedback,
+            );
+        }
+    }
+    transform
+}
+
+/// Vanilla `SpearAnimations.thirdPersonAttackItem`: after the standard hand offset and before the item
+/// stack submit, a STAB swing rotates the item around `(0, -0.125, 0.125)` by
+/// `Axis.XN.rotationDegrees(70 * (attack - retract))`, then translates by the spear kinetic weapon's
+/// fixed `forwardMovement = 0.38` along local Y.
+fn spear_third_person_attack_item_transform(attack_anim: f32) -> Mat4 {
+    if attack_anim <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let attack = progress(attack_anim, 0.05, 0.2).powi(2);
+    let retract = ease_in_out_expo(progress(attack_anim, 0.4, 1.0));
+    let amount = attack - retract;
+    rotate_around(
+        Vec3::new(0.0, -0.125, 0.125),
+        Mat4::from_rotation_x(-(70.0 * amount).to_radians()),
+    ) * Mat4::from_translation(Vec3::new(0.0, 0.38 * amount, 0.0))
+}
+
+/// Vanilla `SpearAnimations.thirdPersonUseItem` for the held-item layer. This applies after the standard
+/// hand offset and after the STAB attack item transform. The first translate includes the kinetic
+/// hit-feedback kickback sampled from `LivingEntityRenderState.ticksSinceKineticHitFeedback`.
+fn spear_third_person_use_item_transform(
+    kinetic_weapon: SpearKineticWeapon,
+    ticks_using_item: f32,
+    attack_anim: f32,
+    left_hand: bool,
+    ticks_since_kinetic_hit_feedback: f32,
+) -> Mat4 {
+    if ticks_using_item == 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let attack = progress(attack_anim, 0.05, 0.2).powi(2);
+    let retract = ease_in_out_expo(progress(attack_anim, 0.4, 1.0));
+    let params = kinetic_weapon.use_params(ticks_using_item);
+    let invert = if left_hand { -1.0 } else { 1.0 };
+    let raise_progress_modified = 1.0 - ease_out_back(1.0 - params.raise_progress);
+    let hit_feedback = spear_kinetic_hit_feedback_amount(ticks_since_kinetic_hit_feedback);
+    Mat4::from_translation(Vec3::new(
+        0.0,
+        -hit_feedback * 0.4,
+        -kinetic_weapon.forward_movement * (raise_progress_modified - params.raise_back_progress)
+            + hit_feedback,
+    )) * rotate_around(
+        Vec3::new(0.0, -0.03125, 0.125),
+        Mat4::from_rotation_x(
+            -(70.0 * (params.raise_progress - params.raise_back_progress)
+                - 40.0 * (attack - retract))
+                .to_radians(),
+        ),
+    ) * rotate_around(
+        Vec3::new(0.0, 0.0, 0.125),
+        Mat4::from_rotation_y(
+            (invert
+                * 90.0
+                * (params.raise_progress - params.sway_progress + 3.0 * retract + attack))
+                .to_radians(),
+        ),
+    )
+}
+
+fn spear_kinetic_hit_feedback_amount(ticks_since_feedback_start: f32) -> f32 {
+    0.4 * (ease_out_quart(progress(ticks_since_feedback_start, 1.0, 3.0))
+        - ease_in_out_sine(progress(ticks_since_feedback_start, 3.0, 10.0)))
+}
+
+fn rotate_around(pivot: Vec3, rotation: Mat4) -> Mat4 {
+    Mat4::from_translation(pivot) * rotation * Mat4::from_translation(-pivot)
+}
+
+fn progress(value: f32, start: f32, end: f32) -> f32 {
+    ((value - start) / (end - start)).clamp(0.0, 1.0)
+}
+
+fn ease_in_out_expo(x: f32) -> f32 {
+    if x < 0.5 {
+        if x == 0.0 {
+            0.0
+        } else {
+            2.0_f32.powf(20.0 * x - 10.0) / 2.0
+        }
+    } else if x == 1.0 {
+        1.0
+    } else {
+        (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+    }
+}
+
+fn ease_in_out_sine(x: f32) -> f32 {
+    -((PI * x).cos() - 1.0) / 2.0
+}
+
+fn ease_out_back(x: f32) -> f32 {
+    let delta = x - 1.0;
+    1.0 + 2.70158 * delta.powi(3) + 1.70158 * delta.powi(2)
+}
+
+fn ease_out_quart(x: f32) -> f32 {
+    1.0 - (1.0 - x).powi(4)
+}
+
+/// The model→world transform used by vanilla `CopperGolemModel.translateToHand` plus
+/// `ItemInHandLayer.submitArmWithItem`. The model is prepared from the complete projected copper-golem
+/// animation state first, so `root -> body -> arm` includes the held-item clamp and interaction keyframe
+/// placement. Vanilla then adds a ±90° Y rotation (right/left), a small forward offset, the standard
+/// third-person hand rotation, and the adult hand offset.
+pub fn copper_golem_hand_attach_transform(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Option<Mat4> {
+    let EntityModelKind::CopperGolem { .. } = instance.kind else {
+        return None;
+    };
+
+    let arm_name = if left_hand { "left_arm" } else { "right_arm" };
+    let model = copper_golem_model(instance);
+    let arm_world = entity_model_root_transform(instance)
+        * model.try_descendant_attach_transform(&["body", arm_name])?;
+    let sign = if left_hand { -1.0 } else { 1.0 };
+    let hand_y_rot = if left_hand { FRAC_PI_2 } else { -FRAC_PI_2 };
+    Some(
+        arm_world
+            * Mat4::from_rotation_y(hand_y_rot)
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.125))
+            * Mat4::from_rotation_x(-FRAC_PI_2)
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
+    )
+}
+
+/// The model->world transform used by vanilla `AllayModel.translateToHand` plus
+/// `ItemInHandLayer.submitArmWithItem`. Unlike humanoids, the allay ignores the `arm` parameter in
+/// `translateToHand`: both hand item states first walk `root -> body`, offset forward/up, rotate only
+/// by `right_arm.xRot`, scale to `0.7`, and then the standard ItemInHandLayer left/right offset splits
+/// the submitted item.
+pub fn allay_hand_attach_transform(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Option<Mat4> {
+    let EntityModelKind::Allay = instance.kind else {
+        return None;
+    };
+
+    let model = allay_model(instance);
+    let body = entity_model_root_transform(instance)
+        * model.try_descendant_attach_transform(&["root", "body"])?;
+    let arm_x = allay_arm_holding_x_rot(
+        instance.render_state.walk_animation_speed,
+        instance.render_state.kind.allay().holding_item_progress,
+    );
+    let sign = if left_hand { -1.0 } else { 1.0 };
+    Some(
+        body * Mat4::from_translation(Vec3::new(0.0, 1.0 / 16.0, 3.0 / 16.0))
+            * Mat4::from_rotation_x(arm_x)
+            * Mat4::from_scale(Vec3::splat(0.7))
+            * Mat4::from_translation(Vec3::new(1.0 / 16.0, 0.0, 0.0))
+            * Mat4::from_rotation_x(-FRAC_PI_2)
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
+    )
+}
+
+/// The model→world transform used by vanilla `CustomHeadLayer` for non-skull, non-armor head-slot
+/// items. The native item path applies the stack's retained `ItemDisplayContext.HEAD` transform after
+/// this matrix.
+pub fn custom_head_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let (root, head, transforms) = custom_head_item_base_transform(instance)?;
+    Some(custom_head_item_layer_transform(root, head, transforms))
+}
+
+/// Clone-aware variant of [`custom_head_item_transform`]. Vanilla `CustomHeadLayer` is inside
+/// `LivingEntityRenderer.submit`, so `IllusionerRenderer.submit` runs it once per invisible clone.
+pub fn custom_head_item_transforms(instance: &EntityModelInstance) -> Vec<Mat4> {
+    if instance.illusioner_body_visible_when_invisible() {
+        let Some((_, head, transforms)) = custom_head_item_base_transform(instance) else {
+            return Vec::new();
+        };
+        return (0..instance.render_state.kind.illager().clone_offsets.len())
+            .map(|index| {
+                let root = illusioner_model_root_transform(
+                    instance,
+                    instance.illusioner_clone_offset(index),
+                );
+                custom_head_item_layer_transform(root, head, transforms)
+            })
+            .collect();
+    }
+
+    custom_head_item_transform(instance).into_iter().collect()
+}
+
+/// The model→world transform used by vanilla `PlayerItemInHandLayer.renderItemHeldToEye`: a scoping
+/// avatar's spyglass attaches to the posed head bone with `head.xRot` clamped to `[-π/6, π/2]`,
+/// then `CustomHeadLayer.translateToHead(Transforms.DEFAULT)` and the arm-side eye offset
+/// `((left ? -2.5 : 2.5) / 16, -0.0625, 0)`. Only avatar models (players and mannequins) install
+/// `PlayerItemInHandLayer`, so every other kind returns `None` and keeps the in-hand render. The
+/// native item path applies the stack's retained `ItemDisplayContext.HEAD` transform after this
+/// matrix.
+pub fn player_held_to_eye_transform(
+    instance: &EntityModelInstance,
+    left_arm: bool,
+) -> Option<Mat4> {
+    let EntityModelKind::Player { skin, .. } = instance.kind else {
+        return None;
+    };
+    let mut model = player_model(skin.is_slim(), instance);
+    let head = model.child_mut("head");
+    head.pose.rotation[0] = head.pose.rotation[0].clamp(-PI / 6.0, FRAC_PI_2);
+    let head_transform = model.try_child_attach_transform("head")?;
+    let sign = if left_arm { -1.0 } else { 1.0 };
+    Some(
+        custom_head_item_layer_transform(
+            player_model_root_transform(instance),
+            head_transform,
+            CustomHeadTransforms::DEFAULT,
+        ) * Mat4::from_translation(Vec3::new(sign * 2.5 / 16.0, -0.0625, 0.0)),
+    )
+}
+
+/// The model->world transform used by vanilla `CustomHeadLayer` for skull block items in the HEAD
+/// equipment slot. Unlike the generic item branch, the skull branch calls `SkullBlockRenderer`
+/// directly, so it does not apply the item display rotation or the negative item-model scale.
+pub(in crate::entity_models) fn custom_head_skull_transform(
+    instance: &EntityModelInstance,
+) -> Option<Mat4> {
+    let (root, head, transforms) = custom_head_item_base_transform(instance)?;
+    Some(custom_head_skull_layer_transform(root, head, transforms))
+}
+
+pub(in crate::entity_models) fn illusioner_head_skull_transform(root: Mat4, head: Mat4) -> Mat4 {
+    custom_head_skull_layer_transform(root, head, CustomHeadTransforms::DEFAULT)
+}
+
+fn custom_head_item_layer_transform(
+    root: Mat4,
+    head: Mat4,
+    transforms: CustomHeadTransforms,
+) -> Mat4 {
+    root * Mat4::from_scale(Vec3::new(
+        transforms.horizontal_scale,
+        1.0,
+        transforms.horizontal_scale,
+    )) * head
+        * Mat4::from_translation(Vec3::new(0.0, -0.25 + transforms.y_offset, 0.0))
+        * Mat4::from_rotation_y(PI)
+        * Mat4::from_scale(Vec3::new(
+            CUSTOM_HEAD_ITEM_SCALE,
+            -CUSTOM_HEAD_ITEM_SCALE,
+            -CUSTOM_HEAD_ITEM_SCALE,
+        ))
+}
+
+fn custom_head_skull_layer_transform(
+    root: Mat4,
+    head: Mat4,
+    transforms: CustomHeadTransforms,
+) -> Mat4 {
+    root * Mat4::from_scale(Vec3::new(
+        transforms.horizontal_scale,
+        1.0,
+        transforms.horizontal_scale,
+    )) * head
+        * Mat4::from_translation(Vec3::new(0.0, transforms.skull_y_offset, 0.0))
+        * Mat4::from_scale(Vec3::splat(CUSTOM_HEAD_SKULL_SCALE))
+}
+
+fn custom_head_item_base_transform(
+    instance: &EntityModelInstance,
+) -> Option<(Mat4, Mat4, CustomHeadTransforms)> {
+    let transforms = match instance.kind {
+        EntityModelKind::Giant => return None,
+        EntityModelKind::Villager { .. }
+        | EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            ..
+        } => CustomHeadTransforms::VILLAGER,
+        EntityModelKind::Piglin { .. } => CustomHeadTransforms::PIGLIN,
+        EntityModelKind::CopperGolem { .. } => {
+            let model = copper_golem_model(instance);
+            let head = model.try_descendant_attach_transform(&["body", "head"])?
+                * Mat4::from_translation(Vec3::new(0.0, 0.125, 0.0))
+                * Mat4::from_scale(Vec3::splat(1.0625));
+            return Some((
+                entity_model_root_transform(instance),
+                head,
+                CustomHeadTransforms::DEFAULT,
+            ));
+        }
+        _ => CustomHeadTransforms::DEFAULT,
+    };
+    let (root, head, _) = model_bone_transform(instance, "head")?;
+    Some((root, head, transforms))
+}
+
+/// The model→world transform used by vanilla `CrossedArmsItemLayer` for villagers and wandering
+/// traders before the held stack's `GROUND` display transform. The layer walks through the model's
+/// combined `arms` part, then applies the shared crossed-arms rotation/scale/offset.
+pub fn villager_crossed_arms_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(
+        instance.kind,
+        EntityModelKind::Villager { .. } | EntityModelKind::WanderingTrader
+    ) {
+        return None;
+    }
+    let (root, arms, _) = model_bone_transform(instance, "arms")?;
+    Some(
+        root * arms
+            * Mat4::from_rotation_x(0.75)
+            * Mat4::from_scale(Vec3::splat(1.07))
+            * Mat4::from_translation(Vec3::new(0.0, 0.13, -0.34))
+            * Mat4::from_rotation_x(PI),
+    )
+}
+
+/// The model→world transform used by vanilla `FoxHeldItemLayer` before the held stack's `GROUND`
+/// display transform is applied. The layer manually translates to the already-posed fox head pivot, scales
+/// baby held items by `0.75`, applies the head rotations, then offsets the item differently for
+/// sleeping/non-sleeping adult and baby foxes before rotating the item upright.
+pub fn fox_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let EntityModelKind::Fox { baby, .. } = instance.kind else {
+        return None;
+    };
+
+    let model = fox_model(baby, instance);
+    let head = fox_model_root_transform(instance) * model.try_child_attach_transform("head")?;
+    let sleeping = instance.render_state.kind.fox().is_sleeping;
+    let offset = match (baby, sleeping) {
+        (true, true) => Vec3::new(0.4, 0.26, 0.15),
+        (true, false) => Vec3::new(0.06, 0.26, -0.5),
+        (false, true) => Vec3::new(0.46, 0.26, 0.22),
+        (false, false) => Vec3::new(0.06, 0.27, -0.5),
+    };
+    let mut transform = head;
+    if baby {
+        transform *= Mat4::from_scale(Vec3::splat(0.75));
+    }
+    transform *= Mat4::from_translation(offset) * Mat4::from_rotation_x(FRAC_PI_2);
+    if sleeping {
+        transform *= Mat4::from_rotation_z(FRAC_PI_2);
+    }
+    Some(transform)
+}
+
+/// The model→world transform used by vanilla `DolphinCarryingItemLayer` before the carried stack's
+/// `GROUND` display transform. The layer does not read `DolphinModel` parts; it stays in the entity root
+/// frame and nudges the item from `(0, 1, -1)` based only on `state.xRot`. The baby dolphin's `0.5`
+/// geometry scale is baked into `ModelLayers.DOLPHIN_BABY`, so this layer intentionally uses the unscaled
+/// entity root transform.
+pub fn dolphin_carried_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let EntityModelKind::Dolphin { .. } = instance.kind else {
+        return None;
+    };
+    let pitch = instance.render_state.head_pitch;
+    let angle_x_percent = pitch.abs() / 60.0;
+    let offset = if pitch < 0.0 {
+        Vec3::new(
+            0.0,
+            1.0 - angle_x_percent * 0.5,
+            -1.0 + angle_x_percent * 0.5,
+        )
+    } else {
+        Vec3::new(
+            0.0,
+            1.0 + angle_x_percent * 0.8,
+            -1.0 + angle_x_percent * 0.2,
+        )
+    };
+    Some(entity_model_root_transform(instance) * Mat4::from_translation(offset))
+}
+
+/// The model→world transform used by vanilla `PandaHoldsItemLayer` before the main-hand stack's `GROUND`
+/// display transform. The layer stays in entity-root space: it renders only while the panda is sitting and
+/// not scared, then offsets the stack to `(0.1, 1.4, -0.6)` with the eating bob applied directly to Y/Z.
+pub fn panda_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let panda_state = *instance.render_state.kind.panda();
+    let EntityModelKind::Panda { .. } = instance.kind else {
+        return None;
+    };
+    if !panda_state.sitting || panda_state.scared {
+        return None;
+    }
+
+    let mut z = -0.6;
+    let mut y = 1.4;
+    if panda_state.eating {
+        let bob = (instance.render_state.age_in_ticks * 0.6).sin();
+        z -= 0.2 * bob + 0.2;
+        y -= 0.09 * bob;
+    }
+    Some(entity_model_root_transform(instance) * Mat4::from_translation(Vec3::new(0.1, y, z)))
+}
+
+/// The model→world transform used by vanilla `WitchItemLayer` before the held stack's `GROUND` display
+/// transform. Non-potion items use `CrossedArmsItemLayer` (`root -> arms`, then the crossed-arms
+/// rotation/scale/offset). Potions use the special drinking branch: `root -> head -> nose`, then the
+/// nose-local potion rotations. The model is prepared first so `isHoldingItem` pins the nose before the
+/// potion branch reads it.
+pub fn witch_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let witch_state = *instance.render_state.kind.witch();
+    let EntityModelKind::Witch = instance.kind else {
+        return None;
+    };
+    if !witch_state.holding_item {
+        return None;
+    }
+
+    let model = witch_model(instance);
+    let root = entity_model_root_transform(instance);
+    let local = if witch_state.holding_potion {
+        model.try_descendant_attach_transform(&["head", "nose"])?
+            * Mat4::from_translation(Vec3::new(0.0625, 0.25, 0.0))
+            * Mat4::from_rotation_z(PI)
+            * Mat4::from_rotation_x(140.0_f32.to_radians())
+            * Mat4::from_rotation_z(10.0_f32.to_radians())
+            * Mat4::from_rotation_x(PI)
+    } else {
+        model.try_descendant_attach_transform(&["arms"])?
+            * Mat4::from_rotation_x(0.75)
+            * Mat4::from_scale(Vec3::splat(1.07))
+            * Mat4::from_translation(Vec3::new(0.0, 0.13, -0.34))
+            * Mat4::from_rotation_x(PI)
+    };
+    Some(root * local)
+}
+
+fn humanoid_arm_world_transform(
+    instance: &EntityModelInstance,
+    arm_name: &str,
+) -> Option<(Mat4, bool)> {
+    if matches!(
+        instance.kind,
+        EntityModelKind::Villager { .. } | EntityModelKind::WanderingTrader
+    ) {
+        return None;
+    }
+    let (root, arm, baby) = model_bone_transform(instance, arm_name)?;
+    Some((root * arm, baby))
+}
+
+fn model_bone_transform(instance: &EntityModelInstance, bone: &str) -> Option<(Mat4, Mat4, bool)> {
+    let (local, baby) = match instance.kind {
+        EntityModelKind::Player { skin, .. } => (
+            player_model(skin.is_slim(), instance).try_child_attach_transform(bone)?,
+            false,
+        ),
+        EntityModelKind::Zombie { baby } => (
+            zombie_model(baby, instance).try_child_attach_transform(bone)?,
+            baby,
+        ),
+        EntityModelKind::Giant => (
+            giant_model(instance).try_child_attach_transform(bone)?,
+            false,
+        ),
+        EntityModelKind::ZombieVariant { family, baby } => (
+            zombie_variant_model(family, baby, instance).try_child_attach_transform(bone)?,
+            baby,
+        ),
+        EntityModelKind::Piglin { family, baby } => (
+            piglin_model(family, baby, instance).try_child_attach_transform(bone)?,
+            baby,
+        ),
+        EntityModelKind::Skeleton => (
+            skeleton_model(None, instance).try_child_attach_transform(bone)?,
+            false,
+        ),
+        EntityModelKind::SkeletonVariant { family } => (
+            skeleton_model(Some(family), instance).try_child_attach_transform(bone)?,
+            false,
+        ),
+        EntityModelKind::Illager { family } => (
+            illager_model(instance, family).try_child_attach_transform(bone)?,
+            false,
+        ),
+        EntityModelKind::Villager { baby } => (
+            villager_model(baby, instance).try_child_attach_transform(bone)?,
+            false,
+        ),
+        EntityModelKind::WanderingTrader => (
+            wandering_trader_model(instance).try_child_attach_transform(bone)?,
+            false,
+        ),
+        // Vanilla `ArmorStandRenderer` keeps `useBabyOffset` false even for small stands.
+        EntityModelKind::ArmorStand {
+            small,
+            show_arms,
+            show_base_plate,
+            pose,
+            ..
+        } => (
+            armor_stand_model(small, show_arms, show_base_plate, pose, instance)
+                .try_child_attach_transform(bone)?,
+            false,
+        ),
+        _ => return None,
+    };
+    let root = match instance.kind {
+        EntityModelKind::Player { .. } => player_model_root_transform(instance),
+        EntityModelKind::ZombieVariant { family, .. } => {
+            zombie_variant_root_transform(instance, family)
+        }
+        _ => entity_model_root_transform(instance),
+    };
+    Some((root, local, baby))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity_models::{
+        CopperGolemWeathering, IllagerModelFamily, PiglinModelFamily, SkeletonModelFamily,
+        ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    };
+    use crate::entity_models::{FoxModelVariant, PLAYER_MODEL_PARTS_ALL_VISIBLE};
+
+    fn player_instance(y_rot: f32) -> EntityModelInstance {
+        EntityModelInstance::player_with_parts(
+            1,
+            [0.0, 64.0, 0.0],
+            y_rot,
+            false,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+    }
+
+    #[test]
+    fn non_humanoid_instances_have_no_hand_attach() {
+        let creeper = EntityModelInstance::new(2, EntityModelKind::Creeper, [0.0, 0.0, 0.0], 0.0);
+        assert!(humanoid_hand_attach_transform(&creeper, false).is_none());
+        assert!(humanoid_hand_attach_transforms(&creeper, false).is_empty());
+    }
+
+    #[test]
+    fn invisible_illusioner_hand_attach_transforms_follow_clone_roots() {
+        let offsets = [
+            [1.25, 0.0, -0.75],
+            [-1.0, 0.5, 0.5],
+            [0.5, 0.0, 1.0],
+            [-1.5, 0.0, -1.25],
+        ];
+        let instance = EntityModelInstance::illager(
+            68,
+            [4.0, 64.0, -2.0],
+            30.0,
+            IllagerModelFamily::Illusioner,
+        )
+        .with_invisible(true)
+        .with(|s| {
+            s.is_aggressive = true;
+            s.age_in_ticks = 8.0;
+            s.kind.illager_mut().clone_offsets = offsets;
+        });
+
+        let right_hands = humanoid_hand_attach_transforms(&instance, false);
+        assert_eq!(right_hands.len(), 4);
+
+        for (index, transform) in right_hands.into_iter().enumerate() {
+            let root =
+                illusioner_model_root_transform(&instance, instance.illusioner_clone_offset(index));
+            let expected = root
+                * entity_model_root_transform(&instance).inverse()
+                * humanoid_hand_attach_transform(&instance, false).unwrap();
+            assert_close_transform(transform, expected);
+        }
+
+        let visible = instance.with_invisible(false);
+        let visible_transforms = humanoid_hand_attach_transforms(&visible, false);
+        assert_eq!(visible_transforms.len(), 1);
+        assert_close_transform(
+            visible_transforms[0],
+            humanoid_hand_attach_transform(&visible, false).unwrap(),
+        );
+    }
+
+    #[test]
+    fn custom_head_item_transform_covers_vanilla_custom_head_models() {
+        let instances = [
+            EntityModelInstance::player_with_parts(
+                10,
+                [0.0, 64.0, 0.0],
+                0.0,
+                false,
+                PLAYER_MODEL_PARTS_ALL_VISIBLE,
+            ),
+            EntityModelInstance::new(
+                11,
+                EntityModelKind::Zombie { baby: false },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                12,
+                EntityModelKind::ZombieVariant {
+                    family: ZombieVariantModelFamily::ZombieVillager,
+                    baby: false,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(13, EntityModelKind::Skeleton, [0.0, 64.0, 0.0], 0.0),
+            EntityModelInstance::new(
+                14,
+                EntityModelKind::SkeletonVariant {
+                    family: SkeletonModelFamily::WitherSkeleton,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                15,
+                EntityModelKind::Piglin {
+                    family: PiglinModelFamily::Piglin,
+                    baby: false,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                16,
+                EntityModelKind::Illager {
+                    family: IllagerModelFamily::Pillager,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::villager(17, [0.0, 64.0, 0.0], 0.0, false),
+            EntityModelInstance::wandering_trader(18, [0.0, 64.0, 0.0], 0.0),
+            EntityModelInstance::new(
+                19,
+                EntityModelKind::ArmorStand {
+                    small: false,
+                    marker: false,
+                    show_arms: true,
+                    show_base_plate: true,
+                    pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                20,
+                EntityModelKind::CopperGolem {
+                    weathering: CopperGolemWeathering::Unaffected,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+        ];
+
+        for instance in instances {
+            let origin = custom_head_item_transform(&instance)
+                .unwrap()
+                .transform_point3(Vec3::ZERO);
+            assert!(
+                origin.is_finite(),
+                "{:?} should expose a finite custom-head item transform",
+                instance.kind
+            );
+        }
+
+        assert!(custom_head_item_transform(&EntityModelInstance::new(
+            21,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0,
+        ))
+        .is_none());
+    }
+
+    #[test]
+    fn custom_head_item_transform_follows_the_posed_head() {
+        let zombie = EntityModelInstance::new(
+            22,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let resting = custom_head_item_transform(&zombie)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let looking = custom_head_item_transform(
+            &zombie.with(|s| (s.head_yaw, s.head_pitch) = (45.0, -20.0)),
+        )
+        .unwrap()
+        .transform_point3(Vec3::ZERO);
+
+        assert!(looking.is_finite());
+        assert_ne!(
+            resting, looking,
+            "CustomHeadLayer walks through the already-posed head bone"
+        );
+    }
+
+    #[test]
+    fn invisible_illusioner_custom_head_item_transforms_follow_clone_roots() {
+        let offsets = [
+            [1.25, 0.0, -0.75],
+            [-1.0, 0.5, 0.5],
+            [0.5, 0.0, 1.0],
+            [-1.5, 0.0, -1.25],
+        ];
+        let instance = EntityModelInstance::illager(
+            68,
+            [4.0, 64.0, -2.0],
+            30.0,
+            IllagerModelFamily::Illusioner,
+        )
+        .with_invisible(true)
+        .with(|s| (s.head_yaw, s.head_pitch) = (35.0, -12.0))
+        .with(|s| {
+            s.age_in_ticks = 8.0;
+            s.kind.illager_mut().clone_offsets = offsets;
+        });
+
+        let transforms = custom_head_item_transforms(&instance);
+        assert_eq!(transforms.len(), 4);
+        for (index, transform) in transforms.into_iter().enumerate() {
+            let root =
+                illusioner_model_root_transform(&instance, instance.illusioner_clone_offset(index));
+            let expected = root
+                * entity_model_root_transform(&instance).inverse()
+                * custom_head_item_transform(&instance).unwrap();
+            assert_close_transform(transform, expected);
+        }
+
+        let visible = instance.with_invisible(false);
+        let visible_transforms = custom_head_item_transforms(&visible);
+        assert_eq!(visible_transforms.len(), 1);
+        assert_close_transform(
+            visible_transforms[0],
+            custom_head_item_transform(&visible).unwrap(),
+        );
+    }
+
+    #[test]
+    fn custom_head_layer_applies_villager_and_piglin_transforms() {
+        let default_origin = custom_head_item_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::DEFAULT,
+        )
+        .transform_point3(Vec3::ZERO);
+        let villager_origin = custom_head_item_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::VILLAGER,
+        )
+        .transform_point3(Vec3::ZERO);
+        assert!(
+            (villager_origin.y - default_origin.y - VILLAGER_CUSTOM_HEAD_Y_OFFSET).abs() < 1e-6
+        );
+
+        let piglin_x = custom_head_item_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::PIGLIN,
+        )
+        .transform_vector3(Vec3::X)
+        .length();
+        assert!(
+            (piglin_x - CUSTOM_HEAD_ITEM_SCALE * PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE).abs() < 1e-6
+        );
+    }
+
+    #[test]
+    fn zombie_villager_custom_head_uses_villager_renderer_offsets() {
+        // Vanilla `ZombieVillagerRenderer` passes `VillagerRenderer.CUSTOM_HEAD_TRANSFORMS` to
+        // `HumanoidMobRenderer`; the other zombie-family renderers use the default transforms.
+        let zombie_villager = EntityModelInstance::new(
+            23,
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let husk = EntityModelInstance::new(
+            24,
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+
+        let (zombie_villager_root, zombie_villager_head, zombie_villager_transforms) =
+            custom_head_item_base_transform(&zombie_villager).unwrap();
+        let (_, _, husk_transforms) = custom_head_item_base_transform(&husk).unwrap();
+        assert_eq!(
+            zombie_villager_transforms.y_offset,
+            VILLAGER_CUSTOM_HEAD_Y_OFFSET
+        );
+        assert_eq!(
+            zombie_villager_transforms.skull_y_offset,
+            VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET
+        );
+        assert_eq!(husk_transforms.y_offset, 0.0);
+        assert_eq!(husk_transforms.skull_y_offset, 0.0);
+
+        let villager_item = custom_head_item_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            zombie_villager_transforms,
+        );
+        assert_close_transform(
+            custom_head_item_transform(&zombie_villager).unwrap(),
+            villager_item,
+        );
+        let default_item = custom_head_item_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            CustomHeadTransforms::DEFAULT,
+        );
+        assert_ne!(villager_item.to_cols_array(), default_item.to_cols_array());
+
+        let villager_skull = custom_head_skull_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            zombie_villager_transforms,
+        );
+        assert_close_transform(
+            custom_head_skull_transform(&zombie_villager).unwrap(),
+            villager_skull,
+        );
+        let default_skull = custom_head_skull_layer_transform(
+            zombie_villager_root,
+            zombie_villager_head,
+            CustomHeadTransforms::DEFAULT,
+        );
+        assert_ne!(
+            villager_skull.to_cols_array(),
+            default_skull.to_cols_array()
+        );
+    }
+
+    #[test]
+    fn custom_head_skull_layer_uses_skull_offsets_and_scale() {
+        let default_origin = custom_head_skull_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::DEFAULT,
+        )
+        .transform_point3(Vec3::ZERO);
+        let villager_origin = custom_head_skull_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::VILLAGER,
+        )
+        .transform_point3(Vec3::ZERO);
+        assert!(
+            (villager_origin.y - default_origin.y - VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET).abs()
+                < 1e-6
+        );
+
+        let skull_x = custom_head_skull_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::DEFAULT,
+        )
+        .transform_vector3(Vec3::X)
+        .length();
+        assert!((skull_x - CUSTOM_HEAD_SKULL_SCALE).abs() < 1e-6);
+    }
+
+    #[test]
+    fn fox_held_item_attaches_to_the_posed_head() {
+        // Vanilla `FoxHeldItemLayer` reads the already-posed parent model head, so the carried item moves
+        // with the fox's interested head roll rather than remaining at the bind-pose snout.
+        let fox = EntityModelInstance::fox(21, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
+        let resting = fox_held_item_transform(&fox)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let tilted =
+            fox_held_item_transform(&fox.with(|s| s.kind.fox_mut().head_roll_angle = 0.35))
+                .unwrap()
+                .transform_point3(Vec3::ZERO);
+        assert!(resting.is_finite());
+        assert!(tilted.is_finite());
+        assert_ne!(resting, tilted);
+        assert!(fox_held_item_transform(&EntityModelInstance::new(
+            22,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0
+        ))
+        .is_none());
+    }
+
+    #[test]
+    fn fox_held_item_follows_faceplant_renderer_pitch() {
+        // `FoxHeldItemLayer` runs after `FoxRenderer.setupRotations` on the same pose stack. While
+        // faceplanted, `FoxModel.setupAnim` suppresses the normal head look, so a pitch-only movement here
+        // proves the layer picked up the renderer-level root `Rx(-state.xRot)`.
+        let fox = EntityModelInstance::fox(25, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red)
+            .with(|s| {
+                s.kind.fox_mut().is_faceplanted = true;
+                s.age_in_ticks = 0.0;
+            });
+        let flat = fox_held_item_transform(&fox.with(|s| (s.head_yaw, s.head_pitch) = (0.0, 0.0)))
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let pitched =
+            fox_held_item_transform(&fox.with(|s| (s.head_yaw, s.head_pitch) = (0.0, 30.0)))
+                .unwrap()
+                .transform_point3(Vec3::ZERO);
+        assert_ne!(flat, pitched);
+    }
+
+    #[test]
+    fn baby_fox_held_item_uses_the_layer_scale() {
+        // `FoxHeldItemLayer` scales the baby-held stack by 0.75 after translating to the baby head pivot.
+        // A unit vector therefore comes out shorter than the adult's even though both use the same item
+        // display transform afterwards.
+        let adult =
+            EntityModelInstance::fox(23, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
+        let baby = EntityModelInstance::fox(24, [0.0, 64.0, 0.0], 0.0, true, FoxModelVariant::Red);
+        let adult_x = fox_held_item_transform(&adult)
+            .unwrap()
+            .transform_vector3(Vec3::X)
+            .length();
+        let baby_x = fox_held_item_transform(&baby)
+            .unwrap()
+            .transform_vector3(Vec3::X)
+            .length();
+        assert!((adult_x - 1.0).abs() < 1e-6);
+        assert!(
+            (baby_x - 0.75).abs() < 1e-6,
+            "baby item vector length {baby_x}"
+        );
+    }
+
+    #[test]
+    fn dolphin_carried_item_uses_x_rot_offset_without_baby_scale() {
+        // Vanilla `DolphinCarryingItemLayer` leaves the item in entity-root space and only changes the
+        // `(0, 1, -1)` offset by `abs(xRot) / 60`. The baby model's mesh transformer does not scale the
+        // layer.
+        let local_offset = |instance: EntityModelInstance| {
+            let transform = dolphin_carried_item_transform(&instance).unwrap();
+            let root = entity_model_root_transform(&instance);
+            (root.inverse() * transform).transform_point3(Vec3::ZERO)
+        };
+        let assert_close = |actual: Vec3, expected: Vec3| {
+            assert!(
+                (actual - expected).length() < 1e-5,
+                "{actual:?} should be close to {expected:?}"
+            );
+        };
+        let base = EntityModelInstance::dolphin(31, [0.0, 64.0, 0.0], 0.0, false);
+        assert_close(local_offset(base), Vec3::new(0.0, 1.0, -1.0));
+        assert_close(
+            local_offset(base.with(|s| (s.head_yaw, s.head_pitch) = (0.0, -60.0))),
+            Vec3::new(0.0, 0.5, -0.5),
+        );
+        assert_close(
+            local_offset(base.with(|s| (s.head_yaw, s.head_pitch) = (0.0, 60.0))),
+            Vec3::new(0.0, 1.8, -0.8),
+        );
+        let baby = EntityModelInstance::dolphin(32, [0.0, 64.0, 0.0], 0.0, true);
+        assert_close(local_offset(baby), Vec3::new(0.0, 1.0, -1.0));
+        assert!(dolphin_carried_item_transform(&EntityModelInstance::new(
+            33,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0
+        ))
+        .is_none());
+    }
+
+    #[test]
+    fn witch_held_item_uses_crossed_arms_or_potion_nose_branch() {
+        // Vanilla `WitchItemLayer` uses the crossed-arms item layer for generic held items, but potions
+        // attach to the already-posed nose after `WitchModel.setupAnim` pins it to the drinking pose.
+        let base = EntityModelInstance::witch(41, [0.0, 64.0, 0.0], 0.0);
+        assert!(witch_held_item_transform(&base).is_none());
+
+        let generic = base.with(|s| s.kind.witch_mut().holding_item = true);
+        let generic_transform = witch_held_item_transform(&generic).unwrap();
+        let potion_transform =
+            witch_held_item_transform(&generic.with(|s| s.kind.witch_mut().holding_potion = true))
+                .unwrap();
+        assert!(generic_transform.transform_point3(Vec3::ZERO).is_finite());
+        assert!(potion_transform.transform_point3(Vec3::ZERO).is_finite());
+        assert_ne!(
+            generic_transform.transform_point3(Vec3::ZERO),
+            potion_transform.transform_point3(Vec3::ZERO),
+            "potion branch attaches to the nose, not the crossed arms"
+        );
+    }
+
+    #[test]
+    fn panda_held_item_uses_sitting_gate_and_eating_bob() {
+        let local_offset = |instance: EntityModelInstance| {
+            let transform = panda_held_item_transform(&instance).unwrap();
+            let root = entity_model_root_transform(&instance);
+            (root.inverse() * transform).transform_point3(Vec3::ZERO)
+        };
+        let assert_close = |actual: Vec3, expected: Vec3| {
+            assert!(
+                (actual - expected).length() < 1e-5,
+                "{actual:?} should be close to {expected:?}"
+            );
+        };
+
+        let base = EntityModelInstance::panda(
+            27,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            crate::entity_models::PandaModelVariant::Normal,
+        );
+        assert!(panda_held_item_transform(&base).is_none());
+        assert!(panda_held_item_transform(&base.with(|s| {
+            s.kind.panda_mut().sitting = true;
+            s.kind.panda_mut().scared = true;
+        }))
+        .is_none());
+
+        assert_close(
+            local_offset(base.with(|s| s.kind.panda_mut().sitting = true)),
+            Vec3::new(0.1, 1.4, -0.6),
+        );
+
+        let eating = base.with(|s| {
+            s.kind.panda_mut().sitting = true;
+            s.kind.panda_mut().eating = true;
+            s.age_in_ticks = 5.0;
+        });
+        let bob = (5.0_f32 * 0.6).sin();
+        assert_close(
+            local_offset(eating),
+            Vec3::new(0.1, 1.4 - 0.09 * bob, -0.6 - 0.2 * bob - 0.2),
+        );
+        assert!(panda_held_item_transform(&EntityModelInstance::new(
+            28,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0,
+        ))
+        .is_none());
+    }
+
+    #[test]
+    fn copper_golem_hand_attach_uses_held_item_arm_pose() {
+        let base = EntityModelInstance::new(
+            28,
+            EntityModelKind::CopperGolem {
+                weathering: CopperGolemWeathering::Unaffected,
+            },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let resting = copper_golem_hand_attach_transform(&base, false).unwrap();
+        let holding = copper_golem_hand_attach_transform(
+            &base.with(|s| s.kind.copper_golem_mut().holding_item = true),
+            false,
+        )
+        .unwrap();
+        let left = copper_golem_hand_attach_transform(
+            &base.with(|s| s.kind.copper_golem_mut().holding_item = true),
+            true,
+        )
+        .unwrap();
+        assert!(holding.transform_point3(Vec3::ZERO).is_finite());
+        assert_ne!(
+            resting.transform_point3(Vec3::ZERO),
+            holding.transform_point3(Vec3::ZERO),
+            "non-empty copper golem hands clamp the arms into the vanilla held-item pose"
+        );
+        assert_ne!(
+            holding.transform_point3(Vec3::ZERO),
+            left.transform_point3(Vec3::ZERO),
+            "left and right hands use mirrored vanilla hand rotations"
+        );
+    }
+
+    #[test]
+    fn allay_hand_attach_matches_vanilla_translate_to_hand_shape() {
+        // Vanilla `AllayModel.translateToHand` walks only `root -> body`, then applies a fixed
+        // `(0, 1, 3)/16` offset, `right_arm.xRot`, `scale(0.7)`, and `(+1, 0, 0)/16` before the standard
+        // `ItemInHandLayer` rotation and adult hand offset.
+        let base = EntityModelInstance::allay(37, [0.0, 64.0, 0.0], 0.0)
+            .with(|s| s.age_in_ticks = 9.0)
+            .with(|s| (s.walk_animation_pos, s.walk_animation_speed) = (0.2, 0.3))
+            .with(|s| s.kind.allay_mut().holding_item_progress = 1.0);
+        let actual = allay_hand_attach_transform(&base, false).unwrap();
+
+        let model = allay_model(&base);
+        let body = entity_model_root_transform(&base)
+            * model
+                .try_descendant_attach_transform(&["root", "body"])
+                .unwrap();
+        let expected = body
+            * Mat4::from_translation(Vec3::new(0.0, 1.0 / 16.0, 3.0 / 16.0))
+            * Mat4::from_rotation_x(allay_arm_holding_x_rot(
+                base.render_state.walk_animation_speed,
+                base.render_state.kind.allay().holding_item_progress,
+            ))
+            * Mat4::from_scale(Vec3::splat(0.7))
+            * Mat4::from_translation(Vec3::new(1.0 / 16.0, 0.0, 0.0))
+            * Mat4::from_rotation_x(-FRAC_PI_2)
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_translation(Vec3::new(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+
+        assert!(
+            (actual.transform_point3(Vec3::ZERO) - expected.transform_point3(Vec3::ZERO)).length()
+                < 1.0e-6
+        );
+        assert!(
+            (actual.transform_vector3(Vec3::X) - expected.transform_vector3(Vec3::X)).length()
+                < 1.0e-6
+        );
+    }
+
+    #[test]
+    fn allay_hand_attach_uses_right_arm_xrot_and_layer_side_offset() {
+        let base = EntityModelInstance::allay(38, [0.0, 64.0, 0.0], 0.0)
+            .with(|s| s.age_in_ticks = 4.0)
+            .with(|s| (s.walk_animation_pos, s.walk_animation_speed) = (0.0, 0.0));
+        let empty_right = allay_hand_attach_transform(&base, false).unwrap();
+        let holding_right = allay_hand_attach_transform(
+            &base.with(|s| s.kind.allay_mut().holding_item_progress = 1.0),
+            false,
+        )
+        .unwrap();
+        let holding_left = allay_hand_attach_transform(
+            &base.with(|s| s.kind.allay_mut().holding_item_progress = 1.0),
+            true,
+        )
+        .unwrap();
+
+        assert_ne!(
+            empty_right.transform_point3(Vec3::ZERO),
+            holding_right.transform_point3(Vec3::ZERO),
+            "holdingAnimationProgress changes right_arm.xRot and moves the submitted item"
+        );
+        assert_ne!(
+            holding_right.transform_point3(Vec3::ZERO),
+            holding_left.transform_point3(Vec3::ZERO),
+            "ItemInHandLayer's final left/right offset splits the allay hand item"
+        );
+        assert!(allay_hand_attach_transform(
+            &EntityModelInstance::new(39, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0),
+            false
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn villager_crossed_arms_item_transform_covers_baby_and_trader() {
+        let adult = EntityModelInstance::villager(31, [0.0, 64.0, 0.0], 0.0, false);
+        let baby = EntityModelInstance::villager(32, [0.0, 64.0, 0.0], 0.0, true);
+        let trader = EntityModelInstance::wandering_trader(33, [0.0, 64.0, 0.0], 0.0);
+        let adult_origin = villager_crossed_arms_item_transform(&adult)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let baby_origin = villager_crossed_arms_item_transform(&baby)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let trader_origin = villager_crossed_arms_item_transform(&trader)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert!(adult_origin.is_finite());
+        assert!(baby_origin.is_finite());
+        assert!(trader_origin.is_finite());
+        assert_ne!(
+            adult_origin, baby_origin,
+            "baby villager uses BabyVillagerModel's own crossed-arms part"
+        );
+        assert!(
+            villager_crossed_arms_item_transform(&EntityModelInstance::new(
+                34,
+                EntityModelKind::Skeleton,
+                [0.0, 64.0, 0.0],
+                0.0,
+            ))
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn adult_humanoid_mobs_have_a_hand_attach() {
+        // A zombie (and the other weapon-holding humanoid families) attaches a held item the same way a
+        // player does — the generic dispatch poses the family model and reads its right-arm bone.
+        let zombie = EntityModelInstance::new(
+            3,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let attach = humanoid_hand_attach_transform(&zombie, false).unwrap();
+        assert!(attach.transform_point3(Vec3::ZERO).is_finite());
+    }
+
+    #[test]
+    fn giant_hand_attach_uses_the_scaled_zombie_model() {
+        // Vanilla `GiantMobRenderer` adds the ordinary `ItemInHandLayer` over `GiantZombieModel`,
+        // whose layer is `MeshTransformer.scaling(6.0)`. The hand basis therefore scales with the
+        // body instead of using the adult zombie's unscaled arm space.
+        let zombie = EntityModelInstance::new(
+            35,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let giant = EntityModelInstance::giant(36, [0.0, 64.0, 0.0], 0.0);
+        let zombie_attach = humanoid_hand_attach_transform(&zombie, false).unwrap();
+        let giant_attach = humanoid_hand_attach_transform(&giant, false).unwrap();
+
+        assert!(giant_attach.transform_point3(Vec3::ZERO).is_finite());
+        for axis in [Vec3::X, Vec3::Y, Vec3::Z] {
+            let zombie_len = zombie_attach.transform_vector3(axis).length();
+            let giant_len = giant_attach.transform_vector3(axis).length();
+            assert!(
+                (giant_len - zombie_len * 6.0).abs() < 1.0e-5,
+                "giant hand basis {giant_len} should be 6x zombie basis {zombie_len}"
+            );
+        }
+    }
+
+    #[test]
+    fn skeleton_held_item_follows_the_drawn_bow_aim() {
+        // The held-item attach reads the SAME posed model as the body, so a skeleton drawing its bow
+        // (`is_aggressive && main_hand_holds_bow`) raises the right hand from hanging at rest to the
+        // horizontal `BOW_AND_ARROW` aim — the bow mesh tracks the aimed arm, no extra wiring.
+        let skeleton =
+            EntityModelInstance::new(8, EntityModelKind::Skeleton, [0.0, 64.0, 0.0], 0.0);
+        let resting = humanoid_hand_attach_transform(&skeleton, false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let aiming = humanoid_hand_attach_transform(
+            &skeleton.with(|s| {
+                s.is_aggressive = true;
+                s.main_hand_holds_bow = true;
+            }),
+            false,
+        )
+        .unwrap()
+        .transform_point3(Vec3::ZERO);
+        assert!(aiming.is_finite());
+        // The resting arm hangs down; the aimed arm swings up to horizontal, so the hand rises.
+        assert!(
+            aiming.y > resting.y + 0.2,
+            "aimed hand {aiming:?} rises above the resting hand {resting:?}"
+        );
+        // The bow aim is gated on both flags: a holstered bow with no aggression keeps the resting hand.
+        let holstered =
+            humanoid_hand_attach_transform(&skeleton.with(|s| s.main_hand_holds_bow = true), false)
+                .unwrap()
+                .transform_point3(Vec3::ZERO);
+        assert_eq!(holstered, resting);
+    }
+
+    #[test]
+    fn baby_humanoid_mobs_attach_lower_and_more_inward_than_adults() {
+        // Baby zombies hold items too (vanilla `BabyZombieModel` is an explicit smaller mesh with the
+        // baby `ItemInHandLayer` offset). The baby hand sits below and closer to the body center than the
+        // adult's, since the baby arm bone is smaller and the baby offset drops X to 0.
+        let adult = EntityModelInstance::new(
+            5,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let baby = EntityModelInstance::new(
+            6,
+            EntityModelKind::Zombie { baby: true },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let adult_hand = humanoid_hand_attach_transform(&adult, false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let baby_hand = humanoid_hand_attach_transform(&baby, false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert!(baby_hand.is_finite());
+        // Baby is shorter, so its hand is lower than the adult's.
+        assert!(
+            baby_hand.y < adult_hand.y,
+            "baby hand {baby_hand:?} below adult {adult_hand:?}"
+        );
+        // Baby right hand is closer to the X center than the adult's (smaller arm + X=0 offset).
+        assert!(
+            baby_hand.x.abs() < adult_hand.x.abs(),
+            "baby hand {baby_hand:?} more inward than adult {adult_hand:?}"
+        );
+    }
+
+    #[test]
+    fn armor_stand_held_items_include_the_small_model_part_scale() {
+        let stand = |small| {
+            EntityModelInstance::new(
+                7,
+                EntityModelKind::ArmorStand {
+                    small,
+                    marker: false,
+                    show_arms: true,
+                    show_base_plate: true,
+                    pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            )
+        };
+        // Armor stands always use the adult `ItemInHandLayer` offset, but the small model's arm part
+        // carries `HumanoidModel.BABY_TRANSFORMER`'s 0.5 body scale and the held item must ride it.
+        let adult = humanoid_hand_attach_transform(&stand(false), false).unwrap();
+        let small = humanoid_hand_attach_transform(&stand(true), false).unwrap();
+        assert!(adult.transform_point3(Vec3::ZERO).is_finite());
+        assert!(small.transform_point3(Vec3::ZERO).is_finite());
+        let adult_basis =
+            (adult.transform_point3(Vec3::X) - adult.transform_point3(Vec3::ZERO)).length();
+        let small_basis =
+            (small.transform_point3(Vec3::X) - small.transform_point3(Vec3::ZERO)).length();
+        assert!(
+            (small_basis / adult_basis - 0.5).abs() < 1e-5,
+            "small armor stand item scale {small_basis} should be half adult {adult_basis}"
+        );
+    }
+
+    #[test]
+    fn right_hand_attach_sits_in_front_of_and_below_the_shoulder() {
+        // The attach point is to the right of the entity origin, below head height, and pushed forward
+        // out of the body (the -10/16 hand offset along the arm).
+        let attach = humanoid_hand_attach_transform(&player_instance(0.0), false).unwrap();
+        let origin = attach.transform_point3(Vec3::ZERO);
+        // Right hand → negative model-X side; the AvatarRenderer scale keeps it within ~1 block.
+        assert!(origin.x < 0.0, "right hand on the -x side, got {origin:?}");
+        assert!(
+            origin.y < 64.0 + 1.6,
+            "hand below head height, got {origin:?}"
+        );
+        assert!(origin.is_finite());
+    }
+
+    #[test]
+    fn main_hand_spear_attack_applies_vanilla_item_layer_stab_transform() {
+        let player = player_instance(0.0).with(|s| {
+            s.attack_anim = 0.1;
+            s.main_hand_swing_is_stab = true;
+        });
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let expected = item_in_hand_layer_base_transform(arm_world, false, baby)
+            * spear_third_person_attack_item_transform(0.1);
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let base_only = item_in_hand_layer_base_transform(arm_world, false, baby);
+        let base_origin = base_only.transform_point3(Vec3::ZERO);
+        let stabbed_origin = actual.transform_point3(Vec3::ZERO);
+        assert!(
+            (stabbed_origin - base_origin).length() > 0.01,
+            "thirdPersonAttackItem should visibly move the submitted spear"
+        );
+
+        let (left_world, left_baby) = humanoid_arm_world_transform(&player, "left_arm").unwrap();
+        let expected_left = item_in_hand_layer_base_transform(left_world, true, left_baby);
+        assert_close_transform(
+            humanoid_hand_attach_transform(&player, true).unwrap(),
+            expected_left,
+        );
+
+        let whack = player.with(|s| s.main_hand_swing_is_stab = false);
+        let (whack_world, whack_baby) = humanoid_arm_world_transform(&whack, "right_arm").unwrap();
+        assert_close_transform(
+            humanoid_hand_attach_transform(&whack, false).unwrap(),
+            item_in_hand_layer_base_transform(whack_world, false, whack_baby),
+        );
+    }
+
+    #[test]
+    fn off_hand_spear_attack_applies_vanilla_item_layer_stab_transform() {
+        let player = player_instance(0.0).with(|s| {
+            s.attack_anim = 0.1;
+            s.attack_arm_off_hand = true;
+            s.main_hand_swing_is_stab = true;
+        });
+        let (left_world, left_baby) = humanoid_arm_world_transform(&player, "left_arm").unwrap();
+        let expected = item_in_hand_layer_base_transform(left_world, true, left_baby)
+            * spear_third_person_attack_item_transform(0.1);
+        let actual = humanoid_hand_attach_transform(&player, true).unwrap();
+        assert_close_transform(actual, expected);
+
+        let (right_world, right_baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let expected_right = item_in_hand_layer_base_transform(right_world, false, right_baby);
+        assert_close_transform(
+            humanoid_hand_attach_transform(&player, false).unwrap(),
+            expected_right,
+        );
+    }
+
+    #[test]
+    fn spear_use_applies_vanilla_item_layer_kinetic_transform() {
+        let kinetic = SpearKineticWeapon {
+            delay_ticks: 12.0,
+            dismount_duration_ticks: 50.0,
+            knockback_duration_ticks: 135.0,
+            damage_duration_ticks: 225.0,
+            forward_movement: 0.38,
+        };
+        let player = player_instance(0.0).with(|s| {
+            s.kind.player_mut().using_spear = Some(kinetic);
+            s.crossbow_charge_ticks = 60.0;
+        });
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let expected = item_in_hand_layer_base_transform(arm_world, false, baby)
+            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false, 0.0);
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let base_origin =
+            item_in_hand_layer_base_transform(arm_world, false, baby).transform_point3(Vec3::ZERO);
+        let use_origin = actual.transform_point3(Vec3::ZERO);
+        assert!(
+            (use_origin - base_origin).length() > 0.01,
+            "thirdPersonUseItem should visibly move the submitted spear"
+        );
+
+        let off = player.with(|s| s.use_item_off_hand = true);
+        let (left_world, left_baby) = humanoid_arm_world_transform(&off, "left_arm").unwrap();
+        let expected_left = item_in_hand_layer_base_transform(left_world, true, left_baby)
+            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, true, 0.0);
+        assert_close_transform(
+            humanoid_hand_attach_transform(&off, true).unwrap(),
+            expected_left,
+        );
+
+        let (right_world, right_baby) = humanoid_arm_world_transform(&off, "right_arm").unwrap();
+        assert_close_transform(
+            humanoid_hand_attach_transform(&off, false).unwrap(),
+            item_in_hand_layer_base_transform(right_world, false, right_baby),
+        );
+    }
+
+    #[test]
+    fn spear_use_item_applies_kinetic_hit_feedback_translate() {
+        let kinetic = SpearKineticWeapon {
+            delay_ticks: 12.0,
+            dismount_duration_ticks: 50.0,
+            knockback_duration_ticks: 135.0,
+            damage_duration_ticks: 225.0,
+            forward_movement: 0.38,
+        };
+        let player = player_instance(0.0).with(|s| {
+            s.kind.player_mut().using_spear = Some(kinetic);
+            s.crossbow_charge_ticks = 60.0;
+            s.ticks_since_kinetic_hit_feedback = 2.0;
+        });
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let base = item_in_hand_layer_base_transform(arm_world, false, baby);
+        let feedback = spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false, 2.0);
+        let expected = base * feedback;
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let no_feedback =
+            base * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false, 0.0);
+        assert!(
+            (actual.transform_point3(Vec3::ZERO) - no_feedback.transform_point3(Vec3::ZERO))
+                .length()
+                > 0.01,
+            "kinetic hit feedback should visibly kick the held spear item"
+        );
+    }
+
+    #[test]
+    fn spear_attack_and_use_item_transforms_follow_vanilla_layer_order() {
+        // Vanilla `ItemInHandLayer.submitArmWithItem` composes the STAB attack item transform before the
+        // arm-pose `animateUseItem` hook: base hand offset, then `thirdPersonAttackItem`, then
+        // `thirdPersonUseItem`, then `ItemStackRenderState.submit`.
+        let kinetic = SpearKineticWeapon {
+            delay_ticks: 12.0,
+            dismount_duration_ticks: 50.0,
+            knockback_duration_ticks: 135.0,
+            damage_duration_ticks: 225.0,
+            forward_movement: 0.38,
+        };
+        let player = player_instance(0.0).with(|s| {
+            s.attack_anim = 0.1;
+            s.main_hand_swing_is_stab = true;
+            s.kind.player_mut().using_spear = Some(kinetic);
+            s.crossbow_charge_ticks = 60.0;
+        });
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let base = item_in_hand_layer_base_transform(arm_world, false, baby);
+        let attack = spear_third_person_attack_item_transform(0.1);
+        let use_item = spear_third_person_use_item_transform(kinetic, 60.0, 0.1, false, 0.0);
+        let expected = base * attack * use_item;
+
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let reversed = base * use_item * attack;
+        let vanilla_origin = expected.transform_point3(Vec3::ZERO);
+        let reversed_origin = reversed.transform_point3(Vec3::ZERO);
+        assert!(
+            (vanilla_origin - reversed_origin).length() > 0.001,
+            "attack/use order should be observable, got {vanilla_origin:?} vs {reversed_origin:?}"
+        );
+
+        let (left_world, left_baby) = humanoid_arm_world_transform(&player, "left_arm").unwrap();
+        assert_close_transform(
+            humanoid_hand_attach_transform(&player, true).unwrap(),
+            item_in_hand_layer_base_transform(left_world, true, left_baby),
+        );
+    }
+
+    #[test]
+    fn left_and_right_hands_mirror_across_x() {
+        let right = humanoid_hand_attach_transform(&player_instance(0.0), false)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let left = humanoid_hand_attach_transform(&player_instance(0.0), true)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        // Mirror entities face -Z; the two hands straddle the body center on X.
+        assert!(
+            right.x < left.x,
+            "right {right:?} should be left of left {left:?}"
+        );
+    }
+
+    fn assert_close_transform(actual: Mat4, expected: Mat4) {
+        for (actual, expected) in actual
+            .to_cols_array()
+            .into_iter()
+            .zip(expected.to_cols_array())
+        {
+            assert!(
+                (actual - expected).abs() < 1.0e-5,
+                "transform mismatch: {actual} != {expected}"
+            );
+        }
+    }
+}

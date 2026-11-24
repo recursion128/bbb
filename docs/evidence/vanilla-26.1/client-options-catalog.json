@@ -1,0 +1,1694 @@
+{
+  "generated_by": "scripts/generate-client-options-catalog.py",
+  "vanilla_version": "26.1",
+  "source_file": "net/minecraft/client/Options.java",
+  "line_format": "name:value, split on the first ':' only; bad lines are skipped",
+  "options": [
+    {
+      "order": 0,
+      "key": "ao",
+      "field": "ambientOcclusion",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": true
+    },
+    {
+      "order": 1,
+      "key": "biomeBlendRadius",
+      "field": "biomeBlendRadius",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "2",
+      "dumped": true
+    },
+    {
+      "order": 2,
+      "key": "chunkSectionFadeInTime",
+      "field": "chunkSectionFadeInTime",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.75",
+      "dumped": true
+    },
+    {
+      "order": 3,
+      "key": "cutoutLeaves",
+      "field": "cutoutLeaves",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": true
+    },
+    {
+      "order": 4,
+      "key": "enableVsync",
+      "field": "enableVsync",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": true
+    },
+    {
+      "order": 5,
+      "key": "entityDistanceScaling",
+      "field": "entityDistanceScaling",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": true
+    },
+    {
+      "order": 6,
+      "key": "entityShadows",
+      "field": "entityShadows",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": true
+    },
+    {
+      "order": 7,
+      "key": "forceUnicodeFont",
+      "field": "forceUnicodeFont",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": true
+    },
+    {
+      "order": 8,
+      "key": "japaneseGlyphVariants",
+      "field": "japaneseGlyphVariants",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "host:locale-is-japanese",
+      "dumped": true
+    },
+    {
+      "order": 9,
+      "key": "fov",
+      "field": "fov",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.0",
+      "dumped": true
+    },
+    {
+      "order": 10,
+      "key": "fovEffectScale",
+      "field": "fovEffectScale",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": true
+    },
+    {
+      "order": 11,
+      "key": "darknessEffectScale",
+      "field": "darknessEffectScale",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": true
+    },
+    {
+      "order": 12,
+      "key": "glintSpeed",
+      "field": "glintSpeed",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.5",
+      "dumped": true
+    },
+    {
+      "order": 13,
+      "key": "glintStrength",
+      "field": "glintStrength",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.75",
+      "dumped": true
+    },
+    {
+      "order": 14,
+      "key": "graphicsPreset",
+      "field": "graphicsPreset",
+      "kind": "codec",
+      "encoding": "enum-name",
+      "default": "\"fancy\"",
+      "dumped": true
+    },
+    {
+      "order": 15,
+      "key": "prioritizeChunkUpdates",
+      "field": "prioritizeChunkUpdates",
+      "kind": "codec",
+      "encoding": "enum-id",
+      "default": "0",
+      "dumped": true
+    },
+    {
+      "order": 16,
+      "key": "fullscreen",
+      "field": "fullscreen",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": true
+    },
+    {
+      "order": 17,
+      "key": "exclusiveFullscreen",
+      "field": "exclusiveFullscreen",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": true
+    },
+    {
+      "order": 18,
+      "key": "gamma",
+      "field": "gamma",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.5",
+      "dumped": true
+    },
+    {
+      "order": 19,
+      "key": "guiScale",
+      "field": "guiScale",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "0",
+      "dumped": true
+    },
+    {
+      "order": 20,
+      "key": "maxAnisotropyBit",
+      "field": "maxAnisotropyBit",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "2",
+      "dumped": true
+    },
+    {
+      "order": 21,
+      "key": "textureFiltering",
+      "field": "textureFiltering",
+      "kind": "codec",
+      "encoding": "enum-id",
+      "default": "0",
+      "dumped": true
+    },
+    {
+      "order": 22,
+      "key": "maxFps",
+      "field": "framerateLimit",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "120",
+      "dumped": true
+    },
+    {
+      "order": 23,
+      "key": "improvedTransparency",
+      "field": "improvedTransparency",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": true
+    },
+    {
+      "order": 24,
+      "key": "inactivityFpsLimit",
+      "field": "inactivityFpsLimit",
+      "kind": "codec",
+      "encoding": "enum-name",
+      "default": "\"afk\"",
+      "dumped": true
+    },
+    {
+      "order": 25,
+      "key": "mipmapLevels",
+      "field": "mipmapLevels",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "4",
+      "dumped": true
+    },
+    {
+      "order": 26,
+      "key": "narrator",
+      "field": "narrator",
+      "kind": "codec",
+      "encoding": "enum-id",
+      "default": "0",
+      "dumped": true
+    },
+    {
+      "order": 27,
+      "key": "particles",
+      "field": "particles",
+      "kind": "codec",
+      "encoding": "enum-id",
+      "default": "0",
+      "dumped": true
+    },
+    {
+      "order": 28,
+      "key": "reducedDebugInfo",
+      "field": "reducedDebugInfo",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": true
+    },
+    {
+      "order": 29,
+      "key": "renderClouds",
+      "field": "cloudStatus",
+      "kind": "codec",
+      "encoding": "enum-name-or-boolean",
+      "default": "\"true\"",
+      "dumped": true
+    },
+    {
+      "order": 30,
+      "key": "cloudRange",
+      "field": "cloudRange",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "128",
+      "dumped": true
+    },
+    {
+      "order": 31,
+      "key": "renderDistance",
+      "field": "renderDistance",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "12",
+      "dumped": true
+    },
+    {
+      "order": 32,
+      "key": "simulationDistance",
+      "field": "simulationDistance",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "12",
+      "dumped": true
+    },
+    {
+      "order": 33,
+      "key": "screenEffectScale",
+      "field": "screenEffectScale",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": true
+    },
+    {
+      "order": 34,
+      "key": "soundDevice",
+      "field": "soundDevice",
+      "kind": "codec",
+      "encoding": "string",
+      "default": "\"\"",
+      "dumped": true
+    },
+    {
+      "order": 35,
+      "key": "vignette",
+      "field": "vignette",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": true
+    },
+    {
+      "order": 36,
+      "key": "weatherRadius",
+      "field": "weatherRadius",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "10",
+      "dumped": true
+    },
+    {
+      "order": 37,
+      "key": "autoJump",
+      "field": "autoJump",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 38,
+      "key": "rotateWithMinecart",
+      "field": "rotateWithMinecart",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 39,
+      "key": "operatorItemsTab",
+      "field": "operatorItemsTab",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 40,
+      "key": "autoSuggestions",
+      "field": "autoSuggestions",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 41,
+      "key": "chatColors",
+      "field": "chatColors",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 42,
+      "key": "chatLinks",
+      "field": "chatLinks",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 43,
+      "key": "chatLinksPrompt",
+      "field": "chatLinksPrompt",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 44,
+      "key": "discrete_mouse_scroll",
+      "field": "discreteMouseScroll",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 45,
+      "key": "invertXMouse",
+      "field": "invertXMouse",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 46,
+      "key": "invertYMouse",
+      "field": "invertYMouse",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 47,
+      "key": "realmsNotifications",
+      "field": "realmsNotifications",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 48,
+      "key": "showSubtitles",
+      "field": "showSubtitles",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 49,
+      "key": "directionalAudio",
+      "field": "directionalAudio",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 50,
+      "key": "touchscreen",
+      "field": "touchscreen",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 51,
+      "key": "bobView",
+      "field": "bobView",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 52,
+      "key": "toggleCrouch",
+      "field": "toggleCrouch",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 53,
+      "key": "toggleSprint",
+      "field": "toggleSprint",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 54,
+      "key": "toggleAttack",
+      "field": "toggleAttack",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 55,
+      "key": "toggleUse",
+      "field": "toggleUse",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 56,
+      "key": "sprintWindow",
+      "field": "sprintWindow",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "7",
+      "dumped": false
+    },
+    {
+      "order": 57,
+      "key": "darkMojangStudiosBackground",
+      "field": "darkMojangStudiosBackground",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 58,
+      "key": "hideLightningFlashes",
+      "field": "hideLightningFlash",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 59,
+      "key": "hideSplashTexts",
+      "field": "hideSplashTexts",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 60,
+      "key": "mouseSensitivity",
+      "field": "sensitivity",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.5",
+      "dumped": false
+    },
+    {
+      "order": 61,
+      "key": "damageTiltStrength",
+      "field": "damageTiltStrength",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 62,
+      "key": "highContrast",
+      "field": "highContrast",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 63,
+      "key": "highContrastBlockOutline",
+      "field": "highContrastBlockOutline",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 64,
+      "key": "narratorHotkey",
+      "field": "narratorHotkey",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 65,
+      "key": "resourcePacks",
+      "field": "resourcePacks",
+      "kind": "string-list",
+      "encoding": "string-list",
+      "default": "[]",
+      "dumped": false
+    },
+    {
+      "order": 66,
+      "key": "incompatibleResourcePacks",
+      "field": "incompatibleResourcePacks",
+      "kind": "string-list",
+      "encoding": "string-list",
+      "default": "[]",
+      "dumped": false
+    },
+    {
+      "order": 67,
+      "key": "lastServer",
+      "field": "lastMpIp",
+      "kind": "string",
+      "encoding": "string",
+      "default": "",
+      "dumped": false
+    },
+    {
+      "order": 68,
+      "key": "lang",
+      "field": "languageCode",
+      "kind": "string",
+      "encoding": "string",
+      "default": "en_us",
+      "dumped": false
+    },
+    {
+      "order": 69,
+      "key": "chatVisibility",
+      "field": "chatVisibility",
+      "kind": "codec",
+      "encoding": "enum-id",
+      "default": "0",
+      "dumped": false
+    },
+    {
+      "order": 70,
+      "key": "chatOpacity",
+      "field": "chatOpacity",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 71,
+      "key": "chatLineSpacing",
+      "field": "chatLineSpacing",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.0",
+      "dumped": false
+    },
+    {
+      "order": 72,
+      "key": "textBackgroundOpacity",
+      "field": "textBackgroundOpacity",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.5",
+      "dumped": false
+    },
+    {
+      "order": 73,
+      "key": "backgroundForChatOnly",
+      "field": "backgroundForChatOnly",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 74,
+      "key": "hideServerAddress",
+      "field": "hideServerAddress",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 75,
+      "key": "advancedItemTooltips",
+      "field": "advancedItemTooltips",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 76,
+      "key": "pauseOnLostFocus",
+      "field": "pauseOnLostFocus",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 77,
+      "key": "overrideWidth",
+      "field": "overrideWidth",
+      "kind": "integer",
+      "encoding": "integer",
+      "default": "0",
+      "dumped": false
+    },
+    {
+      "order": 78,
+      "key": "overrideHeight",
+      "field": "overrideHeight",
+      "kind": "integer",
+      "encoding": "integer",
+      "default": "0",
+      "dumped": false
+    },
+    {
+      "order": 79,
+      "key": "chatHeightFocused",
+      "field": "chatHeightFocused",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 80,
+      "key": "chatDelay",
+      "field": "chatDelay",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.0",
+      "dumped": false
+    },
+    {
+      "order": 81,
+      "key": "chatHeightUnfocused",
+      "field": "chatHeightUnfocused",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "0.4375",
+      "dumped": false
+    },
+    {
+      "order": 82,
+      "key": "chatScale",
+      "field": "chatScale",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 83,
+      "key": "chatWidth",
+      "field": "chatWidth",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 84,
+      "key": "notificationDisplayTime",
+      "field": "notificationDisplayTime",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 85,
+      "key": "useNativeTransport",
+      "field": "useNativeTransport",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 86,
+      "key": "mainHand",
+      "field": "mainHand",
+      "kind": "codec",
+      "encoding": "enum-name",
+      "default": "\"right\"",
+      "dumped": false
+    },
+    {
+      "order": 87,
+      "key": "attackIndicator",
+      "field": "attackIndicator",
+      "kind": "codec",
+      "encoding": "enum-id",
+      "default": "1",
+      "dumped": false
+    },
+    {
+      "order": 88,
+      "key": "tutorialStep",
+      "field": "tutorialStep",
+      "kind": "tutorial-step",
+      "encoding": "tutorial-step",
+      "default": "movement",
+      "dumped": false
+    },
+    {
+      "order": 89,
+      "key": "mouseWheelSensitivity",
+      "field": "mouseWheelSensitivity",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 90,
+      "key": "rawMouseInput",
+      "field": "rawMouseInput",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 91,
+      "key": "allowCursorChanges",
+      "field": "allowCursorChanges",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 92,
+      "key": "glDebugVerbosity",
+      "field": "glDebugVerbosity",
+      "kind": "integer",
+      "encoding": "integer",
+      "default": "1",
+      "dumped": false
+    },
+    {
+      "order": 93,
+      "key": "skipMultiplayerWarning",
+      "field": "skipMultiplayerWarning",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 94,
+      "key": "hideMatchedNames",
+      "field": "hideMatchedNames",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 95,
+      "key": "joinedFirstServer",
+      "field": "joinedFirstServer",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 96,
+      "key": "syncChunkWrites",
+      "field": "syncWrites",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "host:platform-is-windows",
+      "dumped": false
+    },
+    {
+      "order": 97,
+      "key": "showAutosaveIndicator",
+      "field": "showAutosaveIndicator",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 98,
+      "key": "allowServerListing",
+      "field": "allowServerListing",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 99,
+      "key": "onlyShowSecureChat",
+      "field": "onlyShowSecureChat",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 100,
+      "key": "saveChatDrafts",
+      "field": "saveChatDrafts",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 101,
+      "key": "panoramaScrollSpeed",
+      "field": "panoramaSpeed",
+      "kind": "codec",
+      "encoding": "double",
+      "default": "1.0",
+      "dumped": false
+    },
+    {
+      "order": 102,
+      "key": "telemetryOptInExtra",
+      "field": "telemetryOptInExtra",
+      "kind": "codec",
+      "encoding": "boolean",
+      "default": "false",
+      "dumped": false
+    },
+    {
+      "order": 103,
+      "key": "onboardAccessibility",
+      "field": "onboardAccessibility",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 104,
+      "key": "menuBackgroundBlurriness",
+      "field": "menuBackgroundBlurriness",
+      "kind": "codec",
+      "encoding": "integer",
+      "default": "5",
+      "dumped": false
+    },
+    {
+      "order": 105,
+      "key": "startedCleanly",
+      "field": "startedCleanly",
+      "kind": "boolean",
+      "encoding": "boolean",
+      "default": "true",
+      "dumped": false
+    },
+    {
+      "order": 106,
+      "key": "musicToast",
+      "field": "musicToast",
+      "kind": "codec",
+      "encoding": "enum-name",
+      "default": "\"never\"",
+      "dumped": false
+    },
+    {
+      "order": 107,
+      "key": "musicFrequency",
+      "field": "musicFrequency",
+      "kind": "codec",
+      "encoding": "enum-name",
+      "default": "\"DEFAULT\"",
+      "dumped": false
+    }
+  ],
+  "dynamic_groups": [
+    {
+      "order": 108,
+      "prefix": "key_",
+      "kind": "key-mapping"
+    },
+    {
+      "order": 109,
+      "prefix": "soundCategory_",
+      "kind": "sound-source"
+    },
+    {
+      "order": 110,
+      "prefix": "modelPart_",
+      "kind": "model-part"
+    }
+  ],
+  "report_extra_keys": [
+    "fullscreenResolution",
+    "glDebugVerbosity",
+    "overrideHeight",
+    "overrideWidth",
+    "syncChunkWrites",
+    "useNativeTransport",
+    "resourcePacks"
+  ],
+  "data_fix": {
+    "owner": "net.minecraft.client.Options#dataFix(final CompoundTag tag)",
+    "registration_source": "net/minecraft/util/datafix/DataFixers.java#addFixers",
+    "type": "DataFixTypes.OPTIONS",
+    "invalid_or_missing_version": 0,
+    "application_rule": "apply each registration in order when input version is lower than the fix schema version",
+    "source_files": [
+      {
+        "path": "net/minecraft/client/Options.java",
+        "sha256": "c57218276e055eef1dfe8190dea329bede17b7110f453864f88f9f43ae4f140f"
+      },
+      {
+        "path": "net/minecraft/util/datafix/DataFixTypes.java",
+        "sha256": "250dd482723e4c2ab42c874f1d829423039c0d1b9e87eed9785af66be42bcecb"
+      },
+      {
+        "path": "net/minecraft/util/datafix/DataFixers.java",
+        "sha256": "0a5eba7e5fa2aef042d2cf4b0aae78f7cc1cae6c2e85332b85ff16cbb12c523c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsAccessibilityOnboardFix.java",
+        "sha256": "78201093ca05d43b15beae3f43174fb713e02be6b2d28ed34de23c467c85c2cc"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsAddTextBackgroundFix.java",
+        "sha256": "476594f2659e171f1ee8c9d742dc8f1abdbd78b97a959b832c87107b6ecad60c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsAmbientOcclusionFix.java",
+        "sha256": "9037e4e52ff923fce99d8af054ed1ec71c66f882baa543bbbd6bbca1ff8279ac"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsFancyGraphicsToGraphicsModeFix.java",
+        "sha256": "cd5ee3e15bd5b15332d01ca7636c07951df1cfb5005e2471056ea3c0e187a2f8"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsForceVBOFix.java",
+        "sha256": "02c6692681f0e7e11ff5785799d226c38753f0e55161b33ea327da2a79a3469c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java",
+        "sha256": "5c11c73876c3cc78a9917b1120cf2f188fb6dd6a125b6da7ce153be55ea1ee82"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java",
+        "sha256": "8b7ceb3a6df541883a8a67c26aa3e17508a88901591b61a031d2662caef8a99c"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsLowerCaseLanguageFix.java",
+        "sha256": "d3f923bbf9efc6dd67e993ce331eab1f3e3ce0a37b4c2c27ec62d9129b68f906"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsMenuBlurrinessFix.java",
+        "sha256": "29243321ef67e439c2d923d2897deea4670c53ec3fc583b58d1ff11e6a85a636"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsMusicToastFix.java",
+        "sha256": "2c835a11aab792da92dbec4ff3cfc4dd3e6d73f79cd1401cf555b35f7a5affab"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsProgrammerArtFix.java",
+        "sha256": "1c5fd58a022a30b1f47968318eb9cbda98211b8c410099693a37e7f72e48a05e"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsRenameFieldFix.java",
+        "sha256": "a6c7ac0072dc05393d022701d00c9a1c2b2f50d4061263bd5d00aceb8e3b20ef"
+      },
+      {
+        "path": "net/minecraft/util/datafix/fixes/OptionsSetGraphicsPresetToCustomFix.java",
+        "sha256": "8b198596460244a78b4265f4acf1696f2c96a72d3ab06e53e1ab92559418df70"
+      }
+    ],
+    "fixes": [
+      {
+        "order": 0,
+        "version": 505,
+        "kind": "force-vbo",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsForceVBOFix.java",
+        "source_sha256": "02c6692681f0e7e11ff5785799d226c38753f0e55161b33ea327da2a79a3469c"
+      },
+      {
+        "order": 1,
+        "version": 816,
+        "kind": "lower-case-language",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsLowerCaseLanguageFix.java",
+        "source_sha256": "d3f923bbf9efc6dd67e993ce331eab1f3e3ce0a37b4c2c27ec62d9129b68f906"
+      },
+      {
+        "order": 2,
+        "version": 1344,
+        "kind": "key-lwjgl3",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java",
+        "source_sha256": "5c11c73876c3cc78a9917b1120cf2f188fb6dd6a125b6da7ce153be55ea1ee82"
+      },
+      {
+        "order": 3,
+        "version": 1446,
+        "kind": "key-translation",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java",
+        "source_sha256": "8b7ceb3a6df541883a8a67c26aa3e17508a88901591b61a031d2662caef8a99c"
+      },
+      {
+        "order": 4,
+        "version": 1936,
+        "kind": "add-text-background",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsAddTextBackgroundFix.java",
+        "source_sha256": "476594f2659e171f1ee8c9d742dc8f1abdbd78b97a959b832c87107b6ecad60c"
+      },
+      {
+        "order": 5,
+        "version": 2556,
+        "kind": "fancy-graphics-to-mode",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsFancyGraphicsToGraphicsModeFix.java",
+        "source_sha256": "cd5ee3e15bd5b15332d01ca7636c07951df1cfb5005e2471056ea3c0e187a2f8"
+      },
+      {
+        "order": 6,
+        "version": 2558,
+        "kind": "rename-field",
+        "arguments": [
+          "key_key.swapHands",
+          "key_key.swapOffhand"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsRenameFieldFix.java",
+        "source_sha256": "a6c7ac0072dc05393d022701d00c9a1c2b2f50d4061263bd5d00aceb8e3b20ef"
+      },
+      {
+        "order": 7,
+        "version": 3201,
+        "kind": "programmer-art",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsProgrammerArtFix.java",
+        "source_sha256": "1c5fd58a022a30b1f47968318eb9cbda98211b8c410099693a37e7f72e48a05e"
+      },
+      {
+        "order": 8,
+        "version": 3214,
+        "kind": "ambient-occlusion",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsAmbientOcclusionFix.java",
+        "source_sha256": "9037e4e52ff923fce99d8af054ed1ec71c66f882baa543bbbd6bbca1ff8279ac"
+      },
+      {
+        "order": 9,
+        "version": 3319,
+        "kind": "accessibility-onboard",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsAccessibilityOnboardFix.java",
+        "source_sha256": "78201093ca05d43b15beae3f43174fb713e02be6b2d28ed34de23c467c85c2cc"
+      },
+      {
+        "order": 10,
+        "version": 3943,
+        "kind": "menu-blurriness",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsMenuBlurrinessFix.java",
+        "source_sha256": "29243321ef67e439c2d923d2897deea4670c53ec3fc583b58d1ff11e6a85a636"
+      },
+      {
+        "order": 11,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "cutoutLeaves",
+          "false",
+          "true",
+          "true"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 12,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "weatherRadius",
+          "5",
+          "10",
+          "10"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 13,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "vignette",
+          "false",
+          "true",
+          "true"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 14,
+        "version": 4651,
+        "kind": "graphics-mode-split",
+        "arguments": [
+          "improvedTransparency",
+          "false",
+          "false",
+          "true"
+        ],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsGraphicsModeSplitFix.java",
+        "source_sha256": "498c06f341397d99160dc90015c9ff9d47465ae268f6bfa288f90cb256ebcc39"
+      },
+      {
+        "order": 15,
+        "version": 4651,
+        "kind": "graphics-preset-custom",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsSetGraphicsPresetToCustomFix.java",
+        "source_sha256": "8b198596460244a78b4265f4acf1696f2c96a72d3ab06e53e1ab92559418df70"
+      },
+      {
+        "order": 16,
+        "version": 4661,
+        "kind": "music-toast",
+        "arguments": [],
+        "source_file": "net/minecraft/util/datafix/fixes/OptionsMusicToastFix.java",
+        "source_sha256": "2c835a11aab792da92dbec4ff3cfc4dd3e6d73f79cd1401cf555b35f7a5affab"
+      }
+    ],
+    "legacy_lwjgl_keys": [
+      {
+        "code": 0,
+        "name": "key.unknown"
+      },
+      {
+        "code": 11,
+        "name": "key.0"
+      },
+      {
+        "code": 2,
+        "name": "key.1"
+      },
+      {
+        "code": 3,
+        "name": "key.2"
+      },
+      {
+        "code": 4,
+        "name": "key.3"
+      },
+      {
+        "code": 5,
+        "name": "key.4"
+      },
+      {
+        "code": 6,
+        "name": "key.5"
+      },
+      {
+        "code": 7,
+        "name": "key.6"
+      },
+      {
+        "code": 8,
+        "name": "key.7"
+      },
+      {
+        "code": 9,
+        "name": "key.8"
+      },
+      {
+        "code": 10,
+        "name": "key.9"
+      },
+      {
+        "code": 30,
+        "name": "key.a"
+      },
+      {
+        "code": 40,
+        "name": "key.apostrophe"
+      },
+      {
+        "code": 48,
+        "name": "key.b"
+      },
+      {
+        "code": 43,
+        "name": "key.backslash"
+      },
+      {
+        "code": 14,
+        "name": "key.backspace"
+      },
+      {
+        "code": 46,
+        "name": "key.c"
+      },
+      {
+        "code": 58,
+        "name": "key.caps.lock"
+      },
+      {
+        "code": 51,
+        "name": "key.comma"
+      },
+      {
+        "code": 32,
+        "name": "key.d"
+      },
+      {
+        "code": 211,
+        "name": "key.delete"
+      },
+      {
+        "code": 208,
+        "name": "key.down"
+      },
+      {
+        "code": 18,
+        "name": "key.e"
+      },
+      {
+        "code": 207,
+        "name": "key.end"
+      },
+      {
+        "code": 28,
+        "name": "key.enter"
+      },
+      {
+        "code": 13,
+        "name": "key.equal"
+      },
+      {
+        "code": 1,
+        "name": "key.escape"
+      },
+      {
+        "code": 33,
+        "name": "key.f"
+      },
+      {
+        "code": 59,
+        "name": "key.f1"
+      },
+      {
+        "code": 68,
+        "name": "key.f10"
+      },
+      {
+        "code": 87,
+        "name": "key.f11"
+      },
+      {
+        "code": 88,
+        "name": "key.f12"
+      },
+      {
+        "code": 100,
+        "name": "key.f13"
+      },
+      {
+        "code": 101,
+        "name": "key.f14"
+      },
+      {
+        "code": 102,
+        "name": "key.f15"
+      },
+      {
+        "code": 103,
+        "name": "key.f16"
+      },
+      {
+        "code": 104,
+        "name": "key.f17"
+      },
+      {
+        "code": 105,
+        "name": "key.f18"
+      },
+      {
+        "code": 113,
+        "name": "key.f19"
+      },
+      {
+        "code": 60,
+        "name": "key.f2"
+      },
+      {
+        "code": 61,
+        "name": "key.f3"
+      },
+      {
+        "code": 62,
+        "name": "key.f4"
+      },
+      {
+        "code": 63,
+        "name": "key.f5"
+      },
+      {
+        "code": 64,
+        "name": "key.f6"
+      },
+      {
+        "code": 65,
+        "name": "key.f7"
+      },
+      {
+        "code": 66,
+        "name": "key.f8"
+      },
+      {
+        "code": 67,
+        "name": "key.f9"
+      },
+      {
+        "code": 34,
+        "name": "key.g"
+      },
+      {
+        "code": 41,
+        "name": "key.grave.accent"
+      },
+      {
+        "code": 35,
+        "name": "key.h"
+      },
+      {
+        "code": 199,
+        "name": "key.home"
+      },
+      {
+        "code": 23,
+        "name": "key.i"
+      },
+      {
+        "code": 210,
+        "name": "key.insert"
+      },
+      {
+        "code": 36,
+        "name": "key.j"
+      },
+      {
+        "code": 37,
+        "name": "key.k"
+      },
+      {
+        "code": 82,
+        "name": "key.keypad.0"
+      },
+      {
+        "code": 79,
+        "name": "key.keypad.1"
+      },
+      {
+        "code": 80,
+        "name": "key.keypad.2"
+      },
+      {
+        "code": 81,
+        "name": "key.keypad.3"
+      },
+      {
+        "code": 75,
+        "name": "key.keypad.4"
+      },
+      {
+        "code": 76,
+        "name": "key.keypad.5"
+      },
+      {
+        "code": 77,
+        "name": "key.keypad.6"
+      },
+      {
+        "code": 71,
+        "name": "key.keypad.7"
+      },
+      {
+        "code": 72,
+        "name": "key.keypad.8"
+      },
+      {
+        "code": 73,
+        "name": "key.keypad.9"
+      },
+      {
+        "code": 78,
+        "name": "key.keypad.add"
+      },
+      {
+        "code": 83,
+        "name": "key.keypad.decimal"
+      },
+      {
+        "code": 181,
+        "name": "key.keypad.divide"
+      },
+      {
+        "code": 156,
+        "name": "key.keypad.enter"
+      },
+      {
+        "code": 141,
+        "name": "key.keypad.equal"
+      },
+      {
+        "code": 55,
+        "name": "key.keypad.multiply"
+      },
+      {
+        "code": 74,
+        "name": "key.keypad.subtract"
+      },
+      {
+        "code": 38,
+        "name": "key.l"
+      },
+      {
+        "code": 203,
+        "name": "key.left"
+      },
+      {
+        "code": 56,
+        "name": "key.left.alt"
+      },
+      {
+        "code": 26,
+        "name": "key.left.bracket"
+      },
+      {
+        "code": 29,
+        "name": "key.left.control"
+      },
+      {
+        "code": 42,
+        "name": "key.left.shift"
+      },
+      {
+        "code": 219,
+        "name": "key.left.win"
+      },
+      {
+        "code": 50,
+        "name": "key.m"
+      },
+      {
+        "code": 12,
+        "name": "key.minus"
+      },
+      {
+        "code": 49,
+        "name": "key.n"
+      },
+      {
+        "code": 69,
+        "name": "key.num.lock"
+      },
+      {
+        "code": 24,
+        "name": "key.o"
+      },
+      {
+        "code": 25,
+        "name": "key.p"
+      },
+      {
+        "code": 209,
+        "name": "key.page.down"
+      },
+      {
+        "code": 201,
+        "name": "key.page.up"
+      },
+      {
+        "code": 197,
+        "name": "key.pause"
+      },
+      {
+        "code": 52,
+        "name": "key.period"
+      },
+      {
+        "code": 183,
+        "name": "key.print.screen"
+      },
+      {
+        "code": 16,
+        "name": "key.q"
+      },
+      {
+        "code": 19,
+        "name": "key.r"
+      },
+      {
+        "code": 205,
+        "name": "key.right"
+      },
+      {
+        "code": 184,
+        "name": "key.right.alt"
+      },
+      {
+        "code": 27,
+        "name": "key.right.bracket"
+      },
+      {
+        "code": 157,
+        "name": "key.right.control"
+      },
+      {
+        "code": 54,
+        "name": "key.right.shift"
+      },
+      {
+        "code": 220,
+        "name": "key.right.win"
+      },
+      {
+        "code": 31,
+        "name": "key.s"
+      },
+      {
+        "code": 70,
+        "name": "key.scroll.lock"
+      },
+      {
+        "code": 39,
+        "name": "key.semicolon"
+      },
+      {
+        "code": 53,
+        "name": "key.slash"
+      },
+      {
+        "code": 57,
+        "name": "key.space"
+      },
+      {
+        "code": 20,
+        "name": "key.t"
+      },
+      {
+        "code": 15,
+        "name": "key.tab"
+      },
+      {
+        "code": 22,
+        "name": "key.u"
+      },
+      {
+        "code": 200,
+        "name": "key.up"
+      },
+      {
+        "code": 47,
+        "name": "key.v"
+      },
+      {
+        "code": 17,
+        "name": "key.w"
+      },
+      {
+        "code": 45,
+        "name": "key.x"
+      },
+      {
+        "code": 21,
+        "name": "key.y"
+      },
+      {
+        "code": 44,
+        "name": "key.z"
+      }
+    ]
+  }
+}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BBB Minecraft 26.1 Web Client</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      user-select: none;
+    }
+    #bbb-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      outline: none;
+      touch-action: none;
+    }
+    #bbb-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(13, 17, 23, 0.92);
+      z-index: 10;
+      pointer-events: none;
+      padding: 24px;
+      text-align: center;
+    }
+    #bbb-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #f0f6fc;
+    }
+    #bbb-status {
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 720px;
+      color: #8b949e;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #bbb-error-actions:not([hidden]) {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      pointer-events: auto;
+    }
+    #bbb-error-actions button {
+      padding: 6px 14px;
+      border: 1px solid #46515c;
+      border-radius: 6px;
+      background: #21262d;
+      color: #f0f6fc;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #bbb-error-actions button:hover {
+      background: #30363d;
+    }
+    #bbb-pack-controls:not([hidden]) {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      display: grid;
+      gap: 6px;
+      max-width: min(340px, calc(100vw - 48px));
+      padding: 10px 12px;
+      border: 1px solid #46515c;
+      border-radius: 6px;
+      background: #0d1117;
+      font-size: 12px;
+    }
+    #bbb-pack-lifetime {
+      color: #aeb9c5;
+    }
+    #bbb-pack-status {
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bbb-canvas" tabindex="0"></canvas>
+  <div id="bbb-pack-controls" hidden>
+    <label for="bbb-pack-picker">Local resource packs (.zip)</label>
+    <input id="bbb-pack-picker" type="file" accept=".zip,application/zip" multiple
+           aria-describedby="bbb-pack-lifetime" />
+    <button id="bbb-pack-clear" type="button" disabled>Clear local packs</button>
+    <span id="bbb-pack-lifetime">Local packs apply to this tab. ZIP limit: 256 MiB total.</span>
+    <span id="bbb-pack-status" role="status"></span>
+  </div>
+  <div id="bbb-loading">
+    <div id="bbb-title">BBB Minecraft 26.1 (WebGPU)</div>
+    <div id="bbb-status">Initializing WebAssembly &amp; WebGPU...</div>
+    <div id="bbb-error-actions" hidden>
+      <button id="bbb-dismiss-btn" type="button" hidden>Dismiss</button>
+      <button id="bbb-reload-btn" type="button">Reload</button>
+    </div>
+  </div>
+  <script type="module">
+    const canvas = document.getElementById("bbb-canvas");
+    const loadingEl = document.getElementById("bbb-loading");
+    const statusEl = document.getElementById("bbb-status");
+    const errorActionsEl = document.getElementById("bbb-error-actions");
+    const dismissBtn = document.getElementById("bbb-dismiss-btn");
+    const reloadBtn = document.getElementById("bbb-reload-btn");
+    window.__bbb_logs = [];
+    window.__bbb_booted = false;
+    window.__bbb_fatal_latched = false;
+    if (reloadBtn) {
+      reloadBtn.addEventListener("click", () => location.reload());
+    }
+    if (dismissBtn) {
+      dismissBtn.addEventListener("click", () => {
+        window.__bbb_fatal_latched = false;
+        if (loadingEl) {
+          loadingEl.style.display = "none";
+          loadingEl.style.pointerEvents = "none";
+        }
+        if (errorActionsEl) errorActionsEl.hidden = true;
+        dismissBtn.hidden = true;
+      });
+    }
+    for (const level of ["log", "info", "warn", "error"]) {
+      const orig = console[level].bind(console);
+      console[level] = (...args) => {
+        try {
+          window.__bbb_logs.push(`[${level}] ` + args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" "));
+          if (window.__bbb_logs.length > 200) window.__bbb_logs.shift();
+        } catch (_) {}
+        orig(...args);
+      };
+    }
+    if (canvas && typeof canvas.requestPointerLock === "function") {
+      const origRequestPointerLock = canvas.requestPointerLock.bind(canvas);
+      const notifyPointerLockFailed = () => {
+        document.dispatchEvent(new Event("bbb-pointerlock-failed"));
+      };
+      canvas.requestPointerLock = (...args) => {
+        try {
+          const res = origRequestPointerLock(...args);
+          if (res && typeof res.catch === "function") {
+            res.catch(() => notifyPointerLockFailed());
+          }
+          return res;
+        } catch (_) {
+          notifyPointerLockFailed();
+        }
+      };
+    }
+    function isWasmFatalError(err) {
+      return typeof WebAssembly !== "undefined" && err instanceof WebAssembly.RuntimeError;
+    }
+    function fail(msg, { dismissable = false } = {}) {
+      console.error(msg);
+      if (window.__bbb_fatal_latched) return;
+      if (!dismissable) {
+        window.__bbb_fatal_latched = true;
+      }
+      if (loadingEl) {
+        loadingEl.style.display = "flex";
+        loadingEl.style.pointerEvents = "auto";
+      }
+      if (statusEl) {
+        statusEl.style.color = "#ff6b6b";
+        statusEl.textContent = msg;
+      }
+      if (errorActionsEl) {
+        errorActionsEl.hidden = false;
+      }
+      if (dismissBtn) {
+        dismissBtn.hidden = !dismissable;
+      }
+    }
+    window.addEventListener("error", (event) => {
+      const msg = `Uncaught error: ${event.error && event.error.stack ? event.error.stack : event.message}`;
+      if (window.__bbb_booted && !isWasmFatalError(event.error)) {
+        fail(msg, { dismissable: true });
+      } else {
+        fail(msg);
+      }
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      const r = event.reason;
+      const msg = `Unhandled rejection: ${r && r.stack ? r.stack : r}`;
+      if (window.__bbb_booted && !isWasmFatalError(r)) {
+        console.error(msg);
+        return;
+      }
+      fail(msg);
+    });
+
+    window.addEventListener("contextmenu", (event) => event.preventDefault());
+    window.addEventListener("wheel", (event) => event.preventDefault(), { passive: false });
+
+    async function startRelayWorker(pkgUrl, module, memory) {
+      const relaySource = `
+        self.onmessage = async ({ data }) => {
+          try {
+            const pkg = await import(data.pkgUrl);
+            await pkg.default({ module_or_path: data.module, memory: data.memory });
+            self.postMessage("ready");
+            pkg.run_web_worker_relay();
+            self.postMessage({ error: "relay worker loop exited unexpectedly" });
+          } catch (err) {
+            const detail = err && err.stack ? err.stack : String(err);
+            self.postMessage({ error: detail });
+          }
+        };
+      `;
+      const blobUrl = URL.createObjectURL(new Blob([relaySource], { type: "text/javascript" }));
+      const worker = new Worker(blobUrl, { type: "module" });
+      window.__bbb_relay_worker = worker;
+      let initSettled = false;
+      worker.addEventListener("message", (ev) => {
+        if (initSettled && ev.data && typeof ev.data === "object" && ev.data.error) {
+          fail(`Relay worker crashed: ${ev.data.error}`);
+        }
+      });
+      worker.addEventListener("error", (err) => {
+        fail(`Relay worker error: ${err.error && err.error.stack ? err.error.stack : err.message || "relay worker failed"}`);
+      });
+      try {
+        await new Promise((resolve, reject) => {
+          worker.addEventListener("message", function onReady(ev) {
+            if (ev.data === "ready") {
+              initSettled = true;
+              worker.removeEventListener("message", onReady);
+              resolve();
+            } else if (ev.data && typeof ev.data === "object" && ev.data.error) {
+              initSettled = true;
+              worker.removeEventListener("message", onReady);
+              reject(new Error(`Relay worker init failed: ${ev.data.error}`));
+            }
+          });
+          worker.addEventListener("error", (err) => {
+            initSettled = true;
+            reject(err.error || new Error(err.message || "relay worker failed"));
+          }, { once: true });
+          worker.postMessage({ pkgUrl, module, memory });
+        });
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+    }
+
+    if (!window.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
+      fail(
+        "Cross-Origin Isolation (COOP/COEP + SharedArrayBuffer) is inactive.\n" +
+        "Open this client via bbb-web-host over http://localhost or HTTPS."
+      );
+    } else if (!navigator.gpu) {
+      fail(
+        "WebGPU (navigator.gpu) is unavailable in this browser.\n" +
+        "Chromium (Chrome/Edge 113+) is gate-verified; Firefox Nightly and Safari 18+ are experimental/unverified."
+      );
+    } else {
+      try {
+        const pkgUrl = new URL("./pkg/bbb_client.js", location.href).href;
+        window.__bbb_pkg_url = pkgUrl;
+        const mod = await import(pkgUrl);
+        if (statusEl) statusEl.textContent = "Loading WASM module...";
+        await mod.default();
+        const threads = Math.max(2, Math.min((navigator.hardwareConcurrency || 4) - 2, 8));
+        if (statusEl) statusEl.textContent = `Starting ${threads} Rayon Web Workers...`;
+        await mod.initThreadPool(threads);
+        const [wasmModule, wasmMemory] = mod.web_worker_init_payload();
+        await startRelayWorker(pkgUrl, wasmModule, wasmMemory);
+        if (statusEl) statusEl.textContent = "Starting BBB Web client...";
+        await mod.start_web_client();
+      } catch (err) {
+        fail(`Startup error: ${err && err.stack ? err.stack : err}`);
+      }
+    }
+  </script>
+</body>
+</html>

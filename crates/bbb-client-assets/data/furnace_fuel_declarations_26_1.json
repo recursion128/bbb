@@ -1,0 +1,597 @@
+{
+  "check_command": "scripts/vanilla-source-tools.sh scripts/generate-furnace-fuel-catalog.py --check",
+  "generated_by": "scripts/generate-furnace-fuel-catalog.py",
+  "operations": [
+    {
+      "action": "add",
+      "constant": "LAVA_BUCKET",
+      "end_byte": 1682,
+      "entry_kind": "item",
+      "resource_id": "minecraft:lava_bucket",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1665
+    },
+    {
+      "action": "add",
+      "constant": "COAL_BLOCK",
+      "end_byte": 1731,
+      "entry_kind": "block",
+      "resource_id": "minecraft:coal_block",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1714
+    },
+    {
+      "action": "add",
+      "constant": "BLAZE_ROD",
+      "end_byte": 1781,
+      "entry_kind": "item",
+      "resource_id": "minecraft:blaze_rod",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1766
+    },
+    {
+      "action": "add",
+      "constant": "COAL",
+      "end_byte": 1822,
+      "entry_kind": "item",
+      "resource_id": "minecraft:coal",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1812
+    },
+    {
+      "action": "add",
+      "constant": "CHARCOAL",
+      "end_byte": 1866,
+      "entry_kind": "item",
+      "resource_id": "minecraft:charcoal",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1852
+    },
+    {
+      "action": "add",
+      "constant": "LOGS",
+      "end_byte": 1909,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:logs",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1896
+    },
+    {
+      "action": "add",
+      "constant": "BAMBOO_BLOCKS",
+      "end_byte": 1965,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:bamboo_blocks",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1943
+    },
+    {
+      "action": "add",
+      "constant": "PLANKS",
+      "end_byte": 2014,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:planks",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 1999
+    },
+    {
+      "action": "add",
+      "constant": "BAMBOO_MOSAIC",
+      "end_byte": 2068,
+      "entry_kind": "block",
+      "resource_id": "minecraft:bamboo_mosaic",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2048
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_STAIRS",
+      "end_byte": 2124,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_stairs",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2102
+    },
+    {
+      "action": "add",
+      "constant": "BAMBOO_MOSAIC_STAIRS",
+      "end_byte": 2185,
+      "entry_kind": "block",
+      "resource_id": "minecraft:bamboo_mosaic_stairs",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2158
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_SLABS",
+      "end_byte": 2240,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_slabs",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2219
+    },
+    {
+      "action": "add",
+      "constant": "BAMBOO_MOSAIC_SLAB",
+      "end_byte": 2299,
+      "entry_kind": "block",
+      "resource_id": "minecraft:bamboo_mosaic_slab",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2274
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_TRAPDOORS",
+      "end_byte": 2358,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_trapdoors",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2333
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_PRESSURE_PLATES",
+      "end_byte": 2423,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_pressure_plates",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2392
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_SHELVES",
+      "end_byte": 2480,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_shelves",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2457
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_FENCES",
+      "end_byte": 2536,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_fences",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2514
+    },
+    {
+      "action": "add",
+      "constant": "FENCE_GATES",
+      "end_byte": 2590,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:fence_gates",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2570
+    },
+    {
+      "action": "add",
+      "constant": "NOTE_BLOCK",
+      "end_byte": 2641,
+      "entry_kind": "block",
+      "resource_id": "minecraft:note_block",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2624
+    },
+    {
+      "action": "add",
+      "constant": "BOOKSHELF",
+      "end_byte": 2691,
+      "entry_kind": "block",
+      "resource_id": "minecraft:bookshelf",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2675
+    },
+    {
+      "action": "add",
+      "constant": "CHISELED_BOOKSHELF",
+      "end_byte": 2750,
+      "entry_kind": "block",
+      "resource_id": "minecraft:chiseled_bookshelf",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2725
+    },
+    {
+      "action": "add",
+      "constant": "LECTERN",
+      "end_byte": 2798,
+      "entry_kind": "block",
+      "resource_id": "minecraft:lectern",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2784
+    },
+    {
+      "action": "add",
+      "constant": "JUKEBOX",
+      "end_byte": 2846,
+      "entry_kind": "block",
+      "resource_id": "minecraft:jukebox",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2832
+    },
+    {
+      "action": "add",
+      "constant": "CHEST",
+      "end_byte": 2892,
+      "entry_kind": "block",
+      "resource_id": "minecraft:chest",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2880
+    },
+    {
+      "action": "add",
+      "constant": "TRAPPED_CHEST",
+      "end_byte": 2946,
+      "entry_kind": "block",
+      "resource_id": "minecraft:trapped_chest",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2926
+    },
+    {
+      "action": "add",
+      "constant": "CRAFTING_TABLE",
+      "end_byte": 3001,
+      "entry_kind": "block",
+      "resource_id": "minecraft:crafting_table",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 2980
+    },
+    {
+      "action": "add",
+      "constant": "DAYLIGHT_DETECTOR",
+      "end_byte": 3059,
+      "entry_kind": "block",
+      "resource_id": "minecraft:daylight_detector",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3035
+    },
+    {
+      "action": "add",
+      "constant": "BANNERS",
+      "end_byte": 3109,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:banners",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3093
+    },
+    {
+      "action": "add",
+      "constant": "BOW",
+      "end_byte": 3152,
+      "entry_kind": "item",
+      "resource_id": "minecraft:bow",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3143
+    },
+    {
+      "action": "add",
+      "constant": "FISHING_ROD",
+      "end_byte": 3203,
+      "entry_kind": "item",
+      "resource_id": "minecraft:fishing_rod",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3186
+    },
+    {
+      "action": "add",
+      "constant": "LADDER",
+      "end_byte": 3250,
+      "entry_kind": "block",
+      "resource_id": "minecraft:ladder",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3237
+    },
+    {
+      "action": "add",
+      "constant": "SIGNS",
+      "end_byte": 3298,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:signs",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3284
+    },
+    {
+      "action": "add",
+      "constant": "HANGING_SIGNS",
+      "end_byte": 3346,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:hanging_signs",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3324
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_SHOVEL",
+      "end_byte": 3395,
+      "entry_kind": "item",
+      "resource_id": "minecraft:wooden_shovel",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3376
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_SWORD",
+      "end_byte": 3439,
+      "entry_kind": "item",
+      "resource_id": "minecraft:wooden_sword",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3421
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_SPEAR",
+      "end_byte": 3483,
+      "entry_kind": "item",
+      "resource_id": "minecraft:wooden_spear",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3465
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_HOE",
+      "end_byte": 3525,
+      "entry_kind": "item",
+      "resource_id": "minecraft:wooden_hoe",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3509
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_AXE",
+      "end_byte": 3567,
+      "entry_kind": "item",
+      "resource_id": "minecraft:wooden_axe",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3551
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_PICKAXE",
+      "end_byte": 3613,
+      "entry_kind": "item",
+      "resource_id": "minecraft:wooden_pickaxe",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3593
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_DOORS",
+      "end_byte": 3660,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_doors",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3639
+    },
+    {
+      "action": "add",
+      "constant": "BOATS",
+      "end_byte": 3700,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:boats",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3686
+    },
+    {
+      "action": "add",
+      "constant": "WOOL",
+      "end_byte": 3743,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wool",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3730
+    },
+    {
+      "action": "add",
+      "constant": "WOODEN_BUTTONS",
+      "end_byte": 3796,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wooden_buttons",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3773
+    },
+    {
+      "action": "add",
+      "constant": "STICK",
+      "end_byte": 3837,
+      "entry_kind": "item",
+      "resource_id": "minecraft:stick",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3826
+    },
+    {
+      "action": "add",
+      "constant": "SAPLINGS",
+      "end_byte": 3884,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:saplings",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3867
+    },
+    {
+      "action": "add",
+      "constant": "BOWL",
+      "end_byte": 3924,
+      "entry_kind": "item",
+      "resource_id": "minecraft:bowl",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3914
+    },
+    {
+      "action": "add",
+      "constant": "WOOL_CARPETS",
+      "end_byte": 3975,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:wool_carpets",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 3954
+    },
+    {
+      "action": "add",
+      "constant": "DRIED_KELP_BLOCK",
+      "end_byte": 4032,
+      "entry_kind": "block",
+      "resource_id": "minecraft:dried_kelp_block",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4009
+    },
+    {
+      "action": "add",
+      "constant": "CROSSBOW",
+      "end_byte": 4081,
+      "entry_kind": "item",
+      "resource_id": "minecraft:crossbow",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4067
+    },
+    {
+      "action": "add",
+      "constant": "BAMBOO",
+      "end_byte": 4128,
+      "entry_kind": "block",
+      "resource_id": "minecraft:bamboo",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4115
+    },
+    {
+      "action": "add",
+      "constant": "DEAD_BUSH",
+      "end_byte": 4174,
+      "entry_kind": "block",
+      "resource_id": "minecraft:dead_bush",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4158
+    },
+    {
+      "action": "add",
+      "constant": "SHORT_DRY_GRASS",
+      "end_byte": 4226,
+      "entry_kind": "block",
+      "resource_id": "minecraft:short_dry_grass",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4204
+    },
+    {
+      "action": "add",
+      "constant": "TALL_DRY_GRASS",
+      "end_byte": 4277,
+      "entry_kind": "block",
+      "resource_id": "minecraft:tall_dry_grass",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4256
+    },
+    {
+      "action": "add",
+      "constant": "SCAFFOLDING",
+      "end_byte": 4325,
+      "entry_kind": "block",
+      "resource_id": "minecraft:scaffolding",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4307
+    },
+    {
+      "action": "add",
+      "constant": "LOOM",
+      "end_byte": 4366,
+      "entry_kind": "block",
+      "resource_id": "minecraft:loom",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4355
+    },
+    {
+      "action": "add",
+      "constant": "BARREL",
+      "end_byte": 4413,
+      "entry_kind": "block",
+      "resource_id": "minecraft:barrel",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4400
+    },
+    {
+      "action": "add",
+      "constant": "CARTOGRAPHY_TABLE",
+      "end_byte": 4471,
+      "entry_kind": "block",
+      "resource_id": "minecraft:cartography_table",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4447
+    },
+    {
+      "action": "add",
+      "constant": "FLETCHING_TABLE",
+      "end_byte": 4527,
+      "entry_kind": "block",
+      "resource_id": "minecraft:fletching_table",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4505
+    },
+    {
+      "action": "add",
+      "constant": "SMITHING_TABLE",
+      "end_byte": 4582,
+      "entry_kind": "block",
+      "resource_id": "minecraft:smithing_table",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4561
+    },
+    {
+      "action": "add",
+      "constant": "COMPOSTER",
+      "end_byte": 4632,
+      "entry_kind": "block",
+      "resource_id": "minecraft:composter",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4616
+    },
+    {
+      "action": "add",
+      "constant": "AZALEA",
+      "end_byte": 4679,
+      "entry_kind": "block",
+      "resource_id": "minecraft:azalea",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4666
+    },
+    {
+      "action": "add",
+      "constant": "FLOWERING_AZALEA",
+      "end_byte": 4732,
+      "entry_kind": "block",
+      "resource_id": "minecraft:flowering_azalea",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4709
+    },
+    {
+      "action": "add",
+      "constant": "MANGROVE_ROOTS",
+      "end_byte": 4783,
+      "entry_kind": "block",
+      "resource_id": "minecraft:mangrove_roots",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4762
+    },
+    {
+      "action": "add",
+      "constant": "LEAF_LITTER",
+      "end_byte": 4835,
+      "entry_kind": "block",
+      "resource_id": "minecraft:leaf_litter",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4817
+    },
+    {
+      "action": "remove",
+      "constant": "NON_FLAMMABLE_WOOD",
+      "end_byte": 4895,
+      "entry_kind": "tag",
+      "resource_id": "minecraft:non_flammable_wood",
+      "source_path": "net/minecraft/world/level/block/entity/FuelValues.java",
+      "start_byte": 4868
+    }
+  ],
+  "sources": [
+    "net/minecraft/tags/ItemTags.java",
+    "net/minecraft/world/level/block/entity/FuelValues.java"
+  ],
+  "update_command": "scripts/vanilla-source-tools.sh scripts/generate-furnace-fuel-catalog.py",
+  "vanilla_version": "26.1"
+}

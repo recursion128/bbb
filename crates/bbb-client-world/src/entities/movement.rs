@@ -1,0 +1,511 @@
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
+use bbb_protocol::packets::{
+    EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
+    MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
+    TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
+    PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
+    PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
+    PLAYER_RELATIVE_Z,
+};
+
+use crate::{ChunkPos, WorldStore};
+
+use super::content_facts::entity_interpolation_steps;
+use super::{is_vanilla_minecart_type, EntityVec3};
+
+impl WorldStore {
+    pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
+        self.counters.entity_position_syncs_received += 1;
+        let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
+        let ticking = self.entity_is_ticking(packet.id);
+        let interpolation_steps = self.entity_interpolation_steps(packet.id);
+        let Some((is_interpolating, old_position)) =
+            self.entities.with_transform_mut(packet.id, |transform| {
+                let old_position = transform.position;
+                let position =
+                    super::record::sanitize_entity_position(packet.position, transform.position);
+                let y_rot = if packet.y_rot.is_finite() {
+                    packet.y_rot
+                } else {
+                    transform.y_rot
+                };
+                let x_rot = if packet.x_rot.is_finite() {
+                    (packet.x_rot % 360.0).clamp(-90.0, 90.0)
+                } else {
+                    transform.x_rot
+                };
+                transform.position_base = position;
+                if locally_authoritative {
+                    return (transform.interpolation_target().is_some(), old_position);
+                }
+                if ticking && entity_distance_squared(transform.position, position) <= 4096.0 {
+                    transform.move_or_interpolate_to(
+                        interpolation_steps,
+                        Some(position),
+                        Some(y_rot),
+                        Some(x_rot),
+                    );
+                } else {
+                    transform.snap_to(position, y_rot, x_rot);
+                }
+                transform.on_ground = Some(packet.on_ground);
+                (transform.interpolation_target().is_some(), old_position)
+            })
+        else {
+            self.counters.entity_position_syncs_ignored += 1;
+            return false;
+        };
+        self.entities
+            .finish_shulker_position_change(packet.id, old_position);
+        if !locally_authoritative {
+            self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+            if !is_interpolating {
+                self.correct_local_player_passenger_after_entity_snap(packet.id);
+            }
+        }
+        self.counters.entity_position_syncs_applied += 1;
+        true
+    }
+
+    pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
+        self.counters.entity_moves_received += 1;
+        let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
+        let interpolation_steps = self.entity_interpolation_steps(packet.id);
+        let Some(old_position) = self.entities.with_transform_mut(packet.id, |transform| {
+            let old_position = transform.position;
+            let position = if packet.has_position {
+                let position = decode_entity_delta_position(
+                    transform.position_base,
+                    packet.delta_x,
+                    packet.delta_y,
+                    packet.delta_z,
+                );
+                transform.position_base = position;
+                Some(position)
+            } else {
+                None
+            };
+            if locally_authoritative {
+                return old_position;
+            }
+            if position.is_some() || packet.y_rot.is_some() || packet.x_rot.is_some() {
+                transform.move_or_interpolate_to(
+                    interpolation_steps,
+                    position,
+                    packet.y_rot,
+                    packet.x_rot,
+                );
+            }
+            transform.on_ground = Some(packet.on_ground);
+            old_position
+        }) else {
+            self.counters.entity_moves_ignored += 1;
+            return false;
+        };
+        self.entities
+            .finish_shulker_position_change(packet.id, old_position);
+        if !locally_authoritative {
+            self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+        }
+        self.counters.entity_moves_applied += 1;
+        true
+    }
+
+    pub fn apply_move_minecart_along_track(
+        &mut self,
+        packet: ProtocolMoveMinecartAlongTrack,
+    ) -> bool {
+        self.counters.minecart_moves_received += 1;
+        self.counters.minecart_lerp_steps_received += packet.lerp_steps.len();
+        if !self.is_feature_enabled("minecraft:minecart_improvements") {
+            self.counters.minecart_moves_ignored += 1;
+            return false;
+        }
+        let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            self.counters.minecart_moves_ignored += 1;
+            return false;
+        };
+        if !is_vanilla_minecart_type(entity_type_id) {
+            self.counters.minecart_moves_ignored += 1;
+            return false;
+        }
+
+        let Some(queued) = self
+            .entities
+            .with_minecart_lerp_mut(packet.entity_id, |lerp| lerp.queue(packet.lerp_steps))
+        else {
+            self.counters.minecart_moves_ignored += 1;
+            return false;
+        };
+        if !queued {
+            self.counters.minecart_moves_ignored += 1;
+            return false;
+        }
+        self.counters.minecart_moves_applied += 1;
+        self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
+        true
+    }
+
+    pub fn apply_teleport_entity(&mut self, packet: ProtocolTeleportEntity) -> bool {
+        self.apply_teleport_entity_with_recovery(packet).0
+    }
+
+    pub(crate) fn apply_teleport_entity_with_recovery(
+        &mut self,
+        packet: ProtocolTeleportEntity,
+    ) -> (
+        bool,
+        Option<super::RemovedPlayerVehicleTeleportRecovery>,
+        Option<super::VehicleMoveReport>,
+    ) {
+        self.counters.entity_teleports_received += 1;
+        if !self.entities.contains(packet.id)
+            && self.removed_player_vehicle_id == Some(packet.id)
+            && self.local_player_id.is_some()
+        {
+            let Some(mut pose) = self.local_player.pose else {
+                self.counters.entity_teleports_ignored += 1;
+                return (false, None, None);
+            };
+            let absolute = entity_absolute_move_rotation(
+                pose.position,
+                pose.delta_movement,
+                pose.y_rot,
+                pose.x_rot,
+                packet.position,
+                packet.delta_movement,
+                packet.y_rot,
+                packet.x_rot,
+                packet.relatives_mask,
+            );
+            let mut old_pose = self.local_player_old_pose.unwrap_or(pose);
+            let old_absolute = entity_absolute_move_rotation(
+                old_pose.position,
+                EntityVec3::default(),
+                old_pose.y_rot,
+                old_pose.x_rot,
+                packet.position,
+                packet.delta_movement,
+                packet.y_rot,
+                packet.x_rot,
+                packet.relatives_mask,
+            );
+            let position =
+                super::record::sanitize_entity_position(absolute.position, pose.position);
+            let velocity = super::record::sanitize_entity_velocity(absolute.delta_movement);
+            let old_position =
+                super::record::sanitize_entity_position(old_absolute.position, old_pose.position);
+            pose.position = position;
+            pose.delta_movement = velocity;
+            if absolute.y_rot.is_finite() {
+                pose.y_rot = absolute.y_rot;
+            }
+            if absolute.x_rot.is_finite() {
+                pose.x_rot = (absolute.x_rot % 360.0).clamp(-90.0, 90.0);
+            }
+            self.local_player.pose = Some(pose);
+            old_pose.position = old_position;
+            if old_absolute.y_rot.is_finite() {
+                old_pose.y_rot = old_absolute.y_rot;
+            }
+            if old_absolute.x_rot.is_finite() {
+                old_pose.x_rot = (old_absolute.x_rot % 360.0).clamp(-90.0, 90.0);
+            }
+            self.local_player_old_pose = Some(old_pose);
+            self.counters.entity_teleports_applied += 1;
+            return (
+                true,
+                Some(super::RemovedPlayerVehicleTeleportRecovery {
+                    removed_vehicle_id: packet.id,
+                    player_pose: pose,
+                }),
+                None,
+            );
+        }
+        let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
+        let ticking = self.entity_is_ticking(packet.id);
+        let interpolation_steps = self.entity_interpolation_steps(packet.id);
+        let has_relative_position = packet.relatives_mask
+            & (PLAYER_RELATIVE_X | PLAYER_RELATIVE_Y | PLAYER_RELATIVE_Z)
+            != 0;
+        let Some((was_interpolated, old_position)) =
+            self.entities.with_transform_mut(packet.id, |transform| {
+                let old_position = transform.position;
+                let (source_position, source_y_rot, source_x_rot) = transform
+                    .interpolation_target()
+                    .unwrap_or((transform.position, transform.y_rot, transform.x_rot));
+                let absolute = entity_absolute_move_rotation(
+                    source_position,
+                    transform.delta_movement,
+                    source_y_rot,
+                    source_x_rot,
+                    packet.position,
+                    packet.delta_movement,
+                    packet.y_rot,
+                    packet.x_rot,
+                    packet.relatives_mask,
+                );
+                let sanitized_pos =
+                    super::record::sanitize_entity_position(absolute.position, source_position);
+                let sanitized_vel =
+                    super::record::sanitize_entity_velocity(absolute.delta_movement);
+                let interpolate = ticking || !locally_authoritative || has_relative_position;
+                let too_big_to_interpolate =
+                    entity_distance_squared(source_position, sanitized_pos) > 4096.0;
+                let was_interpolated = interpolate && !too_big_to_interpolate;
+                if was_interpolated {
+                    transform.move_or_interpolate_to(
+                        interpolation_steps,
+                        Some(sanitized_pos),
+                        Some(absolute.y_rot),
+                        Some(absolute.x_rot),
+                    );
+                    transform.delta_movement = sanitized_vel;
+                } else {
+                    transform.position = sanitized_pos;
+                    transform.delta_movement = sanitized_vel;
+                    transform.set_y_rot(absolute.y_rot);
+                    transform.set_x_rot(absolute.x_rot);
+                    let old_absolute = entity_absolute_move_rotation(
+                        transform.old_position,
+                        EntityVec3::default(),
+                        transform.old_y_rot,
+                        transform.old_x_rot,
+                        packet.position,
+                        packet.delta_movement,
+                        packet.y_rot,
+                        packet.x_rot,
+                        packet.relatives_mask,
+                    );
+                    transform.set_old_pos_and_rot_to(
+                        old_absolute.position,
+                        old_absolute.y_rot,
+                        old_absolute.x_rot,
+                    );
+                }
+                transform.on_ground = Some(packet.on_ground);
+                (was_interpolated, old_position)
+            })
+        else {
+            self.counters.entity_teleports_ignored += 1;
+            return (false, None, None);
+        };
+        self.entities
+            .finish_shulker_position_change(packet.id, old_position);
+        self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+        self.counters.entity_teleports_applied += 1;
+        let vehicle_report = (!was_interpolated
+            && self.correct_local_player_passenger_after_entity_snap(packet.id)
+            && locally_authoritative)
+            .then(|| {
+                let transform = self.entities.transform(packet.id)?;
+                Some(super::VehicleMoveReport {
+                    vehicle_id: packet.id,
+                    position: transform.position,
+                    y_rot: transform.y_rot,
+                    x_rot: transform.x_rot,
+                    on_ground: transform.on_ground.unwrap_or(false),
+                    snapped: true,
+                })
+            })
+            .flatten();
+        (true, None, vehicle_report)
+    }
+
+    fn entity_interpolation_steps(&self, entity_id: i32) -> Option<u8> {
+        let minecart_improvements_enabled =
+            self.is_feature_enabled("minecraft:minecart_improvements");
+        self.entities
+            .entity_type_id(entity_id)
+            .and_then(|entity_type_id| {
+                entity_interpolation_steps(
+                    entity_type_id,
+                    minecart_improvements_enabled,
+                    self.content_registry(),
+                )
+            })
+    }
+
+    fn entity_is_ticking(&self, entity_id: i32) -> bool {
+        if self.level.is_none() {
+            return false;
+        }
+        let Some(identity) = self.entities.identity(entity_id) else {
+            return false;
+        };
+        if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return true;
+        }
+        let Some(transform) = self.entities.transform(entity_id) else {
+            return false;
+        };
+        self.probe_chunk(ChunkPos {
+            x: (transform.position.x.floor() as i32).div_euclid(16),
+            z: (transform.position.z.floor() as i32).div_euclid(16),
+        })
+        .is_some()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct EntityMoveRotation {
+    pub(super) position: EntityVec3,
+    pub(super) delta_movement: EntityVec3,
+    pub(super) y_rot: f32,
+    pub(super) x_rot: f32,
+}
+
+pub(super) fn entity_distance_squared(a: EntityVec3, b: EntityVec3) -> f64 {
+    let dx = a.x - b.x;
+    let dy = a.y - b.y;
+    let dz = a.z - b.z;
+    dx * dx + dy * dy + dz * dz
+}
+
+pub(super) fn decode_entity_delta_position(
+    base: EntityVec3,
+    xa: i16,
+    ya: i16,
+    za: i16,
+) -> EntityVec3 {
+    if xa == 0 && ya == 0 && za == 0 {
+        return base;
+    }
+
+    EntityVec3 {
+        x: decode_entity_delta_axis(base.x, xa),
+        y: decode_entity_delta_axis(base.y, ya),
+        z: decode_entity_delta_axis(base.z, za),
+    }
+}
+
+fn decode_entity_delta_axis(base: f64, delta: i16) -> f64 {
+    if delta == 0 {
+        base
+    } else {
+        java_round_to_i64(base * 4096.0).saturating_add(i64::from(delta)) as f64 / 4096.0
+    }
+}
+
+fn java_round_to_i64(value: f64) -> i64 {
+    (value + 0.5).floor() as i64
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn entity_absolute_move_rotation(
+    current_position: EntityVec3,
+    current_delta_movement: EntityVec3,
+    current_y_rot: f32,
+    current_x_rot: f32,
+    change_position: ProtocolVec3d,
+    change_delta_movement: ProtocolVec3d,
+    change_y_rot: f32,
+    change_x_rot: f32,
+    relatives_mask: i32,
+) -> EntityMoveRotation {
+    let position = EntityVec3 {
+        x: absolute_or_relative_f64(
+            current_position.x,
+            change_position.x,
+            relatives_mask,
+            PLAYER_RELATIVE_X,
+        ),
+        y: absolute_or_relative_f64(
+            current_position.y,
+            change_position.y,
+            relatives_mask,
+            PLAYER_RELATIVE_Y,
+        ),
+        z: absolute_or_relative_f64(
+            current_position.z,
+            change_position.z,
+            relatives_mask,
+            PLAYER_RELATIVE_Z,
+        ),
+    };
+    let y_rot = absolute_or_relative_f32(
+        current_y_rot,
+        change_y_rot,
+        relatives_mask,
+        PLAYER_RELATIVE_Y_ROT,
+    );
+    let x_rot = absolute_or_relative_f32(
+        current_x_rot,
+        change_x_rot,
+        relatives_mask,
+        PLAYER_RELATIVE_X_ROT,
+    )
+    .clamp(-90.0, 90.0);
+
+    let rotated_delta = if relatives_mask & PLAYER_RELATIVE_ROTATE_DELTA != 0 {
+        rotate_entity_delta(
+            current_delta_movement,
+            current_y_rot - y_rot,
+            current_x_rot - x_rot,
+        )
+    } else {
+        current_delta_movement
+    };
+    let delta_movement = EntityVec3 {
+        x: absolute_or_relative_f64(
+            rotated_delta.x,
+            change_delta_movement.x,
+            relatives_mask,
+            PLAYER_RELATIVE_DELTA_X,
+        ),
+        y: absolute_or_relative_f64(
+            rotated_delta.y,
+            change_delta_movement.y,
+            relatives_mask,
+            PLAYER_RELATIVE_DELTA_Y,
+        ),
+        z: absolute_or_relative_f64(
+            rotated_delta.z,
+            change_delta_movement.z,
+            relatives_mask,
+            PLAYER_RELATIVE_DELTA_Z,
+        ),
+    };
+
+    EntityMoveRotation {
+        position,
+        delta_movement,
+        y_rot,
+        x_rot,
+    }
+}
+
+fn absolute_or_relative_f64(current: f64, change: f64, mask: i32, relative_bit: i32) -> f64 {
+    if mask & relative_bit != 0 {
+        current + change
+    } else {
+        change
+    }
+}
+
+fn absolute_or_relative_f32(current: f32, change: f32, mask: i32, relative_bit: i32) -> f32 {
+    if mask & relative_bit != 0 {
+        current + change
+    } else {
+        change
+    }
+}
+
+fn rotate_entity_delta(delta: EntityVec3, y_rot_degrees: f32, x_rot_degrees: f32) -> EntityVec3 {
+    let x_rad = f64::from(x_rot_degrees).to_radians();
+    let y_rad = f64::from(y_rot_degrees).to_radians();
+    let cos_x = x_rad.cos();
+    let sin_x = x_rad.sin();
+    let after_x = EntityVec3 {
+        x: delta.x,
+        y: delta.y * cos_x + delta.z * sin_x,
+        z: delta.z * cos_x - delta.y * sin_x,
+    };
+    let cos_y = y_rad.cos();
+    let sin_y = y_rad.sin();
+    EntityVec3 {
+        x: after_x.x * cos_y + after_x.z * sin_y,
+        y: after_x.y,
+        z: after_x.z * cos_y - after_x.x * sin_y,
+    }
+}

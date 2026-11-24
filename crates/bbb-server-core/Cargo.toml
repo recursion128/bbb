@@ -1,0 +1,32 @@
+[package]
+name = "bbb-server-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bbb-facts = { path = "../bbb-facts", default-features = false, features = ["server-facts"] }
+bbb-protocol = { path = "../bbb-protocol", features = ["server-command-tree"] }
+bbb-registry-codec = { path = "../bbb-registry-codec" }
+bbb-server-datapack = { path = "../bbb-server-datapack" }
+bbb-server-persistence = { path = "../bbb-server-persistence" }
+bbb-server-types = { path = "../bbb-server-types" }
+bbb-server-worldgen = { path = "../bbb-server-worldgen" }
+chrono = { workspace = true }
+rayon = { workspace = true }
+rustc-hash = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[dev-dependencies]
+flate2 = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

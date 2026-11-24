@@ -1,0 +1,20 @@
+[package]
+name = "bbb-facts"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["client-facts", "server-facts"]
+client-facts = []
+server-facts = []
+
+[dependencies]
+rustc-hash = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

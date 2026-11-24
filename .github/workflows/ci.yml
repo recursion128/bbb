@@ -1,0 +1,728 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      run_software_gpu_e2e:
+        description: "Run software-GPU client & Web E2E jobs (prepares Vanilla 26.1 assets with Java 25)"
+        type: boolean
+        default: false
+      build_release_artifacts:
+        description: "Build release archives for desktop client, server, admin, and Web gateway"
+        type: boolean
+        default: false
+      publish_github_release:
+        description: "Publish built release archives to a GitHub Release (nightly rolling prerelease on manual dispatch)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+  RUST_MIN_STACK: "16777216"
+  UV_VERSION: "0.12.3"
+
+jobs:
+  lint:
+    name: L0 Static Lint & Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo registry, xtask, and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: lint-cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            lint-cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            lint-cargo-${{ runner.os }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Run L0 static lints (portable)
+        run: cargo dev lint --skip-vanilla
+
+      - name: Run Python unit test suite
+        run: cargo dev py-test --suite unit
+
+  check-targets:
+    name: L0 Multi-Target Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WASM_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-wasm')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+            ${{ runner.temp }}/bbb-target-wasm
+          key: check-targets-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            check-targets-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            check-targets-${{ runner.os }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla
+
+      - name: Check host workspace, wasm32, and cross-check targets
+        run: cargo dev check-targets
+
+  test-offline:
+    name: L1 Offline Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Restore Cargo artifacts
+        id: cargo-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: test-offline-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            test-offline-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            test-offline-${{ runner.os }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Run offline Rust workspace unit and integration tests
+        run: cargo dev test --workspace --no-fail-fast --lib --bins --tests
+
+      - name: Run Rust workspace doc tests
+        run: cargo dev test --doc --workspace
+
+      - name: Run portable Python test suite (unit + integration)
+        run: cargo dev py-test --suite portable
+
+      - name: Save Cargo artifacts
+        if: always() && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
+  test-server-macos:
+    name: L1 Server Check & Tests (macOS aarch64-apple-darwin)
+    runs-on: macos-latest
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: test-server-macos-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            test-server-macos-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            test-server-macos-${{ runner.os }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Check server, admin, and Web gateway targets on macOS (aarch64-apple-darwin)
+        run: cargo dev check -p bbb-server -p bbb-admin -p bbb-web-host --all-targets
+
+      - name: Run offline server, admin, and Web gateway tests on macOS
+        run: >
+          cargo dev test
+          -p bbb-server
+          -p bbb-admin
+          -p bbb-web-host
+          -p bbb-server-core
+          -p bbb-server-admin
+          -p bbb-server-net
+          -p bbb-server-persistence
+          -p bbb-server-datapack
+          -p bbb-server-worldgen
+          -p bbb-server-types
+          --no-fail-fast --lib --bins --tests
+
+  e2e-server:
+    name: L2 Server Playable E2E (Linux)
+    needs: [lint, check-targets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: e2e-server-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            e2e-server-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            e2e-server-${{ runner.os }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Run headless server playable E2E (bbb mode)
+        run: cargo dev e2e server bbb --artifact-dir "${{ runner.temp }}/e2e-server"
+
+      - name: Upload server E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-artifacts
+          path: ${{ runner.temp }}/e2e-server
+          if-no-files-found: ignore
+
+  e2e-client-software-gpu:
+    name: L2 Desktop Client Software-GPU E2E (${{ matrix.os }})
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_software_gpu_e2e == true)
+    needs: [lint, check-targets]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      BBB_SOFTWARE_GPU: "1"
+      ALSOFT_DRIVERS: "null"
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_VANILLA_ROOT=$(Join-Path '${{ runner.temp }}' 'bbb-vanilla')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux headless Wayland + Lavapipe dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends weston mesa-vulkan-drivers libopenal1
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install Java 25 for Vanilla 26.1 preparation
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: e2e-client-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            e2e-client-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            e2e-client-${{ runner.os }}-
+
+      - name: Bootstrap toolchains and Vanilla 26.1 workspace
+        run: cargo dev bootstrap --skip-cross-target
+
+      - name: Run desktop client software-GPU MCP + replay E2E
+        run: cargo dev e2e client --software-gpu --out "${{ runner.temp }}/e2e-client"
+
+      - name: Upload desktop client E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-client-${{ matrix.os }}
+          path: ${{ runner.temp }}/e2e-client
+          if-no-files-found: ignore
+
+  e2e-web-software-gpu:
+    name: L2 Web Client Software-GPU E2E (Linux)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_software_gpu_e2e == true)
+    needs: [lint, check-targets]
+    runs-on: ubuntu-latest
+    env:
+      BBB_SOFTWARE_GPU: "1"
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WASM_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-wasm')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WEB_OUT_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-web-dist')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_VANILLA_ROOT=$(Join-Path '${{ runner.temp }}' 'bbb-vanilla')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install Java 25 for Vanilla 26.1 preparation
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+            ${{ runner.temp }}/bbb-target-wasm
+            ${{ runner.temp }}/bbb-target-wasm-bindgen-cli
+            ${{ runner.temp }}/bbb-wasm-bindgen-*
+          key: e2e-web-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            e2e-web-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            e2e-web-${{ runner.os }}-
+
+      - name: Bootstrap toolchains and Vanilla 26.1 workspace
+        run: cargo dev bootstrap --skip-cross-target
+
+      - name: Run Chromium SwiftShader WebGPU + MCP E2E
+        run: cargo dev e2e web --software-gpu --artifact-dir "${{ runner.temp }}/e2e-web"
+
+      - name: Upload Web E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-linux
+          path: ${{ runner.temp }}/e2e-web
+          if-no-files-found: ignore
+
+  release-client:
+    name: Release Desktop Client (${{ matrix.target }})
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_release_artifacts == true)
+    needs: [lint, check-targets, test-offline, test-server-macos, e2e-server]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+          key: release-client-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            release-client-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            release-client-${{ matrix.target }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Build release bbb-client (${{ matrix.target }})
+        run: cargo dev build --release --target ${{ matrix.target }} -p bbb-client
+
+      - name: Package Linux desktop client archive
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          set -eu
+          pkg_name="bbb-client-${{ matrix.target }}"
+          stage_root="${{ runner.temp }}/release-stage"
+          stage="${stage_root}/${pkg_name}"
+          out="${{ runner.temp }}/release-archives"
+          rm -rf "${stage}" "${out}"
+          mkdir -p "${stage}" "${out}"
+          install -m 0755 "${CARGO_TARGET_DIR}/${{ matrix.target }}/release/bbb-client" "${stage}/bbb-client"
+          install -m 0755 packaging/bbb-client-launch.sh "${stage}/bbb-client-launch.sh"
+          install -m 0644 packaging/bbb-client.desktop "${stage}/bbb-client.desktop"
+          install -m 0644 packaging/README.md "${stage}/README.md"
+          install -m 0644 LICENSE-MIT "${stage}/LICENSE-MIT"
+          install -m 0644 LICENSE-APACHE "${stage}/LICENSE-APACHE"
+          tar -C "${stage_root}" -czf "${out}/${pkg_name}.tar.gz" "${pkg_name}"
+          (cd "${out}" && sha256sum "${pkg_name}.tar.gz" > "${pkg_name}.tar.gz.sha256")
+
+      - name: Package Windows desktop client archive
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $pkgName = "bbb-client-${{ matrix.target }}"
+          $stage = Join-Path "${{ runner.temp }}\release-stage" $pkgName
+          $out = "${{ runner.temp }}\release-archives"
+          if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+          if (Test-Path $out) { Remove-Item -Recurse -Force $out }
+          New-Item -ItemType Directory -Force -Path $stage, $out | Out-Null
+          Copy-Item "${env:CARGO_TARGET_DIR}\${{ matrix.target }}\release\bbb-client.exe" (Join-Path $stage "bbb-client.exe")
+          Copy-Item "packaging\bbb-client-launch.ps1" (Join-Path $stage "bbb-client-launch.ps1")
+          Copy-Item "packaging\bbb-client-launch.cmd" (Join-Path $stage "bbb-client-launch.cmd")
+          Copy-Item "packaging\README.md" (Join-Path $stage "README.md")
+          Copy-Item "LICENSE-MIT" (Join-Path $stage "LICENSE-MIT")
+          Copy-Item "LICENSE-APACHE" (Join-Path $stage "LICENSE-APACHE")
+          $zipPath = Join-Path $out "$pkgName.zip"
+          Compress-Archive -Path $stage -DestinationPath $zipPath -Force
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash.ToLowerInvariant()
+          Set-Content -Path "$zipPath.sha256" -Value "$hash *$pkgName.zip" -Encoding ascii
+
+      - name: Upload desktop client release archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbb-client-${{ matrix.target }}
+          path: ${{ runner.temp }}/release-archives/
+          if-no-files-found: error
+
+  release-server:
+    name: Release Server & Web Gateway (${{ matrix.target }})
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_release_artifacts == true)
+    needs: [lint, check-targets, test-offline, test-server-macos, e2e-server]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WASM_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-wasm')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WEB_OUT_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-web-dist')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+            ${{ runner.temp }}/bbb-target-wasm
+            ${{ runner.temp }}/bbb-target-wasm-bindgen-cli
+            ${{ runner.temp }}/bbb-wasm-bindgen-*
+          key: release-server-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            release-server-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            release-server-${{ matrix.target }}-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Build release server, admin, and Web gateway (${{ matrix.target }})
+        run: cargo dev build --release --target ${{ matrix.target }} -p bbb-server -p bbb-admin -p bbb-web-host
+
+      - name: Build release threaded WASM bundle
+        run: cargo dev build-web --release --out-dir "${{ runner.temp }}/bbb-web-dist"
+
+      - name: Package server and Web gateway archive
+        run: |
+          set -eu
+          pkg_name="bbb-server-${{ matrix.target }}"
+          stage_root="${{ runner.temp }}/release-stage"
+          stage="${stage_root}/${pkg_name}"
+          out="${{ runner.temp }}/release-archives"
+          rm -rf "${stage}" "${out}"
+          mkdir -p "${stage}/packaging" "${stage}/web-dist" "${out}"
+          for bin in bbb-server bbb-admin bbb-web-host; do
+            install -m 0755 "${CARGO_TARGET_DIR}/${{ matrix.target }}/release/${bin}" "${stage}/${bin}"
+          done
+          cp -R "${BBB_WEB_OUT_DIR}/." "${stage}/web-dist/"
+          if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then
+            install -m 0644 packaging/bbb-server.service "${stage}/packaging/bbb-server.service"
+            install -m 0644 packaging/bbb-web-host.service "${stage}/packaging/bbb-web-host.service"
+          else
+            install -m 0644 packaging/com.bbb.server.plist "${stage}/packaging/com.bbb.server.plist"
+            install -m 0644 packaging/com.bbb.web-host.plist "${stage}/packaging/com.bbb.web-host.plist"
+          fi
+          install -m 0644 packaging/Caddyfile "${stage}/packaging/Caddyfile"
+          install -m 0644 packaging/nginx-bbb-web.conf "${stage}/packaging/nginx-bbb-web.conf"
+          install -m 0644 packaging/README.md "${stage}/packaging/README.md"
+          install -m 0644 LICENSE-MIT "${stage}/LICENSE-MIT"
+          install -m 0644 LICENSE-APACHE "${stage}/LICENSE-APACHE"
+          tar -C "${stage_root}" -czf "${out}/${pkg_name}.tar.gz" "${pkg_name}"
+          (
+            cd "${out}"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "${pkg_name}.tar.gz" > "${pkg_name}.tar.gz.sha256"
+            else
+              shasum -a 256 "${pkg_name}.tar.gz" > "${pkg_name}.tar.gz.sha256"
+            fi
+          )
+
+      - name: Upload server and Web gateway release archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbb-server-${{ matrix.target }}
+          path: ${{ runner.temp }}/release-archives/
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_release_artifacts == true && inputs.publish_github_release == true)
+    needs: [release-client, release-server]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all release archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bbb-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/release-publish
+
+      - name: Assemble SHA256SUMS and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cd "${{ runner.temp }}/release-publish"
+          cat *.sha256 | sort > SHA256SUMS.txt
+          ls -la
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              gh release upload "${tag}" --repo "${GITHUB_REPOSITORY}" --clobber *
+            else
+              gh release create "${tag}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "bbb ${tag}" \
+                --generate-notes \
+                *
+            fi
+          else
+            tag="nightly"
+            notes="Automated multi-platform release build from \`${GITHUB_SHA}\` (desktop client for Linux/Windows, dedicated server + admin + WebGPU gateway for Linux/macOS)."
+            if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              gh release edit "${tag}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --target "${GITHUB_SHA}" \
+                --title "bbb nightly" \
+                --notes "${notes}" \
+                --prerelease
+              gh release upload "${tag}" --repo "${GITHUB_REPOSITORY}" --clobber *
+            else
+              gh release create "${tag}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --target "${GITHUB_SHA}" \
+                --title "bbb nightly" \
+                --notes "${notes}" \
+                --prerelease \
+                *
+            fi
+          fi

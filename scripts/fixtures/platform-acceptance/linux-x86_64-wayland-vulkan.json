@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "row": {
+    "target_os": "linux",
+    "target_arch": "x86_64",
+    "window_backend": "wayland",
+    "gpu_backend": "vulkan",
+    "presentation": "windowed",
+    "client_scope": "external-multiplayer"
+  },
+  "release_profile": "release",
+  "live_termination_mode": "quit",
+  "required_focused_tests": [
+    "local_input_projection_includes_focus_keys_and_mouse_delta",
+    "commands_drain_in_fifo_order_and_wake_once_until_rearmed",
+    "control_input_replays_keys_through_the_real_key_handler",
+    "control_input_replays_atomic_mouse_tap_before_tick_advancement",
+    "shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback",
+    "dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
+    "sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+    "network_terminal_shutdown_is_idempotent_and_requests_disconnect"
+  ],
+  "required_lifecycle_receipts": [
+    "surface_lost",
+    "surface_outdated",
+    "surface_timeouts",
+    "surface_reconfigurations",
+    "surface_frames_skipped",
+    "window_resize_requests",
+    "window_minimize_requests",
+    "window_restore_requests"
+  ],
+  "limitations": []
+}

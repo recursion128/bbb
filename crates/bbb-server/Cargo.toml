@@ -1,0 +1,36 @@
+[package]
+name = "bbb-server"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "bbb-server"
+path = "src/main.rs"
+
+[dependencies]
+bbb-facts = { path = "../bbb-facts", default-features = false, features = ["server-facts"] }
+bbb-server-datapack = { path = "../bbb-server-datapack" }
+bbb-server-persistence = { path = "../bbb-server-persistence" }
+bbb-server-types = { path = "../bbb-server-types" }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-server-admin = { path = "../bbb-server-admin" }
+bbb-server-net = { path = "../bbb-server-net" }
+bbb-server-core = { path = "../bbb-server-core" }
+clap = { workspace = true }
+rayon = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt-multi-thread", "signal"] }
+tokio-rustls = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["json"] }
+uuid = { workspace = true }
+
+[dev-dependencies]
+bytes = { workspace = true }

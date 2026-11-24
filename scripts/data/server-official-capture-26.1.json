@@ -1,0 +1,292 @@
+{
+  "captured_at": "2026-08-18T17:20:41Z",
+  "dimensions": [
+    "overworld",
+    "the_end",
+    "the_nether"
+  ],
+  "files": [
+    {
+      "path": "data/minecraft/custom_boss_events.dat",
+      "sha256": "d1d30ede97350d9f6da9c6b1d6508f9b527d70cf45fc68b4ae7977ffc25d88c0",
+      "size": 48
+    },
+    {
+      "path": "data/minecraft/game_rules.dat",
+      "sha256": "855243915e6e5b3ce74032c566e147fe6d9dbc683c421e38f6179d6cbe66cbfc",
+      "size": 820
+    },
+    {
+      "path": "data/minecraft/random_sequences.dat",
+      "sha256": "f4eb654a645ddfa86160ca2fa66fadc50738c6ad0afa5427246d99cc41f22f7c",
+      "size": 71
+    },
+    {
+      "path": "data/minecraft/scheduled_events.dat",
+      "sha256": "1ca01a7b7bb123500cb9b96cd0c0a5bd4f697a92c29970d9eb2ff6335c1f06d5",
+      "size": 59
+    },
+    {
+      "path": "data/minecraft/scoreboard.dat",
+      "sha256": "d1d30ede97350d9f6da9c6b1d6508f9b527d70cf45fc68b4ae7977ffc25d88c0",
+      "size": 48
+    },
+    {
+      "path": "data/minecraft/stopwatches.dat",
+      "sha256": "560968f74c9206dd4ab7e177d96b759e999bb4cda9b66015dfe67ec30b21cd0b",
+      "size": 64
+    },
+    {
+      "path": "data/minecraft/weather.dat",
+      "sha256": "f8cdf8612084279c5b83f1574628676c99851d1a7fbb8847a7374f91fac1becf",
+      "size": 112
+    },
+    {
+      "path": "data/minecraft/world_clocks.dat",
+      "sha256": "94a844c2502245139e13f70adc20a2151756195bfb5a130c0e215da272eeef8a",
+      "size": 102
+    },
+    {
+      "path": "data/minecraft/world_gen_settings.dat",
+      "sha256": "40755201dcdbe09a657372809d7a34f9b66a9eb10b412cf0493cd53148204558",
+      "size": 352
+    },
+    {
+      "path": "dimensions/minecraft/overworld/data/minecraft/chunk_tickets.dat",
+      "sha256": "d1d30ede97350d9f6da9c6b1d6508f9b527d70cf45fc68b4ae7977ffc25d88c0",
+      "size": 48
+    },
+    {
+      "path": "dimensions/minecraft/overworld/data/minecraft/raids.dat",
+      "sha256": "0601ef4e7394ad0725aaceb62b31522104b91b1d3058d731da277704dd256ff8",
+      "size": 70
+    },
+    {
+      "path": "dimensions/minecraft/overworld/data/minecraft/world_border.dat",
+      "sha256": "987827028bec1c618771a12a0ac5be063d1b10c7e29f5bb6225c94bea310fa7b",
+      "size": 169
+    },
+    {
+      "path": "dimensions/minecraft/overworld/entities/r.-1.-1.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/entities/r.-1.0.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/entities/r.0.-1.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/entities/r.0.0.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/poi/r.-1.-1.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/poi/r.-1.0.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/poi/r.0.-1.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/poi/r.0.0.mca",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "dimensions/minecraft/overworld/region/r.-1.-1.mca",
+      "sha256": "cd7a4c9077d7f5a7a8c4bde873ab634ae5d99212e2866439b86c8b54d2ddf319",
+      "size": 1060864
+    },
+    {
+      "path": "dimensions/minecraft/overworld/region/r.-1.0.mca",
+      "sha256": "06dc3f363ccb22e1b903a58c14669c2cd65590f7bfcc7cd15a0aafee40c88921",
+      "size": 1056768
+    },
+    {
+      "path": "dimensions/minecraft/overworld/region/r.0.-1.mca",
+      "sha256": "0df5a5163933b3261237136f3bf2cd324ed800b15397d4ec85f453000be63383",
+      "size": 1126400
+    },
+    {
+      "path": "dimensions/minecraft/overworld/region/r.0.0.mca",
+      "sha256": "bf8b621ccf668e5b93e309a1ea98b552a60a19dd3bb08b90f4d9909849df131f",
+      "size": 1122304
+    },
+    {
+      "path": "dimensions/minecraft/the_end/data/minecraft/chunk_tickets.dat",
+      "sha256": "d1d30ede97350d9f6da9c6b1d6508f9b527d70cf45fc68b4ae7977ffc25d88c0",
+      "size": 48
+    },
+    {
+      "path": "dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat",
+      "sha256": "13d7ed641c3cc044a25ff9b2a525b6662526021fc36e1e6bbc3a733bb90b677b",
+      "size": 159
+    },
+    {
+      "path": "dimensions/minecraft/the_end/data/minecraft/raids.dat",
+      "sha256": "0601ef4e7394ad0725aaceb62b31522104b91b1d3058d731da277704dd256ff8",
+      "size": 70
+    },
+    {
+      "path": "dimensions/minecraft/the_end/data/minecraft/world_border.dat",
+      "sha256": "987827028bec1c618771a12a0ac5be063d1b10c7e29f5bb6225c94bea310fa7b",
+      "size": 169
+    },
+    {
+      "path": "dimensions/minecraft/the_nether/data/minecraft/chunk_tickets.dat",
+      "sha256": "d1d30ede97350d9f6da9c6b1d6508f9b527d70cf45fc68b4ae7977ffc25d88c0",
+      "size": 48
+    },
+    {
+      "path": "dimensions/minecraft/the_nether/data/minecraft/raids.dat",
+      "sha256": "0601ef4e7394ad0725aaceb62b31522104b91b1d3058d731da277704dd256ff8",
+      "size": 70
+    },
+    {
+      "path": "dimensions/minecraft/the_nether/data/minecraft/world_border.dat",
+      "sha256": "987827028bec1c618771a12a0ac5be063d1b10c7e29f5bb6225c94bea310fa7b",
+      "size": 169
+    },
+    {
+      "path": "level.dat",
+      "sha256": "c5d0bfd0a234214c65b03f9b6c03ea3798e7ef614705a82b9a8bad80da50eea6",
+      "size": 389
+    },
+    {
+      "path": "level.dat_old",
+      "sha256": "b909aaa26f58f04e4e209115ef99216e1d48c6dad8b19414bbd56e85d58c11fd",
+      "size": 384
+    },
+    {
+      "path": "players/advancements/38e35103-a422-357e-bc88-36b0e1c80b71.json",
+      "sha256": "8eae650855d1a75eb42a13c140b0b412b7ac09433e0e1145e00e9ad92dccdf0f",
+      "size": 179
+    },
+    {
+      "path": "players/advancements/65d37767-1b93-34bb-b2fe-6cebf492654c.json",
+      "sha256": "8eae650855d1a75eb42a13c140b0b412b7ac09433e0e1145e00e9ad92dccdf0f",
+      "size": 179
+    },
+    {
+      "path": "players/advancements/67927ac2-cc3d-36e0-90ef-efabac4e087a.json",
+      "sha256": "9a437f03bf7065c11911ffe55778da06f9f6e16dbd876445727739b3f38a0837",
+      "size": 179
+    },
+    {
+      "path": "players/advancements/6ceb17de-0a1e-3760-9d26-bea1b4f7a5ff.json",
+      "sha256": "f9e9aee31436e54698060a7476a3d3ff871196c876b08398a3206aee982af578",
+      "size": 3266
+    },
+    {
+      "path": "players/advancements/8acc4cef-70dc-38e1-b7a9-27eb0859ec51.json",
+      "sha256": "8eae650855d1a75eb42a13c140b0b412b7ac09433e0e1145e00e9ad92dccdf0f",
+      "size": 179
+    },
+    {
+      "path": "players/advancements/b9cc9c27-052e-35ab-b29f-ec6248a36fe8.json",
+      "sha256": "8eae650855d1a75eb42a13c140b0b412b7ac09433e0e1145e00e9ad92dccdf0f",
+      "size": 179
+    },
+    {
+      "path": "players/advancements/dabea5ed-1282-3029-92ca-813bde0bd24f.json",
+      "sha256": "8eae650855d1a75eb42a13c140b0b412b7ac09433e0e1145e00e9ad92dccdf0f",
+      "size": 179
+    },
+    {
+      "path": "players/data/38e35103-a422-357e-bc88-36b0e1c80b71.dat",
+      "sha256": "e5fa12c0069bfeb44448f2bd475f805666fd700ecbf2638421fe612c607cd703",
+      "size": 783
+    },
+    {
+      "path": "players/data/65d37767-1b93-34bb-b2fe-6cebf492654c.dat",
+      "sha256": "a85223d7f3bec15db53dc7e429c28b51c61a2dfab9f934ab865ed96e1540d10c",
+      "size": 740
+    },
+    {
+      "path": "players/data/67927ac2-cc3d-36e0-90ef-efabac4e087a.dat",
+      "sha256": "81cab78f01b61d5714de52549803062cbf152bc9aac7b6a9983cbfc7d149498c",
+      "size": 780
+    },
+    {
+      "path": "players/data/6ceb17de-0a1e-3760-9d26-bea1b4f7a5ff.dat",
+      "sha256": "9c8454e6913a25d97c2f69c815afe41c94ca9921ce9fdd3e20f6862aa433160a",
+      "size": 1100
+    },
+    {
+      "path": "players/data/8acc4cef-70dc-38e1-b7a9-27eb0859ec51.dat",
+      "sha256": "5a007984d0a17ad2727b56033f656705b1b214e9e7e95febc3422c391ddb0f7c",
+      "size": 740
+    },
+    {
+      "path": "players/data/b9cc9c27-052e-35ab-b29f-ec6248a36fe8.dat",
+      "sha256": "b5a40729bfda878cdcb22878fd59143097d60f41a4e24fea2a622eebde9bc7d0",
+      "size": 741
+    },
+    {
+      "path": "players/data/dabea5ed-1282-3029-92ca-813bde0bd24f.dat",
+      "sha256": "53d6ef8280a3992e218014c1be79ab0e6c23b442f8113eedf279b2d02d41dda6",
+      "size": 745
+    },
+    {
+      "path": "players/stats/38e35103-a422-357e-bc88-36b0e1c80b71.json",
+      "sha256": "36660a516c4d1eb5d23214628d4065a1169935d768b22baa3953f786605ea867",
+      "size": 255
+    },
+    {
+      "path": "players/stats/65d37767-1b93-34bb-b2fe-6cebf492654c.json",
+      "sha256": "3868168e39641609f3d1599b584f8362ac369ff9cac65341836ae57182d9c9e7",
+      "size": 107
+    },
+    {
+      "path": "players/stats/67927ac2-cc3d-36e0-90ef-efabac4e087a.json",
+      "sha256": "d9593dd68995eac778c1d125d24d5f169e97bba178294afb319fb144b3229dd7",
+      "size": 326
+    },
+    {
+      "path": "players/stats/6ceb17de-0a1e-3760-9d26-bea1b4f7a5ff.json",
+      "sha256": "9fdac7fe83c87ec04e899d9db7b7e543c9e90741058c495086551e10237b23d3",
+      "size": 354
+    },
+    {
+      "path": "players/stats/8acc4cef-70dc-38e1-b7a9-27eb0859ec51.json",
+      "sha256": "3868168e39641609f3d1599b584f8362ac369ff9cac65341836ae57182d9c9e7",
+      "size": 107
+    },
+    {
+      "path": "players/stats/b9cc9c27-052e-35ab-b29f-ec6248a36fe8.json",
+      "sha256": "3868168e39641609f3d1599b584f8362ac369ff9cac65341836ae57182d9c9e7",
+      "size": 107
+    },
+    {
+      "path": "players/stats/dabea5ed-1282-3029-92ca-813bde0bd24f.json",
+      "sha256": "3868168e39641609f3d1599b584f8362ac369ff9cac65341836ae57182d9c9e7",
+      "size": 107
+    }
+  ],
+  "schema_version": 1,
+  "tool": {
+    "java_sha256": "ac3505f0c58282f00a6585591324a86b038c89cd171105fe42a1a0cf2f13b517",
+    "server_jar_sha256": "98ab064389a8b34d48ac3d4c5ed858dd9433d0dfd1a12e1cbbda916448d92994"
+  },
+  "vanilla_version": "26.1",
+  "world": {
+    "level_name": "world",
+    "level_type": "minecraft:flat",
+    "seed": "bbb-official-capture-26.1"
+  },
+  "world_identity": "d2cefb3984f0d48e922c7e243ff85f9023a3e9149ba6f1eb0cf552083215d407"
+}

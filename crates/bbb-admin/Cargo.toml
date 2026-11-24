@@ -1,0 +1,29 @@
+[package]
+name = "bbb-admin"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "bbb-admin"
+path = "src/main.rs"
+
+[dependencies]
+bbb-mcp = { path = "../bbb-mcp" }
+clap = { workspace = true }
+rustls = { workspace = true }
+rustls-native-certs = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt-multi-thread"] }
+tokio-rustls = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+bbb-server-admin = { path = "../bbb-server-admin" }
+bbb-server-core = { path = "../bbb-server-core" }

@@ -1,0 +1,898 @@
+use super::*;
+
+#[test]
+fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 3012,
+        pos: ProtocolBlockPos { x: 4, y: 65, z: -6 },
+        data: 0,
+        global: false,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 3020,
+        pos: ProtocolBlockPos { x: -8, y: 70, z: 2 },
+        data: 0,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(spawn) = &audio.commands[0] else {
+        panic!(
+            "expected positioned trial spawner sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        spawn.sound.event_id,
+        "minecraft:block.trial_spawner.spawn_mob"
+    );
+    assert_eq!(spawn.category, AudioCategory::Blocks);
+    assert_eq!(spawn.position, [4.5, 65.5, -5.5]);
+    assert_close(spawn.packet_volume, 1.0);
+    assert!((0.8..=1.2).contains(&spawn.packet_pitch));
+    assert!(spawn.distance_delay);
+
+    let AudioCommand::PlayPositionedSound(ominous) = &audio.commands[1] else {
+        panic!(
+            "expected positioned trial spawner ominous sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        ominous.sound.event_id,
+        "minecraft:block.trial_spawner.ominous_activate"
+    );
+    assert_eq!(ominous.category, AudioCategory::Blocks);
+    assert_eq!(ominous.position, [-7.5, 70.5, 2.5]);
+    assert_close(ominous.packet_volume, 0.3);
+    assert!((0.8..=1.2).contains(&ominous.packet_pitch));
+    assert!(ominous.distance_delay);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.trial_spawner.ominous_activate")
+    );
+    assert!(world.last_sound().unwrap().distance_delay);
+    assert_eq!(world.counters().sound_packets, 0);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn ominous_item_spawner_server_sounds_use_packet_then_level_event_paths() {
+    let pos = ProtocolBlockPos { x: 4, y: 65, z: -6 };
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
+        sound: SoundEventHolder::Reference { registry_id: 0 },
+        source: SoundSource::Neutral,
+        position: ProtocolVec3d {
+            x: 4.5,
+            y: 65.5,
+            z: -5.5,
+        },
+        volume: 1.0,
+        pitch: 1.0,
+        seed: 42,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 3021,
+        pos,
+        data: 1,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_spawn_pitch =
+        1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+    let expected_spawn_seed = expected_random.next_long();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(
+        test_sound_catalog(),
+        SoundEventRegistry::from_ids(["minecraft:block.trial_spawner.about_to_spawn_item"]),
+    );
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(about_to_spawn) = &audio.commands[0] else {
+        panic!(
+            "expected positioned about-to-spawn sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        about_to_spawn.sound.event_id,
+        "minecraft:block.trial_spawner.about_to_spawn_item"
+    );
+    assert_eq!(about_to_spawn.category, AudioCategory::Neutral);
+    assert_eq!(about_to_spawn.position, [4.5, 65.5, -5.5]);
+    assert_close(about_to_spawn.packet_volume, 1.0);
+    assert_close(about_to_spawn.packet_pitch, 1.0);
+    assert_eq!(about_to_spawn.seed, 42);
+    assert!(!about_to_spawn.distance_delay);
+
+    let AudioCommand::PlayPositionedSound(spawn) = &audio.commands[1] else {
+        panic!(
+            "expected positioned spawn-item sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        spawn.sound.event_id,
+        "minecraft:block.trial_spawner.spawn_item"
+    );
+    assert_eq!(spawn.category, AudioCategory::Blocks);
+    assert_eq!(spawn.position, [4.5, 65.5, -5.5]);
+    assert_close(spawn.packet_volume, 1.0);
+    assert_close(spawn.packet_pitch, expected_spawn_pitch);
+    assert_eq!(spawn.seed, expected_spawn_seed);
+    assert!(spawn.distance_delay);
+    assert_eq!(world.counters().sound_packets, 1);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn trial_spawner_level_event_emits_sound_and_particle_side_effects() {
+    let event = LevelEvent {
+        event_type: 3012,
+        pos: ProtocolBlockPos { x: 4, y: 65, z: -6 },
+        data: 1,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_pitch = 1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+    let expected_seed = expected_random.next_long();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = TestParticles::new();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            particles.target(),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(sound) = &audio.commands[0] else {
+        panic!(
+            "expected positioned trial spawner sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        sound.sound.event_id,
+        "minecraft:block.trial_spawner.spawn_mob"
+    );
+    assert_eq!(sound.category, AudioCategory::Blocks);
+    assert_close(sound.packet_pitch, expected_pitch);
+    assert_eq!(sound.seed, expected_seed);
+    assert!(sound.distance_delay);
+    assert!(!particles.live_kinds(&world).is_empty());
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 3006,
+        pos: ProtocolBlockPos { x: -2, y: 68, z: 3 },
+        data: 5 << 6,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.sculk.charge");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [-1.5, 68.5, 3.5]);
+    assert_close(command.packet_volume, 0.565_720_5);
+    assert_close(command.packet_pitch, 0.760_804_6);
+    assert_eq!(command.seed, -7_261_648_964_369_397_258);
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn sculk_shrieker_level_event_emits_waterlogged_gated_sound_after_particles() {
+    let dry_event = LevelEvent {
+        event_type: 3007,
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let wet_event = LevelEvent {
+        event_type: 3007,
+        pos: ProtocolBlockPos {
+            x: 17,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let dry_shrieker = vanilla_block_state_id(
+        "minecraft:sculk_shrieker",
+        [
+            ("can_summon", "false"),
+            ("shrieking", "false"),
+            ("waterlogged", "false"),
+        ],
+    );
+    let wet_shrieker = vanilla_block_state_id(
+        "minecraft:sculk_shrieker",
+        [
+            ("can_summon", "false"),
+            ("shrieking", "false"),
+            ("waterlogged", "true"),
+        ],
+    );
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
+        pos: dry_event.pos,
+        block_state_id: dry_shrieker,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::BlockUpdate(BlockUpdate {
+        pos: wet_event.pos,
+        block_state_id: wet_shrieker,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(dry_event)))
+        .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(wet_event)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = TestParticles::new();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_pitch = 0.6 + expected_random.next_float() * 0.4;
+    let expected_seed = expected_random.next_long();
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            particles.target(),
+            None,
+            &mut level_event_sound_random,
+        ),
+        5
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert!(!particles.live_kinds(&world).is_empty());
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(
+        command.sound.event_id,
+        "minecraft:block.sculk_shrieker.shriek"
+    );
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [16.5, -63.5, -31.5]);
+    assert_close(command.packet_volume, 2.0);
+    assert_close(command.packet_pitch, expected_pitch);
+    assert_eq!(command.seed, expected_seed);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.sculk_shrieker.shriek")
+    );
+    assert_eq!(world.last_sound().unwrap().seed, expected_seed);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
+    let event = LevelEvent {
+        event_type: 3000,
+        pos: ProtocolBlockPos { x: 8, y: 64, z: -2 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = TestParticles::new();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            particles.target(),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.end_gateway.spawn");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [8.5, 64.5, -1.5]);
+    assert_close(command.packet_volume, 10.0);
+    assert_close(command.packet_pitch, 0.685_933_77);
+    assert_eq!(command.seed, 4_437_113_781_045_784_766);
+    assert!(!particles.live_kinds(&world).is_empty());
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn cobweb_place_level_event_emits_particles_before_distance_delayed_sound() {
+    let event = LevelEvent {
+        event_type: 3018,
+        pos: ProtocolBlockPos { x: 2, y: 64, z: -5 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = TestParticles::new();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            particles.target(),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert!(!particles.live_kinds(&world).is_empty());
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.cobweb.place");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [2.5, 64.5, -4.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.013_698_2);
+    assert_eq!(command.seed, 536_938_910_405_906_015);
+    assert!(command.distance_delay);
+    let sound = world.last_sound().unwrap();
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:block.cobweb.place")
+    );
+    assert_eq!(sound.seed, 536_938_910_405_906_015);
+    assert!(sound.distance_delay);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn wax_on_level_event_emits_vanilla_sound_and_particles() {
+    let event = LevelEvent {
+        event_type: 3003,
+        pos: ProtocolBlockPos { x: -3, y: 72, z: 5 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(event)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = TestParticles::new();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            particles.target(),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:item.honeycomb.wax_on");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [-2.5, 72.5, 5.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert!(!particles.live_kinds(&world).is_empty());
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:item.honeycomb.wax_on")
+    );
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn global_level_event_emits_vanilla_camera_relative_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1028,
+        pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
+        data: 0,
+        global: true,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.5,
+            y: -1.12,
+            z: 0.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(
+        command.sound.event_id,
+        "minecraft:entity.ender_dragon.death"
+    );
+    assert_eq!(command.category, AudioCategory::Hostile);
+    assert!((command.position[0] - 2.5).abs() < 1.0e-6);
+    assert!((command.position[1] - 0.5).abs() < 1.0e-6);
+    assert!((command.position[2] - 0.5).abs() < 1.0e-6);
+    assert_close(command.packet_volume, 5.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert_eq!(command.seed, -4_962_768_465_676_381_896);
+    let recorded = world.last_sound().unwrap();
+    assert_eq!(
+        recorded.sound.location.as_deref(),
+        Some("minecraft:entity.ender_dragon.death")
+    );
+    assert_eq!(recorded.source, "hostile");
+    assert!((recorded.position.x - 2.5).abs() < 1.0e-6);
+    assert!((recorded.position.y - 0.5).abs() < 1.0e-6);
+    assert!((recorded.position.z - 0.5).abs() < 1.0e-6);
+    assert_close(recorded.volume, 5.0);
+    assert_close(recorded.pitch, 1.0);
+    assert_eq!(recorded.seed, -4_962_768_465_676_381_896);
+    assert_eq!(world.counters().sound_packets, 0);
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn global_level_event_without_camera_does_not_emit_runtime_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1023,
+        pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
+        data: 0,
+        global: true,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert!(audio.commands.is_empty());
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn portal_travel_level_event_emits_vanilla_local_ambience() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1032,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 0,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayLocalSound(command) = &audio.commands[0] else {
+        panic!("expected local sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.portal.travel");
+    assert_eq!(command.sound.sound_name, "minecraft:portal/travel");
+    assert_eq!(command.category, AudioCategory::Ambient);
+    assert_close(command.packet_volume, 0.25);
+    assert_close(command.packet_pitch, 1.092_387_1);
+    assert_eq!(command.seed, 0);
+    assert_eq!(
+        world.last_local_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.portal.travel")
+    );
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn jukebox_level_events_update_world_audio_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 12,
+        global: false,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1011,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 0,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    assert!(world.playing_jukebox_songs().is_empty());
+    let event = world.last_jukebox_event().unwrap();
+    assert_eq!(
+        event.action,
+        bbb_client_world::JukeboxLevelEventAction::Stop
+    );
+    assert_eq!(event.pos, BlockPos { x: -4, y: 70, z: 9 });
+    assert_eq!(event.song_registry_id, None);
+    assert!(event.stopped_existing);
+    assert!(world.action_bar().unwrap().animate_color);
+    assert_eq!(world.take_pending_chat_narrations().len(), 1);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
+fn jukebox_level_events_emit_runtime_audio_commands() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
+        data: 1,
+        global: false,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1011,
+        pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
+        data: 0,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayJukeboxSong(play) = &audio.commands[0] else {
+        panic!("expected jukebox play command, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(play.sound.event_id, "minecraft:music_disc.cat");
+    assert_eq!(play.sound.sound_name, "minecraft:records/cat");
+    assert_eq!(play.category, AudioCategory::Records);
+    assert_eq!(play.position, [4.5, 64.5, -6.5]);
+    assert_eq!(play.jukebox_pos, [4, 64, -7]);
+    assert_close(play.packet_volume, 4.0);
+    assert_close(play.packet_pitch, 1.0);
+    let action_bar = world.action_bar().unwrap();
+    assert_eq!(action_bar.display_ticks, 60);
+    assert!(action_bar.animate_color);
+
+    let AudioCommand::StopJukeboxSong(stop) = &audio.commands[1] else {
+        panic!("expected jukebox stop command, got {:?}", audio.commands[1]);
+    };
+    assert_eq!(stop.jukebox_pos, [4, 64, -7]);
+    assert!(world.playing_jukebox_songs().is_empty());
+    assert_eq!(world.counters().level_events_received, 2);
+}
+
+#[test]
+fn jukebox_song_registry_data_updates_audio_resolution() {
+    let (tx, mut rx) = mpsc::channel(64);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_client_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+    for data in minimal_non_empty_synchronized_registry_data() {
+        if data.registry != "minecraft:jukebox_song" {
+            tx.try_send(NetEvent::RegistryData(data)).unwrap();
+        }
+    }
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: "minecraft:jukebox_song".to_string(),
+        raw_payload_len: 96,
+        entries: vec![
+            RegistryDataEntry {
+                id: "example:custom".to_string(),
+                raw_data: Some(jukebox_song_nbt(
+                    "minecraft:custom.song",
+                    Some(24.0),
+                    "Custom song",
+                    20.0,
+                    3,
+                )),
+            },
+            RegistryDataEntry {
+                id: "minecraft:tears".to_string(),
+                raw_data: Some(jukebox_song_nbt(
+                    "minecraft:music_disc.tears",
+                    None,
+                    "Tears",
+                    175.0,
+                    10,
+                )),
+            },
+        ],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::FinishConfiguration).unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+        data: 0,
+        global: false,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 4, y: 5, z: 6 },
+        data: 1,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    let expected_events = rx.len();
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        expected_events
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(
+        world
+            .registry_content("minecraft:jukebox_song")
+            .unwrap()
+            .entries[0]
+            .id,
+        "example:custom"
+    );
+    let AudioCommand::PlayJukeboxSong(play) = &audio.commands[0] else {
+        panic!("expected jukebox play command, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(play.sound.event_id, "minecraft:custom.song");
+    assert_eq!(play.sound.sound_name, "minecraft:records/custom");
+    assert_eq!(play.fixed_range, Some(24.0));
+    assert_eq!(play.jukebox_pos, [1, 2, 3]);
+
+    let AudioCommand::PlayJukeboxSong(play) = &audio.commands[1] else {
+        panic!("expected jukebox play command, got {:?}", audio.commands[1]);
+    };
+    assert_eq!(play.sound.event_id, "minecraft:music_disc.tears");
+    assert_eq!(play.sound.sound_name, "minecraft:records/tears");
+    assert_eq!(play.fixed_range, None);
+    assert_eq!(play.jukebox_pos, [4, 5, 6]);
+    let narrations = world.take_pending_chat_narrations();
+    assert_eq!(narrations.len(), 2);
+    assert_eq!(
+        narrations[0].kind,
+        bbb_client_world::ChatNarrationKind::SystemNow
+    );
+    assert_eq!(
+        narrations[0].content_component,
+        Some(bbb_protocol::NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "translate".into(),
+                value: bbb_protocol::NbtSummaryValue::string("record.nowPlaying"),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "with".into(),
+                value: bbb_protocol::NbtSummaryValue::List(vec![
+                    bbb_protocol::NbtSummaryValue::Compound(vec![
+                        bbb_protocol::NbtSummaryEntry {
+                            name: "text".into(),
+                            value: bbb_protocol::NbtSummaryValue::string("Custom song"),
+                        },
+                        bbb_protocol::NbtSummaryEntry {
+                            name: "color".into(),
+                            value: bbb_protocol::NbtSummaryValue::string("gold"),
+                        },
+                        bbb_protocol::NbtSummaryEntry {
+                            name: "bold".into(),
+                            value: bbb_protocol::NbtSummaryValue::Byte(1),
+                        },
+                    ]),
+                ]),
+            },
+        ]))
+    );
+    assert_eq!(
+        narrations[1].kind,
+        bbb_client_world::ChatNarrationKind::SystemNow
+    );
+    assert_eq!(
+        narrations[1].content_component.as_ref(),
+        Some(world.action_bar().unwrap().content.component())
+    );
+}
+
+fn jukebox_song_nbt(
+    sound_id: &str,
+    fixed_range: Option<f32>,
+    description: &str,
+    length_in_seconds: f32,
+    comparator_output: i32,
+) -> Vec<u8> {
+    let mut out = vec![10, 10];
+    write_test_nbt_string(&mut out, "sound_event");
+    write_test_nbt_string_field(&mut out, "sound_id", sound_id);
+    if let Some(fixed_range) = fixed_range {
+        write_test_nbt_float_field(&mut out, "range", fixed_range);
+    }
+    out.push(0);
+    out.push(10);
+    write_test_nbt_string(&mut out, "description");
+    write_test_nbt_string_field(&mut out, "text", description);
+    write_test_nbt_string_field(&mut out, "color", "gold");
+    out.push(1);
+    write_test_nbt_string(&mut out, "bold");
+    out.push(1);
+    out.push(0);
+    write_test_nbt_float_field(&mut out, "length_in_seconds", length_in_seconds);
+    out.push(3);
+    write_test_nbt_string(&mut out, "comparator_output");
+    out.extend_from_slice(&comparator_output.to_be_bytes());
+    out.push(0);
+    out
+}
+
+fn write_test_nbt_string_field(out: &mut Vec<u8>, name: &str, value: &str) {
+    out.push(8);
+    write_test_nbt_string(out, name);
+    write_test_nbt_string(out, value);
+}
+
+fn write_test_nbt_float_field(out: &mut Vec<u8>, name: &str, value: f32) {
+    out.push(5);
+    write_test_nbt_string(out, name);
+    out.extend_from_slice(&value.to_be_bytes());
+}
+
+fn write_test_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
+}

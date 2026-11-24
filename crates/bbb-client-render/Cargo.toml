@@ -1,0 +1,65 @@
+[package]
+name = "bbb-client-render"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+lifecycle-soak = []
+
+[dependencies]
+ab_glyph = { workspace = true }
+bbb-client-assets = { path = "../bbb-client-assets" }
+bbb-client-clock = { path = "../bbb-client-clock" }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-registry-codec = { path = "../bbb-registry-codec" }
+bbb-render-types = { path = "../bbb-render-types" }
+anyhow = { workspace = true }
+bytemuck = { workspace = true }
+glam = { workspace = true }
+hashbrown = { workspace = true }
+image = { workspace = true }
+pollster = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true, features = ["rc"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+wgpu = { workspace = true, features = ["glsl", "naga-ir"] }
+winit = { workspace = true }
+zip = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rayon = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+# `naga 30.0.0` gates `ir::Binding::apply_default_interpolation` (used by `glsl`)
+# behind `wgsl-in`/`spv-in`; `webgpu`-only wasm builds omit `wgpu-core`/`wgsl-in`.
+wgpu = { workspace = true, features = ["std", "webgpu", "wgsl", "spirv"] }
+
+[target.'cfg(windows)'.dependencies]
+wgpu = { workspace = true, features = ["std", "parking_lot", "dx12", "wgsl"] }
+
+[target.'cfg(all(not(windows), not(target_arch = "wasm32")))'.dependencies]
+wgpu = { workspace = true, features = ["default"] }
+
+[dev-dependencies]
+criterion = { workspace = true }
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
+
+[[bench]]
+name = "terrain_residency"
+harness = false
+
+[[bench]]
+name = "frame_extraction_storage"
+harness = false
+
+[[bench]]
+name = "item_model_residency"
+harness = false

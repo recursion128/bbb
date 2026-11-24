@@ -1,0 +1,133 @@
+name: Container (GHCR)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_UNSTABLE_CHECKSUM_FRESHNESS: "true"
+  RUST_MIN_STACK: "16777216"
+  UV_VERSION: "0.12.3"
+  REGISTRY: ghcr.io
+
+jobs:
+  publish-ghcr:
+    name: Build & Publish GHCR Image (linux/amd64)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Configure target directories
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_TARGET_ROOT=${{ runner.temp }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WASM_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-wasm')"
+          Add-Content -Path $env:GITHUB_ENV -Value "BBB_WEB_OUT_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-web-dist')"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-10
+          components: rustfmt, clippy, rust-src
+          targets: wasm32-unknown-unknown
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache Cargo and WASM artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .local/xtask-target
+            ${{ runner.temp }}/bbb-target-main
+            ${{ runner.temp }}/bbb-target-wasm
+            ${{ runner.temp }}/bbb-target-wasm-bindgen-cli
+            ${{ runner.temp }}/bbb-wasm-bindgen-*
+          key: container-linux-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}-${{ hashFiles('Cargo.toml', 'crates/**/Cargo.toml', 'crates/**/*.rs') }}
+          restore-keys: |
+            container-linux-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            container-linux-
+            pages-wasm-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+            pages-wasm-
+
+      - name: Bootstrap developer toolchains (portable)
+        run: cargo dev bootstrap --skip-vanilla --skip-cross-target
+
+      - name: Build release server, admin, and Web gateway
+        run: cargo dev build --release --target x86_64-unknown-linux-gnu -p bbb-server -p bbb-admin -p bbb-web-host
+
+      - name: Build release threaded WASM bundle
+        run: cargo dev build-web --release --out-dir "${{ runner.temp }}/bbb-web-dist"
+
+      - name: Stage Docker build context
+        run: |
+          set -euo pipefail
+          ctx="${{ runner.temp }}/docker-context"
+          rm -rf "${ctx}"
+          mkdir -p "${ctx}/bin" "${ctx}/web-dist"
+          for bin in bbb-server bbb-admin bbb-web-host; do
+            install -m 0755 "${CARGO_TARGET_DIR}/x86_64-unknown-linux-gnu/release/${bin}" "${ctx}/bin/${bin}"
+          done
+          cp -R "${BBB_WEB_OUT_DIR}/." "${ctx}/web-dist/"
+          install -m 0644 LICENSE-MIT "${ctx}/LICENSE-MIT"
+          install -m 0644 LICENSE-APACHE "${ctx}/LICENSE-APACHE"
+
+      - name: Compute lowercase image name and tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and smoke-test container image
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          base_image="ubuntu:${VERSION_ID}"
+          echo "BASE_IMAGE=${base_image}" >> "${GITHUB_ENV}"
+          docker build -f packaging/Dockerfile --build-arg "BASE_IMAGE=${base_image}" -t bbb-local-smoke:test "${{ runner.temp }}/docker-context"
+          docker run --rm bbb-local-smoke:test /usr/local/bin/bbb-server --help >/dev/null
+          docker run --rm bbb-local-smoke:test /usr/local/bin/bbb-admin --help >/dev/null
+          docker run --rm bbb-local-smoke:test /usr/local/bin/bbb-web-host --help >/dev/null
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push container image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ runner.temp }}/docker-context
+          file: packaging/Dockerfile
+          build-args: |
+            BASE_IMAGE=${{ env.BASE_IMAGE }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
