@@ -138,7 +138,7 @@ cargo dev web-up --world ../bbb-world
 
 - 首次运行 `cargo dev web-up` 或 `cargo build-web` 时，若环境中缺少匹配版本的 `wasm-bindgen`，会自动执行 `cargo install wasm-bindgen-cli --locked` 安装（首次耗时较长，后续复用缓存）。
 - 首次收到服务端资源包时，桌面端与浏览器均会弹出说明供接受或拒绝；自动化场景可通过 `--server-resource-pack-policy accept|decline` 或 URL 参数 `server_resource_pack_policy` 显式指定。
-- 使用 MCP 查方块、勘察地形或批量建造独立存档，见[本地建图流程](docs/wiki/mechanisms/control/server-mcp-administration.md#用-mcp-建图)。
+- 使用 MCP 查方块、勘察地形或批量建造独立存档，见[用 MCP 建图](docs/wiki/development/cli-reference.md#用-mcp-建图cargo-dev-world-build)。
 
 ## 开发、架构与文档导航
 
