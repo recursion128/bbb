@@ -2,49 +2,70 @@
 
 `bbb` 是 Minecraft Java 26.1 的仓库原生外部多人客户端、WebGPU 浏览器客户端与仅离线模式无头独立服务端，拥有独立的协议、客户端/服务端世界、渲染器、控制面、MCP 管理与运行时边界，不包装官方 JAR、Bevy、Azalea 或其它客户端/服务端技术栈。
 
-桌面与 Web 平台指南见 [Windows 客户端](docs/wiki/development/windows-client.md)、[macOS 与 Linux 开发](docs/wiki/development/macos-and-linux.md) 与 [Web 客户端与网关](docs/wiki/development/web-client.md)。
+[项目网站与在线文档](https://recursion128.github.io/bbb/)
 
-## 下载与部署
+## 快速开始
 
-BBB 使用独立的发布版本号。首个正式发布标签计划使用 `v0.1.0`，兼容目标单独标明为 Minecraft Java 26.1，可显示为 **BBB v0.1.0（Minecraft Java 26.1）**。正式包通过[发布门禁](docs/wiki/development/testing-and-gates.md#发布)后在 [GitHub Releases](https://github.com/recursion128/bbb/releases) 提供下载。
+已有 Minecraft Java 26.1 离线服的地址，可以直接用桌面客户端连接。想在本机开服，先启动服务端，再用桌面客户端或浏览器加入。以下步骤使用预编译包和镜像。
 
-目前可用的是预览构建。以下版本于 2026-11-25 核对，后续更新以各自的发布页为准。
+### 1. 用桌面客户端加入服务器
 
-| 渠道 | 构建版本 | 内容 |
+先用官方启动器安装并启动一次 **Minecraft Java 26.1**，让启动器下载完整资源。解压对应的 BBB 客户端，在解压目录打开终端运行命令。连接已有服务器时，把 `127.0.0.1:25565` 换成它的地址。
+
+| 平台 | 下载 | 启动命令 |
 | --- | --- | --- |
-| [GitHub Releases Nightly](https://github.com/recursion128/bbb/releases/tag/nightly) | `nightly`，源码提交 `6567d9f` | 桌面客户端下载包，或包含浏览器客户端的原生服务端包 |
-| [GHCR 容器镜像](https://github.com/recursion128/bbb/pkgs/container/bbb) | `latest` 当时指向 `sha-85fd2fc` | 服务端、管理 CLI、Web 网关和浏览器客户端 |
+| Windows x64（PowerShell） | [Nightly ZIP](https://github.com/recursion128/bbb/releases/download/nightly/bbb-client-x86_64-pc-windows-msvc.zip) | `.\bbb-client-launch.cmd --server 127.0.0.1:25565 --username Alex` |
+| Linux x64 | [Nightly tar.gz](https://github.com/recursion128/bbb/releases/download/nightly/bbb-client-x86_64-unknown-linux-gnu.tar.gz) | `./bbb-client-launch.sh --server 127.0.0.1:25565 --username Alex` |
 
-### 1. 下载桌面客户端
+Linux 桌面端需要 Wayland、Vulkan 和 OpenAL。资源装在非默认位置时，可设置 `BBB_VANILLA_ROOT`。完整选项见[桌面打包指南](packaging/README.md#packaging-the-desktop-client-bbb-client)。
 
-- **Windows x64** 下载 [Nightly ZIP](https://github.com/recursion128/bbb/releases/download/nightly/bbb-client-x86_64-pc-windows-msvc.zip)，解压后运行 `bbb-client-launch.cmd`。
-- **Linux x64** 下载 [Nightly tar.gz](https://github.com/recursion128/bbb/releases/download/nightly/bbb-client-x86_64-unknown-linux-gnu.tar.gz)，在 Wayland 会话下运行 `./bbb-client-launch.sh`，需要 Vulkan 与 OpenAL。
+### 2. 在本机开服
 
-桌面客户端需要 Minecraft Java 26.1 资源。启动器可以使用本机已有的官方安装或通过 `BBB_VANILLA_ROOT` 指定资源目录。启动参数与系统依赖见[桌面打包指南](packaging/README.md#packaging-the-desktop-client-bbb-client)。
+选择 Docker 或原生包。终端出现 `server.ready` 后，桌面客户端就可以连接 `127.0.0.1:25565`。BBB 服务端以离线模式运行。
 
-### 2. 部署服务端
-
-**Docker（Linux x64 镜像）**默认启动 `bbb-server`。以下示例在本机开放游戏端口，并用 Docker 卷保存世界和管理数据。
+**Docker（Linux x64 镜像）**。首次运行时创建网络。服务端使用 `bbb-data` 卷保存世界和管理数据，网关也可以通过这个网络访问服务端。
 
 ```sh
-docker run --rm -p 127.0.0.1:25565:25565 -v bbb-data:/var/lib/bbb ghcr.io/recursion128/bbb:sha-85fd2fc
+docker network create bbb-quickstart
+docker run --rm --name bbb-server --network bbb-quickstart -p 127.0.0.1:25565:25565 -v bbb-data:/var/lib/bbb ghcr.io/recursion128/bbb:sha-85fd2fc
 ```
 
-`latest` 是滚动标签，预览部署可用 `sha-<提交>` 固定镜像。按现有[镜像发布规则](.github/workflows/container.yml)，BBB 正式 Git 标签 `v0.1.0` 将对应精确镜像标签 `0.1.0` 和版本系列标签 `0.1`。
+**原生包**。下载 [Linux x64](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-x86_64-unknown-linux-gnu.tar.gz) 或 [macOS Apple Silicon](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-aarch64-apple-darwin.tar.gz) 服务端，解压后在包目录运行以下命令。世界会保存在 `./world`。
 
-**原生服务端包**支持 [Linux x64](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-x86_64-unknown-linux-gnu.tar.gz) 和 [macOS Apple Silicon](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-aarch64-apple-darwin.tar.gz)。解压后运行 `./bbb-server --bind 127.0.0.1:25565 --world ./world`。同一个包还提供 `bbb-admin`、`bbb-web-host` 与 `web-dist/`。长期运行或对外部署见[打包指南](packaging/README.md)和[安全与部署指南](docs/wiki/development/security-and-deployment.md)。
+```sh
+./bbb-server --bind 127.0.0.1:25565 --world ./world
+```
 
 ### 3. 用浏览器连接
 
-浏览器客户端由 `bbb-web-host` 提供，WASM/WebGPU 构建随所选服务端包或镜像交付，版本与该包或镜像一致。玩家使用支持 WebGPU 与 `SharedArrayBuffer` 的桌面浏览器（如 Chrome 或 Chromium），通过 HTTPS 或本机回环地址打开网关。
+已有网关时，直接在支持 WebGPU 和 `SharedArrayBuffer` 的桌面浏览器（如 Chrome 或 Chromium）打开它的地址。自行部署时，保持上一步的服务端运行，在另一个终端启动网关。两条命令里的 `/path/to/vanilla` 都要替换为实际的绝对路径，可以用装好 Minecraft Java 26.1 的 `.minecraft` 目录。
 
-网关需要 Minecraft Java 26.1 资源和可连接的服务端。使用原生包时，在解压目录运行：
+**原生包**。在解压目录运行以下命令。
 
 ```sh
 ./bbb-web-host --vanilla-root /path/to/vanilla --wasm-dir ./web-dist --server 127.0.0.1:25565
 ```
 
-本机玩家打开 `http://127.0.0.1:8080/`。使用 Docker 时，从同一个镜像另起容器运行 `bbb-web-host`，挂载 26.1 资源，并将 `--server` 指向网关能访问的服务端地址。网关参数、资源目录与 HTTPS 部署见 [Web 客户端与网关](docs/wiki/development/web-client.md)。
+**Docker**。使用与服务端相同的镜像和网络，网关会通过容器名 `bbb-server` 连接游戏服务端。
+
+```sh
+docker run --rm --network bbb-quickstart -p 127.0.0.1:8080:8080 --mount "type=bind,source=/path/to/vanilla,target=/vanilla,readonly" ghcr.io/recursion128/bbb:sha-85fd2fc bbb-web-host --bind 0.0.0.0:8080 --vanilla-root /vanilla --cache-dir /var/cache/bbb-web --server bbb-server:25565
+```
+
+启动后在浏览器[打开本机网关](http://127.0.0.1:8080/)。远程玩家通过配置了跨源隔离的 HTTPS 网关连接。运行参数和对外部署见 [Web 客户端与网关](docs/wiki/development/web-client.md)与[安全与部署指南](docs/wiki/development/security-and-deployment.md)。
+
+## 发布渠道与版本
+
+BBB 使用独立的发布版本号。首个正式发布计划使用 **BBB v0.1.0（Minecraft Java 26.1）**。通过[发布门禁](docs/wiki/development/testing-and-gates.md#发布)后，正式包将在 [GitHub Releases](https://github.com/recursion128/bbb/releases) 发布。
+
+以下为 2026-11-25 核对的预览构建，最新版本以发布页为准。
+
+| 渠道 | 构建版本 | 内容 |
+| --- | --- | --- |
+| [GitHub Releases Nightly](https://github.com/recursion128/bbb/releases/tag/nightly) | `nightly`，源码提交 `6567d9f` | Windows 和 Linux 桌面包，以及 Linux x64 和 macOS Apple Silicon 原生服务端包 |
+| [GHCR 容器镜像](https://github.com/recursion128/bbb/pkgs/container/bbb) | `latest` 当时指向 `sha-85fd2fc` | Linux x64 镜像 |
+
+原生服务端包和容器镜像均包含 `bbb-server`、`bbb-admin`、`bbb-web-host` 与 `web-dist/`。浏览器客户端沿用所在包或镜像的构建版本。预览镜像可以用 `sha-<提交>` 固定，正式 Git 标签 `v0.1.0` 将对应镜像标签 `0.1.0` 和 `0.1`。 [打包指南](packaging/README.md) · [镜像发布规则](.github/workflows/container.yml)
 
 ## 前置工具与系统依赖
 
