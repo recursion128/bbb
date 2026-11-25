@@ -492,6 +492,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "rand 0.10.2",
+ "ring",
  "rsa",
  "rustls",
  "serde_json",

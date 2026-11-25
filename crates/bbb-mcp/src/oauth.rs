@@ -11,12 +11,9 @@
 //! endpoint that reaches out to an authorization server on every unknown key id
 //! would be a network dependency in the middle of an authorization check.
 
-use std::sync::{Arc, Mutex, PoisonError};
-
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use rsa::{traits::PublicKeyParts, BigUint, Pkcs1v15Sign, RsaPublicKey};
+use ring::{rsa::PublicKeyComponents, signature};
 use serde_json::Value;
-use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
 
 use crate::{
@@ -31,18 +28,9 @@ pub const MIN_MODULUS_BITS: usize = 2048;
 pub const MAX_MODULUS_BITS: usize = 4096;
 
 const MAX_MODULUS_BYTES: usize = MAX_MODULUS_BITS / 8;
-const MAX_RSA_KEY_CACHE_ENTRIES: usize = 64;
 /// Upper bound on RSA keys attempted per token to limit verification CPU work
 /// when a token omits `kid` or shares a `kid` across multiple JWKS entries.
 pub const MAX_CANDIDATE_KEYS_PER_TOKEN: usize = 4;
-
-struct CachedRsaKey {
-    modulus: Vec<u8>,
-    exponent: Vec<u8>,
-    public_key: Arc<RsaPublicKey>,
-}
-
-static RSA_PUBLIC_KEY_CACHE: Mutex<Vec<CachedRsaKey>> = Mutex::new(Vec::new());
 
 /// How much clock skew is tolerated on `exp` and `nbf`, in seconds.
 pub const DEFAULT_LEEWAY_SECONDS: i64 = 60;
@@ -338,96 +326,36 @@ fn decode_json(part: &str) -> Result<Value, AuthFailure> {
     serde_json::from_slice(&bytes).map_err(|_| AuthFailure::InvalidCredential)
 }
 
-fn cached_public_key(key: &JsonWebKey) -> Option<Arc<RsaPublicKey>> {
-    let modulus_bits = key.modulus.len().saturating_mul(8);
-    if !(MIN_MODULUS_BITS..=MAX_MODULUS_BITS).contains(&modulus_bits)
-        || key.exponent.is_empty()
-        || key.exponent.len() > MAX_MODULUS_BYTES
-    {
-        return None;
+fn unsigned_bytes(mut bytes: &[u8]) -> &[u8] {
+    while let [0, rest @ ..] = bytes {
+        bytes = rest;
     }
-
-    {
-        let mut cache = RSA_PUBLIC_KEY_CACHE
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        if let Some(index) = cache
-            .iter()
-            .position(|entry| entry.modulus == key.modulus && entry.exponent == key.exponent)
-        {
-            let entry = cache.remove(index);
-            let public_key = Arc::clone(&entry.public_key);
-            cache.push(entry);
-            return Some(public_key);
-        }
-    }
-
-    let public_key = RsaPublicKey::new(
-        BigUint::from_bytes_be(&key.modulus),
-        BigUint::from_bytes_be(&key.exponent),
-    )
-    .ok()?;
-    let actual_bits = public_key.n().bits();
-    if !(MIN_MODULUS_BITS..=MAX_MODULUS_BITS).contains(&actual_bits) {
-        return None;
-    }
-    let public_key = Arc::new(public_key);
-
-    let mut cache = RSA_PUBLIC_KEY_CACHE
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
-    if let Some(existing) = cache
-        .iter()
-        .find(|entry| entry.modulus == key.modulus && entry.exponent == key.exponent)
-    {
-        return Some(Arc::clone(&existing.public_key));
-    }
-    if cache.len() >= MAX_RSA_KEY_CACHE_ENTRIES {
-        cache.remove(0);
-    }
-    cache.push(CachedRsaKey {
-        modulus: key.modulus.clone(),
-        exponent: key.exponent.clone(),
-        public_key: Arc::clone(&public_key),
-    });
-    Some(public_key)
-}
-
-#[cfg(test)]
-pub(crate) fn cached_public_key_for_test(key: &JsonWebKey) -> Option<Arc<RsaPublicKey>> {
-    cached_public_key(key)
+    bytes
 }
 
 fn verify(key: &JsonWebKey, algorithm: &str, signing_input: &[u8], signature: &[u8]) -> bool {
-    let Some(public_key) = cached_public_key(key) else {
-        return false;
+    let params = match algorithm {
+        "RS256" => &signature::RSA_PKCS1_2048_8192_SHA256,
+        "RS384" => &signature::RSA_PKCS1_2048_8192_SHA384,
+        "RS512" => &signature::RSA_PKCS1_2048_8192_SHA512,
+        _ => return false,
     };
-    match algorithm {
-        "RS256" => public_key
-            .verify(
-                Pkcs1v15Sign::new::<Sha256>(),
-                &Sha256::digest(signing_input),
-                signature,
-            )
-            .is_ok(),
-        "RS384" => public_key
-            .verify(
-                Pkcs1v15Sign::new::<Sha384>(),
-                &Sha384::digest(signing_input),
-                signature,
-            )
-            .is_ok(),
-        "RS512" => public_key
-            .verify(
-                Pkcs1v15Sign::new::<Sha512>(),
-                &Sha512::digest(signing_input),
-                signature,
-            )
-            .is_ok(),
-        // Every other `alg` value, `none` most of all, is not a signature this
-        // server knows how to check, so it is not one it accepts.
-        _ => false,
+
+    if key.modulus.len() > MAX_MODULUS_BYTES || key.exponent.len() > MAX_MODULUS_BYTES {
+        return false;
     }
+    let n = unsigned_bytes(&key.modulus);
+    // ring rounds the modulus up to whole bytes when checking its minimum.
+    let modulus_bits = n.len() * 8 - n.first().map_or(0, |byte| byte.leading_zeros() as usize);
+    if modulus_bits < MIN_MODULUS_BITS {
+        return false;
+    }
+    PublicKeyComponents {
+        n,
+        e: unsigned_bytes(&key.exponent),
+    }
+    .verify(params, signing_input, signature)
+    .is_ok()
 }
 
 /// `aud` is a string or an array of strings, and one of them has to be this

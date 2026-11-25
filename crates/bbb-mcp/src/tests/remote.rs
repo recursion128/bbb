@@ -7,7 +7,7 @@ use std::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use rsa::{pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts, RsaPrivateKey, RsaPublicKey};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha384, Sha512};
 
 use crate::{
     auth::{authenticate, challenge, AuthFailure},
@@ -47,15 +47,17 @@ impl rsa::rand_core::RngCore for TestRng {
 
 impl rsa::rand_core::CryptoRng for TestRng {}
 
+fn generate_key(bits: usize) -> RsaPrivateKey {
+    use rand::SeedableRng;
+    let mut rng = TestRng(rand::rngs::StdRng::seed_from_u64(20260817));
+    RsaPrivateKey::new(&mut rng, bits).expect("an issuer key")
+}
+
 /// One issuer key pair, generated once because 2048-bit generation is the
 /// slowest thing in this module by an order of magnitude.
 fn issuer_key() -> &'static RsaPrivateKey {
     static KEY: OnceLock<RsaPrivateKey> = OnceLock::new();
-    KEY.get_or_init(|| {
-        use rand::SeedableRng;
-        let mut rng = TestRng(rand::rngs::StdRng::seed_from_u64(20260817));
-        RsaPrivateKey::new(&mut rng, 2048).expect("an issuer key")
-    })
+    KEY.get_or_init(|| generate_key(2048))
 }
 
 fn jwks_document(key_id: &str) -> Vec<u8> {
@@ -86,17 +88,19 @@ fn resource() -> OAuthResource {
     }
 }
 
-fn token(header: Value, claims: Value, sign: bool) -> String {
-    let header = URL_SAFE_NO_PAD.encode(header.to_string());
+fn token(header: Value, claims: Value, signer: Option<&RsaPrivateKey>) -> String {
+    let encoded_header = URL_SAFE_NO_PAD.encode(header.to_string());
     let claims = URL_SAFE_NO_PAD.encode(claims.to_string());
-    let signing_input = format!("{header}.{claims}");
-    let signature = if sign {
-        issuer_key()
-            .sign(
-                Pkcs1v15Sign::new::<Sha256>(),
-                &Sha256::digest(signing_input.as_bytes()),
-            )
-            .expect("a signature")
+    let signing_input = format!("{encoded_header}.{claims}");
+    let signature = if let Some(signer) = signer {
+        let bytes = signing_input.as_bytes();
+        match header["alg"].as_str().unwrap() {
+            "RS256" => signer.sign(Pkcs1v15Sign::new::<Sha256>(), &Sha256::digest(bytes)),
+            "RS384" => signer.sign(Pkcs1v15Sign::new::<Sha384>(), &Sha384::digest(bytes)),
+            "RS512" => signer.sign(Pkcs1v15Sign::new::<Sha512>(), &Sha512::digest(bytes)),
+            alg => panic!("unexpected signing algorithm {alg}"),
+        }
+        .expect("a signature")
     } else {
         vec![0u8; 256]
     };
@@ -107,7 +111,7 @@ fn access_token(claims: Value) -> String {
     token(
         json!({ "alg": "RS256", "typ": "at+jwt", "kid": "k-1" }),
         claims,
-        true,
+        Some(issuer_key()),
     )
 }
 
@@ -197,7 +201,7 @@ fn every_reason_a_token_is_not_this_endpoints_is_a_refusal() {
             &token(
                 json!({ "alg": "RS256", "kid": "k-1" }),
                 claims("bbb:read"),
-                false
+                None
             ),
             NOW
         ),
@@ -205,7 +209,7 @@ fn every_reason_a_token_is_not_this_endpoints_is_a_refusal() {
     );
     assert_eq!(
         resource.validate::<Scope>(
-            &token(json!({ "alg": "none" }), claims("bbb:read"), false),
+            &token(json!({ "alg": "none" }), claims("bbb:read"), None),
             NOW
         ),
         Err(AuthFailure::InvalidCredential)
@@ -276,15 +280,38 @@ fn a_jwks_document_keeps_only_the_keys_this_server_can_verify_with() {
 }
 
 #[test]
-fn rsa_public_keys_are_cached_across_token_validations() {
-    let resource = resource();
-    let jwk = &resource.issuers[0].keys[0];
-    let token = access_token(claims("bbb:read"));
-    assert!(resource.validate::<Scope>(&token, NOW).is_ok());
-    let first = crate::oauth::cached_public_key_for_test(jwk).expect("cached key");
-    assert!(resource.validate::<Scope>(&token, NOW).is_ok());
-    let second = crate::oauth::cached_public_key_for_test(jwk).expect("cached key");
-    assert!(Arc::ptr_eq(&first, &second));
+fn padded_jwk_integers_verify_all_supported_rsa_signatures() {
+    let mut resource = resource();
+    let key = &mut resource.issuers[0].keys[0];
+    key.modulus.insert(0, 0);
+    key.exponent.insert(0, 0);
+    key.algorithm = None;
+    for algorithm in ["RS256", "RS384", "RS512"] {
+        let token = token(
+            json!({ "alg": algorithm }),
+            claims("bbb:read"),
+            Some(issuer_key()),
+        );
+        assert_eq!(
+            resource
+                .validate::<Scope>(&token, NOW)
+                .expect(algorithm)
+                .scope,
+            Scope::Read
+        );
+    }
+}
+
+#[test]
+fn signatures_with_only_2047_modulus_bits_are_refused() {
+    let weak = generate_key(2047);
+    let mut resource = resource();
+    resource.issuers[0].keys[0].modulus = weak.n().to_bytes_be();
+    let token = token(json!({ "alg": "RS256" }), claims("bbb:read"), Some(&weak));
+    assert_eq!(
+        resource.validate::<Scope>(&token, NOW),
+        Err(AuthFailure::InvalidCredential)
+    );
 }
 
 #[test]

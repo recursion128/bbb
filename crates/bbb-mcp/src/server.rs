@@ -1432,14 +1432,13 @@ fn idempotency_key<L: ScopeLadder>(session: &SessionView<L>, call: &JsonRpcReque
 /// A session id with 128 bits of entropy, in the visible-ASCII form the
 /// protocol requires of the header.
 fn new_session_id() -> String {
-    use rand::Rng;
+    use ring::rand::{SecureRandom, SystemRandom};
 
     let mut bytes = [0u8; 16];
-    rand::rng().fill_bytes(&mut bytes);
-    bytes
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>()
+    SystemRandom::new()
+        .fill(&mut bytes)
+        .expect("session IDs require OS randomness");
+    format!("{:032x}", u128::from_be_bytes(bytes))
 }
 
 async fn wait_for_peer_close<R: AsyncRead + Unpin>(reader: &mut R) {

@@ -13,7 +13,7 @@
 
 use std::{net::SocketAddr, sync::Arc};
 
-use sha2::{Digest, Sha256};
+use ring::digest::{digest, SHA256};
 
 use crate::{
     host::{ScopeLadder, ScopeOf},
@@ -206,10 +206,10 @@ fn parse_authorization(headers: &HeaderMap) -> AuthorizationHeader<'_> {
 /// Constant-time comparison via SHA-256 digests so neither secret contents nor
 /// secret length leaks through an early exit.
 pub(crate) fn secret_matches(secret: &str, candidate: &str) -> bool {
-    let left_digest = Sha256::digest(secret.as_bytes());
-    let right_digest = Sha256::digest(candidate.as_bytes());
+    let left_digest = digest(&SHA256, secret.as_bytes());
+    let right_digest = digest(&SHA256, candidate.as_bytes());
     let mut difference = u8::from(secret.len() != candidate.len());
-    for (left, right) in left_digest.iter().zip(right_digest.iter()) {
+    for (left, right) in left_digest.as_ref().iter().zip(right_digest.as_ref()) {
         difference |= left ^ right;
     }
     std::hint::black_box(difference) == 0
