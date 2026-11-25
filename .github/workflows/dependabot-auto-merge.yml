@@ -40,28 +40,40 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_GROUP: ${{ steps.metadata.outputs.dependency-group }}
         run: |
           set -euo pipefail
           eligible=false
           if [[ "$ECOSYSTEM" == "github-actions" ]]; then
             eligible=true
           elif [[ "$ECOSYSTEM" == "cargo" || "$ECOSYSTEM" == "uv" ]]; then
-            if [[ "$UPDATE_TYPE" == "version-update:semver-patch" || "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
-              eligible=true
-            fi
+            # Grouped PRs from dependabot.yml only include non-breaking minor/patch updates
+            # (respecting Cargo 0.x breaking semantics). Ungrouped patch updates (e.g. security
+            # fixes) are also eligible; ungrouped 0.x->0.y or major bumps require manual review.
+            case "$DEPENDENCY_GROUP" in
+              wasm-bindgen|icu4x|cargo-minor-patch|python-tools)
+                eligible=true
+                ;;
+              "")
+                if [[ "$UPDATE_TYPE" == "version-update:semver-patch" ]]; then
+                  eligible=true
+                fi
+                ;;
+            esac
           fi
 
           if [[ "$eligible" == "true" ]]; then
-            gh label create automerge \
-              --repo "$GH_REPO" \
-              --description "Eligible for automatic merge after CI succeeds" \
-              --color "0E8A16" \
-              --force
-            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label automerge
-            echo "Labeled PR #${PR_NUMBER} for auto-merge (${ECOSYSTEM}, ${UPDATE_TYPE})."
+            # Use REST endpoints directly; `gh pr edit` hits GraphQL errors when Issues/Projects are disabled.
+            gh api -X POST "repos/${GH_REPO}/labels" \
+              -f name="automerge" \
+              -f color="0E8A16" \
+              -f description="Eligible for automatic merge after CI succeeds" >/dev/null 2>&1 || true
+            gh api -X POST "repos/${GH_REPO}/issues/${PR_NUMBER}/labels" \
+              -f "labels[]=automerge" >/dev/null
+            echo "Labeled PR #${PR_NUMBER} for auto-merge (${ECOSYSTEM}, group=${DEPENDENCY_GROUP:-none}, ${UPDATE_TYPE})."
           else
-            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label automerge >/dev/null 2>&1 || true
-            echo "Skipped auto-merge for PR #${PR_NUMBER} (${ECOSYSTEM}, ${UPDATE_TYPE}); requires manual review."
+            gh api -X DELETE "repos/${GH_REPO}/issues/${PR_NUMBER}/labels/automerge" >/dev/null 2>&1 || true
+            echo "Skipped auto-merge for PR #${PR_NUMBER} (${ECOSYSTEM}, group=${DEPENDENCY_GROUP:-none}, ${UPDATE_TYPE}); requires manual review."
           fi
 
   merge:
@@ -114,11 +126,12 @@ jobs:
             exit 0
           fi
 
-          if ! gh pr merge "$pr_number" \
-            --repo "$GH_REPO" \
-            --squash \
-            --delete-branch \
-            --match-head-commit "$HEAD_SHA"; then
+          if gh api -X PUT "repos/${GH_REPO}/pulls/${pr_number}/merge" \
+            -f merge_method=squash \
+            -f sha="$HEAD_SHA" >/dev/null; then
+            gh api -X DELETE "repos/${GH_REPO}/git/refs/heads/${HEAD_BRANCH}" >/dev/null 2>&1 || true
+            echo "Merged PR #${pr_number} (${HEAD_BRANCH}@${HEAD_SHA})."
+          else
             gh pr merge "$pr_number" \
               --repo "$GH_REPO" \
               --auto \
