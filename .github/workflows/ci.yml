@@ -49,7 +49,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -59,12 +59,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo registry, xtask, and target
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -98,7 +98,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "BBB_WASM_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-wasm')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -108,12 +108,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -148,7 +148,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -158,13 +158,13 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Restore Cargo artifacts
         id: cargo-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -191,7 +191,7 @@ jobs:
 
       - name: Save Cargo artifacts
         if: always() && steps.cargo-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -212,7 +212,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -222,12 +222,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -273,7 +273,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -283,12 +283,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -309,7 +309,7 @@ jobs:
 
       - name: Upload server E2E artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-server-artifacts
           path: ${{ runner.temp }}/e2e-server
@@ -336,7 +336,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "BBB_VANILLA_ROOT=$(Join-Path '${{ runner.temp }}' 'bbb-vanilla')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Linux headless Wayland + Lavapipe dependencies
         if: runner.os == 'Linux'
@@ -352,18 +352,18 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install Java 25 for Vanilla 26.1 preparation
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "25"
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -384,7 +384,7 @@ jobs:
 
       - name: Upload desktop client E2E artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-client-${{ matrix.os }}
           path: ${{ runner.temp }}/e2e-client
@@ -408,7 +408,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "BBB_VANILLA_ROOT=$(Join-Path '${{ runner.temp }}' 'bbb-vanilla')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Linux Vulkan loader for headless Chromium SwiftShader
         run: |
@@ -423,19 +423,19 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install Java 25 for Vanilla 26.1 preparation
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "25"
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Restore Cargo artifacts
         id: cargo-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -459,7 +459,7 @@ jobs:
 
       - name: Upload Web E2E artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-web-linux
           path: ${{ runner.temp }}/e2e-web
@@ -467,7 +467,7 @@ jobs:
 
       - name: Save Cargo artifacts
         if: always() && steps.cargo-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -501,7 +501,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-target-main')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -511,12 +511,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -577,7 +577,7 @@ jobs:
           Set-Content -Path "$zipPath.sha256" -Value "$hash *$pkgName.zip" -Encoding ascii
 
       - name: Upload desktop client release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bbb-client-${{ matrix.target }}
           path: ${{ runner.temp }}/release-archives/
@@ -606,7 +606,7 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "BBB_WEB_OUT_DIR=$(Join-Path '${{ runner.temp }}' 'bbb-web-dist')"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -616,12 +616,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install pinned uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index/
@@ -682,7 +682,7 @@ jobs:
           )
 
       - name: Upload server and Web gateway release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bbb-server-${{ matrix.target }}
           path: ${{ runner.temp }}/release-archives/
@@ -697,7 +697,7 @@ jobs:
       contents: write
     steps:
       - name: Download all release archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: bbb-*
           merge-multiple: true
