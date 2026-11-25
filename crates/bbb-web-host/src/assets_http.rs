@@ -797,11 +797,13 @@ fn build_core_bundle_zip(
                 }
             }
             (_, Some(archive)) => {
-                let mut jar_names: Vec<String> = archive
-                    .file_names()
-                    .filter(|name| !name.ends_with('/') && should_bundle_source_entry(name))
-                    .map(ToOwned::to_owned)
-                    .collect();
+                let mut jar_names = Vec::new();
+                for name in archive.file_names() {
+                    let name = name.context("decode jar entry name")?;
+                    if !name.ends_with('/') && should_bundle_source_entry(&name) {
+                        jar_names.push(name.into_owned());
+                    }
+                }
                 jar_names.sort();
                 jar_names.dedup();
                 for name in jar_names {

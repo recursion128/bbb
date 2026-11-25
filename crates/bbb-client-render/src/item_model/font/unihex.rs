@@ -259,9 +259,12 @@ fn parse_unihex_archive_with_budget<R: Read + Seek>(
             .with_context(|| format!("inspect unihex ZIP entry {index} before budget admission"))?;
         let entry_size = entry.size();
         if entry_size > MAX_UNIHEX_ENTRY_BYTES {
+            let entry_name = entry
+                .name()
+                .map(|name| name.into_owned())
+                .unwrap_or_else(|_| format!("#{index}"));
             bail!(
-                "unihex ZIP entry {:?} is {entry_size} bytes, exceeding the {MAX_UNIHEX_ENTRY_BYTES} byte limit",
-                entry.name()
+                "unihex ZIP entry {entry_name:?} is {entry_size} bytes, exceeding the {MAX_UNIHEX_ENTRY_BYTES} byte limit",
             );
         }
         total_uncompressed = total_uncompressed
@@ -279,8 +282,17 @@ fn parse_unihex_archive_with_budget<R: Read + Seek>(
             }
             Err(error) => return Err(error.context(format!("open unihex ZIP entry {index}"))),
         };
-        if entry.name().ends_with(".hex") {
-            let name = entry.name().to_owned();
+        let name = match entry.name().map_err(classify_zip_error) {
+            Ok(name) => name.into_owned(),
+            Err(error) if error.is::<UnihexProviderInvalid>() => {
+                first_invalid.get_or_insert(error);
+                continue;
+            }
+            Err(error) => {
+                return Err(error.context(format!("decode unihex ZIP entry {index} name")))
+            }
+        };
+        if name.ends_with(".hex") {
             let mut reader = BufReader::with_capacity(
                 64 * 1024,
                 BoundedEntry {

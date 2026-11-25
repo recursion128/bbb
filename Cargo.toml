@@ -71,7 +71,7 @@ regex = "1"
 reqwest = { version = "0.13.4", default-features = false, features = ["rustls-no-provider", "socks"] }
 rsa = "0.9"
 rustc-hash = "1.1"
-rustls = { version = "0.23.41", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-native-certs = "0.8"
 ryu = "1"
 serde = { version = "1", features = ["derive"] }
@@ -101,7 +101,7 @@ js-sys = "0.3.104"
 wgpu = { version = "30.0.0", default-features = false }
 winit = "0.30.13"
 x11-dl = "2.21.0"
-zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "9.8.2", default-features = false, features = ["deflate-flate2"] }
 
 [workspace.lints.rust]
 # deny-warnings lives here (not in RUSTFLAGS) so gate and daily focused tests

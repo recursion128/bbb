@@ -1666,9 +1666,11 @@ mod tests {
         let resources = ZipPackResources::open(&archive_path, &cache).unwrap();
         let bomb = resources.entry("assets/minecraft/sounds/bomb.ogg").unwrap();
         let err = bomb.materialize_with_limits(1024, 4096).unwrap_err();
+        let message = format!("{err:#}");
         assert!(
-            format!("{err:#}").contains("grew past the 1024 byte materialization limit"),
-            "{err:#}"
+            message.contains("larger than its declared uncompressed size")
+                || message.contains("grew past the 1024 byte materialization limit"),
+            "{message}"
         );
         assert!(!bomb.target().exists());
         assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 0);

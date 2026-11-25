@@ -896,6 +896,7 @@ impl ZipPackResources {
             let Some(name) = archive.name_for_index(index) else {
                 continue;
             };
+            let name = name.map_err(|e| format!("invalid zip entry name at index {index}: {e}"))?;
             let trimmed = name.trim_end_matches('/');
             // zip names always use `/`; reject escapes and excessive path nesting before any use.
             if name.contains('\\') || (!trimmed.is_empty() && !path_is_enclosed(Path::new(trimmed)))
