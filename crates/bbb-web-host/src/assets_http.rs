@@ -116,6 +116,10 @@ struct ResolvedVanillaPaths {
     assets_dir: PathBuf,
 }
 
+pub fn has_vanilla_bundle_input(vanilla_root: &Path) -> bool {
+    resolve_vanilla_paths(vanilla_root).is_ok()
+}
+
 fn resolve_vanilla_paths(vanilla_root: &Path) -> Result<ResolvedVanillaPaths> {
     let sources_dir = vanilla_root.join("sources").join(MC_VERSION);
     let downloads_dir = vanilla_root.join("downloads").join(MC_VERSION);

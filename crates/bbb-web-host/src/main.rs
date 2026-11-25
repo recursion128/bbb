@@ -2,7 +2,7 @@ use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use anyhow::{Context, Result};
 use bbb_mcp::control::{check_bind, serve_remote, serve_remote_control, RemoteControlEndpoint};
-use bbb_web_host::{WebHostConfig, WebHostServer};
+use bbb_web_host::{assets_http::has_vanilla_bundle_input, WebHostConfig, WebHostServer};
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -122,7 +122,7 @@ fn default_vanilla_root() -> PathBuf {
         .unwrap_or_else(|| std::env::temp_dir().join("bbb-vanilla"));
     candidates
         .into_iter()
-        .find(|candidate| bbb_client_assets::PackRoots::has_usable_root(candidate))
+        .find(|candidate| has_vanilla_bundle_input(candidate))
         .unwrap_or(default_candidate)
 }
 

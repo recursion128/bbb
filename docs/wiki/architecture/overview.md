@@ -53,7 +53,7 @@ flowchart LR
 关键子层与解耦说明：
 
 - **基础与共享语义**：零工作区依赖的 `bbb-facts` 拥有 26.1 固定事实（含 `default_attributes_26_1`）、纯查询、扫掠碰撞与射线裁切（`collision`）及爆炸数学（`explosion`）；`bbb-protocol` 拥有线协议编解码器、共享光照核心（`chunk_light`）与生物体转向（`entity_body_rotation`）；`bbb-render-types` 单向依赖 `bbb-facts` 与 `bbb-protocol`；`bbb-registry-codec` 不依赖 `bbb-render-types`。
-- **客户端与网关解耦**：`bbb-client-net` 不依赖世界与资产层；`bbb-client-probe` 承载无头 `probe` 与 `bbb-replay-diff`；`bbb-web-host` 零 `bbb-client`/`wgpu`/`winit` 依赖；`bbb-client-world` 的本地移动碰撞复用 `bbb_facts::collision`。
+- **客户端与网关解耦**：`bbb-client-net` 不依赖世界与资产层；`bbb-client-probe` 承载无头 `probe` 与 `bbb-replay-diff`；`bbb-web-host` 自行解析和打包 Vanilla 资源，零 `bbb-client`/`wgpu`/`winit` 依赖。网关集成测试通过 `bbb-client-assets` 验证浏览器客户端可以读取资源包。`bbb-client-world` 的本地移动碰撞复用 `bbb_facts::collision`。
 - **服务端数据分离**：`bbb-server-core::world` 为唯一 tick 写者；`bbb-server-types` 拥有无宿主服务端值类型与纯方块查询；`bbb-server-datapack` 拥有数据包、动态注册表（`/reload` 保持启动冻结注册表）与预设生成源；`bbb-server-persistence` 与 `bbb-server-worldgen`、`bbb-server-datapack` 完全解耦（26.1 存档的兼容范围和失败保证见[服务端保存与重载](../mechanisms/persistence/server-save-and-reload.md)）；`bbb-admin` 仅依赖 `bbb-mcp`。
 
 ## Workspace 24-crate 生产依赖有向无环图（DAG）
@@ -190,7 +190,6 @@ flowchart TD
   mcp -. "not(wasm32)" .-> cli_bin
 
   protocol --> web_host
-  cli_assets --> web_host
   mcp --> web_host
 ```
 

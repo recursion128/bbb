@@ -19,7 +19,6 @@ path = "src/main.rs"
 [dependencies]
 anyhow = { workspace = true }
 base64 = { workspace = true }
-bbb-client-assets = { path = "../bbb-client-assets" }
 bbb-mcp = { path = "../bbb-mcp" }
 bbb-protocol = { path = "../bbb-protocol" }
 bytes = { workspace = true }
@@ -36,3 +35,6 @@ tracing-subscriber = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
 zip = { workspace = true }
+
+[dev-dependencies]
+bbb-client-assets = { path = "../bbb-client-assets" }
