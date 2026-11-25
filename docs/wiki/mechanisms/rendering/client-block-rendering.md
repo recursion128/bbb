@@ -59,7 +59,7 @@ Vanilla `LevelRenderer.renderLevel` 的多 pass 编排、功能目标、透明�
 
 `--improved-transparency` + 全景相机标志 → 客户端不可变 `LevelFrameRoute` 投影 → 渲染器私有目标、深度复制、透明合成与最终呈现路由。
 
-默认 FANCY 走常规（regular）路径；即使启用改善透明度，全景相机也强制回落常规路径。常规路径将半透明地形、物品实体、粒子、云层与天气依次加载到主颜色/深度缓冲，不复制主深度，也不运行透明合成。改善透明度（improved）路径为五类目标分配独立颜色与深度附件，`copy_main_depth_to_feature_targets` 将主深度复制到 `translucent`，并仅当 `itemEntities` 或 `particles` 存在实际深度绘制时才复制到对应目标；云层与天气各自清空独立深度。缺失后处理图时自动回落常规路径（`improved_transparency = false`、`FrameTransparencyCombine::None`）；`VanillaDirect` 最多排序 4 个非云层并在最终混合时合入云层，无置顶调试广告牌时在同一合成 pass 直接绘制第一人称手部，呈现阶段始终读取同一路由决策。
+默认 FANCY 走常规（regular）路径；即使启用改善透明度，全景相机也强制回落常规路径。常规路径将半透明地形、物品实体、粒子、云层与天气依次加载到主颜色/深度缓冲，不复制主深度，也不运行透明合成。改善透明度（improved）路径为五类目标分配独立颜色与深度附件，`copy_main_depth_to_feature_targets` 将主深度复制到 `translucent`，并仅当 `itemEntities` 或 `particles` 存在实际深度绘制时才复制到对应目标；云层与天气各自清空独立深度。`FramePlan` 透明合成路由（`None` / `VanillaDirect` / `GenericGraph` 及缺失后处理图回落规则）统一由[客户端场景与渲染](client-scene-and-rendering.md#判断与处理顺序)定义。
 
 两条路径均保持「clear → 天空/主场景 → 实体轮廓目标 → 半透明/物品/粒子 → 实体轮廓后处理 → 云层 → 天气 → 可选透明合成 → 晚阶段调试」顺序；晚阶段调试清空主深度，实体轮廓链不受改善透明度开关影响。资源与后处理代际沿用既有事务提交，失败保留上一完整代际，帧路由不缓存也不改写资源包。
 

@@ -70,7 +70,7 @@
 
 ## 当前差异
 
-流体网格生成与相机水下/熔岩/细雪雾效（见 `crates/bbb-client/src/runtime/render_extract/environment.rs`）均已落地，[客户端账本](../../../unsupported-client-features.md)当前无未关闭的 `# Todo` 缺口。两者仍属相邻但独立的机制，不能用网格测试代替相机雾效验证。
+流体网格生成与相机水下/熔岩/细雪雾效（见 `crates/bbb-client/src/runtime/render_extract/environment.rs`）分别由本机制与相机环境机制独立拥有，[客户端账本](../../../unsupported-client-features.md)当前无未关闭的 `# Todo` 缺口。两者属相邻但独立的机制，不能用网格测试代替相机雾效验证。
 
 ## 账本归属
 

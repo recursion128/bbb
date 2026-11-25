@@ -4,7 +4,7 @@
 
 ## 机制目的和边界
 
-本页定义从 TCP 字节流到有序连接事件、以及从 Configuration 阶段同步注册表到可查询 holder 的完整交接契约。客户端连接任意声明范围内的外部离线（offline）多人服务器；BBB 服务端的反向路径见[服务端连接与会话](server-connections-and-sessions.md)。两端共享协议线格式类型，分别拥有各自的状态机。Play 阶段数据包在世界层的应用见[客户端协议状态流](client-state-flow.md)，会话替换与网络线程退出见[客户端运行时](../runtime/client-runtime-and-control.md)。
+本页定义从原生 TCP 或浏览器二进制 WebSocket 字节流到有序连接事件、以及从 Configuration 阶段同步注册表到可查询 holder 的完整交接契约。客户端连接任意声明范围内的外部仅离线模式多人服务器；BBB 服务端的反向路径见[服务端连接与会话](server-connections-and-sessions.md)。两端共享协议线格式类型，分别拥有各自的状态机。Play 阶段数据包在世界层的应用见[客户端协议状态流](client-state-flow.md)，会话替换与网络线程退出见[客户端运行时](../runtime/client-runtime-and-control.md)。
 
 ## Vanilla 26.1 权威实现
 
@@ -19,7 +19,7 @@
 
 | 输入/状态 | 唯一所有者 | 下游输出 |
 | --- | --- | --- |
-| TCP 缓冲、压缩阈值与连接写入 | `RawConnection` | 已分帧的数据包 ID 与载荷 |
+| TCP / WebSocket 缓冲、压缩阈值与连接写入 | `bbb_client_net::transport::ClientStream`（原生 `RawConnection` / Web `net_worker.rs` + `bbb-web-host` `/ws` 桥） | 已分帧的数据包 ID 与载荷 |
 | 协议阶段、hello 锁存、bundle 与 cookie 携带 | `bbb-client-net` | 有序 `NetEvent` |
 | 数据包编解码、NBT/组件与固定目录 | `bbb-protocol` / `bbb-facts` | 强类型数据包与固定身份 |
 | 同步注册表到达顺序、标签与强类型候选 | 世界层 `RegistrySet` | 原子提交的注册表代际（revision） |
@@ -51,22 +51,17 @@ GameTest 的客户端定义直接消费共享编解码器的只读强类型视�
 2. known-pack 应答仅选择本地可验证的交集；服务端省略数据的条目必须存在对应已选 pack 方可物化。
 3. 标签包可先于注册表到达，但解析必须等待完整注册表齐备；动态同步注册表与固定静态注册表分层解析。
 4. 构造 `RegistryRevisionCandidate`，校验重复键、非空约束、元素编解码与 holder/标签引用，并同步准备依赖该代际的强类型投影。候选校验失败时绝不覆盖当前已提交的注册表和派生状态。
-5. 收到 `FinishConfiguration` 后先向模拟层发布事件；`runtime::events::dispatcher` 调用 `finish_registry_configuration`，校验成功后同步音频注册表并排队 `NetCommand::FinishConfiguration`，失败则排队断开连接。
+5. 收到 `FinishConfiguration` 后先向模拟层发布事件；`runtime::events::dispatcher` 调用 `finish_registry_configuration`，校验成功后同步音频注册表并排队 `NetCommand::FinishConfiguration`，失败则排队断开连接。若服务端在配置期下发自定义载荷 `bbb:content_registry`（启用 `--mod` / `--mod-packs` 时），世界层同步冻结当次会话的只读 `ContentRegistry` 快照（详见[客户端边界](../../architecture/client-boundaries.md)）。
 6. 网络层仅在收到成功命令后才发回 `FinishConfiguration` 响应、切入 Play 阶段并发出阶段切换事件；收包线程不得绕过世界层校验自行放行。
 
-known-pack 的注册表 JSON 与资源读取共用保留原始 UTF-16 单元的解析器并保存原始字节；文件、树节点与代际预算各计费一次，超限即拒绝整份候选。`score` 组件的 `name`/`objective` 从源编解码、NBT 到公开规范写出均保留原始 `JavaString`；展示侧可替换孤立代理项，规范 NBT 不替换。网络数据包、服务端 JSON 与本地 known-pack 三来源的发布、坏必填字段隔离及合法恢复由 `registries::tests::component_score` 覆盖；组件点击动作与对话框字符串的三来源规范 NBT 发布由 `registries::tests::component_strings` 验证。同一三来源数据经引用 `ShowDialog` 打开强类型控件并初始化原始编辑器；布尔替换、单选 ID 与文本原始值经运行时动态模板/`CustomClickAction` 保留原单元。单行光标按代码点移动、多行按 UTF-16 单元移动，插入与删除直接改写原始单元；HUD 对代理对内部光标/前缀与 IME 几何按单元坐标投影消费，机制见[屏幕、HUD 与库存](../ui/client-screens-hud-and-inventory.md)。规范源发布不替代实际渲染验收。
-
-网络标签中无法解析的 holder 不暴露给已校验视图，世界层单独记录未解析诊断。`registries::state` 的固定原始 ID/资源名双向查询与可用性共用 `bbb-facts::static_registry_elements` 的 95 个静态注册表、6,812 个元素；该目录来自官方 `RegistryDumpReport.java:37-45` 的真实原始 ID，并由测试锁定注册表身份、顺序与默认键。按加载顺序收集的动态回退仍优先于静态目录；一旦注册表已有已发布内容（即便为空），查询未命中也不回退静态表。内建成员表不接受伪造的固定元素。负值与越界原始 ID 保持未解析，成功标签成员的顺序与重复项保持入包原样；配置期暂存标签随完整候选原子提交。生成内置表仅服务固定身份与允许的默认来源，不对缺失协商数据的动态注册表静默兜底。
-
-共享注册表编解码器的错误显式区分 Vanilla 语义拒绝与安全预算、覆盖率、解析器或内部契约失败；试探性分支仅对语义拒绝回滚预算计费，终止类错误保留计费。组件的宽容分隔符、模糊内容/对象选择与 profile 备选读取器直接传播原始终止错误及其字段归属，普通畸形分隔符仍按宽容可选契约省略；语义回退不得吞掉终止错误转入默认值或部分结果。配置回归测试（`bbb_client_world::registries::tests::codec_terminal`）覆盖 known-pack JSON 与网络 NBT 的浅层多列表节点预算、内嵌 SNBT 字符串的解析上限拒绝、旧代际保留及后续合法候选恢复（普通 SNBT 语法错误仍属语义拒绝）。
-
-无范围约束的 `Codec.FLOAT`/`Codec.DOUBLE` 字段复用数字原语词法，接受合法 NBT 中的 `NaN` 与正负 `Infinity`：属性修饰符数值、自定义模型浮点列表（`CustomModelData.java:12-22`）、食物饱和度（`FoodProperties.java:20-28`）、地图装饰坐标与旋转（`MapDecorations.java:10-30`）、工具默认挖掘速度（`Tool.java:18-25`）、格挡攻击基数与倍率（`BlocksAttacks.java:138-145`、`BlocksAttacks.java:171-177`）、动能武器及其条件（`KineticWeapon.java:42-54`、`KineticWeapon.java:149-155`）、内联声音范围（`SoundEvent.java:16-20`）及谓词浮点区间（`MinMaxBounds.java:201-210`）。各字段原有范围检查、装箱边界序与等点压缩继续由各自源所有者执行；声音畸形范围仍按宽容可选契约省略。网络 NBT 读取先归一化带符号零；JSON 保留源数值的零符号供装箱比较，写出 NBT 时再归一化为正零。
-
-固定地图装饰成员来自 `BuiltInRegistries.java:306` 的生成目录，`registries::state` 用其执行 holder/资源名双向查询；`RegistryData` 数据包不能凭空新增固定成员。配置候选经盔甲纹饰描述的悬浮物品发布强类型投影；数值边界、默认省略、完整地图目录与非法成员拒绝、坏必填字段保留旧代际及后续恢复由 `bbb_client_world::registries::tests::component_numeric_families` 验证，属性数值独立用例位于 `bbb_client_world::registries::tests::component_numeric`。
+- **原始 UTF-16 与三来源一致发布**：known-pack 注册表 JSON 与网络 NBT 共用保留原始 UTF-16 单元的解析器，文件、树节点与代际预算各计费一次。`score` 组件（`name`/`objective`）、组件点击载荷与对话框字符串在规范 NBT 输出与运行时动态模板/`CustomClickAction` 中均保持原始 `JavaString` 单元，仅在展示侧按需替换孤立代理项（光标与 IME 消费见[屏幕、HUD 与库存](../ui/client-screens-hud-and-inventory.md)）。
+- **静态注册表与动态回退隔离**：`registries::state` 的固定原始 ID/资源名查询共用 `bbb-facts::static_registry_elements`（95 个静态注册表、6,812 个元素，源自 `RegistryDumpReport.java:37-45`）与 `BuiltInRegistries.java:306` 地图装饰目录；`RegistryData` 不能新增固定成员，一旦某注册表已发布内容（即便为空），未命中不回退静态表。未解析标签 holder 单独记入诊断，成功成员保留入包顺序与重复项。
+- **终止错误 vs 语义拒绝**：注册表编解码器显式区分 Vanilla 语义拒绝与安全预算/解析器/内部契约等终止错误；试探性分支仅对语义拒绝回滚预算，终止错误直接向上传播且不被宽容可选回退吞没。
+- **无界浮点与零符号规则**：无范围约束的 `Codec.FLOAT`/`Codec.DOUBLE` 字段（属性修饰符、`CustomModelData.java:12-22`、`FoodProperties.java:20-28`、`MapDecorations.java:10-30`、`Tool.java:18-25`、`BlocksAttacks.java:138-145` / `:171-177`、`KineticWeapon.java:42-54` / `:149-155`、`SoundEvent.java:16-20`、`MinMaxBounds.java:201-210`）接受合法 NBT 中的 `NaN` 与正负 `Infinity`；网络 NBT 读取及写出时归一化带符号零，JSON 保留原零符号供装箱比较。
 
 ## 生命周期和 fallback
 
-原生客户端接受主机名、IPv4、IPv6 及带端口地址，省略端口时默认使用 `25565`。默认端口连接会查询 `_minecraft._tcp` SRV 记录，显式指定端口时直接连接。服务器状态查询、登录与转服（Transfer）共用同一 TCP 目标解析路径。
+原生客户端接受主机名、IPv4、IPv6 及带端口地址，省略端口时默认 `25565` 并查询 `_minecraft._tcp` SRV 记录（显式端口直连）；状态查询、登录与转服共用同一解析路径。在 `wasm32` Web 客户端上，网络连接运行在独立的共享内存 Web Worker（`crates/bbb-client/src/web/net_worker.rs`）中，通过 `bbb-web-host` 的白名单 `/ws` 二进制桥接接入上游 TCP 服务端，并与桌面端复用同一 `ClientStream` 与协议状态机。
 
 建立新连接时清空旧传输阶段、已发 hello 标记与手持槽位观测，并初始化新的注册表会话。Play→Configuration 重配置、Transfer 转服与普通终态断开的跨会话携带规则由[客户端运行时](../runtime/client-runtime-and-control.md)拥有；cookie、服务器资源包与 `CommonListenerCookie` 并非一律随玩家重生清空。
 
@@ -79,7 +74,7 @@ known-pack 的注册表 JSON 与资源读取共用保留原始 UTF-16 单元的�
 | 语义所有者 | 生产路径 | 边界职责 |
 | --- | --- | --- |
 | 帧编解码 | `bbb_protocol::frame` | 分帧、压缩与逻辑长度预算 |
-| 传输连接 | `bbb_client_net::connection` | TCP 读写顺序与压缩切换 |
+| 传输连接 | `bbb_client_net::transport`、`bbb_client_net::connection`、`crates/bbb-client/src/web/net_worker.rs` | 原生 TCP 与 Web 二进制 WebSocket 读写顺序及压缩切换 |
 | 阶段与事件流 | `bbb_client_net::event_stream`、`event_stream::configuration` | 强类型连接事件与配置完成响应 |
 | 批次打包器 | `bbb_client_net::play_bundle` | 有序批次组装、数量与终态包限制 |
 | 注册表状态 | `bbb_client_world::registries::state`、`registries::revision` | 待提交候选与已提交原子代际 |
@@ -103,12 +98,11 @@ known-pack 的注册表 JSON 与资源读取共用保留原始 UTF-16 单元的�
 
 ## 聚焦测试（focused tests）和真实证据
 
-`bbb_client_world::registries::tests::configuration`：
+`bbb_client_world::registries::tests`：
 
-- `configuration_registry_validation_rejects_empty_non_empty_registry_atomically`
-- `configuration_tags_resolve_after_all_registry_packets_arrive`
-- `selected_known_pack_materializes_stub_data_before_registry_commit`
-- `omitted_registry_data_without_a_selected_known_pack_fails_closed`
+- `configuration`：`configuration_registry_validation_rejects_empty_non_empty_registry_atomically`、`configuration_tags_resolve_after_all_registry_packets_arrive`、`selected_known_pack_materializes_stub_data_before_registry_commit`、`omitted_registry_data_without_a_selected_known_pack_fails_closed`
+- `component_score` / `component_strings`：网络包、服务端 JSON 与 known-pack 三来源 UTF-16 规范 NBT 发布与坏字段隔离
+- `codec_terminal` / `component_numeric_families` / `component_numeric`：终止错误预算拦截、无界浮点与地图装饰成员校验
 
 `bbb_client_net::play_bundle`：
 

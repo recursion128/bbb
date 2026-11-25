@@ -10,7 +10,7 @@ BBB 是外部多人客户端，不提供游戏内配置界面，启动期配置�
 
 ## Vanilla 26.1 权威实现
 
-源码根由 `scripts/vanilla path 26.1` 获取：
+源码根由 `cargo dev vanilla path 26.1` 获取：
 
 | 决策 | 精确源码锚点 | 相邻行为 |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ BBB 在 `runtime::render_extract` 从世界层生成动作栏、标题、聊天�
 
 容器槽位静态坐标表、信标按钮、配方书按钮坐标与织布机行数共用 `input/inventory/layout.rs`，具体显示规则归各自消费者。调试选项屏幕的内容区、页脚与搜索框几何共用渲染器 `hud/debug_layout.rs`。书本与讲台共用 `bbb_client_render::hud_book_layout` 的整数原点；进度窗口与 Done 按钮共用 `runtime/advancements.rs` 的整数原点，进度标签相对几何归 `input/advancements_screen.rs`，图标与精灵选择归 `runtime/advancements.rs`。暂停页与调试选项禁用按钮默认使用 `0xFFA0A0A0` 文字色并保留显式组件颜色；定位栏携带 `client_tick` 以推进动画精灵帧。`bbb_client_render::hud` 拥有 GPU 文字、裁剪与绘制层；统计、社交与行为准则屏共用 `hud/screen_draws.rs` 的滚动条绘制，滚动范围与交互仍归各自屏幕。GUI 深度清理与屏幕模糊与[场景帧顺序](../rendering/client-scene-and-rendering.md)保持一致。物品模型复用统一的有序层解析器，快捷栏与背包消费同一投影。
 
-创造模式快捷栏保存、旧格式迁移与原生物品 NBT 复制共用 `bbb-registry-codec` 的持久写出器；`HashOps` 仅计算预测点击所需哈希而不构造 NBT，保存也不计算该哈希。持久写出器过滤瞬态组件并保留合法数据，单格编码失败按单格隔离处理。旧 JSON 快捷栏逐格借用原始文本升级并写回当前 NBT 存档格式，无效载荷同样按单格隔离。
+创造模式快捷栏保存（桌面端写入私有配置目录 `hotbar.nbt`，可用 `BBB_HOTBAR_PRESET_STORE` 覆盖；Web 端经 `crates/bbb-client/src/hotbar_presets.rs` 以 Base64 编码的 NBT 持久化至 `localStorage["bbb.hotbar.nbt"]`）、旧格式迁移与原生物品 NBT 复制共用 `bbb-registry-codec` 的持久写出器；`HashOps` 仅计算预测点击所需哈希而不构造 NBT，保存也不计算该哈希。持久写出器过滤瞬态组件并保留合法数据，单格编码失败按单格隔离处理。旧 JSON 快捷栏逐格借用原始文本升级并写回当前 NBT 存档格式，无效载荷同样按单格隔离。
 
 ### 屏幕替换与遮罩层
 

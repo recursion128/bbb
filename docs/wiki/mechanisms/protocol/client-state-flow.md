@@ -16,7 +16,7 @@
 
 ## 判断与处理顺序
 
-1. `bbb-client-net::ConnectionState` 仅放行当前协议阶段合法的数据包。
+1. `bbb_client_net::types::connection::ConnectionState` 仅放行当前协议阶段合法的数据包。
 2. `bbb-protocol` 将载荷解码为结构化类型，并在入口预先校验长度、枚举、NBT 与资源预算。
 3. Play 阶段数据包按到达顺序交由 `WorldStore::apply_play_packet` 应用。
 4. `PlayApplyEffects` 按应用顺序交付音频、粒子等瞬时事件。客户端界面切换排入强类型 `ScreenRequest` FIFO；Configuration 与 Play 入口在每个 `NetEvent` 之后立即消费该队列，确保后续事件看到此前真实的屏幕结果。单条输入或控制命令产生的屏幕请求同样紧随该命令之后消费。
@@ -47,7 +47,7 @@
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
-| 按协议阶段解码 | 各阶段数据包监听器 / `GameProtocols` | `bbb-client-net::ConnectionState`、`bbb-protocol` | `aligned` | 协议阶段与编解码行为测试 |
+| 按协议阶段解码 | 各阶段数据包监听器 / `GameProtocols` | `bbb_client_net::types::connection::ConnectionState`、`bbb-protocol` | `aligned` | 协议阶段与编解码行为测试 |
 | 有序持久状态应用 | `ClientPacketListener` → `ClientLevel` | `WorldStore::apply_play_packet` | `aligned` | Play 阶段数据包应用测试 |
 | 瞬时副作用交付 | 监听器 → 渲染/音频/界面 | `PlayApplyEffects`、`ScreenRequest` FIFO | `aligned` | 副作用顺序与屏幕替换测试 |
 | 模拟快照发布 | tick/渲染边界 | `SimulationCore`、快照发布层 | `aligned` | 快照集成与一致性测试 |

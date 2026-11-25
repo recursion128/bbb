@@ -40,7 +40,7 @@ BBB 与 Vanilla 同样只有一条主线程循环：winit 每轮迭代的 `About
 
 ### 控制请求与命令队列
 
-`bbb-client::control` 仅拥有外部 DTO、只读快照类型以及构造时即绑定的 `SharedControlRequests` 发送句柄；控制模块不持有命令队列本体，也不存在延迟装配或替换发送端阶段。`bbb-client` 通过共享 `bbb-mcp` 传输层将每个控制方法映射为 MCP 工具（无参只读方法同时暴露为 `bbb://client/<方法>` 资源），每次调用均经 `bbb_client::control::dispatch` 与行式控制协议共用参数校验；仅允许 loopback 绑定，由 `--mcp-bind` 启用，使自动化代理可用同一套 MCP 协议管理客户端与服务端。
+`bbb-client::control` 仅拥有外部 DTO、只读快照类型以及构造时即绑定的 `SharedControlRequests` 发送句柄；控制模块不持有命令队列本体，也不存在延迟装配或替换发送端阶段。桌面端通过共享 `bbb-mcp` 传输层将每个控制方法映射为 MCP 工具（无参只读方法同时暴露为 `bbb://client/<方法>` 资源），每次调用均经 `bbb_client::control::dispatch` 与行式控制协议共用参数校验；仅允许 loopback 绑定，由 `--mcp-bind` 启用。Web 浏览器会话中，活跃标签页经 `crates/bbb-client/src/control/tunnel.rs` 连接 `bbb-web-host` 的 `/control-ws` 反向隧道，由宿主机网关在同一 loopback 端口上对外暴露一致的 MCP 与控制接口（详见[Web 客户端与网关](../../development/web-client.md#反向-mcp-与端到端验证)）。
 
 MCP 写入调用与行式控制共用 `dispatch_inner` 的参数校验与命令 FIFO。按键枚举、serde 名称、解析器与 MCP schema 派生自同一张表；`input.text` 的 4,096 长度上限按 UTF-16 单元计算。行式控制保留排队回执；MCP 等待请求经过原输入或网络处理器并完成状态快照发布后，返回 `processed: true` 与对应 `generation`。这仅确认处理阶段完成；位移、挖放与背包变化仍须通过 `world.client_local_player`、`world.probe_block`、`world.probe_blocks`（最多 256 格，支持 `skip_air`）、`world.probe_surface`（最多 256 列）、`world.crosshair_target`（含世界空间距离、命中面与相邻放置坐标 `adjacent_pos`）、`world.nearby_entities`（按距离排序，覆盖不可拾取掉落物 `minecraft:item` 及其物品名与数量）与 `world.client_inventory`（附带 `item_name`、`menu_type` 并压缩默认空 `component_patch`）等真实状态确认。
 
@@ -87,7 +87,7 @@ Windows 客户端按 **F9** 切换视频录制，输出文件保存在 `--game-d
 
 | 方法 | 参数与结果 |
 | --- | --- |
-| `renderer.recording_start` | `path` 必填；`fps` 默认 30（`1..120`），`bitrate` 默认 `8000000` bit/s |
+| `renderer.recording_start` | `path` 必填；`fps` 默认 30（`1..=120`），`bitrate` 默认 `8000000` bit/s |
 | `renderer.recording_status` | 状态、路径、固定输出尺寸、接受/丢弃帧数、最终编码帧数、时长与编码错误 |
 | `renderer.recording_stop` | 排空已接受帧并封装 MP4；MCP 完成回执仅在文件封口与快照发布后返回 |
 
@@ -154,7 +154,7 @@ Vanilla `Minecraft.getRunningThread`/`wrapRunnable`/`shouldRun` 在外部客户�
 - `bbb_client::network_runtime`：网络收发任务对的生命周期与退出屏障。
 - `bbb_client::resource_reload`：资源事务准备、提交与失败恢复。
 - `bbb_client::crash_report`：有界崩溃报告与原子无覆盖写盘。
-- `bbb_client::control`、`bbb_client::mcp`：控制 DTO、参数校验与 MCP 工具投影。
+- `bbb_client::control`（含 Web 反向隧道 `control::tunnel`）、`bbb_client::mcp`：控制 DTO、参数校验与 MCP 工具投影。
 
 ## Vanilla/BBB 对照
 
@@ -176,7 +176,7 @@ Vanilla `Minecraft.getRunningThread`/`wrapRunnable`/`shouldRun` 在外部客户�
 ## 聚焦测试（focused tests）和真实证据
 
 - `bbb_client::simulation::commands::commands_drain_in_fifo_order_and_wake_once_until_rearmed`：验证多产生方 FIFO 应用序、合并唤醒与关闭后拒绝。
-- `bbb_client::simulation` 测试与 `runtime::tests::entity_client_tick_catch_up_runs_ten_ticks_and_drops_the_rest`：验证 `partial_tick` 投影与单步 10 tick 追赶上限。
+- `bbb_client::simulation` 测试与 `bbb_client::runtime::tests::hud_blocks::entity_client_tick_catch_up_runs_ten_ticks_and_drops_the_rest`：验证 `partial_tick` 投影与单步 10 tick 追赶上限。
 - `bbb_client::network_runtime` 的 `shared_deadline_aborts_and_reaps_a_blocked_final_event` 与 `closed_event_receiver_does_not_stall_join`：验证独立取消信号与限时 join。
 - 完整主循环由 `scripts/client_replay.py` 的 lockstep 回放（逐项比对出站数据包、音频日志与截图）及 `cargo dev e2e client` 验收。
 
@@ -188,7 +188,7 @@ Vanilla `Minecraft.getRunningThread`/`wrapRunnable`/`shouldRun` 在外部客户�
 
 ## 账本归属
 
-主机制 ID 为 `lifecycle-client-runtime`。范围裁决与未关闭差异统一查[客户端账本](../../../unsupported-client-features.md)，自有控制与录像扩展登记于[客户端扩展](../../../client-extensions.md)，推进原则见 [AGENTS.md](../../../../AGENTS.md)。
+主机制 ID 为 `lifecycle-client-runtime`。范围裁决与未关闭差异统一查[客户端账本](../../../unsupported-client-features.md)，新增自有控制与录像扩展登记于[客户端扩展](../../../client-extensions.md)，推进原则见 [`AGENTS.md`](../../../../AGENTS.md)。
 
 ## 精确重开条件
 

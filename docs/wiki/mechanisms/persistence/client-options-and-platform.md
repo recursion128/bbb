@@ -44,7 +44,9 @@ Windows、macOS、Linux 各平台窗口后端的具体行为无法仅由纯数�
 
 `bbb_client::options` 是 `options.txt` 的唯一所有者，键名、编解码规则与默认值均由 `scripts/generate-client-options-catalog.py` 从 `Options.java` 机械派生。读取遵循 Vanilla 语义：仅在首个 `:` 切分、跳过格式错误行、缺文件回退默认值、未知键不回写；写入采用直接截断重写（不创建临时文件或备份，这与 `ServerList` 不同）。完整原始映射会先按文件 `version`（缺失或非法视作 0）执行源码派生的 `DataFixTypes.OPTIONS` 注册链，再进入现行编解码或启动绑定；注册顺序、迁移源码哈希与 LWJGL2 键码映射均由该生成脚本锁定，任一迁移抛错时整组保留默认值，与 `Options.load` 外层异常捕获一致。CLI 参数仅作为覆盖层，只有命令行显式提供时才会覆盖文件值。
 
-启动与加载阶段按 Vanilla 生命周期写回 `startedCleanly`；运行期会触发写盘的快捷键包括 `F11`（`fullscreen`）、`Ctrl+B`（`narrator`）、`F3+H`（`advancedItemTooltips`）与 `F3+P`（`pauseOnLostFocus`），写盘后按 `Options.save` 收尾逻辑无条件补发一次 `ClientInformation`。桌面端 `F3+S` 会将动态纹理图集（地形、GUI、字体、粒子及动态玩家皮肤/纹理图集）以 PNG 导出至 `<game-dir>/screenshots/debug`（`wasm32` 不启用）。桌面端旁白开启且未指定 `--narrator-command` 时回退到内置操作系统 TTS 旁白器；显式传入 `--narrator-command`（及可选 `--narrator-command-arg`）时优先覆盖内置 TTS。
+启动与加载阶段按 Vanilla 生命周期写回 `startedCleanly`；运行期会触发 `SaveClientOptions` 写盘的路径包括快捷键 `F11`（`fullscreen`）、`Ctrl+B`（`narrator`）、`F3+H`（`advancedItemTooltips`）、`F3+P`（`pauseOnLostFocus`），以及首次多人进服置位 `joinedFirstServer` 和配方书彩蛋切换 `lang`（`en_pt`），写盘后按 `Options.save` 收尾逻辑无条件补发一次 `ClientInformation`。桌面端 `F3+S` 会将动态纹理图集（地形、GUI、字体、粒子及动态玩家皮肤/纹理图集）以 PNG 导出至 `<game-dir>/screenshots/debug`（`wasm32` 不启用）。桌面端旁白开启且未指定 `--narrator-command` 时回退到内置操作系统 TTS 旁白器；显式传入 `--narrator-command`（及可选 `--narrator-command-arg`）时优先覆盖内置 TTS。
+
+在 `wasm32` Web 客户端上，选项、服务器列表与默认离线玩家身份分别持久化在同源 `localStorage`（`bbb.options.txt`、`bbb.servers.dat` 与 `bbb.offline-player`）；`crates/bbb-client/src/startup/web.rs` 解析网关默认值与浏览器 URL 查询参数（含专用参数及通用 `?opt.<key>=` 白名单透传），由 URL 覆盖的字段仅在当前标签页内存中生效，保存其他运行期变更时保留原有存储值（完整参数见[CLI 与查询参数参考](../../development/cli-reference.md#web-客户端-url-查询参数)）。
 
 ### 窗口与按键投影
 
@@ -103,7 +105,7 @@ BBB 自有启动扩展参数 `--dynamic-lights`（Web `?dynamic_lights=`）、`-
 - `an_entry_the_player_already_named_for_the_address_is_reused`
 - `a_created_entry_heads_the_hidden_block_and_trims_it_to_sixteen`
 
-`bbb_client::startup::tests::server_list_owner_requires_explicit_store_name_and_live_connection` 验证 `servers.dat` 的显式启用门槛。
+`bbb_client::startup::tests::cli_options::server_list_owner_requires_explicit_store_name_and_live_connection` 验证 `servers.dat` 的显式启用门槛。
 
 测试入口：`cargo dev test -p bbb-client`、`cargo dev test -p bbb-client server_list` 或 `cargo dev test -p bbb-client window_surface`。纯数值计算和文件测试不能替代真实显示模式、Wayland 窗口关闭或跨平台图形环境的实机证据。
 

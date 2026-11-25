@@ -10,7 +10,7 @@
 
 ## Vanilla 26.1 权威实现
 
-源码根由 `scripts/vanilla path 26.1` 解析，以下是关键决策锚点：
+源码根由 `cargo dev vanilla path 26.1` 解析，以下是关键决策锚点：
 
 - `net/minecraft/client/player/LocalPlayer.java:227-250`：区块加载门槛、原始输入仅变化时上报、非乘客与乘客两条不同的移动上报顺序，以及每 tick 环境处理器。
 - `net/minecraft/client/player/LocalPlayer.java:263-312`：先上报疾跑锁存切换，再按位置、旋转和着地/碰撞状态变化选择移动数据包；位置提醒计数器（20 tick）仅在真正发送位置时归零。
@@ -43,7 +43,7 @@
 4. 非乘客先发送疾跑锁存切换，再提交位置/旋转数据包。纯旋转包不重置位置提醒计时器；位移阈值为 `2.0E-4`，位置提醒周期为 20 tick。
 5. 乘客按「旋转 → 权威载具移动 → 锁存切换」顺序上报；世界层先清空乘客自身速度，再执行骑乘 tick，客户端运行时不内联坐骑或鞍/跳跃判定。
 
-`advance_player_input_for_client_ticks` 消费模拟层分配的 tick 数，单步最多追赶 5 tick；服务端降速只改变真实时间间隔，不改变每物理 tick 固定 0.05 秒的步长常量。
+`advance_player_input_for_client_ticks` 消费模拟层分配的 tick 数，与 `SimulationCore` 保持一致（`VANILLA_MAX_CLIENT_TICKS_PER_STEP = 10`，对应 `Minecraft.java:1252` 的单步 10 tick 追赶上限）；服务端降速只改变真实时间间隔，不改变每物理 tick 固定 0.05 秒的步长常量。
 
 粒子与实体共用 `local_player_collision::clip_axis_collision` 的轴向裁剪遍历，以及 `visit_collision_block_states` 的区块/区段调色板扫描（自动跳过空区段）；通过 `Option<LocalPlayerCollisionContext>` 分别提供空形状上下文与当前实体碰撞上下文。
 
@@ -123,7 +123,7 @@
 
 ## 当前差异
 
-创造模式普通容器的 `THROW` 点击未经过丢弃防刷限流器；实验性 `minecart_improvements` 乘客 `rotLerp` 未实现，默认关闭该实验标志时不可达；`crit`/`magicCrit` 粒子消费服务端广播，存在 1 RTT 视觉延迟。产品范围裁决与后续新发现的未关闭差异统一由客户端账本维护。
+创造模式普通容器的 `THROW` 点击未经过丢弃防刷限流器；实验性 `minecart_improvements` 乘客 `rotLerp` 未实现，默认关闭该实验标志时不可达；`crit`/`magicCrit` 粒子消费服务端广播，存在 1 RTT 视觉延迟。上述三项均不属于阻塞性缺口，[客户端账本](../../../unsupported-client-features.md)当前无未关闭的 `# Todo` 项。
 
 ## 账本归属
 

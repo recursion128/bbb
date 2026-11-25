@@ -10,7 +10,7 @@
 
 ## Vanilla 26.1 权威实现
 
-源码根由 `scripts/vanilla path 26.1` 解析，以下位置均相对于该根：
+源码根由 `cargo dev vanilla path 26.1` 解析，以下位置均相对于该根：
 
 | 决策 | 精确源码锚点 | 直接观察 |
 | --- | --- | --- |
@@ -73,11 +73,11 @@ release 构建默认启用 `DISCARD_HAL_LABELS`（可通过 `WGPU_DISCARD_HAL_LA
 
 ### 物品模型和驻留
 
-`bbb-client-assets::item_models` 在资源加载期将物品 JSON 解码为 `ItemModelDefinition`、属性、谓词与特殊模型等强类型结构。渲染器 `item_model::item_runtime` 根据当前物品栈组件、展示上下文、世界与持有者事实产出有序模型层，客户端投影与 GPU 驻留消费该结果；为组件精确比较保留的原始资源树不构成每帧 JSON 解释器。加载时先确定纹理索引，再从强类型定义直接烘焙运行时模型树，不保留按纹理名索引的中间树，也不在烘焙后重建分支；叶节点直接持有纹理索引、着色、半透明标志与展示变换。固定组件类型事实归 `bbb-facts::data_component_types`，强类型线格式补丁与编解码分派归 `bbb-protocol::packets::data_components` 及其 `catalog::DataComponentDescriptor`。世界层持有实际物品栈、组件与本地预测，界面、提示框与模型解析不维护第二套组件身份或线格式定义。
+`bbb-client-assets::item_models` 在资源加载期将物品 JSON 解码为 `ItemModelDefinition`、属性、谓词与特殊模型等强类型结构。渲染器 `item_model::item_runtime` 根据当前物品栈组件、展示上下文、世界与持有者事实产出有序模型层，客户端投影与 GPU 驻留消费该结果；为组件精确比较保留的原始资源树不构成每帧 JSON 解释器。加载时先确定纹理索引，再从强类型定义直接烘焙运行时模型树，不保留按纹理名索引的中间树，叶节点直接持有纹理索引、着色、半透明标志与展示变换。固定组件类型事实归 `bbb-facts::data_component_types`，强类型线格式补丁与编解码分派归 `bbb-protocol::packets::data_components` 及其 `catalog::DataComponentDescriptor`。世界层持有实际物品栈、组件与本地预测，界面、提示框与模型解析不维护第二套组件身份或线格式定义。
 
-GUI、地面掉落、第一人称与实体手持的展示上下文严禁混用。顶层解析器每次先清空旧输出再按当前物品栈定义生成有序层。客户端 HUD 投影只有 `HudBlockItemModel { layers, lighting, foil }`，渲染器不再反向查询物品运行时、地形模型或资源包来猜测几何。
+GUI、地面掉落、第一人称与实体手持的展示上下文严禁混用。顶层解析器每次先清空旧输出再按当前物品栈定义生成有序层。客户端 HUD 投影只有 `HudBlockItemModel { layers, lighting, foil }`，渲染器不反向查询物品运行时、地形模型或资源包来猜测几何。
 
-普通物品叶节点直接持有资源选定的立方体几何或生成精灵，不再按物品 ID 反查默认方块状态。立方体与生成精灵共用物品图集，仅构造实际存在的不透明/半透明层；特殊模型与组合子节点保留各自的图集、变换、着色与子序。立方体不可变几何同时记录局部包围盒与实际几何层，加载时按原始顶点与继承变换计算精确 `GROUND` 包围盒，提取与槽位布局直接读取而无需重新烘焙或扫描顶点。CPU 投影可随输入刷新，静态顶点/索引缓冲按资产标识驻留复用。合并驻留帧时，普通提交与特殊模型提交共用递增提交序；`block_display` 与 `item_display` 的发光状态及 `glow_color_override` 同时提交到普通层与特殊模型的实体轮廓目标。GUI 裁剪（scissor）仅作用于 GUI 目标，世界与实体预览目标维持独立深度语义。
+普通物品叶节点直接持有资源选定的立方体几何或生成精灵，不按物品 ID 反查默认方块状态。立方体与生成精灵共用物品图集，仅构造实际存在的不透明/半透明层；特殊模型与组合子节点保留各自的图集、变换、着色与子序。立方体不可变几何同时记录局部包围盒与实际几何层，加载时按原始顶点与继承变换计算精确 `GROUND` 包围盒，提取与槽位布局直接读取而无需重新烘焙或扫描顶点。CPU 投影可随输入刷新，静态顶点/索引缓冲按资产标识驻留复用。合并驻留帧时，普通提交与特殊模型提交共用递增提交序；`block_display` 与 `item_display` 的发光状态及 `glow_color_override` 同时提交到普通层与特殊模型的实体轮廓目标。GUI 裁剪（scissor）仅作用于 GUI 目标，世界与实体预览目标维持独立深度语义。
 
 ### 地形区段发布
 
@@ -97,7 +97,7 @@ GUI、地面掉落、第一人称与实体手持的展示上下文严禁混用�
 
 同帧相机拾取同时发布普通触及距离的原始方块命中与最终准星目标，并在 `(world_revision, CameraPose)` 未变时跨帧复用拾取结果；第一人称眼部遮罩（`screen_effect_quads`）同样在 `world_revision` 未变时复用。名字牌与攻击指示器读取最终准星目标，方块选框读取原始命中并应用自身权限门槛。模拟步每步计算一次 `sky_darken`，供暗角、眼部遮罩与实体阴影共用；暗角亮度仅随 GUI tick 平滑推进，渲染帧直接读取当前平滑值；调试 HUD 计数器仅在显示或外部查询时采样。
 
-HUD 物品投影仅含 `layers`/`lighting`/`foil`，生产消费单遍遍历 `model.layers`。装备槽位与资产 ID 来自世界层发布的强类型 `EQUIPPABLE` 原型及物品栈补丁，不再经由独立装备表搬运；`SimpleEquipmentLayer` 的 `SADDLE`/`BODY` 不借用护甲槽分类器。类人/盔甲架、鞘翅、狼、马类、羊驼、猪、炽足兽、骆驼、快乐恶魂与鹦鹉螺共用同一已解析目录；空目录不触发生产静态回退。
+HUD 物品投影仅含 `layers`/`lighting`/`foil`，生产消费单遍遍历 `model.layers`。装备槽位与资产 ID 直接来自世界层发布的强类型 `EQUIPPABLE` 原型及物品栈补丁；`SimpleEquipmentLayer` 的 `SADDLE`/`BODY` 不借用护甲槽分类器。类人/盔甲架、鞘翅、狼、马类、羊驼、猪、炽足兽、骆驼、快乐恶魂与鹦鹉螺共用同一已解析目录；空目录不触发生产静态回退。
 
 Vanilla `ENTITY_SNIPPET` 仅在无背面剔除管线启用 `PER_FACE_LIGHTING`，`entity.fsh` 按 `gl_FrontFacing` 选取正反法线；开启背面剔除时存活片元恒为正面。BBB 共享着色器维持同一边界：实心变体仅去掉 alpha-cutout 丢弃分支，Z 偏移变体仅替换投影矩阵。
 
@@ -121,7 +121,7 @@ Vanilla `ENTITY_SNIPPET` 仅在无背面剔除管线启用 `PER_FACE_LIGHTING`�
 | 动态光源与远景 LOD | `bbb_client_render::render_core::camera`、`scene::lod_terrain` | `--dynamic-lights` 点光源 uniform 与 `--lod-distance` 远景地表裙边网格 |
 | 截图与像素读回 | `bbb_client_render::screenshot` | PNG 落盘与离屏 GPU 读回 |
 
-引擎自有渲染扩展由启动 CLI 参数门控：`--dynamic-lights off|fast|fancy` 在 `CameraUniform` 尾部上传最多 32 个近邻点光源（手持光源、火焰/炽热原版生物及 `ContentRegistry::dynamic_light_rgb` 模组实体，其中 `fast` 在地形顶点计算、`fancy` 在地形/实体片元计算）；`--lod-distance 16..=256` 从已加载区块高度图/顶部方块构造远景裙边格网并同步扩展深度远平面与雾终点；设为 `off` / `0` 时完全跳过相应开销。
+引擎自有渲染扩展由启动 CLI 或 Web 查询参数门控：`--dynamic-lights off|fast|fancy` 在 `CameraUniform` 尾部上传最多 32 个近邻点光源（手持光源、火焰/炽热原版生物及经 `ContentRegistry` 同步的 `ModEntityRegistration` / `ModEntityEntry::dynamic_light_rgb` 模组实体，其中 `fast` 在地形顶点计算、`fancy` 在地形/实体片元计算）；`--lod-distance 0|16..=256` 从已加载区块高度图/顶部方块构造远景裙边格网并同步扩展深度远平面与雾终点；设为 `off` / `0` 时完全跳过相应开销。
 
 ## Vanilla/BBB 对照
 

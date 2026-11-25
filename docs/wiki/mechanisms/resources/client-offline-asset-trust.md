@@ -34,6 +34,8 @@
 - **音频**：各命名空间的 `sounds.json` 按资源栈从低到高合并，保留 `replace`、文件/事件引用、`stream`/`preload` 与衰减规则。普通文件条目仅在选中播放时校验索引 OGG 并交由有界解码器；`preload: true` 则按 Vanilla 重载/应用队列去重，由单一「最新代际优先」后台线程提前解码并按代际非阻塞安装。构建声音目录本身不急切解码全部 4,564 个音频，也不要求音频设备就绪；预加载请求、完成、失败、待处理、取消与过期丢弃均计入控制观测。
 - **GUI**：由同一 `PackRoots`/`PackResourceStack` 提供资源。客户端 `hud_assets.rs` 安装 GUI 精灵图集与独立 GUI 纹理；渲染器 `hud/gui_atlas.rs::GuiSprites` 与 `renderer/pack_resources.rs` 持有 GPU 代际。小精灵与动画帧共用图集，容器背景等 `GUI_TEXTURES` 采用按路径缓存的独立纹理。图集化不改变层级、裁剪与命中几何，也不要求界面压缩为单次绘制。
 - **全景图**：`bbb-client-assets::PanoramaCatalog` 是六面贴图与覆盖层的唯一不可变 CPU 所有者；它按 Vanilla `_1, _3, _5, _4, _0, _2` 层序从同一资源栈查询，保留资源包优先级、过滤、惰性完整性校验、PNG 预算与等尺寸约束。客户端只在资源事务中编排 GPU 提交，并以实时 tick 推进屏幕局部旋转；渲染器独占立方体贴图与覆盖层 GPU 代际，按「立方体 → 覆盖层 → 模糊 → 菜单背景 → 控件」顺序提交。重载失败回滚至上一完整代际。Vanilla OpenGL `CubeMapTexture` 在上传前会纵向翻转各面，而 WGPU 的复制与采样原点本身即保持 PNG 从上到下的显示方向，因此 BBB 不做额外翻转，并由非对称面像素测试锁定最终画面。启动缺少全景图目录时直接回退菜单背景，不设第二解析器。
+- **窗口图标**：`bbb_client_assets::WindowIconCatalog` 是唯一 CPU 所有者（标准家族完整解析 5 张 PNG，macOS 家族有界读取并校验 ICNS）；`bbb_client::window_icon` 负责平台选择与启动期一次性应用——Windows 通过 `WindowExtWindows` 设置 16 px 窗口图标与 256 px 任务栏图标，X11 一次向 `_NET_WM_ICON` 写入 16/32/48/128/256 五段 ARGB，macOS 直接应用原始 ICNS，Wayland 与未支持后端跳过且不读取对象；任一失败回退平台默认图标，不参与运行期资源重载。
+- **Web（`wasm32`）虚拟资源存储与本地包挂载**：浏览器端由 `bbb_client_assets::virtual_store` 承载 `bbb-web-host` 下发的 `/assets/core-26.1.zip`、`/assets/asset-index.json`（缓存于 Cache Storage `bbb-core-assets-v1`）与按需拉取的语言/音频对象，经 `PackRoots::from_web_bundle` 接入同一 `PackResourceStack`；运行期通过 `?pack=`、画布拖放或 `#bbb-pack-picker`（`crates/bbb-client/src/web/packs.rs`）挂载的本地 `.zip` 资源包同样触发原子代际重载。
 
 ## 索引对象消费矩阵
 
@@ -68,7 +70,7 @@
 | ---: | --- | --- | --- | --- | --- |
 | 1 | `LanguageManager`：读取元数据后构造选定语言 | `NativeItemRuntime::load_with_locale` | 物品运行时 + 渲染器双向标志同代提交 | 已有 | `bbb_client::resource_reload` |
 | 2 | `TextureManager`：重载所有 `ReloadableTexture`，缺失回退缺图纹理 | 地形/HUD/实体/天空/物品/粒子纹理加载器 | 渲染器纹理检查点 | 已有 | `bbb_client_render::resource_reload` |
-| 3 | `ShaderManager`：枚举核心/包含/后处理着色器，预加载静态管线 | `ShaderSourceCatalog` 与后处理共用预处理；77 个一对一静态管线同代原子提交 | 渲染器管线代际（`CorePipelines`） | 已有 | `bbb_client_render::render_core::core_shaders`、`resource_reload` |
+| 3 | `ShaderManager`：枚举核心/包含/后处理着色器，预加载静态管线 | `ShaderSourceCatalog` 与后处理共用预处理；`CorePipelines` 静态管线同代原子提交 | 渲染器管线代际（`CorePipelines`） | 已有 | `bbb_client_render::render_core::core_shaders`、`resource_reload` |
 | 4 | `SoundManager`：按栈合并 `sounds.json` 并重载音频引擎 | `bbb_client::audio_runtime::NativeAudioRuntime::prepare_reload` | 音频提交位于渲染器屏障末端 | 已有 | `bbb_client::audio_runtime` |
 | 5 | `SplashManager`：读取 `texts/splashes.txt`，仅用于 `TitleScreen` | 无标题屏标语界面 | 无消费者 | 非目标 | 见[客户端账本](../../../unsupported-client-features.md)；标题屏进入范围时重开 |
 | 6 | `AtlasManager`：准备、拼接并上传已知精灵图集 | 地形/HUD/实体/天空/物品/粒子图集加载器 | 渲染器图集检查点 | 已有 | `bbb_client::resource_reload` |
@@ -84,14 +86,14 @@
 | 16 | `WaypointStyleManager`：解析 `waypoint_style/*.json` | `WaypointStyleCatalog` | HUD 路径点检查点 | 已有 | `bbb_client_assets::waypoint_styles` |
 | 17 | `LevelRenderer`：重建轮廓与天空渲染器 | 后处理/天空资源 + 全部区块重载 | 渲染器事务 + 地形重载请求 | 已有 | `bbb_client::resource_reload` |
 | 18 | `CloudRenderer`：解码云层格网并标记重建 | `try_load_sky_textures` 云层数据 | 渲染器天空/云层检查点 | 已有 | `bbb_client::sky_assets` |
-| 19 | `GpuWarnlistManager`：仅匹配 Vanilla OpenGL 正则警告列表 | 发货后端为 WebGPU，无游戏内选项警告 UI | 无消费者 | 非目标 | 见[客户端账本](../../../unsupported-client-features.md)；支持 OpenGL/选项警告时重开 |
+| 19 | `GpuWarnlistManager`：仅匹配 Vanilla OpenGL 正则警告列表 | 发货后端为 `wgpu`（Vulkan/Metal/DX12/WebGPU），无游戏内选项警告 UI | 无消费者 | 非目标 | 见[客户端账本](../../../unsupported-client-features.md)；支持 OpenGL/选项警告时重开 |
 | 20 | `PeriodicNotificationManager`：按地区 ISO3 调度周期系统提示 | 宿主地区 → ISO3、GCD 周期表与共享系统提示 | 客户端 HUD 运行时；GPU/音频屏障成功后替换，失败保留旧计划 | 已有 | `bbb_client::runtime::periodic_notifications` |
 
 着色器 CPU 准备阶段只有一个 GLSL 源码所有者：`ShaderSourceCatalog` 枚举已选资源栈中的 `.vsh`/`.fsh`，通过同一栈解析 `.glsl` 引入，限制最多 512 个阶段/包含资源、32 层引入深度与代际驻留字节数；`PostEffectCatalog` 只引用该不可变目录，不另建第二套引入解析器。`PeriodicNotificationCatalog` 读取最高优先级 `minecraft:regional_compliancies.json`，限制最多 256 个国家分组与 1,024 条通知，保留缺失或损坏时回退空计划的语义，而安全预算超限仍拒绝整代加载。两者均携带资源代际号。
 
 `PostEffectCatalog::renderer_projection` 是唯一的跨 crate 着色器代际投影，其中的核心着色器源码与后处理图必须属于同一代际；CPU 目录仅在 `bbb-client-assets` 中读取资源包，不可变值经 `bbb-render-types` 交给渲染器，`bbb-client-render` 不直接接触资源包。启动与服务器资源包重载均只调用一次 `transactional_shader_resource_reload`，固定先提交核心管线再提交后处理图，并将后续图集、HUD、实体、天空与音频提交纳入同一回滚屏障。
 
-所有 77 个存在一对一 Vanilla 静态核心着色器的管线均归 `CorePipelines` 统一拥有（其余长期管线仅为 Vanilla 透明直连路径的内部复制以及 Vanilla 注册表中不存在的 BBB 公告牌物品回退，不冒充核心着色器消费者）：启动时由内置 Vanilla 源码构造，重载时由资源包的 `SelectedCoreShaders` 调用同一构造函数；选择未变时复用现值，否则整值原子替换，任一阶段失败立即回滚。17 个管线族的顶点/片元模块编译统一经由渲染器私有 `compile_selected_shader_stages` 执行；独立 `reload_core_shaders`/`reload_post_effect_graphs` 仅限 crate 内部与测试可见，防止生产路径分裂提交。六个 Vanilla 内置后处理链（相机实体三分支、实体轮廓、改善透明度与 GUI 模糊）由渲染器私有 `VanillaPostEffect` 唯一标识，缺失时按 Vanilla 跳过该效果，编译失败则在既有事务内回滚上一代际。
+静态核心着色器管线（含地形、天空、HUD 及 BBB 远景 `lod_terrain` 管线）统一归 `CorePipelines` 拥有；`Renderer` 另独立持有 `EntityPosePipelines`（内置着色器纯立方体 GPU 蒙皮管线）以及透明合成与公告牌物品回退管线。启动时由内置源码构造，重载时由资源包的 `SelectedCoreShaders` 经同一构造函数编译（各管线族的顶点/片元模块统一走渲染器私有 `compile_selected_shader_stages`）；选择未变时复用现值，否则整值原子替换，任一阶段失败立即回滚。独立 `reload_core_shaders`/`reload_post_effect_graphs` 仅限 crate 内部与测试可见，防止生产路径分裂提交。六个 Vanilla 内置后处理链（相机实体三分支、实体轮廓、改善透明度与 GUI 模糊）由渲染器私有 `VanillaPostEffect` 唯一标识，缺失时按 Vanilla 跳过该效果，编译失败则在既有事务内回滚上一代际。
 
 区域周期通知目录按宿主 ISO3 地区码构造最大公约数固定周期表，重载时保留已逝时间、重启选中项的初始延迟，并仅在事务成功后替换 HUD 调度表；单帧追赶有界，跳过的周期仍正确推进已逝时间。
 
@@ -130,14 +132,7 @@
 
 ## 当前差异
 
-统一提供者、字体、语言、声音、着色器事务与窗口图标消费者均已具备实现级聚焦测试。窗口图标的唯一 CPU 所有者是 `bbb_client_assets::WindowIconCatalog`（标准家族完整解析 5 张 PNG，macOS 家族有界读取并校验 ICNS）；`bbb_client::window_icon` 仅作平台选择与启动期一次性应用：
-
-- **Windows**（`WindowIconTarget::Windows`）：读取 5 张标准图标家族，经 `winit::platform::windows::WindowExtWindows` 调用 `set_window_icon`（16 px）与 `set_taskbar_icon`（256 px）；
-- **X11**（`WindowIconTarget::X11`）：不走 winit 单图标降级，一次向 `_NET_WM_ICON` 写入 16/32/48/128/256 五段 `width`/`height`/ARGB `CARDINAL`；
-- **macOS**（`WindowIconTarget::MacOs`）：直接使用原始 ICNS 设置应用图标；
-- **Wayland 与其他未支持后端**：零对象读取直接跳过。
-
-任一准备或应用失败均回退平台默认图标，不保留影子状态，也不参与运行期资源重载。其余未消费对象家族均无当前产品界面，其范围裁决与重开条件由上表与客户端账本统一维护。
+内置可选资源包 ZIP（`programmer_art`、`high_contrast`）、Realms 语言与轮播图以及 OpenGL GPU 警告列表（`GpuWarnlistManager`）均不在当前产品范围内，其裁决与重开条件统一登记于[客户端账本](../../../unsupported-client-features.md)的 `# Not needed` 段落；当前账本无未关闭的资源资产 `# Todo` 缺口。
 
 ## 账本归属
 

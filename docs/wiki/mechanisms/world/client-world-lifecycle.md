@@ -10,7 +10,7 @@
 
 ## Vanilla 26.1 权威实现
 
-源码根由 `scripts/vanilla path 26.1` 解析，关键决策锚点如下：
+源码根由 `cargo dev vanilla path 26.1` 解析，关键决策锚点如下：
 
 - `net/minecraft/client/multiplayer/ClientLevel.java:254-270`：光照更新入队与预算消费——队列长度 `< 1000` 时每轮最多消费 `max(10, size / 10)` 条，否则一次排空整个队列。
 - `net/minecraft/client/multiplayer/ClientLevel.java:276-285`：世界正常运行门限制世界边界与时钟推进，而闪电天空闪白（`skyFlashTime`）衰减位于该门之外；相邻逻辑还推进爆炸、区块源与环境失效。
@@ -31,6 +31,7 @@
 | 配方、计分板、特性标志、酿造与燃料 | 会话级世界服务 | 重生携带；在监听器或资源重载边沿更新 |
 | 声音随机种子、世界事件随机流与爆炸 | 世界音频与事件状态 | FIFO 音频命令或有界副作用批次 |
 | 群系与方块实体可见性输入 | 世界查询 → 客户端派生 | 渲染器只消费最终颜色与可见模型 |
+| 模组内容注册表与 ICU 本地时间格式化 | `WorldStore`（`bbb:content_registry` 冻结快照）、`bbb-client-world::local_time` | 实体/方块/物品扩展查询与文本组件本地日期时间求值 |
 
 ## 判断与处理顺序
 
@@ -95,7 +96,7 @@
 
 群系颜色混合半径默认为 2（可通过 `--biome-blend-radius <0..=7>` 或 `options.txt` 的 `biomeBlendRadius` 在启动期配置），按固定 `y` 层的 `x`/`z` 窗口求平均；构网与粒子生成按需计算并依赖区段重绘，替代独立 `BlockTintCache`。方向光照经世界到地形投影传递，`TINTED_LEAVES` 使用 `client_leaf_tint_color` 与客户端树叶着色源。
 
-`block_entity_visibility` 统一裁决两条可见性路径：普通方块实体先过已编译 16³ 区段可见性、视锥与渲染距离（默认 64 格，末地折跃门 256 格）；离屏渲染成员绕过区段与视锥。`off_screen_owner_is_visible` 对信标使用水平 `renderDistance × 16`，对包围盒渲染器使用球面 96 格，测试实例方块取两者并集；`renders_off_screen` 是唯一全局离屏成员表。光束在投影入口过门后不再重复判距，移动活塞经 `MovingPistonVisibility` 回到区段可见性门槛。
+`block_entity_visibility` 统一裁决两条可见性路径：普通方块实体先过已编译 16³ 区段可见性、视锥与渲染距离（默认 64 格，活塞头 `PISTON_HEAD_VIEW_DISTANCE = 68` 格，末地折跃门 256 格）；离屏渲染成员绕过区段与视锥。`off_screen_owner_is_visible` 对信标使用水平 `renderDistance × 16`，对包围盒渲染器使用球面 96 格，测试实例方块取两者并集；`renders_off_screen` 是唯一全局离屏成员表。光束在投影入口过门后不再重复判距，移动活塞经 `MovingPistonVisibility` 回到区段可见性门槛。
 
 方块实体渲染绑定直接以实际投影函数为准，不再复制平行注册表：告示牌与悬挂告示牌、各类箱子、刷怪笼、末地传送门/折跃门各自共用对应场景路径；篝火、可刷方块、宝库与架子共用 `item_models::block_entity` 并按各自变换分支；活塞附着物经 `item_models::dropped` 提交。
 
@@ -119,6 +120,7 @@ Vanilla `PistonStructureResolver` 与 `PistonBaseBlock.isPushable` 以全局方�
 | 环境动画与粒子运行时 | `bbb_client::environment_animate_runtime`、`particle_runtime` | 渲染与音频输入（含 `block_entity_effects.rs`） |
 | 方块实体可见性 | `bbb_client::block_entity_visibility` | 场景帧投影 |
 | 世界诊断与崩溃详情 | `bbb_client_world::client::level_report` | F3 调试 HUD 与崩溃报告 |
+| ICU 区域与时区日期格式化 | `bbb_client_world::local_time` | 文本组件与界面日期/时间格式化 |
 
 ## Vanilla/BBB 对照
 

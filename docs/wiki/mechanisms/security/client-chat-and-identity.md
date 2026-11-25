@@ -10,7 +10,7 @@
 
 ## Vanilla 26.1 权威实现
 
-源码根由 `scripts/vanilla path 26.1` 解析：
+源码根由 `cargo dev vanilla path 26.1` 解析：
 
 | 决策 | 精确源码锚点 | 关键事实 |
 | --- | --- | --- |
@@ -29,7 +29,7 @@
 | 远端聊天会话与公钥 | `bbb-client-world` 聊天与玩家信息模块 | 发送者 UUID、会话 UUID、密钥过期时间 |
 | 签名缓存、全局序号与 `last-seen` 环形窗 | 世界层 `client::chat` | 当前连接的聊天协议状态 |
 | 显示消息、信任标签、近期社交历史与旁白 | 世界层 `client::chat::presentation` | 投递修订号、GUI tick、过滤配置 |
-| 发现的玩家名、隐藏列表与启动期屏蔽列表 | 世界层 `client::social` + `ChatPresentationConfig` | 玩家 UUID（`blocked_players` 由启动参数 `args.client_blocked_players` 注入） |
+| 发现的玩家名、隐藏列表与启动期屏蔽列表 | 世界层 `client::social` + `ChatPresentationConfig` | 玩家 UUID（`blocked_players` 由 CLI 参数 `--blocked-player <UUID>` 注入） |
 | 出站聊天与命令包形状 | 网络层 `bbb_client_net::chat_session` | 强类型请求与 `last-seen` 更新 |
 | profile 解析、异步皮肤拉取与属性签名校验 | `bbb-client-net`（`profile_textures`、`services_profile_keys`） | UUID、完整打包 `textures` 属性、磁盘与内存缓存 |
 | profile 纹理 CPU 解码与驻留交付 | `bbb_client_render::item_model::skin_runtime` | UUID、完整打包 `textures` 属性 |
@@ -65,7 +65,7 @@
 
 世界层 `client::chat::presentation` 拥有消息显示列表、延迟投递队列、信任标签、近期社交身份历史（`SocialChatHistory`）与旁白状态。客户端将富文本组件投影为 HUD 片段、点击/悬停/插入目标与无障碍文本；`show_item` 悬浮框复用共享物品提示框构建器，URL 点击继续进入既有确认弹窗。聊天限制提示页的发送权限读取权威可见性与权限配置。
 
-社交发现表（`PlayerSocialState.discovered_names_to_uuid`）以玩家名到 UUID 的映射记录已见玩家；收到 `PlayerInfoRemove` 时不抹除已见或近期发言行，而是将其标为已离线（`removed = true`）。隐藏名单（`hidden_players`）与屏蔽名单（`blocked_players`）统一保存在 `ChatPresentationConfig` 中并分开管理：隐藏列表由 `hide_social_player` / `show_social_player` 在运行期动态维护，屏蔽列表由启动期 `session_shared::build_initial_world_and_net_counters` 从命令行参数 `args.client_blocked_players` 注入；社交查询（`social_player_is_blocked`、`social_should_hide_message_from`）显式排除本地玩家自身与 nil UUID。离线客户端不接入 Mojang 在线社交屏蔽服务。
+社交发现表（`PlayerSocialState.discovered_names_to_uuid`）以玩家名到 UUID 的映射记录已见玩家；收到 `PlayerInfoRemove` 时不抹除已见或近期发言行，而是将其标为已离线（`removed = true`）。隐藏名单（`hidden_players`）与屏蔽名单（`blocked_players`）统一保存在 `ChatPresentationConfig` 中并分开管理：隐藏列表由 `hide_social_player` / `show_social_player` 在运行期动态维护，屏蔽列表由启动期 `session_shared::build_initial_world_and_net_counters` 从 CLI 参数 `--blocked-player <UUID>`（可重复）注入；社交查询（`social_player_is_blocked`、`social_should_hide_message_from`）显式排除本地玩家自身与 nil UUID。离线客户端不接入 Mojang 在线社交屏蔽服务。
 
 `SocialChatHistory` 仅保存近期聊天发送者身份与签名存在标记，用于维持社交列表中的离线发言者与排序权重。窗口容量为最近 1,024 条已接受事件，系统消息同样占用槽位，可见聊天的 100 条显示窗口不能替代它。该历史不保存举报正文、签名证据链、举报 ID 或举报草稿；入站验证及延迟消息所需的时间戳与完整签名仍由聊天协议所有者独立持有，用于信任标签、删除匹配与 `last-seen` 确认。
 
@@ -73,7 +73,7 @@
 
 ### Profile 纹理、Services 公钥与资源发布
 
-网络层在连接前有界获取并解析公共 Services 公钥，并分开维护 `PROFILE_PROPERTY` 与玩家聊天证书两套密钥族。`bbb_client_net::services_profile_keys` 按 SHA-1/RSA 校验完整 `textures` 属性签名；`bbb_client_net::profile_textures` 负责异步 Mojang profile 解析、允许域名/大小校验与本地磁盘缓存；`bbb_client_render::item_model::skin_runtime` 在纯 CPU/渲染侧解码 PNG 并维护驻留预算（渲染器不依赖 HTTP 客户端或磁盘 I/O）。
+网络层在连接前有界获取并解析公共 Services 公钥，并分开维护 `PROFILE_PROPERTY` 与玩家聊天证书两套密钥族。`bbb_client_net::services_profile_keys` 按 SHA-1/RSA 校验完整 `textures` 属性签名；`bbb_client_net::profile_textures` 负责异步 Mojang profile 解析、允许域名/大小校验与桌面本地磁盘缓存（`wasm32` 目标通过 `crates/bbb-client-net/src/wasm_fetch.rs` 经 `bbb-web-host` `/proxy/skin` 域名白名单代理拉取）；`bbb_client_render::item_model::skin_runtime` 在纯 CPU/渲染侧解码 PNG 并维护驻留预算（渲染器不依赖 HTTP 客户端或磁盘 I/O）。
 
 `ResolvableProfileData` 保留完整 `Vec<GameProfileProperty>`，名称、值与签名均保留原始 UTF-16 单元，且先选中首个名称精确等于 `textures` 的属性再解码，该项损坏时不跳过尝试后续同名属性。`verify_profile_texture_signature` 通过 `JavaString::try_to_string` 拒绝 `value` 或 `signature` 含孤立代理项的输入，并按 UTF-8 字节验证 SHA-1/RSA 签名；缓存键仍保留原始属性单元，内存预算按 UTF-16 存储字节计费。
 
@@ -89,7 +89,7 @@ profile 结果缓存访问 TTL 为 15 秒；有界纹理条目、解码后 PNG �
 
 ### 服务器行为准则
 
-服务器行为准则（Code of Conduct）属于配置期提示内容与本地接受记录，不属于聊天签名或身份认证。`bbb_client::code_of_conduct` 按当前连接服务器键持久化已接受文本哈希；当世界无规则文本或无连接身份时不伪造接受状态。规则文本变更后旧哈希自然失效；清除当前服务器接受状态写回同一存储。遮罩显示、确认操作与配置期放行均受当前连接上下文约束，接受规则文本不放宽任何资源 URL、profile 信任或在线服务边界。
+服务器行为准则（Code of Conduct）属于配置期提示内容与本地接受记录，不属于聊天签名或身份认证。`bbb_client::code_of_conduct` 按当前连接服务器键持久化已接受文本哈希（桌面端写入私有配置目录 `code-of-conduct.json`，可用 `--code-of-conduct-store` 或 `BBB_CODE_OF_CONDUCT_STORE` 覆盖；Web 端写入 `localStorage["bbb.code_of_conduct.json"]`）；当世界无规则文本或无连接身份时不伪造接受状态。规则文本变更后旧哈希自然失效；清除当前服务器接受状态写回同一存储。遮罩显示、确认操作与配置期放行均受当前连接上下文约束，接受规则文本不放宽任何资源 URL、profile 信任或在线服务边界。
 
 ## 生命周期和 fallback
 
@@ -153,4 +153,4 @@ profile 结果缓存访问 TTL 为 15 秒；有界纹理条目、解码后 PNG �
 - [屏幕、HUD 与库存](../ui/client-screens-hud-and-inventory.md)：聊天草稿、URL 确认、发送限制与旁白的界面消费。
 - [场景与渲染](../rendering/client-scene-and-rendering.md)：玩家皮肤的 GPU 呈现。
 - [离线资产可信链](../resources/client-offline-asset-trust.md)：资源输入与事务边界。
-- [客户端选项与平台](../persistence/client-options-and-platform.md)：启动配置与本地状态文件。
+- [客户端本地配置、按键与平台窗口](../persistence/client-options-and-platform.md)：启动配置与本地状态文件。

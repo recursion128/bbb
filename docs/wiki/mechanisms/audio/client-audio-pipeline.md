@@ -44,7 +44,7 @@
 
 ## 生命周期和 fallback
 
-桌面端启动时，客户端音频门面 `bbb_client::audio_runtime::NativeAudioRuntime::load` 先从已验证的 Vanilla 资产物化 OpenAL 动态库，再调用播放后端 `bbb_client_audio::NativeAudioRuntime::new_with_device_preference` 初始化实际 OpenAL 播放路径；在 `wasm32` 浏览器目标上，则通过 `NativeAudioRuntime::load_web` 初始化 `bbb_client_audio::WebAudioRuntime` 播放后端。默认非设备单元测试可在无真实音频设备环境下执行；设备热切换、真实发声输出与硬件声道行为仍须以对应原生实机证据为准。
+桌面端启动时，客户端音频门面 `bbb_client::audio_runtime::NativeAudioRuntime::load` 先从已验证的 Vanilla 资产物化 OpenAL 动态库，再调用播放后端 `bbb_client_audio::NativeAudioRuntime::new_with_device_preference` 初始化实际 OpenAL 播放路径（`kira` 仅作为 `dev-dependencies` 用于测试）；在 `wasm32` 浏览器目标上，则通过 `NativeAudioRuntime::load_web` 初始化 `bbb_client_audio::WebAudioRuntime` 播放后端。默认非设备单元测试可在无真实音频设备环境下执行；设备热切换、真实发声输出与硬件声道行为仍须以对应原生实机证据为准。
 
 `bbb_client::audio_runtime::NativeAudioRuntime::prepare_reload` 先完整构建新声音目录与预加载请求；提交阶段（`commit_reload`）才调用播放后端的 `reset_resource_generation`，停止旧播放、清空延迟队列与事件状态、释放旧 OpenAL 静态缓冲、取消旧预加载令牌，安装新目录并清空 `active_tickable_sounds`。旧代际的预加载请求会被直接拒绝，异步解码完成时也不能将过期资源写入当前驻留缓存。跨渲染器与音频的事务提交以及失败时保留旧代际的规则由[客户端运行时](../runtime/client-runtime-and-control.md)拥有。
 
@@ -61,15 +61,16 @@
 - `bbb_client::runtime::events::dispatcher`、`bbb_client::runtime::particles`：世界事件与粒子音效向 `AudioEventSink` 的有序分派。
 - `bbb_client::environment_audio_runtime`、`bbb_client::music_runtime`：环境音与背景音乐决策，复用既有音频输出口。
 - `bbb_client_audio::command`：跨 crate 音频命令与观测数据契约。
-- `bbb_client_audio::runtime`（`NativeAudioRuntime`）与 `bbb_client_audio::webaudio`（`WebAudioRuntime`）：桌面 OpenAL 与 WebAudio 后端的播放、延迟、停止、声道池与代际生命周期。
+- `bbb_client_audio::scheduler`：桌面 OpenAL 与 WebAudio 共用的距离延迟（`vanilla_distance_delay_ticks`）、停止过滤与 20 tick 最小存活期调度器。
+- `bbb_client_audio::runtime`（`NativeAudioRuntime`、含 Windows 录像用的 OpenAL 48 kHz 双声道回环音频采样支路）与 `bbb_client_audio::webaudio`（`WebAudioRuntime`）：桌面 OpenAL 与 WebAudio 后端的声道池、播放与代际生命周期。
 
 ## Vanilla/BBB 对照
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
 | 随机种子与音源选择 | `ClientLevel` / 声音注册表 | `bbb-client-world` + `audio_runtime::resolver` | `aligned` | 确定性音源解析测试 |
-| 距离延迟计算 | `ClientLevel.playSound` | `vanilla_distance_delay_ticks` | `aligned` | 严格阈值、向下取整与剩余 tick 递减测试 |
-| 停止与最小保留期 | `SoundEngine.tick` | `bbb_client_audio::runtime` | `aligned` | 20 tick 删除边界与声道/外壳分离测试 |
+| 距离延迟计算 | `ClientLevel.playSound` | `bbb_client_audio::scheduler::vanilla_distance_delay_ticks` | `aligned` | 严格阈值、向下取整与剩余 tick 递减测试 |
+| 停止与最小保留期 | `SoundEngine.tick` | `bbb_client_audio::scheduler` | `aligned` | 20 tick 删除边界与声道/外壳分离测试 |
 | 资源重载与预加载 | `SoundManager.apply` / 引擎重载 | 客户端事务编排 + 后端驻留缓存 | `aligned` | 旧代际取消与过期预加载拒绝测试 |
 | 实际设备播放 | `SoundEngine` / OpenAL 库 | `bbb_client_audio::NativeAudioRuntime`（OpenAL）与 `WebAudioRuntime`（Web） | `aligned` | 真实音频设备验收证据，不以 mock 替代 |
 
@@ -82,22 +83,22 @@
 
 ## 聚焦测试（focused tests）和真实证据
 
-`bbb_client_audio::runtime` 中可定位的语义测试：
+`bbb_client_audio::scheduler` 与 `bbb_client_audio::runtime` 中可定位的语义测试：
 
-- `distance_delay_ticks_match_vanilla_threshold_and_flooring`：验证 10 格不延迟、10.1 格延迟 5 tick。
-- `delayed_positioned_sounds_release_after_remaining_ticks`：验证递减两次后释放原命令。
-- `stopped_sound_lifetime_matches_vanilla_twenty_tick_boundary`：验证 19/20 tick 删除边界。
-- `generation_reset_cancels_pending_preload_and_rejects_old_requests`：验证旧代际 3 的预加载不能安装到新代际 4。
+- `bbb_client_audio::scheduler::tests::distance_delay_ticks_match_vanilla_threshold_and_flooring`：验证 10 格不延迟、10.1 格延迟 5 tick。
+- `bbb_client_audio::scheduler::tests::delayed_positioned_sounds_release_after_remaining_ticks`：验证递减两次后释放原命令。
+- `bbb_client_audio::scheduler::tests::stopped_sound_lifetime_matches_vanilla_twenty_tick_boundary`：验证 19/20 tick 删除边界。
+- `bbb_client_audio::runtime::tests::generation_reset_cancels_pending_preload_and_rejects_old_requests`：验证旧代际 3 的预加载不能安装到新代际 4。
 
 常用命令入口为 `cargo dev test -p bbb-client-audio`；客户端解析器行为使用 `cargo dev test -p bbb-client audio_runtime::`。`bbb_client::runtime::events::tests::audio_and_death_sounds` 与 `bbb_client::runtime::events::tests::session_protocol_events` 覆盖有序副作用与会话清理。上述单元测试不能替代真实音频设备与持续运行验收。
 
 ## 当前差异
 
-本页不将可运行的无设备单元测试等同于真实音频设备验收；未关闭差异统一以客户端账本为准。
+本页不将可运行的无设备单元测试等同于真实音频设备验收；[客户端账本](../../../unsupported-client-features.md)当前无未关闭的音频 `# Todo` 缺口。
 
 ## 账本归属
 
-未关闭差异及产品范围裁决见[客户端账本](../../../unsupported-client-features.md)，推进原则见 [AGENTS.md](../../../../AGENTS.md)。BBB 自有音频扩展登记在[客户端扩展](../../../client-extensions.md)。
+未关闭差异及产品范围裁决见[客户端账本](../../../unsupported-client-features.md)，推进原则见 [`AGENTS.md`](../../../../AGENTS.md)；新增 BBB 自有音频扩展登记在[客户端扩展](../../../client-extensions.md)。
 
 ## 精确重开条件
 
