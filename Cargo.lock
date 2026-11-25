@@ -282,7 +282,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "arc-swap",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bbb-client-assets",
  "bbb-client-audio",
  "bbb-client-clock",
@@ -350,7 +350,7 @@ name = "bbb-client-audio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bbb-client-assets",
  "bbb-client-clock",
  "js-sys",
@@ -377,7 +377,7 @@ name = "bbb-client-net"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bbb-client-clock",
  "bbb-protocol",
  "bytes",
@@ -496,7 +496,7 @@ dependencies = [
 name = "bbb-mcp"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "rand 0.10.4",
  "ring",
  "rsa",
@@ -693,7 +693,7 @@ name = "bbb-web-host"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bbb-client-assets",
  "bbb-mcp",
  "bbb-protocol",
