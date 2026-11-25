@@ -295,7 +295,7 @@ dependencies = [
  "bbb-render-types",
  "chrono",
  "clap",
- "glam 0.33.3",
+ "glam",
  "hexf-parse",
  "image",
  "isocountry",
@@ -334,7 +334,7 @@ dependencies = [
  "bbb-registry-codec",
  "bbb-render-types",
  "crc32fast",
- "glam 0.33.3",
+ "glam",
  "image",
  "indexmap",
  "rayon",
@@ -433,7 +433,7 @@ dependencies = [
  "bbb-render-types",
  "bytemuck",
  "criterion",
- "glam 0.33.3",
+ "glam",
  "hashbrown 0.17.2",
  "image",
  "pollster",
@@ -1546,12 +1546,6 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.33.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7360bd2cd76e0cd9032d42cf2922155cecea2685b0cfa4630c3246df030bcfd6"
-
-[[package]]
-name = "glam"
 version = "0.34.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "627003914c6057c9c8f0832ee4f870b5a4f599d0cfa83f4072675114860cd0ff"
@@ -2302,7 +2296,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92df3bfdb0c2f061c5899695d1c1c8616b427005970f4b7fb129f587435b4644"
 dependencies = [
  "atomic-arena",
- "glam 0.34.3",
+ "glam",
  "mint",
  "pastey",
  "rtrb",
