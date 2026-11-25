@@ -4,9 +4,51 @@
 
 桌面与 Web 平台指南见 [Windows 客户端](docs/wiki/development/windows-client.md)、[macOS 与 Linux 开发](docs/wiki/development/macos-and-linux.md) 与 [Web 客户端与网关](docs/wiki/development/web-client.md)。
 
+## 下载与部署
+
+BBB 的首个正式发布标签计划使用 `v26.1.0`。前两段 `26.1` 表示目标为 Minecraft Java 26.1，最后一段是 BBB 的发布序号，从 `0` 开始。同一兼容版本的下一次 BBB 发布使用 `v26.1.1`。正式包通过[发布门禁](docs/wiki/development/testing-and-gates.md#发布)后在 [GitHub Releases](https://github.com/recursion128/bbb/releases) 提供下载。
+
+目前可用的是预览构建。以下版本于 2026-11-25 核对，后续更新以各自的发布页为准。
+
+| 渠道 | 构建版本 | 内容 |
+| --- | --- | --- |
+| [GitHub Releases Nightly](https://github.com/recursion128/bbb/releases/tag/nightly) | `nightly`，源码提交 `6567d9f` | 桌面客户端下载包，或包含浏览器客户端的原生服务端包 |
+| [GHCR 容器镜像](https://github.com/recursion128/bbb/pkgs/container/bbb) | `latest` 当时指向 `sha-85fd2fc` | 服务端、管理 CLI、Web 网关和浏览器客户端 |
+
+### 1. 下载桌面客户端
+
+- **Windows x64** 下载 [Nightly ZIP](https://github.com/recursion128/bbb/releases/download/nightly/bbb-client-x86_64-pc-windows-msvc.zip)，解压后运行 `bbb-client-launch.cmd`。
+- **Linux x64** 下载 [Nightly tar.gz](https://github.com/recursion128/bbb/releases/download/nightly/bbb-client-x86_64-unknown-linux-gnu.tar.gz)，在 Wayland 会话下运行 `./bbb-client-launch.sh`，需要 Vulkan 与 OpenAL。
+
+桌面客户端需要 Minecraft Java 26.1 资源。启动器可以使用本机已有的官方安装或通过 `BBB_VANILLA_ROOT` 指定资源目录。启动参数与系统依赖见[桌面打包指南](packaging/README.md#packaging-the-desktop-client-bbb-client)。
+
+### 2. 部署服务端
+
+**Docker（Linux x64 镜像）**默认启动 `bbb-server`。以下示例在本机开放游戏端口，并用 Docker 卷保存世界和管理数据。
+
+```sh
+docker run --rm -p 127.0.0.1:25565:25565 -v bbb-data:/var/lib/bbb ghcr.io/recursion128/bbb:sha-85fd2fc
+```
+
+`latest` 是滚动标签，预览部署可用 `sha-<提交>` 固定镜像。按现有[镜像发布规则](.github/workflows/container.yml)，正式 Git 标签 `v26.1.0` 将对应精确镜像标签 `26.1.0` 和兼容系列标签 `26.1`。
+
+**原生服务端包**支持 [Linux x64](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-x86_64-unknown-linux-gnu.tar.gz) 和 [macOS Apple Silicon](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-aarch64-apple-darwin.tar.gz)。解压后运行 `./bbb-server --bind 127.0.0.1:25565 --world ./world`。同一个包还提供 `bbb-admin`、`bbb-web-host` 与 `web-dist/`。长期运行或对外部署见[打包指南](packaging/README.md)和[安全与部署指南](docs/wiki/development/security-and-deployment.md)。
+
+### 3. 用浏览器连接
+
+浏览器客户端由 `bbb-web-host` 提供，WASM/WebGPU 构建随所选服务端包或镜像交付，版本与该包或镜像一致。玩家使用支持 WebGPU 与 `SharedArrayBuffer` 的桌面浏览器（如 Chrome 或 Chromium），通过 HTTPS 或本机回环地址打开网关。
+
+网关需要 Minecraft Java 26.1 资源和可连接的服务端。使用原生包时，在解压目录运行：
+
+```sh
+./bbb-web-host --vanilla-root /path/to/vanilla --wasm-dir ./web-dist --server 127.0.0.1:25565
+```
+
+本机玩家打开 `http://127.0.0.1:8080/`。使用 Docker 时，从同一个镜像另起容器运行 `bbb-web-host`，挂载 26.1 资源，并将 `--server` 指向网关能访问的服务端地址。网关参数、资源目录与 HTTPS 部署见 [Web 客户端与网关](docs/wiki/development/web-client.md)。
+
 ## 前置工具与系统依赖
 
-Windows、macOS 与 Linux 共用统一的 `cargo dev`（`crates/bbb-xtask`）跨平台入口。开始前需准备以下工具链与系统依赖：
+从源码构建时，Windows、macOS 与 Linux 共用 `cargo dev`（`crates/bbb-xtask`）入口。开始前需准备以下工具链与系统依赖：
 
 - **Nightly Rust 工具链**：安装 `rustup`，仓库由 [`rust-toolchain.toml`](rust-toolchain.toml) 固定 Nightly Rust（`nightly-2026-08-10`，含 `rustfmt`、`clippy`、`rust-src` 与 `wasm32-unknown-unknown` 目标）。
 - **`uv` 与 `Git`**：安装 `uv 0.12.3`（用于管理锁定的 CPython `3.12.13` 与脚本依赖）与 `git`。
@@ -16,7 +58,7 @@ Windows、macOS 与 Linux 共用统一的 `cargo dev`（`crates/bbb-xtask`）跨
   - **Windows**：Visual Studio 2022 C++ Build Tools（MSVC x64 工具链与 Windows SDK；原生渲染默认使用 Direct3D 12）。
   - **macOS**：Xcode Command Line Tools（Cocoa / Metal）。
 
-## 玩家上手路径
+## 从源码启动
 
 ### 1. 准备资源与环境（游玩 vs `--skip-vanilla`）
 
