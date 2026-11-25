@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           eligible=false
-          if [[ "$ECOSYSTEM" == "github-actions" ]]; then
+          if [[ "$ECOSYSTEM" == "github_actions" || "$ECOSYSTEM" == "github-actions" ]]; then
             eligible=true
           elif [[ "$ECOSYSTEM" == "cargo" || "$ECOSYSTEM" == "uv" ]]; then
             # Grouped PRs from dependabot.yml only include non-breaking minor/patch updates
