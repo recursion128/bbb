@@ -54,7 +54,7 @@ pub fn print_usage() {
 Usage:
   cargo dev <command> [args...]
   cargo worker <create|run|status|cleanup|release|env|shell-env> [args...]
-  cargo build-web [--dev|--release] [--out-dir <dir>] [--wasm-target-dir <dir>]
+  cargo build-web [--dev|--release|--profile <dev|release|wasm-release>] [--out-dir <dir>] [--wasm-target-dir <dir>]
   cargo web-up [options]
 
 Rust build & test:
@@ -70,7 +70,7 @@ Rust build & test:
   env                         print resolved cross-platform paths & env
 
 Tooling, lints & gates:
-  bootstrap [--offline] [--skip-vanilla]   prepare Python, Rust & Vanilla 26.1
+  bootstrap [--offline] [--skip-vanilla] [--skip-cross-target]  prepare Python, Rust & Vanilla 26.1
   vanilla <args...>                        manage Vanilla 26.1 workspace
   python <cmd-or-script> [args...]         run managed Python in primary .venv
   world-build [options]                    build and verify a local world through MCP

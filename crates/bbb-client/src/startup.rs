@@ -106,7 +106,7 @@ define_startup_args! {
         default_value = "."
     )]
     pub(crate) game_dir: PathBuf,
-    /// Managed cache root printed by `scripts/vanilla path 26.1 --kind root`.
+    /// Path to Minecraft Java 26.1 assets (managed cache printed by `cargo dev vanilla path 26.1 --kind root` or an official `.minecraft` directory).
     #[arg(
         long = "vanilla-root",
         help_heading = "Connection & Identity",
@@ -895,7 +895,7 @@ define_startup_args! {
         value_parser = parse_render_distance
     )]
     pub(crate) render_distance_chunks: u32,
-    /// Graphics quality preset (`fast`, `fancy`, `fabulous`).
+    /// Graphics quality preset (`fast`, `fancy`, `fabulous`, `custom`).
     #[arg(
         long = "graphics-preset",
         help_heading = "Video & Rendering",
@@ -911,7 +911,7 @@ define_startup_args! {
         value_parser = clap::value_parser!(u32).range(0..=7)
     )]
     pub(crate) biome_blend_radius: u32,
-    /// Chunk rebuild priority policy (`none`, `player-affects`, `nearby`).
+    /// Chunk rebuild priority policy (`none`, `player-affected`, `nearby`).
     #[arg(
         long = "prioritize-chunk-updates",
         help_heading = "Video & Rendering",

@@ -23,7 +23,7 @@ struct Cli {
     #[arg(long = "allow-server")]
     allow_servers: Vec<String>,
 
-    /// Path to prepared Vanilla 26.1 root (`sources/26.1` + `downloads/26.1`).
+    /// Path to Minecraft Java 26.1 assets (prepared `sources/26.1` + `downloads/26.1`, `downloads/26.1` client JAR, or an official `.minecraft` directory).
     #[arg(long)]
     vanilla_root: Option<PathBuf>,
 
