@@ -840,7 +840,9 @@ fn builds_core_bundle_directly_from_launcher_jar_root_without_sources() {
     }))
     .unwrap();
     fs::write(indexes_dir.join("30.json"), &index_bytes).unwrap();
-    assert!(!bbb_web_host::assets_http::has_vanilla_bundle_input(&mc_root));
+    assert!(!bbb_web_host::assets_http::has_vanilla_bundle_input(
+        &mc_root
+    ));
     fs::write(
         version_dir.join(format!("{MC_VERSION}.json")),
         serde_json::to_vec(&serde_json::json!({
@@ -849,7 +851,9 @@ fn builds_core_bundle_directly_from_launcher_jar_root_without_sources() {
         .unwrap(),
     )
     .unwrap();
-    assert!(bbb_web_host::assets_http::has_vanilla_bundle_input(&mc_root));
+    assert!(bbb_web_host::assets_http::has_vanilla_bundle_input(
+        &mc_root
+    ));
 
     let prepared = bbb_web_host::assets_http::PreparedWebAssets::build_or_load(
         bbb_web_host::assets_http::AssetBuildOptions {
