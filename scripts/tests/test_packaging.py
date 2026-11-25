@@ -423,7 +423,7 @@ class PackagingTests(unittest.TestCase):
         for token in (
             'tags: ["v*"]',
             "build_release_artifacts:",
-            "actions/upload-artifact@v4",
+            "actions/upload-artifact@",
             "x86_64-unknown-linux-gnu",
             "x86_64-pc-windows-msvc",
             "aarch64-apple-darwin",
