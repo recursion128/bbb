@@ -6,7 +6,7 @@
 
 ## 下载与部署
 
-BBB 的首个正式发布标签计划使用 `v26.1.0`。前两段 `26.1` 表示目标为 Minecraft Java 26.1，最后一段是 BBB 的发布序号，从 `0` 开始。同一兼容版本的下一次 BBB 发布使用 `v26.1.1`。正式包通过[发布门禁](docs/wiki/development/testing-and-gates.md#发布)后在 [GitHub Releases](https://github.com/recursion128/bbb/releases) 提供下载。
+BBB 使用独立的发布版本号。首个正式发布标签计划使用 `v0.1.0`，兼容目标单独标明为 Minecraft Java 26.1，可显示为 **BBB v0.1.0（Minecraft Java 26.1）**。正式包通过[发布门禁](docs/wiki/development/testing-and-gates.md#发布)后在 [GitHub Releases](https://github.com/recursion128/bbb/releases) 提供下载。
 
 目前可用的是预览构建。以下版本于 2026-11-25 核对，后续更新以各自的发布页为准。
 
@@ -30,7 +30,7 @@ BBB 的首个正式发布标签计划使用 `v26.1.0`。前两段 `26.1` 表示�
 docker run --rm -p 127.0.0.1:25565:25565 -v bbb-data:/var/lib/bbb ghcr.io/recursion128/bbb:sha-85fd2fc
 ```
 
-`latest` 是滚动标签，预览部署可用 `sha-<提交>` 固定镜像。按现有[镜像发布规则](.github/workflows/container.yml)，正式 Git 标签 `v26.1.0` 将对应精确镜像标签 `26.1.0` 和兼容系列标签 `26.1`。
+`latest` 是滚动标签，预览部署可用 `sha-<提交>` 固定镜像。按现有[镜像发布规则](.github/workflows/container.yml)，BBB 正式 Git 标签 `v0.1.0` 将对应精确镜像标签 `0.1.0` 和版本系列标签 `0.1`。
 
 **原生服务端包**支持 [Linux x64](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-x86_64-unknown-linux-gnu.tar.gz) 和 [macOS Apple Silicon](https://github.com/recursion128/bbb/releases/download/nightly/bbb-server-aarch64-apple-darwin.tar.gz)。解压后运行 `./bbb-server --bind 127.0.0.1:25565 --world ./world`。同一个包还提供 `bbb-admin`、`bbb-web-host` 与 `web-dist/`。长期运行或对外部署见[打包指南](packaging/README.md)和[安全与部署指南](docs/wiki/development/security-and-deployment.md)。
 
