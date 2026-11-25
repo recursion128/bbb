@@ -74,7 +74,7 @@ in `crates/bbb-client/src/startup.rs`:
 - `BBB_GAME_DIR` -> `--game-dir <PATH>` (default `${XDG_DATA_HOME:-$HOME/.local/share}/bbb-client` on Linux, `%APPDATA%\bbb-client\game` on Windows)
 - `BBB_VANILLA_ROOT` -> `--vanilla-root <PATH>`
 - `BBB_SERVER` -> `--server <ADDR>` (automatically connects on startup)
-- `BBB_FULLSCREEN=1` -> `--fullscreen`
+- `BBB_FULLSCREEN=1` -> `--fullscreen` (also accepts `true` or `yes`, case-insensitive)
 
 Explicit flags passed on the command line take precedence over wrapper defaults
 and are forwarded directly to `bbb-client`.
@@ -96,10 +96,7 @@ registers a `Launch Fullscreen` desktop action passing `--fullscreen`.
 
 ### Windows (`x86_64-pc-windows-msvc`)
 
-`bbb-client.exe` uses native Win32 windows, Direct3D 12 by default (overridable
-with `WGPU_BACKEND=vulkan`), and the OpenAL DLL verified from the Vanilla 26.1
-manifest. Stage the binary alongside the Windows launcher wrappers from
-`%TEMP%\bbb-target-main\x86_64-pc-windows-msvc\release\bbb-client.exe`:
+`bbb-client.exe` uses native Win32 windows, the Direct3D 12 backend (Windows builds compile only `dx12` in `crates/bbb-client-render/Cargo.toml`; set `BBB_SOFTWARE_GPU=1` to force the Direct3D 12 WARP software adapter on headless hosts), and the OpenAL DLL verified from the Vanilla 26.1 manifest. Stage the binary alongside the Windows launcher wrappers from `%TEMP%\bbb-target-main\x86_64-pc-windows-msvc\release\bbb-client.exe`:
 
 ```powershell
 $dist = "$env:LOCALAPPDATA\Programs\bbb-client"
@@ -158,9 +155,11 @@ and `pkg/bbb_client_bg.wasm`) into an external staging directory:
 cargo dev build-web --release --out-dir /tmp/bbb-web-dist
 ```
 
-`bbb-web-host` also requires a prepared Vanilla 26.1 directory (`sources/26.1` +
-`downloads/26.1`, produced by `cargo dev vanilla prepare 26.1`) so it can
-assemble and cache `core-26.1.zip` under `--cache-dir` on startup.
+`bbb-web-host` also requires Minecraft Java 26.1 assets via `--vanilla-root` (or `BBB_VANILLA_ROOT` / the managed Vanilla cache) so it can assemble and cache `core-26.1.zip` under `--cache-dir` on startup. It accepts any of three directory layouts:
+
+1. Prepared Vanilla workspace (`sources/26.1` + `downloads/26.1`, produced by `cargo dev vanilla prepare 26.1`).
+2. Downloaded client JAR layout (`downloads/26.1/{client-26.1.jar, client.jar, 26.1.jar}` + `26.1.json` + `assets/`).
+3. Official Minecraft Java 26.1 `.minecraft` directory (`versions/26.1/{26.1.jar, client.jar}` + `26.1.json` + `assets/`).
 
 ### 2. Install the loopback gateway service
 
@@ -217,16 +216,26 @@ and reject `/control-ws` (`403`):
 - **Nginx**: copy `packaging/nginx-bbb-web.conf` into `/etc/nginx/conf.d/`,
   configure your certificate paths and `server_name`, and reload `nginx`.
 
+## Container image (GHCR / Docker)
+
+`packaging/Dockerfile` builds a non-root (`bbb` user) `linux/amd64` runtime image containing `/usr/local/bin/bbb-server`, `/usr/local/bin/bbb-admin`, `/usr/local/bin/bbb-web-host`, and the prebuilt WASM bundle in `/opt/bbb/web-dist` (with `BBB_WEB_OUT_DIR=/opt/bbb/web-dist` and `BBB_VANILLA_ROOT=/var/lib/bbb/vanilla`).
+
+- **Default entrypoint (`CMD`)**: starts `bbb-server --bind 0.0.0.0:25565 --world /var/lib/bbb/world --admin-dir /var/lib/bbb/admin` (mount a persistent volume at `/var/lib/bbb`).
+- **Running `bbb-web-host` from the same image**: override the command with `bbb-web-host --bind 0.0.0.0:8080 --vanilla-root /vanilla --cache-dir /var/cache/bbb-web --server <server:25565>` and bind-mount a read-only 26.1 asset directory (`.minecraft` or managed Vanilla workspace) at `/vanilla`.
+- **Published tags**: [`.github/workflows/container.yml`](../.github/workflows/container.yml) publishes `ghcr.io/recursion128/bbb` on `main` pushes (`latest`, `sha-<commit>`) and `v*` tags (`<major>.<minor>.<patch>`, `<major>.<minor>`).
+
 ## Automated CI release archives
 
 Pushing a `v*` tag or running the GitHub Actions workflow manually with
 `build_release_artifacts: true` in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
-builds and uploads release archives via `actions/upload-artifact@v4`:
+builds and uploads release archives (plus `.sha256` digests) via `actions/upload-artifact@v4`:
 
 - `bbb-client-x86_64-unknown-linux-gnu.tar.gz` — Linux desktop binary, `bbb-client-launch.sh`, `bbb-client.desktop`, README, and licenses
 - `bbb-client-x86_64-pc-windows-msvc.zip` — Windows desktop binary, `bbb-client-launch.ps1`, `bbb-client-launch.cmd`, README, and licenses
 - `bbb-server-x86_64-unknown-linux-gnu.tar.gz` — Linux `bbb-server`, `bbb-admin`, `bbb-web-host`, `web-dist/`, systemd/proxy configs, README, and licenses
 - `bbb-server-aarch64-apple-darwin.tar.gz` — macOS `bbb-server`, `bbb-admin`, `bbb-web-host`, `web-dist/`, launchd/proxy configs, README, and licenses
+
+On `v*` tags — or on manual dispatch with both `build_release_artifacts: true` and `publish_github_release: true` — the `publish-release` job assembles `SHA256SUMS.txt` and publishes the archives to a GitHub Release (versioned tag release for `v*`, or the rolling `nightly` prerelease on manual dispatch).
 
 ## Stopping `bbb-server`
 

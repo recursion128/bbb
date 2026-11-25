@@ -15,7 +15,7 @@
 | 当前路径 | 当前职责 | 是否仍准确 | 规范归属 | 处理方式 | 引用者/脚本 | 内容类别 | 重复或冲突 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `AGENTS.md` | 产品边界、推进原则与协作执行规则 | 是 | 同路径 | 保留特殊权威 | Wiki 开发页、账本 | 执行规则 | 无 |
-| `README.md` | 仓库入口 | 是 | 同路径 | 保留导航 | [`docs/README.md`](../../README.md) | 导航 | 无 |
+| `README.md` | 仓库首页、快速开始、发布渠道与文档导航 | 是 | 同路径 | 保留导航 | [`docs/README.md`](../../README.md) | 导航 | 无 |
 | `SECURITY.md` | 漏洞披露策略与离线/MCP/网关安全边界概览 | 是 | 同路径 | 保留导航 | 根 README、安全部署页 | 安全说明 | 无 |
 | `docs/client-extensions.md` | BBB 自有客户端未关闭能力 | 是 | 同路径 | 保留特殊权威 | AGENTS、文档入口、文档检查 | 当前状态 | 无 |
 | `docs/README.md` | 文档系统入口 | 是 | 同路径 | 保留导航 | 根 README、文档检查 | 导航 | 无 |
@@ -66,5 +66,5 @@
 | `docs/wiki/mechanisms/security/client-chat-and-identity.md` | 客户端聊天与身份：签名、显示和皮肤信任 | 是 | 同路径 | 保留为规范页 | Wiki、架构边界、相邻机制 | 长期机制 | 无 |
 | `docs/wiki/mechanisms/ui/client-screens-hud-and-inventory.md` | 客户端屏幕、HUD 与库存：输入、投影和服务端权威 | 是 | 同路径 | 保留为规范页 | Wiki、架构边界、相邻机制 | 长期机制 | 无 |
 | `docs/wiki/mechanisms/world/server-chunks-and-worldgen.md` | 服务端区块、生成与 FULL 状态发布 | 是 | 同路径 | 保留为规范页 | Wiki、架构边界、相邻机制 | 长期机制 | 无 |
-| `packaging/README.md` | 桌面客户端、服务端与 Web 网关发布打包配方，含启动器、systemd/launchd 与 Caddy/Nginx 反代说明 | 是 | 同路径 | 保留工具就近说明 | `packaging/bbb-server.service`、`scripts/tests/test_packaging.py` | 工具说明 | 无 |
+| `packaging/README.md` | 桌面客户端、服务端、Web 网关与容器镜像发布打包配方，含启动器、systemd/launchd 与 Caddy/Nginx 反代说明 | 是 | 同路径 | 保留工具就近说明 | `packaging/bbb-server.service`、`scripts/tests/test_packaging.py` | 工具说明 | 无 |
 | `scripts/fixtures/mcp-tls/README.md` | 管理端 TLS 测试夹具的用途与禁用范围 | 是 | 同路径 | 保留工具就近说明 | `bbb-server-admin` TLS 测试 | 工具说明 | 无 |

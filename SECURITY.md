@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-`bbb` targets Minecraft Java Edition **26.1** on the `main` branch. Security fixes are applied fix-forward on `main`.
+`bbb` uses independent BBB release versioning (targeting Minecraft Java Edition **26.1**). Security fixes are applied fix-forward on the `main` branch.
 
 ## Security Model Overview
 
@@ -10,7 +10,7 @@ Before reporting an issue or deploying `bbb`, note the declared product boundari
 
 - **Offline-only Minecraft protocol**: Both `bbb-client` and `bbb-server` operate strictly in offline mode without Mojang session authentication or Minecraft wire encryption. Expose `bbb-server` only on trusted LANs, VPNs, or networks protected by external access controls and `--white-list` / `--enforce-whitelist`.
 - **MCP management endpoint (`bbb-server` / `bbb-mcp`)**: Binds to loopback (`127.0.0.1:25585`) by default and refuses non-loopback binds unless TLS (`--mcp-tls-cert`, `--mcp-tls-key`) and OAuth 2.1 (`--mcp-oauth-resource`, `--mcp-oauth-issuer`, `--mcp-oauth-jwks`) are all configured. Pass bearer secrets only via `--mcp-token-file` / `--token-file` (never via CLI arguments). Browser `Origin` headers are rejected by default (`--mcp-allowed-origin` is empty) to mitigate DNS rebinding.
-- **Web gateway (`bbb-web-host`)**: Restricts `/ws` upstream TCP connections to `{--server} ∪ {--allow-server ...}`, restricts `/proxy/skin` to Mojang hosts, enforces DNS-level SSRF IP checks and size/redirect bounds on `/proxy/pack`, and emits `COOP`/`COEP`/`CORP` cross-origin isolation headers. In public deployments, terminate HTTPS at a reverse proxy and block `/control-ws` (see [`packaging/README.md`](packaging/README.md)).
+- **Web gateway (`bbb-web-host`)**: Restricts `/ws` upstream TCP connections to `{--server} ∪ {--allow-server ...}`, restricts `/proxy/skin` to Mojang hosts, enforces DNS-level SSRF IP checks (blocking loopback, RFC 1918/ULA private, link-local, and cloud metadata addresses by default unless explicitly opted in via `--allow-pack-loopback` / `--allow-pack-private`) and size/redirect bounds on `/proxy/pack`, and emits `COOP`/`COEP`/`CORP` cross-origin isolation headers. In public deployments, terminate HTTPS at a reverse proxy and block `/control-ws` (see [`packaging/README.md`](packaging/README.md)).
 - **Untrusted wire, NBT, archive, and pack inputs**: Protocol framing, compression, NBT depth/size/entry counts, Anvil region storage, and resource/data pack paths enforce explicit memory, depth, and path-traversal budgets.
 
 ## Reporting a Vulnerability
