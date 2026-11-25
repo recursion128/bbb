@@ -13,7 +13,6 @@ workspace = true
 bbb-facts = { path = "../bbb-facts", default-features = false, features = ["server-facts"] }
 bbb-protocol = { path = "../bbb-protocol" }
 bbb-registry-codec = { path = "../bbb-registry-codec" }
-serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }

@@ -347,7 +347,6 @@ dependencies = [
  "base64",
  "bbb-client-assets",
  "bbb-client-clock",
- "getrandom 0.2.17",
  "js-sys",
  "kira",
  "libloading",
@@ -483,7 +482,6 @@ dependencies = [
 name = "bbb-facts"
 version = "0.1.0"
 dependencies = [
- "rustc-hash",
  "serde",
  "serde_json",
 ]
@@ -654,7 +652,6 @@ dependencies = [
  "lz4_flex",
  "rayon",
  "serde_json",
- "thiserror 2.0.20",
  "twox-hash",
  "uuid",
 ]
@@ -666,7 +663,6 @@ dependencies = [
  "bbb-facts",
  "bbb-protocol",
  "bbb-registry-codec",
- "serde",
  "serde_json",
  "thiserror 2.0.20",
  "uuid",
@@ -681,7 +677,6 @@ dependencies = [
  "bbb-registry-codec",
  "bbb-server-datapack",
  "bbb-server-types",
- "flate2",
  "serde_json",
  "sha2",
 ]
@@ -2390,9 +2385,6 @@ name = "lz4_flex"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecbdfe44b1bd960b68170b417450a628c43f7cf56bb3c5317e61cb230ee7f226"
-dependencies = [
- "twox-hash",
-]
 
 [[package]]
 name = "matchers"

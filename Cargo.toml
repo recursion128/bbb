@@ -61,7 +61,7 @@ indexmap = "2"
 isocountry = "0.3.2"
 libc = "0.2"
 libloading = "0.8"
-lz4_flex = "0.14.0"
+lz4_flex = { version = "0.14.0", default-features = false, features = ["std", "safe-encode", "safe-decode", "checked-decode"] }
 md5 = "0.8.1"
 num-bigint = "0.5.1"
 pollster = "1.0.1"
@@ -101,7 +101,7 @@ js-sys = "0.3.104"
 wgpu = { version = "30.0.2", default-features = false }
 winit = "0.30.13"
 x11-dl = "2.21.0"
-zip = { version = "9.8.2", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "9.8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [workspace.lints.rust]
 # deny-warnings lives here (not in RUSTFLAGS) so gate and daily focused tests

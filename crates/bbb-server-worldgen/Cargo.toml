@@ -18,5 +18,4 @@ bbb-server-datapack = { path = "../bbb-server-datapack" }
 sha2 = { workspace = true }
 
 [dev-dependencies]
-flate2 = { workspace = true }
 serde_json = { workspace = true }

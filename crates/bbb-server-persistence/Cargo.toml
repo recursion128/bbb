@@ -19,6 +19,5 @@ libc = { workspace = true }
 lz4_flex = { workspace = true }
 rayon = { workspace = true }
 serde_json = { workspace = true }
-thiserror = { workspace = true }
 twox-hash = { workspace = true }
 uuid = { workspace = true }
