@@ -87,7 +87,7 @@ updates:
         patterns:
           - "*"
 
-  # Runtime container base image (packaging/Dockerfile); kept out of auto-merge to stay on LTS
+  # Runtime container base image (packaging/Dockerfile); track Ubuntu LTS releases only
   - package-ecosystem: "docker"
     directory: "/packaging"
     schedule:
@@ -100,3 +100,11 @@ updates:
       prefix: "deps(docker)"
     cooldown:
       default-days: 3
+    ignore:
+      # Track even-year .04 Ubuntu LTS releases only (skip .10 and odd-year .04 interim releases).
+      - dependency-name: "ubuntu"
+        versions:
+          - ">= 26.10, < 28.04"
+          - ">= 28.10, < 30.04"
+          - ">= 30.10, < 32.04"
+          - ">= 32.10, < 34.04"
