@@ -24,7 +24,6 @@ bytemuck = { workspace = true }
 glam = { workspace = true }
 hashbrown = { workspace = true }
 image = { workspace = true }
-pollster = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
@@ -38,9 +37,10 @@ zip = { workspace = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rayon = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-# `naga 30.0.0` gates `ir::Binding::apply_default_interpolation` (used by `glsl`)
-# behind `wgsl-in`/`spv-in`; `webgpu`-only wasm builds omit `wgpu-core`/`wgsl-in`.
-wgpu = { workspace = true, features = ["std", "webgpu", "wgsl", "spirv"] }
+wgpu = { workspace = true, features = ["std", "webgpu", "wgsl"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 wgpu = { workspace = true, features = ["std", "parking_lot", "dx12", "wgsl"] }
@@ -50,6 +50,7 @@ wgpu = { workspace = true, features = ["default"] }
 
 [dev-dependencies]
 criterion = { workspace = true }
+pollster = { workspace = true }
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 
 [[bench]]
