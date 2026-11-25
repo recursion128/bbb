@@ -1,6 +1,6 @@
 # Windows 客户端
 
-`bbb-client` 在 Windows x86_64 上使用 `winit` 原生窗口、`wgpu` 的 Direct3D 12 后端（Windows 构建在 `crates/bbb-client-render/Cargo.toml` 中仅编译 `dx12` 后端，不含 `vulkan`；无显卡环境可通过 `BBB_SOFTWARE_GPU=1` 或 `--software-gpu` 启用 WARP 软件光栅适配器）、`arboard` 剪贴板
+`bbb-client` 在 Windows x86_64 上使用 `winit` 原生窗口、`wgpu` 的 Direct3D 12 后端（Windows 构建在 `crates/bbb-client-render/Cargo.toml` 中仅编译 `dx12` 后端，不含 `vulkan`；无显卡环境可通过环境变量 `BBB_SOFTWARE_GPU=1` 启用 WARP 软件光栅适配器，E2E 门禁可传 `cargo dev e2e client --software-gpu`）、`arboard` 剪贴板
 与官方 26.1 清单锁定的 OpenAL DLL（TrueType 字体由纯 Rust `ab_glyph` 跨平台统一光栅化）。客户端连接外部离线模式服务器；
 启动参数与 Linux/macOS 客户端共用，不提供游戏内配置界面。
 
@@ -14,8 +14,7 @@ cargo dev bootstrap
 cargo dev client -- --vanilla-root D:/bbb-cache/vanilla --server localhost:25565 --username Player
 ```
 
-`cargo dev client` 自动注入已准备的 `BBB_VANILLA_ROOT` 并透传全部 `bbb-client` 参数（传入 `--server <ADDR>` 即自动连接；需要优化构建时使用 `cargo dev client --release -- ...`）。`--vanilla-root` 指向已由 `cargo dev vanilla prepare 26.1` 准备的工作区（未显式传入时默认读取
-`%LOCALAPPDATA%\bbb\vanilla` 或 `BBB_VANILLA_ROOT`）。也可以从已有 Linux/macOS 工作区复制
+`cargo dev client` 自动注入已准备的 `BBB_VANILLA_ROOT` 并透传全部 `bbb-client` 参数（传入 `--server <ADDR>` 即自动连接；需要优化构建时使用 `cargo dev client --release -- ...`）。`--vanilla-root` 可指向 `cargo dev vanilla prepare 26.1` 准备的工作区或官方 26.1 `.minecraft` 目录；未显式传入时按 `BBB_VANILLA_ROOT` → `BBB_VANILLA_DIR` → `--game-dir` → `XDG_CACHE_HOME/bbb/vanilla` → `%LOCALAPPDATA%\bbb\vanilla` → `%APPDATA%\.minecraft` 顺序自动探测。也可以从已有 Linux/macOS 工作区复制
 `sources/26.1` 与 `downloads/26.1`；必须保留资产、清单、客户端 JAR 和依赖库中的
 `natives-windows` 包。客户端启动不下载这些资源，DLL 提取仍核验清单中的文件大小和 SHA-1。资源目录必须放在仓库之外。
 
@@ -48,8 +47,8 @@ BBB 私有配置存储使用 `%APPDATA%\bbb-client`；显式 `BBB_*_STORE` 路�
 
 ```powershell
 cargo dev check -p bbb-client --all-targets
-cargo dev test -p bbb-client --bin bbb-client platform::tests
-cargo dev test -p bbb-client --bin bbb-client window_icon::tests
+cargo dev test -p bbb-client --lib platform::tests
+cargo dev test -p bbb-client --lib window_icon::tests
 cargo dev test -p bbb-client-assets native_library
 cargo dev e2e client
 ```

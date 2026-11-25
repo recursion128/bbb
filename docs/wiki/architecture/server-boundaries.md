@@ -47,39 +47,32 @@ crate 归属为 `bbb-server-net`（连接状态机）、`bbb-server`（无头运
 
 ### 运行时存储与借用上下文
 
-方块、区块、实体与世界的玩法模块由核心层 `bbb-server-core` 统一拥有；纯区块与计划刻容器归 `bbb-server-types`，两端共用的纯光照存储/传播核心（`chunk_light`）与生物体转向（`entity_body_rotation`）归 `bbb-protocol`。核心层的 `chunk`、`entity` 模块各拥有实际存储与执行，其余玩法模块保留语义归属。光照传播核心借用方块与区块查询，不依赖核心层；服务端生成、恢复、光源扫描与传播编排仍归核心层，客户端只复用算法和批次临时存储，不共享权威世界状态。内置方块声音事实由共享的 `bbb-facts::block_sound_facts_26_1` 拥有，经 `bbb-protocol` 提供给两端。纯类型消费者直接依赖 `bbb-server-types`，核心层不转发错误、存档、物品、几何、方向或计划刻类型。
-
-世界生成的方块生存、放置与形状更新由核心层的实际区域宿主调用唯一方块行为所有者；核心层的只读方块和亮度访问统一使用 `BlockGetter`，玩法与生成宿主共用查询规则。实时方块行为直接调用 `LevelCtx`；形状更新的 `BlockShapeCtx` 只承载实时世界、生成区域和存档升级所需的读取、标签、随机数与计划刻，不携带库存、事件或空写入回调。实时玩法只借用一个平铺的 `world::simulation_level::LevelCtx`：区块、规则、事件、计划刻、邻更队列与实体上下文直接位于该借用中，由 `LevelCtx::new` 唯一构造，子调用重新借用同一存储；运行时改方块只经 `LevelCtx::set_block`（区块段原始写入只经 `write_block`），计划刻直接写入关卡存储。未达到 `FULL` 的写入目标由 `chunk_lifecycle/full_preparation` 同步准备；世界层与 `LevelCtx` 共用生成、原始生物生成、存档恢复与实体发布所有者，实体在关卡借用结束后装入实际 `EntityStore`。`WorldGenLevel` 只有两个宿主：生成区域 `FeatureWorldGenRegion` 与实时 `LevelCtx`；`/place`、末地平台与折跃门、结构方块加载、幽匿催发体与附魔圆盘谓词都在一个 `LevelCtx` 帧内执行，特征随机数从关卡随机数派生，结构生物在帧结束后由世界层终结发布。
+- **所有权与共享算法**：方块、区块、实体与世界的玩法模块由 `bbb-server-core` 统一拥有（`chunk`、`entity` 各自持有实际存储与执行）；纯区块与计划刻容器归 `bbb-server-types`，纯光照传播核心（`chunk_light`）与生物体转向（`entity_body_rotation`）归 `bbb-protocol`，内置方块声音事实归 `bbb-facts::block_sound_facts_26_1`。纯类型消费者直接依赖 `bbb-server-types`，核心层不重导出错误、存档、物品、几何、方向或计划刻类型。
+- **实时与生成借用上下文**：只读方块和亮度访问统一使用 `BlockGetter`；形状更新的 `BlockShapeCtx` 仅承载实时世界、生成区域与存档升级所需的读取、标签、随机数与计划刻，不携带库存、事件或空写回调。实时玩法借用平铺的 `world::simulation_level::LevelCtx`（由 `LevelCtx::new` 唯一构造，子调用重借同一存储）；运行时改方块只经 `LevelCtx::set_block`（区段原始写入只经 `write_block`），未达 `FULL` 的写入目标由 `chunk_lifecycle/full_preparation` 同步准备。
+- **`WorldGenLevel` 双宿主**：仅存在生成区域 `FeatureWorldGenRegion` 与实时 `LevelCtx` 两个宿主。`/place`、末地平台/折跃门、结构方块加载、幽匿催发体与附魔圆盘谓词均在单个 `LevelCtx` 帧内执行，地物随机数从关卡随机数派生，新生成实体在帧结束后装入 `EntityStore`。
 
 ### 实体、AI、随机数与刷怪所有权
 
-实体移动、伤害、AI 和接触直接调用 `LevelCtx`；临时离开 `EntityStore` 的真实实体主体以借用链供来源和乘客查询使用，实体或活塞批次不包裹第二个世界宿主或冻结标签事务。玩法随机数只有一条流：`crate::random::GameRandom`（wyrand）由 `ServerWorld.random` 拥有，各关卡、`EntityStore` 与 AI 运行时持同一流的句柄，`LevelCtx` 借出它；实体、玩家、声音与方块随机刻不另存随机状态，新实体 UUID 取 `Uuid::new_v4`。只有种子非零的战利品表与结构模板按种子新建一条流。
-
-`EntityStore` 每个实体 ID 一个槽位：实体主体（tick 期间借出为空）、AI 运行时、乘骑关系同在槽内，不维护按 ID 平行的映射表。在线玩家也是所在关卡 `EntityStore` 的槽位：`PlayerState` 以主体实体 ID 入槽，按同一区段索引与乘骑边查询，通用实体查询与实体区块存档看不到它；连接级的区块发送与追踪视图留在按 `ConnectionId` 索引的 `PlayerSession`，`LevelArena` 维护 `ConnectionId → (关卡, id)` 并在重生/传送门时把玩家移到目标关卡；实体回调需要玩家、地图、命令或整关卡的工作统一排入 `EntityCommand` 队列，由世界层唯一的 `run_entity_commands` 按序执行（后续命令先于旧命令）。
-
-生物体 `GeneralLivingData` 只持有 Mob/AgeableMob/Animal 基类、内部物品栏、大脑与跨族共享变种，其余按类型收进一个 `MobVariantState`；存档读写、同步元数据与命令重载都从这份状态分派。实体与会话玩家共用的规则（流体/接触扫描读 `ChunkStore`，方块接触、踩踏、落地与移动发声）返回决策值，由实体 tick 与玩家会话各自应用；物品伤害事实读物品发布，大脑 AI 只读 `BrainBodyFacts` 值与真实寻路/采样查询。刷怪谓词统一读 `SpawnPredicateLevel`，生物终结统一经 `finalize_spawn` 与 `SpawnLevel`（实体存储、`SpawnContext`、附魔、无碰撞与可骑载具查询），世界侧只有 `MinecartSpawnerRuntime`（`ServerWorld::with_spawn_runtime`）与自然刷怪的 `NaturalSpawnLevel` 两个实现（生成区域为 `NaturalEnvironment` 的标志）。
+- **借用与随机流**：实体移动、伤害、AI 与接触直接调用 `LevelCtx`；tick 期间临时借出的实体主体通过借用链供来源与乘客查询，不引入第二套世界宿主或冻结事务。玩法随机流唯一归口 `crate::random::GameRandom`（wyrand，由 `ServerWorld.random` 拥有），各关卡、`EntityStore` 与 AI 持句柄借用，新实体 UUID 取 `Uuid::new_v4`；仅非零种子战利品表与结构模板按种子新建流。
+- **统一实体槽位与命令队列**：`EntityStore` 每个实体 ID 对应单个槽位（同槽保存实体主体、AI 运行时与乘骑关系）。在线玩家以主体实体 ID 入槽（通用实体查询与实体区块存档跳过玩家），连接级发送/追踪视图留在按 `ConnectionId` 索引的 `PlayerSession`，`LevelArena` 维护 `ConnectionId → (关卡, id)`。需要玩家、地图、命令或整关卡的实体回调排入 `EntityCommand`，由 `run_entity_commands` 按序执行（后续命令先于旧命令）。
+- **生物变种与刷怪**：`GeneralLivingData` 持有 Mob/AgeableMob/Animal 基类、内部物品栏、大脑与跨族变种，其余按类型收进 `MobVariantState`（存档、同步元数据与命令重载统一分派）。流体/接触/踩踏/落地发声规则返回决策值供实体与玩家各自应用；大脑 AI 仅读 `BrainBodyFacts` 与真实寻路采样。刷怪谓词统一读 `SpawnPredicateLevel`，生物终结经 `finalize_spawn` 与 `SpawnLevel`（世界侧仅 `MinecartSpawnerRuntime` 与 `NaturalSpawnLevel` 两个实现）。
 
 ### 持久化、事件、战利品与命令边界
 
-结构方块捕获直接选择世界层或 `LevelCtx` 的实际存储；关卡捕获保持边界检查与区块加载规则。方块事件直接由 `LevelCtx` 执行当前方块或方块实体行为，世界层负责实际会话的声音与事件广播。游戏事件的区段只持有监听数据，位置解析、范围筛选与投递由世界层直接执行。持久化层只读写配方簿列表，运行时配方簿由核心层背包模块构造。
-
-战利品抽样直接读关卡随机流，不按表名维护命名序列；`random_sequences.dat` 仍由世界层的序列存储完整读写，只供 `/random` 命令使用。嵌套容器填充不经过世界宿主回调。战利品上下文的实体键直接借用真实存储实体（`StoredLootEntity`）或携带会话玩家/击杀快照值（`LootEntityFacts`），伤害来源与方块实体同样传实际值，不经过战利品视图 trait 回调。玩家保存快照（`world/player_save`）直接接收真实 `RootVehicle` 读取结果并携带实时警告追踪器值；保存、命令与战利品消费者调用同一个快照所有者；保存请求与恢复分别归 `world/save`、`world/restore`。
-
-存档区块恢复本体归 `ChunkStore`；启动、运行时发布和冷加载调用同一个所有者，世界层负责激活后的票据、实体生命周期与计划刻登记（`ChunkStore::register_ticks`），不通过反向恢复宿主回调。核心层内部辅助代码仅在 `cfg(test)` 下编译；数据 crate 不提供测试专用特性开关。方块形状增长抬升实体由世界层的实际存储与会话借用直接执行，查询和移动不经过反向访问 trait。火焰环境以 `FireFacts` 借用真实规则、天气、注册表投影与玩家位置，不通过反向环境宿主提供事实。物品放置候选直接在世界层上读取、预约计划刻与抬升实体，共用真实形状变化所有者；权限、光照与碰撞不通过放置副作用宿主或整维度实体副本查询。刷怪请求的实际应用由世界层执行，直接发布关卡事件与实体动画；解码计划与规则数据由实体模块提供。命令经 `CommandCx` 直接写 `ServerWorld`，不构造快照、不回放副作用；多目标部分失败不回滚。跨边界测试使用真实 NBT、光照数据包、区块生成与资源解析 API，不暴露调度、分配或随机数探针。`bbb-server` 与 `bbb-server-admin` 直接消费核心层的实际 API，`bbb-admin` 仅通过 `bbb-mcp` 协议交互。
+- **结构、事件与配方簿**：结构方块捕获直接读世界层或 `LevelCtx` 存储；方块事件由 `LevelCtx` 执行，世界层负责声音与事件广播；游戏事件区段仅保存监听数据，位置解析、范围筛选与投递由世界层执行。持久化层只读写配方簿列表，运行时配方簿由核心层背包模块构造。
+- **战利品与玩家快照**：战利品抽样直接读关卡随机流，不按表名维护命名序列；`random_sequences.dat` 仍由世界层完整读写，专供 `/random` 命令。战利品上下文直接借用 `StoredLootEntity` 或传值 `LootEntityFacts`，不经视图 trait 回调。玩家保存快照（`world/player_save`）接收真实 `RootVehicle` 与警告追踪器值，供保存、命令与战利品共享；保存与恢复分别归 `world/save` 与 `world/restore`。
+- **区块恢复、放置与命令**：存档区块恢复归 `ChunkStore`，世界层负责激活后票据、实体生命周期与 `ChunkStore::register_ticks`。方块形状增长抬升实体、火焰环境（`FireFacts`）、物品放置候选与刷怪应用均在世界层直接借用真实存储与会话，不经反向宿主 trait。命令经 `CommandCx` 直接写 `ServerWorld`，多目标部分失败不回滚。内部辅助仅在 `cfg(test)` 编译，数据 crate 不设测试专用 feature；`bbb-server` 与 `bbb-server-admin` 直接消费核心层 API，`bbb-admin` 仅经 `bbb-mcp` 交互。
 
 ### 线程模型、网络路由与背压
 
-`bbb-server-core` 的套接字/管理/生命周期生产者共享全局序号，但各自拥有独立条数与驻留字节配额；饱和时返回可归因背压错误。线程所有权：`ServerWorld` 只在 `bbb-world` 操作系统线程上运行并按 `MinecraftServer.runServer` 节拍（含追赶与过载跳过）执行 tick；`tokio` 只做监听器/连接、MCP 与系统信号。入站经世界邮箱，出站由世界线程经非阻塞 `AsyncRouteDispatcher` 投递到网络运行时的有界单连接命令队列（广播包与跨观察者共享的 `LevelChunkWithLight` 经 `SharedWorldPacket` 单次预编码/压缩，连接写循环聚合并发帧后单次写出，超额慢客户端在网络侧保序关闭，管理结果仍排在其前序包之后）。连接驱动与世界输入投递独立轮询，避免入站背压阻塞出站；配置阶段支持 `SelectKnownPacks`（`minecraft:core` `26.1`）与预编码注册表同步帧，游玩阶段支持 `StartConfiguration` → `ConfigurationAcknowledged` 重配置屏障及 `PlayerCombatEnter`/`PlayerCombatEnd`，额度与关闭规则见[服务端连接与会话](../mechanisms/protocol/server-connections-and-sessions.md)。
-
-监听器读取世界线程每 tick 发布的服务器状态与注册表配置。存档读写分离到独立的 `bbb-save-read` 与 `bbb-save-write` 线程（通过 `RegionFileCache` 共享读/写锁协同，按需读取不再被后台写队列阻塞）：存档请求在 tick 边界冻结元数据与轻量延迟区块快照（`DeferredChunkWrite`），由 `bbb-save-write` 离世界线程物化区块 NBT 并通过 `rayon` 并行压缩写盘；后台自动触发（未显式要求同步落盘）的自动保存与批量 `ChunkUnload` 均以代次跟踪异步完成（确认只退休代次与内容复核通过的写意图），仅管理保存与关闭刷盘排空在途读取并等待写完确认。停止（信号或 `server/stop`）→ 世界线程跑关闭 tick、等写线程落盘 → 关闭连接 → 退出。
-区块生成的纯阶段（`STRUCTURE_STARTS`、`BIOMES` 与 `NOISE`/`SURFACE`/`CARVERS`）在启动时建好的 `rayon` 全局池（`bbb-worldgen-N`）上并行计算，只读冻结程序与自有输入；`FEATURES` 按 3×3 邻域与结构占用范围分层为互不重叠的波次在 `rayon` 池上并行计算后按确定性顺序合并回世界；`INITIALIZE_LIGHT` 光源扫描、`LIGHT` 传播、`SPAWN`、`FULL` 与所有 `ChunkStore` 写入只在世界线程提交，详见[服务端区块与世界生成](../mechanisms/world/server-chunks-and-worldgen.md)。
-tick 按全局序号串行应用命令，每 tick 发布在线玩家状态（遵守 `allows_listing` 匿名规则）、准入快照与同步注册表快照；存档或配置的 `level-type`/数据包维度按真实世界运行，仅未传 `--world` 时使用内置平坦临时世界。全部 69 种已登记的 26.1 服务端入站游玩数据包均已解码与分派，仅未登记/未知数据包 ID 触发协议错误并关闭连接。运行中的维度使用 `LevelId(u32)` 与竞技场表，资源键只在输入、协议和存档边界解析或投影；自定义维度保持既有数量支持，不添加 256 个的上限。资源名不可变并由关卡与索引共享，重载保持 ID，跨维度转移直接借用两个关卡。
+- **世界线程与非阻塞网络路由**：`ServerWorld` 仅在 `bbb-world` 操作系统线程按 `MinecraftServer.runServer` 节拍（含追赶与过载跳过）运行 tick；`tokio` 负责监听器、连接、MCP 与系统信号。套接字/管理/生命周期生产者共享全局序号并各自持有条数与字节配额。出站经非阻塞 `AsyncRouteDispatcher` 投递至单连接有界队列（广播包与跨观察者区块包分别经 `SharedWorldPacket` / `SharedChunkPacket` 单次预编码压缩，写循环合并刷写，超额慢客户端保序关闭），配置期支持 `SelectKnownPacks`（`minecraft:core` `26.1`），游玩期支持 `StartConfiguration` → `ConfigurationAcknowledged` 重配置屏障与 `PlayerCombatEnter`/`PlayerCombatEnd`（详见[服务端连接与会话](../mechanisms/protocol/server-connections-and-sessions.md)）。
+- **异步存档与并行世界生成**：存档读写分离到 `bbb-save-read` 与 `bbb-save-write` 线程（通过 `RegionFileCache` 读写锁协同）：tick 边界冻结元数据与 `DeferredChunkWrite`，后台线程物化 NBT 并经 `rayon` 并行压缩写盘；自动保存与批量卸载按代次异步确认，仅管理保存与关闭刷盘同步排空。纯世界生成阶段（`STRUCTURE_STARTS`、`BIOMES`、`NOISE`/`SURFACE`/`CARVERS`）在启动时建好的 `rayon` 池（`bbb-worldgen-N`）并行计算，`FEATURES` 按 3×3 邻域与结构范围分层波次并行后确定性合并，光照与 `FULL` 发布仅在世界线程提交（详见[服务端区块与世界生成](../mechanisms/world/server-chunks-and-worldgen.md)）。
+- **维度与游玩包边界**：tick 按全局序号串行应用命令，每 tick 发布在线玩家状态（遵守 `allows_listing`）、准入快照与同步注册表快照；未传 `--world` 时使用内置平坦临时世界。69 种已登记的 26.1 服务端入站游玩数据包均已解码与分派，未知包 ID 触发协议错误并断连。运行维度使用 `LevelId(u32)` 与竞技场表（不设 256 维上限），资源名不可变且重载保持 ID，跨维度转移直接借用双关卡。
 
 ### 分派表与强类型世界生成
 
-`bbb-server-core` 里按资源 ID 分派的所有者族只保留一张表作为 ID 到所有者的唯一事实源（`block_entity::block_entity_payloads!`、`world::block_use::block_use_dispatch!`）：表同时展开分派函数与 ID 常量，Rust 测试断言表键集合包含于生成的 Vanilla 注册表。新增所有者 = 新建 `foo/<owner>.rs` 放所有者函数与其行为测试 + 门面表里一行（外加 `mod` 行）；不复制分派分支、`ensureCanWrite` 前置、账本常量或逐 ID 样板测试，也不改门面的任何分支。这也是多工作分支并行的文件边界：各分支只写自己的所有者文件，共享门面只接受表行/`mod` 行追加。
-
-世界生成的密度函数/噪声/设置/地表规则、已配置/已放置地物、已配置雕刻器、放置修饰器、值提供器、规则测试、结构处理器与树放置器在数据包加载时一次解码为 `bbb_server_datapack::worldgen` 强类型，非法内容在加载时拒绝；`bbb-server-worldgen` 只读这些类型，地物放置是对 `ConfiguredFeature` 枚举的穷尽 `match`，不经资源 ID 表或 NBT 归一化层。这些强类型注册表保留原始资源字节与解码值，不保留多余的 `serde_json::Value` 投影；其它仍有 JSON 读取者的注册表按实际需要保留投影。`IntProvider`、`FloatProvider` 的值类型、字段解码和范围规则由 `bbb-registry-codec` 单一拥有；世界生成直接消费该值，注册表发布只在输出时投影为 NBT，不经 NBT 反解回运行时值。附魔从同代保留编解码器读取浮点提供器并委托相同解码器；玩法与世界生成各自保留采样路径。世界生成的随机流只来自 `bbb-server-worldgen::random`（种子哈希派生）；`bbb-registry-codec` 的 Java LCG/xoroshiro 只服务客户端、玩法与随机序列。
+- **单一分派表宏**：`bbb-server-core` 按资源 ID 分派的所有者族只保留一张表作为唯一事实源（`block_entity::block_entity_payloads!`、`world::block_use::block_use_dispatch!`），同时展开分派函数与 ID 常量并由测试校验包含于 Vanilla 注册表。新增所有者 = 新建 `foo/<owner>.rs` + 表中追加一行（及 `mod` 行），兼顾多工作线并行边界。
+- **强类型世界生成解码**：密度函数、噪声、地表规则、已配置/已放置地物、雕刻器、放置修饰器、值/浮点提供器、规则测试、结构处理器与树放置器在数据包加载时一次解码为 `bbb_server_datapack::worldgen` 强类型，非法内容加载期拒绝；`bbb-server-worldgen` 通过穷尽 `match` 直接消费，不留多余 `serde_json::Value` 投影。`IntProvider`/`FloatProvider` 由 `bbb-registry-codec` 单一拥有；世界生成随机流仅来自 `bbb-server-worldgen::random`，`bbb-registry-codec` 的 Java LCG/xoroshiro 只服务客户端、玩法与随机序列。
 
 ## 优先复用客户端已有工作
 

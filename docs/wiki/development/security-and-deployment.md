@@ -44,7 +44,7 @@ Minecraft 传输层加密：
   `command.execute` 时才授予 `command`。
 - **DNS 重绑定（Rebinding）防护**：`--mcp-allowed-origin` 默认为空，默认拒绝所有携带 `Origin` 请求头的浏览器跨站请求；
   仅在明确需要浏览器端直接调用时加入精确来源。
-- **TLS 验证**：`bbb-admin` 访问自签或内网 CA 的 HTTPS 管理端时通过 `--ca-file <PEM>` 显式指定受信任 CA。
+- **TLS 验证**：`bbb-admin` 访问自签或内网 CA 的 HTTPS 管理端时通过 `--ca-file <PEM>` 显式指定受信任 CA；未传 `--ca-file` 时自动回退到环境变量 `SSL_CERT_FILE`，两者均未设置时使用操作系统受信任根证书。
 
 ## 4. `bbb-web-host` 网关安全边界（SSRF / 白名单 / COOP-COEP）
 

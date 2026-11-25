@@ -34,7 +34,7 @@ macOS、Linux 与 Windows 完全共用同一组日常入口：
 - `cargo dev cross-check`：第二平台类型检查。
 - `cargo dev docs-lint`：当前文档、账本、生成事实与链接检查（便携模式传 `--skip-vanilla`）。
 - `cargo dev vanilla prepare|verify|path|clean 26.1`：Vanilla 工作区管理入口。
-- `cargo worker create|run|status|cleanup <name>`：并行工作树与暖池 target 租约管理。
+- `cargo worker create|run|status|cleanup|release|env|shell-env <name>`：并行工作树与暖池 target 租约管理。
 
 target 缓存路径、worker 工作线租约与禁止生成仓库内本地 `target/` 的规则见[构建与缓存](build-and-cache.md)。
 

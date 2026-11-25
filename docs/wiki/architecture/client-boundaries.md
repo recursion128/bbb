@@ -11,7 +11,7 @@
 
 ## 当前 crate 边界
 
-客户端由八个专属 crate 与宿主机 Web 网关构成：`bbb-client` 编排主循环、输入、UI、`terrain_upload`、`item_models::tooltip`、控制与本地/浏览器存储（同时提供原生桌面二进制与 `wasm32` Web 客户端 `cdylib`）；`bbb-client-net` 与世界/资产层解耦，拥有连接与录制（原生 TCP 与浏览器二进制 WebSocket 共用同一状态机）、Services 公钥以及异步 Mojang 档案/皮肤 HTTP 服务（`profile_textures`）；`bbb-client-assets` 拥有资源字节、`virtual_store` 与加载时解析；`bbb-client-world` 拥有可见世界、菜单事实、ICU 本地时间（`local_time`）、方块轮廓几何（`block_outline`）与预测（扫掠碰撞复用 `bbb_facts::collision`）；`bbb-client-render` 拥有 GPU 资源、跨桌面与 Web 统一的纯 Rust `ab_glyph` 字体光栅化与提交，不依赖 `bbb-client-world`、网络 HTTP、FFI 或 `icu_*`（零 `WorldStore`/网络反向边）；`bbb-client-audio` 拥有原生（`NativeAudioRuntime` + OpenAL 生产后端；`kira` 仅限测试）与浏览器（`webaudio` 离主线程解码）播放后端；`bbb-client-clock` 提供零工作区依赖的客户端及回放时钟；`bbb-client-probe` 拥有无头差分/会话 `probe` 工具与 `bbb-replay-diff` CLI；`bbb-web-host` 提供浏览器跨源隔离静态宿主、WebSocket↔TCP 桥接与反向 MCP/控制隧道（仅依赖 `bbb-protocol`、`bbb-client-assets` 与 `bbb-mcp`，零 `bbb-client`/`wgpu`/`winit` 依赖；详见[Web 客户端与网关](../development/web-client.md)）。
+客户端由八个专属 crate 与宿主机 Web 网关构成：`bbb-client` 编排主循环、输入、UI、`terrain_upload`、`item_models::tooltip`、控制与本地/浏览器存储（同时提供原生桌面二进制与 `wasm32` Web 客户端 `cdylib`）；`bbb-client-net` 与世界/资产层解耦，拥有连接与录制（原生 TCP 与浏览器二进制 WebSocket 共用同一状态机）、Services 公钥以及异步 Mojang 档案/皮肤 HTTP 服务（`profile_textures`）；`bbb-client-assets` 拥有资源字节、`virtual_store` 与加载时解析；`bbb-client-world` 拥有可见世界、菜单事实、ICU 本地时间（`local_time`）、方块轮廓几何（`block_outline`）与预测（扫掠碰撞复用 `bbb_facts::collision`）；`bbb-client-render` 拥有 GPU 资源、跨桌面与 Web 统一的纯 Rust `ab_glyph` 字体光栅化与提交，不依赖 `bbb-client-world`、网络 HTTP、FFI 或 `icu_*`（零 `WorldStore`/网络反向边）；`bbb-client-audio` 拥有原生（`NativeAudioRuntime` + OpenAL 生产后端；`kira` 仅限测试）与浏览器（`webaudio` 离主线程解码）播放后端；`bbb-client-clock` 提供零工作区依赖的客户端及回放时钟；`bbb-client-probe` 拥有无头差分/会话 `probe` 工具与 `bbb-replay-diff` CLI；`bbb-web-host` 提供浏览器跨源隔离静态宿主、WebSocket↔TCP 桥接与反向 MCP/控制隧道（生产仅依赖 `bbb-protocol` 与 `bbb-mcp`，集成测试通过 `bbb-client-assets` 校验资源包，零 `bbb-client`/`wgpu`/`winit` 依赖；详见[Web 客户端与网关](../development/web-client.md)）。
 线协议、固定事实与碰撞几何、注册表编解码器、共享渲染值与 WASM 同步原语（`bbb-render-types::wasm_sync`）及 MCP 传输分别使用共享的 `bbb-protocol`、`bbb-facts`、`bbb-registry-codec`、`bbb-render-types` 和 `bbb-mcp`。
 客户端本地光照复用 `bbb-protocol::chunk_light` 的纯传播核心与临时存储，实体体转向复用 `bbb-protocol::entity_body_rotation`，实体默认属性复用 `bbb-facts::default_attributes_26_1`；光照真值仍由 `WorldStore` 的 `ChunkColumn.light` 唯一拥有，客户端 crate 不依赖任何 `bbb-server-*` crate。
 
@@ -20,7 +20,11 @@
 ## 所有权规则
 
 - 一项长期事实只有一个语义所有者。消费者仅持有 ID、句柄或只读投影，不维护可独立漂移的副本。
-- 内置物品原型由 `bbb-facts::vanilla_item_prototype_component_catalog` 提供；`bbb-client-assets::ItemRegistryCatalog` 从共享原型及物品、方块事实派生查询与展示目录，组件覆盖统一使用完整编解码值，组件是否存在直接取其键，不再保存、传递平行类型集合或标量表。世界层的强类型原型组件统一拥有运行时默认值：静态组件在注册表发布前可用；holder 和标签绑定随候选冻结注册表发布，重连时清除旧绑定。渲染器与本地交互读取同一份组件；装备槽位与紧凑资产索引在发布时派生，实体许可按当前标签解析。资源代次与资产名称驻留表独立保留。长矛的第一、第三人称动画共用有效物品堆叠动能组件查询，显式覆盖与移除优先于原型。属性修饰器按内建属性 ID 解析一次；提示框和模型谓词借用有效物品堆叠的同一份列表，嵌套物品沿用相同档案规则。隐藏和自定义显示数据保留到各自的消费边界。默认与显式工具共用有序规则和当前方块标签；挖掘查询只解析一次目标 holder ID，速度与掉落各取首个匹配值。默认工具的 holder 集合在发布与方块标签更新时绑定；查询直接借用现有 ID 集合。工具速度应用玩家修饰器后才量化为挖掘进度。
+- **物品原型与运行时组件**：
+  - 内置物品原型由 `bbb-facts::vanilla_item_prototype_component_catalog` 提供；`bbb-client-assets::ItemRegistryCatalog` 从共享原型及物品/方块事实派生查询与展示目录，组件覆盖统一使用完整编解码值，组件存在性直接取其键，不保存平行类型集合或标量表。
+  - 世界层的强类型原型组件统一拥有运行时默认值：静态组件在注册表发布前可用，holder 与标签绑定随候选冻结注册表发布并在重连时清除；渲染器与本地交互读取同一份组件，装备槽位与紧凑资产索引在发布时派生，实体许可按当前标签解析，资源代次与资产名称驻留表独立保留。
+  - 长矛第一/第三人称动画共用有效物品堆叠动能组件查询（显式覆盖与移除优先于原型）；属性修饰器按内建属性 ID 解析一次，提示框、模型谓词与嵌套物品共享同一列表，隐藏与自定义显示数据保留至各自消费边界。
+  - 默认与显式工具共用有序规则和当前方块标签：挖掘查询只解析一次目标 holder ID，速度与掉落各取首个匹配值；默认工具 holder 集合在发布与方块标签更新时绑定，工具速度应用玩家修饰器后再量化为挖掘进度。
 - 内建方块破坏、遮挡与声音事实由 `bbb-facts` 拥有。世界层按合法状态 ID 查询破坏和音效，放置声按方块类型 ID 查询；资产层不维护内建方块规则目录，资源重载不复制这些固定规则。
 - 协议类型描述线协议；世界类型描述客户端语义，不能把原始数据包当作持久世界。
 - 渲染器输入必须携带 Vanilla 决策需要的独立事实，不能从 `Opaque`/`Cutout`/`Translucent`、方块名称或渲染形状猜测 `canOcclude`、`isSolidRender`、`isViewBlocking`、光衰减、明暗、形状、`skipRendering` 或流体覆盖面。

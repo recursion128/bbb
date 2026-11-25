@@ -47,7 +47,7 @@ flowchart LR
 | 音频层 | 原生（OpenAL；`kira` 仅测试）与浏览器 `webaudio` 声道 | 世界音效真值 | 世界音效事件 → 音频播放 | 设备失败由平台归因；`bbb-client-audio` |
 | 客户端持久化 | 桌面原子文件与浏览器 `localStorage` 存储 | 会话世界状态 | 强类型快照 ↔ 本地存储 | 按需加载/保存，有界恢复；`bbb-client` |
 | 服务端网络与运行时 | 监听器、连接阶段、压缩、预编码广播、CLI、系统信号 | 世界规则、客户端事件状态 | 套接字/管理请求 → 有序 tick 输入 | 无头进程（Linux/macOS 发布，Windows 开发与 E2E）；`bbb-server-net`、`bbb-server` |
-| 服务端世界与数据 | 权威维度/区块/实体/玩家/tick、数据包、26.1 存档 | 渲染器、客户端世界 | 数据包/tick/数据 → 状态变更与落盘 | `bbb-server-core`、`bbb-server-types`、`bbb-server-datapack`、`bbb-server-persistence` |
+| 服务端世界与数据 | 权威维度/区块/实体/玩家/tick、世界生成、数据包、26.1 存档 | 渲染器、客户端世界 | 数据包/tick/数据 → 状态变更与落盘 | `bbb-server-core`、`bbb-server-types`、`bbb-server-datapack`、`bbb-server-worldgen`、`bbb-server-persistence` |
 | 服务端管理 | 强类型管理服务、MCP schema/鉴权/审计、轻量 CLI | 直接借用世界、第二命令系统 | MCP/信号 → 有界邮箱 → 结果 | 默认仅环回地址，远程需显式配置；`bbb-mcp`、`bbb-server-admin`、`bbb-admin` |
 
 关键子层与解耦说明：

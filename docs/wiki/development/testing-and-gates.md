@@ -175,7 +175,7 @@ anchors，`docs-lint` 传 `--skip-vanilla`，Python 测试跑 `--suite portable`
 
 - [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)（`publish-release`）：推送 `v*` 标签或手动触发 `build_release_artifacts` 时构建并上传对应发布归档，按需发布 GitHub Release。
 - [`.github/workflows/container.yml`](../../../.github/workflows/container.yml)：构建并推送 `linux/amd64` 容器镜像至 GHCR。
-- [`.github/workflows/pages.yml`](../../../.github/workflows/pages.yml)：构建并部署 GitHub Pages 文档站（不含独立的 Web 客户端服务端网关，仅附带静态资源页面）。
+- [`.github/workflows/pages.yml`](../../../.github/workflows/pages.yml)：构建并部署 GitHub Pages 静态文档站（仅发布文档 HTML，不含独立的 Web 客户端或网关）。
 
 ## 调试工具
 

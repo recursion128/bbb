@@ -63,7 +63,7 @@ http://127.0.0.1:8080/?username=Steve
 浏览器地址栏支持下列已实现的 URL 查询参数（覆盖网关默认值；完整参数说明见[命令行与查询参数参考](cli-reference.md#web-客户端-url-查询参数)）：
 
 - **连接与身份**：`?server=<host:port>`（必须在 `{--server} ∪ {--allow-server ...}` 白名单内，环回地址在同一允许端口上等价兼容 `127.0.0.1`、`localhost` 与 `[::1]`，表外请求 `/ws` 返回 `403 Forbidden`）、`?username=<name>`、`?uuid=<uuid>`。
-- **渲染、画质与引擎扩展**：`?render_distance=<2..=32>`、`?fov=<30..=110>`、`?gui_scale=<0..>`、`?graphics=<fast|fancy|fabulous|custom>`、`?improved_transparency=<bool>`、`?clouds=<off|fast|fancy>`、`?vsync=<bool>`、`?gamma=<float>`、`?smooth_lighting=<bool>`、`?particles=<all|decreased|minimal>`、`?bob_view=<bool>`、`?fov_effect_scale=<0.0..=1.0>`、`?dynamic_lights=<off|fast|fancy>`、`?lod_distance=<0|16..=256>`、`?ext=<slug,...>`（支持重复或逗号分隔，如 `zoom,hud_info,item_inspector`）。由 URL 覆盖的选项独立于同源选项存储，当前页保存其他选项时保留这些字段的原有存储值。
+- **渲染、画质与引擎扩展**：`?render_distance=<2..=32>`、`?fov=<30..=110>`、`?gui_scale=<0..=2147483646>`、`?graphics=<fast|fancy|fabulous|custom>`、`?improved_transparency=<bool>`、`?clouds=<off|fast|fancy>`、`?vsync=<bool>`、`?gamma=<0.0..=1.0>`、`?smooth_lighting=<bool>`、`?particles=<all|decreased|minimal>`、`?bob_view=<bool>`、`?fov_effect_scale=<0.0..=1.0>`、`?dynamic_lights=<off|fast|fancy>`、`?lod_distance=<0|16..=256>`、`?ext=<slug,...>`（支持重复或逗号分隔，如 `zoom,hud_info,item_inspector`）。由 URL 覆盖的选项独立于同源选项存储，当前页保存其他选项时保留这些字段的原有存储值。
 - **语言、输入、旁白与音频**：`?lang=<code>`（别名 `?locale=<code>`）、`?sensitivity=<0.0..=1.0>`、`?subtitles=<bool>`、`?narrator=<off|all|chat|system|0..=3>`、`?volume_<category>=<0.0..=1.0>` 或 `?soundCategory_<category>=<0.0..=1.0>`（覆盖全部 11 个声音分类：`master`、`music`、`record`、`weather`、`block`、`hostile`、`neutral`、`player`、`ambient`、`voice`、`ui`）。
 - **资源包策略与本地包**：`?server_resource_pack_policy=<prompt|accept|decline>`（别名 `?resource_pack_policy=`，默认 `prompt` 显示服务端说明）；`?pack=<url>`（可重复，挂载初始 `.zip` 资源包）。鼠标解除锁定时也可在页面右上角选择本地 `.zip` 或拖入画布，挂载触发原子重载；已挂载与读取中的本地 ZIP（含 `?pack=`）共享 256 MiB 限额，重复添加字节相同的包保留原有优先顺序，页面右上角可一键清除所有本地包并保留服务端资源包。
 - **通用 `options.txt` 透传（`?opt.<key>=<value>`）**：可传递任意目录内已知
@@ -72,7 +72,7 @@ http://127.0.0.1:8080/?username=Steve
   `?opt.modelPart_cape=false`）。启动前按类型与键值白名单校验，并仅对当前标签页在内存中
   合并生效（不写入浏览器同源 `localStorage["bbb.options.txt"]`，当前页保存其他选项时保留
   原有存储值），未知键或非法值拒绝启动；专用参数（如 `?fov=`、`?volume_<category>=`）仍生效。
-- **控制、软件 GPU 与确定性步进**：`?control=1|true`（启用反向 `/control-ws` 隧道）、`?software_gpu=1|true`（允许选择软件 WebGPU 适配器，供无显卡 CI / SwiftShader E2E）、`?lockstep=1|true`（虚拟时钟步进模式）。
+- **控制、软件 GPU 与确定性步进**：`?control=1|true`（请求浏览器连接 `/control-ws` 反向隧道，需 `bbb-web-host` 已配置 `--mcp-bind` 或 `--control`）、`?software_gpu=1|true`（允许选择软件 WebGPU 适配器，供无显卡 CI / SwiftShader E2E）、`?lockstep=1|true`（虚拟时钟步进模式）。
 
 `bbb-web-host` 命令行参数（详见[命令行参考](cli-reference.md#bbb-web-hostweb-网关)）：
 
@@ -91,9 +91,9 @@ http://127.0.0.1:8080/?username=Steve
 ## 资源分层与缓存
 
 1. **核心包 `core-26.1.zip`（约 14–19 MiB）与 WASM 载荷（`pkg/bbb_client_bg.wasm` 原始约
-   22–29 MiB，gzip 传输约 9 MiB）**：`bbb-web-host` 启动时将 `version.json`、合并了
-   26.1 `pack` 格式元数据的 `pack.mcmeta`、`sources/26.1/assets/**`（省略 `programmer_art` /
-   `high_contrast` 内置可选包）、客户端所需的 `sources/26.1/data/**`（同步注册表 JSON、
+   22–29 MiB，gzip 传输约 9 MiB）**：`bbb-web-host` 的 `--vanilla-root` 支持三种 26.1 资产布局（已解包工作区 `sources/26.1` + `downloads/26.1`、下载缓存 `downloads/26.1/{client-26.1.jar,client.jar,26.1.jar}`，或官方 `.minecraft` 目录 `versions/26.1/` + `assets/`；未显式传入时依次探测 `BBB_VANILLA_ROOT`、`XDG_CACHE_HOME/bbb/vanilla` 与平台托管缓存，不自动探测 `.minecraft`）。启动时网关将 `version.json`、合并了
+   26.1 `pack` 格式元数据的 `pack.mcmeta`、客户端 `assets/**`（省略 `programmer_art` /
+   `high_contrast` 内置可选包）、客户端所需的 `data/**`（同步注册表 JSON、
    `tags/*.json` 与内置数据包 `pack.mcmeta`/同步注册表条目）以及非音频索引资产
    （`minecraft/sounds.json`、`minecraft/font/*`、`minecraft/textures/*`、`icons/*`
    与内置中英文语言包）打包并缓存在 `--cache-dir`，响应附带 SHA-1 `ETag` 与
