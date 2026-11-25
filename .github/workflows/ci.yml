@@ -35,7 +35,7 @@ env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: "utf-8"
   RUST_MIN_STACK: "16777216"
-  UV_VERSION: "0.12.3"
+  UV_VERSION: "0.13.10"
 
 jobs:
   lint:

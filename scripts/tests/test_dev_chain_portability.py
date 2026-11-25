@@ -169,8 +169,8 @@ class DevChainToolTests(unittest.TestCase):
 
 
 class PythonToolchainContractTests(unittest.TestCase):
-    PINNED_PYTHON = "3.12.13"
-    PINNED_UV = "0.12.3"
+    PINNED_PYTHON = "3.15.2"
+    PINNED_UV = "0.13.10"
 
     def test_root_project_pins_the_interpreter_uv_and_dependencies(self) -> None:
         self.assertEqual(

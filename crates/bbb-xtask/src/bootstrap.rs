@@ -10,7 +10,7 @@ use crate::toolchain::{
     prepare_python_command, resolve_cargo_bin, resolve_target_dir, run_python_tool, XtaskError,
 };
 
-const REQUIRED_UV_VERSION: &str = "0.12.3";
+const REQUIRED_UV_VERSION: &str = "0.13.10";
 const DEFAULT_CROSS_TARGET: &str = "aarch64-apple-darwin";
 const DARWIN_CROSS_TARGET: &str = "x86_64-unknown-linux-gnu";
 

@@ -215,8 +215,8 @@ class ToolingExecutionTests(unittest.TestCase):
         capabilities = HostCapabilities(
             os="darwin",
             architecture="arm64",
-            python="3.12",
-            python_312=True,
+            python="3.15",
+            python_315=True,
             cargo=True,
             rustc=True,
             git=True,

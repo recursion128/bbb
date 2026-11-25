@@ -18,7 +18,7 @@ class HostCapabilities:
     os: str
     architecture: str
     python: str
-    python_312: bool
+    python_315: bool
     cargo: bool
     rustc: bool
     git: bool
@@ -37,15 +37,15 @@ class HostCapabilities:
 
 
 PROFILE_REQUIREMENTS = {
-    "portable": ("python_312", "cargo", "rustc", "git"),
-    "mac-dev": ("python_312", "cargo", "rustc", "git", "macos_quartz"),
+    "portable": ("python_315", "cargo", "rustc", "git"),
+    "mac-dev": ("python_315", "cargo", "rustc", "git", "macos_quartz"),
     "mac-input": (
-        "python_312",
+        "python_315",
         "macos_quartz",
         "macos_accessibility_trusted",
     ),
     "mac-release": (
-        "python_312",
+        "python_315",
         "cargo",
         "rustc",
         "git",
@@ -100,7 +100,7 @@ def probe_host() -> HostCapabilities:
         os=sys.platform,
         architecture=platform.machine(),
         python=platform.python_version(),
-        python_312=sys.version_info[:2] == (3, 12),
+        python_315=sys.version_info[:2] == (3, 15),
         cargo=shutil.which("cargo") is not None,
         rustc=shutil.which("rustc") is not None,
         git=shutil.which("git") is not None,

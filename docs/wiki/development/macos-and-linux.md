@@ -14,7 +14,7 @@ X11 代码保持可编译，声明的 Linux 发布行只接受 Wayland，其范�
 
 ## 外部工具
 
-仓库不安装系统依赖。主机前置工具链（`rustup` / `cargo` / `rust-toolchain.toml`、`git`、`uv` 0.12.3、
+仓库不安装系统依赖。主机前置工具链（`rustup` / `cargo` / `rust-toolchain.toml`、`git`、`uv` 0.13.10、
 `java` 25 或便携模式 `--skip-vanilla`）及 Linux 运行时依赖见[仓库 README](../../../README.md#前置工具与系统依赖)。
 `cargo dev bootstrap` 准备由 `uv` 托管的 Python、Rust 依赖和仓库管理的 Vanilla 工作区；
 日常命令统一经过 `cargo dev`（及 POSIX 真机脚本复用的 `scripts/python`），不依赖系统全局 Python 包。

@@ -1,12 +1,12 @@
 [project]
 name = "bbb-development-tools"
 version = "0.0.0"
-requires-python = "==3.12.13"
+requires-python = "==3.15.2"
 dependencies = [
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "pytest-xdist==3.8.0",
-    "ruff==0.16.1",
-    "tree-sitter==0.25.2",
+    "ruff==0.17.6",
+    "tree-sitter==0.27.0",
     "tree-sitter-java==0.23.5",
 ]
 
@@ -14,7 +14,7 @@ dependencies = [
 package = false
 python-downloads = "manual"
 python-preference = "only-managed"
-required-version = "==0.12.3"
+required-version = "==0.13.10"
 
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers", "-ra", "-p", "no:cacheprovider"]
@@ -32,7 +32,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py315"
 line-length = 100
 
 [tool.ruff.lint]

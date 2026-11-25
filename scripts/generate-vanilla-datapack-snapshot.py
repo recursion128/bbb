@@ -116,7 +116,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="byte-compare a regenerated snapshot against the committed artifact",
+        help="compare a regenerated snapshot payload against the committed artifact",
     )
     args = parser.parse_args(argv)
     args.source_root = resolve_source_root(args)
@@ -238,18 +238,42 @@ def diff_summary(expected: bytes, actual: bytes) -> str:
     return "\n".join(lines)
 
 
+def has_deterministic_gzip_header(blob: bytes) -> bool:
+    """Return True if blob starts with a gzip header carrying mtime=0 and no filename."""
+    return (
+        len(blob) >= 10
+        and blob[:2] == b"\x1f\x8b"
+        and blob[4:8] == b"\x00\x00\x00\x00"
+        and not (blob[3] & 0x08)
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    records, blob = build_blob(args.source_root)
+    records = collect_records(args.source_root)
+    payload = encode_records(records)
     if args.check:
         committed = args.output.read_bytes() if args.output.exists() else b""
-        if committed == blob:
+        # Compare the canonical decompressed payload rather than raw deflate bytes
+        # so zlib vs zlib-ng (Python 3.15+) and CPU SIMD differences do not cause drift.
+        try:
+            committed_payload = gzip.decompress(committed)
+        except (EOFError, OSError):
+            committed_payload = None
+        if has_deterministic_gzip_header(committed) and committed_payload == payload:
             print(f"ok: {args.output} matches regenerated snapshot")
-            print(blob_summary(records, blob))
+            print(blob_summary(records, committed))
             return 0
+        blob = compress_payload(payload)
         print(f"drift: {args.output} differs from the regenerated snapshot", file=sys.stderr)
+        if not has_deterministic_gzip_header(committed):
+            print(
+                "committed artifact lacks a deterministic gzip header (mtime=0, no filename)",
+                file=sys.stderr,
+            )
         print(diff_summary(blob, committed), file=sys.stderr)
         return 1
+    blob = compress_payload(payload)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(blob)
     print(f"wrote {args.output}")

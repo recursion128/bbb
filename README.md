@@ -86,7 +86,7 @@ BBB 使用独立的发布版本号，首个正式发布计划为 **BBB v0.1.0（
 从源码构建与开发时，Windows、macOS 与 Linux 统一使用 `cargo dev`（`crates/bbb-xtask`）入口。开始前需准备：
 
 - **Nightly Rust 工具链**：安装 `rustup`，仓库由 [`rust-toolchain.toml`](rust-toolchain.toml) 固定 `nightly-2026-08-10`（含 `rustfmt`、`clippy`、`rust-src` 与 `wasm32-unknown-unknown` 目标）。
-- **`uv` 与 `Git`**：安装 `uv 0.12.3`（管理锁定的 CPython `3.12.13` 与脚本依赖）与 `git`。
+- **`uv` 与 `Git`**：安装 `uv 0.13.10`（管理锁定的 CPython `3.15.2` 与脚本依赖）与 `git`。
 - **`Java 25`**（完整游玩与 Vanilla 对账必需）：用于准备 Vanilla 26.1 反编译源码、资产缓存与完整门禁核验；仅做离线静态检查或服务端开发时，可通过 `--skip-vanilla` 跳过。
 - **平台系统依赖**：
   - **Linux**：Wayland 桌面会话、Vulkan 驱动/加载器（如 `mesa-vulkan-drivers`）与 OpenAL（`libopenal1`）。
