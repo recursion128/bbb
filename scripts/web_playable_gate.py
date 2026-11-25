@@ -312,7 +312,11 @@ def default_vanilla_root() -> Path:
 
 
 def offline_player_uuid(username: str) -> str:
-    raw = bytearray(hashlib.md5(f"OfflinePlayer:{username}".encode()).digest())
+    raw = bytearray(
+        hashlib.md5(
+            f"OfflinePlayer:{username}".encode(), usedforsecurity=False
+        ).digest()
+    )
     raw[6] = (raw[6] & 0x0F) | 0x30
     raw[8] = (raw[8] & 0x3F) | 0x80
     hx = raw.hex()

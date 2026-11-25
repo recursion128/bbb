@@ -72,7 +72,9 @@ def offline_player_uuid(username: str) -> uuid.UUID:
     """Match Java UUID.nameUUIDFromBytes("OfflinePlayer:" + username)."""
 
     digest = bytearray(
-        hashlib.md5(f"OfflinePlayer:{username}".encode()).digest()
+        hashlib.md5(
+            f"OfflinePlayer:{username}".encode(), usedforsecurity=False
+        ).digest()
     )
     digest[6] = (digest[6] & 0x0F) | 0x30
     digest[8] = (digest[8] & 0x3F) | 0x80

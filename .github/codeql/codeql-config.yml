@@ -1,0 +1,11 @@
+name: "BBB CodeQL configuration"
+
+# Exclude pure unit/integration test and benchmark files so CodeQL stays focused
+# on production code instead of flooding alerts with test-fixture UUIDs and salts.
+paths-ignore:
+  - "crates/**/tests/**"
+  - "crates/**/tests.rs"
+  - "crates/**/*_tests.rs"
+  - "crates/**/*_tests/**"
+  - "crates/**/benches/**"
+  - "scripts/tests/**"
