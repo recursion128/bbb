@@ -1,0 +1,102 @@
+version: 2
+updates:
+  # Rust workspace dependencies (Cargo.toml + Cargo.lock)
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps(cargo)"
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 3
+    ignore:
+      # Exact-pinned (=3.1.0) to match OpenJDK 26 Character.codePointOf Unicode 17.0 names.
+      - dependency-name: "unicode_names2"
+    groups:
+      wasm-bindgen:
+        patterns:
+          - "wasm-bindgen*"
+          - "js-sys"
+          - "web-sys"
+        update-types:
+          - "minor"
+          - "patch"
+      icu4x:
+        patterns:
+          - "icu_*"
+          - "writeable"
+        update-types:
+          - "minor"
+          - "patch"
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "wasm-bindgen*"
+          - "js-sys"
+          - "web-sys"
+          - "icu_*"
+          - "writeable"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Python developer tooling dependencies (pyproject.toml + uv.lock)
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(python)"
+    cooldown:
+      default-days: 3
+    groups:
+      python-tools:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+    cooldown:
+      default-days: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Runtime container base image (packaging/Dockerfile); kept out of auto-merge to stay on LTS
+  - package-ecosystem: "docker"
+    directory: "/packaging"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps(docker)"
+    cooldown:
+      default-days: 3
