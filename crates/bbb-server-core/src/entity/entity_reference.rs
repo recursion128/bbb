@@ -1,8 +1,7 @@
 //! EntityReference identity for living references and Item thrower caches.
 
 use crate::world::simulation_level::LevelCtx;
-use rustc_hash::FxHashMap;
-use std::hash::BuildHasherDefault;
+use rustc_hash::{FxBuildHasher, FxHashMap};
 
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
 use uuid::Uuid;
@@ -50,8 +49,8 @@ pub struct CrossLevelEntities {
 
 impl CrossLevelEntities {
     pub const EMPTY: Self = Self {
-        players: FxHashMap::with_hasher(BuildHasherDefault::new()),
-        player_ids: FxHashMap::with_hasher(BuildHasherDefault::new()),
+        players: FxHashMap::with_hasher(FxBuildHasher),
+        player_ids: FxHashMap::with_hasher(FxBuildHasher),
     };
 
     pub(crate) fn clear(&mut self) {
