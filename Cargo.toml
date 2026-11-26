@@ -48,7 +48,7 @@ crc32fast = "1.5"
 criterion = "0.8.2"
 flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
 getrandom = { version = "0.2", features = ["js"] }
-glam = "0.33.3"
+glam = "0.34.3"
 hashbrown = { version = "0.17.1", default-features = false }
 hexf-parse = "0.2.1"
 icu_calendar = "2.2"
