@@ -120,7 +120,7 @@ fn materialize_verified_library(vanilla_root: &Path, component: &str) -> Result<
             entry.size()
         );
     }
-    let content_sha1 = format!("{:x}", Sha1::digest(&bytes));
+    let content_sha1 = crate::hex_lower(&Sha1::digest(&bytes));
     let cache_root = std::env::temp_dir().join(format!("bbb-{component}-{MC_VERSION}"));
     prepare_private_cache_directory(&cache_root)?;
     let cache_dir = cache_root.join(&content_sha1);
@@ -217,7 +217,7 @@ fn verify_materialized(path: &Path, expected: &[u8], expected_sha1: &str) -> Res
         .with_context(|| format!("restrict materialized native library {}", path.display()))?;
     let actual = fs::read(path)
         .with_context(|| format!("read materialized native library {}", path.display()))?;
-    if actual.len() != expected.len() || format!("{:x}", Sha1::digest(&actual)) != expected_sha1 {
+    if actual.len() != expected.len() || crate::hex_lower(&Sha1::digest(&actual)) != expected_sha1 {
         bail!(
             "materialized native library {} does not match the verified archive entry",
             path.display()

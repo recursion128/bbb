@@ -1163,7 +1163,7 @@ fn parse_zip64_extra(
 fn cache_file_name(name: &str) -> String {
     let mut sha1 = Sha1::new();
     sha1.update(name.as_bytes());
-    let digest = format!("{:x}", sha1.finalize());
+    let digest = crate::hex_lower(&sha1.finalize());
     let extension = Path::new(name)
         .extension()
         .and_then(|extension| extension.to_str())

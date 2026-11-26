@@ -522,37 +522,36 @@ impl RsaTestRng {
     pub(crate) fn seeded(seed: u64) -> Self {
         Self(seed)
     }
-}
 
-#[cfg(test)]
-impl rsa::rand_core::RngCore for RsaTestRng {
-    fn next_u32(&mut self) -> u32 {
-        (self.next_u64() >> 32) as u32
-    }
-
-    fn next_u64(&mut self) -> u64 {
+    fn step_u64(&mut self) -> u64 {
         self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
         let mut z = self.0;
         z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
         z ^ (z >> 31)
     }
+}
 
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for chunk in dest.chunks_mut(8) {
-            let bytes = self.next_u64().to_le_bytes();
-            chunk.copy_from_slice(&bytes[..chunk.len()]);
-        }
+#[cfg(test)]
+impl rsa::rand_core::TryRng for RsaTestRng {
+    type Error = std::convert::Infallible;
+
+    fn try_next_u32(&mut self) -> std::result::Result<u32, Self::Error> {
+        Ok((self.step_u64() >> 32) as u32)
     }
 
-    fn try_fill_bytes(
-        &mut self,
-        dest: &mut [u8],
-    ) -> std::result::Result<(), rsa::rand_core::Error> {
-        self.fill_bytes(dest);
+    fn try_next_u64(&mut self) -> std::result::Result<u64, Self::Error> {
+        Ok(self.step_u64())
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> std::result::Result<(), Self::Error> {
+        for chunk in dest.chunks_mut(8) {
+            let bytes = self.step_u64().to_le_bytes();
+            chunk.copy_from_slice(&bytes[..chunk.len()]);
+        }
         Ok(())
     }
 }
 
 #[cfg(test)]
-impl rsa::rand_core::CryptoRng for RsaTestRng {}
+impl rsa::rand_core::TryCryptoRng for RsaTestRng {}

@@ -225,10 +225,14 @@ fn split_resource_location(value: &str) -> (&str, &str) {
 }
 
 fn canonical_nbt_sha256(value: &bbb_protocol::NbtSummaryValue) -> String {
-    format!(
-        "{:x}",
-        Sha256::digest(canonical_snbt_string(value).as_bytes())
-    )
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let digest = Sha256::digest(canonical_snbt_string(value).as_bytes());
+    let mut out = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        out.push(HEX[(byte >> 4) as usize] as char);
+        out.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    out
 }
 
 pub(super) async fn run(

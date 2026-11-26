@@ -8,7 +8,7 @@ use bbb_protocol::packets::{
     PlayerInfoAction, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, RegistryData,
     RegistryDataEntry, SignedMessageBody,
 };
-use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey, RsaPublicKey};
+use rsa::{pkcs8::EncodePublicKey, PrivateKey, PublicKey};
 
 mod messages;
 
@@ -954,11 +954,11 @@ fn add_player_without_session(store: &mut WorldStore, sender: Uuid) {
     });
 }
 
-fn fixture_private_key() -> RsaPrivateKey {
-    static KEY: OnceLock<RsaPrivateKey> = OnceLock::new();
+fn fixture_private_key() -> PrivateKey {
+    static KEY: OnceLock<PrivateKey> = OnceLock::new();
     KEY.get_or_init(|| {
         let mut random = crate::RsaTestRng::seeded(401);
-        RsaPrivateKey::new(&mut random, 2_048).unwrap()
+        PrivateKey::new(&mut random, 2_048).unwrap()
     })
     .clone()
 }
@@ -968,10 +968,10 @@ fn install_remote_sender(
     sender: Uuid,
     session_id: Uuid,
     expires_at_epoch_millis: i64,
-) -> RsaPrivateKey {
+) -> PrivateKey {
     add_player_without_session(store, sender);
     let private_key = fixture_private_key();
-    let public_key_der = RsaPublicKey::from(&private_key)
+    let public_key_der = PublicKey::from(&private_key)
         .to_public_key_der()
         .unwrap()
         .as_bytes()
@@ -987,7 +987,7 @@ fn install_remote_sender(
 }
 
 fn signed_player_chat(
-    private_key: &RsaPrivateKey,
+    private_key: &PrivateKey,
     sender: Uuid,
     session_id: Uuid,
     global_index: i32,

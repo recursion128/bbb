@@ -5,7 +5,7 @@ use std::{
 };
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use rsa::{pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts, RsaPrivateKey, RsaPublicKey};
+use rsa::{pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts, PrivateKey, PublicKey};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 
@@ -24,52 +24,29 @@ const ISSUER: &str = "https://login.example/realms/bbb";
 const RESOURCE: &str = "https://server.example/mcp";
 const NOW: i64 = 1_755_000_000_000;
 
-struct TestRng(rand::rngs::StdRng);
-
-impl rsa::rand_core::RngCore for TestRng {
-    fn next_u32(&mut self) -> u32 {
-        rand::Rng::next_u32(&mut self.0)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        rand::Rng::next_u64(&mut self.0)
-    }
-
-    fn fill_bytes(&mut self, destination: &mut [u8]) {
-        rand::Rng::fill_bytes(&mut self.0, destination);
-    }
-
-    fn try_fill_bytes(&mut self, destination: &mut [u8]) -> Result<(), rsa::rand_core::Error> {
-        self.fill_bytes(destination);
-        Ok(())
-    }
-}
-
-impl rsa::rand_core::CryptoRng for TestRng {}
-
-fn generate_key(bits: usize) -> RsaPrivateKey {
+fn generate_key(bits: usize) -> PrivateKey {
     use rand::SeedableRng;
-    let mut rng = TestRng(rand::rngs::StdRng::seed_from_u64(20260817));
-    RsaPrivateKey::new(&mut rng, bits).expect("an issuer key")
+    let mut rng = rand::rngs::StdRng::seed_from_u64(20260817);
+    PrivateKey::new(&mut rng, bits).expect("an issuer key")
 }
 
 /// One issuer key pair, generated once because 2048-bit generation is the
 /// slowest thing in this module by an order of magnitude.
-fn issuer_key() -> &'static RsaPrivateKey {
-    static KEY: OnceLock<RsaPrivateKey> = OnceLock::new();
+fn issuer_key() -> &'static PrivateKey {
+    static KEY: OnceLock<PrivateKey> = OnceLock::new();
     KEY.get_or_init(|| generate_key(2048))
 }
 
 fn jwks_document(key_id: &str) -> Vec<u8> {
-    let public = RsaPublicKey::from(issuer_key());
+    let public = PublicKey::from(issuer_key());
     json!({
         "keys": [{
             "kty": "RSA",
             "use": "sig",
             "alg": "RS256",
             "kid": key_id,
-            "n": URL_SAFE_NO_PAD.encode(public.n().to_bytes_be()),
-            "e": URL_SAFE_NO_PAD.encode(public.e().to_bytes_be()),
+            "n": URL_SAFE_NO_PAD.encode(public.n().as_ref().to_be_bytes_trimmed_vartime()),
+            "e": URL_SAFE_NO_PAD.encode(public.e().to_be_bytes_trimmed_vartime()),
         }],
     })
     .to_string()
@@ -88,7 +65,7 @@ fn resource() -> OAuthResource {
     }
 }
 
-fn token(header: Value, claims: Value, signer: Option<&RsaPrivateKey>) -> String {
+fn token(header: Value, claims: Value, signer: Option<&PrivateKey>) -> String {
     let encoded_header = URL_SAFE_NO_PAD.encode(header.to_string());
     let claims = URL_SAFE_NO_PAD.encode(claims.to_string());
     let signing_input = format!("{encoded_header}.{claims}");
@@ -306,7 +283,8 @@ fn padded_jwk_integers_verify_all_supported_rsa_signatures() {
 fn signatures_with_only_2047_modulus_bits_are_refused() {
     let weak = generate_key(2047);
     let mut resource = resource();
-    resource.issuers[0].keys[0].modulus = weak.n().to_bytes_be();
+    resource.issuers[0].keys[0].modulus =
+        weak.n().as_ref().to_be_bytes_trimmed_vartime().into_vec();
     let token = token(json!({ "alg": "RS256" }), claims("bbb:read"), Some(&weak));
     assert_eq!(
         resource.validate::<Scope>(&token, NOW),

@@ -381,7 +381,7 @@ mod tests {
         for (name, bytes) in objects {
             let materialize = bytes.is_some();
             let bytes = bytes.unwrap_or_else(|| b"unmaterialized".to_vec());
-            let hash = format!("{:x}", Sha1::digest(&bytes));
+            let hash = crate::hex_lower(&Sha1::digest(&bytes));
             document.insert(name, json!({"hash": hash, "size": bytes.len()}));
             if materialize {
                 let path = root
@@ -393,7 +393,7 @@ mod tests {
             }
         }
         let index = serde_json::to_vec(&json!({"objects": document})).unwrap();
-        let index_hash = format!("{:x}", Sha1::digest(&index));
+        let index_hash = crate::hex_lower(&Sha1::digest(&index));
         let index_path = root.join("downloads/26.1/assets/indexes/30.json");
         std::fs::create_dir_all(index_path.parent().unwrap()).unwrap();
         std::fs::write(index_path, &index).unwrap();

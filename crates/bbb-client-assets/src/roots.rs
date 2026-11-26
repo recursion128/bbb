@@ -637,7 +637,7 @@ fn jar_cache_key(path: &Path) -> String {
     if let Ok(meta) = std::fs::metadata(path) {
         sha1.update(meta.len().to_le_bytes());
     }
-    format!("{:x}", sha1.finalize())
+    crate::hex_lower(&sha1.finalize())
 }
 
 fn default_resource_image_generation_budget() -> Arc<ResourceImageGenerationBudget> {
@@ -829,7 +829,7 @@ mod tests {
     fn write_asset_index_fixture(root: &Path, objects: &[(&str, &[u8], bool)]) {
         let mut document_objects = serde_json::Map::new();
         for (name, bytes, materialize) in objects {
-            let hash = format!("{:x}", Sha1::digest(bytes));
+            let hash = crate::hex_lower(&Sha1::digest(bytes));
             document_objects.insert(
                 (*name).to_string(),
                 serde_json::json!({"hash": hash, "size": bytes.len()}),
@@ -845,7 +845,7 @@ mod tests {
         }
         let index =
             serde_json::to_string(&serde_json::json!({"objects": document_objects})).unwrap();
-        let index_hash = format!("{:x}", Sha1::digest(index.as_bytes()));
+        let index_hash = crate::hex_lower(&Sha1::digest(index.as_bytes()));
         write_json(
             &root.join("downloads/26.1/26.1.json"),
             &format!(

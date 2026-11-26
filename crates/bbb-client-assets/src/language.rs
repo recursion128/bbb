@@ -838,7 +838,7 @@ mod tests {
             ),
         ] {
             let bytes = contents.as_bytes();
-            let hash = format!("{:x}", Sha1::digest(bytes));
+            let hash = crate::hex_lower(&Sha1::digest(bytes));
             objects.insert(
                 name.to_string(),
                 serde_json::json!({"hash": hash, "size": bytes.len()}),
@@ -851,7 +851,7 @@ mod tests {
             std::fs::write(path, bytes).unwrap();
         }
         let index = serde_json::to_string(&serde_json::json!({"objects": objects})).unwrap();
-        let index_hash = format!("{:x}", Sha1::digest(index.as_bytes()));
+        let index_hash = crate::hex_lower(&Sha1::digest(index.as_bytes()));
         write_json(&root.join("downloads/26.1/assets/indexes/30.json"), &index);
         write_json(
             &root.join("downloads/26.1/26.1.json"),

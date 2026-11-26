@@ -27,7 +27,7 @@ pub(super) fn remote_message_signature_is_valid(
     session: &RemoteChatSessionState,
     message: &ValidatedRemoteChatMessageState,
 ) -> bool {
-    let Ok(key) = RsaPublicKey::from_public_key_der(&session.public_key_der) else {
+    let Ok(key) = PublicKey::from_public_key_der(&session.public_key_der) else {
         return false;
     };
     let mut payload = Vec::new();

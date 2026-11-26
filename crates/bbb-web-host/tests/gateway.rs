@@ -82,7 +82,7 @@ fn create_synthetic_vanilla_fixture(root: &Path) -> (String, Vec<u8>) {
     let write_obj = |bytes: &[u8]| -> (String, usize) {
         let mut h = Sha1::new();
         h.update(bytes);
-        let hex = format!("{:x}", h.finalize());
+        let hex: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
         let dir = objects_dir.join(&hex[..2]);
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join(&hex), bytes).unwrap();
@@ -828,7 +828,7 @@ fn builds_core_bundle_directly_from_launcher_jar_root_without_sources() {
     let lang_bytes = br#"{"block.minecraft.stone":"Stone"}"#;
     let mut h = Sha1::new();
     h.update(lang_bytes);
-    let lang_hash = format!("{:x}", h.finalize());
+    let lang_hash: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
     let lang_dir = objects_dir.join(&lang_hash[..2]);
     fs::create_dir_all(&lang_dir).unwrap();
     fs::write(lang_dir.join(&lang_hash), lang_bytes).unwrap();

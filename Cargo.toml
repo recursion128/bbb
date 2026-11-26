@@ -69,15 +69,15 @@ rand = "0.10.2"
 rayon = "1.12"
 regex = "1"
 reqwest = { version = "0.13.4", default-features = false, features = ["rustls-no-provider", "socks"] }
-rsa = "0.9"
+rsa = { version = "0.10", features = ["pkcs1v15"] }
 rustc-hash = "2.1"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-native-certs = "0.8"
 ryu = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
-sha1 = { version = "0.10", features = ["oid"] }
-sha2 = { version = "0.10", features = ["oid"] }
+sha1 = { version = "0.11", features = ["oid"] }
+sha2 = { version = "0.11", features = ["oid"] }
 symphonia = { version = "0.6.0", default-features = false, features = ["ogg", "vorbis", "opt-simd"] }
 sys-locale = "0.3.2"
 thiserror = "2"

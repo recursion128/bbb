@@ -305,7 +305,7 @@ fn decode_services_key_family(keys: Vec<ServicesKeyData>, label: &str) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsa::{pkcs8::EncodePublicKey, BigUint, Pkcs1v15Sign, RsaPrivateKey, RsaPublicKey};
+    use rsa::{pkcs8::EncodePublicKey, BoxedUint, Pkcs1v15Sign, PrivateKey, PublicKey};
     use sha1::{Digest, Sha1};
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
@@ -318,43 +318,42 @@ mod tests {
         fn seeded(seed: u64) -> Self {
             Self(seed)
         }
-    }
 
-    impl rsa::rand_core::RngCore for TestRsaRng {
-        fn next_u32(&mut self) -> u32 {
-            (self.next_u64() >> 32) as u32
-        }
-
-        fn next_u64(&mut self) -> u64 {
+        fn step_u64(&mut self) -> u64 {
             self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
             let mut z = self.0;
             z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
             z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
             z ^ (z >> 31)
         }
+    }
 
-        fn fill_bytes(&mut self, dest: &mut [u8]) {
-            for chunk in dest.chunks_mut(8) {
-                let bytes = self.next_u64().to_le_bytes();
-                chunk.copy_from_slice(&bytes[..chunk.len()]);
-            }
+    impl rsa::rand_core::TryRng for TestRsaRng {
+        type Error = std::convert::Infallible;
+
+        fn try_next_u32(&mut self) -> std::result::Result<u32, Self::Error> {
+            Ok((self.step_u64() >> 32) as u32)
         }
 
-        fn try_fill_bytes(
-            &mut self,
-            dest: &mut [u8],
-        ) -> std::result::Result<(), rsa::rand_core::Error> {
-            self.fill_bytes(dest);
+        fn try_next_u64(&mut self) -> std::result::Result<u64, Self::Error> {
+            Ok(self.step_u64())
+        }
+
+        fn try_fill_bytes(&mut self, dest: &mut [u8]) -> std::result::Result<(), Self::Error> {
+            for chunk in dest.chunks_mut(8) {
+                let bytes = self.step_u64().to_le_bytes();
+                chunk.copy_from_slice(&bytes[..chunk.len()]);
+            }
             Ok(())
         }
     }
 
-    impl rsa::rand_core::CryptoRng for TestRsaRng {}
+    impl rsa::rand_core::TryCryptoRng for TestRsaRng {}
 
     #[test]
     fn profile_texture_property_trust_requires_a_valid_services_signature() {
         let mut random = TestRsaRng::seeded(0x5a17_cafe);
-        let private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
+        let private_key = PrivateKey::new(&mut random, 1024).unwrap();
         let public_key = private_key.to_public_key();
         let public_der = public_key.to_public_key_der().unwrap();
         let value = "packed-profile-textures";
@@ -387,9 +386,15 @@ mod tests {
         ));
     }
 
+    fn synthetic_rsa_modulus(bits: usize) -> BoxedUint {
+        let mut bytes = vec![0u8; bits.div_ceil(8)];
+        bytes[0] = 1u8 << ((bits - 1) % 8);
+        *bytes.last_mut().unwrap() |= 1;
+        BoxedUint::from_be_slice_vartime(&bytes)
+    }
+
     fn rsa_4096_public_key_der() -> Vec<u8> {
-        let modulus = (BigUint::from(1u8) << 4095) + BigUint::from(1u8);
-        RsaPublicKey::new(modulus, BigUint::from(65_537u32))
+        PublicKey::new(synthetic_rsa_modulus(4096), BoxedUint::from(65_537u32))
             .unwrap()
             .to_public_key_der()
             .unwrap()
@@ -412,13 +417,10 @@ mod tests {
             }
         );
 
-        let short_key = RsaPublicKey::new(
-            (BigUint::from(1u8) << 2047) + BigUint::from(1u8),
-            BigUint::from(65_537u32),
-        )
-        .unwrap()
-        .to_public_key_der()
-        .unwrap();
+        let short_key = PublicKey::new(synthetic_rsa_modulus(2048), BoxedUint::from(65_537u32))
+            .unwrap()
+            .to_public_key_der()
+            .unwrap();
         let body = serde_json::json!({
             "playerCertificateKeys": [{"publicKey": STANDARD.encode(short_key.as_bytes())}],
         });

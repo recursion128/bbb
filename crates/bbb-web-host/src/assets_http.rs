@@ -249,7 +249,7 @@ impl PreparedWebAssets {
 
         let mut sha1 = Sha1::new();
         sha1.update(&core_bundle_bytes);
-        let core_bundle_etag = format!("\"{:x}\"", sha1.finalize());
+        let core_bundle_etag = format!("\"{}\"", hex_lower(&sha1.finalize()));
 
         let lang = opts
             .default_locale
@@ -487,7 +487,7 @@ fn serve_wasm_pkg_file_sync(
             };
             let mut sha1 = Sha1::new();
             sha1.update(&vec_bytes);
-            let hash = format!("{:x}", sha1.finalize());
+            let hash = hex_lower(&sha1.finalize());
             let etag = format!("\"{hash}\"");
             let gzip = if should_gzip_content_type(ct) {
                 gzip_compress_bytes(&vec_bytes)
@@ -679,7 +679,17 @@ fn compute_bundle_input_fingerprint(
             };
         }
     }
-    Ok(format!("{:x}", hasher.finalize())[..16].to_string())
+    Ok(hex_lower(&hasher.finalize())[..16].to_string())
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for &byte in bytes {
+        out.push(HEX[(byte >> 4) as usize] as char);
+        out.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    out
 }
 
 fn build_core_bundle_zip(

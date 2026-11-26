@@ -204,7 +204,7 @@ impl ResourceIntegrity {
             }
             sha1.update(&buffer[..count]);
         }
-        let actual_sha1 = format!("{:x}", sha1.finalize());
+        let actual_sha1 = crate::hex_lower(&sha1.finalize());
         if actual_sha1 != self.sha1 {
             bail!(
                 "{label} {} has SHA-1 {actual_sha1}, expected {}",

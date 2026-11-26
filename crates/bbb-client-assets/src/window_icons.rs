@@ -541,7 +541,7 @@ mod tests {
             bytes: &[u8],
             objects: &mut BTreeMap<String, serde_json::Value>,
         ) {
-            let hash = format!("{:x}", Sha1::digest(bytes));
+            let hash = crate::hex_lower(&Sha1::digest(bytes));
             let path = self
                 .root
                 .join("downloads/26.1/assets/objects")
@@ -554,7 +554,7 @@ mod tests {
 
         fn write_index(&self, objects: BTreeMap<String, serde_json::Value>) {
             let index = serde_json::to_vec(&json!({"objects": objects})).unwrap();
-            let index_hash = format!("{:x}", Sha1::digest(&index));
+            let index_hash = crate::hex_lower(&Sha1::digest(&index));
             let downloads = self.root.join("downloads/26.1");
             let path = downloads.join("assets/indexes/30.json");
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();

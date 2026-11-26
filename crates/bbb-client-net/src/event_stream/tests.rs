@@ -196,14 +196,17 @@ mod batch_02;
 #[tokio::test]
 async fn offline_login_proceeds_immediately_without_waiting_on_services_public_keys() {
     use base64::{engine::general_purpose::STANDARD, Engine as _};
-    use rsa::{pkcs8::EncodePublicKey, BigUint, RsaPublicKey};
+    use rsa::{pkcs8::EncodePublicKey, BoxedUint, PublicKey};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let (release_keys_tx, release_keys_rx) = tokio::sync::oneshot::channel::<()>();
     let services_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let services_addr = services_listener.local_addr().unwrap();
-    let modulus = (BigUint::from(1u8) << 4095) + BigUint::from(1u8);
-    let der = RsaPublicKey::new(modulus, BigUint::from(65_537u32))
+    let mut modulus_bytes = vec![0u8; 512];
+    modulus_bytes[0] = 0x80;
+    modulus_bytes[511] = 0x01;
+    let modulus = BoxedUint::from_be_slice_vartime(&modulus_bytes);
+    let der = PublicKey::new(modulus, BoxedUint::from(65_537u32))
         .unwrap()
         .to_public_key_der()
         .unwrap()

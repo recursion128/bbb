@@ -379,7 +379,13 @@ fn resources_have_vanilla_26_1_transparency(resources: &PostEffectResourceProjec
             stage,
         };
         resources.shader(&key).is_some_and(|shader| {
-            format!("{:x}", Sha256::digest(shader.source.as_bytes())) == expected_sha256
+            let digest = Sha256::digest(shader.source.as_bytes());
+            let mut hex = String::with_capacity(digest.len() * 2);
+            for byte in digest {
+                use std::fmt::Write as _;
+                let _ = write!(hex, "{byte:02x}");
+            }
+            hex == expected_sha256
         })
     })
 }

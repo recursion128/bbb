@@ -614,7 +614,7 @@ mod tests {
     }
 
     fn sha1_bytes(bytes: &[u8]) -> String {
-        format!("{:x}", Sha1::digest(bytes))
+        crate::hex_lower(&Sha1::digest(bytes))
     }
 
     fn fixture_root(label: &str) -> PathBuf {

@@ -8,7 +8,7 @@ use bbb_protocol::{
     },
     ComponentStyle, NbtSummaryEntry, NbtSummaryValue, RichTextComponent, StyledTextRun,
 };
-use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
+use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, PublicKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::VecDeque;

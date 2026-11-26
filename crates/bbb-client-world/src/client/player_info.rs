@@ -11,7 +11,7 @@ use bbb_protocol::RichTextComponent;
 use rsa::Pkcs1v15Sign;
 use rsa::{
     pkcs8::{DecodePublicKey, EncodePublicKey},
-    RsaPublicKey,
+    PublicKey,
 };
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
@@ -240,7 +240,7 @@ fn validated_remote_chat_session(
     profile_id: Uuid,
     chat_session: &ProtocolPlayerInfoChatSession,
 ) -> Option<RemoteChatSessionState> {
-    let Ok(player_public_key) = RsaPublicKey::from_public_key_der(&chat_session.public_key) else {
+    let Ok(player_public_key) = PublicKey::from_public_key_der(&chat_session.public_key) else {
         return None;
     };
     let Ok(canonical_player_key) = player_public_key.to_public_key_der() else {
@@ -277,7 +277,7 @@ mod tests {
         AddEntity as ProtocolAddEntity, PlayerInfoEntry as ProtocolPlayerInfoEntry,
         Transfer as ProtocolTransfer, Vec3d as ProtocolVec3d,
     };
-    use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey};
+    use rsa::{pkcs8::EncodePublicKey, PrivateKey};
 
     #[test]
     fn player_info_adds_player_with_profile_and_fields() {
@@ -618,9 +618,9 @@ mod tests {
         profile_id: Uuid,
     ) -> (Vec<u8>, ProtocolPlayerInfoChatSession) {
         let mut random = crate::RsaTestRng::seeded(0x5e7a_1ce5);
-        let services_private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
-        let player_private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
-        let player_public_key = RsaPublicKey::from(&player_private_key)
+        let services_private_key = PrivateKey::new(&mut random, 1024).unwrap();
+        let player_private_key = PrivateKey::new(&mut random, 1024).unwrap();
+        let player_public_key = PublicKey::from(&player_private_key)
             .to_public_key_der()
             .unwrap();
         let expires_at_epoch_millis = 1_700_000_000_000i64;
@@ -631,7 +631,7 @@ mod tests {
         let key_signature = services_private_key
             .sign(Pkcs1v15Sign::new::<Sha1>(), &Sha1::digest(payload))
             .unwrap();
-        let services_public_key = RsaPublicKey::from(&services_private_key)
+        let services_public_key = PublicKey::from(&services_private_key)
             .to_public_key_der()
             .unwrap()
             .as_bytes()

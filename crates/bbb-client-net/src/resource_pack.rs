@@ -405,11 +405,21 @@ pub enum ServerPackDownloadProgress {
     RequestFinished { success: bool },
 }
 
+fn hex_lower(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for &byte in bytes {
+        out.push(HEX[(byte >> 4) as usize] as char);
+        out.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    out
+}
+
 /// Computes the lowercase 40-hex SHA-1 digest of `bytes`.
 pub fn sha1_hex_lower(bytes: &[u8]) -> String {
     let mut digest = Sha1::new();
     digest.update(bytes);
-    format!("{:x}", digest.finalize())
+    hex_lower(&digest.finalize())
 }
 
 /// Downloads one server pack without blocking the connection/event-stream task.
@@ -543,7 +553,7 @@ async fn download_server_pack_wasm(
 
     let mut digest = Sha1::new();
     digest.update(&raw);
-    let actual_sha1 = format!("{:x}", digest.finalize());
+    let actual_sha1 = hex_lower(&digest.finalize());
     if let Some(expected) = expected_sha1 {
         if expected != actual_sha1 {
             bail!("server pack SHA-1 mismatch: expected {expected}, downloaded {actual_sha1}");
@@ -754,7 +764,7 @@ async fn download_server_pack_native(
         }
         writer.flush().context("flush server pack download cache")?;
         drop(writer);
-        Ok(format!("{:x}", digest.finalize()))
+        Ok(hex_lower(&digest.finalize()))
     });
 
     let mut bytes = 0_u64;
@@ -931,7 +941,7 @@ fn validate_cached_archive(path: &Path, expected_sha1: &str) -> Result<u64> {
             .context("cached server pack size overflow")?;
         digest.update(&buffer[..read]);
     }
-    let actual_sha1 = format!("{:x}", digest.finalize());
+    let actual_sha1 = hex_lower(&digest.finalize());
     if actual_sha1 != expected_sha1 {
         bail!("cached server pack SHA-1 mismatch: expected {expected_sha1}, found {actual_sha1}");
     }
@@ -1774,9 +1784,7 @@ mod tests {
     }
 
     fn sha1_hex(bytes: &[u8]) -> String {
-        let mut digest = Sha1::new();
-        digest.update(bytes);
-        format!("{:x}", digest.finalize())
+        sha1_hex_lower(bytes)
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

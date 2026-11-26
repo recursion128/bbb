@@ -826,7 +826,7 @@ fn archive_identity_digest(archive: &Path) -> String {
             }
         }
     }
-    format!("{:x}", sha1.finalize())
+    crate::hex_lower(&sha1.finalize())
 }
 
 fn validate_pack_root(root: &Path) -> Result<()> {

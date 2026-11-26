@@ -121,7 +121,11 @@ fn packet_updates(mask: &[i64], updates: &[Vec<u8>]) -> Vec<(usize, String)> {
         .filter(|index| (mask[index / 64] as u64) & (1_u64 << (index % 64)) != 0)
         .map(|index| {
             let bytes = updates.next().expect("each packet mask bit owns one array");
-            (index, format!("{:x}", Sha256::digest(bytes)))
+            let hex: String = Sha256::digest(bytes)
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect();
+            (index, hex)
         })
         .collect();
     assert!(updates.next().is_none());
